@@ -22,22 +22,18 @@ import {
   canonicalLearningsForDisplay,
   canonicalPredictionsToAttentionSignals,
 } from "@/lib/intelligence/canonical-attention"
-import { useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-composer"
 import { useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
 import { WhyGravitrePanel, useWhyGravitreEvidence } from "@/components/intelligence/why-gravitre-panel"
 import { LivingMineralField } from "@/components/gravitre/visual"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import {
-  IntelligenceCommandBar,
+  IntelligenceAskCommandSurface,
   IntelligenceShell,
 } from "@/components/intelligence/shell"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
-import {
-  IntelligenceMap,
-  type IntelligenceMapSelection,
-} from "@/components/intelligence/map/intelligence-map"
-import { IntelligenceLensBar } from "@/components/intelligence/map/intelligence-lens-bar"
-import { IntelligenceInspectorDrawer } from "@/components/intelligence/map/intelligence-inspector-drawer"
+import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
+import type { IntelligenceMapSelection } from "@/components/intelligence/map/intelligence-map"
+import { OverviewLivingMap } from "@/components/intelligence/pages/overview-living-map"
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
 import {
@@ -168,8 +164,9 @@ function IntelligenceCenterInner() {
   const { data: businessSignals, isLoading: legacySignalsLoading } = useWhatMattersNow(
     Boolean(user) && !pageContext,
   )
-  const { data: dailyBriefing } = useAskGravitreSuggestions(Boolean(user))
-  const { coreState, businessImpact } = useIntelligencePillarsData(Boolean(user))
+  const { coreState, businessImpact } = useIntelligencePillarsData(
+    Boolean(user) && !isSnapshotMetricsReady(snapshotLoadState),
+  )
   const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(Boolean(user))
 
   const mapAgents = useMemo(
@@ -354,67 +351,43 @@ function IntelligenceCenterInner() {
               isValidating={snapshotValidating}
               onRefresh={() => mutateSnapshot()}
               commandBar={
-                <IntelligenceCommandBar
-                  variant="map"
-                  suggestions={dailyBriefing?.suggestions}
+                <IntelligenceAskCommandSurface
+                  enabled={Boolean(user)}
+                  pageSuggestedQuestions={pageContext?.suggestedQuestions}
                   onVisualization={handleAssistantVisualization}
                   pendingQuestion={composerPendingQuestion}
                   onPendingQuestionConsumed={() => setComposerPendingQuestion(null)}
                 />
               }
             >
-            <div className="relative min-h-[52vh]">
-              <IntelligenceMap
-                lens={activeLens}
+              <OverviewLivingMap
+                activeLens={activeLens}
+                onLensChange={(lens) => {
+                  setActiveLens(lens)
+                  setMapSelection(null)
+                  setMapHighlightIds([])
+                  setMapDimIds([])
+                  setMapFocusIds([])
+                }}
+                lensMetrics={lensMetrics}
+                snapshotLoadState={snapshotLoadState}
+                pageContext={pageContext}
+                mapAgents={mapAgents}
                 signals={signals}
-                agents={mapAgents}
-                entityTypes={undefined}
-                readiness={undefined}
-                orgTraining={undefined}
                 entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}
                 relationshipCount={canonicalMetrics?.knowledge?.knownRelationships ?? null}
-                canonicalGraph={pageContext?.graph}
                 selection={mapSelection}
                 onSelectionChange={setMapSelection}
                 highlightNodeIds={mapHighlightIds}
                 dimNodeIds={mapDimIds}
                 focusNodeIds={mapFocusIds}
-                className="min-h-[52vh]"
+                whyEvidence={whyEvidence}
+                onAskAbout={(question) => {
+                  setComposerPendingQuestion(question)
+                  window.scrollTo({ top: 0, behavior: "smooth" })
+                }}
+                cacheKey={`overview:${activeLens}`}
               />
-              {!mapSelection ? (
-                <p
-                  className={cn(
-                    TYPE.meta,
-                    "pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-divide/80 bg-[color:var(--g-surface-1)]/90 px-3 py-1 shadow-sm backdrop-blur-sm",
-                  )}
-                >
-                  Click a node to inspect evidence and context
-                </p>
-              ) : null}
-            </div>
-
-            <IntelligenceInspectorDrawer
-              selection={mapSelection}
-              onSelectionChange={setMapSelection}
-              pageContext={pageContext}
-              whyData={whyEvidence}
-              onAskAbout={(question) => {
-                setComposerPendingQuestion(question)
-                window.scrollTo({ top: 0, behavior: "smooth" })
-              }}
-            />
-
-            <IntelligenceLensBar
-              activeLens={activeLens}
-              onLensChange={(lens) => {
-                setActiveLens(lens)
-                setMapSelection(null)
-                setMapHighlightIds([])
-                setMapDimIds([])
-                setMapFocusIds([])
-              }}
-              metrics={lensMetrics}
-            />
             </IntelligenceShell>
           </div>
         </section>

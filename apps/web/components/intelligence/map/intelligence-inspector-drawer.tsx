@@ -6,6 +6,7 @@
  */
 import Link from "next/link"
 import { useEffect, useMemo } from "react"
+import { useIntelligenceExperienceOptional } from "@/components/intelligence/shell/intelligence-experience-provider"
 import {
   Sheet,
   SheetContent,
@@ -39,6 +40,7 @@ export function IntelligenceInspectorDrawer({
   /** Prefill Ask Gravitre with a contextual question. */
   onAskAbout?: (question: string) => void
 }) {
+  const experience = useIntelligenceExperienceOptional()
   const open = selection != null
   const context = useMemo(
     () => (selection ? resolveInspectorContext(selection, pageContext, whyData) : null),
@@ -64,9 +66,10 @@ export function IntelligenceInspectorDrawer({
 
   return (
     <Sheet
+      modal={!experience?.inspectorPinned}
       open={open}
       onOpenChange={(next) => {
-        if (!next) onSelectionChange(null)
+        if (!next && !experience?.inspectorPinned) onSelectionChange(null)
       }}
     >
       <SheetContent
@@ -174,6 +177,16 @@ export function IntelligenceInspectorDrawer({
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-divide px-5 py-4">
+              {experience ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => experience.setInspectorPinned(!experience.inspectorPinned)}
+                >
+                  {experience.inspectorPinned ? "Unpin drawer" : "Pin drawer"}
+                </Button>
+              ) : null}
               {context.askPrompt && onAskAbout ? (
                 <Button
                   type="button"

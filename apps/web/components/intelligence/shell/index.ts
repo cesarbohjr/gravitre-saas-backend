@@ -7,3 +7,4 @@ export {
   useIntelligenceExperienceOptional,
 } from "./intelligence-experience-provider"
 export { IntelligenceLayoutClient } from "./intelligence-layout-client"
+export { IntelligenceAskCommandSurface } from "./intelligence-ask-command-surface"

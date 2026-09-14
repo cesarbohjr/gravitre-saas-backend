@@ -54,7 +54,10 @@ const pageContext: IntelligencePageContextResponse = {
     qualityFlags: [],
     departments: [],
   },
-  graph: { nodes: [], edges: [] },
+  graph: {
+    nodes: [],
+    edges: [{ id: "e1", type: "EVIDENCE_FOR", fromId: "agent:a1", toId: "prediction:p1" }],
+  },
   activeLens: "acts",
   availableLenses: ["knows", "learns", "predicts", "acts", "improves"],
   metrics: {
@@ -93,6 +96,16 @@ describe("resolveInspectorContext", () => {
     expect(ctx?.facts.some((f) => f.label === "Execution" && f.value.includes("Idle"))).toBe(true)
   })
 
+  it("resolves edge selection with relationship context", () => {
+    const ctx = resolveInspectorContext(
+      { kind: "edge", edgeId: "e1", label: "EVIDENCE_FOR" },
+      pageContext,
+    )
+    expect(ctx?.eyebrow).toBe("Relationship")
+    expect(ctx?.summary).toContain("agent:a1")
+    expect(ctx?.askPrompt).toContain("connect")
+  })
+
   it("surfaces prediction evidence and quality flags for signals", () => {
     const ctx = resolveInspectorContext(
       {
@@ -102,7 +115,7 @@ describe("resolveInspectorContext", () => {
       pageContext,
     )
     expect(ctx?.evidence).toContain("HubSpot connector token expires in 3 days")
-    expect(ctx?.qualityFlags.some((f) => f.includes("Unscoped"))).toBe(true)
+    expect(ctx?.qualityFlags.some((f) => f.includes("connected source"))).toBe(true)
     expect(ctx?.facts.some((f) => f.label === "Confidence" && f.value === "82%")).toBe(true)
   })
 })

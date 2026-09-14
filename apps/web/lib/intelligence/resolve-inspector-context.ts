@@ -6,6 +6,7 @@ import type { IntelligenceMapSelection } from "@/components/intelligence/map/int
 import type { AllDepartmentsPayload, PriorityItem } from "@/components/intelligence/why-gravitre-panel"
 import { flattenPriorities } from "@/components/intelligence/why-gravitre-panel"
 import { readString } from "@/lib/intelligence/helpers"
+import { formatQualityFlagsHuman } from "@/lib/intelligence/quality-copy"
 
 export type InspectorFact = { label: string; value: string }
 
@@ -34,15 +35,15 @@ function provenanceLabel(source: unknown): string | undefined {
   return recordId ? `${system} · ${recordId}` : system
 }
 
-function qualityFlagLabel(flag: string): string {
-  return flag
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+export function formatQualityFlags(flags: string[]): string[] {
+  return formatQualityFlagsHuman(flags)
 }
 
-export function formatQualityFlags(flags: string[]): string[] {
-  return [...new Set(flags.map(qualityFlagLabel))]
+function findGraphEdge(
+  pageContext: IntelligencePageContextResponse | null | undefined,
+  edgeId: string,
+) {
+  return pageContext?.graph?.edges?.find((e) => readString(e.id, "") === edgeId)
 }
 
 function findCanonicalAgent(
@@ -115,6 +116,27 @@ export function resolveInspectorContext(
 
   const snapshot = pageContext?.snapshot
   const windowHours = snapshot?.timeWindowHours ?? 24
+
+  if (selection.kind === "edge") {
+    const edge = findGraphEdge(pageContext, selection.edgeId)
+    const fromId = readString(edge?.fromId, "")
+    const toId = readString(edge?.toId, "")
+    const edgeType = readString(edge?.type, selection.label)
+    return {
+      eyebrow: "Relationship",
+      title: edgeType.replace(/_/g, " "),
+      summary: fromId && toId ? `${fromId} → ${toId}` : undefined,
+      facts: [
+        ...(fromId ? [{ label: "From", value: fromId }] : []),
+        ...(toId ? [{ label: "To", value: toId }] : []),
+        { label: "Time window", value: `${windowHours}h` },
+      ],
+      evidence: [],
+      qualityFlags: formatQualityFlags(pageContext?.qualityFlags ?? []),
+      provenance: "Canonical intelligence graph",
+      askPrompt: `Why does Gravitre connect ${fromId || "this"} to ${toId || "that"}?`,
+    }
+  }
 
   if (selection.kind === "agent") {
     const canonical = snapshot ? findCanonicalAgent(snapshot, selection.agent.id) : undefined
