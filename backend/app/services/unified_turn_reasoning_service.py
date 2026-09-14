@@ -556,6 +556,7 @@ async def run_unified_turn_shadow(
     cognitive_context: Any | None = None,
     on_text_delta: Any | None = None,
     reasoning_depth: str = "full",
+    compiled_reasoning_context: Any | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -755,17 +756,23 @@ async def run_unified_turn_shadow(
         )
         tool_stats = {**(tool_stats or {}), "progressiveDisclosure": False}
 
-    pending_block = build_unified_turn_pending_context(
-        task_state,
-        last_assistant_message=_last_assistant_snippet(conversation_history),
-    )
+    # E4: reasoning context owned by ContextCompiler when provided upstream.
+    _compiled_ctx = compiled_reasoning_context
+    pending_block = None
+    if _compiled_ctx is None:
+        pending_block = build_unified_turn_pending_context(
+            task_state,
+            last_assistant_message=_last_assistant_snippet(conversation_history),
+        )
     from app.services.conversational_reply_service import build_capability_snapshot
 
-    capability_block = build_capability_snapshot(
-        connected_integrations=connected,
-        client=client,
-        org_id=org_id,
-    )
+    capability_block = ""
+    if _compiled_ctx is None:
+        capability_block = build_capability_snapshot(
+            connected_integrations=connected,
+            client=client,
+            org_id=org_id,
+        )
     # Full Module D spec is the system instruction (not a post-hoc phrase bank).
     # spoken_mode stacks Register 5 (SPOKEN); agent injects self-recognition by name.
     # Spoken conversational omits few-shots (~1k tokens) to cut model TTFT; write/full keep them.
@@ -794,39 +801,44 @@ async def run_unified_turn_shadow(
             spoken_length_band=_length_band,
         )
     )
-    user_parts = []
-    # Phase 0 (voice-latency, 2026-09-05): labeled mirror of user_parts so the
-    # real, per-source context size (chars + real tiktoken tokens) can be
-    # reported honestly instead of only a single prompt-wide total. Every
-    # `user_parts.append(...)` below has a matching `_add_part(label, ...)`.
+    user_parts: list[str] = []
     context_parts: list[tuple[str, str]] = []
 
     def _add_part(label: str, text: str) -> None:
         user_parts.append(text)
         context_parts.append((label, text))
 
-    if pending_block:
-        _add_part("pending_state", pending_block)
-    else:
-        _add_part(
-            "pending_state",
-            "NO PENDING STATE this turn. Do not mention abandon/hold or a pending item.",
+    unified_turn_knowledge_meta: dict[str, Any] | None = None
+    if _compiled_ctx is not None:
+        context_parts = list(_compiled_ctx.context_parts())
+        unified_turn_knowledge_meta = (
+            _compiled_ctx.knowledge_meta if isinstance(_compiled_ctx.knowledge_meta, dict) else None
         )
-    _add_part(
-        "connected_integrations",
-        "CONNECTED INTEGRATIONS THIS ORG (authoritative executable list for this turn — "
-        "vendors listed here ARE connected; vendors absent are NOT connected for this org; "
-        "absence is not uncertainty; answer connection questions directly from this list "
-        "or from connector status data already loaded — never tell the user internal tool "
-        "names or that you lack data when absence means not connected):\n"
-        + capability_block,
-    )
-    from app.services.chat_write_intent import build_gmail_write_intent_prompt_section
+    else:
+        # Legacy inline assembly — deprecated; retained for shadow-only callers.
+        if pending_block:
+            _add_part("pending_state", pending_block)
+        else:
+            _add_part(
+                "pending_state",
+                "NO PENDING STATE this turn. Do not mention abandon/hold or a pending item.",
+            )
+        _add_part(
+            "connected_integrations",
+            "CONNECTED INTEGRATIONS THIS ORG (authoritative executable list for this turn — "
+            "vendors listed here ARE connected; vendors absent are NOT connected for this org; "
+            "absence is not uncertainty; answer connection questions directly from this list "
+            "or from connector status data already loaded — never tell the user internal tool "
+            "names or that you lack data when absence means not connected):\n"
+            + capability_block,
+        )
+        from app.services.chat_write_intent import build_gmail_write_intent_prompt_section
 
-    intent_hint = build_gmail_write_intent_prompt_section(message or "")
-    if intent_hint:
-        _add_part("write_intent_hint", intent_hint)
-    # Explicit tool inventory note for knowledge-boundary honesty.
+        intent_hint = build_gmail_write_intent_prompt_section(message or "")
+        if intent_hint:
+            _add_part("write_intent_hint", intent_hint)
+
+    # Tool availability is execution runtime — not general reasoning context (E4).
     if attach_tools:
         names = sorted(
             {
@@ -848,134 +860,131 @@ async def run_unified_turn_shadow(
                     f" Stubs are name + description only; call {SEARCH_CATALOG_TOOLS_NAME} "
                     "to load full parameters before invoking a connector tool."
                 )
-            _add_part(
-                "tools_list_note",
+            tools_list_note = (
                 "AVAILABLE TOOLS THIS TURN "
                 f"({loaded_note.strip()} You have NO other live data sources):\n- "
-                + "\n- ".join(names),
+                + "\n- ".join(names)
             )
         else:
-            _add_part(
-                "tools_list_note",
+            tools_list_note = (
                 "AVAILABLE TOOLS THIS TURN (schemas attached as functions; "
                 "you have NO other live data sources):\n- "
-                + "\n- ".join(names),
+                + "\n- ".join(names)
             )
     else:
-        _add_part(
-            "tools_list_note",
+        tools_list_note = (
             "AVAILABLE TOOLS THIS TURN: none. Do not invent metrics, run counts, "
-            "or connector results.",
-        )
-    remind_me = _is_remind_me_turn(message)
-    standing = _standing_user_corrections_block(conversation_history)
-    if standing:
-        _add_part("standing_corrections", standing)
-    prior_recs = _prior_recommendations_block(conversation_history) if remind_me else ""
-    if prior_recs:
-        _add_part("prior_recommendations", prior_recs)
-
-    cognitive_prompt_sections: dict[str, str] = {}
-    if cognitive_context is not None and not remind_me:
-        try:
-            from app.services.cognitive_turn_kernel import to_prompt_sections
-
-            cognitive_prompt_sections = to_prompt_sections(cognitive_context)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("unified_turn_kernel_sections_unavailable error=%s", exc)
-
-    if client is not None and org_id and not remind_me:
-        from app.services.unified_turn_knowledge_context import (
-            build_unified_turn_knowledge_context,
-        )
-        from app.services.agent_knowledge_assignment_service import (
-            AgentKnowledgeAssignmentService,
+            "or connector results."
         )
 
-        knowledge_assignments: list[dict[str, Any]] = []
-        agent_id = str((agent or {}).get("id") or "")
-        if agent_id and agent_id not in {"assistant"}:
+    if _compiled_ctx is None:
+        _add_part("tools_list_note", tools_list_note)
+        remind_me = _is_remind_me_turn(message)
+        standing = _standing_user_corrections_block(conversation_history)
+        if standing:
+            _add_part("standing_corrections", standing)
+        prior_recs = _prior_recommendations_block(conversation_history) if remind_me else ""
+        if prior_recs:
+            _add_part("prior_recommendations", prior_recs)
+
+        cognitive_prompt_sections: dict[str, str] = {}
+        if cognitive_context is not None and not remind_me:
             try:
-                knowledge_assignments = AgentKnowledgeAssignmentService(
-                    active
-                ).list_assignments(client, org_id, agent_id)
-            except Exception:  # noqa: BLE001
-                knowledge_assignments = AgentKnowledgeAssignmentService(
-                    active
-                ).resolve_assignments(agent or {})
-        knowledge_block, knowledge_meta = await build_unified_turn_knowledge_context(
-            org_id=org_id,
-            query=message or "",
-            client=client,
-            settings=active,
-            classification=classification,
-            agent=agent,
-            knowledge_assignments=knowledge_assignments,
-            connected_integrations=connected,
-            supplemental_context=cognitive_prompt_sections,
-            research_scope=research_scope,
-            reasoning_depth=reasoning_depth,
-            # Threaded so the sufficiency gate can write its own audit action.
-            # Both columns are uuid NOT NULL and the insert is dropped silently
-            # without them, which is how three earlier instruments recorded
-            # nothing while appearing to work.
-            actor_id=user_id,
-            conversation_id=conversation_id,
-        )
-        if knowledge_block:
-            _add_part("knowledge_fabric", knowledge_block)
-        unified_turn_knowledge_meta = knowledge_meta if knowledge_meta else None
-    else:
-        unified_turn_knowledge_meta = (
-            {"skipped": "remind_me_turn"} if remind_me else None
-        )
-    # Kernel RECALL/KNOWLEDGE pack (post-retrieve, pre-ACT) — denser than LIVE-only KF.
-    if cognitive_context is not None and not remind_me:
-        try:
-            from app.services.cognitive_turn_kernel import (
-                memory_recall_signal,
+                from app.services.cognitive_turn_kernel import to_prompt_sections
+
+                cognitive_prompt_sections = to_prompt_sections(cognitive_context)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("unified_turn_kernel_sections_unavailable error=%s", exc)
+
+        if client is not None and org_id and not remind_me:
+            from app.services.unified_turn_knowledge_context import (
+                build_unified_turn_knowledge_context,
+            )
+            from app.services.agent_knowledge_assignment_service import (
+                AgentKnowledgeAssignmentService,
             )
 
-            mem = (cognitive_prompt_sections.get("memory_section") or "").strip()
-            know = (cognitive_prompt_sections.get("knowledge_section") or "").strip()
-            bias = (cognitive_prompt_sections.get("outcome_bias_section") or "").strip()
-            ranking_meta = (
-                unified_turn_knowledge_meta.get("contextRanking")
-                if isinstance(unified_turn_knowledge_meta, dict)
-                else None
+            knowledge_assignments: list[dict[str, Any]] = []
+            agent_id = str((agent or {}).get("id") or "")
+            if agent_id and agent_id not in {"assistant"}:
+                try:
+                    knowledge_assignments = AgentKnowledgeAssignmentService(
+                        active
+                    ).list_assignments(client, org_id, agent_id)
+                except Exception:  # noqa: BLE001
+                    knowledge_assignments = AgentKnowledgeAssignmentService(
+                        active
+                    ).resolve_assignments(agent or {})
+            knowledge_block, knowledge_meta = await build_unified_turn_knowledge_context(
+                org_id=org_id,
+                query=message or "",
+                client=client,
+                settings=active,
+                classification=classification,
+                agent=agent,
+                knowledge_assignments=knowledge_assignments,
+                connected_integrations=connected,
+                supplemental_context=cognitive_prompt_sections,
+                research_scope=research_scope,
+                reasoning_depth=reasoning_depth,
+                actor_id=user_id,
+                conversation_id=conversation_id,
             )
-            managed_supplemental = bool(
-                isinstance(ranking_meta, dict)
-                and ranking_meta.get("mode") == "active"
-                and ranking_meta.get("managedSupplementalSections")
+            if knowledge_block:
+                _add_part("knowledge_fabric", knowledge_block)
+            unified_turn_knowledge_meta = knowledge_meta if knowledge_meta else None
+        else:
+            unified_turn_knowledge_meta = (
+                {"skipped": "remind_me_turn"} if remind_me else None
             )
-            if not managed_supplemental:
-                if mem:
-                    _add_part("memory_recall", mem)
-                if know:
-                    _add_part("kernel_knowledge_section", know)
-                if bias:
-                    _add_part("outcome_bias", bias)
-            kernel_meta = {
-                "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
-                "outcomeBiasInjected": bool(bias),
-                # Memory is the fifth context source and the only one with no
-                # per-turn count here. org RAG, Knowledge Fabric, internet and
-                # the business graph all report; memory did not, so "did memory
-                # reach this answer" could not be asked of production data.
-                "memoryRecall": memory_recall_signal(cognitive_context),
-            }
-            if isinstance(unified_turn_knowledge_meta, dict):
-                unified_turn_knowledge_meta = {**unified_turn_knowledge_meta, **kernel_meta}
-            else:
-                # Unconditional. The old `elif mem or know or bias` dropped the
-                # block entirely on an empty pack, which is the one case where
-                # the recall signal carries the most information.
-                unified_turn_knowledge_meta = kernel_meta
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("unified_turn_kernel_section_merge_failed error=%s", exc)
-    _add_part("user_message", f"USER MESSAGE:\n{(message or '').strip()}")
-    user_content = "\n\n".join(user_parts)
+        if cognitive_context is not None and not remind_me:
+            try:
+                from app.services.cognitive_turn_kernel import memory_recall_signal
+
+                mem = (cognitive_prompt_sections.get("memory_section") or "").strip()
+                know = (cognitive_prompt_sections.get("knowledge_section") or "").strip()
+                bias = (cognitive_prompt_sections.get("outcome_bias_section") or "").strip()
+                ranking_meta = (
+                    unified_turn_knowledge_meta.get("contextRanking")
+                    if isinstance(unified_turn_knowledge_meta, dict)
+                    else None
+                )
+                managed_supplemental = bool(
+                    isinstance(ranking_meta, dict)
+                    and ranking_meta.get("mode") == "active"
+                    and ranking_meta.get("managedSupplementalSections")
+                )
+                if not managed_supplemental:
+                    if mem:
+                        _add_part("memory_recall", mem)
+                    if know:
+                        _add_part("kernel_knowledge_section", know)
+                    if bias:
+                        _add_part("outcome_bias", bias)
+                kernel_meta = {
+                    "cognitiveTurnId": getattr(cognitive_context, "turn_id", None),
+                    "outcomeBiasInjected": bool(bias),
+                    "memoryRecall": memory_recall_signal(cognitive_context),
+                }
+                if isinstance(unified_turn_knowledge_meta, dict):
+                    unified_turn_knowledge_meta = {**unified_turn_knowledge_meta, **kernel_meta}
+                else:
+                    unified_turn_knowledge_meta = kernel_meta
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("unified_turn_kernel_section_merge_failed error=%s", exc)
+        _add_part("user_message", f"USER MESSAGE:\n{(message or '').strip()}")
+        user_content = "\n\n".join(user_parts)
+    else:
+        merged_parts: list[tuple[str, str]] = []
+        for label, text in context_parts:
+            if label == "user_message":
+                merged_parts.append(("tools_list_note", tools_list_note))
+            merged_parts.append((label, text))
+        if not any(label == "user_message" for label, _ in merged_parts):
+            merged_parts.append(("tools_list_note", tools_list_note))
+        context_parts = merged_parts
+        user_parts = [text for _, text in context_parts]
+        user_content = "\n\n".join(user_parts)
 
     history_messages = _history_to_messages(conversation_history)
     messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
@@ -1833,6 +1842,7 @@ async def apply_unified_turn_live(
     cognitive_context: Any | None = None,
     on_text_delta: Any | None = None,
     reasoning_depth: str = "full",
+    compiled_reasoning_context: Any | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -2125,6 +2135,7 @@ async def apply_unified_turn_live(
         reasoning_depth=reasoning_depth,
         cognitive_context=cognitive_context,
         on_text_delta=on_text_delta,
+        compiled_reasoning_context=compiled_reasoning_context,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

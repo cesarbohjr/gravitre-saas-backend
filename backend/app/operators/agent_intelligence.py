@@ -2916,16 +2916,15 @@ class AgentIntelligence:
 
         # CognitiveTurnKernel: RETRIEVE→GOVERN before any LIVE ACT (fixes LIVE-before-retrieve).
         cognitive_ctx = None
+        _surface = (
+            "voice"
+            if spoken_mode
+            else ("agent_chat" if agent_id else "ai_chat")
+        )
         try:
             from app.services.cognitive_turn_kernel import (
                 CognitiveTurnRequest,
                 get_cognitive_turn_kernel,
-            )
-
-            _surface = (
-                "voice"
-                if spoken_mode
-                else ("agent_chat" if agent_id else "ai_chat")
             )
             _mark("pre_kernel_entry")
             if spoken_mode:
@@ -3092,6 +3091,39 @@ class AgentIntelligence:
         # Spoken: stream unified text deltas into SSE as they arrive so TTS can start
         # before the full answer completes (Phase 5). Same LIVE path — not a fork.
         _unified_live_ok = bool(getattr(active_settings, "unified_turn_live_enabled", False))
+        _compiled_unified_reasoning = None
+        if _unified_live_ok and bool(
+            getattr(active_settings, "context_compiler_unified_live_v1", True)
+        ):
+            from app.services.context_compiler import compile_unified_reasoning_context
+
+            _compiled_unified_reasoning = await compile_unified_reasoning_context(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message=task_text,
+                task_state=task_state if isinstance(task_state, dict) else None,
+                conversation_history=conversation_history,
+                connected_integrations=list(connected_early or []),
+                client=client,
+                settings=active_settings,
+                classification=pipeline_classification,
+                cognitive_context=cognitive_ctx,
+                research_scope=research_scope,
+                reasoning_depth=reasoning_depth,
+                routing_tier=routing_control.tier,
+                mode=requested_mode,
+                agent=early_agent,
+                surface=_surface,
+            )
+            _boot_cognitive_trace(task_state if isinstance(task_state, dict) else None)
+            if _cognitive_trace_builder is not None:
+                _cognitive_trace_builder.mark(
+                    "context_compile_unified",
+                    **_compiled_unified_reasoning.to_trace_dict(),
+                )
+                _cognitive_trace_builder.mark("model_reasoning_started", path="unified_live")
+
         if _unified_live_ok:
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
             from app.operators.react_engine import resolve_permitted_tools
@@ -3141,6 +3173,7 @@ class AgentIntelligence:
                         reasoning_depth=reasoning_depth,
                         cognitive_context=cognitive_ctx,
                         on_text_delta=on_text_delta,
+                        compiled_reasoning_context=_compiled_unified_reasoning,
                     )
                 finally:
                     if delta_queue is not None:
@@ -3190,6 +3223,11 @@ class AgentIntelligence:
                     routing={
                         **(routing_sse if isinstance(routing_sse, dict) else {}),
                         "unifiedTurnLive": True,
+                        "contextCompiler": (
+                            _compiled_unified_reasoning.to_trace_dict()
+                            if _compiled_unified_reasoning is not None
+                            else None
+                        ),
                         "unifiedOutcomeKind": live_turn.get("unified_outcome_kind"),
                         "reasoningDepth": reasoning_depth,
                         "spokenStreamed": streamed_voice_text,
