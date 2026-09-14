@@ -22,12 +22,16 @@ import {
   canonicalLearningsForDisplay,
   canonicalPredictionsToAttentionSignals,
 } from "@/lib/intelligence/canonical-attention"
-import { AskGravitreComposer, useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-composer"
+import { useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-composer"
 import { useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
 import { WhyGravitrePanel, useWhyGravitreEvidence } from "@/components/intelligence/why-gravitre-panel"
 import { LivingMineralField } from "@/components/gravitre/visual"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import {
+  IntelligenceCommandBar,
+  IntelligenceShell,
+} from "@/components/intelligence/shell"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import {
   IntelligenceMap,
   type IntelligenceMapSelection,
@@ -149,11 +153,17 @@ function IntelligenceCenterInner() {
   const { data: simulations } = useSWR(user ? "intelligence/simulations" : null, () =>
     intelligenceApi.simulations(),
   )
-  const { data: pageContext } = useSWR(
-    user ? ["intelligence/page-context", activeLens] : null,
-    () => intelligenceApi.pageContext({ windowHours: 24, activeLens }),
-    { revalidateOnFocus: false },
-  )
+  const {
+    data: pageContext,
+    loadState: snapshotLoadState,
+    generatedAt,
+    isValidating: snapshotValidating,
+    mutate: mutateSnapshot,
+  } = useIntelligenceSnapshot({
+    enabled: Boolean(user),
+    activeLens,
+    windowHours: 24,
+  })
 
   const { data: businessSignals, isLoading: legacySignalsLoading } = useWhatMattersNow(
     Boolean(user) && !pageContext,
@@ -179,8 +189,9 @@ function IntelligenceCenterInner() {
         businessImpact: businessImpact.data,
         outcomesByEvent: (outcomes?.by_event_type as Record<string, number> | undefined) ?? {},
         canonicalMetrics,
+        loadState: snapshotLoadState,
       }),
-    [coreState.data, businessImpact.data, outcomes, canonicalMetrics],
+    [coreState.data, businessImpact.data, outcomes, canonicalMetrics, snapshotLoadState],
   )
 
   const canonicalAttentionSignals = useMemo(
@@ -330,21 +341,28 @@ function IntelligenceCenterInner() {
           <div className="relative z-10 mx-auto max-w-[1600px] space-y-4 px-4 py-4 md:px-6 md:py-6">
             <GravitrePageHeader
               className="border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]/75 backdrop-blur-sm"
-              eyebrow="GIBE"
+              eyebrow="Intelligence"
               title={copy.title}
               description="One shared intelligence coordinating your business — explore the live map, then inspect evidence below."
               icon={<NucleoIntelligence className="h-5 w-5" />}
             />
-            <IntelligenceHubTabs active="overview" className="flex-wrap" />
 
-            <AskGravitreComposer
-              variant="map"
-              suggestions={dailyBriefing?.suggestions}
-              onVisualization={handleAssistantVisualization}
-              pendingQuestion={composerPendingQuestion}
-              onPendingQuestionConsumed={() => setComposerPendingQuestion(null)}
-            />
-
+            <IntelligenceShell
+              activeTab="overview"
+              loadState={snapshotLoadState}
+              generatedAt={generatedAt}
+              isValidating={snapshotValidating}
+              onRefresh={() => mutateSnapshot()}
+              commandBar={
+                <IntelligenceCommandBar
+                  variant="map"
+                  suggestions={dailyBriefing?.suggestions}
+                  onVisualization={handleAssistantVisualization}
+                  pendingQuestion={composerPendingQuestion}
+                  onPendingQuestionConsumed={() => setComposerPendingQuestion(null)}
+                />
+              }
+            >
             <div className="relative min-h-[52vh]">
               <IntelligenceMap
                 lens={activeLens}
@@ -397,6 +415,7 @@ function IntelligenceCenterInner() {
               }}
               metrics={lensMetrics}
             />
+            </IntelligenceShell>
           </div>
         </section>
 

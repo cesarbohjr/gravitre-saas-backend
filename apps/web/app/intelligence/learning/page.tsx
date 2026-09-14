@@ -1,17 +1,16 @@
 "use client"
 
-import useSWR from "swr"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
-import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
+import { IntelligenceShell } from "@/components/intelligence/shell"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
+import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
 import { LearningInsightCard } from "@/components/intelligence/learning-insight-card"
 import { LearningHubLinks } from "@/components/intelligence/learning-hub-links"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
-import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { readNumber } from "@/lib/intelligence/helpers"
 import { formatLearningInsights } from "@/lib/intelligence/learning-insight-display"
@@ -27,11 +26,20 @@ export default function IntelligenceLearningPage() {
   const { user } = useAuth()
   const copy = SURFACE_COPY.learning
 
-  const { data: pageContext, error, isLoading, isValidating, mutate } = useSWR(
-    user ? ["intelligence/learning/page-context"] : null,
-    () => intelligenceApi.pageContext({ windowHours: 24, activeLens: "learns" }),
-    { revalidateOnFocus: false },
-  )
+  const {
+    data: pageContext,
+    error,
+    loadState,
+    generatedAt,
+    isValidating,
+    mutate,
+  } = useIntelligenceSnapshot({
+    enabled: Boolean(user),
+    activeLens: "learns",
+    swrKeySuffix: "learning",
+  })
+  const metricsReady = isSnapshotMetricsReady(loadState)
+  const isLoading = loadState === "LOADING" || loadState === "UNINITIALIZED"
 
   const insights = formatLearningInsights(
     pageContext?.snapshot.learnings as Record<string, unknown>[] | undefined,
@@ -40,9 +48,18 @@ export default function IntelligenceLearningPage() {
     pageContext?.metrics.learning ?? pageContext?.snapshot.metrics.learning ?? {}
   const outcomeMetrics =
     pageContext?.metrics.outcomes ?? pageContext?.snapshot.metrics.outcomes ?? {}
-  const recentCount = readNumber(learningMetrics.recentLearnings, insights.length)
-  const relationshipsLearned = readNumber(learningMetrics.relationshipsLearned, 0)
-  const measuredOutcomes = readNumber(outcomeMetrics.measuredOutcomes, 0)
+  const recentCount = metricsReady
+    ? readNumber(learningMetrics.recentLearnings, insights.length)
+    : null
+  const relationshipsLearned = metricsReady
+    ? readNumber(learningMetrics.relationshipsLearned, 0)
+    : null
+  const measuredOutcomes = metricsReady
+    ? readNumber(outcomeMetrics.measuredOutcomes, 0)
+    : null
+  const modelsTracked = metricsReady
+    ? readNumber(learningMetrics.modelsTracked, 0)
+    : null
   const hasNoBusinessLearning = pageContext?.qualityFlags?.includes("NO_BUSINESS_LEARNING_YET")
   const suggestedQuestions = pageContext?.suggestedQuestions ?? []
 
@@ -66,8 +83,6 @@ export default function IntelligenceLearningPage() {
   return (
     <AppShell title={copy.title}>
       <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
-        <LearningSurfacesCallout current="org-learning" />
-
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}
@@ -84,28 +99,33 @@ export default function IntelligenceLearningPage() {
           }
         />
 
-        <IntelligenceHubTabs active="learning" />
-
+        <IntelligenceShell
+          activeTab="learning"
+          loadState={loadState}
+          generatedAt={generatedAt}
+          isValidating={isValidating}
+          onRefresh={() => mutate()}
+        >
         <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
           <GravitreMetric
             label="Recent learnings"
-            value={isLoading ? "…" : recentCount}
-            hint="Validated business insights"
+            value={recentCount ?? "—"}
+            hint={isLoading ? "Loading intelligence…" : "Validated business insights"}
           />
           <GravitreMetric
             label="Relationships known"
-            value={isLoading ? "…" : relationshipsLearned}
-            hint="Knowledge graph connections"
+            value={relationshipsLearned ?? "—"}
+            hint={isLoading ? "Loading intelligence…" : "Knowledge graph connections"}
           />
           <GravitreMetric
             label="Measured outcomes"
-            value={isLoading ? "…" : measuredOutcomes}
-            hint="Window attribution"
+            value={measuredOutcomes ?? "—"}
+            hint={isLoading ? "Loading intelligence…" : "Window attribution"}
           />
           <GravitreMetric
             label="Models tracked"
-            value={isLoading ? "…" : readNumber(learningMetrics.modelsTracked, 0)}
-            hint="Registry scope — not learning claims"
+            value={modelsTracked ?? "—"}
+            hint={isLoading ? "Loading intelligence…" : "Registry scope — not learning claims"}
           />
         </section>
 
@@ -173,6 +193,7 @@ export default function IntelligenceLearningPage() {
           </Link>
           .
         </p>
+        </IntelligenceShell>
       </div>
     </AppShell>
   )

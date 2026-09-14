@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceShell } from "@/components/intelligence/shell"
 import { BuiltInModelsPanel } from "@/app/intelligence/models/page"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModelRegistryOverview } from "@/components/gravitre/model-registry-overview"
@@ -65,7 +65,6 @@ import {
 } from "lucide-react"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
-import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
 const availabilityBadge: Record<string, string> = {
@@ -287,7 +286,6 @@ export default function ModelsPage() {
   return (
     <AppShell title={SURFACE_COPY.models.title}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-        <LearningSurfacesCallout current="model-registry" />
         <GravitrePageHeader
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}
@@ -306,7 +304,7 @@ export default function ModelsPage() {
           }
         />
 
-        <IntelligenceHubTabs active="models" />
+        <IntelligenceShell activeTab="models" loadState="READY">
 
         {/*
           Intelligence redesign Phase 1 (2026-09-11): Built-in Models folded
@@ -440,6 +438,7 @@ export default function ModelsPage() {
         ) : null}
           </TabsContent>
         </Tabs>
+        </IntelligenceShell>
       </div>
 
       <Dialog

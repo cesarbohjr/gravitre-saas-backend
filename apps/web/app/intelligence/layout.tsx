@@ -8,6 +8,8 @@ export const metadata: Metadata = authenticatedMetadata(
   { canonical: "/intelligence" },
 )
 
+import { IntelligenceLayoutClient } from "@/components/intelligence/shell/intelligence-layout-client"
+
 export default function IntelligenceLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return <IntelligenceLayoutClient>{children}</IntelligenceLayoutClient>
 }

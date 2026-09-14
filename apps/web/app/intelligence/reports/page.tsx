@@ -31,7 +31,8 @@ import {
 import { ExecutiveIntelligenceScorecard } from "@/components/intelligence/executive-intelligence-scorecard"
 import { PackKpiPanel } from "@/components/marketplace/pack-kpi-panel"
 import { AgentRoiPanel } from "@/components/enterprise/agent-roi-panel"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceShell } from "@/components/intelligence/shell"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
@@ -41,6 +42,17 @@ export default function IntelligenceReportsPage() {
   const { user } = useAuth()
   const [tab, setTab] = useState("roi")
   const [period, setPeriod] = useState<IntelligencePeriod>(7)
+
+  const {
+    loadState: snapshotLoadState,
+    generatedAt,
+    isValidating: snapshotValidating,
+    mutate: mutateSnapshot,
+  } = useIntelligenceSnapshot({
+    enabled: Boolean(user),
+    activeLens: "improves",
+    swrKeySuffix: "reports",
+  })
 
   const { data: outcomes, error, mutate, isLoading } = useSWR(
     user ? ["intelligence/reports/outcomes", period] : null,
@@ -99,8 +111,16 @@ export default function IntelligenceReportsPage() {
           }
         />
 
-        <IntelligenceHubTabs active="reports" />
-
+        <IntelligenceShell
+          activeTab="reports"
+          loadState={snapshotLoadState}
+          generatedAt={generatedAt}
+          isValidating={snapshotValidating}
+          onRefresh={() => {
+            mutate()
+            mutateSnapshot()
+          }}
+        >
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="roi">{reportsCopy.tabRoi}</TabsTrigger>
@@ -231,6 +251,7 @@ export default function IntelligenceReportsPage() {
           </TabsContent>
 
         </Tabs>
+        </IntelligenceShell>
       </div>
     </AppShell>
   )

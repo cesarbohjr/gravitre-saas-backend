@@ -1,14 +1,14 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceShell } from "@/components/intelligence/shell"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
+import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { intelligenceApi } from "@/lib/api"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
 
@@ -26,11 +26,18 @@ type CanonicalPredictionRow = {
 
 export default function PredictiveOpsPage() {
   const [domain, setDomain] = useState<(typeof DOMAINS)[number]>("support")
-  const { data: pageContext, isLoading, error } = useSWR(
-    ["intelligence/page-context", "predicts", domain],
-    () => intelligenceApi.pageContext({ windowHours: 24, activeLens: "predicts" }),
-    { refreshInterval: 60_000 },
-  )
+  const {
+    data: pageContext,
+    loadState,
+    generatedAt,
+    isValidating,
+    mutate,
+    error,
+  } = useIntelligenceSnapshot({
+    activeLens: "predicts",
+    swrKeySuffix: domain,
+  })
+  const isLoading = !isSnapshotMetricsReady(loadState) && loadState !== "ERROR"
 
   const predictions = useMemo(() => {
     const raw = (pageContext?.snapshot.predictions ?? []) as CanonicalPredictionRow[]
@@ -41,10 +48,11 @@ export default function PredictiveOpsPage() {
     })
   }, [pageContext?.snapshot.predictions, domain])
 
-  const activeCount =
-    pageContext?.metrics.predictions.activePredictions ??
-    pageContext?.snapshot.metrics.predictions.activePredictions ??
-    predictions.length
+  const activeCount = isSnapshotMetricsReady(loadState)
+    ? (pageContext?.metrics.predictions.activePredictions ??
+      pageContext?.snapshot.metrics.predictions.activePredictions ??
+      predictions.length)
+    : null
 
   return (
     <AppShell title={copy.title}>
@@ -54,25 +62,38 @@ export default function PredictiveOpsPage() {
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
         />
-        <IntelligenceHubTabs active="predictions" />
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-muted-foreground">Domain filter</span>
-          <Select value={domain} onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DOMAINS.map((item) => (
-                <SelectItem key={item} value={item}>
-                  {item}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-muted-foreground">
-            {activeCount} active prediction{activeCount === 1 ? "" : "s"}
-          </span>
-        </div>
+        <IntelligenceShell
+          activeTab="predictions"
+          loadState={loadState}
+          generatedAt={generatedAt}
+          isValidating={isValidating}
+          onRefresh={() => mutate()}
+          filters={
+            <>
+              <span className="text-sm text-muted-foreground">Domain filter</span>
+              <Select
+                value={domain}
+                onValueChange={(value) => setDomain(value as (typeof DOMAINS)[number])}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOMAINS.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">
+                {activeCount != null
+                  ? `${activeCount} active prediction${activeCount === 1 ? "" : "s"}`
+                  : "— active predictions"}
+              </span>
+            </>
+          }
+        >
         {isLoading ? <p className="text-sm text-muted-foreground">Loading predictions…</p> : null}
         {error ? <p className="text-sm text-destructive">Unable to load predictions.</p> : null}
         {!isLoading && !error && predictions.length === 0 ? (
@@ -104,6 +125,7 @@ export default function PredictiveOpsPage() {
             </Card>
           ))}
         </div>
+        </IntelligenceShell>
       </div>
     </AppShell>
   )

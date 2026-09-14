@@ -568,7 +568,7 @@ function TrainingPageContent() {
           }
         />
 
-        <IntelligenceHubTabs active="training" />
+        <IntelligenceHubTabs active="model-studio" />
 
         {loadError && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

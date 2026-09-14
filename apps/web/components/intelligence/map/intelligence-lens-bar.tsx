@@ -53,7 +53,15 @@ export function IntelligenceLensBar({
             >
               {lens.label}
             </span>
-            <span className="mt-0.5 block text-lg font-semibold tabular-nums text-[color:var(--g-text-primary)]">
+            <span
+              className={cn(
+                "mt-0.5 block text-lg font-semibold tabular-nums",
+                stat.value === "—"
+                  ? "text-muted-foreground"
+                  : "text-[color:var(--g-text-primary)]",
+              )}
+              aria-busy={stat.value === "—" && stat.hint.includes("Loading")}
+            >
               {stat.value}
             </span>
             <span className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>{stat.hint}</span>

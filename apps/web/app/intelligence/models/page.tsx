@@ -7,7 +7,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { BuiltInModelsBrain } from "@/components/gravitre/built-in-models-brain"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceShell } from "@/components/intelligence/shell"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
@@ -192,7 +192,7 @@ export default function IntelligenceModelsPage() {
             description={copy.intro}
             icon={<NucleoIntelligence className="h-5 w-5" />}
           />
-          <IntelligenceHubTabs active="models" className="mt-3 flex-wrap" />
+          <IntelligenceShell activeTab="models" loadState="READY" className="mt-3" />
         </div>
         <BuiltInModelsPanel />
       </div>

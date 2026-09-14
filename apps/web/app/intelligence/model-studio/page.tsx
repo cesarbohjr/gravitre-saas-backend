@@ -24,7 +24,7 @@
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceShell } from "@/components/intelligence/shell"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,37 +35,52 @@ const ACTIONS = [
   {
     id: "create",
     icon: Plus,
-    title: "Create Model",
+    title: "Create",
     description:
       "Register a new model in the registry — pick a type, a base model, and connect it to a real data source.",
     href: `${APP_ROUTES.models}?action=register`,
     cta: "Start creating",
   },
   {
+    id: "train",
+    icon: ArrowsClockwise,
+    title: "Train",
+    description: "Run training jobs on datasets and track progress.",
+    href: APP_ROUTES.training,
+    cta: "Open training runs",
+  },
+  {
+    id: "evaluate",
+    icon: Sparkle,
+    title: "Evaluate",
+    description: "Review model performance and validation metrics before deployment.",
+    href: APP_ROUTES.models,
+    cta: "Open Models",
+  },
+  {
+    id: "deploy",
+    icon: Brain,
+    title: "Deploy",
+    description: "Promote trained artifacts to agents and workflows.",
+    href: APP_ROUTES.models,
+    cta: "Open Models",
+  },
+  {
+    id: "runs",
+    icon: Database,
+    title: "Runs",
+    description: "Upload datasets, manage connectors, and inspect historical training runs.",
+    href: APP_ROUTES.training,
+    cta: "View runs",
+  },
+  {
     id: "improve",
     icon: Sparkle,
-    title: "Improve this model",
+    title: "Improve existing",
     description:
-      "Add examples, correct predictions, or add a data source to an existing model. Open a model from the registry to improve it.",
+      "Add examples, correct predictions, or connect new data sources to an existing model.",
     href: APP_ROUTES.models,
     cta: "Open Models",
-  },
-  {
-    id: "retrain",
-    icon: ArrowsClockwise,
-    title: "Retrain",
-    description: "Run a fresh training pass on an existing model with more recent data.",
-    href: APP_ROUTES.models,
-    cta: "Open Models",
-  },
-  {
-    id: "add-data",
-    icon: Database,
-    title: "Add Knowledge / Data",
-    description:
-      "Upload a dataset or connect a live source for models and agents to learn from.",
-    href: APP_ROUTES.training,
-    cta: "Open Training",
   },
 ] as const
 
@@ -79,9 +94,8 @@ export default function ModelStudioPage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
         />
 
-        <IntelligenceHubTabs active="model-studio" />
-
-        <div className="grid gap-4 sm:grid-cols-2">
+        <IntelligenceShell activeTab="model-studio" loadState="READY">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ACTIONS.map((action) => {
             const Icon = action.icon
             return (
@@ -119,6 +133,7 @@ export default function ModelStudioPage() {
             </p>
           </div>
         </div>
+        </IntelligenceShell>
       </div>
     </AppShell>
   )

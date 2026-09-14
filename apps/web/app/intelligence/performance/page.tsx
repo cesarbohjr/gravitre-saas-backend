@@ -16,7 +16,9 @@
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceShell } from "@/components/intelligence/shell"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
+import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { StatsSkeleton } from "@/components/gravitre/loading-state"
@@ -45,9 +47,19 @@ export default function IntelligencePerformancePage() {
   const { data: trust } = useSWR(user ? "intelligence/performance/trust-summary" : null, () =>
     intelligenceApi.trustSummary({ periodDays: 30 }),
   )
-  const { data: pageContext } = useSWR(user ? "intelligence/performance/page-context" : null, () =>
-    intelligenceApi.pageContext({ windowHours: 24 * 30, activeLens: "improves" }),
-  )
+  const {
+    data: pageContext,
+    loadState: snapshotLoadState,
+    generatedAt,
+    isValidating: snapshotValidating,
+    mutate: mutateSnapshot,
+  } = useIntelligenceSnapshot({
+    enabled: Boolean(user),
+    activeLens: "improves",
+    windowHours: 24 * 30,
+    swrKeySuffix: "performance",
+  })
+  const snapshotReady = isSnapshotMetricsReady(snapshotLoadState)
 
   if (!user) {
     return (
@@ -74,7 +86,9 @@ export default function IntelligencePerformancePage() {
   const canonicalOutcomes =
     pageContext?.metrics.outcomes ?? pageContext?.snapshot.metrics.outcomes ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
-  const measuredOutcomes = readNumber(canonicalOutcomes.measuredOutcomes, totalEvents)
+  const measuredOutcomes = snapshotReady
+    ? readNumber(canonicalOutcomes.measuredOutcomes, totalEvents)
+    : null
   const avgConfidence = trust?.avg_confidence as number | null | undefined
   const trustRecord = trust as Record<string, unknown> | undefined
   const confidenceIsEstimate = Boolean(
@@ -90,8 +104,16 @@ export default function IntelligencePerformancePage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
         />
 
-        <IntelligenceHubTabs active="performance" />
-
+        <IntelligenceShell
+          activeTab="performance"
+          loadState={snapshotLoadState}
+          generatedAt={generatedAt}
+          isValidating={snapshotValidating}
+          onRefresh={() => {
+            mutate()
+            mutateSnapshot()
+          }}
+        >
         {isLoading && !outcomes ? (
           <StatsSkeleton count={4} />
         ) : totalEvents === 0 && measuredOutcomes === 0 ? (
@@ -104,8 +126,12 @@ export default function IntelligencePerformancePage() {
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
             <GravitreMetric
               label="Measured outcomes"
-              value={measuredOutcomes}
-              hint="Canonical IMPROVES projection (30d window)"
+              value={measuredOutcomes ?? "—"}
+              hint={
+                snapshotReady
+                  ? "Canonical IMPROVES projection (30d window)"
+                  : "Loading intelligence…"
+              }
               icon={<NucleoIntelligence className="h-4 w-4" />}
             />
             <GravitreMetric
@@ -151,6 +177,7 @@ export default function IntelligencePerformancePage() {
           <h2 className="mb-3 text-sm font-semibold text-foreground">Agent ROI — hours automated &amp; estimated value</h2>
           <AgentRoiPanel defaultPeriodDays={30} />
         </div>
+        </IntelligenceShell>
       </div>
     </AppShell>
   )
