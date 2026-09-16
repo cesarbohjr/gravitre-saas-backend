@@ -29,6 +29,9 @@ import {
   SpatialGraphRenderer,
   useGraphInteraction,
   DEFAULT_VIEWBOX,
+  CLUSTER_THRESHOLD,
+  isDenseGraph,
+  shouldShowNodeLabel,
   type GraphPoint,
 } from "@/lib/intelligence/graph"
 import {
@@ -187,8 +190,9 @@ export function IntelligenceGraphStage({
         cacheKey: layoutCacheKey,
         pinnedPositions,
         collapsedClusterIds: interaction.state.collapsedClusterIds,
+        expandedClusterIds: interaction.state.expandedClusterIds,
       }),
-    [graph, layoutCacheKey, pinnedPositions, interaction.state.collapsedClusterIds],
+    [graph, layoutCacheKey, pinnedPositions, interaction.state.collapsedClusterIds, interaction.state.expandedClusterIds],
   )
 
   const searchMatches = useMemo(() => {
@@ -221,7 +225,6 @@ export function IntelligenceGraphStage({
     })
   }, [
     renderModel,
-    interaction.state.viewport,
     interaction.state.kindFilter,
     selection,
     highlightSet,
@@ -231,6 +234,8 @@ export function IntelligenceGraphStage({
     spatialEnabled,
   ])
 
+  const densePan = isDenseGraph(graph.nodes.length) || graph.nodes.length >= CLUSTER_THRESHOLD
+  const viewport = interaction.state.viewport
   const selectedId = selectionKey(selection ?? null)
 
   const toggleSelection = useCallback(
@@ -475,14 +480,30 @@ export function IntelligenceGraphStage({
           </div>
         ) : (
           <motion.div
+            data-pan-surface="true"
             className="relative z-10 h-full min-h-[44vh] w-full origin-center cursor-grab active:cursor-grabbing"
-            style={{ aspectRatio: `${VB.w} / ${VB.h}` }}
-            animate={{
-              scale: interaction.state.viewport.scale,
-              x: `${interaction.state.viewport.translateX}%`,
-              y: `${interaction.state.viewport.translateY}%`,
+            style={{
+              aspectRatio: `${VB.w} / ${VB.h}`,
+              willChange: "transform",
+              ...(densePan
+                ? {
+                    transform: `translate(${viewport.translateX}%, ${viewport.translateY}%) scale(${viewport.scale})`,
+                    transition: "none",
+                  }
+                : undefined),
             }}
-            transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 140, damping: 22 }}
+            animate={
+              densePan
+                ? undefined
+                : {
+                    scale: viewport.scale,
+                    x: `${viewport.translateX}%`,
+                    y: `${viewport.translateY}%`,
+                  }
+            }
+            transition={
+              densePan || reduced ? { duration: 0 } : { type: "spring", stiffness: 140, damping: 22 }
+            }
           >
             <svg
               viewBox={`0 0 ${VB.w} ${VB.h}`}
@@ -554,6 +575,12 @@ export function IntelligenceGraphStage({
                 const isHighlighted = highlightSet.has(node.id)
                 const isDimmed = dimSet.has(node.id) && !isHighlighted
                 const isPinned = interaction.state.pinnedNodeIds.has(node.id)
+                const showLabel = shouldShowNodeLabel({
+                  scale: viewport.scale,
+                  dense: densePan,
+                  selected: isSelected,
+                  highlighted: isHighlighted,
+                })
                 const warning =
                   node.kind === "department" && node.department
                     ? warningsByDept.get(node.department.id.toLowerCase())
@@ -597,7 +624,12 @@ export function IntelligenceGraphStage({
                       {node.kind === "department" && node.department ? (
                         <DepartmentNode department={node.department} reduced={reduced} embedded />
                       ) : (
-                        <MapSatelliteNode node={node} reduced={reduced} selected={isSelected} />
+                        <MapSatelliteNode
+                          node={node}
+                          reduced={reduced}
+                          selected={isSelected}
+                          showLabel={showLabel}
+                        />
                       )}
                     </button>
                     {warning && lens === "predicts" ? (
@@ -624,6 +656,8 @@ export function IntelligenceGraphStage({
                   <button
                     key={cluster.id}
                     type="button"
+                    data-testid="intelligence-graph-cluster"
+                    aria-expanded={!cluster.collapsed}
                     className="rounded-full border border-divide bg-[color:var(--g-surface-1)]/90 px-2 py-0.5 text-[10px] font-medium"
                     onClick={() => interaction.toggleCluster(cluster.id)}
                   >

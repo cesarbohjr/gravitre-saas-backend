@@ -539,3 +539,17 @@ async def test_projection_service_build_snapshot_uses_cache():
 
     assert snap1.generatedAt == snap2.generatedAt
     assert mock_build.call_count == 2  # wraps counts both calls; cache hit on second internal path
+
+
+def test_learning_rows_from_promotion_payload_prefers_items():
+    from app.services.intelligence_projection_service import learning_rows_from_promotion_payload
+
+    rows = learning_rows_from_promotion_payload(
+        {
+            "total": 1,
+            "items": [{"id": "promo-1", "content": "Repeatable close pattern"}],
+        }
+    )
+    assert rows[0]["id"] == "promo-1"
+    assert learning_rows_from_promotion_payload({"candidates": [{"id": "legacy"}]})[0]["id"] == "legacy"
+    assert learning_rows_from_promotion_payload({"total": 0}) == []

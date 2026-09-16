@@ -23,4 +23,4 @@ Added I11–I13 after I10 so the rebuild cannot silently regress:
 ## Verification
 
 - Local: `vitest run __tests__/intelligence/i11-hub-contract.test.ts` + customer-surface guard
-- G1/G4/G8 live: still **NOT RUN** (I12)
+- G1/G4/G8 live: **I12 PARTIAL** — `docs/delivery/i12-live-eval-2026-09-16.md` (do not treat this I11 file as the live-eval report)

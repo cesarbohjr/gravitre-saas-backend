@@ -39,6 +39,14 @@ describe("GraphInteractionController", () => {
     expect(unpinned.pinnedNodeIds.has("agent:1")).toBe(false)
   })
 
+  it("toggles cluster expand membership", () => {
+    const initial = createInitialInteractionState()
+    const expanded = graphInteractionController.toggleCluster(initial, "cluster:agent")
+    expect(expanded.expandedClusterIds.has("cluster:agent")).toBe(true)
+    const collapsed = graphInteractionController.toggleCluster(expanded, "cluster:agent")
+    expect(collapsed.expandedClusterIds.has("cluster:agent")).toBe(false)
+  })
+
   it("fitToView returns viewport when positions exist", () => {
     const positions = new Map<string, { x: number; y: number }>([
       ["a", { x: 400, y: 200 }],

@@ -17,6 +17,7 @@ export type GraphInteractionState = {
   pinnedNodeIds: Set<string>
   pinnedPositions: Map<string, GraphPoint>
   collapsedClusterIds: Set<string>
+  expandedClusterIds: Set<string>
   kindFilter: Set<MapNodeKind> | null
   searchQuery: string
   focusNodeIds: string[]
@@ -40,6 +41,7 @@ export function createInitialInteractionState(
     pinnedNodeIds: new Set(),
     pinnedPositions: new Map(),
     collapsedClusterIds: new Set(),
+    expandedClusterIds: new Set(),
     kindFilter: null,
     searchQuery: "",
     focusNodeIds: [],
@@ -138,10 +140,10 @@ export class GraphInteractionController {
     state: GraphInteractionState,
     clusterId: string,
   ): GraphInteractionState {
-    const collapsedClusterIds = new Set(state.collapsedClusterIds)
-    if (collapsedClusterIds.has(clusterId)) collapsedClusterIds.delete(clusterId)
-    else collapsedClusterIds.add(clusterId)
-    return { ...state, collapsedClusterIds }
+    const expandedClusterIds = new Set(state.expandedClusterIds)
+    if (expandedClusterIds.has(clusterId)) expandedClusterIds.delete(clusterId)
+    else expandedClusterIds.add(clusterId)
+    return { ...state, expandedClusterIds }
   }
 
   setKindFilter(

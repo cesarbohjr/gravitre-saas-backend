@@ -12,3 +12,9 @@ export { SpatialGraphRenderer, projectSpatialPoint } from "./renderers/spatial-r
 export { accessibleGraphRows, type AccessibleGraphRow } from "./accessible-graph-list"
 export { WebGlGraphRenderer } from "./renderers/webgl-renderer"
 export { useGraphInteraction } from "./use-graph-interaction"
+export {
+  isDenseGraph,
+  shouldShowNodeLabel,
+  resolveNodeCollisions,
+  LABEL_LOD_MIN_SCALE,
+} from "./graph-lod"

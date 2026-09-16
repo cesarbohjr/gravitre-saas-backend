@@ -1,0 +1,100 @@
+{
+  "probe": "i12_intelligence_a11y_live",
+  "started_at": "2026-09-16T19:51:58.263105+00:00",
+  "web_base": "https://gravitre.app",
+  "axe_version": "4.10.2",
+  "org_ui": "gravitre-page-audit-9f21's Workspace",
+  "playwright_headless": {
+    "login_mode": "jwt_inject",
+    "org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "verdict": "FAIL",
+    "error": "TimeoutError waiting for page-context 200",
+    "page_url": "https://gravitre.app/login?error=session_expired",
+    "debug_screenshot": "docs/delivery/_ci-artifacts/i12-a11y-failure.png"
+  },
+  "logged_in_browser": {
+    "method": "cursor-ide-browser on existing gravitre.app session",
+    "screenshots": [
+      "docs/delivery/_ci-artifacts/i12-overview-canvas.png",
+      "docs/delivery/_ci-artifacts/i12-overview-list.png",
+      "docs/delivery/_ci-artifacts/i12-reports.png"
+    ]
+  },
+  "cases": [
+    {
+      "id": "overview-canvas-screenshot",
+      "passed": true,
+      "verdict": "PASS",
+      "url": "https://gravitre.app/intelligence",
+      "screenshot": "docs/delivery/_ci-artifacts/i12-overview-canvas.png",
+      "notes": "KNOWS selected; honest empty map copy; 7 hub tabs; List/Spatial present"
+    },
+    {
+      "id": "overview-list-screenshot",
+      "passed": true,
+      "verdict": "PASS",
+      "url": "https://gravitre.app/intelligence",
+      "screenshot": "docs/delivery/_ci-artifacts/i12-overview-list.png",
+      "list_aria_pressed": true,
+      "graph_list_copy": "No nodes in this lens yet."
+    },
+    {
+      "id": "reports-screenshot",
+      "passed": true,
+      "verdict": "PASS",
+      "url": "https://gravitre.app/intelligence/reports",
+      "screenshot": "docs/delivery/_ci-artifacts/i12-reports.png",
+      "notes": "Reports tab selected; scheduled reports Not set up yet; measured outcomes 0; attribution flow honest gaps"
+    },
+    {
+      "id": "overview-axe",
+      "passed": false,
+      "verdict": "FAIL",
+      "url": "https://gravitre.app/intelligence",
+      "violationCount": 3,
+      "seriousOrCritical": 3,
+      "violations": [
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "nodeCount": 1,
+          "detail": "KNOWS lens tab aria-controls=\"intelligence-map-canvas\" does not match an element id"
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodeCount": 6
+        },
+        {
+          "id": "link-name",
+          "impact": "serious",
+          "nodeCount": 14,
+          "detail": "collapsed sidebar icon links lack discernible names in axe (chrome, not Intelligence-only)"
+        }
+      ]
+    },
+    {
+      "id": "reports-axe",
+      "passed": false,
+      "verdict": "FAIL",
+      "url": "https://gravitre.app/intelligence/reports",
+      "violationCount": 2,
+      "seriousOrCritical": 2,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodeCount": 38,
+          "sample": "Reports subtitle --g-text-muted #8b8b8b on #ffffff ratio 3.4; unselected hub tabs 3.32"
+        },
+        {
+          "id": "link-name",
+          "impact": "serious",
+          "nodeCount": 14
+        }
+      ]
+    }
+  ],
+  "finished_at": "2026-09-16T20:00:00.000000+00:00",
+  "verdict": "FAIL"
+}

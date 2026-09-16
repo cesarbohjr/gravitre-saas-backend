@@ -743,7 +743,9 @@ Centralize in `apps/web/lib/intelligence/quality-copy.ts`.
 | Phases I1–I10 as defined in §30 | **Approved** |
 | Post-I10 reinforcements I11–I13 | **Added Revision 3 (2026-09-16)** |
 
-**Next gate:** **I12** live eval closure (G1/G4/G8 + a11y) after I11 is on production.
+**I12 (2026-09-16):** **PARTIAL** — see `docs/delivery/i12-live-eval-2026-09-16.md`. G1/G4 API PASS on `7e8e0fa8`; G8 learning click-through NOT RUN; Playwright UI FAIL session_expired; axe FAIL on Overview + Reports.
+
+**Next gate:** G8 live re-run after the projection `items` fix is on Railway; I13 density/LOD is in this ship (`docs/delivery/i13-graph-density-lod-2026-09-16.md`).
 
 ---
 

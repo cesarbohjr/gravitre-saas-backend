@@ -316,8 +316,18 @@ def score_trust_org_learning(ctx: dict[str, Any]) -> dict[str, Any]:
 
 def resolve_trust_org_actor(env: dict[str, str], sb: Any) -> tuple[str, str, str] | None:
     org_id = (env.get("OPERATOR_ORG_ID") or FORBIDDEN_OPERATOR_ORG_ID).strip()
-    user_id = (env.get("OPERATOR_USER_ID") or "").strip()
-    email = (env.get("OPERATOR_EMAIL") or "").strip()
+    return resolve_org_member_actor(env, sb, org_id)
+
+
+def resolve_org_member_actor(env: dict[str, str], sb: Any, org_id: str) -> tuple[str, str, str] | None:
+    org_id = (org_id or "").strip()
+    if not org_id:
+        return None
+    user_id = ""
+    email = ""
+    if org_id == (env.get("OPERATOR_ORG_ID") or FORBIDDEN_OPERATOR_ORG_ID).strip():
+        user_id = (env.get("OPERATOR_USER_ID") or "").strip()
+        email = (env.get("OPERATOR_EMAIL") or "").strip()
     if not user_id:
         members = (
             sb.table("organization_members")
@@ -338,6 +348,27 @@ def resolve_trust_org_actor(env: dict[str, str], sb: Any) -> tuple[str, str, str
         except Exception:  # noqa: BLE001
             email = f"{user_id}@gravitre.local"
     return org_id, user_id, email
+
+
+def find_org_with_auto_promoted_learnings(sb: Any, exclude: set[str]) -> str | None:
+    try:
+        rows = (
+            sb.table("memory_promotion_candidates")
+            .select("org_id")
+            .eq("status", "auto_promoted")
+            .limit(50)
+            .execute()
+        ).data or []
+    except Exception:  # noqa: BLE001
+        return None
+    seen: set[str] = set()
+    for row in rows:
+        oid = str(row.get("org_id") or "").strip()
+        if not oid or oid in exclude or oid in seen:
+            continue
+        seen.add(oid)
+        return oid
+    return None
 
 
 def auth_headers(env: dict[str, str], org_id: str, user_id: str, email: str) -> dict[str, str]:
@@ -539,15 +570,23 @@ async def main() -> int:
         knows_ctx: dict[str, Any] = {}
         try:
             knows_ctx = await fetch_page_context(client, headers, "knows")
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             knows_ctx = {}
+            report["knows_page_context_error"] = f"{exc.__class__.__name__}: {exc}"
+
+        learns_ctx: dict[str, Any] = {}
+        try:
+            learns_ctx = await fetch_page_context(client, headers, "learns")
+        except Exception as exc:  # noqa: BLE001
+            learns_ctx = {}
+            report["learns_page_context_error"] = f"{exc.__class__.__name__}: {exc}"
 
         static_cases = (
             ("g3-page-context-all-lenses", None),
             ("g3-knows-entity-nodes", knows_ctx),
             ("g6-metrics-semantics", acts_ctx),
             ("g5-g7-inspector-evidence", acts_ctx),
-            ("g8-learning-map-focus", acts_ctx),
+            ("g8-learning-map-focus", learns_ctx or acts_ctx),
         )
         for case_id, ctx in static_cases:
             if case_id == "g3-page-context-all-lenses":
@@ -637,6 +676,47 @@ async def main() -> int:
                     "reason": "OPERATOR_USER_ID not configured",
                 }
             )
+
+        g8_iso = next((c for c in report["cases"] if c.get("id") == "g8-learning-map-focus"), None)
+        g8_trust = next((c for c in report["cases"] if c.get("id") == "g8-trust-org-learning-map"), None)
+        if (g8_iso or {}).get("verdict") == "NOT RUN" and (g8_trust or {}).get("verdict") == "NOT RUN":
+            promo_org = find_org_with_auto_promoted_learnings(
+                sb, {org_id, str(report.get("trust_org_id") or "")}
+            )
+            actor = resolve_org_member_actor(env, sb, promo_org) if promo_org else None
+            if actor:
+                try:
+                    promo_headers = auth_headers(env, actor[0], actor[1], actor[2])
+                    promo_learns = await fetch_page_context(client, promo_headers, "learns")
+                    scored = score_trust_org_learning(promo_learns)
+                    report["cases"].append(
+                        {
+                            "id": "g8-promoted-org-learning-map",
+                            "phase": "G8",
+                            "org_id": actor[0],
+                            **scored,
+                        }
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    report["cases"].append(
+                        {
+                            "id": "g8-promoted-org-learning-map",
+                            "phase": "G8",
+                            "passed": False,
+                            "verdict": "FAIL",
+                            "error": f"{exc.__class__.__name__}: {exc}",
+                        }
+                    )
+            else:
+                report["cases"].append(
+                    {
+                        "id": "g8-promoted-org-learning-map",
+                        "phase": "G8",
+                        "passed": True,
+                        "verdict": "NOT RUN",
+                        "reason": "no auto_promoted memory_promotion_candidates in reachable orgs",
+                    }
+                )
 
         # G4/G1 — intelligence_hub chat SSE visualization
         for case in CHAT_CASES:

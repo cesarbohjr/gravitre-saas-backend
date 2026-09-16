@@ -87,6 +87,8 @@ test.describe("Intelligence hub UI", () => {
     await mapLink.click()
     await expect(page).toHaveURL(/\/intelligence\?.*focus=learning:/)
     await expect(page.getByTestId("intelligence-map-canvas")).toBeVisible({ timeout: 60_000 })
+  })
+
   test("I11 — hub has seven tabs and no Training item", async ({ page }) => {
     await page.goto("/intelligence")
     const hub = page.getByRole("tablist", { name: "Intelligence hub" })

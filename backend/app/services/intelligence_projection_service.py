@@ -35,6 +35,18 @@ logger = get_logger(__name__)
 _CACHE_TTL_SECONDS = 45
 
 
+def learning_rows_from_promotion_payload(promo: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """list_candidates returns `items`; older mocks used `candidates`."""
+    if not isinstance(promo, dict):
+        return []
+    rows = promo.get("items")
+    if not isinstance(rows, list):
+        rows = promo.get("candidates")
+    if not isinstance(rows, list):
+        return []
+    return [row for row in rows if isinstance(row, dict)]
+
+
 class _CacheEntry:
     def __init__(self, snapshot: IntelligenceSnapshot, graph: IntelligenceGraph, expires_at: float) -> None:
         self.snapshot = snapshot
@@ -263,7 +275,7 @@ class IntelligenceProjectionService:
             promo = get_memory_promotion_service(self.settings).list_candidates(
                 org_id, status=MemoryPromotionStatus.AUTO_PROMOTED.value, limit=5
             )
-            for row in list(promo.get("candidates") or []):
+            for row in learning_rows_from_promotion_payload(promo):
                 content = str(row.get("content") or "").strip()
                 if not content:
                     continue

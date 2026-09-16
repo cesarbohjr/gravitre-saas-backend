@@ -28,6 +28,7 @@ export type IntelligenceGraphInput = {
   cacheKey?: string
   pinnedPositions?: Map<string, { x: number; y: number }>
   collapsedClusterIds?: Set<string>
+  expandedClusterIds?: Set<string>
 }
 
 /**
@@ -85,6 +86,7 @@ export class IntelligenceGraph {
     cacheKey?: string
     pinnedPositions?: Map<string, { x: number; y: number }>
     collapsedClusterIds?: Set<string>
+    expandedClusterIds?: Set<string>
   } = {}): GraphRenderModel {
     const layout = this.layoutEngine.computeLayout({
       nodes: this.topology.nodes,
@@ -93,6 +95,7 @@ export class IntelligenceGraph {
       cacheKey: options.cacheKey,
       pinnedPositions: options.pinnedPositions,
       collapsedClusterIds: options.collapsedClusterIds,
+      expandedClusterIds: options.expandedClusterIds,
     })
     return {
       topology: this.topology,

@@ -12,6 +12,7 @@ import {
   type GraphLayoutResult,
   type GraphPoint,
 } from "./types"
+import { isDenseGraph, resolveNodeCollisions } from "./graph-lod"
 
 export type GraphLayoutInput = {
   nodes: MapNode[]
@@ -20,6 +21,7 @@ export type GraphLayoutInput = {
   cacheKey?: string
   pinnedPositions?: Map<string, GraphPoint>
   collapsedClusterIds?: Set<string>
+  expandedClusterIds?: Set<string>
 }
 
 const CACHE_PREFIX = "gravitre:intelligence-graph-layout:"
@@ -88,20 +90,25 @@ function centroid(points: GraphPoint[]): GraphPoint {
  */
 export class GraphLayoutEngine {
   computeLayout(input: GraphLayoutInput): GraphLayoutResult {
-    const { nodes, edges, lens, cacheKey, pinnedPositions, collapsedClusterIds } = input
+    const { nodes, edges, lens, cacheKey, pinnedPositions, collapsedClusterIds, expandedClusterIds } =
+      input
     const clusters = buildKindClusters(nodes)
     const collapsed = collapsedClusterIds ?? new Set<string>()
+    const expanded = expandedClusterIds ?? new Set<string>()
+    const dense = isDenseGraph(nodes.length)
 
     const hiddenNodeIds = new Set<string>()
     for (const cluster of clusters) {
-      if (collapsed.has(cluster.id)) {
-        cluster.collapsed = true
+      cluster.collapsed = dense ? !expanded.has(cluster.id) : collapsed.has(cluster.id)
+      if (cluster.collapsed) {
         cluster.nodeIds.forEach((id) => hiddenNodeIds.add(id))
       }
     }
 
     const visibleNodes = nodes.filter((node) => !hiddenNodeIds.has(node.id))
-    const positions = layoutMapNodes(visibleNodes, DEFAULT_GRAPH_CENTER, lens, edges)
+    const positions = resolveNodeCollisions(
+      layoutMapNodes(visibleNodes, DEFAULT_GRAPH_CENTER, lens, edges),
+    )
 
     if (cacheKey) {
       const cached = readLayoutCache(cacheKey)

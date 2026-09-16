@@ -9,10 +9,12 @@ export function MapSatelliteNode({
   node,
   reduced = false,
   selected = false,
+  showLabel = true,
 }: {
   node: MapNode
   reduced?: boolean
   selected?: boolean
+  showLabel?: boolean
 }) {
   const isActive = node.emphasis >= 0.85
   const Icon =
@@ -50,10 +52,14 @@ export function MapSatelliteNode({
         <Icon className="h-3.5 w-3.5" weight="duotone" aria-hidden />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-xs font-semibold text-[color:var(--g-text-secondary)]">
-          {node.label}
-        </span>
-        {node.sublabel ? (
+        {showLabel ? (
+          <span className="block truncate text-xs font-semibold text-[color:var(--g-text-secondary)]">
+            {node.label}
+          </span>
+        ) : (
+          <span className="sr-only">{node.label}</span>
+        )}
+        {showLabel && node.sublabel ? (
           <span className="block truncate text-[10px] capitalize text-[color:var(--g-text-muted)]">
             {node.sublabel}
           </span>
