@@ -22,13 +22,19 @@ import {
   type MapNode,
 } from "@/components/intelligence/map/map-topology"
 import { IntelligenceGraphToolbar } from "@/components/intelligence/graph/intelligence-graph-toolbar"
+import { IntelligenceGraphList } from "@/components/intelligence/graph/intelligence-graph-list"
 import {
   DomSvgGraphRenderer,
   IntelligenceGraph,
+  SpatialGraphRenderer,
   useGraphInteraction,
   DEFAULT_VIEWBOX,
   type GraphPoint,
 } from "@/lib/intelligence/graph"
+import {
+  focusedRelationshipPaths,
+  isCompactIntelligenceViewport,
+} from "@/lib/intelligence/mobile-relationship-paths"
 import { useIntelligenceCoreState } from "@/lib/intelligence/use-core-state"
 import { TYPE } from "@/lib/design-system"
 import { readString } from "@/lib/intelligence/helpers"
@@ -38,6 +44,7 @@ import { Warning } from "@phosphor-icons/react"
 const VB = DEFAULT_VIEWBOX
 const CENTER = { cx: VB.w / 2, cy: VB.h / 2 }
 const domRenderer = new DomSvgGraphRenderer()
+const spatialRenderer = new SpatialGraphRenderer()
 
 type BusinessSignalRow = Record<string, unknown>
 
@@ -131,11 +138,22 @@ export function IntelligenceGraphStage({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [spatialEnabled, setSpatialEnabled] = useState(false)
+  const [compactViewport, setCompactViewport] = useState(false)
+  const [mobileExplorerOpen, setMobileExplorerOpen] = useState(false)
+  const [listView, setListView] = useState(false)
   const [dragPositions, setDragPositions] = useState<Map<string, GraphPoint>>(new Map())
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   const reduced = mounted && !!reducePreference
+
+  useEffect(() => {
+    const update = () => setCompactViewport(isCompactIntelligenceViewport())
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
 
   const { data, error, isLoading } = useIntelligenceCoreState(true, 24)
   const interaction = useGraphInteraction()
@@ -181,40 +199,37 @@ export function IntelligenceGraphStage({
   const highlightSet = useMemo(() => {
     const set = new Set(highlightNodeIds ?? [])
     searchMatches.forEach((id) => set.add(id))
-    if (interaction.state.hoveredNodeId) {
-      graph.connectedNodeIds(interaction.state.hoveredNodeId).forEach((id) => set.add(id))
-      set.add(interaction.state.hoveredNodeId)
-    }
     return set
-  }, [highlightNodeIds, searchMatches, interaction.state.hoveredNodeId, graph])
+  }, [highlightNodeIds, searchMatches])
 
   const dimSet = useMemo(() => new Set(dimNodeIds ?? []), [dimNodeIds])
 
-  const payload = useMemo(
-    () =>
-      domRenderer.prepare({
-        model: renderModel,
-        viewport: interaction.state.viewport,
-        selectedNodeId: selectionKey(selection ?? null),
-        hoveredNodeId: interaction.state.hoveredNodeId,
-        hoveredEdgeId: interaction.state.hoveredEdgeId,
-        highlightNodeIds: highlightSet,
-        dimNodeIds: dimSet,
-        searchMatchIds: searchMatches,
-        pathHighlightIds: highlightSet,
-        kindFilter: interaction.state.kindFilter,
-        reducedMotion: reduced,
-      }),
-    [
-      renderModel,
-      interaction.state,
-      selection,
-      highlightSet,
-      dimSet,
-      searchMatches,
-      reduced,
-    ],
-  )
+  const payload = useMemo(() => {
+    const renderer = spatialEnabled && !reduced ? spatialRenderer : domRenderer
+    return renderer.prepare({
+      model: renderModel,
+      viewport: interaction.state.viewport,
+      selectedNodeId: selectionKey(selection ?? null),
+      hoveredNodeId: null,
+      hoveredEdgeId: null,
+      highlightNodeIds: highlightSet,
+      dimNodeIds: dimSet,
+      searchMatchIds: searchMatches,
+      pathHighlightIds: highlightSet,
+      kindFilter: interaction.state.kindFilter,
+      reducedMotion: reduced,
+    })
+  }, [
+    renderModel,
+    interaction.state.viewport,
+    interaction.state.kindFilter,
+    selection,
+    highlightSet,
+    dimSet,
+    searchMatches,
+    reduced,
+    spatialEnabled,
+  ])
 
   const selectedId = selectionKey(selection ?? null)
 
@@ -307,9 +322,13 @@ export function IntelligenceGraphStage({
   }, [data])
 
   const hasNodes = graph.nodes.length > 0
+  const mobilePaths = useMemo(() => focusedRelationshipPaths(graph.topology), [graph.topology])
+  const showCompactPaths = compactViewport && !mobileExplorerOpen && !isFullscreen && !listView
+  const showCanvas = !showCompactPaths && !listView
 
   return (
     <div className={cn("space-y-2", className)}>
+      {showCompactPaths ? null : (
       <IntelligenceGraphToolbar
         searchQuery={interaction.state.searchQuery}
         onSearchChange={interaction.setSearchQuery}
@@ -333,11 +352,75 @@ export function IntelligenceGraphStage({
           else void el.requestFullscreen()
         }}
         hasSelection={Boolean(selectedId)}
+        spatialEnabled={spatialEnabled && !reduced}
+        onSpatialChange={setSpatialEnabled}
+        spatialDisabled={reduced}
+        listView={listView}
+        onListViewChange={setListView}
       />
+      )}
+
+      <div className="sr-only" role="status" aria-live="polite">
+        {selectedId
+          ? `Selected ${graph.nodeById(selectedId)?.label ?? selectedId}`
+          : "No graph node selected"}
+      </div>
+
+      {listView ? (
+        <IntelligenceGraphList
+          topology={graph.topology}
+          selectedId={selectedId}
+          onSelect={(nodeId) => {
+            const node = graph.nodeById(nodeId)
+            if (node) toggleSelection(node)
+          }}
+        />
+      ) : null}
+
+      {showCompactPaths ? (
+        <div
+          className="space-y-3 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-3 md:hidden"
+          data-testid="intelligence-mobile-paths"
+        >
+          <p className={TYPE.eyebrow}>Relationship paths</p>
+          <p className={cn(TYPE.meta, "text-pretty")}>
+            On phones Gravitre shows focused paths and Ask Gravitre — not a shrunk 40-node canvas.
+          </p>
+          {mobilePaths.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No relationship paths in this lens yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {mobilePaths.map((path) => (
+                <li key={path.id} className="rounded-md border border-divide px-3 py-2 text-sm">
+                  <span className="font-medium">{path.fromLabel}</span>
+                  <span className="text-muted-foreground"> → {path.toLabel}</span>
+                  <span className={cn(TYPE.meta, "mt-0.5 block")}>{path.edgeType}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            type="button"
+            className="text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+            onClick={() => setMobileExplorerOpen(true)}
+          >
+            Expand graph explorer
+          </button>
+        </div>
+      ) : null}
+
+      {compactViewport && mobileExplorerOpen ? (
+        <button
+          type="button"
+          className="text-sm font-medium text-[color:var(--g-brand)] hover:underline md:hidden"
+          onClick={() => setMobileExplorerOpen(false)}
+        >
+          Back to relationship paths
+        </button>
+      ) : null}
 
       <div
         ref={containerRef}
-        id="intelligence-map-canvas"
         data-testid="intelligence-map-canvas"
         tabIndex={0}
         onKeyDown={handleKeyDown}
@@ -356,6 +439,7 @@ export function IntelligenceGraphStage({
         className={cn(
           "relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand-border)]/30 bg-gradient-to-b from-[color:var(--g-intelligence-surface)]/40 via-[color:var(--g-surface-1)] to-[color:var(--g-surface-2)] shadow-[var(--np-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
           isFullscreen && "min-h-[100vh] rounded-none border-0",
+          !showCanvas && "hidden",
         )}
         role="application"
         aria-label={`Interactive Gravitre intelligence map — ${lens} lens`}
@@ -408,7 +492,7 @@ export function IntelligenceGraphStage({
             >
               {payload.edges.map((edge) => {
                 if (edge.hidden) return null
-                const isHovered = interaction.state.hoveredEdgeId === edge.id
+                const isHovered = false
                 const isHighlighted =
                   highlightSet.has(edge.fromId === CORE_ID ? edge.toId : edge.fromId) ||
                   highlightSet.has(edge.toId)
@@ -416,9 +500,7 @@ export function IntelligenceGraphStage({
                   <g
                     key={edge.id}
                     opacity={edge.hidden ? 0 : Math.min(1, edge.opacity * (edge.emphasis ?? 1))}
-                    className="cursor-pointer"
-                    onPointerEnter={() => interaction.setHoveredEdgeId(edge.id)}
-                    onPointerLeave={() => interaction.setHoveredEdgeId(null)}
+                    className="cursor-pointer hover:opacity-90"
                     onClick={(e) => {
                       e.stopPropagation()
                       onSelectionChange?.({
@@ -490,14 +572,12 @@ export function IntelligenceGraphStage({
                     }}
                     exit={reduced ? undefined : { opacity: 0, scale: 0.88 }}
                     transition={{ type: "spring", stiffness: 170, damping: 22 }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2"
-                    onPointerEnter={() => interaction.setHoveredNodeId(node.id)}
-                    onPointerLeave={() => interaction.setHoveredNodeId(null)}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 hover:z-10"
                   >
                     <button
                       type="button"
                       className={cn(
-                        "relative rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+                        "relative rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] hover:ring-2 hover:ring-[color:var(--g-brand)]/50",
                         isHighlighted && "ring-2 ring-[color:var(--g-brand)]",
                         isPinned && "ring-1 ring-amber-500/60",
                         isDimmed && "grayscale",

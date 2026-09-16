@@ -5,7 +5,7 @@
  * Collapsed by default; opens when a map node is selected.
  */
 import Link from "next/link"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useIntelligenceExperienceOptional } from "@/components/intelligence/shell/intelligence-experience-provider"
 import {
   Sheet,
@@ -24,6 +24,7 @@ import { buildEvidenceGraph } from "@/components/intelligence/evidence-graph-top
 import { APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { useFocusTrap } from "@/hooks/use-focus-trap"
 import { ArrowRight, Robot, Warning } from "@phosphor-icons/react"
 
 export function IntelligenceInspectorDrawer({
@@ -42,6 +43,8 @@ export function IntelligenceInspectorDrawer({
 }) {
   const experience = useIntelligenceExperienceOptional()
   const open = selection != null
+  const trapRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(trapRef, open && Boolean(experience?.inspectorPinned))
   const context = useMemo(
     () => (selection ? resolveInspectorContext(selection, pageContext, whyData) : null),
     [selection, pageContext, whyData],
@@ -79,7 +82,7 @@ export function IntelligenceInspectorDrawer({
         aria-describedby={context ? "inspector-drawer-description" : undefined}
       >
         {context ? (
-          <>
+          <div ref={trapRef} tabIndex={-1} className="flex h-full min-h-0 flex-1 flex-col outline-none">
             <SheetHeader className="border-b border-divide px-5 py-4 text-left">
               <div className="flex items-start gap-2">
                 {selection?.kind === "signal" ? (
@@ -217,7 +220,7 @@ export function IntelligenceInspectorDrawer({
                 </Button>
               ) : null}
             </div>
-          </>
+          </div>
         ) : null}
       </SheetContent>
     </Sheet>

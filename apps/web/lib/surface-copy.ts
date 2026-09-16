@@ -201,7 +201,7 @@ export const SURFACE_COPY = {
     reports: {
       title: "Reports",
       description:
-        "ROI metrics and department scorecards — honest dashes when measurement is unavailable.",
+        "Saved intelligence views — business, agent, prediction, and governance templates from live snapshot data.",
       tabRoi: "ROI",
       tabScorecards: "Department scorecards",
       tabExecutive: "Executive scorecard",

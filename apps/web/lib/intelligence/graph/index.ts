@@ -8,4 +8,7 @@ export {
   DEFAULT_VIEWPORT,
 } from "./graph-interaction-controller"
 export { DomSvgGraphRenderer, buildRenderPayload, type GraphRenderer } from "./graph-renderer"
+export { SpatialGraphRenderer, projectSpatialPoint } from "./renderers/spatial-renderer"
+export { accessibleGraphRows, type AccessibleGraphRow } from "./accessible-graph-list"
+export { WebGlGraphRenderer } from "./renderers/webgl-renderer"
 export { useGraphInteraction } from "./use-graph-interaction"

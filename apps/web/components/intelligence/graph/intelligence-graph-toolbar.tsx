@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import {
   Crosshair,
   Filter,
+  List,
   Maximize2,
   Minimize2,
   RotateCcw,
@@ -44,6 +45,11 @@ export function IntelligenceGraphToolbar({
   onToggleFullscreen,
   hasSelection,
   className,
+  spatialEnabled,
+  onSpatialChange,
+  spatialDisabled,
+  listView,
+  onListViewChange,
 }: {
   searchQuery: string
   onSearchChange: (value: string) => void
@@ -58,6 +64,11 @@ export function IntelligenceGraphToolbar({
   onToggleFullscreen: () => void
   hasSelection: boolean
   className?: string
+  spatialEnabled?: boolean
+  onSpatialChange?: (enabled: boolean) => void
+  spatialDisabled?: boolean
+  listView?: boolean
+  onListViewChange?: (enabled: boolean) => void
 }) {
   const activeKinds = kindFilter ?? new Set(NODE_KINDS.map((k) => k.id))
 
@@ -128,6 +139,26 @@ export function IntelligenceGraphToolbar({
           aria-label="Focus selected node"
         >
           <Crosshair className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={listView ? "secondary" : "ghost"}
+          size="sm"
+          className="h-8 text-xs"
+          aria-pressed={Boolean(listView)}
+          onClick={() => onListViewChange?.(!listView)}
+        >
+          <List className="mr-1 h-3.5 w-3.5" />
+          List
+        </Button>
+        <Button
+          variant={spatialEnabled ? "secondary" : "ghost"}
+          size="sm"
+          className="h-8 text-xs"
+          aria-pressed={Boolean(spatialEnabled)}
+          disabled={spatialDisabled}
+          onClick={() => onSpatialChange?.(!spatialEnabled)}
+        >
+          Spatial
         </Button>
         <Button
           variant="ghost"
