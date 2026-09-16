@@ -115,6 +115,10 @@ export async function apiFetch(
 
   if (response.status === 401 && typeof window !== "undefined") {
     const currentPath = window.location.pathname
+    const oauthReturn =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("oauth")
+        : null
     const deferredAuthPages = [
       "/get-started",
       "/login",
@@ -123,6 +127,9 @@ export async function apiFetch(
     ]
     const shouldSkipRedirect = deferredAuthPages.some((page) =>
       currentPath.startsWith(page)
+    ) || (
+      currentPath.startsWith("/connectors") &&
+      (oauthReturn === "success" || oauthReturn === "error")
     )
 
     if (!shouldSkipRedirect) {

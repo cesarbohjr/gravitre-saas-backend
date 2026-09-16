@@ -26,7 +26,18 @@ def test_google_oauth_vendors_set():
     assert len(GOOGLE_OAUTH_VENDORS) == 8
 
 
-def test_google_oauth_uses_shared_callback_uri():
+def test_google_vendor_authorize_url_does_not_force_consent():
+    from app.connectors.google_vendor_oauth import google_vendor_authorize_url
+
+    url = google_vendor_authorize_url(
+        "google_analytics",
+        "cid",
+        "https://gravitre.app/api/connectors/oauth/google/callback",
+        "state123",
+    )
+    assert "prompt=select_account" in url
+    assert "prompt=consent" not in url
+    assert "access_type=offline" in url
     from types import SimpleNamespace
 
     from app.connectors.google_oauth_common import google_oauth_redirect_uri

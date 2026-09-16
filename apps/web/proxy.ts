@@ -98,6 +98,15 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user) {
+    const oauthReturn = request.nextUrl.searchParams.get("oauth")
+    // Connector Google OAuth shares the login GCP client. Returning from consent
+    // can briefly fail getUser(); wiping cookies turns that into a logout loop.
+    if (
+      pathname.startsWith("/connectors") &&
+      (oauthReturn === "success" || oauthReturn === "error")
+    ) {
+      return withRouteKind(supabaseResponse, request, pathname)
+    }
     const hadSupabaseSession = request.cookies
       .getAll()
       .some((c) => c.name.startsWith("sb-") || c.name.includes("supabase-auth-token"))

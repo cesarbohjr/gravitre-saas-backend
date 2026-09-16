@@ -2626,36 +2626,10 @@ function ConnectorsPageContent() {
     const selectSite = searchParams.get("selectSite")
     const selectCustomer = searchParams.get("selectCustomer")
     if (!oauth) return
-    if (oauth === "success") {
-      void mutate()
-      if (provider === "google_analytics" && selectProperty === "1" && connectorId) {
-        startTransition(() => setGaPropertyPicker({ connectorId }))
-        toast.info("Select a GA4 property", {
-          description: "Your Google account has multiple analytics properties.",
-        })
-      } else if (provider === "google_search_console" && selectSite === "1" && connectorId) {
-        startTransition(() => setGscSitePicker({ connectorId }))
-        toast.info("Select a Search Console site", {
-          description: "Your Google account has multiple Search Console properties.",
-        })
-      } else if (provider === "google_ads" && selectCustomer === "1" && connectorId) {
-        startTransition(() => setAdsCustomerPicker({ connectorId }))
-        toast.info("Select a Google Ads customer", {
-          description:
-            "Your Google account can access multiple Ads accounts, or a developer token is still required.",
-        })
-      } else {
-        toast.success("Connection successful", {
-          description: provider
-            ? `${formatVendorLabel(provider)} is now connected`
-            : "OAuth authentication completed",
-        })
-      }
-    } else if (oauth === "error") {
-      const message = searchParams.get("message")
-      toast.error("OAuth connection failed", { description: message || "Try again or contact support" })
-    }
-    if (typeof window !== "undefined") {
+
+    let cancelled = false
+    const finish = () => {
+      if (cancelled || typeof window === "undefined") return
       const url = new URL(window.location.href)
       url.searchParams.delete("oauth")
       url.searchParams.delete("provider")
@@ -2665,6 +2639,49 @@ function ConnectorsPageContent() {
       url.searchParams.delete("selectSite")
       url.searchParams.delete("selectCustomer")
       window.history.replaceState({}, "", url.pathname + url.search)
+    }
+
+    void (async () => {
+      if (oauth === "success") {
+        try {
+          await mutate()
+        } catch {
+          // Keep oauth=success in the URL so a 401 does not immediately
+          // treat this as a dead session (shared Google login client).
+        }
+        if (cancelled) return
+        if (provider === "google_analytics" && selectProperty === "1" && connectorId) {
+          startTransition(() => setGaPropertyPicker({ connectorId }))
+          toast.info("Select a GA4 property", {
+            description: "Your Google account has multiple analytics properties.",
+          })
+        } else if (provider === "google_search_console" && selectSite === "1" && connectorId) {
+          startTransition(() => setGscSitePicker({ connectorId }))
+          toast.info("Select a Search Console site", {
+            description: "Your Google account has multiple Search Console properties.",
+          })
+        } else if (provider === "google_ads" && selectCustomer === "1" && connectorId) {
+          startTransition(() => setAdsCustomerPicker({ connectorId }))
+          toast.info("Select a Google Ads customer", {
+            description:
+              "Your Google account can access multiple Ads accounts, or a developer token is still required.",
+          })
+        } else {
+          toast.success("Connection successful", {
+            description: provider
+              ? `${formatVendorLabel(provider)} is now connected`
+              : "OAuth authentication completed",
+          })
+        }
+      } else if (oauth === "error") {
+        const message = searchParams.get("message")
+        toast.error("OAuth connection failed", { description: message || "Try again or contact support" })
+      }
+      finish()
+    })()
+
+    return () => {
+      cancelled = true
     }
   }, [searchParams, mutate])
 

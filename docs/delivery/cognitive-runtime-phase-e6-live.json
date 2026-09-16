@@ -1,9 +1,9 @@
 {
   "probe": "cognitive_runtime_phase_e6_live",
-  "started_at": "2026-09-16T16:30:47.948092+00:00",
+  "started_at": "2026-09-16T18:18:52.764786+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "dec0e169",
+  "expect_sha": "ee846dd5",
   "cases": [
     {
       "id": "chitchat_no_ga_clarify",
@@ -19,12 +19,12 @@
         "structured_blocks_ok": true
       },
       "verdict": "PASS",
-      "assistant_excerpt": "Morning. What\u2019s on your plate today?",
-      "conversation_id": "1c03738a-c3b2-44c3-813d-230a98805911",
+      "assistant_excerpt": "Morning. What\u2019s on your mind?",
+      "conversation_id": "5f3ef2fc-d8b8-4240-aa50-78de929bc94a",
       "http_status": 200,
       "routing": {
         "cognitiveLoop": true,
-        "loopId": "89c4f6a7-99e3-4027-b4c1-e1387f313a7b",
+        "loopId": "e873efff-f2e6-4f13-815d-5b460e144da5",
         "operatorTask": false,
         "fastPath": true,
         "spokenMode": false,
@@ -33,7 +33,7 @@
           {
             "stage": "PERCEIVE",
             "ok": true,
-            "ms": 77.0,
+            "ms": 111.0,
             "skipped": false,
             "skip_reason": null,
             "evidence": {
@@ -102,280 +102,20 @@
       "id": "ga4_traffic_short_circuit",
       "message": "Tell me about my GA4 website traffic for the last 30 days.",
       "passed": false,
-      "checks": {
-        "matched_include": true,
-        "forbidden_hits": [],
-        "analytics_short_circuit": true,
-        "has_turn_trace": true,
-        "turn_id": "a610e57c-f0b2-4996-b3a4-7861d512ac53",
-        "analytics_short_circuit_ok": true,
-        "structured_blocks_ok": false
-      },
-      "verdict": "FAIL",
-      "assistant_excerpt": "Google Analytics is connected, but no GA4 property is linked yet. Open **Connectors \u2192 Google Analytics** and link the GA4 property. If there\u2019s only one, we\u2019ll select it automatically.",
-      "conversation_id": "1c3cd9c4-1a0f-492e-b2b9-3e39f6e6b160",
-      "http_status": 200,
-      "routing": {
-        "routingTier": "research",
-        "modelTier": "high",
-        "latencyBudgetMs": {
-          "ttft": 2500,
-          "total": 60000
-        },
-        "maxToolRounds": 15,
-        "pinnedFast": false,
-        "reasons": [
-          "agent_or_reasoning_mode"
-        ],
-        "reasoningDepth": "full",
-        "cognitiveStageMs": {
-          "RETRIEVE": 0.0,
-          "RECALL": 209.4,
-          "KNOWLEDGE": 988.0,
-          "PLAN": 0.1,
-          "VERIFY": 0.0,
-          "GOVERN": 0.0
-        },
-        "cognitiveTotalStageMs": 1197.5,
-        "spokenMode": false,
-        "cognitiveLoop": true,
-        "loopId": "acf412f8-e9d3-4e78-96fc-6b213ffcaf78",
-        "operatorTask": false,
-        "fastPath": false,
-        "turnId": "e0690b44-64fd-4b39-bc35-e8a453d603e1",
-        "stages": [
-          {
-            "stage": "PERCEIVE",
-            "ok": true,
-            "ms": 65.0,
-            "skipped": false,
-            "skip_reason": null,
-            "evidence": {
-              "action": "fallthrough",
-              "reason": "below_threshold",
-              "candidate_id": null,
-              "confidence": null
-            }
-          },
-          {
-            "stage": "RETRIEVE",
-            "ok": true,
-            "ms": 0.0,
-            "skipped": true,
-            "skip_reason": "analytics_traffic_short_circuit",
-            "evidence": {}
-          },
-          {
-            "stage": "PLAN",
-            "ok": true,
-            "ms": 0.0,
-            "skipped": true,
-            "skip_reason": "analytics_traffic_short_circuit",
-            "evidence": {}
-          },
-          {
-            "stage": "ACT",
-            "ok": true,
-            "ms": 0.0,
-            "skipped": true,
-            "skip_reason": "no_tools_invoked",
-            "evidence": {
-              "tool_result_count": 0,
-              "pending_approval": false,
-              "execution_verified": false,
-              "react_status": null
-            }
-          },
-          {
-            "stage": "OBSERVE",
-            "ok": true,
-            "ms": 1.2,
-            "skipped": false,
-            "skip_reason": null,
-            "evidence": {
-              "coverage_pct": 100.0,
-              "mutating_action_count": 362,
-              "full_coverage": true,
-              "this_turn_mutating": [],
-              "verifications": [],
-              "pending_approval": false,
-              "observe_mode": "no_mutating_act"
-            }
-          },
-          {
-            "stage": "LEARN",
-            "ok": true,
-            "ms": 441.7,
-            "skipped": false,
-            "skip_reason": null,
-            "evidence": {
-              "ok": true,
-              "outcome_event": "turn_completed",
-              "recommendation_id": "e0690b44-64fd-4b39-bc35-e8a453d603e1",
-              "outcome_ids": []
-            }
-          }
-        ],
-        "fullLoop": false,
-        "analyticsShortCircuit": true
-      },
-      "turn_id": "a610e57c-f0b2-4996-b3a4-7861d512ac53"
+      "verdict": "EXTERNAL_BLOCKED",
+      "reason": "google_analytics not executable on prod live availability; executable=False authStatus=pending_auth blockingReason=pending_auth recoveryAction=Complete OAuth for google_analytics on the Connectors page."
     },
     {
       "id": "website_doing_cross_source",
       "message": "How is my website doing?",
       "passed": false,
-      "checks": {
-        "matched_include": false,
-        "forbidden_hits": [],
-        "analytics_short_circuit": false,
-        "has_turn_trace": false,
-        "turn_id": null,
-        "analytics_short_circuit_ok": false,
-        "structured_blocks_ok": false
-      },
-      "verdict": "FAIL",
-      "assistant_excerpt": "",
-      "conversation_id": "cb4a4191-96a9-41b7-90cb-acd384f70a15",
-      "http_status": 200,
-      "routing": {
-        "routingTier": "research",
-        "modelTier": "high",
-        "latencyBudgetMs": {
-          "ttft": 2500,
-          "total": 60000
-        },
-        "maxToolRounds": 15,
-        "pinnedFast": false,
-        "reasons": [
-          "agent_or_reasoning_mode"
-        ],
-        "reasoningDepth": "full",
-        "cognitiveStageMs": {
-          "RETRIEVE": 0.0,
-          "RECALL": 213.7,
-          "KNOWLEDGE": 415.6,
-          "PLAN": 0.1,
-          "VERIFY": 0.0,
-          "GOVERN": 0.0
-        },
-        "cognitiveTotalStageMs": 629.4,
-        "spokenMode": false,
-        "cognitiveLoop": true,
-        "loopId": "93d404ff-6ddf-4fca-9184-5e85d9fbf010",
-        "operatorTask": false,
-        "fastPath": false,
-        "turnId": "0c134921-c661-47cc-94c2-d16e4de6fa5f",
-        "stages": [
-          {
-            "stage": "PERCEIVE",
-            "ok": true,
-            "ms": 76.0,
-            "skipped": false,
-            "skip_reason": null,
-            "evidence": {
-              "action": "fallthrough",
-              "reason": "below_threshold",
-              "candidate_id": null,
-              "confidence": null
-            }
-          },
-          {
-            "stage": "RETRIEVE",
-            "ok": true,
-            "ms": 629.3,
-            "skipped": false,
-            "skip_reason": null,
-            "evidence": {
-              "kernel_stages": [
-                {
-                  "stage": "RETRIEVE",
-                  "ok": true,
-                  "ms": 0.0,
-                  "meta": {
-                    "surface": "ai_chat",
-                    "entry_point": "execute_task_streaming"
-                  }
-                },
-                {
-                  "stage": "RECALL",
-                  "ok": true,
-                  "ms": 213.69,
-                  "meta": {
-                    "keys": [
-                      "working",
-                      "episodic",
-                      "preference",
-                      "decision",
-                      "outcome",
-                      "relationship",
-                      "procedural"
-                    ],
-                    "recall": {
-                      "ran": true,
-                      "total": 20,
-                      "bySource": {
-                        "hybrid": 8,
-                        "agent": 0,
-                        "department": 0,
-                        "ledger": 0,
-                        "workspace": 12
-                      },
-                      "attempted": [
-                        "hybrid",
-                        "ledger",
-                        "workspace"
-                      ],
-                      "degraded": false,
-                      "failedSources": []
-                    }
-                  }
-                },
-                {
-                  "stage": "KNOWLEDGE",
-                  "ok": true,
-                  "ms": 415.58,
-                  "meta": {
-                    "fabric_count": 6
-                  }
-                }
-              ],
-              "fabric_count": 6,
-              "signal_scoring": false,
-              "sufficiency": {
-                "skipped": "not_operator_or_priority"
-              }
-            }
-          },
-          {
-            "stage": "PLAN",
-            "ok": true,
-            "ms": 0.1,
-            "skipped": false,
-            "skip_reason": null,
-            "evidence": {
-              "step_count": 3,
-              "source": "cognitive_planner",
-              "has_signal_priorities": false
-            }
-          }
-        ],
-        "fullLoop": false
-      },
-      "turn_id": null
+      "verdict": "EXTERNAL_BLOCKED",
+      "reason": "google_analytics not executable on prod live availability; executable=False authStatus=pending_auth blockingReason=pending_auth recoveryAction=Complete OAuth for google_analytics on the Connectors page."
     }
   ],
-  "git_sha": "dec0e169fd399ec23642a1fe82654a6f1033a91b",
-  "health_timestamp": "2026-09-16T16:30:48.142723+00:00",
+  "git_sha": "ee846dd5569d9c0b060de33881dbae690a725508",
+  "health_timestamp": "2026-09-16T18:18:53.794573+00:00",
   "prod_connectors": [
-    {
-      "id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
-      "vendor": "google_analytics",
-      "status": "healthy",
-      "authStatus": "connected",
-      "executable": true,
-      "blockingReason": null
-    },
     {
       "id": "4d7fcc34-83a4-40c4-af31-97f5b1576163",
       "vendor": "google_search_console",
@@ -383,14 +123,6 @@
       "authStatus": "auth_expired",
       "executable": false,
       "blockingReason": "token_expired"
-    },
-    {
-      "id": "41175658-a119-4f3f-949d-0b927e7c0b78",
-      "vendor": "hubspot",
-      "status": "healthy",
-      "authStatus": "connected",
-      "executable": true,
-      "blockingReason": null
     },
     {
       "id": "8992743f-6632-4252-81a1-8d09c0482575",
@@ -401,8 +133,8 @@
       "blockingReason": null
     },
     {
-      "id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
-      "vendor": "google_ads",
+      "id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+      "vendor": "hubspot",
       "status": "healthy",
       "authStatus": "connected",
       "executable": true,
@@ -415,6 +147,22 @@
       "authStatus": "auth_expired",
       "executable": false,
       "blockingReason": "token_expired"
+    },
+    {
+      "id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+      "vendor": "google_ads",
+      "status": "healthy",
+      "authStatus": "connected",
+      "executable": true,
+      "blockingReason": null
+    },
+    {
+      "id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
+      "vendor": "google_analytics",
+      "status": "pending_auth",
+      "authStatus": "pending_auth",
+      "executable": false,
+      "blockingReason": "pending_auth"
     },
     {
       "id": "0caaa79b-ed4b-4609-855c-55129ace5921",
@@ -452,33 +200,26 @@
   "ga4_prod": {
     "id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
     "type": "google_analytics",
-    "status": "healthy",
-    "authStatus": "connected",
-    "displayStatus": "connected",
-    "executable": true,
-    "tokenValid": true,
-    "authenticated": true,
+    "status": "pending_auth",
+    "authStatus": "pending_auth",
+    "displayStatus": "disconnected",
+    "executable": false,
+    "tokenValid": false,
+    "authenticated": false,
     "configured": true,
-    "blockingReason": null,
-    "recoveryAction": null
+    "blockingReason": "pending_auth",
+    "recoveryAction": "Complete OAuth for google_analytics on the Connectors page."
   },
   "ga4_row_local_db": {
     "id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
     "type": "google_analytics",
-    "status": "error",
-    "updated_at": "2026-09-16T16:30:48.603392+00:00",
-    "has_property_id": true,
-    "oauth_error": "Token refresh failed"
+    "status": "pending_auth",
+    "updated_at": "2026-09-16T18:18:41.3223+00:00",
+    "has_property_id": false,
+    "oauth_error": null
   },
-  "ga4_executable": true,
+  "ga4_executable": false,
   "oauth_gate": "prod GET /api/connectors?live=true",
-  "finished_at": "2026-09-16T16:32:21.476346+00:00",
-  "verdict": "FAIL",
-  "diagnosis": {
-    "oauth": "NOT EXTERNAL_BLOCKED — prod live availability executable=true authStatus=connected tokenValid=true (connector 10b20a26… @ 2026-09-16T16:30:48Z)",
-    "ga4_traffic": "FAIL — analyticsShortCircuit=true turn_id=a610e57c-f0b2-4996-b3a4-7861d512ac53 conv=1c3cd9c4-1a0f-492e-b2b9-3e39f6e6b160; assistant claimed no property linked while config has_property_id=true and DB status=error. Root: get_connector_by_type skipped non-ACTIVE statuses.",
-    "website_doing": "FAIL — empty assistant, no analyticsShortCircuit, unified LIVE/kernel PLAN ran (turnId=0c134921… conv=cb4a4191-96a9-41b7-90cb-acd384f70a15). Root: unified LIVE served before canonical analytics short-circuit. GSC also auth_expired.",
-    "local_fix": "uncommitted: repository stale-status fallback + skip unified LIVE when analytics_short_circuit. Local pytest 26 passed. Not on prod SHA dec0e169.",
-    "g8": "untouched"
-  }
+  "finished_at": "2026-09-16T18:19:29.236175+00:00",
+  "verdict": "EXTERNAL_BLOCKED"
 }

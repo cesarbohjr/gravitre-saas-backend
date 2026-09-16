@@ -55,7 +55,7 @@ def google_calendar_authorize_url(client_id: str, redirect_uri: str, state: str)
             "redirect_uri": redirect_uri,
             "state": state,
             "access_type": "offline",
-            "prompt": "consent",
+            "prompt": "select_account",
             "include_granted_scopes": "true",
         }
     )

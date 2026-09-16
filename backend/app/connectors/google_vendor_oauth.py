@@ -120,7 +120,9 @@ def google_vendor_authorize_url(vendor: str, client_id: str, redirect_uri: str, 
             "redirect_uri": redirect_uri,
             "state": state,
             "access_type": "offline",
-            "prompt": "consent",
+            # Shared GCP client also powers Gmail login (Supabase). prompt=consent
+            # rotates Google refresh tokens and invalidates the app session.
+            "prompt": "select_account",
             "include_granted_scopes": "true",
         }
     )

@@ -41,6 +41,8 @@ https://gravitre.app/api/connectors/oauth/google/callback
 
 That is the full connector list. Do **not** add per-product URIs (`…/google_analytics/callback`, `…/google_search_console/callback`, etc.) — they are obsolete.
 
+Login and connectors share this client. Connector authorize URLs must **not** use `prompt=consent` — that rotates Google refresh tokens and signs the operator out of Gravitre (session_expired → Gmail login loop). Use `access_type=offline` + `prompt=select_account` + `include_granted_scopes=true`.
+
 Optional legacy Railway host (only if still used elsewhere): not required for connectors when `gravitre.app` is registered.
 
 ## APIs to enable

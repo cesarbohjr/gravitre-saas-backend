@@ -36,6 +36,8 @@ def test_google_analytics_redirect_and_authorize():
     assert "accounts.google.com" in url
     assert "analytics.readonly" in url
     assert "access_type=offline" in url
+    assert "prompt=select_account" in url
+    assert "prompt=consent" not in url
 
 
 def test_link_ga4_property_sets_connected_status():
