@@ -27,7 +27,7 @@ import {
   truncateEntityId,
 } from "@/lib/relationships-graph/utils"
 import type { RelationshipRow } from "@/lib/relationships-graph/types"
-import { formatTime } from "@/app/admin/intelligence/_components/shared"
+import { formatDateTimeHuman } from "@/lib/intelligence/helpers"
 import { TracePath, TRACE_PATH_HYBRID_BEAT } from "@/components/gravitre/visual/trace-path"
 import { Archive, ArrowCounterClockwise, PencilSimple, X } from "@phosphor-icons/react"
 import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
@@ -331,7 +331,7 @@ export function RelationshipInspector({
           <dl className="grid gap-2 text-sm">
             <div>
               <dt className="text-[11px] text-[color:var(--g-text-muted)]">Last observed</dt>
-              <dd>{formatTime(rel.last_observed_at ?? rel.created_at)}</dd>
+              <dd>{formatDateTimeHuman(rel.last_observed_at ?? rel.created_at)}</dd>
             </div>
             <div>
               <dt className="text-[11px] text-[color:var(--g-text-muted)]">How Gravitre learned this</dt>

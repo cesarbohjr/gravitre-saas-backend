@@ -646,6 +646,9 @@ No new intelligence database. Aggregation extensions only.
 | **I8 — Models + Model Studio** | Business catalog; intent wizard; Training folded into Studio. |
 | **I9 — Reports + mobile + spatial opt-in + polish** | Saved views; mobile paths; optional 2.5D. |
 | **I10 — Production eval / UX regression / hardening** | Prod batteries, a11y audit, perf profiling, screenshot evidence. |
+| **I11 — Contract reinforcements** | CI customer-surface guards; ERROR lens never false-zero; hub 7-tab + Training-fold tests; admin-import ban on customer Intelligence. |
+| **I12 — Live eval closure** | Re-run G1/G4/G8 batteries against current SHA; axe/contrast on Overview + Reports; screenshot List vs canvas. |
+| **I13 — Graph density / LOD** | Label collision, cluster expand UX, transform-only pan at higher node counts. |
 
 **Gates:**
 - Do not start I2 until I1 shell verified
@@ -665,6 +668,9 @@ No new intelligence database. Aggregation extensions only.
 | Same graph on every page | Page visual identity table (§2) enforced in review |
 | Training nav confusion | Remove from HubTabs; redirect UX in Model Studio |
 | Admin telemetry leak | Route guard; no admin imports on customer pages |
+| False-zero after READY | I11 ERROR/LOADING lens placeholders; CI leak guard for raw quality flags |
+| Hub IA drift | I11 seven-tab + Training-fold unit/e2e contract |
+| Live eval skipped | I12 required before calling the rebuild “closed” |
 
 ---
 
@@ -684,11 +690,26 @@ No new intelligence database. Aggregation extensions only.
 - [ ] Graph stack is renderer-agnostic (adapter test: swap mock renderer)
 - [ ] All hub pages use `IntelligenceShell`
 - [ ] Headline metrics from single snapshot commit
-- [ ] G1/G4/G8 prod batteries PASS after each phase
+- [ ] G1/G4/G8 prod batteries PASS after each phase (**I12** re-run on post-I10 SHA)
 
 ### Evidence (I10 + per phase)
 - [ ] Before/after screenshots in delivery report
 - [ ] Prod trace or CI Playwright for critical paths
+- [ ] I11 customer-surface CI guard green
+
+---
+
+## 33. Post-I10 reinforcement program (Revision 3)
+
+I1–I10 shipped the experience. These phases **harden the contract** so the rebuild cannot regress into dashboards, false zeros, or admin leaks.
+
+| Phase | Why |
+|-------|-----|
+| **I11** | Shift-left: static guards + lens/hub unit tests catch class-level leaks before prod batteries |
+| **I12** | Evidence-linked PASS: live G1/G4/G8 + a11y scan + screenshots on the deployed SHA |
+| **I13** | Graph remains thinkable at density: collision, LOD, 60fps pan without hover rerenders |
+
+I11 does not invent scheduled-report APIs, prices, or Enable toggles.
 
 ---
 
@@ -720,12 +741,17 @@ Centralize in `apps/web/lib/intelligence/quality-copy.ts`.
 | Performance outcome flow in I7 (not deferred) | **Approved** |
 | Page-level visual identities (same language, different jobs) | **Approved** |
 | Phases I1–I10 as defined in §30 | **Approved** |
+| Post-I10 reinforcements I11–I13 | **Added Revision 3 (2026-09-16)** |
 
-**Next gate:** Explicit approval to begin **I1** implementation.
+**Next gate:** **I12** live eval closure (G1/G4/G8 + a11y) after I11 is on production.
 
 ---
 
 ## Change log
+
+### Revision 3 — 2026-09-16 (post-I10 reinforcements)
+
+Added §33 and phases **I11–I13**: customer-surface CI guards, live eval closure, graph density/LOD. Does not reopen I1–I10 product decisions.
 
 ### Revision 2 — 2026-09-13 (product sign-off incorporated)
 

@@ -17,7 +17,7 @@ export type IntelligenceHubTab =
   | "model-studio"
   | "reports"
 
-const TABS: Array<HubTabItem<IntelligenceHubTab>> = [
+export const INTELLIGENCE_HUB_TABS: Array<HubTabItem<IntelligenceHubTab>> = [
   { id: "overview", label: "Overview", href: APP_ROUTES.intelligence },
   { id: "learning", label: "Learning", href: APP_ROUTES.learning },
   { id: "predictions", label: "Predictions", href: APP_ROUTES.intelligencePredictive },
@@ -50,7 +50,7 @@ export function IntelligenceHubTabs({
 
   return (
     <HubTabs
-      tabs={TABS}
+      tabs={INTELLIGENCE_HUB_TABS}
       active={current}
       ariaLabel="Intelligence hub"
       className={className ?? "mb-4 flex-wrap"}

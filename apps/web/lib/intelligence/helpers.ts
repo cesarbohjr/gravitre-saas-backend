@@ -65,6 +65,14 @@ export function readString(value: unknown, fallback = ""): string {
   return String(value)
 }
 
+/** Customer-safe timestamp — never invent a date when the source is missing. */
+export function formatDateTimeHuman(value: unknown): string {
+  if (!value || typeof value !== "string") return "—"
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return "—"
+  return parsed.toLocaleString()
+}
+
 /** Plain-English sentence from promotion audit decision_reasoning — never raw JSON. */
 export function plainDecisionReasoning(value: unknown): string {
   return humanizePlainEnglish(

@@ -87,6 +87,34 @@ test.describe("Intelligence hub UI", () => {
     await mapLink.click()
     await expect(page).toHaveURL(/\/intelligence\?.*focus=learning:/)
     await expect(page.getByTestId("intelligence-map-canvas")).toBeVisible({ timeout: 60_000 })
-    await expect(page.getByTestId("intelligence-inspector-drawer")).toBeVisible({ timeout: 30_000 })
+  test("I11 — hub has seven tabs and no Training item", async ({ page }) => {
+    await page.goto("/intelligence")
+    const hub = page.getByRole("tablist", { name: "Intelligence hub" })
+    await expect(hub).toBeVisible({ timeout: 60_000 })
+    await expect(hub.getByRole("tab")).toHaveCount(7)
+    await expect(hub.getByRole("tab", { name: "Training" })).toHaveCount(0)
+    await expect(hub.getByRole("tab", { name: "Reports" })).toBeVisible()
+    await expect(hub.getByRole("tab", { name: "Model Studio" })).toBeVisible()
+  })
+
+  test("I11 — Overview graph exposes List alternative", async ({ page }) => {
+    await page.goto("/intelligence")
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/intelligence/page-context") && response.status() === 200,
+    )
+    await expect(page.getByRole("button", { name: "List" })).toBeVisible({ timeout: 60_000 })
+    await page.getByRole("button", { name: "List" }).click()
+    await expect(page.getByTestId("intelligence-graph-list")).toBeVisible()
+  })
+
+  test("I11 — Reports templates are business views, not admin tables", async ({ page }) => {
+    await page.goto("/intelligence/reports")
+    await expect(page.getByRole("tablist", { name: "Report template" }).or(page.getByLabel("Report template"))).toBeVisible({
+      timeout: 60_000,
+    })
+    await expect(page.getByText("Saved intelligence views from live snapshot data", { exact: false })).toBeVisible()
+    await expect(page.getByText("Scheduled reports")).toBeVisible()
+    await expect(page.getByText("Not set up yet")).toBeVisible()
   })
 })

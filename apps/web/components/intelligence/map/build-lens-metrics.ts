@@ -13,6 +13,14 @@ const LOADING_METRICS: IntelligenceLensMetrics = {
   improves: { value: "—", hint: "Loading intelligence…" },
 }
 
+const ERROR_METRICS: IntelligenceLensMetrics = {
+  knows: { value: "—", hint: "Unable to load intelligence" },
+  learns: { value: "—", hint: "Unable to load intelligence" },
+  predicts: { value: "—", hint: "Unable to load intelligence" },
+  acts: { value: "—", hint: "Unable to load intelligence" },
+  improves: { value: "—", hint: "Unable to load intelligence" },
+}
+
 function formatMetricValue(
   raw: number | null | undefined,
   ready: boolean,
@@ -63,6 +71,9 @@ export function buildLensMetrics({
 }): IntelligenceLensMetrics {
   if (loadState === "UNINITIALIZED" || loadState === "LOADING") {
     return LOADING_METRICS
+  }
+  if (loadState === "ERROR") {
+    return ERROR_METRICS
   }
 
   const ready = isSnapshotMetricsReady(loadState)

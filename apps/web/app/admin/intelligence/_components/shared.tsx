@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
 import { ErrorState } from "@/components/gravitre/empty-state"
+import { formatDateTimeHuman } from "@/lib/intelligence/helpers"
 import { Info } from "@phosphor-icons/react"
 
 /** Color a 0..1 score: strong (emerald), moderate (amber), weak (rose). */
@@ -51,10 +52,7 @@ export function readString(value: unknown, fallback = ""): string {
 
 /** Format an ISO timestamp for display, or an em dash when absent/invalid. */
 export function formatTime(value: unknown): string {
-  if (!value || typeof value !== "string") return "—"
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return "—"
-  return parsed.toLocaleString()
+  return formatDateTimeHuman(value)
 }
 
 /** A labeled, weighted score bar (e.g. RAG quality 0.8, weight 40%). */

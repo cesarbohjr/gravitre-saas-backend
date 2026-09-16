@@ -49,6 +49,10 @@ jobs:
         working-directory: .
         run: node scripts/check-user-facing-status-leak.mjs
 
+      - name: Intelligence customer surface guard
+        working-directory: .
+        run: node scripts/check-intelligence-customer-surface.mjs
+
       - name: Cognitive regression suite
         working-directory: .
         run: node scripts/cognitive-regression-suite.mjs
