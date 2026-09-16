@@ -101,9 +101,11 @@ class OfferedAction:
     confirmation_required: bool = False
     status: OfferedStatus = "awaiting_user_confirmation"
     source: str = "assistant_offer"
+    execution_plan_id: str | None = None
+    pending_action_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "id": self.id,
             "type": self.type,
             "scope": list(self.scope),
@@ -112,6 +114,11 @@ class OfferedAction:
             "status": self.status,
             "source": self.source,
         }
+        if self.execution_plan_id:
+            payload["execution_plan_id"] = self.execution_plan_id
+        if self.pending_action_id:
+            payload["pending_action_id"] = self.pending_action_id
+        return payload
 
 
 @dataclass
@@ -208,6 +215,8 @@ def offered_from_state(task_state: dict[str, Any] | None) -> OfferedAction | Non
         confirmation_required=bool(raw.get("confirmation_required")),
         status=status,  # type: ignore[arg-type]
         source=str(raw.get("source") or "assistant_offer"),
+        execution_plan_id=str(raw.get("execution_plan_id") or "") or None,
+        pending_action_id=str(raw.get("pending_action_id") or "") or None,
     )
 
 
@@ -474,10 +483,32 @@ async def execute_offered_read(
             for name in timed_out
         ],
     )
+    observations = [
+        {
+            "step_id": f"offered_read_{idx}_{row.get('name')}",
+            "connector_id": str(row.get("name") or ""),
+            "success": not (isinstance(row.get("output"), dict) and row["output"].get("error")),
+            "summary": str((row.get("output") or {}).get("error") or "ok"),
+            "structured": row.get("output") if isinstance(row.get("output"), dict) else {},
+        }
+        for idx, row in enumerate(collected)
+        if isinstance(row, dict)
+    ]
+    plan_terminal = "completed" if terminal == "COMPLETED" else "failed"
+    if terminal == "COMPLETED" and failed:
+        plan_terminal = "partial"
+    plan_patch = _execution_plan_patch_for_offered(
+        offered.as_dict(),
+        terminal_status=plan_terminal,
+        observations=observations,
+    )
     return {
         "message": message,
         "tool_results": list(collected),
-        "offered_action": offered.as_dict(),
+        "offered_action": plan_patch.get("offered_action") or offered.as_dict(),
+        "execution_plan": plan_patch.get("execution_plan"),
+        "execution_observations": plan_patch.get("execution_observations") or observations,
+        "pending_action": plan_patch.get("pending_action"),
         "terminal_state": terminal,
         "elapsed_ms": elapsed_ms,
         "progress_steps": [
@@ -494,6 +525,12 @@ def live_payload_for_execution(
     state = dict(task_state or {})
     offered = executed.get("offered_action")
     state["offered_action"] = offered
+    if isinstance(executed.get("execution_plan"), dict):
+        state["execution_plan"] = executed["execution_plan"]
+    if isinstance(executed.get("execution_observations"), list):
+        state["execution_observations"] = executed["execution_observations"]
+    if isinstance(executed.get("pending_action"), dict):
+        state["pending_action"] = executed["pending_action"]
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
@@ -508,6 +545,12 @@ def live_payload_for_execution(
         "tool_results": executed.get("tool_results") or [],
         "offered_action_executed": True,
         "turn_terminal_state": executed.get("terminal_state") or "COMPLETED",
+        "execution_plan_id": (executed.get("execution_plan") or {}).get("plan_id")
+        if isinstance(executed.get("execution_plan"), dict)
+        else None,
+        "continuation_of_plan_id": (executed.get("execution_plan") or {}).get("continuation_of_plan_id")
+        if isinstance(executed.get("execution_plan"), dict)
+        else None,
         "progress_steps": executed.get("progress_steps") or [
             "Completed: Checking systems",
         ],
@@ -523,6 +566,64 @@ def patch_task_state_offered(
     return state
 
 
+def _execution_plan_patch_for_offered(
+    offered: dict[str, Any] | None,
+    *,
+    task_state: dict[str, Any] | None = None,
+    terminal_status: str | None = None,
+    observations: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    if not isinstance(offered, dict):
+        return {"offered_action": None, "pending_action": None}
+    from app.services.execution_plan_adapters import (
+        bridge_offered_action_with_plan,
+        execution_plan_bundle_patch,
+    )
+    from app.services.execution_plan_service import (
+        ExecutionPlan,
+        apply_observations_to_plan,
+        continue_execution_plan,
+        mark_plan_terminal,
+    )
+
+    existing = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
+    plan, pending_action, bridged = bridge_offered_action_with_plan(
+        offered,
+        existing_plan=existing if existing and existing.plan_id == offered.get("execution_plan_id") else None,
+    )
+    status = str(offered.get("status") or "")
+    if status in {"confirmed", "executing"}:
+        plan = continue_execution_plan(plan)
+    elif status == "completed":
+        plan = mark_plan_terminal(plan, "completed")
+    elif status == "failed":
+        plan = mark_plan_terminal(plan, "failed")
+    elif terminal_status:
+        plan = mark_plan_terminal(plan, terminal_status)  # type: ignore[arg-type]
+
+    if observations:
+        from app.services.execution_plan_service import ExecutionObservation
+
+        obs_objs = [
+            ExecutionObservation(
+                step_id=str(o.get("step_id") or ""),
+                connector_id=str(o.get("connector_id") or o.get("name") or ""),
+                success=bool(o.get("success", True)),
+                summary=str(o.get("summary") or ""),
+                structured=dict(o.get("structured") or o.get("output") or {}),
+                error=o.get("error"),
+            )
+            for o in observations
+            if isinstance(o, dict)
+        ]
+        plan = apply_observations_to_plan(plan, obs_objs)
+
+    patch = execution_plan_bundle_patch(plan, pending_action, offered=bridged)
+    if observations:
+        patch["execution_observations"] = observations
+    return patch
+
+
 async def persist_offered_action(
     *,
     conversation_id: str | None,
@@ -530,17 +631,27 @@ async def persist_offered_action(
     offered: dict[str, Any] | None,
     client: Any = None,
     settings: Any = None,
-) -> None:
+    task_state: dict[str, Any] | None = None,
+    terminal_status: str | None = None,
+    observations: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     if not conversation_id or not org_id:
-        return
+        return {}
+    patch = _execution_plan_patch_for_offered(
+        offered,
+        task_state=task_state,
+        terminal_status=terminal_status,
+        observations=observations,
+    )
     try:
         from app.services.conversation_state_service import get_conversation_state_service
 
         await get_conversation_state_service(settings).update_task_state(
             conversation_id,
             org_id,
-            {"offered_action": offered},
+            patch,
             client=client,
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("persist_offered_action failed conversation_id=%s error=%s", conversation_id, exc)
+    return patch

@@ -2732,11 +2732,18 @@ class AgentIntelligence:
                     logger.debug("capability_route_persist_skipped: %s", exc)
             from app.services.execution_plan_service import execution_plan_patch, reconcile_execution_plan
 
+            _plan_turn_id = (
+                _cognitive_trace_builder.trace.turn_id
+                if _cognitive_trace_builder is not None
+                else None
+            )
             _execution_plan = reconcile_execution_plan(
                 message=task_text,
                 task_state=task_state if isinstance(task_state, dict) else _canonical_task_state,
                 capability_id=pipeline_classification.get("capability_id"),
                 connected_integrations=list(connected_early or []),
+                turn_id=_plan_turn_id,
+                conversation_id=conversation_id,
             )
             if isinstance(task_state, dict):
                 task_state = {**task_state, **execution_plan_patch(_execution_plan)}
@@ -2750,6 +2757,18 @@ class AgentIntelligence:
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("execution_plan_persist_skipped: %s", exc)
+            if _cognitive_trace_builder is not None:
+                _cognitive_trace_builder.link("execution_plan", _execution_plan.plan_id)
+                if _execution_plan.continuation_of_plan_id:
+                    _cognitive_trace_builder.link(
+                        "continuation_of_plan_id",
+                        _execution_plan.continuation_of_plan_id,
+                    )
+                if _execution_plan.pending_action_id:
+                    _cognitive_trace_builder.link(
+                        "pending_action_id",
+                        _execution_plan.pending_action_id,
+                    )
             if _cognitive_trace_builder is not None and _capability_route is not None:
                 _cognitive_trace_builder.mark(
                     "capability_route",
@@ -4645,6 +4664,25 @@ class AgentIntelligence:
             except Exception:  # noqa: BLE001 — logging must never break the turn.
                 pass
 
+        from app.services.react_execution_strategy import (
+            execution_plan_patch_from_react_runtime,
+            prepare_react_execution_plan,
+        )
+
+        _react_plan_runtime = prepare_react_execution_plan(
+            message=task_text,
+            task_state=task_state if isinstance(task_state, dict) else {},
+            capability_id=pipeline_classification.get("capability_id")
+            if isinstance(pipeline_classification, dict)
+            else None,
+            connected_integrations=connected_list,
+            turn_id=_cognitive_trace_builder.trace.turn_id if _cognitive_trace_builder else None,
+            conversation_id=conversation_id,
+        )
+        from app.services.execution_plan_service import execution_plan_patch
+
+        task_state = {**(task_state or {}), **execution_plan_patch(_react_plan_runtime.plan)}
+
         async for event in self.react_engine.run_streaming(
             ctx=ctx,
             task=task_prompt,
@@ -4660,6 +4698,7 @@ class AgentIntelligence:
             tool_query=task_text,
             tool_classification=pipeline_classification,
             connector_focus=connector_focus,
+            plan_runtime=_react_plan_runtime,
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}
@@ -4771,6 +4810,18 @@ class AgentIntelligence:
                     yield emit_text_delta(text_id, adopt_model_delta(event.content))
             elif event.kind == "done":
                 react_result = event.react_result
+
+        if react_result is not None and _react_plan_runtime is not None:
+            _react_plan_patch = execution_plan_patch_from_react_runtime(
+                _react_plan_runtime,
+                react_status=str(getattr(react_result.status, "value", react_result.status)),
+                answer=str(react_result.answer or ""),
+            )
+            task_state = {**(task_state or {}), **_react_plan_patch}
+            if _cognitive_trace_builder is not None:
+                _cognitive_trace_builder.link("execution_plan", _react_plan_runtime.plan.plan_id)
+                _cognitive_trace_builder.link("execution_strategy", "REACT")
+                _cognitive_trace_builder.link("plan_revision", str(_react_plan_runtime.plan.revision))
 
         if pending_write_from_react(react_result) and conversation_id:
             # STA-305 / Phase 1 — list-create NL must not be stolen by platform

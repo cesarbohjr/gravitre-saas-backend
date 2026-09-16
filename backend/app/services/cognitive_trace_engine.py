@@ -149,6 +149,22 @@ def sync_trace_from_task_state(
     plan = state.get("execution_plan")
     if isinstance(plan, dict) and plan.get("plan_id"):
         trace.linked["execution_plan"] = str(plan["plan_id"])
+        if plan.get("revision") is not None:
+            trace.linked["plan_revision"] = str(plan["revision"])
+        if plan.get("continuation_of_plan_id"):
+            trace.linked["continuation_of_plan_id"] = str(plan["continuation_of_plan_id"])
+        if plan.get("parent_plan_id"):
+            trace.linked["parent_plan_id"] = str(plan["parent_plan_id"])
+        if plan.get("terminal_status"):
+            trace.linked["plan_state"] = str(plan["terminal_status"])
+        if plan.get("execution_strategy"):
+            trace.linked["execution_strategy"] = str(plan["execution_strategy"])
+    pending_action = state.get("pending_action")
+    if isinstance(pending_action, dict) and pending_action.get("pending_action_id"):
+        trace.linked["pending_action_id"] = str(pending_action["pending_action_id"])
+    offered = state.get("offered_action")
+    if isinstance(offered, dict) and offered.get("execution_plan_id"):
+        trace.linked["offered_execution_plan_id"] = str(offered["execution_plan_id"])
     return trace
 
 

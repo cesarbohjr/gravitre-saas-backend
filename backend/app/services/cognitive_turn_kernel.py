@@ -358,7 +358,11 @@ class CognitiveTurnKernel:
                     plan["steps"] = steps
                 except Exception as sim_exc:  # noqa: BLE001
                     logger.debug("cognitive_what_if_plan_skipped error=%s", sim_exc)
-            ctx.plan = plan
+            ctx.plan = {
+                **plan,
+                "plan_kind": plan.get("plan_kind") or "strategic_reasoning",
+                "executable": False,
+            }
             ctx.stages.append(
                 StageRecord(
                     stage="PLAN",

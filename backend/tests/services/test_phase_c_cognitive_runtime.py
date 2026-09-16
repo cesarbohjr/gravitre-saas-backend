@@ -31,7 +31,7 @@ def test_reconcile_prefers_pending_task() -> None:
             }
         },
     )
-    assert plan.source == "pending_task"
+    assert plan.source in {"pending_task", "pending_task_bridge"}
     assert plan.steps[0].connector_id == "hubspot"
 
 

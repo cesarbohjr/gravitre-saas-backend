@@ -1990,13 +1990,19 @@ async def apply_unified_turn_live(
             user_id=user_id,
             environment_name=environment_name,
         )
-        await persist_offered_action(
+        plan_patch = await persist_offered_action(
             conversation_id=conversation_id,
             org_id=org_id,
             offered=executed.get("offered_action") if isinstance(executed.get("offered_action"), dict) else None,
             client=client,
             settings=active,
+            task_state=task_state if isinstance(task_state, dict) else {},
+            terminal_status=str(executed.get("terminal_state") or "COMPLETED").lower(),
+            observations=executed.get("execution_observations")
+            if isinstance(executed.get("execution_observations"), list)
+            else None,
         )
+        merged_state = {**(task_state or {}), **plan_patch}
         served = UnifiedTurnShadowResult(
             outcome_kind="connector_tool_proposal",
             user_message=str(executed.get("message") or ""),
@@ -2012,7 +2018,7 @@ async def apply_unified_turn_live(
             conversation_id=conversation_id,
             result=served,
         )
-        return live_payload_for_execution(executed, task_state)
+        return live_payload_for_execution(executed, merged_state)
 
     # F1 hard gate: retrieve-before-generate (pack-common / installed workflow /
     # ambiguous clarify). Runs before shadow + orch so classical never invents
@@ -2476,6 +2482,7 @@ async def apply_unified_turn_live(
             extract_offered_action,
             is_confirm_utterance,
             live_payload_for_execution,
+            offered_from_state,
             patch_task_state_offered,
             persist_offered_action,
             resolve_offered_action_turn,
@@ -2483,14 +2490,16 @@ async def apply_unified_turn_live(
 
         offered_now = extract_offered_action(result.user_message)
         if offered_now is not None:
-            task_state = patch_task_state_offered(task_state, offered_now)
-            await persist_offered_action(
+            plan_patch = await persist_offered_action(
                 conversation_id=conversation_id,
                 org_id=org_id,
                 offered=offered_now.as_dict(),
                 client=client,
                 settings=active,
+                task_state=task_state if isinstance(task_state, dict) else {},
             )
+            task_state = {**(task_state or {}), **plan_patch}
+            task_state = patch_task_state_offered(task_state, offered_from_state(task_state) or offered_now)
         if claims_future_action(result.user_message):
             if is_confirm_utterance(message or ""):
                 retry = resolve_offered_action_turn(
@@ -2508,7 +2517,7 @@ async def apply_unified_turn_live(
                         user_id=user_id,
                         environment_name=environment_name,
                     )
-                    await persist_offered_action(
+                    plan_patch = await persist_offered_action(
                         conversation_id=conversation_id,
                         org_id=org_id,
                         offered=executed.get("offered_action")
@@ -2516,8 +2525,14 @@ async def apply_unified_turn_live(
                         else None,
                         client=client,
                         settings=active,
+                        task_state=task_state if isinstance(task_state, dict) else {},
+                        terminal_status=str(executed.get("terminal_state") or "COMPLETED").lower(),
+                        observations=executed.get("execution_observations")
+                        if isinstance(executed.get("execution_observations"), list)
+                        else None,
                     )
-                    return live_payload_for_execution(executed, task_state)
+                    merged_state = {**(task_state or {}), **plan_patch}
+                    return live_payload_for_execution(executed, merged_state)
             result.user_message = (
                 "I can check that, but I haven't run it yet. Say yes and I'll inspect "
                 "the systems I offered."

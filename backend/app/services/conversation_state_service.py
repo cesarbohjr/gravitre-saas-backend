@@ -46,9 +46,11 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "previous_result": None,
     "active_analysis": None,
     "resolution_trace": None,
-    # Phase C — typed execution plan + normalized observations.
+    # Phase C/E5 — typed execution plan + normalized observations.
     "execution_plan": None,
     "execution_observations": [],
+    # Phase E5 — governance continuation (confirmation/clarification/approval).
+    "pending_action": None,
     # Phase D — unified turn trace (gateway → compose).
     "cognitive_turn_trace": None,
 }
@@ -119,6 +121,9 @@ class ConversationStateService:
             return
         try:
             current = await self.get_task_state(conversation_id, org_id, client=client)
+            from app.services.execution_plan_adapters import enrich_task_state_patch
+
+            updates = enrich_task_state_patch(updates, current_state=current)
             merged = deepcopy(current)
             for key, value in updates.items():
                 if key == "clarified_params" and isinstance(value, dict):

@@ -33,6 +33,11 @@ class CognitivePlanner:
             plan.setdefault("source", plan.get("source") or "task_state")
             plan.setdefault("steps", list(plan.get("steps") or []))
             plan.setdefault("summary", str(plan.get("summary") or ""))
+            plan.setdefault("plan_kind", "strategic_reasoning")
+            plan.setdefault("executable", False)
+            raw_exec = state.get("execution_plan")
+            if isinstance(raw_exec, dict) and raw_exec.get("plan_id"):
+                plan.setdefault("execution_plan_id", raw_exec.get("plan_id"))
             return plan
 
         text = (message or "").strip()
@@ -103,10 +108,17 @@ class CognitivePlanner:
                         },
                     )
 
+        exec_plan_id = None
+        raw_exec = state.get("execution_plan")
+        if isinstance(raw_exec, dict):
+            exec_plan_id = raw_exec.get("plan_id")
         plan = {
             "steps": steps,
             "summary": summary,
             "source": "cognitive_planner",
+            "plan_kind": "strategic_reasoning",
+            "executable": False,
+            "execution_plan_id": exec_plan_id,
         }
         scoring = (knowledge_pack or {}).get("signal_scoring") if isinstance(knowledge_pack, dict) else None
         if isinstance(scoring, dict):

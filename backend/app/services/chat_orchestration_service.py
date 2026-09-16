@@ -180,7 +180,16 @@ class ChatOrchestrationService:
         routing_tier: str | None = None,
     ) -> bool:
         pending = task_state.get("pending_task") or {}
-        if str(pending.get("type") or "") == "connector_orchestration":
+        exec_plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
+        if str(pending.get("type") or "") == "connector_orchestration" or (
+            exec_plan.get("execution_strategy") == "SEQUENTIAL"
+            and exec_plan.get("plan_id")
+            and str((task_state.get("pending_action") or {}).get("kind") or "") in {
+                "plan_confirm",
+                "step_confirm",
+                "confirmation",
+            }
+        ):
             # Only live approval gates keep the orch pipeline; completed/failed
             # must not hijack unrelated turns or coincidental "yes" confirms.
             status = str(pending.get("status") or "")
@@ -1296,6 +1305,31 @@ class ChatOrchestrationService:
             )
 
         plan = self._enrich_plan_with_context(step.plan, params.get("step_results") or [])
+        from app.services.execution_dispatch import (
+            dispatch_execution_step,
+            resolve_executable_connector_plan,
+        )
+        from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
+
+        canonical = resolve_executable_connector_plan(task_state, step_id=step.step_id)
+        if canonical is not None and canonical.invoke_action:
+            plan = self._enrich_plan_with_context(canonical, params.get("step_results") or [])
+        exec_plan = ExecutionPlan.from_dict(task_state.get("execution_plan")) if isinstance(task_state.get("execution_plan"), dict) else None
+        plan_id = exec_plan.plan_id if exec_plan is not None else str(step.step_id)
+        if plan is not None:
+            dispatch_execution_step(
+                plan_id=plan_id,
+                step_id=step.step_id,
+                step=ExecutionStep(
+                    step_id=step.step_id,
+                    title=step.label,
+                    kind="write" if plan.kind == "write" else "read",
+                    connector_id=plan.integration,
+                    action_key=plan.invoke_action,
+                    meta={"args": dict(plan.args)},
+                ),
+                execution_context={"strategy": "SEQUENTIAL"},
+            )
         result = await self._connector.execute_plan(
             org_id=org_id,
             user_id=user_id,

@@ -778,7 +778,15 @@ def resume_awaiting_params(
 
     pending = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
     params = safe_normalize_stored_dict(pending, key="params")
-    invoke_action = str(params.get("invoke_action") or "")
+    from app.services.execution_dispatch import resolve_executable_connector_plan
+
+    canonical = resolve_executable_connector_plan(task_state)
+    if canonical is not None and canonical.invoke_action:
+        invoke_action = canonical.invoke_action
+        raw_args = dict(canonical.args)
+    else:
+        invoke_action = str(params.get("invoke_action") or "")
+        raw_args = safe_normalize_stored_dict(params, key="args")
     if not invoke_action:
         return None, get_ledger(task_state), {}
 
@@ -787,7 +795,6 @@ def resume_awaiting_params(
         turn_index=_next_turn_index(task_state),
         ledger=get_ledger(task_state),
     )
-    raw_args = safe_normalize_stored_dict(params, key="args")
     args = bind_args_from_ledger(invoke_action, raw_args, ledger)
 
     # Follow-up body: fill first missing free-text required field from the message.

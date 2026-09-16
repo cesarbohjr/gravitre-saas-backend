@@ -213,6 +213,7 @@ class ReActEngine:
         agent: dict[str, Any] | None = None,
         audit_resource_type: str = "agent_job",
         audit_resource_id: str | None = None,
+        plan_runtime: Any | None = None,
     ) -> ReActResult:
         """Execute a ReAct loop for a single agent task."""
         from app.services.ai_tracing import trace_span
@@ -231,6 +232,7 @@ class ReActEngine:
                 audit_resource_type=audit_resource_type,
                 audit_resource_id=audit_resource_id,
                 emit_text_deltas=False,
+                plan_runtime=plan_runtime,
             ):
                 if event.kind == "done":
                     result = event.react_result
@@ -255,6 +257,7 @@ class ReActEngine:
         tool_query: str | None = None,
         tool_classification: dict[str, Any] | None = None,
         connector_focus: tuple[str, ...] | list[str] | None = None,
+        plan_runtime: Any | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Streaming variant — same reasoning loop as run(), yields progress events."""
         async for event in self._react_loop(
@@ -273,6 +276,7 @@ class ReActEngine:
             tool_query=tool_query,
             tool_classification=tool_classification,
             connector_focus=connector_focus,
+            plan_runtime=plan_runtime,
         ):
             yield event
 
@@ -294,6 +298,7 @@ class ReActEngine:
         tool_query: str | None = None,
         tool_classification: dict[str, Any] | None = None,
         connector_focus: tuple[str, ...] | list[str] | None = None,
+        plan_runtime: Any | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Shared ReAct implementation for run() and run_streaming()."""
         import uuid
@@ -652,6 +657,18 @@ class ReActEngine:
                             "batch_elapsed_ms": elapsed_ms,
                         }
                     )
+                    if plan_runtime is not None and isinstance(observation, dict):
+                        from app.services.react_execution_strategy import react_observation_from_tool_call
+
+                        step_obs = react_observation_from_tool_call(
+                            plan_runtime,
+                            iteration=iteration,
+                            tool_name=tool_name,
+                            observation=observation,
+                            elapsed_ms=elapsed_ms,
+                        )
+                        tool_calls_log[-1]["execution_step_id"] = step_obs.step_id
+                        tool_calls_log[-1]["execution_plan_id"] = plan_runtime.plan.plan_id
                     trace.append(
                         ReActTraceStep(
                             iteration=iteration,

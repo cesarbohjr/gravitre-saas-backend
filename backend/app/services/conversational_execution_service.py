@@ -119,6 +119,15 @@ class ConversationalExecutionService:
         task_state: dict[str, Any],
     ) -> str | None:
         pending = task_state.get("pending_task") or {}
+        exec_plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
+        if isinstance(exec_plan, dict) and exec_plan.get("steps"):
+            steps = exec_plan.get("steps") or []
+            primary = steps[0] if steps and isinstance(steps[0], dict) else {}
+            action = str(primary.get("action_key") or "")
+            if "workflow" in action or primary.get("kind") == "workflow":
+                return "execute_workflow"
+            if "agent" in str(primary.get("kind") or ""):
+                return "run_agent_task"
         if isinstance(pending, dict) and pending.get("type"):
             return str(pending["type"])
         if understanding.get("conversational_create"):

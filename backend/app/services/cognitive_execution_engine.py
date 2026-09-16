@@ -30,7 +30,9 @@ async def execute_read_steps_parallel(
     async def _run(step: ExecutionStep) -> ExecutionObservation:
         async with sem:
             try:
-                return await handler(step, context)
+                obs = await handler(step, context)
+                obs.plan_id = obs.plan_id or plan.plan_id
+                return obs
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "execution_step_failed step_id=%s connector=%s error=%s",
@@ -38,12 +40,13 @@ async def execute_read_steps_parallel(
                     step.connector_id,
                     exc,
                 )
-                return ExecutionObservation(
+        return ExecutionObservation(
                     step_id=step.step_id,
                     connector_id=str(step.connector_id or "unknown"),
                     success=False,
                     summary=f"Step failed: {exc}",
                     error=str(exc)[:300],
+                    plan_id=plan.plan_id,
                 )
 
     results = await asyncio.gather(*(_run(step) for step in read_steps))

@@ -641,6 +641,11 @@ class ChatConnectorExecutionService:
     def is_connector_intent(message: str, task_state: dict[str, Any]) -> bool:
         pending = task_state.get("pending_task") or {}
         pending_type = str(pending.get("type") or "")
+        exec_plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
+        if exec_plan.get("plan_id") and pending_type == "connector_orchestration":
+            return False
+        if exec_plan.get("execution_strategy") in {"SEQUENTIAL"} and pending_type == "connector_orchestration":
+            return False
         if pending_type == "connector_orchestration":
             return False
         if pending_type == "connector_action":
@@ -672,6 +677,36 @@ class ChatConnectorExecutionService:
             "awaiting_confirm",
             "awaiting_admin_approval",
         }
+        from app.services.execution_dispatch import resolve_executable_connector_plan
+        from app.services.parameter_ledger import is_awaiting_params, resume_awaiting_params
+
+        canonical = resolve_executable_connector_plan(task_state)
+        if canonical is not None and (canonical.invoke_action or canonical.integration):
+            if is_awaiting_params(task_state):
+                resumed, _ledger, patch = resume_awaiting_params(message, task_state)
+                if patch:
+                    task_state.update(patch)
+                    task_state["__resume_state_patch"] = patch
+                if resumed is not None:
+                    merged_args = dict(canonical.args)
+                    for key, value in dict(resumed.args or {}).items():
+                        if value and not merged_args.get(key):
+                            merged_args[key] = value
+                    canonical = ConnectorActionPlan(
+                        tool_name=canonical.tool_name,
+                        invoke_action=canonical.invoke_action,
+                        integration=canonical.integration,
+                        kind=canonical.kind,
+                        label=canonical.label,
+                        args=merged_args,
+                        requires_approval=canonical.requires_approval,
+                        approval_reason=canonical.approval_reason,
+                        destructive=canonical.destructive,
+                        inferred_fields=canonical.inferred_fields,
+                        inference_sources=canonical.inference_sources,
+                    )
+            return self._sanitize_plan_message_bodies(canonical)
+
         # Wave 1: structured ReAct tool_calls win over NL phrase matching — but never
         # override a frozen approval card already staged in pending_task.
         if (
@@ -1531,7 +1566,12 @@ class ChatConnectorExecutionService:
                     "pending_task": (refreshed or {}).get("pending_task"),
                     "workflow_status": clarification.status,
                 }
-            pending_params = (task_state.get("pending_task") or {}).get("params")
+            from app.services.execution_dispatch import resolve_executable_connector_plan
+
+            canonical_exec = resolve_executable_connector_plan(task_state)
+            if canonical_exec is not None and canonical_exec.invoke_action:
+                plan = canonical_exec
+            pending_params = self.plan_to_dict(plan)
             execution = await self.execute_plan(
                 org_id=org_id,
                 user_id=user_id,
@@ -1670,18 +1710,23 @@ class ChatConnectorExecutionService:
             format_approval_mismatch_message,
             plan_from_approved_params,
         )
+        from app.services.execution_dispatch import resolve_executable_connector_plan
 
+        canonical_exec = resolve_executable_connector_plan(task_state)
         try:
-            plan = plan_from_approved_params(
-                params,
-                registry=self._registry,
-                audit=MismatchAuditContext(
-                    client=client,
-                    org_id=org_id,
-                    actor_id=user_id,
-                    conversation_id=conversation_id,
-                ),
-            )
+            if canonical_exec is not None and canonical_exec.invoke_action:
+                plan = canonical_exec
+            else:
+                plan = plan_from_approved_params(
+                    params,
+                    registry=self._registry,
+                    audit=MismatchAuditContext(
+                        client=client,
+                        org_id=org_id,
+                        actor_id=user_id,
+                        conversation_id=conversation_id,
+                    ),
+                )
         except ApprovalActionMismatchError as exc:
             return ExecutionResult(
                 success=False,
