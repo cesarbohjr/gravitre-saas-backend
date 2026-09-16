@@ -50,6 +50,13 @@ logger = get_logger(__name__)
 OPENAI_REQUEST_TIMEOUT_S = 30.0
 
 
+def _openai_system_messages(system_prompt: str | None) -> list[Message]:
+    from app.services.prompt_prefix_cache import openai_system_messages
+
+    hardened = harden_authority_system_prompt(system_prompt)
+    return openai_system_messages(hardened)  # type: ignore[return-value]
+
+
 class TaskType(StrEnum):
     CLASSIFICATION = "classification"
     INTENT_DETECTION = "intent_detection"
@@ -269,9 +276,7 @@ class ModelRouter:
         # platform (system prompt is developer-authored, left intact).
         redact = getattr(self.settings, "ai_pii_redaction_enabled", True)
         messages: list[Message] = []
-        hardened_system = harden_authority_system_prompt(system_prompt)
-        if hardened_system:
-            messages.append({"role": "system", "content": hardened_system})
+        messages.extend(_openai_system_messages(system_prompt))
         for c in context or []:
             role = c.get("role")
             content = c.get("content")
@@ -470,9 +475,7 @@ class ModelRouter:
 
         redact = getattr(self.settings, "ai_pii_redaction_enabled", True)
         messages: list[Message] = []
-        hardened_system = harden_authority_system_prompt(system_prompt)
-        if hardened_system:
-            messages.append({"role": "system", "content": hardened_system})
+        messages.extend(_openai_system_messages(system_prompt))
         for c in context or []:
             role = c.get("role")
             content = c.get("content")

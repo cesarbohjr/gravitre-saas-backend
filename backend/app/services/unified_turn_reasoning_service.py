@@ -877,6 +877,18 @@ async def run_unified_turn_shadow(
             "or connector results."
         )
 
+    from app.services.operator_act_context import build_operator_act_context
+
+    operator_act = build_operator_act_context(
+        user_text=message,
+        connected_integrations=connected,
+        task_state=task_state if isinstance(task_state, dict) else None,
+    )
+    if operator_act.section:
+        context_parts.append(("operator_act", operator_act.section))
+        if _compiled_ctx is None:
+            user_parts.append(operator_act.section)
+
     if _compiled_ctx is None:
         _add_part("tools_list_note", tools_list_note)
         remind_me = _is_remind_me_turn(message)

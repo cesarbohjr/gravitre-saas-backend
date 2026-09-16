@@ -428,6 +428,18 @@ def test_build_system_prompt_adds_spoken_register(intelligence: AgentIntelligenc
     assert "Register 5 — SPOKEN" in prompt
 
 
+def test_build_system_prompt_includes_operator_act_section(intelligence: AgentIntelligence):
+    prompt = intelligence._build_system_prompt(
+        "assistant",
+        None,
+        [],
+        {"orgName": "Acme"},
+        operator_act_section="## Operator Act Context\nConnected systems: hubspot",
+    )
+    assert "## Operator Act Context" in prompt
+    assert "hubspot" in prompt
+
+
 def test_build_system_prompt_prefers_ranked_context_over_unranked_rag(
     intelligence: AgentIntelligence,
 ):

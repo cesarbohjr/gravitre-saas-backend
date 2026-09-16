@@ -524,3 +524,25 @@ def test_resolve_permitted_tools_from_agent_systems():
 def test_resolve_permitted_tools_explicit_override():
     allowed = resolve_permitted_tools({"systems": ["hubspot"]}, explicit=["jira"])
     assert allowed == ["jira"]
+
+
+@pytest.mark.asyncio
+async def test_react_stops_before_next_llm_round(engine: ReActEngine, tool_ctx: ToolContext):
+    from dataclasses import replace
+
+    ctx = replace(tool_ctx, conversation_id="conv-stop")
+    engine._chat_with_tools = AsyncMock()
+    with patch("app.operators.react_engine.moderate_input", new=AsyncMock()):
+        with patch("app.operators.react_engine.write_audit_event"):
+            with patch(
+                "app.operators.react_engine._react_loop_stop_requested",
+                return_value=True,
+            ):
+                result = await engine.run(
+                    ctx=ctx,
+                    task="list hubspot contacts",
+                    permitted_tools=["hubspot"],
+                    connected_integrations=["hubspot"],
+                )
+    assert result.status == ReActStatus.STOPPED
+    engine._chat_with_tools.assert_not_called()
