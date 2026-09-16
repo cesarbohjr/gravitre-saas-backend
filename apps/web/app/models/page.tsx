@@ -4,20 +4,18 @@ import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { BuiltInModelsPanel } from "@/app/intelligence/models/page"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ModelRegistryOverview } from "@/components/gravitre/model-registry-overview"
-import { EmptyState } from "@/components/gravitre/empty-state"
+import { ModelsStage } from "@/components/intelligence/pages/models-stage"
+import { studioIntentById } from "@/lib/intelligence/model-catalog-display"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -42,7 +40,7 @@ import { connectorVendorKey } from "@/lib/connectors"
 import { mlProviderVendorKey } from "@/lib/brand-vendor"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { useAuth } from "@/lib/auth-context"
-import type { MlModelSummary, MlModelType } from "@/types/api"
+import type { MlModelType } from "@/types/api"
 import {
   MODEL_TYPE_CATALOG,
   TASK_TYPE_SUGGESTIONS,
@@ -56,70 +54,17 @@ import {
   type MlStackLayerId,
 } from "@/lib/ml-registry-catalog"
 import {
-  ChevronRight,
   Filter,
-  Link2,
-  Plus,
   RefreshCw,
   Sparkles,
 } from "lucide-react"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-
-const availabilityBadge: Record<string, string> = {
-  platform: "bg-info/10 text-info border-info/25",
-  connected: "bg-success/10 text-success border-success/25",
-  requires_connection: "bg-warning/10 text-warning border-warning/25",
-}
+import { describeStatus } from "@/lib/intelligence/status-language"
 
 function formatType(value: string): string {
   return value.replace(/_/g, " ")
-}
-
-function ModelRow({ model, index }: { model: MlModelSummary; index: number }) {
-  const status = model.status ?? "draft"
-  const meta = modelTypeMeta(model.modelType)
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
-    >
-      <Link
-        href={`/models/${model.id}`}
-        className="group block rounded-xl border border-border/60 bg-card/40 p-4 transition-all hover:border-primary/30 hover:bg-card/70 hover:shadow-sm"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-medium text-foreground line-clamp-1">{model.name}</p>
-              {meta ? (
-                <span className="rounded-md bg-secondary/80 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {meta.label}
-                </span>
-              ) : null}
-            </div>
-            {model.description ? (
-              <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{model.description}</p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="capitalize">{formatType(model.modelType)}</span>
-              {model.baseModel ? <span className="truncate">base: {model.baseModel}</span> : null}
-              <span>v{model.currentVersion}</span>
-              {model.deployedVersion != null ? (
-                <span className="text-success">live v{model.deployedVersion}</span>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            <ModelStatusBadge status={status} size="sm" showDetail={false} />
-            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-          </div>
-        </div>
-      </Link>
-    </motion.div>
-  )
 }
 
 export default function ModelsPage() {
@@ -208,7 +153,12 @@ export default function ModelsPage() {
 
   useEffect(() => {
     if (searchParams.get("action") !== "register") return
+    const intent = studioIntentById(searchParams.get("intent"))
     openRegisterDialog()
+    if (intent) {
+      setModelType(intent.modelType)
+      setTaskType(TASK_TYPE_SUGGESTIONS[intent.modelType][0] ?? "")
+    }
   }, [searchParams])
 
   function clearTemplateSelection() {
@@ -296,15 +246,14 @@ export default function ModelsPage() {
                 <RefreshCw className={cn("mr-1 h-4 w-4", isValidating && "animate-spin")} />
                 Refresh
               </Button>
-              <Button size="sm" onClick={openRegisterDialog}>
-                <Plus className="mr-1 h-4 w-4" />
-                Register model
+              <Button size="sm" asChild>
+                <Link href={APP_ROUTES.intelligenceModelStudio}>Create in Studio</Link>
               </Button>
             </div>
           }
         />
 
-        <IntelligenceShell activeTab="models" loadState="READY">
+        <IntelligenceShell activeTab="models" loadState={isLoading && models.length === 0 ? "LOADING" : "READY"}>
 
         {/*
           Intelligence redesign Phase 1 (2026-09-11): Built-in Models folded
@@ -323,24 +272,26 @@ export default function ModelsPage() {
           </TabsContent>
           <TabsContent value="registry" className="space-y-6 pt-4">
 
-        <ModelRegistryOverview
-          totalModels={models.length}
-          deployedCount={stats.deployed}
-          trainingCount={stats.training}
-          connectedDataSources={dataSources}
-          selectedLayer={selectedTemplateLayer}
-          onSelectTemplate={applyLayerTemplate}
-        />
-
-        {models.length > 0 ? (
+        {models.length > 0 || isLoading ? (
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric label="Registered" value={models.length} />
-            <GravitreMetric label="Deployed" value={stats.deployed} />
-            <GravitreMetric label="Ready" value={stats.ready} />
             <GravitreMetric
-              label="In training"
-              value={stats.training}
-              warning={stats.training > 0}
+              label="Registered"
+              value={isLoading && models.length === 0 ? "—" : models.length}
+              hint={isLoading && models.length === 0 ? "Loading models…" : "Registry scope"}
+            />
+            <GravitreMetric
+              label="In production use"
+              value={isLoading && models.length === 0 ? "—" : stats.deployed}
+              hint="Deployed versions only"
+            />
+            <GravitreMetric
+              label="Ready to deploy"
+              value={isLoading && models.length === 0 ? "—" : stats.ready}
+            />
+            <GravitreMetric
+              label="Learning from data"
+              value={isLoading && models.length === 0 ? "—" : stats.training}
+              hint={describeStatus("training").phrase}
             />
           </section>
         ) : null}
@@ -375,67 +326,21 @@ export default function ModelsPage() {
           </Select>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
-          </div>
-        ) : error ? (
+        {error ? (
           <WorkSectionErrorCard
             title="Could not load models"
             message={error instanceof Error ? error.message : "Unknown error"}
             error={error}
             onRetry={() => mutate()}
           />
-        ) : models.length === 0 ? (
-          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
-            <EmptyState
-              icon={NucleoIntelligence}
-              title="No models yet"
-              description="Register a scoring model, forecast, fine-tuned assistant, or anomaly detector. Available bases follow your connected data and LLM providers."
-              action={{ label: "Register model", onClick: openRegisterDialog }}
-            />
-          </motion.div>
-        ) : filteredModels.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/70 bg-secondary/20 p-8 text-center text-sm text-muted-foreground">
-            No models match the current filters.
-          </div>
         ) : (
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {filteredModels.map((model, index) => (
-                <ModelRow key={model.id} model={model} index={index} />
-              ))}
-            </AnimatePresence>
-          </div>
+          <ModelsStage
+            models={filteredModels}
+            isLoading={isLoading}
+            enabled={Boolean(user)}
+            onRegister={() => router.push(APP_ROUTES.intelligenceModelStudio)}
+          />
         )}
-
-        {!error ? (
-        <div className="rounded-xl border border-border/50 bg-secondary/20 p-4 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground/90">How it fits together</p>
-          <ol className="mt-2 list-decimal space-y-1 pl-4">
-            <li>Register a model here and pick a type plus base model.</li>
-            <li>
-              Add training data on{" "}
-              <Link href="/training" className="text-primary underline-offset-4 hover:underline">
-                Training
-              </Link>{" "}
-              and run a job for this model.
-            </li>
-            <li>Deploy a version, then use it from workflows or agents.</li>
-          </ol>
-          {dataSources.length === 0 ? (
-            <p className="mt-3 flex flex-wrap items-center gap-1">
-              <Link2 className="h-3.5 w-3.5" />
-              Connect PostgreSQL, Snowflake, or Segment on{" "}
-              <Link href="/connectors" className="text-primary underline-offset-4 hover:underline">
-                Connectors
-              </Link>{" "}
-              to unlock scoring and forecast bases.
-            </p>
-          ) : null}
-        </div>
-        ) : null}
           </TabsContent>
         </Tabs>
         </IntelligenceShell>
@@ -458,9 +363,9 @@ export default function ModelsPage() {
               Register model
             </DialogTitle>
             <DialogDescription className="text-left">
-              Creates a draft model. Train on{" "}
-              <Link href="/training" className="text-primary underline-offset-4 hover:underline">
-                Training
+              Creates a draft model. Train, evaluate, and inspect runs in{" "}
+              <Link href={APP_ROUTES.intelligenceModelStudio} className="text-primary underline-offset-4 hover:underline">
+                Model Studio
               </Link>
               , then deploy from the model page.
             </DialogDescription>

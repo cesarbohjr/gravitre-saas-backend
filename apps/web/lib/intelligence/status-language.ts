@@ -46,12 +46,12 @@ export const STATUS_LANGUAGE: Record<string, StatusLanguageEntry> = {
   // --- Brief's exact target table -----------------------------------
   untrained: {
     phrase: "Needs training",
-    detail: "No training run has started yet — add data on Training to activate it.",
+    detail: "No training run has started yet — add data in Model Studio to activate it.",
     tone: "neutral",
   },
   not_trained: {
     phrase: "Needs training",
-    detail: "No training run has started yet — add data on Training to activate it.",
+    detail: "No training run has started yet — add data in Model Studio to activate it.",
     tone: "neutral",
   },
   training: {

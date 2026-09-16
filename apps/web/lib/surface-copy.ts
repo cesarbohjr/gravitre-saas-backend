@@ -40,7 +40,7 @@ export const SURFACE_COPY = {
   models: {
     title: "Models",
     shortTitle: "Models",
-    description: "Register and deploy models your workflows and agents can call.",
+    description: "Register models, see where they are used, and improve them from evidence. Create and train in Model Studio.",
     badge: "Your model registry",
     heroTitle: "Models ready for real work",
     heroDescription:
