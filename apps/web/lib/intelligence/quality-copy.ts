@@ -3,6 +3,7 @@ const QUALITY_COPY: Record<string, string> = {
   INSUFFICIENT_DATA: "Not enough verified data yet",
   NOT_CONFIGURED: "Not set up yet",
   UNSCOPED_PREDICTION: "This signal needs a connected source",
+  NO_OUTCOME_ATTRIBUTION: "No outcome path is attributed yet",
   NO_BUSINESS_LEARNING_YET: "No validated business learning in this period",
   PARTIAL_SNAPSHOT: "Some intelligence sources are still loading",
   DEGRADED_SOURCES: "Some sources unavailable",

@@ -1,65 +1,39 @@
 "use client"
 
-/**
- * Intelligence redesign Phase 1 (2026-09-11) — Performance is a new,
- * first-class Intelligence destination for real, measured business outcomes
- * (hours automated, ROI, business-impact score, revenue-risk signals).
- *
- * This composes existing, real components rather than inventing a new data
- * model, per the redesign brief: `BusinessImpactCard` and `AgentRoiPanel`
- * already pull real org data and already render honest "—" / empty states
- * when measurement isn't available. Phase 1 scope is making Performance a
- * visible, always-reachable primary destination with real content wired in;
- * a fuller Phase 7 pass (dedicated KNOWS/LEARNS/PREDICTS/ACTS/IMPROVES
- * framing) is tracked separately and does not block this from being real.
- */
-import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceShell } from "@/components/intelligence/shell"
-import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
-import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
-import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { StatsSkeleton } from "@/components/gravitre/loading-state"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { Button } from "@/components/ui/button"
+import { IntelligenceShell } from "@/components/intelligence/shell"
+import { PerformanceStage } from "@/components/intelligence/pages/performance-stage"
 import { useAuth } from "@/lib/auth-context"
-import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
-import { formatPercent, readNumber } from "@/lib/intelligence/helpers"
-import { ConfidenceBadge } from "@/components/intelligence/confidence-badge"
-import { ESTIMATED_CONFIDENCE_LABEL } from "@/lib/outcome-labels"
-import { BusinessImpactCard } from "../../admin/intelligence/_components/business-impact-card"
-import { AgentRoiPanel } from "@/components/enterprise/agent-roi-panel"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { ArrowsClockwise } from "@phosphor-icons/react"
 
 const copy = {
   title: "Performance",
   description:
-    "Measured business outcomes: hours automated, ROI, business-impact score, and revenue-risk signals — no fabricated numbers, honest dashes when a metric isn't measurable yet.",
+    "Is Gravitre making the business better? Outcome attribution, contribution, and evidence — not a telemetry dashboard.",
 }
 
 export default function IntelligencePerformancePage() {
   const { user } = useAuth()
-  const { data: outcomes, error, mutate, isLoading } = useSWR(
-    user ? ["intelligence/performance/outcomes", 30] : null,
-    () => intelligenceApi.outcomes({ periodDays: 30 }),
-    { revalidateOnFocus: false },
-  )
-  const { data: trust } = useSWR(user ? "intelligence/performance/trust-summary" : null, () =>
-    intelligenceApi.trustSummary({ periodDays: 30 }),
-  )
   const {
     data: pageContext,
-    loadState: snapshotLoadState,
+    error,
+    loadState,
     generatedAt,
-    isValidating: snapshotValidating,
-    mutate: mutateSnapshot,
+    isValidating,
+    mutate,
   } = useIntelligenceSnapshot({
     enabled: Boolean(user),
     activeLens: "improves",
     windowHours: 24 * 30,
     swrKeySuffix: "performance",
   })
-  const snapshotReady = isSnapshotMetricsReady(snapshotLoadState)
+  const suggestedQuestions = pageContext?.suggestedQuestions ?? []
 
   if (!user) {
     return (
@@ -81,102 +55,38 @@ export default function IntelligencePerformancePage() {
     )
   }
 
-  const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
-  const byEvent = (outcomes?.by_event_type as Record<string, number> | undefined) ?? {}
-  const canonicalOutcomes =
-    pageContext?.metrics.outcomes ?? pageContext?.snapshot.metrics.outcomes ?? {}
-  const totalEvents = readNumber(summary.total_events, 0)
-  const measuredOutcomes = snapshotReady
-    ? readNumber(canonicalOutcomes.measuredOutcomes, totalEvents)
-    : null
-  const avgConfidence = trust?.avg_confidence as number | null | undefined
-  const trustRecord = trust as Record<string, unknown> | undefined
-  const confidenceIsEstimate = Boolean(
-    trustRecord?.confidence_is_estimate ?? trustRecord?.confidenceIsEstimate,
-  )
-
   return (
     <AppShell title={copy.title}>
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
+              <ArrowsClockwise
+                className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`}
+                weight="bold"
+                aria-hidden
+              />
+              Refresh
+            </Button>
+          }
         />
 
         <IntelligenceShell
           activeTab="performance"
-          loadState={snapshotLoadState}
+          loadState={loadState}
           generatedAt={generatedAt}
-          isValidating={snapshotValidating}
-          onRefresh={() => {
-            mutate()
-            mutateSnapshot()
-          }}
+          isValidating={isValidating}
+          onRefresh={() => mutate()}
         >
-        {isLoading && !outcomes ? (
-          <StatsSkeleton count={4} />
-        ) : totalEvents === 0 && measuredOutcomes === 0 ? (
-          <EmptyState
-            variant="ai"
-            title="No measured outcomes yet"
-            description="Business-outcome events appear here once agents finish work with measurable results over the last 30 days."
+          <PerformanceStage
+            pageContext={pageContext}
+            loadState={loadState}
+            enabled={Boolean(user)}
+            suggestedQuestions={suggestedQuestions}
           />
-        ) : (
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric
-              label="Measured outcomes"
-              value={measuredOutcomes ?? "—"}
-              hint={
-                snapshotReady
-                  ? "Canonical IMPROVES projection (30d window)"
-                  : "Loading intelligence…"
-              }
-              icon={<NucleoIntelligence className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label={confidenceIsEstimate ? ESTIMATED_CONFIDENCE_LABEL : "Avg confidence"}
-              value={
-                avgConfidence != null ? (
-                  <span className="inline-flex flex-col gap-1">
-                    <span>{formatPercent(avgConfidence)}</span>
-                    <ConfidenceBadge
-                      score={avgConfidence}
-                      isEstimate={confidenceIsEstimate}
-                      showScore={false}
-                      className="text-[10px] normal-case tracking-normal"
-                    />
-                  </span>
-                ) : (
-                  "—"
-                )
-              }
-              hint={confidenceIsEstimate ? "Estimate" : "Trust period"}
-              warning={confidenceIsEstimate}
-            />
-            <GravitreMetric
-              label="Recommendations created"
-              value={readNumber(byEvent.recommendation_created, 0)}
-              hint="Last 30 days"
-            />
-            <GravitreMetric
-              label="Recommendations rejected"
-              value={readNumber(byEvent.recommendation_rejected, 0)}
-              hint="Last 30 days"
-              warning={readNumber(byEvent.recommendation_rejected, 0) > 0}
-            />
-          </section>
-        )}
-
-        <div>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Business-impact score &amp; revenue risk</h2>
-          <BusinessImpactCard />
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Agent ROI — hours automated &amp; estimated value</h2>
-          <AgentRoiPanel defaultPeriodDays={30} />
-        </div>
         </IntelligenceShell>
       </div>
     </AppShell>

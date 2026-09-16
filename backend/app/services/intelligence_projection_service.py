@@ -19,6 +19,7 @@ from app.schemas.intelligence_projection import (
 from app.services.business_signals_engine import get_business_signals_engine
 from app.services.intelligence_agent_roster import load_canonical_agents
 from app.services.intelligence_graph_builder import build_intelligence_graph, filter_graph_for_lens
+from app.services.intelligence_outcome_path import build_outcome_paths
 from app.services.intelligence_prediction_dedup import normalize_signals_to_predictions
 from app.services.intelligence_semantics import model_business_label
 from app.services.knowledge_graph_service import get_knowledge_graph_service
@@ -286,6 +287,8 @@ class IntelligenceProjectionService:
 
         if not learnings:
             quality_flags.append("NO_BUSINESS_LEARNING_YET")
+        if not recent_events:
+            quality_flags.append("NO_OUTCOME_ATTRIBUTION")
 
         measured_outcomes = sum(d.get("recentResolved", 0) for d in departments)
         recommendations = sum(
@@ -343,7 +346,19 @@ class IntelligenceProjectionService:
             models=models,
             signals=raw_signals,
             workflows=[],
-            outcomes=[{"event": r.get("outcome_event"), "department": r.get("department")} for r in recent_events[:20]],
+            outcomes=[
+                {
+                    "id": r.get("id"),
+                    "event": r.get("outcome_event"),
+                    "department": r.get("department"),
+                    "agentId": r.get("agent_id"),
+                    "entityType": r.get("entity_type"),
+                    "entityId": r.get("entity_id"),
+                    "confidence": r.get("confidence_score"),
+                    "createdAt": r.get("created_at"),
+                }
+                for r in recent_events[:40]
+            ],
             knowledgeEntityTypes=knowledge_entity_types,
         )
 
@@ -375,8 +390,16 @@ class IntelligenceProjectionService:
             "What predictions need attention?",
             "What has Gravitre learned recently?",
         ]
+        if lens == "improves":
+            suggested = [
+                "Is Gravitre making the business better?",
+                "Which outcomes can we attribute?",
+                "What has Gravitre learned recently?",
+            ]
         if configured == 0:
-            suggested[0] = "What should I connect first?"
+            suggested[0] = "What should I connect first?" if lens != "improves" else suggested[0]
+
+        outcome_paths = build_outcome_paths(snapshot)
 
         return IntelligencePageContext(
             snapshot=snapshot,
@@ -385,6 +408,7 @@ class IntelligenceProjectionService:
             metrics=snapshot.metrics,
             qualityFlags=snapshot.qualityFlags,
             suggestedQuestions=suggested,
+            outcomePaths=outcome_paths,
         )
 
 

@@ -179,6 +179,39 @@ class AssistantVisualization(BaseModel):
     timeWindowHours: int | None = None
 
 
+OutcomePathStepKind = Literal[
+    "objective",
+    "signal",
+    "prediction",
+    "agent_workflow",
+    "action",
+    "outcome",
+    "business_impact",
+    "learning",
+]
+
+
+class OutcomePathStep(BaseModel):
+    """One node in the I7 causal chain. Missing evidence stays unknown — never invented."""
+
+    kind: OutcomePathStepKind
+    title: str
+    label: str
+    present: bool = False
+    evidence: list[str] = Field(default_factory=list)
+    sourceRecordId: str | None = None
+    qualityNote: str | None = None
+
+
+class OutcomeAttributionPath(BaseModel):
+    id: str
+    scopeId: str
+    scopeLabel: str
+    steps: list[OutcomePathStep] = Field(default_factory=list)
+    presentStepCount: int = 0
+    complete: bool = False
+
+
 class IntelligencePageContext(BaseModel):
     """Scoped VIEW over canonical IntelligenceSnapshot — not a separate source of truth."""
 
@@ -191,3 +224,4 @@ class IntelligencePageContext(BaseModel):
     metrics: IntelligenceMetrics
     qualityFlags: list[IntelligenceQualityFlag] = Field(default_factory=list)
     suggestedQuestions: list[str] = Field(default_factory=list)
+    outcomePaths: list[OutcomeAttributionPath] = Field(default_factory=list)

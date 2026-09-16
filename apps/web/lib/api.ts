@@ -2700,6 +2700,8 @@ export type IntelligencePageContextResponse = {
     metrics: IntelligenceCanonicalMetrics
     qualityFlags: string[]
     departments: Array<Record<string, unknown>>
+    outcomes?: Array<Record<string, unknown>>
+    signals?: Array<Record<string, unknown>>
   }
   graph: { nodes: Array<Record<string, unknown>>; edges: Array<Record<string, unknown>> }
   activeLens: string
@@ -2707,6 +2709,36 @@ export type IntelligencePageContextResponse = {
   metrics: IntelligenceCanonicalMetrics
   qualityFlags: string[]
   suggestedQuestions: string[]
+  outcomePaths?: OutcomeAttributionPath[]
+}
+
+export type OutcomePathStepKind =
+  | "objective"
+  | "signal"
+  | "prediction"
+  | "agent_workflow"
+  | "action"
+  | "outcome"
+  | "business_impact"
+  | "learning"
+
+export type OutcomePathStep = {
+  kind: OutcomePathStepKind
+  title: string
+  label: string
+  present: boolean
+  evidence: string[]
+  sourceRecordId?: string | null
+  qualityNote?: string | null
+}
+
+export type OutcomeAttributionPath = {
+  id: string
+  scopeId: string
+  scopeLabel: string
+  steps: OutcomePathStep[]
+  presentStepCount: number
+  complete: boolean
 }
 
 // ============ Memory Promotion (v4) ============
