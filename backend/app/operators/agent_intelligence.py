@@ -821,6 +821,7 @@ class AgentIntelligence:
         spoken_mode: bool = False,
         spoken_user_text: str | None = None,
         spoken_settings: Settings | None = None,
+        operator_act_section: str | None = None,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming()."""
         from app.services.conversational_behavior import conversational_behavior_section
@@ -854,7 +855,6 @@ class AgentIntelligence:
                 org_context_block=org_context_block,
             )
         )
-        history_section = self._format_task_history(task_history)
         handoff_section = ""
         if handoff_context:
             handoff_section = (
@@ -901,8 +901,7 @@ class AgentIntelligence:
             if polish_flags["response_length_adapt_v1"]:
                 band = resolve_response_length_band(spoken_user_text)
                 sections.extend([response_length_directive(band).strip(), ""])
-        if anti_repeat:
-            sections.extend([anti_repeat, ""])
+        # Anti-repeat is per-turn (volatile). Keep it out of the stable prompt-cache prefix.
 
         # Active Training → Custom instructions (org-wide + this agent).
         try:
@@ -948,6 +947,8 @@ class AgentIntelligence:
                 sections.extend(["## Tone Adaptation", adaptation_hint, ""])
         if task_state_section and task_state_section.strip():
             sections.extend(["## Conversation Task State", task_state_section.strip(), ""])
+        if operator_act_section and operator_act_section.strip():
+            sections.extend([operator_act_section.strip(), ""])
         sections.extend([
             "## Your Internal Knowledge",
             rag_section.strip(),
@@ -965,8 +966,9 @@ class AgentIntelligence:
             )
         if entity_relationship_section and entity_relationship_section.strip():
             sections.extend(["", entity_relationship_section.strip()])
-        if history_section.strip():
-            sections.append(history_section.strip())
+        # Conversation turns belong in the messages prefix (Phase F5), not the system prompt.
+        if anti_repeat:
+            sections.extend(["", anti_repeat])
         if handoff_section.strip():
             sections.append(handoff_section.strip())
         if memory_section and memory_section.strip():
@@ -1451,6 +1453,13 @@ class AgentIntelligence:
             memory_section=memory_section,
             task_history=task_history,
         )
+        from app.services.operator_act_context import build_operator_act_context
+
+        operator_act = build_operator_act_context(
+            user_text=task_text,
+            connected_integrations=list(connected),
+            task_state=None,
+        )
         system_prompt = self._build_system_prompt(
             str(params.get("surface") or "agent"),
             agent,
@@ -1462,6 +1471,7 @@ class AgentIntelligence:
             company_intelligence_section=company_block or None,
             entity_relationship_section=entity_block or None,
             conflicts=rag_conflicts,
+            operator_act_section=operator_act.section,
         )
         persona = get_agent_persona(agent)
         model = select_model_for_agent(agent, client, org_id, task_text, parameters=params)
@@ -1483,6 +1493,7 @@ class AgentIntelligence:
             run_id=run_id,
             task_id=task_id or run_id,
             agent_id=permission_agent_id,
+            conversation_id=None,
         )
 
         react_result = await self.react_engine.run(
@@ -1598,6 +1609,7 @@ class AgentIntelligence:
         department: str | None = None,
         spoken_mode: bool = False,
         composer_failure_probe: str | None = None,
+        interrupt_payload: dict[str, Any] | None = None,
     ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -4264,6 +4276,8 @@ class AgentIntelligence:
         combined_persona_modifier = "\n\n".join(persona_modifier_parts) if persona_modifier_parts else None
         surface = "agent_chat" if agent_id else "assistant"
 
+        from app.services.operator_act_context import build_operator_act_context
+
         system_prompt = self._build_system_prompt(
             surface,
             agent if agent_id else None,
@@ -4287,6 +4301,12 @@ class AgentIntelligence:
             spoken_mode=bool(spoken_mode),
             spoken_user_text=query,
             spoken_settings=active_settings,
+            operator_act_section=build_operator_act_context(
+                user_text=task_text,
+                connected_integrations=connected_list,
+                task_state=task_state if isinstance(task_state, dict) else None,
+                interrupt=interrupt_payload,
+            ).section,
         )
         _mark("system_prompt_built")
 
@@ -4320,7 +4340,11 @@ class AgentIntelligence:
             task_history=None,
         )
         if history_lines:
-            task_prompt = f"{task_prompt}\n<conversation_history>\n" + "\n".join(history_lines) + "\n</conversation_history>"
+            logger.debug(
+                "prompt_prefix_history_turns=%s org_id=%s",
+                len(history_lines),
+                org_id,
+            )
 
         from app.services.execution_memory_service import get_execution_memory_service
 
@@ -4497,6 +4521,7 @@ class AgentIntelligence:
             environment_name=environment_name,
             agent_id=permission_agent_id,
             connector_timeout_seconds=engine_settings.connector_timeout_seconds,
+            conversation_id=conversation_id,
         )
 
         # F1 tertiary gate: never let classical ReAct invent steps when retrieve hits.
@@ -4740,6 +4765,7 @@ class AgentIntelligence:
             tool_classification=pipeline_classification,
             connector_focus=connector_focus,
             plan_runtime=_react_plan_runtime,
+            conversation_history=prepared_context.messages,
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}

@@ -57,6 +57,20 @@ _NEEDS_HUMAN_PREFIX = "NEEDS_HUMAN_INPUT:"
 _OBSERVATION_MAX_CHARS = 8000
 
 
+def _react_loop_stop_requested(ctx: ToolContext) -> bool:
+    conversation_id = getattr(ctx, "conversation_id", None)
+    org_id = getattr(ctx, "org_id", None)
+    if not conversation_id or not org_id:
+        return False
+    from app.services.chat_turn_cancel_service import is_stop_requested
+
+    return is_stop_requested(
+        str(org_id),
+        str(conversation_id),
+        settings=getattr(ctx, "settings", None),
+    )
+
+
 def _log_react_llm_round(
     *,
     org_id: Any,
@@ -108,6 +122,7 @@ class ReActStatus(StrEnum):
     NEEDS_HUMAN_INPUT = "needs_human_input"
     MAX_ITERATIONS_REACHED = "max_iterations_reached"
     ERROR = "error"
+    STOPPED = "stopped"
 
 
 @dataclass
@@ -214,6 +229,7 @@ class ReActEngine:
         audit_resource_type: str = "agent_job",
         audit_resource_id: str | None = None,
         plan_runtime: Any | None = None,
+        conversation_history: list[dict[str, Any]] | None = None,
     ) -> ReActResult:
         """Execute a ReAct loop for a single agent task."""
         from app.services.ai_tracing import trace_span
@@ -233,6 +249,7 @@ class ReActEngine:
                 audit_resource_id=audit_resource_id,
                 emit_text_deltas=False,
                 plan_runtime=plan_runtime,
+                conversation_history=conversation_history,
             ):
                 if event.kind == "done":
                     result = event.react_result
@@ -258,6 +275,7 @@ class ReActEngine:
         tool_classification: dict[str, Any] | None = None,
         connector_focus: tuple[str, ...] | list[str] | None = None,
         plan_runtime: Any | None = None,
+        conversation_history: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Streaming variant — same reasoning loop as run(), yields progress events."""
         async for event in self._react_loop(
@@ -277,6 +295,7 @@ class ReActEngine:
             tool_classification=tool_classification,
             connector_focus=connector_focus,
             plan_runtime=plan_runtime,
+            conversation_history=conversation_history,
         ):
             yield event
 
@@ -299,6 +318,7 @@ class ReActEngine:
         tool_classification: dict[str, Any] | None = None,
         connector_focus: tuple[str, ...] | list[str] | None = None,
         plan_runtime: Any | None = None,
+        conversation_history: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Shared ReAct implementation for run() and run_streaming()."""
         import uuid
@@ -348,12 +368,21 @@ class ReActEngine:
         messages: list[dict[str, Any]] = []
         from app.services.agent_security_gateway import harden_authority_system_prompt
         from app.services.gravitre_voice import apply_voice
+        from app.services.prompt_prefix_cache import openai_system_messages
 
         hardened = harden_authority_system_prompt(
             apply_voice(system_prompt or _default_react_system_prompt())
         )
-        if hardened:
-            messages.append({"role": "system", "content": hardened})
+        messages.extend(openai_system_messages(hardened))
+        from app.services.prompt_prefix_cache import history_as_prefix_messages
+
+        for prior in history_as_prefix_messages(conversation_history):
+            messages.append(
+                {
+                    "role": prior["role"],
+                    "content": redact_pii(prior["content"]),
+                }
+            )
         messages.append(
             {
                 "role": "user",
@@ -406,6 +435,17 @@ class ReActEngine:
             )
 
         while True:
+            if _react_loop_stop_requested(ctx):
+                result = ReActResult(
+                    status=ReActStatus.STOPPED,
+                    answer="",
+                    trace=trace,
+                    iterations=max(0, iteration),
+                    tool_calls=tool_calls_log,
+                    error="stopped",
+                )
+                yield ReActStreamEvent(kind="done", react_result=result)
+                return
             if routing_control is not None:
                 effective_max = max(
                     effective_max,
@@ -543,6 +583,18 @@ class ReActEngine:
                 ],
             }
             messages.append(assistant_message)
+
+            if _react_loop_stop_requested(ctx):
+                result = ReActResult(
+                    status=ReActStatus.STOPPED,
+                    answer=content or "",
+                    trace=trace,
+                    iterations=iteration,
+                    tool_calls=tool_calls_log,
+                    error="stopped",
+                )
+                yield ReActStreamEvent(kind="done", react_result=result)
+                return
 
             # Phase 2 — parallelize consecutive independent *read* tools in one
             # model turn. Writes stay serial + gated (approval short-circuit).

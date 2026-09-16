@@ -60,6 +60,8 @@ export interface GravitreAIMobileSheetBridgeProps {
   onRegenerate?: (assistantMessageId: string) => void
   assistantLabel?: string
   waitingLabel?: string
+  canContinueAfterStop?: boolean
+  onContinueAfterStop?: () => void
 
   // Composer — same values AiWorkspace's inline composer already uses.
   input: string
@@ -103,6 +105,8 @@ export function GravitreAIMobileSheetBridge({
   onRegenerate,
   assistantLabel,
   waitingLabel,
+  canContinueAfterStop,
+  onContinueAfterStop,
   input,
   onInputChange,
   onSubmit,
@@ -148,6 +152,8 @@ export function GravitreAIMobileSheetBridge({
           onRegenerate={onRegenerate}
           assistantLabel={assistantLabel}
           waitingLabel={waitingLabel}
+          canContinueAfterStop={canContinueAfterStop}
+          onContinueAfterStop={onContinueAfterStop}
         />
       </div>
       <div className="shrink-0 border-t border-divide p-2.5">

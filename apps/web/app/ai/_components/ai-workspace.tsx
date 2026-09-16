@@ -43,6 +43,7 @@ import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { isUserChatAbort, recoverCompletedChatTurn, writeLastEventId } from "@/lib/chat-replay"
 import { stopChatTurn } from "@/lib/chat-stop"
+import { CONTINUE_AFTER_STOP_TEXT } from "@/lib/chat-continue"
 import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
 import {
@@ -1368,6 +1369,7 @@ export function AiWorkspace({
       startChatPerf("first_token")
       lastUserPromptRef.current = prompt
       connectedFileRefsRef.current = attachments
+      setCanContinueAfterStop(false)
       await ensureConversation(prompt)
       sendMessage({
         text: prompt,
@@ -1804,9 +1806,15 @@ export function AiWorkspace({
 
   const isChatBusy = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
+  const [canContinueAfterStop, setCanContinueAfterStop] = useState(false)
   const abortChatTurn = useCallback(() => {
     stopChatTurn({ conversationId: activeConversationIdRef.current, stopStream: stop })
+    setCanContinueAfterStop(true)
   }, [stop])
+  const handleContinueAfterStop = useCallback(() => {
+    setCanContinueAfterStop(false)
+    void runChat(CONTINUE_AFTER_STOP_TEXT)
+  }, [runChat])
 
   messagesRef.current = messages
   const duplexActiveRef = useRef(false)
@@ -2244,6 +2252,8 @@ export function AiWorkspace({
           onRegenerate={handleRegenerateAssistant}
           assistantLabel={assistantLabel}
           waitingLabel={agentStatusLabel}
+          canContinueAfterStop={canContinueAfterStop && !isChatBusy}
+          onContinueAfterStop={handleContinueAfterStop}
           input={input}
           onInputChange={setInput}
           onSubmit={() => void submitPrompt(input)}
@@ -2330,6 +2340,8 @@ export function AiWorkspace({
           onRegenerate={handleRegenerateAssistant}
           assistantLabel={assistantLabel}
           waitingLabel={agentStatusLabel}
+          canContinueAfterStop={canContinueAfterStop && !isChatBusy}
+          onContinueAfterStop={handleContinueAfterStop}
           input={input}
           onInputChange={setInput}
           onSubmit={() => void submitPrompt(input)}
@@ -2379,6 +2391,8 @@ export function AiWorkspace({
         onRegenerate={handleRegenerateAssistant}
         assistantLabel={assistantLabel}
         waitingLabel={agentStatusLabel}
+        canContinueAfterStop={canContinueAfterStop && !isChatBusy}
+        onContinueAfterStop={handleContinueAfterStop}
         input={input}
         onInputChange={setInput}
         onSubmit={() => void submitPrompt(input)}
@@ -2682,6 +2696,8 @@ export function AiWorkspace({
                     onSaveQuestion={(messageId, text) => void handleSaveQuestion(messageId, text)}
                     assistantLabel={assistantLabel}
                     waitingLabel={agentStatusLabel}
+                    canContinueAfterStop={canContinueAfterStop && !isChatBusy}
+                    onContinueAfterStop={handleContinueAfterStop}
                   />
                 </div>
                 {shouldShowTaskSidePanel(researchProgressSteps, pendingTask) ? (

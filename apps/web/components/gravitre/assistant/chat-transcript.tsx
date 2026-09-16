@@ -122,6 +122,8 @@ type ChatTranscriptProps = {
   waitingLabel?: string
   isStreaming?: boolean
   agentStatusLabel?: string
+  canContinueAfterStop?: boolean
+  onContinueAfterStop?: () => void
 }
 
 function ActionIconButton({
@@ -177,6 +179,8 @@ export function ChatTranscript({
   waitingLabel,
   isStreaming = false,
   agentStatusLabel,
+  canContinueAfterStop = false,
+  onContinueAfterStop,
 }: ChatTranscriptProps) {
   // Which assistant message is currently being read aloud, so that message's
   // avatar can switch to the speaking waveform. Only one can speak at a time.
@@ -441,6 +445,20 @@ export function ChatTranscript({
             </div>
           )
         })}
+
+        {canContinueAfterStop && onContinueAfterStop && !isStreaming ? (
+          <div className="flex justify-start pl-10">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              onClick={onContinueAfterStop}
+            >
+              Continue
+            </Button>
+          </div>
+        ) : null}
 
         {showAgentWorking && !visible.some(({ message }) => message.id === lastMessage?.id && message.role === "assistant" && isStreaming) ? (
           <div className="flex gap-2.5">

@@ -81,6 +81,13 @@ from app.services.chat_stream_replay_service import (
     load_completed_turn_from_db,
     store_completed_turn,
 )
+from app.services.chat_interrupt_resume_service import (
+    clear_interrupted_turn,
+    load_interrupted_turn,
+    merge_history_with_interrupt,
+    resume_instruction,
+    store_interrupted_turn,
+)
 from app.services.response_composer import emit_stream_error
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.org_context_service import get_org_context_service
@@ -756,6 +763,11 @@ def _build_stream(
         streamed_text_parts: list[str] = []
         first_token_logged = False
         cancelled = False
+        seen_tool_names: list[str] = []
+        last_pending_task: dict[str, Any] | None = None
+        last_task_state: dict[str, Any] | None = None
+        interrupt = load_interrupted_turn(org_id, conversation_id, settings=settings)
+        model_query = resume_instruction(interrupt, user_text)
         try:
             if await stream_should_stop(http_request, org_id, conversation_id, settings=settings):
                 cancelled = True
@@ -765,7 +777,7 @@ def _build_stream(
                     settings=settings,
                     org_id=org_id,
                     user_id=user_id,
-                    query=user_text,
+                    query=model_query,
                     mode=mode,
                     requested_tools=requested_tools,
                     agent_id=agent_id,
@@ -782,6 +794,7 @@ def _build_stream(
                     department=department,
                     spoken_mode=bool(spoken_mode),
                     composer_failure_probe=composer_failure_probe,
+                    interrupt_payload=interrupt,
                 ):
                     if await stream_should_stop(
                         http_request, org_id, conversation_id, settings=settings
@@ -800,6 +813,17 @@ def _build_stream(
                                 perf.stop("first_token")
                                 first_token_logged = True
                             streamed_text_parts.append(delta)
+                    if isinstance(event, AssistantStreamEvent):
+                        if event.sse_type == "tool-input-available":
+                            tname = str(event.payload.get("toolName") or "").strip()
+                            if tname and tname not in seen_tool_names:
+                                seen_tool_names.append(tname)
+                        pending = event.payload.get("pendingTask") or event.payload.get("pending_task")
+                        if isinstance(pending, dict) and pending:
+                            last_pending_task = pending
+                        tstate = event.payload.get("taskState") or event.payload.get("task_state")
+                        if isinstance(tstate, dict) and tstate:
+                            last_task_state = tstate
                     yield assistant_event_to_sse_line(event)
         except Exception as exc:  # noqa: BLE001
             logger.error(
@@ -875,6 +899,26 @@ def _build_stream(
                 tool_results=complete.tool_results if complete else [],
                 assistant_message_id=complete.message_id if complete else None,
             )
+            store_interrupted_turn(
+                org_id,
+                conversation_id,
+                user_text=user_text,
+                assistant_text=assistant_text,
+                settings=settings,
+                extra={
+                    "tool_names": seen_tool_names
+                    or [
+                        str(row.get("name") or row.get("tool") or "")
+                        for row in (complete.tool_results if complete else [])
+                        if str(row.get("name") or row.get("tool") or "")
+                    ],
+                    "pending_task": (complete.pending_task if complete else None) or last_pending_task,
+                    "parameter_ledger": (
+                        ((complete.task_state or {}).get("parameter_ledger") if complete else None)
+                        or ((last_task_state or {}).get("parameter_ledger") if last_task_state else None)
+                    ),
+                },
+            )
             yield sse_done()
             return
 
@@ -926,6 +970,7 @@ def _build_stream(
             tool_results=complete.tool_results if complete else [],
             assistant_message_id=complete.message_id if complete else None,
         )
+        clear_interrupted_turn(org_id, conversation_id, settings=settings)
 
         suggestions: list[str] = []
         try:
@@ -1298,6 +1343,9 @@ async def assistant_chat(
             text = _message_text(message)
             if text.strip():
                 history_messages.append({"role": role, "content": text})
+
+    interrupt = load_interrupted_turn(org_id, conversation_id, settings=settings)
+    history_messages = merge_history_with_interrupt(history_messages, interrupt)
 
     prepared_holder = {"model_override": model_override, "task_type": task_type}
 

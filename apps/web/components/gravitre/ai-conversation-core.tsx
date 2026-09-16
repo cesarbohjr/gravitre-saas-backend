@@ -95,6 +95,8 @@ export type GravitreAIConversationTranscriptProps = {
   agentStatusLabel?: string
   status?: "ready" | "submitted" | "streaming" | "error"
   isBusy?: boolean
+  canContinueAfterStop?: boolean
+  onContinueAfterStop?: () => void
 }
 
 /**
@@ -129,6 +131,8 @@ export function GravitreAIConversationTranscript({
   agentStatusLabel,
   status = "ready",
   isBusy = false,
+  canContinueAfterStop = false,
+  onContinueAfterStop,
 }: GravitreAIConversationTranscriptProps) {
   const { setConversation, setApproval } = useGravitreAIWorkspace()
 
@@ -179,6 +183,8 @@ export function GravitreAIConversationTranscript({
       waitingLabel={waitingLabel}
       isStreaming={isStreaming}
       agentStatusLabel={agentStatusLabel}
+      canContinueAfterStop={canContinueAfterStop}
+      onContinueAfterStop={onContinueAfterStop}
     />
   )
 }

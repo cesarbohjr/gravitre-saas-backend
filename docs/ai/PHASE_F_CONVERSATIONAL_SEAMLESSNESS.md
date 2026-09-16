@@ -1,6 +1,6 @@
 # Phase F — Conversational seamlessness
 
-**Status:** F1 and F2 pushed to `main` (`267d0b91`). F3 in progress locally. F4 in progress locally. E6 remains `EXTERNAL_BLOCKED` until smoke-org GA4 OAuth is completed in production.
+**Status:** F1/F2 on `main` (`267d0b91`). F3/F4 on `main` (`6e876128` / `b0f748cf`). F5/F6 implemented locally (this increment): OpenAI split system messages + volatile Operator Act heading; interrupt extras (tools/ledger/pending_task); ReAct loop polls Stop. Live PASS still requires a prod stream after deploy. E6 remains `EXTERNAL_BLOCKED` until smoke-org GA4 OAuth is completed in production.
 
 This phase is **not** Intelligence G8 / I*. It is the chat runtime: stop, honesty of first token, typed parts, resumable streams, latency, and interrupt recovery — the gap between “a governed operator” and ChatGPT / Claude as a daily conversation.
 
@@ -52,13 +52,21 @@ Replay a **completed** backend turn after a proxy/SSE drop. `GET /api/assistant/
 
 **Done when:** After a dropped SSE, `/ai` recovers the persisted assistant bubble without a duplicate when `Last-Event-ID` already matches.
 
-### F5 — TTFT and cache
+### F5 — TTFT and cache (this increment)
 
-Honest first-token timer already exists (`ChatPerfTimer`). Next: reuse conversation prefix / provider prompt cache where the vendor supports it; do not cache confirmations (`yes`/`no`) across conversations (existing response-cache rule).
+Honest first-token timer already exists (`ChatPerfTimer`). Reuse the conversation prefix for provider prompt cache: keep volatile RAG/task-state/anti-repeat/**Operator Act Context** after a stable system prefix; put history in role messages instead of the system prompt; Anthropic `cache_control` on the stable system block; OpenAI uses two consecutive system messages (`openai_system_messages`). Do **not** cache confirmations (`yes`/`no`) across conversations (`response_cache_eligible` unchanged).
 
-### F6 — Interrupt recovery
+**Done when:** A follow-up turn in the same conversation reports `cached_tokens` (or Anthropic cache read) on the stable prefix, and `yes` in conversation B never returns conversation A’s cached greeting.
 
-After Stop, a “continue” user turn must see persisted partial assistant text + ledger, not a blank slate. Depends on F1 persist-on-cancel.
+Local: split + isolation tests. Production cached_tokens: **NOT RUN**.
+
+### F6 — Interrupt recovery (this increment)
+
+After Stop, persist the partial assistant text and stash Redis `chat:interrupt:{org}:{conv}` including `extra` (tool names, pending_task, ledger slots). The next user turn (including **Continue**) merges that partial + original request into history and resume instruction JSON. ReAct `_react_loop` polls `is_stop_requested` before the next LLM/tool round.
+
+**Done when:** Stop mid-stream, then Continue on `/ai` and `/agents/[id]/chat`, recovers from the persisted partial (not “Stopped.” as the answer).
+
+Local pytest covers extra hydrate. Dual-path live Continue: **NOT RUN**.
 
 ## Out of scope
 

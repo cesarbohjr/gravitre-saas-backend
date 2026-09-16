@@ -10,6 +10,7 @@ import { getEnvironmentHeader } from "@/lib/environment-context"
 import { parseChatError } from "@/lib/chat-errors"
 import { isUserChatAbort, recoverCompletedChatTurn } from "@/lib/chat-replay"
 import { stopChatTurn } from "@/lib/chat-stop"
+import { CONTINUE_AFTER_STOP_TEXT } from "@/lib/chat-continue"
 import { motion } from "framer-motion"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -409,6 +410,7 @@ export default function AgentChatPage({
 
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
+  const [canContinueAfterStop, setCanContinueAfterStop] = useState(false)
 
   messagesRef.current = messages
   const voiceDuplex = useVoiceDuplexSession({
@@ -611,6 +613,7 @@ export default function AgentChatPage({
   const submitText = (text: string) => {
     const trimmed = text.trim()
     if ((!trimmed && connectedFileAttachments.length === 0) || isLoading) return
+    setCanContinueAfterStop(false)
     ensureAgentConversation()
     connectedFileRefsRef.current = connectedFileAttachments
     setConnectedFileAttachments([])
@@ -802,6 +805,11 @@ export default function AgentChatPage({
                 agentStatusLabel={agentStatusLabel}
                 assistantLabel={agent.name}
                 waitingLabel={agentStatusLabel}
+                canContinueAfterStop={canContinueAfterStop && !isLoading}
+                onContinueAfterStop={() => {
+                  setCanContinueAfterStop(false)
+                  submitText(CONTINUE_AFTER_STOP_TEXT)
+                }}
                 dialogueMode={dialogueMode}
                 executionResult={executionResult}
                 pendingTask={pendingTask}
@@ -891,6 +899,7 @@ export default function AgentChatPage({
                   conversationId: activeConversationIdRef.current,
                   stopStream: stop,
                 })
+                setCanContinueAfterStop(true)
                 stopAgentVoice()
                 setDuplexVoiceError(undefined)
               }}

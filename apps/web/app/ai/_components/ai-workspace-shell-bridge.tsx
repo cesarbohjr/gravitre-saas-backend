@@ -80,6 +80,8 @@ export interface GravitreAIWorkspaceShellBridgeProps {
   onRegenerate?: (assistantMessageId: string) => void
   assistantLabel?: string
   waitingLabel?: string
+  canContinueAfterStop?: boolean
+  onContinueAfterStop?: () => void
 
   input: string
   onInputChange: (value: string) => void
@@ -132,6 +134,8 @@ export function GravitreAIWorkspaceShellBridge({
   onRegenerate,
   assistantLabel,
   waitingLabel,
+  canContinueAfterStop,
+  onContinueAfterStop,
   input,
   onInputChange,
   onSubmit,
@@ -197,6 +201,8 @@ export function GravitreAIWorkspaceShellBridge({
           onRegenerate={onRegenerate}
           assistantLabel={assistantLabel}
           waitingLabel={waitingLabel}
+          canContinueAfterStop={canContinueAfterStop}
+          onContinueAfterStop={onContinueAfterStop}
         />
       </div>
       <div className="shrink-0 border-t border-divide p-2.5">

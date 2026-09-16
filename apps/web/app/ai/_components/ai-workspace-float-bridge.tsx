@@ -73,6 +73,8 @@ export interface GravitreAIFloatBridgeProps {
   onRegenerate?: (assistantMessageId: string) => void
   assistantLabel?: string
   waitingLabel?: string
+  canContinueAfterStop?: boolean
+  onContinueAfterStop?: () => void
 
   // Composer — same values AiWorkspace's inline composer already uses.
   input: string
@@ -117,6 +119,8 @@ export function GravitreAIFloatBridge({
   onRegenerate,
   assistantLabel,
   waitingLabel,
+  canContinueAfterStop,
+  onContinueAfterStop,
   input,
   onInputChange,
   onSubmit,
@@ -180,6 +184,8 @@ export function GravitreAIFloatBridge({
             onRegenerate={onRegenerate}
             assistantLabel={assistantLabel}
             waitingLabel={waitingLabel}
+            canContinueAfterStop={canContinueAfterStop}
+            onContinueAfterStop={onContinueAfterStop}
           />
         </div>
         <div

@@ -98,7 +98,9 @@ class AnthropicAdapter(ProviderAdapter):
             "max_tokens": options.max_tokens or _DEFAULT_MAX_TOKENS,
         }
         if system_text:
-            kwargs["system"] = system_text
+            from app.services.prompt_prefix_cache import anthropic_cached_system
+
+            kwargs["system"] = anthropic_cached_system(system_text) or system_text
         if options.temperature is not None:
             kwargs["temperature"] = options.temperature
 
@@ -152,7 +154,9 @@ class AnthropicAdapter(ProviderAdapter):
             "max_tokens": options.max_tokens or _DEFAULT_MAX_TOKENS,
         }
         if system_text:
-            kwargs["system"] = system_text
+            from app.services.prompt_prefix_cache import anthropic_cached_system
+
+            kwargs["system"] = anthropic_cached_system(system_text) or system_text
         if options.temperature is not None:
             kwargs["temperature"] = options.temperature
 
