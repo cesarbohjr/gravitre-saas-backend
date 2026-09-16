@@ -134,3 +134,23 @@ async def test_process_turn_dedupes_cognitive_resolution() -> None:
             client=object(),
         )
     mock_run.assert_not_awaited()
+
+
+def test_website_doing_requests_analytics_short_circuit() -> None:
+    needs = assess_cognitive_resolution_needs(
+        "How is my website doing?",
+        {},
+        connected_integrations=["google_analytics"],
+    )
+    assert needs.analytics_short_circuit is True
+
+
+def test_analytics_short_circuit_disables_unified_live_before_apply() -> None:
+    from pathlib import Path
+
+    import app.operators.agent_intelligence as ai
+
+    src = Path(ai.__file__).read_text(encoding="utf-8")
+    marker = "LIVE otherwise swallows GA4/website-traffic turns"
+    assert marker in src
+    assert src.index(marker) < src.index("apply_unified_turn_live")

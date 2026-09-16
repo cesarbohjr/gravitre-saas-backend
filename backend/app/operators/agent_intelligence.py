@@ -3110,6 +3110,19 @@ class AgentIntelligence:
         # Spoken: stream unified text deltas into SSE as they arrive so TTS can start
         # before the full answer completes (Phase 5). Same LIVE path — not a fork.
         _unified_live_ok = bool(getattr(active_settings, "unified_turn_live_enabled", False))
+        _resolution_needs = (
+            (_canonical_task_state or {}).get("cognitive_resolution_needs")
+            if isinstance(_canonical_task_state, dict)
+            else None
+        )
+        if (
+            _unified_live_ok
+            and isinstance(_resolution_needs, dict)
+            and _resolution_needs.get("analytics_short_circuit")
+        ):
+            # Dual-path: LIVE otherwise swallows GA4/website-traffic turns before
+            # the canonical analytics short-circuit at react_entry.
+            _unified_live_ok = False
         _compiled_unified_reasoning = None
         if _unified_live_ok and bool(
             getattr(active_settings, "context_compiler_unified_live_v1", True)

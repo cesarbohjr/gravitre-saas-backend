@@ -106,6 +106,24 @@ def get_connector_by_type(
             )
             if r.data:
                 return dict(r.data[0])
+    # Live auth can be connected while connectors.status is still "error"
+    # after a failed refresh (availability SoT vs stale row). Resource
+    # resolution and tool lookup must still find the linked connector.
+    for type_key in connector_type_lookup_keys(connector_type):
+        for env in connector_environment_candidates(environment_name):
+            r = (
+                client.table("connectors")
+                .select("id, org_id, type, status, config, environment, created_at, updated_at")
+                .eq("org_id", org_id)
+                .eq("environment", env)
+                .eq("type", type_key)
+                .is_("deleted_at", "null")
+                .order("updated_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if r.data:
+                return dict(r.data[0])
     return None
 
 

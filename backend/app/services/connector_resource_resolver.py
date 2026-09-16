@@ -37,10 +37,18 @@ class ResourceResolutionRequest:
     environment_name: str = "default"
 
 
-def _connector_row(client: Any, org_id: str, connector_id: str) -> dict[str, Any] | None:
+def _connector_row(
+    client: Any,
+    org_id: str,
+    connector_id: str,
+    *,
+    environment_name: str = "production",
+) -> dict[str, Any] | None:
     from app.connectors.repository import get_connector_by_type
 
-    row = get_connector_by_type(client, org_id, connector_id, environment_name="default")
+    row = get_connector_by_type(
+        client, org_id, connector_id, environment_name=environment_name
+    )
     if isinstance(row, dict) and row.get("id"):
         return row
     return None
@@ -88,7 +96,7 @@ def resolve_ga4_property(
 ) -> ResourceResolution:
     """Discover GA4 property from linked config or Admin API listing."""
     connector_id = "google_analytics"
-    conn = _connector_row(client, org_id, connector_id)
+    conn = _connector_row(client, org_id, connector_id, environment_name=environment_name)
     if not conn:
         return ResourceResolution(
             status="not_found",
@@ -204,7 +212,7 @@ def resolve_resource(
             conversation_context=conversation_context,
         )
 
-    conn = _connector_row(client, org_id, vendor)
+    conn = _connector_row(client, org_id, vendor, environment_name=environment_name)
     if not conn:
         return ResourceResolution(
             status="not_found",
