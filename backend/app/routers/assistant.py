@@ -67,10 +67,15 @@ from app.operators.assistant_sse import (
     sse_done,
     sse_finish,
     sse_finish_step,
+    sse_intelligence_metadata,
     sse_start,
     sse_start_step,
     sse_suggestions,
+    sse_text_delta,
+    sse_text_end,
+    sse_text_start,
 )
+from app.services.chat_turn_cancel_service import clear_stop, request_stop, stream_should_stop
 from app.services.response_composer import emit_stream_error
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.org_context_service import get_org_context_service
@@ -159,6 +164,13 @@ class AssistantChatRequest(BaseModel):
     spoken_mode: bool = False
     # Optional surface tag for GIBE/learning metadata ("voice" | "assistant" | …).
     surface: str | None = None
+
+    model_config = ConfigDict(extra="ignore")
+
+
+class AssistantChatStopRequest(BaseModel):
+    conversation_id: str = Field(..., min_length=1, max_length=128)
+    org_id: str | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -589,6 +601,7 @@ def _build_stream(
     intelligence_hub_visualization: dict[str, Any] | None = None,
     assistant_system_prompt: str | None = None,
     intelligence_hub_deterministic_answer: str | None = None,
+    http_request: Request | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -608,11 +621,21 @@ def _build_stream(
         start_ms = time.monotonic()
         yield assistant_event_to_sse_line(sse_start())
         yield assistant_event_to_sse_line(sse_start_step())
+        from app.services.first_token_honesty import STAGE_PLAN, status_for_stage
+
+        yield assistant_event_to_sse_line(
+            sse_intelligence_metadata(
+                message_id=str(uuid.uuid4()),
+                confidence={"score": 0.0, "needs_clarification": False},
+                answer_explanation=status_for_stage(STAGE_PLAN),
+                dialogue_mode="guide",
+                progress_steps=[status_for_stage(STAGE_PLAN)],
+            )
+        )
 
         base_prompt = (assistant_system_prompt or "").strip() or ASSISTANT_SYSTEM_PROMPT
 
         if intelligence_hub_deterministic_answer:
-            from app.operators.assistant_sse import sse_intelligence_metadata
             from app.services.response_composer import compose_reply_events
 
             message_id = str(uuid.uuid4())
@@ -694,43 +717,52 @@ def _build_stream(
         complete: AssistantStreamComplete | None = None
         streamed_text_parts: list[str] = []
         first_token_logged = False
+        cancelled = False
         try:
-            perf.start("planning")
-            async for event in intelligence.execute_task_streaming(
-                settings=settings,
-                org_id=org_id,
-                user_id=user_id,
-                query=user_text,
-                mode=mode,
-                requested_tools=requested_tools,
-                agent_id=agent_id,
-                conversation_history=history_messages,
-                history_summary=existing_summary,
-                model_override=prepared_holder.get("model_override"),
-                assistant_base_prompt=base_prompt,
-                conversation_id=conversation_id,
-                explicit_persona=preferred_persona,
-                environment_name=environment_name,
-                research_scope=research_scope,
-                qa_force_tool=qa_force_tool,
-                qa_force_outcome=qa_force_outcome,
-                department=department,
-                spoken_mode=bool(spoken_mode),
-                composer_failure_probe=composer_failure_probe,
-            ):
-                if isinstance(event, AssistantStreamComplete):
-                    complete = event
-                    continue
-                if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
-                    delta = event.payload.get("delta")
-                    if isinstance(delta, str) and delta:
-                        if not first_token_logged:
-                            perf.stop("planning")
-                            perf.start("first_token")
-                            perf.stop("first_token")
-                            first_token_logged = True
-                        streamed_text_parts.append(delta)
-                yield assistant_event_to_sse_line(event)
+            if await stream_should_stop(http_request, org_id, conversation_id, settings=settings):
+                cancelled = True
+            else:
+                perf.start("planning")
+                async for event in intelligence.execute_task_streaming(
+                    settings=settings,
+                    org_id=org_id,
+                    user_id=user_id,
+                    query=user_text,
+                    mode=mode,
+                    requested_tools=requested_tools,
+                    agent_id=agent_id,
+                    conversation_history=history_messages,
+                    history_summary=existing_summary,
+                    model_override=prepared_holder.get("model_override"),
+                    assistant_base_prompt=base_prompt,
+                    conversation_id=conversation_id,
+                    explicit_persona=preferred_persona,
+                    environment_name=environment_name,
+                    research_scope=research_scope,
+                    qa_force_tool=qa_force_tool,
+                    qa_force_outcome=qa_force_outcome,
+                    department=department,
+                    spoken_mode=bool(spoken_mode),
+                    composer_failure_probe=composer_failure_probe,
+                ):
+                    if await stream_should_stop(
+                        http_request, org_id, conversation_id, settings=settings
+                    ):
+                        cancelled = True
+                        break
+                    if isinstance(event, AssistantStreamComplete):
+                        complete = event
+                        continue
+                    if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
+                        delta = event.payload.get("delta")
+                        if isinstance(delta, str) and delta:
+                            if not first_token_logged:
+                                perf.stop("planning")
+                                perf.start("first_token")
+                                perf.stop("first_token")
+                                first_token_logged = True
+                            streamed_text_parts.append(delta)
+                    yield assistant_event_to_sse_line(event)
         except Exception as exc:  # noqa: BLE001
             logger.error(
                 "assistant unified stream failed org_id=%s error_type=%s error=%s",
@@ -747,6 +779,57 @@ def _build_stream(
                 org_id,
                 len("".join(streamed_text_parts)),
             )
+        finally:
+            clear_stop(org_id, conversation_id, settings=settings)
+
+        if cancelled:
+            assistant_text = "".join(streamed_text_parts).strip()
+            if not assistant_text:
+                text_id, start_ev = sse_text_start()
+                yield assistant_event_to_sse_line(start_ev)
+                yield assistant_event_to_sse_line(sse_text_delta(text_id, "Stopped."))
+                yield assistant_event_to_sse_line(sse_text_end(text_id))
+                assistant_text = "Stopped."
+            logger.info(
+                "assistant.chat.stopped org_id=%s conversation_id=%s streamed_chars=%s",
+                org_id,
+                conversation_id,
+                len(assistant_text),
+            )
+            asyncio.create_task(
+                _log_assistant_guardrail_event(
+                    settings,
+                    org_id,
+                    "assistant.chat.stopped",
+                    {
+                        "conversation_id": conversation_id,
+                        "user_id": user_id,
+                        "streamed_chars": len(assistant_text),
+                    },
+                )
+            )
+            yield assistant_event_to_sse_line(sse_finish_step())
+            yield assistant_event_to_sse_line(sse_finish())
+            try:
+                await asyncio.to_thread(
+                    _persist_conversation_turn,
+                    settings,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    user_text=user_text,
+                    assistant_text=assistant_text,
+                    tool_results=complete.tool_results if complete else [],
+                    assistant_message_id=complete.message_id if complete else None,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "assistant cancelled persist failed org_id=%s error=%s",
+                    org_id,
+                    str(exc),
+                )
+            yield sse_done()
+            return
 
         assistant_text = (complete.full_content if complete else "").strip()
         if not assistant_text:
@@ -810,8 +893,6 @@ def _build_stream(
         if suggestions:
             yield assistant_event_to_sse_line(sse_suggestions(suggestions))
         if intelligence_hub_visualization:
-            from app.operators.assistant_sse import sse_intelligence_metadata
-
             yield assistant_event_to_sse_line(
                 sse_intelligence_metadata(
                     message_id=complete.message_id if complete else None,
@@ -877,6 +958,41 @@ _STREAM_HEADERS = {
     "x-vercel-ai-ui-message-stream": "v1",
     "x-accel-buffering": "no",
 }
+
+
+@router.post("/chat/stop")
+async def assistant_chat_stop(
+    body: AssistantChatStopRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    conversation_id = body.conversation_id.strip()
+    if not conversation_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="conversation_id is required")
+    stored = request_stop(org_id, conversation_id, settings=settings)
+    logger.info(
+        "assistant.chat.stop.requested org_id=%s conversation_id=%s user_id=%s stored=%s",
+        org_id,
+        conversation_id,
+        current_user.get("user_id"),
+        stored,
+    )
+    asyncio.create_task(
+        _log_assistant_guardrail_event(
+            settings,
+            org_id,
+            "assistant.chat.stop.requested",
+            {
+                "conversation_id": conversation_id,
+                "user_id": current_user.get("user_id"),
+                "stored": stored,
+            },
+        )
+    )
+    return {"ok": True, "requested": stored}
 
 
 @router.post("/chat")
@@ -1188,6 +1304,7 @@ async def assistant_chat(
             intelligence_hub_visualization=intelligence_hub_visualization,
             assistant_system_prompt=system_prompt,
             intelligence_hub_deterministic_answer=intelligence_hub_deterministic_answer,
+            http_request=request,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

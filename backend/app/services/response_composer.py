@@ -24,6 +24,10 @@ from app.operators.assistant_sse import (
 )
 from app.operators.stream_events import AssistantStreamEvent
 from app.services.conversational_behavior import CONVERSATIONAL_BEHAVIOR_SECTION
+from app.services.first_token_honesty import (
+    envelope_allows_completion_claim,
+    reject_premature_done,
+)
 from app.services.module_d_unified_voice_spec import MODULE_D_UNIFIED_SYSTEM_SPEC
 from app.services.response_envelope import coerce_user_envelope, envelope_kind
 from app.services.user_facing_copy_guard import finalize_user_facing_message
@@ -61,6 +65,7 @@ _FALLBACK_BY_KIND: dict[str, str] = {
     "canned": "I have that. What should we do with it?",
     "progress": "I'm working through this now.",
     "success": "Done.",
+    "stopped": "Stopped.",
 }
 
 _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -362,7 +367,11 @@ async def _llm_compose(
         return ""
 
 
-def _fallback_text(kind: str) -> str:
+def _fallback_text(kind: str, envelope: dict[str, Any] | None = None) -> str:
+    if kind == "success":
+        if envelope_allows_completion_claim(envelope):
+            return _FALLBACK_BY_KIND["success"]
+        return _FALLBACK_BY_KIND["canned"]
     return _FALLBACK_BY_KIND.get(kind) or _FALLBACK_BY_KIND["error"]
 
 
@@ -423,7 +432,7 @@ async def compose_user_reply(
             fallback = True
             used_model = False
         else:
-            text = _fallback_text(resolved_kind)
+            text = _fallback_text(resolved_kind, env)
             fallback = True
             used_model = False
     elif looks_like_raw_backend(text):
@@ -452,7 +461,7 @@ async def compose_user_reply(
 
         text = scrub_raw_catalog_keys(text or "")
         if looks_like_raw_backend(text):
-            text = _fallback_text(resolved_kind)
+            text = _fallback_text(resolved_kind, env)
             fallback = True
 
     code = str(env.get("error_code") or "").strip()
@@ -463,7 +472,7 @@ async def compose_user_reply(
         if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
             text = draft.strip()
         else:
-            text = _fallback_text(resolved_kind)
+            text = _fallback_text(resolved_kind, env)
         fallback = True
 
     turn_id = None
@@ -485,6 +494,12 @@ async def compose_user_reply(
         turn_id=turn_id,
         structured_blocks=len(structured_blocks),
     )
+    if resolved_kind == "success":
+        text = reject_premature_done(
+            text,
+            env,
+            fallback=_fallback_text("success", env),
+        )
     return text
 
 

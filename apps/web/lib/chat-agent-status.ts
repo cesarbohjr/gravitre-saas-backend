@@ -76,13 +76,17 @@ export function deriveAgentStatusLabel(input: AgentStatusInput): string {
     const fromUser = sanitizeUserActivityLabel(input.userStatusLabel, {
       connectors: input.connectedIntegrations,
     })
-    if (fromUser !== SAFE_STATUS_FALLBACK) return suffix(fromUser)
+    const prematureDone =
+      (input.isStreaming || input.isBusy) && /^\s*done\.?\s*$/i.test(fromUser.replace(/…$/, ""))
+    if (fromUser !== SAFE_STATUS_FALLBACK && !prematureDone) return suffix(fromUser)
   }
 
   const fromAnswer = sanitizeUserActivityLabel(input.answerExplanation, {
     connectors: input.connectedIntegrations,
   })
-  if (input.answerExplanation?.trim() && fromAnswer !== SAFE_STATUS_FALLBACK) {
+  const prematureAnswerDone =
+    (input.isStreaming || input.isBusy) && /^\s*done\.?\s*$/i.test(fromAnswer.replace(/…$/, ""))
+  if (input.answerExplanation?.trim() && fromAnswer !== SAFE_STATUS_FALLBACK && !prematureAnswerDone) {
     return suffix(fromAnswer)
   }
 

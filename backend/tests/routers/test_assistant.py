@@ -120,6 +120,7 @@ async def test_authenticated_request_returns_streaming_response(async_client, mo
     assert resp.headers.get("x-vercel-ai-ui-message-stream") == "v1"
     body = resp.text
     assert "hello-answer" in body
+    assert "Understanding your request" in body
     assert "data: [DONE]" in body
     assert '"type":"text-delta"' in body
 
@@ -452,3 +453,53 @@ def test_response_cache_skips_confirmations_and_scopes_by_conversation():
     k1 = assistant_module._response_cache_key("org", "yes", "conv-a")
     k2 = assistant_module._response_cache_key("org", "yes", "conv-b")
     assert k1 != k2
+
+
+async def test_chat_stop_requires_auth(async_client):
+    resp = await async_client.post(
+        "/api/assistant/chat/stop",
+        json={"conversation_id": "conv-1"},
+    )
+    assert resp.status_code == 401
+
+
+async def test_chat_stop_sets_flag(async_client, monkeypatch):
+    _authenticate(org_id="org-1")
+    captured: dict[str, str] = {}
+
+    def _request_stop(org_id: str, conversation_id: str, *, settings=None):
+        captured["org_id"] = org_id
+        captured["conversation_id"] = conversation_id
+        return True
+
+    monkeypatch.setattr(assistant_module, "request_stop", _request_stop)
+    monkeypatch.setattr(assistant_module, "_log_assistant_guardrail_event", AsyncMock())
+
+    resp = await async_client.post(
+        "/api/assistant/chat/stop",
+        headers={"Authorization": "Bearer token"},
+        json={"conversation_id": "conv-99"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+    assert captured["org_id"] == "org-1"
+    assert captured["conversation_id"] == "conv-99"
+
+
+async def test_stream_emits_stopped_when_cancel_flag_set(async_client, monkeypatch):
+    _authenticate(org_id="org-1")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    intelligence = _mock_agent_intelligence_stream(monkeypatch, content="should-not-appear")
+    monkeypatch.setattr(assistant_module, "stream_should_stop", AsyncMock(return_value=True))
+    monkeypatch.setattr(assistant_module, "clear_stop", lambda *a, **k: None)
+
+    resp = await async_client.post(
+        "/api/assistant/chat",
+        headers={"Authorization": "Bearer token"},
+        json={"messages": [{"role": "user", "content": "hello"}], "org_id": "org-1"},
+    )
+    assert resp.status_code == 200
+    assert "Stopped." in resp.text
+    assert "should-not-appear" not in resp.text
+    assert intelligence._captured == {}
+

@@ -41,6 +41,7 @@ import {
 } from "@/lib/department-context"
 import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { stopChatTurn } from "@/lib/chat-stop"
 import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
 import {
@@ -1648,7 +1649,7 @@ export function AiWorkspace({
       setSessionBusy(false)
       submitLockRef.current = false
       setSidebarOpen(false)
-      stop()
+      stopChatTurn({ conversationId: activeConversationIdRef.current, stopStream: stop })
       setThreadRestoreStale(false)
       setDialogueMode(null)
       setPendingTask(null)
@@ -1780,6 +1781,9 @@ export function AiWorkspace({
 
   const isChatBusy = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
+  const abortChatTurn = useCallback(() => {
+    stopChatTurn({ conversationId: activeConversationIdRef.current, stopStream: stop })
+  }, [stop])
 
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -2227,7 +2231,7 @@ export function AiWorkspace({
           onStop={() => {
             void voiceDuplex.bargeIn()
             voiceDuplex.stop()
-            stop()
+            abortChatTurn()
             stopAgentVoice()
             setDuplexVoiceError(undefined)
           }}
@@ -2313,7 +2317,7 @@ export function AiWorkspace({
           onStop={() => {
             void voiceDuplex.bargeIn()
             voiceDuplex.stop()
-            stop()
+            abortChatTurn()
             stopAgentVoice()
             setDuplexVoiceError(undefined)
           }}
@@ -2362,7 +2366,7 @@ export function AiWorkspace({
         onStop={() => {
           void voiceDuplex.bargeIn()
           voiceDuplex.stop()
-          stop()
+          abortChatTurn()
           stopAgentVoice()
           setDuplexVoiceError(undefined)
         }}
@@ -2814,7 +2818,7 @@ export function AiWorkspace({
                 onStop={() => {
                   void voiceDuplex.bargeIn()
                   voiceDuplex.stop()
-                  stop()
+                  abortChatTurn()
                   stopAgentVoice()
                   setDuplexVoiceError(undefined)
                 }}

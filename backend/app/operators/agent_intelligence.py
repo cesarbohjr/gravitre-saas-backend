@@ -1659,6 +1659,7 @@ class AgentIntelligence:
             )
         )
         _mark("intent_gateway")
+        from app.services.chat_turn_cancel_service import is_stop_requested as _chat_stop_requested
         from app.services.cognitive_loop_controller import get_cognitive_loop_controller
 
         loop_controller = get_cognitive_loop_controller(active_settings)
@@ -1989,6 +1990,23 @@ class AgentIntelligence:
             for ev in await _loop_stage_speech("PERCEIVE"):
                 yield ev
 
+        from app.services.first_token_honesty import (
+            STAGE_COMPOSE,
+            STAGE_PLAN,
+            status_for_stage as _status_for_stage,
+        )
+
+        message_id = str(uuid.uuid4())
+        yield sse_intelligence_metadata(
+            message_id=message_id,
+            confidence={"score": 0.0, "needs_clarification": False},
+            answer_explanation=_status_for_stage(STAGE_PLAN),
+            dialogue_mode="guide",
+            effective_mode=str(mode or "fast"),
+            routing=loop_trace.to_sse(),
+            progress_steps=[_status_for_stage(STAGE_PLAN)],
+        )
+
         # Spoken non-write: use connector snapshot cache (force_live=False) to avoid
         # ~0.6–1.2s live auth round-trips on every simple Talk turn. Write-shaped
         # intents and operator tasks still force live so ACT sees current auth.
@@ -2103,9 +2121,7 @@ class AgentIntelligence:
             )
         permitted_registry = resolve_registry_permitted_tools(tool_names)
         max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
-        message_id = str(uuid.uuid4())
-        # engine_settings already fetched concurrently above (with connected_early /
-        # mcp_tools_early) — no dependency on mode_key/tool_names, just needed here.
+        # message_id already assigned before connector gather (F2 first-token status).
         pipeline_tier = mode_to_tier(mode_key)
 
         from app.services.assistant_routing_tier import (
@@ -2141,6 +2157,17 @@ class AgentIntelligence:
         }
 
         from app.services.agent_platform_optimizer import build_progress_steps
+
+        if conversation_id and _chat_stop_requested(
+            org_id, conversation_id, settings=active_settings
+        ):
+            yield AssistantStreamComplete(
+                full_content="",
+                tool_results=[],
+                react_result=None,
+                model="cancelled",
+            )
+            return
 
         yield sse_intelligence_metadata(
             message_id=message_id,
@@ -2392,7 +2419,7 @@ class AgentIntelligence:
                 )
                 packed_ack = await _composed_reply(
                     PROGRESS_ACK,
-                    kind="success",
+                    kind="progress",
                     close=False,
                 )
                 for ev in packed_ack.events:
@@ -5285,6 +5312,20 @@ class AgentIntelligence:
 
         # Composer sits after OBSERVE: leaky or never-streamed finals are composed
         # here; already-streamed model tokens were leak-filtered on the way out.
+        yield sse_intelligence_metadata(
+            message_id=message_id,
+            confidence=finalized["confidence"] if isinstance(finalized, dict) else None,
+            answer_explanation=_status_for_stage(STAGE_COMPOSE),
+            dialogue_mode=dialogue_mode,
+            effective_mode=mode_key,
+            pipeline_tier=pipeline_tier,
+            routing_tier=routing_control.tier,
+            routing=routing_sse,
+        )
+        _compose_extra = {
+            "execution_verified": bool(getattr(react_result, "execution_verified", False)),
+            "pending_task": pending_for_loop,
+        }
         if looks_like_raw_backend(full_content):
             packed = await _composed_reply(
                 full_content,
@@ -5302,7 +5343,7 @@ class AgentIntelligence:
                 yield ev
             text_id = packed.text_id
         elif full_content.strip() and text_id is None:
-            packed = await _composed_reply(full_content, kind="success")
+            packed = await _composed_reply(full_content, kind="success", extra=_compose_extra)
             full_content = packed.text
             text_id = packed.text_id
             for ev in packed.events:
@@ -5331,6 +5372,7 @@ class AgentIntelligence:
                     packed = await _composed_reply(
                         full_content,
                         kind="success" if not looks_like_raw_backend(full_content) else "error",
+                        extra=_compose_extra if not looks_like_raw_backend(full_content) else None,
                     )
                     full_content = packed.text
                     text_id = packed.text_id

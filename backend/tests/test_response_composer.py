@@ -193,3 +193,46 @@ async def test_progress_kind_falls_back_to_honest_draft_when_llm_fails():
         compose_fn=boom,
     )
     assert text == draft
+
+
+@pytest.mark.asyncio
+async def test_empty_success_without_verified_write_is_not_done():
+    async def empty(**kwargs):
+        return ""
+
+    text = await compose_user_reply(
+        {"success": True, "data": {"text": ""}},
+        kind="success",
+        draft="",
+        org_id="org",
+        compose_fn=empty,
+    )
+    assert text.strip().lower() != "done."
+    assert "Done." not in text
+
+
+@pytest.mark.asyncio
+async def test_verified_write_may_use_done_fallback():
+    async def empty(**kwargs):
+        return ""
+
+    text = await compose_user_reply(
+        {"success": True, "execution_verified": True, "data": {"text": ""}},
+        kind="success",
+        draft="",
+        org_id="org",
+        compose_fn=empty,
+    )
+    assert text == "Done."
+
+
+@pytest.mark.asyncio
+async def test_standalone_done_draft_without_verification_is_rewritten():
+    text = await compose_user_reply(
+        {"success": True, "data": {"text": "Done."}},
+        kind="success",
+        draft="Done.",
+        org_id="org",
+        compose_fn=_compose_fn,
+    )
+    assert text.strip().lower() != "done."

@@ -8,6 +8,7 @@ import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload, getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { stopChatTurn } from "@/lib/chat-stop"
 import { motion } from "framer-motion"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -879,7 +880,10 @@ export default function AgentChatPage({
               onStop={() => {
                 void voiceDuplex.bargeIn()
                 voiceDuplex.stop()
-                stop()
+                stopChatTurn({
+                  conversationId: activeConversationIdRef.current,
+                  stopStream: stop,
+                })
                 stopAgentVoice()
                 setDuplexVoiceError(undefined)
               }}

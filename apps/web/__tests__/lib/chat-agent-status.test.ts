@@ -59,6 +59,16 @@ describe("deriveAgentStatusLabel", () => {
       }),
     ).toBe("Reviewing context and memory…")
   })
+
+  it("does not treat Done as a waiting label while the turn is still streaming", () => {
+    expect(
+      deriveAgentStatusLabel({
+        userStatusLabel: "Done.",
+        isStreaming: true,
+        progressSteps: ["Understanding your request"],
+      }),
+    ).toBe("Understanding your request…")
+  })
 })
 
 describe("shouldHideProgressPanel", () => {
