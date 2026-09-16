@@ -486,6 +486,43 @@ async def test_chat_stop_sets_flag(async_client, monkeypatch):
     assert captured["conversation_id"] == "conv-99"
 
 
+async def test_chat_replay_returns_stored_turn(async_client, monkeypatch):
+    _authenticate(org_id="org-1")
+    monkeypatch.setattr(
+        assistant_module,
+        "load_completed_turn",
+        lambda *a, **k: {
+            "already_have": False,
+            "event_id": "evt-1",
+            "conversation_id": "conv-1",
+            "assistant_text": "Recovered answer.",
+            "assistant_message_id": "evt-1",
+            "tool_calls": [],
+        },
+    )
+
+    resp = await async_client.get(
+        "/api/assistant/chat/replay?conversation_id=conv-1",
+        headers={"Authorization": "Bearer token"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    assert body["assistant_text"] == "Recovered answer."
+    assert body["event_id"] == "evt-1"
+
+
+async def test_chat_replay_404_when_empty(async_client, monkeypatch):
+    _authenticate(org_id="org-1")
+    monkeypatch.setattr(assistant_module, "load_completed_turn", lambda *a, **k: None)
+    monkeypatch.setattr(assistant_module, "load_completed_turn_from_db", lambda *a, **k: None)
+    resp = await async_client.get(
+        "/api/assistant/chat/replay?conversation_id=conv-1",
+        headers={"Authorization": "Bearer token"},
+    )
+    assert resp.status_code == 404
+
+
 async def test_stream_emits_stopped_when_cancel_flag_set(async_client, monkeypatch):
     _authenticate(org_id="org-1")
     _mock_prepare_stream_guardrails(monkeypatch)

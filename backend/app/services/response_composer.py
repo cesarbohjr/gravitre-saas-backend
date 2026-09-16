@@ -141,7 +141,9 @@ def looks_like_raw_backend(text: str | None) -> bool:
             return True
     if _INTERNAL_IDS.search(raw) and ("=" in raw or ":" in raw):
         return True
-    return False
+    from app.services.first_token_honesty import looks_like_tool_payload
+
+    return looks_like_tool_payload(raw)
 
 
 def safe_voice_text(text: str | None) -> str:

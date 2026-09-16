@@ -8,6 +8,7 @@ import { DefaultChatTransport, type UIMessage } from "ai"
 import { ensureSelectedOrg, buildChatOrgPayload, getSelectedOrgFromStorage } from "@/lib/org-context"
 import { getEnvironmentHeader } from "@/lib/environment-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { isUserChatAbort, recoverCompletedChatTurn } from "@/lib/chat-replay"
 import { stopChatTurn } from "@/lib/chat-stop"
 import { motion } from "framer-motion"
 import useSWR from "swr"
@@ -172,6 +173,7 @@ export default function AgentChatPage({
   const [agentUserStatusLabel, setAgentUserStatusLabel] = useState<string | null>(null)
   const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([])
   const connectedFileRefsRef = useRef<ConnectedFileAttachment[]>([])
+  const messagesRef = useRef<UIMessage[]>([])
   const [connectedFilePickerOpen, setConnectedFilePickerOpen] = useState(false)
   const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
   const [headerCollapsed, setHeaderCollapsed] = useState(() => {
@@ -302,7 +304,13 @@ export default function AgentChatPage({
     onError: (error) => {
       console.error("[v0] Agent chat error:", error)
       connectedFileRefsRef.current = []
-      toast.error(parseChatError(error))
+      if (!isUserChatAbort(error)) {
+        const conversationId = activeConversationIdRef.current
+        void recoverCompletedChatTurn(conversationId, messagesRef.current).then((recovered) => {
+          if (recovered) setMessages(recovered)
+        })
+        toast.error(parseChatError(error))
+      }
     },
     onFinish: () => {
       connectedFileRefsRef.current = []
@@ -402,7 +410,6 @@ export default function AgentChatPage({
   const isLoading = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
 
-  const messagesRef = useRef(messages)
   messagesRef.current = messages
   const voiceDuplex = useVoiceDuplexSession({
     enabled: voiceEntitled,

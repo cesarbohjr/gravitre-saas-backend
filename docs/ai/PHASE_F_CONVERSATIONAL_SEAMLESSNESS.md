@@ -1,6 +1,6 @@
 # Phase F — Conversational seamlessness
 
-**Status:** F1 implemented locally (PARTIAL until prod Stop evidence). F2 in progress. E6 remains `EXTERNAL_BLOCKED` until smoke-org GA4 OAuth is completed in production. There is no cognitive E7.
+**Status:** F1 and F2 pushed to `main` (`267d0b91`). F3 in progress locally. F4 in progress locally. E6 remains `EXTERNAL_BLOCKED` until smoke-org GA4 OAuth is completed in production.
 
 This phase is **not** Intelligence G8 / I*. It is the chat runtime: stop, honesty of first token, typed parts, resumable streams, latency, and interrupt recovery — the gap between “a governed operator” and ChatGPT / Claude as a daily conversation.
 
@@ -40,13 +40,17 @@ Emit user-status / progress **before** connector gather and before any claim tha
 
 **Done when:** A live `/ai` stream shows `userStatus.label` = “Understanding your request” (or mapped equivalent) before the first text-delta, and a write that is still awaiting confirm never streams a bare “Done.”
 
-### F3 — Typed parts and post-tool gating
+### F3 — Typed parts and post-tool gating (this increment)
 
-Keep tool chips out of the prose bubble. After tools, compose only from the user envelope (existing `response_composer`) — no raw model dump of tool JSON.
+Keep tool chips out of the prose bubble. After the first tool SSE, hold model text-deltas. JSON envelopes never stream as text. After tools, compose only from the user envelope (`response_composer`) when the model dump is tool JSON.
 
-### F4 — Resumable streams
+**Done when:** A live tool turn shows chips without a JSON blob in the bubble, and the closing prose is composer text from the envelope.
 
-Optional Last-Event-ID / conversation replay so a proxy blip does not discard a completed backend turn. Do not start until F1 is proven; resume of **in-flight** tools is a later slice.
+### F4 — Resumable streams (this increment)
+
+Replay a **completed** backend turn after a proxy/SSE drop. `GET /api/assistant/chat/replay` (proxied as `/api/chat/replay`) honors `Last-Event-ID`. Redis holds the latest turn for 15 minutes; `conversation_messages` is the durable fallback. In-flight tool resume is out of scope.
+
+**Done when:** After a dropped SSE, `/ai` recovers the persisted assistant bubble without a duplicate when `Last-Event-ID` already matches.
 
 ### F5 — TTFT and cache
 

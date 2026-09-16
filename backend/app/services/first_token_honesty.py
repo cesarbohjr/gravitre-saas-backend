@@ -5,6 +5,7 @@ Standalone "Done." is allowed only when the envelope + write gate agree.
 """
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -22,6 +23,18 @@ _STANDALONE_DONE = re.compile(r"^\s*done\.?\s*$", re.I)
 
 _PENDING_STATUSES = frozenset(
     {"awaiting_confirm", "pending", "needs_approval", "awaiting_approval"}
+)
+
+_TOOL_JSON_KEYS = frozenset(
+    {
+        "success",
+        "error_code",
+        "error_detail",
+        "errorCode",
+        "tool_calls",
+        "observation",
+        "connector_id",
+    }
 )
 
 
@@ -63,3 +76,44 @@ def reject_premature_done(text: str, envelope: dict[str, Any] | None, *, fallbac
     if is_standalone_done(cleaned) and not envelope_allows_completion_claim(envelope):
         return fallback
     return cleaned
+
+
+def looks_like_tool_payload(text: str | None) -> bool:
+    """True when text is (or starts as) a tool/envelope JSON dump, not operator prose."""
+    raw = (text or "").lstrip()
+    if not raw:
+        return False
+    if raw[0] not in "{[":
+        return False
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        head = raw[:160]
+        return any(
+            token in head
+            for token in ('"success"', '"error_code"', '"error_detail"', '"tool_calls"')
+        )
+    if isinstance(parsed, dict):
+        keys = set(parsed)
+        if keys & _TOOL_JSON_KEYS:
+            return True
+        data = parsed.get("data")
+        return isinstance(data, dict) and bool(data) and not parsed.get("message")
+    if isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
+        first = parsed[0]
+        return "output" in first or ("name" in first and ("input" in first or "output" in first))
+    return False
+
+
+def envelope_from_tool_results(tool_results: list[Any] | None) -> dict[str, Any] | None:
+    """Last tool observation as a user envelope, or None."""
+    if not tool_results:
+        return None
+    last = tool_results[-1]
+    if not isinstance(last, dict):
+        return None
+    from app.services.response_envelope import coerce_user_envelope
+
+    output = last.get("output")
+    action = str(last.get("name") or last.get("displayName") or "")
+    return coerce_user_envelope(output if output is not None else last, action=action)

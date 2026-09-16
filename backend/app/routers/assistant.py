@@ -76,6 +76,11 @@ from app.operators.assistant_sse import (
     sse_text_start,
 )
 from app.services.chat_turn_cancel_service import clear_stop, request_stop, stream_should_stop
+from app.services.chat_stream_replay_service import (
+    load_completed_turn,
+    load_completed_turn_from_db,
+    store_completed_turn,
+)
 from app.services.response_composer import emit_stream_error
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.org_context_service import get_org_context_service
@@ -464,6 +469,30 @@ def _persist_conversation_turn(
         return None, None
 
 
+def _remember_completed_turn(
+    *,
+    settings: Settings,
+    org_id: str,
+    conversation_id: str | None,
+    user_text: str,
+    assistant_text: str,
+    tool_results: list[dict[str, Any]] | None = None,
+    assistant_message_id: str | None = None,
+) -> None:
+    try:
+        store_completed_turn(
+            org_id,
+            conversation_id,
+            user_text=user_text,
+            assistant_text=assistant_text,
+            tool_results=tool_results,
+            assistant_message_id=assistant_message_id,
+            settings=settings,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("chat replay store skipped error=%s", str(exc)[:200])
+
+
 def _resolve_base_system_prompt(
     settings: Settings,
     org_id: str,
@@ -686,6 +715,15 @@ def _build_stream(
                     org_id,
                     str(exc),
                 )
+            _remember_completed_turn(
+                settings=settings,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                user_text=user_text,
+                assistant_text=assistant_text,
+                tool_results=[],
+                assistant_message_id=message_id,
+            )
             yield sse_done()
             elapsed_ms = int((time.monotonic() - start_ms) * 1000)
             perf.stop("total_response")
@@ -828,6 +866,15 @@ def _build_stream(
                     org_id,
                     str(exc),
                 )
+            _remember_completed_turn(
+                settings=settings,
+                org_id=org_id,
+                conversation_id=conversation_id,
+                user_text=user_text,
+                assistant_text=assistant_text,
+                tool_results=complete.tool_results if complete else [],
+                assistant_message_id=complete.message_id if complete else None,
+            )
             yield sse_done()
             return
 
@@ -870,6 +917,15 @@ def _build_stream(
                 user_id,
                 str(exc),
             )
+        _remember_completed_turn(
+            settings=settings,
+            org_id=org_id,
+            conversation_id=conversation_id,
+            user_text=user_text,
+            assistant_text=assistant_text,
+            tool_results=complete.tool_results if complete else [],
+            assistant_message_id=complete.message_id if complete else None,
+        )
 
         suggestions: list[str] = []
         try:
@@ -993,6 +1049,36 @@ async def assistant_chat_stop(
         )
     )
     return {"ok": True, "requested": stored}
+
+
+@router.get("/chat/replay")
+async def assistant_chat_replay(
+    request: Request,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    conversation_id: Annotated[str, Query(min_length=1, max_length=128)],
+) -> dict[str, Any]:
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    last_event_id = (request.headers.get("last-event-id") or request.query_params.get("last_event_id") or "").strip() or None
+    payload = load_completed_turn(
+        org_id,
+        conversation_id,
+        last_event_id=last_event_id,
+        settings=settings,
+    )
+    if payload is None:
+        payload = load_completed_turn_from_db(
+            settings,
+            org_id=org_id,
+            user_id=str(current_user.get("user_id") or ""),
+            conversation_id=conversation_id,
+            last_event_id=last_event_id,
+        )
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No completed turn to replay")
+    return {"ok": True, **payload}
 
 
 @router.post("/chat")

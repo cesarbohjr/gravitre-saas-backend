@@ -5,7 +5,9 @@ from app.services.first_token_honesty import (
     STAGE_PLAN,
     STAGE_TOOL,
     envelope_allows_completion_claim,
+    envelope_from_tool_results,
     is_standalone_done,
+    looks_like_tool_payload,
     reject_premature_done,
     status_for_stage,
 )
@@ -54,3 +56,15 @@ def test_reject_premature_done() -> None:
     )
     assert is_standalone_done("Done.") is True
     assert is_standalone_done("Done. List created.") is False
+
+
+def test_tool_json_is_not_operator_prose() -> None:
+    assert looks_like_tool_payload('{"success": true, "data": {"id": "1"}}') is True
+    assert looks_like_tool_payload('{"error_code": "tool_error", "success": false}') is True
+    assert looks_like_tool_payload('{"success":') is True
+    assert looks_like_tool_payload("Created the Apollo list.") is False
+    env = envelope_from_tool_results(
+        [{"name": "apollo.lists.create", "output": {"success": True, "data": {"name": "Q3"}}}]
+    )
+    assert env is not None
+    assert env["success"] is True

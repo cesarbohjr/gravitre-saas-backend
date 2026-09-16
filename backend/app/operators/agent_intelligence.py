@@ -4205,6 +4205,7 @@ class AgentIntelligence:
         text_id: str | None = spoken_progress_text_id
         streamed_content = ""
         full_content_parts: list[str] = []
+        post_tool_hold = False
         if correction_ack:
             packed = await _composed_reply(
                 correction_ack + "\n\n",
@@ -4811,6 +4812,7 @@ class AgentIntelligence:
                     progress_steps=named_progress_steps,
                 )
             elif event.kind == "tool_complete" and event.tool_name:
+                post_tool_hold = True
                 call_id = event.tool_call_id or f"call-{uuid.uuid4().hex[:12]}"
                 observation = event.result or {}
                 output = format_react_tool_output(event.tool_name, observation)
@@ -4840,6 +4842,10 @@ class AgentIntelligence:
                     observation=observation,
                 )
             elif event.kind == "text_delta" and event.content:
+                from app.services.first_token_honesty import looks_like_tool_payload
+
+                if looks_like_tool_payload(event.content) or post_tool_hold:
+                    continue
                 full_content_parts.append(event.content)
                 # Buffer run-history answers until the honesty gate — streaming a
                 # fabricated count then silently rewriting leaves the client with the lie.
@@ -5014,6 +5020,17 @@ class AgentIntelligence:
         streamed_content = "".join(full_content_parts)
         if react_result is not None and not streamed_content.strip():
             streamed_content = react_result.answer or ""
+        if post_tool_hold and react_result is not None:
+            from app.services.first_token_honesty import looks_like_tool_payload
+
+            answer = str(react_result.answer or "")
+            if looks_like_tool_payload(answer):
+                if not streamed_content.strip() or looks_like_tool_payload(streamed_content):
+                    streamed_content = ""
+            elif answer.strip() and answer.strip() not in streamed_content:
+                streamed_content = (
+                    f"{streamed_content}\n\n{answer}".strip() if streamed_content.strip() else answer
+                )
 
         # Wave 3 — if ReAct left a structured connector failure answer, prefer it over empty/partial stream.
         from app.services.tool_error_messages import format_react_connector_failure
@@ -5326,7 +5343,29 @@ class AgentIntelligence:
             "execution_verified": bool(getattr(react_result, "execution_verified", False)),
             "pending_task": pending_for_loop,
         }
-        if looks_like_raw_backend(full_content):
+        from app.services.first_token_honesty import envelope_from_tool_results, looks_like_tool_payload
+        from app.services.response_envelope import envelope_kind as _envelope_kind
+
+        tool_env = envelope_from_tool_results(tool_results)
+        if tool_env is not None and (
+            looks_like_tool_payload(full_content)
+            or (
+                post_tool_hold
+                and looks_like_tool_payload(str(getattr(react_result, "answer", "") or ""))
+            )
+        ):
+            packed = await _composed_reply(
+                str((tool_env.get("data") or {}).get("text") or ""),
+                kind=_envelope_kind(tool_env),
+                extra={**tool_env, **_compose_extra},
+            )
+            full_content = packed.text
+            if text_id is not None:
+                yield emit_text_end(text_id)
+            for ev in packed.events:
+                yield ev
+            text_id = packed.text_id
+        elif looks_like_raw_backend(full_content):
             packed = await _composed_reply(
                 full_content,
                 kind="error",

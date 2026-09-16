@@ -53,12 +53,14 @@ function forwardHeaders(request: NextRequest) {
   const accept = request.headers.get("accept")
   const xOrgId = request.headers.get("x-org-id")
   const xEnv = request.headers.get("x-environment")
+  const lastEventId = request.headers.get("last-event-id")
 
   if (auth) headers.set("authorization", auth)
   if (contentType) headers.set("content-type", contentType)
   if (accept) headers.set("accept", accept)
   if (xOrgId) headers.set("x-org-id", xOrgId)
   if (xEnv) headers.set("x-environment", xEnv)
+  if (lastEventId) headers.set("last-event-id", lastEventId)
 
   return headers
 }

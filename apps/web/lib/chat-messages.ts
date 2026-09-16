@@ -23,6 +23,28 @@ export function uiMessageText(message: UIMessage): string {
   return ""
 }
 
+/** True when assistant text is a tool/envelope JSON dump that belongs on chips. */
+export function looksLikeToolJson(text: string | null | undefined): boolean {
+  const raw = (text || "").trim()
+  if (!raw || (raw[0] !== "{" && raw[0] !== "[")) return false
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const keys = parsed as Record<string, unknown>
+      return ["success", "error_code", "error_detail", "tool_calls", "observation"].some(
+        (key) => key in keys,
+      )
+    }
+    if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object") {
+      const first = parsed[0] as Record<string, unknown>
+      return "output" in first || ("name" in first && ("input" in first || "output" in first))
+    }
+  } catch {
+    return /"(success|error_code|error_detail|tool_calls)"/.test(raw.slice(0, 160))
+  }
+  return false
+}
+
 function toolCallsToParts(message: ConversationMessage): UIMessage["parts"] {
   const parts: UIMessage["parts"] = [{ type: "text", text: message.content }]
   if (!Array.isArray(message.tool_calls)) return parts

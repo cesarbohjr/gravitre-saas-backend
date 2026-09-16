@@ -43,7 +43,7 @@ import { ClarificationMessage } from "@/components/gravitre/assistant/clarificat
 import { DialogueModeChip } from "@/components/gravitre/assistant/dialogue-mode-chip"
 import { shouldShowDialogueModeChip } from "@/lib/dialogue-mode-labels"
 import { SAFE_STATUS_FALLBACK, sanitizeUserActivityLabel } from "@/lib/ai-state-matrix"
-import { uiMessageText } from "@/lib/chat-messages"
+import { looksLikeToolJson, uiMessageText } from "@/lib/chat-messages"
 import {
   formatMessageDayDivider,
   formatMessageExactTime,
@@ -241,7 +241,11 @@ export function ChatTranscript({
                 return true
               })
             : []
-          const displayText = isUser ? text : polishAssistantText(text)
+          const displayText = isUser
+            ? text
+            : looksLikeToolJson(text) && toolInvocations.length > 0
+              ? ""
+              : polishAssistantText(text)
           const showInlineStatus =
             isStreamingAssistant && !displayText.trim() && toolInvocations.length === 0
           const showModeChip = shouldShowDialogueModeChip({

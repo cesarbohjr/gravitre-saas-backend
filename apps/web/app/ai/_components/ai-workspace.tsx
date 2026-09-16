@@ -41,6 +41,7 @@ import {
 } from "@/lib/department-context"
 import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { isUserChatAbort, recoverCompletedChatTurn, writeLastEventId } from "@/lib/chat-replay"
 import { stopChatTurn } from "@/lib/chat-stop"
 import dynamic from "next/dynamic"
 import { polishAssistantText } from "@/lib/plain-english"
@@ -447,6 +448,7 @@ export function AiWorkspace({
   const persistedChatPairIdsRef = useRef<Set<string>>(new Set())
   const missingConversationVerificationRef = useRef<string | null>(null)
   const connectedFileRefsRef = useRef<ConnectedFileAttachment[]>([])
+  const messagesRef = useRef<UIMessage[]>([])
   const [connectedFilePickerOpen, setConnectedFilePickerOpen] = useState(false)
   const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
 
@@ -554,7 +556,15 @@ export function AiWorkspace({
       connectedFileRefsRef.current = []
       submitLockRef.current = false
       setSessionBusy(false)
-      toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
+      if (!isUserChatAbort(error)) {
+        const conversationId = activeConversationIdRef.current
+        void recoverCompletedChatTurn(conversationId, messagesRef.current).then((recovered) => {
+          if (!recovered) return
+          setMessages(recovered)
+          if (conversationId) writeCachedConversationMessages(conversationId, recovered)
+        })
+        toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
+      }
     },
     onFinish: ({ messages: finishedMessages }) => {
       connectedFileRefsRef.current = []
@@ -575,6 +585,19 @@ export function AiWorkspace({
       const conversationId = activeConversationIdRef.current
       if (conversationId && stamped.length > 0) {
         writeCachedConversationMessages(conversationId, stamped)
+      }
+      const last = stamped[stamped.length - 1]
+      if (conversationId && last?.role === "assistant" && last.id) {
+        writeLastEventId(conversationId, last.id)
+      }
+      const lastEmpty =
+        last?.role === "assistant" && !uiMessageText(last).trim()
+      if (conversationId && lastEmpty) {
+        void recoverCompletedChatTurn(conversationId, stamped).then((recovered) => {
+          if (!recovered) return
+          setMessages(recovered)
+          writeCachedConversationMessages(conversationId, recovered)
+        })
       }
       void persistChatTurn(stamped)
       void mutateConversations()
@@ -1785,7 +1808,6 @@ export function AiWorkspace({
     stopChatTurn({ conversationId: activeConversationIdRef.current, stopStream: stop })
   }, [stop])
 
-  const messagesRef = useRef(messages)
   messagesRef.current = messages
   const duplexActiveRef = useRef(false)
 
