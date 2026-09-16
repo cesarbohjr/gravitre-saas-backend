@@ -156,6 +156,20 @@ export function IntelligenceMapContextPanel({
     )
   }
 
+  if (selection.kind === "edge") {
+    return (
+      <aside
+        className={cn(
+          "rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]/95 p-5 shadow-[var(--np-shadow)] backdrop-blur-sm",
+          className,
+        )}
+      >
+        <p className={TYPE.eyebrow}>Relationship</p>
+        <h3 className={TYPE.sectionTitle}>{selection.label}</h3>
+      </aside>
+    )
+  }
+
   const node = selection.node
   return (
     <aside

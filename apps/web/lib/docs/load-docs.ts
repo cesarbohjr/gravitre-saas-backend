@@ -8,7 +8,7 @@ import type { DocEntry, DocFrontmatter } from "./types"
 const PUBLIC_DOCS_ROOT = path.join(process.cwd(), "content/docs/public")
 
 function walkMdxFiles(dir: string, base = ""): string[] {
-  if (!fs.existsSync(dir)) return []
+  if (!fs.existsSync(/* turbopackIgnore: true */ dir)) return []
 
   const entries = fs.readdirSync(dir, { withFileTypes: true })
   const files: string[] = []
@@ -43,7 +43,7 @@ function resolveDocPath(slug: string): string | null {
   ]
 
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate
+    if (fs.existsSync(/* turbopackIgnore: true */ candidate)) return candidate
   }
 
   return null

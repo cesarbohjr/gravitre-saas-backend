@@ -73,14 +73,7 @@ export function useIntelligenceSnapshot({
 
   const lastKnown = useMemo(() => data, [data])
 
-  const generatedAt =
-    data?.snapshot?.generatedAt ??
-    (typeof data?.snapshot === "object" &&
-    data?.snapshot &&
-    "generatedAt" in data.snapshot
-      ? String((data.snapshot as { generatedAt?: string }).generatedAt ?? "")
-      : null) ||
-    null
+  const generatedAt = data?.snapshot?.generatedAt ?? null
 
   return {
     data,

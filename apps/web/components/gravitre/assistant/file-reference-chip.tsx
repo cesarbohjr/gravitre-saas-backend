@@ -64,11 +64,13 @@ export function FileReferenceChip({
       ? String((metadata as { role?: unknown }).role || "")
       : "") ||
     undefined
-  const bytes =
-    ("byte_size" in file && (file.byte_size ?? file.byteSize)) ||
-    (metadata && typeof metadata === "object" && "byteSize" in metadata
-      ? Number((metadata as { byteSize?: number }).byteSize)
-      : undefined)
+  const bytes = (() => {
+    if ("byte_size" in file) return file.byte_size ?? file.byteSize
+    if (metadata && typeof metadata === "object" && "byteSize" in metadata) {
+      return Number((metadata as { byteSize?: number }).byteSize)
+    }
+    return undefined
+  })()
   const href =
     ("download_url" in file && (file.download_url || file.downloadUrl)) ||
     ("result_url" in file && (file.result_url || file.resultUrl)) ||

@@ -73,7 +73,9 @@ function buildKindClusters(nodes: MapNode[]): GraphCluster[] {
 }
 
 function centroid(points: GraphPoint[]): GraphPoint {
-  if (points.length === 0) return DEFAULT_GRAPH_CENTER
+  if (points.length === 0) {
+    return { x: DEFAULT_GRAPH_CENTER.cx, y: DEFAULT_GRAPH_CENTER.cy }
+  }
   const sum = points.reduce(
     (acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }),
     { x: 0, y: 0 },
@@ -99,7 +101,7 @@ export class GraphLayoutEngine {
     }
 
     const visibleNodes = nodes.filter((node) => !hiddenNodeIds.has(node.id))
-    let positions = layoutMapNodes(visibleNodes, DEFAULT_GRAPH_CENTER, lens, edges)
+    const positions = layoutMapNodes(visibleNodes, DEFAULT_GRAPH_CENTER, lens, edges)
 
     if (cacheKey) {
       const cached = readLayoutCache(cacheKey)

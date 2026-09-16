@@ -53,7 +53,9 @@ export function formatScore(value: number | null | undefined): string {
   return value.toFixed(2)
 }
 
-export function readNumber(value: unknown, fallback = 0): number {
+export function readNumber(value: unknown, fallback?: number): number
+export function readNumber(value: unknown, fallback: null): number | null
+export function readNumber(value: unknown, fallback: number | null = 0): number | null {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
 }

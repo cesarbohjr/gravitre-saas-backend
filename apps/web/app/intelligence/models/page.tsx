@@ -192,9 +192,10 @@ export default function IntelligenceModelsPage() {
             description={copy.intro}
             icon={<NucleoIntelligence className="h-5 w-5" />}
           />
-          <IntelligenceShell activeTab="models" loadState="READY" className="mt-3" />
+          <IntelligenceShell activeTab="models" loadState="READY" className="mt-3">
+            <BuiltInModelsPanel />
+          </IntelligenceShell>
         </div>
-        <BuiltInModelsPanel />
       </div>
     </AppShell>
   )
