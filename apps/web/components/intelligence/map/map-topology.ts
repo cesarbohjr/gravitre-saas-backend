@@ -392,9 +392,10 @@ export function layoutSemanticGraphNodes(
       const base = coords[i]
       if (!base) return
       const angle = Math.atan2(base.y - center.cy, base.x - center.cx) + phase
+      const jitter = ((i % 3) - 1) * 11
       positions.set(node.id, {
-        x: center.cx + radius * Math.cos(angle),
-        y: center.cy + radius * Math.sin(angle),
+        x: center.cx + (radius + jitter) * Math.cos(angle),
+        y: center.cy + (radius + jitter * 0.55) * Math.sin(angle),
       })
     })
   }

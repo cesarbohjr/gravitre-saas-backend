@@ -2,9 +2,8 @@
  * Gravitre Intelligence Core (Phase 2, 2026-09-11) — real, state-driven visualization.
  *
  * Reuses the visual signature proven in the marketing department-network component
- * (components/marketing/system/department-network) — CSS + SVG + Framer Motion, no
- * CSS + SVG + Framer Motion for nodes/edges; Phase F adds a scoped WebGL2 core aura
- * on the map surface only (no three.js). Unlike that marketing component, every
+ * (components/marketing/system/department-network) — CSS + SVG + Framer Motion,
+ * Nodus dotted canvas (no overflowing aura). Unlike that marketing component, every
  * state here comes from GET /api/intelligence/core/state — there is no scripted
  * story engine and no fixed 4-department set: department nodes only render for
  * departments the backend actually reports real recent activity for.

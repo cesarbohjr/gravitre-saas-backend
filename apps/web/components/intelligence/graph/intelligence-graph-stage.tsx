@@ -12,8 +12,7 @@ import type { Agent } from "@/types/api"
 import { CoreHubNode } from "@/components/intelligence/core/core-hub-node"
 import { DepartmentNode } from "@/components/intelligence/core/department-node"
 import { SignalEdge } from "@/components/intelligence/core/signal-edge"
-import { IntelligenceNetworkWebGL } from "@/components/intelligence/intelligence-network-webgl"
-import { CoreHubWebGL } from "@/components/intelligence/map/core-hub-webgl"
+import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { MapSatelliteNode } from "@/components/intelligence/map/map-satellite-node"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
 import {
@@ -319,13 +318,6 @@ export function IntelligenceGraphStage({
     [],
   )
 
-  const coreActivity = useMemo(() => {
-    if (!data) return 0.3
-    const runs = data.core.activeAgentRuns
-    const deptActivity = data.departments.filter((d) => d.eventsInWindow > 0).length
-    return Math.min(1, 0.2 + runs * 0.1 + deptActivity * 0.04)
-  }, [data])
-
   const hasNodes = graph.nodes.length > 0
   const mobilePaths = useMemo(() => focusedRelationshipPaths(graph.topology), [graph.topology])
   const showCompactPaths = compactViewport && !mobileExplorerOpen && !isFullscreen && !listView
@@ -442,24 +434,16 @@ export function IntelligenceGraphStage({
         onPointerUp={interaction.endDrag}
         onPointerLeave={interaction.endDrag}
         className={cn(
-          "relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand-border)]/30 bg-gradient-to-b from-[color:var(--g-intelligence-surface)]/40 via-[color:var(--g-surface-1)] to-[color:var(--g-surface-2)] shadow-[var(--np-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+          "relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-white shadow-[var(--np-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
           isFullscreen && "min-h-[100vh] rounded-none border-0",
           !showCanvas && "hidden",
         )}
         role="application"
         aria-label={`Interactive Gravitre intelligence map — ${lens} lens`}
       >
-        {!reduced ? <IntelligenceNetworkWebGL className="opacity-25" nodeCount={32} /> : null}
-        <div
-          data-pan-surface="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
-          aria-hidden
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 50% 45%, color-mix(in oklch, var(--g-intelligence) 12%, transparent) 0%, transparent 55%), linear-gradient(var(--color-line,#eaedf1) 1px, transparent 1px), linear-gradient(90deg, var(--color-line,#eaedf1) 1px, transparent 1px)",
-            backgroundSize: "100% 100%, 48px 48px, 48px 48px",
-          }}
-        />
+        <div data-pan-surface="true" className="absolute inset-0 z-0">
+          <ConnectorsAtmosphere />
+        </div>
 
         <p className={cn(TYPE.meta, "absolute left-3 top-2 z-20 max-w-[70%] truncate opacity-80")}>
           {graph.caption}
@@ -554,7 +538,6 @@ export function IntelligenceGraphStage({
                 top: `${(payload.corePosition.y / VB.h) * 100}%`,
               }}
             >
-              {!reduced ? <CoreHubWebGL state={data?.core.state ?? "idle"} activity={coreActivity} /> : null}
               <CoreHubNode state={data?.core.state ?? "idle"} reduced={reduced} />
             </div>
 

@@ -1,15 +1,14 @@
 "use client"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { LogoSVG } from "@/components/marketing/nodus/logo"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import type { IntelligenceCoreVisualState } from "@/lib/api"
 import { CORE_STATE_LABEL } from "./types"
 import { cn } from "@/lib/utils"
 
 /**
- * Central hub node — same Nodus hub language (conic-spin rings + mark) as
- * GravitreIntelligenceCore in the marketing department network, driven by a
- * real backend state instead of a scripted story.
+ * Central hub — Nodus white tile (connectors/agents language) with the licensed
+ * Nucleo Sharp brain-nodes glyph. Spin stays inside the tile; no overflowing rings.
  */
 export function CoreHubNode({
   state,
@@ -24,40 +23,23 @@ export function CoreHubNode({
 
   return (
     <div className="relative flex flex-col items-center gap-2">
-      <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        {[88, 112, 136].map((size) => (
-          <div
-            key={size}
-            className="absolute rounded-full border border-[color:color-mix(in_oklch,var(--g-intelligence)_18%,#eaedf1)]"
-            style={{ width: size, height: size }}
-          />
-        ))}
-        {!reduced ? (
-          <motion.div
-            className="absolute h-[100px] w-[100px] rounded-full border border-[color:color-mix(in_oklch,var(--color-brand,#16a374)_30%,transparent)]"
-            animate={pulsing ? { scale: [1, 1.08, 1], opacity: [0.35, 0.7, 0.35] } : { scale: 1, opacity: 0.2 }}
-            transition={{ duration: 2.4, repeat: pulsing ? Infinity : 0, ease: "easeInOut" }}
-          />
-        ) : null}
-      </div>
-
       <motion.div
         initial={false}
         animate={{ scale: pulsing ? 1.03 : resolved ? 1.02 : 1 }}
         transition={{ duration: 0.35 }}
         className={cn(
-          "relative h-16 w-16 overflow-hidden rounded-xl bg-gray-200 p-px shadow-xl dark:bg-neutral-700",
+          "relative h-20 w-20 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700 sm:h-24 sm:w-24",
           resolved && "ring-1 ring-[color:var(--color-brand,#16a374)]",
         )}
       >
-        {!reduced && pulsing ? (
+        {!reduced ? (
           <>
             <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
             <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand,#16a374)_20%,transparent_30%)]" />
           </>
         ) : null}
-        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[10px] bg-white text-[color:var(--color-brand,#16a374)]">
-          <LogoSVG className="size-6" />
+        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-white text-[color:var(--color-brand,#16a374)] dark:bg-neutral-900 dark:text-white">
+          <NucleoIntelligence className="size-7 sm:size-8" />
           <span className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]">
             Core
           </span>
@@ -70,7 +52,7 @@ export function CoreHubNode({
           initial={reduced ? false : { opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={reduced ? undefined : { opacity: 0 }}
-          className="relative z-30 whitespace-nowrap rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2.5 py-1 text-[10px] font-semibold text-[color:var(--color-brand,#16a374)] shadow-sm"
+          className="relative z-30 whitespace-nowrap rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-500 shadow-sm dark:bg-blue-900 dark:text-white"
         >
           {label}
         </motion.span>

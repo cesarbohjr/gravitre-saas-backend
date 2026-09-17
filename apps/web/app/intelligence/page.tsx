@@ -24,7 +24,6 @@ import {
 } from "@/lib/intelligence/canonical-attention"
 import { useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
 import { WhyGravitrePanel, useWhyGravitreEvidence } from "@/components/intelligence/why-gravitre-panel"
-import { LivingMineralField } from "@/components/gravitre/visual"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import {
   IntelligenceAskCommandSurface,
@@ -332,12 +331,9 @@ function IntelligenceCenterInner() {
 
         {/* Dominant map zone — the product, not a card among cards */}
         <section className="relative border-b border-divide">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <LivingMineralField intensity="section" className="opacity-90" />
-          </div>
           <div className="relative z-10 mx-auto max-w-[1600px] space-y-4 px-4 py-4 md:px-6 md:py-6">
             <GravitrePageHeader
-              className="border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]/75 backdrop-blur-sm"
+              className="border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]"
               eyebrow="Intelligence"
               title={copy.title}
               description="One shared intelligence coordinating your business — explore the live map, then inspect evidence below."
