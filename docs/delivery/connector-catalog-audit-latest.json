@@ -1,20 +1,20 @@
 {
   "summary": {
-    "totalActions": 727,
-    "implemented": 725,
-    "verifiedWorking": 477,
+    "totalActions": 732,
+    "implemented": 730,
+    "verifiedWorking": 482,
     "implementedUnverified": 248,
     "notImplemented": 2,
     "notImplementedActions": [
       "webhook.connectors.get",
       "webhook.post.replay"
     ],
-    "chatExposed": 725,
-    "executeExposed": 725,
+    "chatExposed": 730,
+    "executeExposed": 730,
     "schemaMissing": 0,
     "scopeUnregistered": 0,
     "noTests": 248,
-    "multiStepReady": 725,
+    "multiStepReady": 730,
     "pendingOutputSchemaRemaining": null,
     "registryViolations": {
       "totalViolations": 0,
@@ -34,13 +34,13 @@
         "high_risk": 8
       },
       "hubspot": {
-        "total": 28,
-        "implemented": 28,
-        "chat": 28,
-        "execute": 28,
+        "total": 30,
+        "implemented": 30,
+        "chat": 30,
+        "execute": 30,
         "missing_schema": 0,
         "no_tests": 0,
-        "high_risk": 15
+        "high_risk": 16
       },
       "pipedrive": {
         "total": 11,
@@ -500,6 +500,15 @@
         "missing_schema": 0,
         "no_tests": 0,
         "high_risk": 7
+      },
+      "connectwise": {
+        "total": 3,
+        "implemented": 3,
+        "chat": 3,
+        "execute": 3,
+        "missing_schema": 0,
+        "no_tests": 0,
+        "high_risk": 1
       },
       "intercom": {
         "total": 12,
@@ -1280,6 +1289,25 @@
     },
     {
       "vendor": "hubspot",
+      "action_id": "hubspot.campaigns.list",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:marketing-email:read",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live",
+      "verificationClaim": "verified_working"
+    },
+    {
+      "vendor": "hubspot",
       "action_id": "hubspot.contacts.create",
       "inputSchemaStatus": "override",
       "implementationStatus": "requires_approval",
@@ -1306,6 +1334,25 @@
       "executeExposure": true,
       "oauthScopes": [
         "hubspot:contacts:write",
+        "hubspot:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "live",
+      "verificationClaim": "verified_working"
+    },
+    {
+      "vendor": "hubspot",
+      "action_id": "hubspot.campaigns.update",
+      "inputSchemaStatus": "override",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "hubspot:marketing-email:write",
         "hubspot:*"
       ],
       "scopeRegistered": true,
@@ -4068,7 +4115,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock",
+      "testStatus": "live",
       "verificationClaim": "verified_working"
     },
     {
@@ -10608,6 +10655,63 @@
       "verificationClaim": "verified_working"
     },
     {
+      "vendor": "connectwise",
+      "action_id": "connectwise.companies.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "connectwise:company:read",
+        "connectwise:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "low",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock",
+      "verificationClaim": "verified_working"
+    },
+    {
+      "vendor": "connectwise",
+      "action_id": "connectwise.tickets.create",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "requires_approval",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "connectwise:service:tickets:write",
+        "connectwise:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "high",
+      "approvalRequired": true,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock",
+      "verificationClaim": "verified_working"
+    },
+    {
+      "vendor": "connectwise",
+      "action_id": "connectwise.companies.list",
+      "inputSchemaStatus": "inferred",
+      "implementationStatus": "executable",
+      "chatExposure": true,
+      "executeExposure": true,
+      "oauthScopes": [
+        "connectwise:company:read",
+        "connectwise:*"
+      ],
+      "scopeRegistered": true,
+      "riskLevel": "medium",
+      "approvalRequired": false,
+      "multiStepPlans": true,
+      "structuredResults": true,
+      "testStatus": "mock",
+      "verificationClaim": "verified_working"
+    },
+    {
       "vendor": "intercom",
       "action_id": "intercom.contacts.get",
       "inputSchemaStatus": "inferred",
@@ -13815,7 +13919,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock",
+      "testStatus": "live",
       "verificationClaim": "verified_working"
     },
     {
@@ -13872,7 +13976,7 @@
       "approvalRequired": false,
       "multiStepPlans": true,
       "structuredResults": true,
-      "testStatus": "mock",
+      "testStatus": "live",
       "verificationClaim": "verified_working"
     },
     {

@@ -25,8 +25,10 @@ hubspot,hubspot.tickets.get,override,executable,True,True,hubspot:tickets:read|h
 hubspot,hubspot.owners.list,override,executable,True,True,hubspot:owners:read|hubspot:*,True,low,False,True,True,live,verified_working
 hubspot,hubspot.pipelines.list,override,executable,True,True,hubspot:pipelines:read|hubspot:*,True,low,False,True,True,live,verified_working
 hubspot,hubspot.contacts.list,override,executable,True,True,hubspot:contacts:read|hubspot:*,True,low,False,True,True,live,verified_working
+hubspot,hubspot.campaigns.list,override,executable,True,True,hubspot:marketing-email:read|hubspot:*,True,low,False,True,True,live,verified_working
 hubspot,hubspot.contacts.create,override,requires_approval,True,True,hubspot:contacts:write|hubspot:*,True,high,True,True,True,live,verified_working
 hubspot,hubspot.contacts.update,override,requires_approval,True,True,hubspot:contacts:write|hubspot:*,True,high,True,True,True,live,verified_working
+hubspot,hubspot.campaigns.update,override,requires_approval,True,True,hubspot:marketing-email:write|hubspot:*,True,high,True,True,True,live,verified_working
 hubspot,hubspot.contacts.delete,override,requires_approval,True,True,hubspot:contacts:write|hubspot:*,True,high,True,True,True,live,verified_working
 hubspot,hubspot.deals.create,override,requires_approval,True,True,hubspot:deals:write|hubspot:*,True,high,True,True,True,live,verified_working
 hubspot,hubspot.deals.update,override,requires_approval,True,True,hubspot:deals:write|hubspot:*,True,high,True,True,True,live,verified_working
@@ -171,7 +173,7 @@ stackadapt,stackadapt.campaigns.update,inferred,requires_approval,True,True,stac
 stackadapt,stackadapt.audiences.sync,inferred,requires_approval,True,True,stackadapt:audiences:write|stackadapt:*,True,high,True,True,True,none,implemented_unverified
 stackadapt,stackadapt.creatives.upload,inferred,requires_approval,True,True,stackadapt:creatives:write|stackadapt:*,True,high,True,True,True,none,implemented_unverified
 stackadapt,stackadapt.reports.export,inferred,executable,True,True,stackadapt:reports:read|stackadapt:*,True,medium,False,True,True,none,implemented_unverified
-linkedin,linkedin.prospect.enrich,inferred,executable,True,True,linkedin:prospects:read|linkedin:*,True,low,False,True,True,mock,verified_working
+linkedin,linkedin.prospect.enrich,inferred,executable,True,True,linkedin:prospects:read|linkedin:*,True,low,False,True,True,live,verified_working
 linkedin,linkedin.organizations.get,inferred,executable,True,True,linkedin:organizations:read|linkedin:*,True,low,False,True,True,mock,verified_working
 linkedin,linkedin.ads.accounts.list,inferred,executable,True,True,linkedin:ads:read|linkedin:*,True,low,False,True,True,mock,verified_working
 linkedin,linkedin.leads.submit,inferred,requires_approval,True,True,linkedin:leads:write|linkedin:*,True,high,True,True,True,mock,verified_working
@@ -516,6 +518,9 @@ zendesk,zendesk.tickets.add_tags,inferred,requires_approval,True,True,zendesk:ti
 zendesk,zendesk.tickets.merge,inferred,requires_approval,True,True,zendesk:tickets:write|zendesk:*,True,high,True,True,True,live,verified_working
 zendesk,zendesk.macros.apply,inferred,requires_approval,True,True,zendesk:macros:write|zendesk:*,True,high,True,True,True,live,verified_working
 zendesk,zendesk.side_conversations.create,inferred,requires_approval,True,True,zendesk:tickets:write|zendesk:*,True,high,True,True,True,live,verified_working
+connectwise,connectwise.companies.list,inferred,executable,True,True,connectwise:company:read|connectwise:*,True,low,False,True,True,mock,verified_working
+connectwise,connectwise.tickets.create,inferred,requires_approval,True,True,connectwise:service:tickets:write|connectwise:*,True,high,True,True,True,mock,verified_working
+connectwise,connectwise.companies.list,inferred,executable,True,True,connectwise:company:read|connectwise:*,True,medium,False,True,True,mock,verified_working
 intercom,intercom.contacts.get,inferred,executable,True,True,intercom:contacts:read|intercom:*,True,low,False,True,True,live,verified_working
 intercom,intercom.conversations.list,inferred,executable,True,True,intercom:conversations:read|intercom:*,True,low,False,True,True,live,verified_working
 intercom,intercom.tickets.list,inferred,executable,True,True,intercom:tickets:read|intercom:*,True,low,False,True,True,live,verified_working
@@ -684,10 +689,10 @@ webhook,webhook.post.replay,inferred,not_implemented,False,False,webhook:post:wr
 fred,fred.series.get,override,executable,True,True,fred:series:read|fred:*,True,low,False,True,True,live,verified_working
 fred,fred.series.search,inferred,executable,True,True,fred:series:read|fred:*,True,low,False,True,True,none,implemented_unverified
 fred,fred.series.observations.get,inferred,executable,True,True,fred:series:read|fred:*,True,medium,False,True,True,none,implemented_unverified
-nvd,nvd.cve.get,override,executable,True,True,nvd:cve:read|nvd:*,True,low,False,True,True,mock,verified_working
+nvd,nvd.cve.get,override,executable,True,True,nvd:cve:read|nvd:*,True,low,False,True,True,live,verified_working
 nvd,nvd.cve.search,inferred,executable,True,True,nvd:cve:read|nvd:*,True,low,False,True,True,none,implemented_unverified
 nvd,nvd.cve.recent,inferred,executable,True,True,nvd:cve:read|nvd:*,True,medium,False,True,True,none,implemented_unverified
-cisa_kev,cisa_kev.feed.get,override,executable,True,True,cisa_kev:feed:read|cisa_kev:*,True,low,False,True,True,mock,verified_working
+cisa_kev,cisa_kev.feed.get,override,executable,True,True,cisa_kev:feed:read|cisa_kev:*,True,low,False,True,True,live,verified_working
 cisa_kev,cisa_kev.cve.lookup,inferred,executable,True,True,cisa_kev:feed:read|cisa_kev:*,True,low,False,True,True,none,implemented_unverified
 cisa_kev,cisa_kev.feed.diff,inferred,executable,True,True,cisa_kev:feed:read|cisa_kev:*,True,medium,False,True,True,none,implemented_unverified
 sec_edgar,sec_edgar.filings.search,override,executable,True,True,sec_edgar:filings:read|sec_edgar:*,True,low,False,True,True,mock,verified_working
