@@ -637,11 +637,19 @@ async def try_analytics_traffic_overview_turn(
         }
     )
     if not proof.ok:
+        from app.services.compiled_task_service import attach_compiled_task
+
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": proof.user_message(),
-            "task_state": task_state or {},
+            "task_state": attach_compiled_task(
+                task_state or {},
+                objective_text=message,
+                capability_id="analytics.traffic_overview",
+                preflight=proof,
+                org_id=org_id,
+            ),
             "workflow_status": "blocked",
             "preflight_status": proof.status,
             "error_class": proof.error_class,
@@ -764,6 +772,15 @@ async def try_analytics_traffic_overview_turn(
             "property_id": property_id,
             "property_name": property_name,
         },
+    )
+    from app.services.compiled_task_service import attach_compiled_task
+
+    merged_state = attach_compiled_task(
+        merged_state,
+        objective_text=message,
+        capability_id="analytics.traffic_overview",
+        preflight=proof,
+        org_id=org_id,
     )
 
     from app.services.terminal_turn_policy import enforce_terminal_turn_outcome

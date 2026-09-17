@@ -172,8 +172,10 @@ def resolve_ga4_property(
             candidate_count=0,
         )
 
-    if len(properties) == 1:
-        prop = properties[0]
+    stamped = tuple({**prop, "org_id": org_id} if isinstance(prop, dict) else prop for prop in properties)
+
+    if len(stamped) == 1:
+        prop = stamped[0]
         return ResourceResolution(
             status="resolved",
             connector_id=connector_id,
@@ -187,14 +189,24 @@ def resolve_ga4_property(
             candidates=(prop,),
         )
 
-    return ResourceResolution(
+    ambiguous = ResourceResolution(
         status="ambiguous",
         connector_id=connector_id,
         connection_id=connection_id,
         resource_type="property",
         resolution_reason="multiple_properties",
-        candidate_count=len(properties),
-        candidates=tuple(properties),
+        candidate_count=len(stamped),
+        candidates=stamped,
+    )
+    from app.services.domain_property_binding import apply_tenant_domain_binding
+
+    return apply_tenant_domain_binding(
+        ambiguous,
+        org_id=org_id,
+        conversation_context=conversation_context,
+        client=client,
+        environment_name=str(conn.get("environment") or environment_name),
+        access_token=token,
     )
 
 
@@ -251,11 +263,22 @@ def resolve_resource(
             resolution_reason="resolver_not_implemented",
         )
 
-    return adapter(
+    resolution = adapter(
         client=client,
         org_id=org_id,
         settings=settings,
         conn=conn,
+        environment_name=environment_name,
+    )
+    if resolution.status != "ambiguous":
+        return resolution
+    from app.services.domain_property_binding import apply_tenant_domain_binding
+
+    return apply_tenant_domain_binding(
+        resolution,
+        org_id=org_id,
+        conversation_context=conversation_context,
+        client=client,
         environment_name=environment_name,
     )
 

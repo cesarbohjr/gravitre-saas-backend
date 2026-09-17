@@ -46,6 +46,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "previous_result": None,
     "active_analysis": None,
     "resolution_trace": None,
+    # Audit §34.4 — read-only projection of the current business task.
+    "compiled_task": None,
     # Phase C/E5 — typed execution plan + normalized observations.
     "execution_plan": None,
     "execution_observations": [],

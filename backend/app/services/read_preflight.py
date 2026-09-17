@@ -9,7 +9,6 @@ import secrets
 import time
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urlparse
 
 from app.connectors.action_catalog.f1_read_slice import (
     catalog_action_key,
@@ -22,6 +21,8 @@ from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.canonical_time_resolver import TimeWindow, resolve_time_window
 from app.services.connector_resource_resolver import ResourceResolution, resolve_resource
+from app.services.domain_property_binding import match_resource_to_domain
+from app.services.org_business_identity import merge_business_identity
 from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
 from app.services.tool_types import ToolContext, ToolValidationError
 
@@ -180,68 +181,15 @@ def _first_present(payload: dict[str, Any], names: tuple[str, ...]) -> Any:
     return None
 
 
-def _host(value: str) -> str:
-    raw = str(value or "").strip().lower()
-    if not raw:
-        return ""
-    if "://" not in raw and not raw.startswith("sc-domain:"):
-        raw = f"https://{raw}"
-    if raw.startswith("sc-domain:"):
-        return raw.split(":", 1)[1].split("/")[0]
-    host = urlparse(raw).hostname or ""
-    if host.startswith("www."):
-        host = host[4:]
-    return host
-
-
 def business_identity_from_context(context: dict[str, Any] | None) -> dict[str, Any]:
     ctx = context if isinstance(context, dict) else {}
-    identity = ctx.get("business_identity") if isinstance(ctx.get("business_identity"), dict) else {}
-    website = str(
-        identity.get("website")
-        or identity.get("domain")
-        or ctx.get("company_website")
-        or ctx.get("website")
-        or ""
-    ).strip()
-    timezone_name = str(
-        identity.get("timezone")
-        or ctx.get("timezone")
-        or ctx.get("org_timezone")
-        or "UTC"
-    ).strip() or "UTC"
-    return {"website": website, "timezone": timezone_name, "host": _host(website)}
-
-
-def match_resource_to_domain(
-    candidates: tuple[dict[str, Any], ...] | list[dict[str, Any]],
-    *,
-    host: str,
-    org_id: str,
-) -> dict[str, Any] | None:
-    """Tenant-scoped domain match. Never auto-select a cross-tenant candidate."""
-    target = _host(host)
-    if not target:
-        return None
-    eligible: list[dict[str, Any]] = []
-    for raw in candidates:
-        if not isinstance(raw, dict):
-            continue
-        candidate_org = str(raw.get("org_id") or raw.get("tenant_id") or org_id).strip()
-        if candidate_org and candidate_org != str(org_id):
-            continue
-        haystacks = [
-            str(raw.get("site_url") or ""),
-            str(raw.get("display_name") or ""),
-            str(raw.get("website") or ""),
-            str(raw.get("url") or ""),
-            str(raw.get("property_id") or ""),
-        ]
-        if any(target in _host(item) or target in item.lower() for item in haystacks if item):
-            eligible.append(raw)
-    if len(eligible) == 1:
-        return eligible[0]
-    return None
+    return merge_business_identity(
+        org_id=str(ctx.get("org_id") or ""),
+        context=ctx,
+        user_message=str(ctx.get("user_message") or ctx.get("message") or ""),
+        client=ctx.get("client"),
+        environment_name=str(ctx.get("environment_name") or "production"),
+    )
 
 
 def _blocked(

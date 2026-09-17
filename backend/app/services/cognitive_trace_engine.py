@@ -165,6 +165,14 @@ def sync_trace_from_task_state(
     offered = state.get("offered_action")
     if isinstance(offered, dict) and offered.get("execution_plan_id"):
         trace.linked["offered_execution_plan_id"] = str(offered["execution_plan_id"])
+    compiled = state.get("compiled_task")
+    if isinstance(compiled, dict):
+        if compiled.get("turn_id"):
+            trace.linked["compiled_task"] = str(compiled["turn_id"])
+        if compiled.get("capability_id"):
+            trace.linked["compiled_task_capability"] = str(compiled["capability_id"])
+        if compiled.get("preflight_status"):
+            trace.linked["compiled_task_preflight"] = str(compiled["preflight_status"])
     return trace
 
 

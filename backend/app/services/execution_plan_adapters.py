@@ -289,6 +289,11 @@ def enrich_task_state_patch(
     patch = dict(updates)
     state = current_state if isinstance(current_state, dict) else {}
 
+    def _finish(outgoing: dict[str, Any]) -> dict[str, Any]:
+        from app.services.compiled_task_service import attach_compiled_task_to_patch
+
+        return attach_compiled_task_to_patch(outgoing, current_state=state)
+
     canonical = authoritative_execution_plan(state)
     incoming_plan = ExecutionPlan.from_dict(patch.get("execution_plan"))
     if incoming_plan is not None:
@@ -310,7 +315,7 @@ def enrich_task_state_patch(
                     "revision": canonical.revision,
                 },
             )
-        return patch
+        return _finish(patch)
 
     offered = patch.get("offered_action")
     if offered is None and "offered_action" not in patch:
@@ -322,7 +327,7 @@ def enrich_task_state_patch(
         if not offered.get("execution_plan_id"):
             plan, pending_action, bridged = bridge_offered_action_with_plan(offered)
             patch.update(execution_plan_bundle_patch(plan, pending_action, offered=bridged))
-            return patch
+            return _finish(patch)
 
     pending = patch.get("pending_task")
     if is_legacy_ingress_only(pending, canonical=None) and not pending_task_is_projection(pending):
@@ -334,7 +339,7 @@ def enrich_task_state_patch(
                 pending_task=projected,
             )
         )
-    return patch
+    return _finish(patch)
 
 
 def execution_plan_bundle_patch(

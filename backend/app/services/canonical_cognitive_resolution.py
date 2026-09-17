@@ -16,6 +16,7 @@ from app.services.connector_semantic_registry import (
 )
 from app.services.reference_resolver import resolve_reference
 from app.services.resolution_trace_service import attach_resolution_trace
+from app.services.compiled_task_service import attach_compiled_task
 
 _CHITCHAT_RE = re.compile(
     r"^\s*(hello|hi|hey|thanks|thank you|thankyou|good morning|good afternoon|good evening|"
@@ -156,6 +157,12 @@ async def apply_canonical_cognitive_resolution(
         "analytics_short_circuit": needs.analytics_short_circuit,
         "reason": needs.reason,
     }
+    merged = attach_compiled_task(
+        merged,
+        objective_text=message,
+        resolution=result,
+        org_id=tenant_id,
+    )
     return result, merged
 
 

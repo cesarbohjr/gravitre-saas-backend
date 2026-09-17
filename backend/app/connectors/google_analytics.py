@@ -65,6 +65,43 @@ def list_ga4_properties(access_token: str) -> list[dict[str, Any]]:
     return properties
 
 
+def list_ga4_web_stream_uris(access_token: str, property_id: str) -> list[str]:
+    """Return web stream defaultUri values for one GA4 property (domain binding)."""
+    pid = str(property_id or "").strip()
+    if pid.startswith("properties/"):
+        pid = pid.split("/", 1)[1]
+    if not pid.isdigit():
+        return []
+    headers = {"Authorization": f"Bearer {access_token}"}
+    uris: list[str] = []
+    page_token: str | None = None
+    with httpx.Client(timeout=20.0) as client:
+        while True:
+            params: dict[str, str] = {"pageSize": "200"}
+            if page_token:
+                params["pageToken"] = page_token
+            response = client.get(
+                f"{GA_ADMIN_API}/properties/{pid}/dataStreams",
+                headers=headers,
+                params=params,
+            )
+            if response.status_code >= 400:
+                raise GoogleAnalyticsAPIError(
+                    f"Analytics Admin dataStreams {response.status_code}",
+                    status_code=response.status_code,
+                )
+            data = response.json() or {}
+            for stream in data.get("dataStreams") or []:
+                web = stream.get("webStreamData") if isinstance(stream.get("webStreamData"), dict) else {}
+                uri = str(web.get("defaultUri") or "").strip()
+                if uri:
+                    uris.append(uri)
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+    return uris
+
+
 GA_DATA_API = "https://analyticsdata.googleapis.com/v1beta"
 
 

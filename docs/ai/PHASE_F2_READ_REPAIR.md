@@ -3,6 +3,8 @@
 **Status:** structural (local). Does not expand the F1 ActionSpec slice. Does not change WRITE governance or G8.  
 **Date:** 2026-09-17
 
+See `docs/ai/PHASE_DOMAIN_PROPERTY_BINDING.md` for audit §34 item 3 (org profile → unique GA4/GSC bind).
+
 One repair attempt after a blocked F1 `PreflightResult`. Invalid provider invocation remains forbidden. Listing fallback uses `hubspot.deals.list` **outside** the F1 proof (that action is not in the F1 slice). GA4 auth blocks may fall back to Search Console only when GSC is connected **and** GSC preflight is ready (HMAC-bound invoke).
 
 | Block | Repair | Bound? |
