@@ -1,11 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { BookOpen, Brain, ListChecks, Rocket } from "lucide-react"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { TRAINING_STEPS } from "@/lib/training-ui-copy"
+import { TYPE } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 
 type TrainingOverviewProps = {
   totalDatasets: number
@@ -23,90 +23,38 @@ export function TrainingOverview({
   totalInstructions,
 }: TrainingOverviewProps) {
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-emerald-500/5 p-5 sm:p-6"
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-teal-500/10 blur-3xl"
-      />
-
-      <div className="relative space-y-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">
-              <motion.span
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2.4, repeat: Infinity }}
-                className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"
-              />
-              {SURFACE_COPY.training.badge}
-            </div>
-            <h2 className="text-balance text-xl font-semibold text-foreground sm:text-2xl">
-              {SURFACE_COPY.training.heroTitle}
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Teach agents with examples, documents, and live feedback. Run a training job, then assign the model.
-              Starts from what{" "}
-              <Link
-                href={APP_ROUTES.learning}
-                className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300"
-              >
-                {SURFACE_COPY.learning.title}
-              </Link>{" "}
-              already detected. Finished models also appear in{" "}
-              <Link
-                href={APP_ROUTES.models}
-                className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300"
-              >
-                {SURFACE_COPY.models.title}
-              </Link>
-              .
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2 text-xs lg:justify-end">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 font-medium text-emerald-600 dark:text-emerald-300">
-              <BookOpen className="h-3.5 w-3.5" />
-              {totalDatasets} datasets
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 font-medium text-emerald-600 dark:text-emerald-400">
-              <ListChecks className="h-3.5 w-3.5" />
-              {readyDatasets} ready
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/5 px-2.5 py-1.5 font-medium text-sky-600 dark:text-sky-400">
-              <Rocket className="h-3.5 w-3.5" />
-              {activeJobs > 0 ? `${activeJobs} active jobs` : `${totalJobs} jobs`}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/60 px-2.5 py-1.5 font-medium text-muted-foreground">
-              <Brain className="h-3.5 w-3.5" />
-              {totalInstructions} instructions
-            </span>
-          </div>
-        </div>
-
-        <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {TRAINING_STEPS.map((item) => (
-            <li
-              key={item.step}
-              className="rounded-xl border border-border/60 bg-background/50 p-3"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-300">
-                Step {item.step}
-              </p>
-              <p className="mt-1 text-sm font-medium text-foreground">{item.title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground text-pretty">{item.body}</p>
-            </li>
-          ))}
-        </ol>
+    <section className="space-y-4 border-b border-divide pb-6">
+      <div>
+        <p className={TYPE.eyebrow}>{SURFACE_COPY.training.badge}</p>
+        <h2 className={cn(TYPE.sectionTitle, "mt-1")}>{SURFACE_COPY.training.heroTitle}</h2>
+        <p className={cn(TYPE.bodyMuted, "mt-1 max-w-2xl")}>
+          Teach agents with examples, documents, and live feedback. Run a training job, then assign the model.
+          Starts from what{" "}
+          <Link href={APP_ROUTES.learning} className="underline-offset-4 hover:underline">
+            {SURFACE_COPY.learning.title}
+          </Link>{" "}
+          already detected. Finished models also appear in{" "}
+          <Link href={APP_ROUTES.models} className="underline-offset-4 hover:underline">
+            {SURFACE_COPY.models.title}
+          </Link>
+          .
+        </p>
+        <p className={cn(TYPE.meta, "mt-2")}>
+          {totalDatasets} datasets · {readyDatasets} ready ·{" "}
+          {activeJobs > 0 ? `${activeJobs} active jobs` : `${totalJobs} jobs`} · {totalInstructions}{" "}
+          instructions
+        </p>
       </div>
-    </motion.section>
+      <ol className="space-y-2">
+        {TRAINING_STEPS.map((item) => (
+          <li key={item.step} className="text-sm">
+            <span className="font-medium text-foreground">
+              {item.step}. {item.title}.
+            </span>{" "}
+            <span className="text-muted-foreground">{item.body}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }

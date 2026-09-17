@@ -23,7 +23,6 @@ import { Icon } from "@/lib/icons"
 import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
-import { StatusChip } from "@/components/gravitre/visual"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -207,7 +206,7 @@ export default function WorkflowsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table")
   const isMobile = useIsMobile()
   const effectiveViewMode = isMobile ? "grid" : viewMode
   const [searchQuery, setSearchQuery] = useState("")
@@ -451,7 +450,14 @@ export default function WorkflowsPage() {
             </>
           }
           />
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)] lg:grid-cols-4">
+          <details className="px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)]">
+            <summary className="cursor-pointer list-none border-b border-divide py-2">
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Totals</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {workflows.length} workflows · {activeCount} active · {runningCount} running — after the list, not instead of it.
+              </p>
+            </summary>
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-3 lg:grid-cols-4">
             <GravitreMetric
               label="Total"
               value={<AnimatedCounter value={workflows.length} duration={0.8} />}
@@ -478,36 +484,10 @@ export default function WorkflowsPage() {
               icon={<Edit className="h-4 w-4" />}
             />
           </section>
+          </details>
         </div>
 
-        {/* Live activity banner */}
-        {runningCount > 0 && (
-          <motion.div 
-            className={cn(
-              "relative z-10 mx-4 mb-4 border border-info/20 bg-info/5 px-4 py-3 backdrop-blur-sm md:mx-6",
-              // Was a from-blue-500 via-cyan-500 gradient with a raw
-              // blue border. Uses the info token so the banner matches the
-              // "Running" StatCard it reports on.
-              RADIUS.card,
-            )}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <StatusChip status="running" pulse>
-                  Running
-                </StatusChip>
-                <div>
-                  <div className="text-sm font-medium text-foreground">
-                    <AnimatedCounter value={runningCount} duration={0.5} /> workflow{runningCount > 1 ? 's' : ''} running
-                  </div>
-                  <div className="text-xs text-muted-foreground">Live count from your workspace</div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        {/* List is the product; live counts live in Totals. */}
 
         <div className="relative z-10 flex-1 overflow-y-auto p-4 md:p-6 scrollbar-on-hover">
           {/* Error state with retry */}

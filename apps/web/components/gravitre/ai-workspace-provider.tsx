@@ -197,6 +197,8 @@ export interface GravitreAIWorkspaceContextValue {
   summonWorkspace: (options?: GravitreAISummonOptions) => void
   agentScope: GravitreAIAgentScope | null
   setAgentScope: (scope: GravitreAIAgentScope | null) => void
+  /** Page selection for Ask Gravitre — does not open the workspace. */
+  setSelectedEntity: (selected: GravitreAISelectedEntity | null) => void
   /** Clears object selection without starting a new thread. */
   clearSelectedEntity: () => void
   composerIntent: GravitreAIComposerIntent | null
@@ -377,6 +379,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
         minimizeToHelper: typeof minimizeToHelper
         restoreFromHelper: typeof restoreFromHelper
         setAgentScope: typeof setAgentScope
+        setSelectedEntity: typeof setSelectedEntity
       }
     }
     w.__GRAVITRE_AI_TEST = {
@@ -385,11 +388,19 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       minimizeToHelper,
       restoreFromHelper,
       setAgentScope,
+      setSelectedEntity,
     }
     return () => {
       delete w.__GRAVITRE_AI_TEST
     }
-  }, [summonWorkspace, setPresentationMode, minimizeToHelper, restoreFromHelper, setAgentScope])
+  }, [
+    summonWorkspace,
+    setPresentationMode,
+    minimizeToHelper,
+    restoreFromHelper,
+    setAgentScope,
+    setSelectedEntity,
+  ])
 
   const value = useMemo<GravitreAIWorkspaceContextValue>(
     () => ({
@@ -405,6 +416,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       summonWorkspace,
       agentScope,
       setAgentScope,
+      setSelectedEntity,
       clearSelectedEntity,
       composerIntent,
       consumeComposerIntent,
@@ -427,6 +439,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       canonicalPresentation,
       summonWorkspace,
       agentScope,
+      setSelectedEntity,
       clearSelectedEntity,
       composerIntent,
       consumeComposerIntent,
@@ -460,4 +473,19 @@ export function useGravitreAIWorkspace(): GravitreAIWorkspaceContextValue {
     )
   }
   return ctx
+}
+
+/** Publish the current page object into Ask context without opening chat. */
+export function usePublishGravitreAISelection(selected: GravitreAISelectedEntity | null) {
+  const { setSelectedEntity } = useGravitreAIWorkspace()
+  const id = selected?.id ?? null
+  const kind = selected?.kind ?? null
+  const label = selected?.label ?? null
+  useEffect(() => {
+    if (!id || !kind || !label) {
+      setSelectedEntity(null)
+      return
+    }
+    setSelectedEntity({ id, kind, label })
+  }, [id, kind, label, setSelectedEntity])
 }

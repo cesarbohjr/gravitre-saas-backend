@@ -10,6 +10,8 @@ import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
 import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
 import { NucleoConnector } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { lookupConnectorCategory, resolveConnectorDisplayStatus } from "@/lib/connectors"
@@ -136,6 +138,9 @@ export default function ConnectorDetailPage() {
     () => (liveConnector ? mapConnectorRecord(liveConnector) : null),
     [liveConnector],
   )
+  usePublishGravitreAISelection(
+    connector ? { kind: "connector", id: connector.id, label: connector.name } : null,
+  )
 
   const [showApiKey, setShowApiKey] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -219,6 +224,7 @@ export default function ConnectorDetailPage() {
           icon={<NucleoConnector className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              <AskGravitreSummonButton />
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/connectors">
                   <ArrowLeft className="mr-1 h-4 w-4" />

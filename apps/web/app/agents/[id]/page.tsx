@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
@@ -203,7 +205,7 @@ function WorkItem({ work, index }: { work: Agent["recentWork"][0]; index: number
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="group flex cursor-pointer items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:bg-[color:var(--g-surface-2)]"
+      className="group flex cursor-pointer items-center gap-4 border-b border-divide py-3"
     >
       <div className={cn(
         "flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--np-radius-md)]",
@@ -285,6 +287,10 @@ export default function AgentProfilePage({
     { revalidateOnFocus: false },
   )
 
+  usePublishGravitreAISelection(
+    apiAgent ? { kind: "agent", id: apiAgent.id, label: apiAgent.name } : null,
+  )
+
   if (isLoading && !apiAgent) {
     return (
       <AppShell title="Agent">
@@ -323,6 +329,7 @@ export default function AgentProfilePage({
           icon={<NucleoAgent className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              <AskGravitreSummonButton />
               <Button
                 className="gap-2"
                 onClick={() => router.push(`/agents/${agent.id}/chat`)}
@@ -361,7 +368,14 @@ export default function AgentProfilePage({
         </GravitrePageHeader>
 
         <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
-          <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
+          <details className="mb-6">
+            <summary className="cursor-pointer list-none border-b border-divide py-2">
+              <p className={TYPE.eyebrow}>Operational totals</p>
+              <p className={cn(TYPE.meta, "mt-0.5")}>
+                After identity — inspect numbers when you need them.
+              </p>
+            </summary>
+          <section className="mb-4 grid grid-cols-2 gap-[var(--np-kpi-gap)] py-4 lg:grid-cols-3">
             <GravitreMetric
               label="Tasks completed (operational)"
               value={agent.stats.tasksCompleted.toLocaleString()}
@@ -381,32 +395,33 @@ export default function AgentProfilePage({
               value={agent.stats.approvalsNeeded.toString()}
             />
           </section>
-          <p className="mb-6 text-xs text-[color:var(--g-text-muted)]">{OPERATIONAL_METHODOLOGY_SHORT}</p>
+          <p className="mb-4 text-xs text-[color:var(--g-text-muted)]">{OPERATIONAL_METHODOLOGY_SHORT}</p>
+          </details>
 
-          {/* Tab Navigation */}
-          <div className="mb-6 flex w-fit flex-wrap items-center gap-1 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)] p-1">
+          <nav aria-label="Agent profile" className="mb-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
             {[
-              { id: "overview", label: "Overview", icon: "info" },
-              { id: "personality", label: "Personality", icon: "sparkles" },
-              { id: "skills", label: "Capabilities", icon: "settings" },
-              { id: "governance", label: "Governance", icon: "shield" },
-              { id: "history", label: "Work History", icon: "history" },
+              { id: "overview", label: "Overview" },
+              { id: "personality", label: "Personality" },
+              { id: "skills", label: "Capabilities" },
+              { id: "governance", label: "Governance" },
+              { id: "history", label: "Work History" },
             ].map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={cn(
-                  "flex items-center gap-2 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-all",
+                  TYPE.meta,
+                  "underline-offset-4",
                   activeTab === tab.id
-                    ? "bg-[color:var(--g-surface-1)] text-foreground shadow-[var(--np-shadow)]"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-[color:var(--g-text-primary)] underline"
+                    : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
                 )}
               >
-                <Icon name={tab.icon as IconName} size="sm" />
                 {tab.label}
               </button>
             ))}
-          </div>
+          </nav>
 
           {/* Tab Content */}
           <AnimatePresence mode="wait">

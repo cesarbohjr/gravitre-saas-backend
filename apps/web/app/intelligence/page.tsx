@@ -32,7 +32,10 @@ import {
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
 import type { IntelligenceMapSelection } from "@/components/intelligence/map/intelligence-map"
-import type { GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
+import {
+  usePublishGravitreAISelection,
+  type GravitreAISelectedEntity,
+} from "@/components/gravitre/ai-workspace-provider"
 import { OverviewLivingMap } from "@/components/intelligence/pages/overview-living-map"
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
@@ -144,6 +147,7 @@ function IntelligenceCenterInner() {
   const [mapFocusIds, setMapFocusIds] = useState<string[]>([])
   const [composerPendingQuestion, setComposerPendingQuestion] = useState<string | null>(null)
   const askSelected = useMemo(() => selectedEntityFromMapSelection(mapSelection), [mapSelection])
+  usePublishGravitreAISelection(askSelected)
 
   const { data: outcomes, error, mutate } = useSWR(
     user ? ["intelligence/outcomes", 7] : null,

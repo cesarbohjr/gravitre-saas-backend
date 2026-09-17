@@ -26,7 +26,7 @@ import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { TrainingOverview } from "@/components/gravitre/training-overview"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { DATASET_TYPE_META, TRAINABLE_BASE_MODELS, datasetTypeMeta } from "@/lib/training-ui-copy"
@@ -645,18 +645,9 @@ function TrainingPageContent() {
           />
         </div>
 
-        <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] md:grid-cols-3 lg:grid-cols-6">
-          <GravitreMetric label="Datasets" value={stats.totalDatasets} />
-          <GravitreMetric label="Ready" value={stats.readyDatasets} />
-          <GravitreMetric label="Jobs" value={stats.totalJobs} />
-          <GravitreMetric label="Active jobs" value={stats.activeJobs} />
-          <GravitreMetric label="Instructions" value={stats.totalInstructions} />
-          <GravitreMetric label="Active" value={stats.activeInstructions} />
-        </section>
-
         <section
           aria-label="Training job monitor"
-          className="sticky top-0 z-10 -mx-1 space-y-2 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]/95 px-3 py-3 shadow-[var(--np-shadow)] backdrop-blur supports-[backdrop-filter]:bg-[color:var(--g-surface-1)]/90 sm:mx-0"
+          className="space-y-2 border-b border-divide py-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -684,16 +675,29 @@ function TrainingPageContent() {
         </section>
 
         <Tabs value={trainingTab} onValueChange={setTrainingTab} className="space-y-4">
-          <TabsList className="flex w-full flex-wrap justify-start">
-            <TabsTrigger value="datasets">Datasets</TabsTrigger>
-            <TabsTrigger value="jobs">
-              Jobs
-              {stats.activeJobs > 0 ? (
-                <span className="ml-1.5 tabular-nums text-muted-foreground">({stats.activeJobs})</span>
-              ) : null}
-            </TabsTrigger>
-            <TabsTrigger value="models">Fine-tunes</TabsTrigger>
-          </TabsList>
+          <nav aria-label="Training sections" className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            {(
+              [
+                { id: "datasets", label: "Datasets" },
+                { id: "jobs", label: stats.activeJobs > 0 ? `Jobs (${stats.activeJobs})` : "Jobs" },
+                { id: "models", label: "Fine-tunes" },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTrainingTab(item.id)}
+                className={cn(
+                  "text-xs underline-offset-4",
+                  trainingTab === item.id
+                    ? "text-[color:var(--g-text-primary)] underline"
+                    : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
 
           <TabsContent value="datasets" className="mt-0 space-y-4">
         <div className="grid grid-cols-1 gap-6">
@@ -701,7 +705,7 @@ function TrainingPageContent() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
+            className="space-y-4 border-b border-divide pb-6"
           >
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">Training Datasets</h2>
@@ -712,7 +716,7 @@ function TrainingPageContent() {
 
             <div className="space-y-3 rounded-xl border border-border/50 bg-background/40 p-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Dataset type</p>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
                 {DATASET_TYPE_META.map((meta) => {
                   const selected = datasetType === meta.value
                   return (
@@ -721,14 +725,13 @@ function TrainingPageContent() {
                       type="button"
                       onClick={() => setDatasetType(meta.value)}
                       className={cn(
-                        "rounded-xl border px-3 py-2.5 text-left transition-colors",
+                        "text-left text-sm underline-offset-4",
                         selected
-                          ? "border-emerald-500/40 bg-emerald-500/10 ring-1 ring-emerald-500/30"
-                          : "border-border/70 bg-background/60 hover:border-emerald-500/25 hover:bg-background/80"
+                          ? "font-medium text-[color:var(--g-text-primary)] underline"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
-                      <p className="text-sm font-medium text-foreground">{meta.label}</p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{meta.summary}</p>
+                      {meta.label}
                     </button>
                   )
                 })}
@@ -1055,7 +1058,7 @@ function TrainingPageContent() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
+            className="space-y-4 border-b border-divide pb-6"
           >
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-foreground">Training Jobs</h2>
@@ -1159,7 +1162,7 @@ function TrainingPageContent() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
+          className="space-y-4 border-b border-divide pb-6"
         >
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-foreground">Custom Instructions</h2>
@@ -1270,7 +1273,7 @@ function TrainingPageContent() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.24 }}
-          className="rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur-sm space-y-4"
+          className="space-y-4 border-b border-divide pb-6"
         >
           <h2 className="text-lg font-semibold text-foreground">Assign Fine-Tuned Models</h2>
           <p className="text-sm text-muted-foreground">

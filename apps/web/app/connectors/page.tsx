@@ -9,6 +9,7 @@ import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
@@ -521,6 +522,7 @@ function ConnectorNode({
   onTestConnection,
   onReconnect,
   onDelete,
+  onFocus,
   variant = "topology",
 }: { 
   connector: Connector
@@ -530,6 +532,7 @@ function ConnectorNode({
   onTestConnection: (connectorId: string) => Promise<void>
   onReconnect?: (connector: Connector) => Promise<void>
   onDelete: () => void
+  onFocus?: (connector: Connector) => void
   variant?: "topology" | "list"
 }) {
   const [isHovered, setIsHovered] = useState(false)
@@ -585,14 +588,18 @@ function ConnectorNode({
           size="sm"
           showStatusIndicator={false}
         />
-        <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          onClick={() => onFocus?.(connector)}
+        >
           <p className="truncate text-sm font-medium text-foreground">{connector.name}</p>
           <p className="truncate text-[11px] text-muted-foreground">
             {connector.type}
             {" · "}
             {isSyncing ? "Syncing" : connectorStatusLabel(connector)}
           </p>
-        </div>
+        </button>
         <Link
           href={`/connectors/${connector.id}`}
           className="shrink-0 text-xs text-[color:var(--g-text-muted)] underline-offset-4 hover:text-[color:var(--g-text-primary)] hover:underline"
@@ -2560,6 +2567,12 @@ function ConnectorsPageContent() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [isLiveRefreshing, setIsLiveRefreshing] = useState(false)
   const [chromeCollapsed, setChromeCollapsed] = useState(false)
+  const [focusedConnector, setFocusedConnector] = useState<Connector | null>(null)
+  usePublishGravitreAISelection(
+    focusedConnector
+      ? { kind: "connector", id: focusedConnector.id, label: focusedConnector.name }
+      : null,
+  )
 
   useEffect(() => {
     try {
@@ -3247,6 +3260,7 @@ function ConnectorsPageContent() {
                       onTestConnection={handleTestConnection}
                       onReconnect={handleReconnectOAuth}
                       onDelete={() => setDeleteModal(connector)}
+                      onFocus={setFocusedConnector}
                     />
                   ))}
                 </div>
@@ -3266,6 +3280,7 @@ function ConnectorsPageContent() {
                       onTestConnection={handleTestConnection}
                       onReconnect={handleReconnectOAuth}
                       onDelete={() => setDeleteModal(connector)}
+                      onFocus={setFocusedConnector}
                     />
                   ))}
                 </div>
@@ -3287,6 +3302,7 @@ function ConnectorsPageContent() {
                   onTestConnection={handleTestConnection}
                   onReconnect={handleReconnectOAuth}
                   onDelete={() => setDeleteModal(connector)}
+                  onFocus={setFocusedConnector}
                 />
               ))}
             </div>

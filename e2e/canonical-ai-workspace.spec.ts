@@ -66,6 +66,7 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
 
     await page.locator("[data-select-acme]").click()
     await expect(page.locator("[data-selected-label]")).toContainText("Acme Corporation")
+    await expect.poll(async () => (await readAiDebug(page))?.selected?.id).toBe("acme")
 
     const composer = page.locator("[data-ask-gravitre-composer]")
     await composer.getByRole("textbox", { name: "Ask Gravitre" }).fill("What changed for Acme?")
@@ -294,7 +295,7 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     expect((await readAiDebug(page))?.liveInstanceCount).toBe(1)
   })
 
-  for (const shot of ["agents", "activity", "workflows", "connectors", "approvals"] as const) {
+  for (const shot of ["agents", "activity", "workflows", "connectors", "approvals", "home"] as const) {
     test(`header Ask Gravitre on ${shot} summons the same compact runtime`, async ({ page }) => {
       await page.goto(`/e2e/shots/${shot}`)
       await expect(page.locator("[data-ask-gravitre-summon]")).toBeVisible({ timeout: 60_000 })

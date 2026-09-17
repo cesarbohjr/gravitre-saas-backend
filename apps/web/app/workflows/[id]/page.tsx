@@ -10,6 +10,8 @@ import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WorkflowPreRunPanel } from "@/components/workflows/workflow-pre-run-panel"
@@ -38,6 +40,11 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
     user ? ["workflow-detail", id] : null,
     () => workflowsApi.get(id),
   )
+  usePublishGravitreAISelection({
+    kind: "workflow",
+    id,
+    label: workflow?.name?.trim() || id,
+  })
 
   const { data: builder } = useSWR(user ? ["workflow-builder", id] : null, () => workflowsApi.getBuilder(id))
 
@@ -140,6 +147,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
           icon={<NucleoWorkflow className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap gap-2">
+              <AskGravitreSummonButton />
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/workflows">
                   <ArrowLeft className="mr-1 h-4 w-4" />

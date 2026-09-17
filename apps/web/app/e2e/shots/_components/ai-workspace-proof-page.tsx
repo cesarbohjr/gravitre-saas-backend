@@ -3,13 +3,17 @@
 import { useState } from "react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AskGravitreComposer } from "@/components/intelligence/ask-gravitre-composer"
-import type { GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
+import {
+  usePublishGravitreAISelection,
+  type GravitreAISelectedEntity,
+} from "@/components/gravitre/ai-workspace-provider"
 
 /**
  * Playwright harness for UX Reset Phase 1B. Not a product surface.
  */
 export default function AiWorkspaceProofPage() {
   const [selected, setSelected] = useState<GravitreAISelectedEntity | null>(null)
+  usePublishGravitreAISelection(selected)
 
   return (
     <AppShell title="Relationships">

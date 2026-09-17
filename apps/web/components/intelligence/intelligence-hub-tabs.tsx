@@ -1,12 +1,15 @@
 "use client"
 
 /**
- * Intelligence hub primary navigation — I1 (7 tabs).
+ * Intelligence hub primary navigation — text links, not a pill strip.
  * Training is folded under Model Studio; `/training` remains routable.
  */
+import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { HubTabs, type HubTabItem } from "@/components/gravitre/hub-tabs"
+import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 import { APP_ROUTES } from "@/lib/app-routes"
+import type { HubTabItem } from "@/components/gravitre/hub-tabs"
 
 export type IntelligenceHubTab =
   | "overview"
@@ -49,11 +52,29 @@ export function IntelligenceHubTabs({
   const current = active ?? resolveIntelligenceHubTab(pathname ?? "")
 
   return (
-    <HubTabs
-      tabs={INTELLIGENCE_HUB_TABS}
-      active={current}
-      ariaLabel="Intelligence hub"
-      className={className ?? "mb-4 flex-wrap"}
-    />
+    <nav
+      aria-label="Intelligence hub"
+      className={cn("mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1", className)}
+    >
+      {INTELLIGENCE_HUB_TABS.map((link) => {
+        const isActive = current === link.id
+        return (
+          <Link
+            key={link.id}
+            href={link.href ?? APP_ROUTES.intelligence}
+            aria-current={isActive ? "page" : undefined}
+            className={cn(
+              TYPE.meta,
+              "underline-offset-4",
+              isActive
+                ? "text-[color:var(--g-text-primary)] underline"
+                : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+            )}
+          >
+            {link.label}
+          </Link>
+        )
+      })}
+    </nav>
   )
 }

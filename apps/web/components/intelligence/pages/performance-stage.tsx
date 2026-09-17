@@ -24,6 +24,7 @@ import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligen
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { AGENT_ROI_METHODOLOGY } from "@/lib/outcome-labels"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 
 export function PerformanceStage({
   pageContext,
@@ -44,6 +45,12 @@ export function PerformanceStage({
   const [pathId, setPathId] = useState<string | null>(null)
   const primary = useMemo(() => pickPrimaryOutcomePath(paths), [paths])
   const selectedPathId = pathId && paths.some((p) => p.id === pathId) ? pathId : primary?.id
+  const activePath = paths.find((p) => p.id === selectedPathId) ?? primary ?? null
+  usePublishGravitreAISelection(
+    activePath
+      ? { kind: "outcome_path", id: activePath.id, label: activePath.scopeLabel }
+      : null,
+  )
 
   const { data: roi, isLoading: roiLoading } = useSWR(
     enabled ? ["intelligence/performance/agent-roi", 30] : null,

@@ -24,7 +24,6 @@ import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-b
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import {
   GravitreEmpty,
-  GravitreMetric,
   GravitrePageHeader,
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
@@ -45,6 +44,7 @@ import { Input } from "@/components/ui/input"
 import { Icon } from "@/lib/icons"
 import { NucleoActivity, NucleoSearch } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { businessOutcomesApi, workObjectsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -245,6 +245,27 @@ function ActivityPageInner() {
 
   const selected = tab === "objects" ? selectedWorkObject : selectedOutcome
 
+  usePublishGravitreAISelection(
+    tab === "objects"
+      ? selectedWorkObjectExplicit
+        ? {
+            kind: "work_object",
+            id: selectedWorkObjectExplicit.id,
+            label:
+              selectedWorkObjectExplicit.title?.trim() ||
+              selectedWorkObjectExplicit.objective?.trim() ||
+              selectedWorkObjectExplicit.id,
+          }
+        : null
+      : selectedOutcomeExplicit
+        ? {
+            kind: "outcome",
+            id: selectedOutcomeExplicit.id || selectedOutcomeExplicit.runId || "",
+            label: selectedOutcomeExplicit.title?.trim() || "Outcome",
+          }
+        : null,
+  )
+
   const hasActiveOutcomeFilters = status !== "all" || lifecycle !== "all" || integration.trim() !== ""
   const activeOutcomeFilterCount =
     (status !== "all" ? 1 : 0) + (lifecycle !== "all" ? 1 : 0) + (integration.trim() ? 1 : 0)
@@ -392,41 +413,6 @@ function ActivityPageInner() {
         </GravitrePageHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5 lg:overflow-hidden">
-        {/* KPI strip — same GravitreMetric combo as /home; honest loaded counts only */}
-        {tab !== "failures" ? (
-          <section className="grid shrink-0 grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric
-              label="Outcomes"
-              value={isLoading ? "—" : outcomes.length}
-              hint={isLoading ? "Loading" : "Loaded in view"}
-              icon={<NucleoActivity className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="WorkObjects"
-              value={workObjectsLoading ? "—" : workObjects.length}
-              hint={workObjectsLoading ? "Loading" : "Loaded in view"}
-              icon={<Icon name="clipboardList" size="sm" />}
-            />
-            <GravitreMetric
-              label="Selected"
-              value={
-                tab === "objects"
-                  ? selectedWorkObject
-                    ? 1
-                    : "—"
-                  : selectedOutcome
-                    ? 1
-                    : "—"
-              }
-              hint="Inspector focus"
-            />
-            <GravitreMetric
-              label="Filters"
-              value={activeFilterCount}
-              hint={activeFilterCount > 0 ? "Active" : "None"}
-            />
-          </section>
-        ) : null}
 
         {tab === "failures" ? (
           <FailureAlertsPanel />

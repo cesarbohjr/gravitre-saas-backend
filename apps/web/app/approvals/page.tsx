@@ -12,6 +12,7 @@ import { StatusChip } from "@/components/gravitre/visual"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
@@ -833,6 +834,11 @@ function ApprovalsContent() {
   const historyApprovals = approvals.filter((a) => a.status === "approved" || a.status === "rejected")
   const visibleApprovals = queueTab === "pending" ? pendingApprovals : historyApprovals
   const selectedApproval = approvals.find(a => a.id === selectedId) || null
+  usePublishGravitreAISelection(
+    selectedApproval
+      ? { kind: "approval", id: selectedApproval.id, label: selectedApproval.title }
+      : null,
+  )
 
   useEffect(() => {
     const deepLinkId = searchParams.get("id") || searchParams.get("approval")

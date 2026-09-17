@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product/page-header"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { NucleoActivity, NucleoClose } from "@/components/icons/nucleo/semantic"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
@@ -98,6 +99,7 @@ export function HomeDashboard({
         icon={<NucleoActivity className="h-5 w-5" />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <AskGravitreSummonButton />
             <Select value={globalRange} onValueChange={(v) => setRange(v as DashboardRange)}>
               <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Dashboard date range">
                 <SelectValue />

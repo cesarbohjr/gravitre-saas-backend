@@ -33,6 +33,7 @@ import {
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
 import { NucleoAgent, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { 
   Plus, 
   Search,
@@ -625,6 +626,12 @@ export default function AgentsPage() {
     }
     return null
   }, [selectedAgent, filteredAgents])
+
+  usePublishGravitreAISelection(
+    visibleSelectedAgent
+      ? { kind: "agent", id: visibleSelectedAgent.id, label: visibleSelectedAgent.name }
+      : null,
+  )
 
   const hasActiveFilters = Boolean(
     prefs.filters.department ||

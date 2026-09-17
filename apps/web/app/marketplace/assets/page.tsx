@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { FilterChip, SegmentedControl } from "@/components/gravitre/filter-chip"
+import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { TYPE } from "@/lib/design-system"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -53,6 +53,7 @@ import type {
   MarketplaceFacetCount,
 } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
 import {
   EntitlementBadge,
@@ -549,12 +550,15 @@ function MarketplaceAssetsContent() {
           icon={<Package className="h-5 w-5" />}
           actions={
             <div className="flex flex-col items-start gap-3 sm:items-end">
-              <Button asChild size="sm">
-                <Link href="/marketplace/installed">
-                  View installed
-                  <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <AskGravitreSummonButton />
+                <Button asChild size="sm">
+                  <Link href="/marketplace/installed">
+                    View installed
+                    <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+              </div>
               <nav className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--g-text-muted)] sm:justify-end">
                 <Link href="/marketplace/submit" className="transition-colors hover:text-foreground">
                   Partner submissions
@@ -571,7 +575,14 @@ function MarketplaceAssetsContent() {
         />
 
         <div className="space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+          <details>
+            <summary className="cursor-pointer list-none border-b border-divide py-2">
+              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Catalog</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Counts for the current filters — after search, not a second dashboard.
+              </p>
+            </summary>
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-3 sm:grid-cols-3">
             <GravitreMetric
               label="Catalog packs"
               value={categories ? (categories.totalAssets ?? 0).toLocaleString() : "—"}
@@ -589,9 +600,10 @@ function MarketplaceAssetsContent() {
               hint="Among loaded results"
             />
           </section>
+          </details>
 
-          {/* Toolbar: search + department + price, then type chips */}
-          <GravitreSurface className="space-y-3 p-3 sm:p-4 md:p-4">
+          {/* Toolbar: search + department + price, then type as text */}
+          <div className="space-y-3 border-b border-divide pb-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -631,19 +643,30 @@ function MarketplaceAssetsContent() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-divide pt-3">
-              {TYPE_FILTERS.map((filter) => (
-                <FilterChip
-                  key={filter.id}
-                  label={filter.label}
-                  active={typeFilter === filter.id}
-                  onClick={() => setTypeFilter(filter.id)}
-                  icon={"icon" in filter ? filter.icon : undefined}
-                  count={filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)}
-                />
-              ))}
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-divide pt-3">
+              {TYPE_FILTERS.map((filter) => {
+                const count =
+                  filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setTypeFilter(filter.id)}
+                    className={cn(
+                      TYPE.meta,
+                      "underline-offset-4",
+                      typeFilter === filter.id
+                        ? "text-[color:var(--g-text-primary)] underline"
+                        : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                    )}
+                  >
+                    {filter.label}
+                    {typeof count === "number" ? ` (${count})` : ""}
+                  </button>
+                )
+              })}
             </div>
-          </GravitreSurface>
+          </div>
 
           {/* Result meta + clear */}
           <div className="flex flex-wrap items-center justify-between gap-2">

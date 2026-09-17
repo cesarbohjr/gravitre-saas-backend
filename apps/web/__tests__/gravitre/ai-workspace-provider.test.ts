@@ -355,4 +355,20 @@ describe("useGravitreAIWorkspace", () => {
     expect(sink.value?.canonicalPresentation).toBe("minimized")
     expect(sink.value?.floatWorkspaceOpen).toBe(false)
   })
+
+  it("setSelectedEntity publishes page selection without opening the workspace", () => {
+    pathnameState.value = "/agents"
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    act(() => {
+      sink.value!.setSelectedEntity({ kind: "agent", id: "agt_1", label: "Inbound Lead Triage" })
+    })
+    expect(sink.value?.pageContext.selected).toEqual({
+      kind: "agent",
+      id: "agt_1",
+      label: "Inbound Lead Triage",
+    })
+    expect(sink.value?.floatWorkspaceOpen).toBe(false)
+    expect(sink.value?.canonicalPresentation).toBe("minimized")
+  })
 })
