@@ -13,6 +13,7 @@ class RecipeStepSpec:
     name: str
     step_type: RecipeStepType
     capability_id: str | None = None
+    optional: bool = False
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,7 @@ class DepartmentRecipe:
                     "name": step.name,
                     "type": step.step_type,
                     **({"capabilityId": step.capability_id} if step.capability_id else {}),
+                    **({"optional": True} if step.optional else {}),
                 }
                 for step in self.steps
             ],
@@ -92,6 +94,35 @@ DEPARTMENT_RECIPES: dict[str, DepartmentRecipe] = {
             RecipeStepSpec("trigger", "Inbound lead event", "trigger"),
             RecipeStepSpec("lookup", "Look up CRM contact", "invoke_tool", "crm.contact.search"),
             RecipeStepSpec("notify", "Notify sales channel", "invoke_tool", "messaging.channel.post"),
+        ),
+        risk_level="low",
+        requires_approval=False,
+    ),
+    "analytics.website-traffic-overview": DepartmentRecipe(
+        recipe_id="analytics.website-traffic-overview",
+        name="Website traffic overview",
+        description=(
+            "Read connected website analytics (GA4). When Search Console is also connected "
+            "for this workspace, include search performance in the same overview. "
+            "GSC is optional — missing Search Console does not block the GA4 read."
+        ),
+        department="marketing",
+        steps=(
+            RecipeStepSpec("trigger", "Traffic question", "trigger"),
+            RecipeStepSpec(
+                "read_ga4",
+                "Read website traffic",
+                "invoke_tool",
+                "analytics.traffic_overview",
+            ),
+            RecipeStepSpec(
+                "read_gsc",
+                "Read search performance",
+                "invoke_tool",
+                "search.performance",
+                optional=True,
+            ),
+            RecipeStepSpec("compose", "Compose traffic overview", "agent"),
         ),
         risk_level="low",
         requires_approval=False,

@@ -237,3 +237,90 @@ def attach_compiled_task_to_patch(
     out = dict(patch)
     out["compiled_task"] = projected.as_dict()
     return out
+
+
+_PROMPT_PARAM_KEYS = ("start_date", "end_date", "site_url")
+
+
+def _payload_from_task_state(task_state: dict[str, Any] | None) -> dict[str, Any]:
+    state = task_state if isinstance(task_state, dict) else {}
+    raw = state.get("compiled_task")
+    if isinstance(raw, dict) and (
+        raw.get("capability_id")
+        or raw.get("sources")
+        or raw.get("timeframe_resolved")
+        or raw.get("preflight_status")
+        or (isinstance(raw.get("clarification_decision"), dict) and raw["clarification_decision"].get("required"))
+    ):
+        return raw
+    return project_compiled_task(state).as_dict()
+
+
+def format_compiled_task_compiler_block(task_state: dict[str, Any] | None) -> str:
+    """E4 slice: resolved business task, not tool names or API ids."""
+    payload = _payload_from_task_state(task_state)
+    capability = str(payload.get("capability_id") or "").strip()
+    timeframe = payload.get("timeframe_resolved") if isinstance(payload.get("timeframe_resolved"), dict) else {}
+    sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
+    clarification = (
+        payload.get("clarification_decision")
+        if isinstance(payload.get("clarification_decision"), dict)
+        else {}
+    )
+    preflight = str(payload.get("preflight_status") or "").strip()
+    params = payload.get("compiled_parameters") if isinstance(payload.get("compiled_parameters"), dict) else {}
+    if not (capability or sources or timeframe or preflight or clarification.get("required")):
+        return ""
+
+    lines = [
+        "COMPILED TASK (authoritative for this turn — already resolved; do not re-ask these):",
+    ]
+    if capability:
+        lines.append(f"capability={capability}")
+    interp = str(timeframe.get("interpretation") or "").strip()
+    start = str(timeframe.get("start_iso") or params.get("start_date") or "").strip()
+    end = str(timeframe.get("end_iso") or params.get("end_date") or "").strip()
+    if interp or (start and end):
+        window = interp or "resolved_window"
+        if start and end:
+            lines.append(f"timeframe={window} {start} to {end}")
+        else:
+            lines.append(f"timeframe={window}")
+    for row in sources:
+        if not isinstance(row, dict):
+            continue
+        connector = str(row.get("connector") or "").strip()
+        name = str(row.get("display_name") or "").strip()
+        resource_id = str(row.get("resource_id") or "").strip()
+        label = name
+        if not label or label == resource_id:
+            label = connector or "connected source"
+        if connector:
+            lines.append(f"source={connector} ({label})")
+        elif label:
+            lines.append(f"source={label}")
+    if clarification.get("required"):
+        lines.append("clarification=required — ask only among the remaining valid business options")
+    else:
+        lines.append("clarification=not_required")
+    if preflight:
+        lines.append(f"readiness={preflight}")
+    for key in _PROMPT_PARAM_KEYS:
+        value = params.get(key)
+        if value in (None, ""):
+            continue
+        if key == "site_url":
+            from app.services.org_business_identity import normalize_host
+
+            host = normalize_host(str(value))
+            if host:
+                lines.append(f"website={host}")
+            continue
+        lines.append(f"{key}={value}")
+    body = "\n".join(lines)
+    try:
+        from app.services.agent_security_gateway import fence_page_context_block
+
+        return fence_page_context_block(body)
+    except Exception:  # noqa: BLE001
+        return body

@@ -1,15 +1,17 @@
-"""Phase C — replanner with budgets for cross-source analyst paths (GA4 + GSC)."""
+"""Phase C — replanner with budgets for cross-source analyst paths (GA4 + optional GSC)."""
 from __future__ import annotations
 
 from uuid import uuid4
 
+from app.capability_ontology.recipe_resolver import resolve_recipe
 from app.services.connector_semantic_registry import (
+    mentions_analytics_traffic_language,
     mentions_website_performance_language,
-    resolve_analytics_capabilities_for_message,
 )
 from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
 
 DEFAULT_REPLAN_BUDGET = 1
+TRAFFIC_RECIPE_ID = "analytics.website-traffic-overview"
 
 
 def build_cross_source_analytics_plan(
@@ -18,55 +20,65 @@ def build_cross_source_analytics_plan(
     capability_id: str | None,
     connected_integrations: list[str] | None,
 ) -> ExecutionPlan | None:
-    """When GA4 + GSC are connected and the user asks broad website performance, plan parallel reads."""
+    """GA4 + Search Console when the traffic recipe resolves both reads."""
     text = (message or "").strip()
     if not text:
         return None
     cap = str(capability_id or "").strip().lower()
-    if cap not in {"", "analytics.traffic_overview", "analytics.query"}:
-        if not mentions_website_performance_language(text):
-            return None
-
-    connected = {str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()}
-    caps = set(
-        resolve_analytics_capabilities_for_message(text, connected_integrations=list(connected))
+    traffic_shaped = (
+        cap in {"", "analytics.traffic_overview", "analytics.query", "search.performance"}
+        or mentions_analytics_traffic_language(text)
+        or mentions_website_performance_language(text)
     )
-    has_ga4 = "google_analytics" in connected
-    has_gsc = "google_search_console" in connected
-    if not (has_ga4 and has_gsc):
+    if not traffic_shaped:
         return None
-    if not (mentions_website_performance_language(text) or caps.intersection({"google_analytics", "google_search_console"})):
+
+    connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
+    if "google_analytics" not in connected or "google_search_console" not in connected:
+        return None
+
+    resolved = resolve_recipe(
+        TRAFFIC_RECIPE_ID,
+        connected_integrations=connected,
+        query=text,
+    )
+    if resolved is None:
+        return None
+    by_id = {step.step_id: step for step in resolved.steps}
+    ga4 = by_id.get("read_ga4")
+    gsc = by_id.get("read_gsc")
+    if not ga4 or not ga4.resolved_action or not gsc or not gsc.resolved_action:
         return None
 
     steps: list[ExecutionStep] = [
         ExecutionStep(
             step_id="read_ga4_traffic",
-            title="GA4 traffic overview",
+            title=ga4.name,
             kind="read",
-            connector_id="google_analytics",
-            capability_id="analytics.traffic_overview",
-            action_key="google_analytics.reports.run",
+            connector_id=ga4.resolved_vendor,
+            capability_id=ga4.capability_id,
+            action_key=ga4.resolved_action,
         ),
         ExecutionStep(
             step_id="read_gsc_performance",
-            title="Search Console page performance",
+            title=gsc.name,
             kind="read",
-            connector_id="google_search_console",
-            capability_id="analytics.query",
-            action_key="google_search_console.searchAnalytics.query",
+            connector_id=gsc.resolved_vendor,
+            capability_id=gsc.capability_id,
+            action_key=gsc.resolved_action,
             meta={"dimensions": ["page"], "safe_aggregate": True},
         ),
         ExecutionStep(
             step_id="compose_cross_source",
             title="Compose website performance summary",
             kind="compose",
-            capability_id="analytics.traffic_overview",
+            capability_id=cap or "analytics.traffic_overview",
             status="pending",
         ),
     ]
     return ExecutionPlan(
         plan_id=str(uuid4()),
-        summary="Cross-source website performance (GA4 + Search Console)",
+        summary="Website traffic overview (GA4 + Search Console)",
         steps=steps,
         source="cross_source_analytics_replanner",
         capability_id=cap or "analytics.traffic_overview",

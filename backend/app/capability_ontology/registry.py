@@ -123,7 +123,7 @@ CAPABILITY_REGISTRY: dict[str, CapabilityDefinition] = {
         description=(
             "Broad website-traffic summary from connected analytics — users, sessions, "
             "views, source mix, and period-over-period change without asking the user "
-            "to design API queries."
+            "to design API queries. Search Console is an optional companion when connected."
         ),
         domain="analytics",
         kind="read",

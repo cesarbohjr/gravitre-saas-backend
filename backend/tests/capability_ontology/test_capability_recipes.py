@@ -62,3 +62,40 @@ def test_onboarding_resolves_google_stack():
     by_id = {s.step_id: s for s in resolved.steps}
     assert by_id["welcome_email"].resolved_action == "gmail.messages.send"
     assert by_id["kickoff"].resolved_action == "google_calendar.events.create"
+
+
+def test_traffic_recipe_ga4_only_skips_optional_gsc():
+    resolved = resolve_recipe(
+        "analytics.website-traffic-overview",
+        connected_integrations=["google_analytics"],
+        query="Tell me what my website traffic was last month.",
+    )
+    assert resolved is not None
+    assert resolved.status == "fully_resolved"
+    by_id = {s.step_id: s for s in resolved.steps}
+    assert by_id["read_ga4"].resolved_action == "google_analytics.reports.run"
+    assert by_id["read_gsc"].resolved_action is None
+    assert by_id["read_gsc"].optional is True
+    assert "read_gsc" not in resolved.unresolved_steps
+
+
+def test_traffic_recipe_includes_gsc_when_connected():
+    resolved = resolve_recipe(
+        "analytics.website-traffic-overview",
+        connected_integrations=["google_analytics", "google_search_console"],
+        query="Tell me about my website traffic.",
+    )
+    assert resolved is not None
+    assert resolved.status == "fully_resolved"
+    by_id = {s.step_id: s for s in resolved.steps}
+    assert by_id["read_gsc"].resolved_action == "google_search_console.searchAnalytics.query"
+
+
+def test_traffic_recipe_without_ga4_is_partial():
+    resolved = resolve_recipe(
+        "analytics.website-traffic-overview",
+        connected_integrations=["google_search_console"],
+    )
+    assert resolved is not None
+    assert resolved.status == "partial"
+    assert "read_ga4" in resolved.unresolved_steps

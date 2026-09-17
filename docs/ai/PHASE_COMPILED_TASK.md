@@ -1,6 +1,6 @@
 # compiled_task projection in task_state (audit §34 item 4)
 
-**Status:** structural (local). Does not expand the F1 ActionSpec slice. Does not change WRITE governance, G8, or ContextCompiler prompt inclusion (item 5).  
+**Status:** structural (local). Does not expand the F1 ActionSpec slice. Does not change WRITE governance or G8. ContextCompiler inclusion is §34 item 5 (`docs/ai/PHASE_CONTEXT_COMPILER_COMPILED_TASK.md`).  
 **Date:** 2026-09-17
 
 Read-only `task_state.compiled_task` assembled once per turn from Phase A + E5 (+ F1 preflight when present):

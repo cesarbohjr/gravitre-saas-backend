@@ -47,6 +47,28 @@ def test_cross_source_plan_when_ga4_and_gsc_connected() -> None:
         "google_analytics",
         "google_search_console",
     }
+    assert next(s for s in plan.steps if s.connector_id == "google_search_console").capability_id == (
+        "search.performance"
+    )
+
+
+def test_cross_source_plan_for_traffic_language() -> None:
+    plan = build_cross_source_analytics_plan(
+        "Tell me what my website traffic was last month.",
+        capability_id="analytics.traffic_overview",
+        connected_integrations=["google_analytics", "google_search_console"],
+    )
+    assert plan is not None
+    assert len([s for s in plan.steps if s.kind == "read"]) == 2
+
+
+def test_cross_source_plan_skips_when_gsc_absent() -> None:
+    plan = build_cross_source_analytics_plan(
+        "Tell me what my website traffic was last month.",
+        capability_id="analytics.traffic_overview",
+        connected_integrations=["google_analytics"],
+    )
+    assert plan is None
 
 
 def test_replan_budget_and_should_replan() -> None:

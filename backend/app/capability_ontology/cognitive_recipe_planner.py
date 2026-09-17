@@ -5,6 +5,10 @@ from typing import Any
 
 from app.capability_ontology.recipe_resolver import ResolvedRecipe, resolve_recipe
 from app.capability_ontology.recipes import DepartmentRecipe, get_recipe, list_recipes
+from app.services.connector_semantic_registry import (
+    mentions_analytics_traffic_language,
+    mentions_website_performance_language,
+)
 
 _RECIPE_TRIGGERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -64,6 +68,12 @@ def match_recipe_for_query(
             if score > best_score:
                 best = recipe
                 best_score = score
+    if best is None and (
+        mentions_analytics_traffic_language(query) or mentions_website_performance_language(query)
+    ):
+        traffic = get_recipe("analytics.website-traffic-overview")
+        if traffic and (not dept_hint or traffic.department == dept_hint or dept_hint in {"marketing", "analytics"}):
+            return traffic
     return best
 
 
@@ -72,6 +82,8 @@ def recipe_plan_steps(resolved: ResolvedRecipe) -> list[dict[str, Any]]:
     steps: list[dict[str, Any]] = []
     for step in resolved.steps:
         if step.step_type == "trigger":
+            continue
+        if step.optional and not step.resolved_action:
             continue
         description = step.name
         if step.resolved_vendor and step.resolved_action:

@@ -18,6 +18,7 @@ class CompiledTurnContextMeta:
     capability_id: str | None
     kernel_merged: bool
     source: str
+    compiled_task_included: bool = False
 
 
 def merge_kernel_sections(turn_ctx: Any, cognitive_ctx: Any) -> bool:
@@ -91,11 +92,32 @@ async def compile_assistant_turn_context(
                 turn_ctx.entity_relationship_section = "\n\n".join(p for p in (prior, block) if p).strip()
         except Exception as exc:  # noqa: BLE001
             logger.debug("context_compiler_workspace_focus_merge_skipped error=%s", exc)
+    compiled_task_included = False
+    if turn_ctx is not None:
+        try:
+            from app.services.compiled_task_service import format_compiled_task_compiler_block
+
+            task_block = format_compiled_task_compiler_block(task_state)
+            if task_block:
+                compiled_task_included = True
+                if hasattr(turn_ctx, "entity_relationship_section"):
+                    prior = getattr(turn_ctx, "entity_relationship_section", None) or ""
+                    turn_ctx.entity_relationship_section = "\n\n".join(
+                        p for p in (prior, task_block) if p
+                    ).strip()
+                elif hasattr(turn_ctx, "retrieval") and hasattr(turn_ctx.retrieval, "memory_section"):
+                    prior_m = getattr(turn_ctx.retrieval, "memory_section", "") or ""
+                    turn_ctx.retrieval.memory_section = "\n\n".join(
+                        p for p in (prior_m, task_block) if p
+                    ).strip()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("context_compiler_compiled_task_merge_skipped error=%s", exc)
     meta = CompiledTurnContextMeta(
         intent_class=intent_class,
         capability_id=capability_id,
         kernel_merged=kernel_merged,
         source=source,
+        compiled_task_included=compiled_task_included,
     )
     return turn_ctx, meta
 
@@ -147,6 +169,7 @@ class CompiledTurnContext:
             ],
             "token_estimate": self.token_estimate,
             "compile_duration_ms": round(self.compile_duration_ms, 2),
+            "compiled_task_included": bool((self.metadata or {}).get("compiled_task_included")),
             "registry_plan": (
                 self.registry_plan.to_explanation_dict()
                 if hasattr(self.registry_plan, "to_explanation_dict")
@@ -410,6 +433,15 @@ async def compile_unified_reasoning_context(
     else:
         _record("workspace_focus", "EXCLUDE", "absent")
 
+    from app.services.compiled_task_service import format_compiled_task_compiler_block
+
+    compiled_task_block = format_compiled_task_compiler_block(task_state)
+    if compiled_task_block:
+        _add_part("compiled_task", compiled_task_block)
+        _record("compiled_task", "INCLUDE", "task_state_projection")
+    else:
+        _record("compiled_task", "EXCLUDE", "empty_or_unresolved")
+
     _add_part("user_message", f"USER MESSAGE:\n{(message or '').strip()}")
     _record("user_message", "INCLUDE", "required")
 
@@ -425,5 +457,9 @@ async def compile_unified_reasoning_context(
         inclusion_decisions=tuple(decisions),
         compile_duration_ms=compile_ms,
         token_estimate=_estimate_tokens(user_content),
-        metadata={"surface": surface or "assistant", "workspace_focus": workspace_focus or None},
+        metadata={
+            "surface": surface or "assistant",
+            "workspace_focus": workspace_focus or None,
+            "compiled_task_included": bool(compiled_task_block),
+        },
     )

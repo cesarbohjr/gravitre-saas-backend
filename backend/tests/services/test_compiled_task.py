@@ -115,3 +115,26 @@ async def test_phase_a_ingress_writes_compiled_task() -> None:
     assert isinstance(compiled, dict)
     assert compiled["objective_text"] == "hello"
     assert compiled["org_id"] == "org-1"
+
+
+def test_compiler_block_omits_api_ids() -> None:
+    from app.services.compiled_task_service import format_compiled_task_compiler_block
+
+    block = format_compiled_task_compiler_block(
+        {
+            "compiled_task": {
+                "capability_id": "analytics.traffic_overview",
+                "sources": [
+                    {
+                        "connector": "google_analytics",
+                        "resource_id": "999888",
+                        "display_name": "Gravitre Website",
+                    }
+                ],
+                "compiled_parameters": {"property_id": "999888", "start_date": "2026-08-01"},
+            }
+        }
+    )
+    assert "Gravitre Website" in block
+    assert "999888" not in block
+    assert "property_id" not in block

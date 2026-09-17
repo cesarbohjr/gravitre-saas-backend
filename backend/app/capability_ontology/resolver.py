@@ -33,6 +33,9 @@ _VENDOR_MENTION_ALIASES: dict[str, str] = {
     "workday": "workday",
     "ga4": "google_analytics",
     "google_analytics": "google_analytics",
+    "gsc": "google_search_console",
+    "search_console": "google_search_console",
+    "google_search_console": "google_search_console",
 }
 
 

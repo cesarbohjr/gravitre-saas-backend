@@ -14,6 +14,12 @@ def test_match_recipe_for_onboarding_query():
     assert recipe.recipe_id == "hr.employee-onboarding"
 
 
+def test_match_recipe_for_website_traffic_query():
+    recipe = match_recipe_for_query("Tell me what my website traffic was last month.")
+    assert recipe is not None
+    assert recipe.recipe_id == "analytics.website-traffic-overview"
+
+
 def test_cognitive_planner_enriches_lead_enrichment_plan():
     planner = CognitivePlanner()
     plan = planner.plan(

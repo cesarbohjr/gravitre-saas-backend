@@ -137,3 +137,52 @@ async def test_compile_includes_workspace_focus_block() -> None:
     included = [d.source for d in compiled.inclusion_decisions if d.action == "INCLUDE"]
     assert "workspace_focus" in included
 
+
+@pytest.mark.asyncio
+async def test_compile_includes_compiled_task_slice() -> None:
+    with patch(
+        "app.services.unified_turn_knowledge_context.build_unified_turn_knowledge_context",
+        new_callable=AsyncMock,
+        return_value=("", {"skipped": "test"}),
+    ):
+        compiled = await compile_unified_reasoning_context(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="Tell me what my website traffic was last month.",
+            task_state={
+                "compiled_task": {
+                    "capability_id": "analytics.traffic_overview",
+                    "timeframe_resolved": {
+                        "interpretation": "previous_calendar_month",
+                        "start_iso": "2026-08-01",
+                        "end_iso": "2026-08-31",
+                    },
+                    "sources": [
+                        {
+                            "connector": "google_analytics",
+                            "resource_id": "123456",
+                            "display_name": "Acme Website",
+                        }
+                    ],
+                    "compiled_parameters": {"property_id": "123456", "start_date": "2026-08-01"},
+                    "clarification_decision": {"required": False, "reason": ""},
+                    "preflight_status": "ready",
+                }
+            },
+            conversation_history=[],
+            connected_integrations=["google_analytics"],
+            client=MagicMock(),
+            classification={"intent": "analytics"},
+        )
+    labels = [label for label, _ in compiled.context_parts()]
+    assert "compiled_task" in labels
+    block = dict(compiled.context_parts())["compiled_task"]
+    assert "analytics.traffic_overview" in block
+    assert "previous_calendar_month" in block
+    assert "Acme Website" in block
+    assert "123456" not in block
+    assert compiled.to_trace_dict()["compiled_task_included"] is True
+    included = [d.source for d in compiled.inclusion_decisions if d.action == "INCLUDE"]
+    assert "compiled_task" in included
+

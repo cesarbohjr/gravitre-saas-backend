@@ -134,3 +134,28 @@ async def test_context_compiler_uses_prepare_and_merges_kernel() -> None:
     assert ctx is turn_ctx
     assert meta.kernel_merged is True
     prepare.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_classical_compiler_merges_compiled_task_block() -> None:
+    from app.services.context_compiler import compile_assistant_turn_context
+
+    turn_ctx = SimpleNamespace(
+        retrieval=SimpleNamespace(memory_section=""),
+        entity_relationship_section="",
+    )
+    prepare = AsyncMock(return_value=turn_ctx)
+    ctx, meta = await compile_assistant_turn_context(
+        classification={"capability_id": "analytics.traffic_overview"},
+        task_state={
+            "compiled_task": {
+                "capability_id": "analytics.traffic_overview",
+                "sources": [{"connector": "google_analytics", "display_name": "Acme Website"}],
+            }
+        },
+        prepare_turn=prepare,
+    )
+    assert ctx is turn_ctx
+    assert meta.compiled_task_included is True
+    assert "COMPILED TASK" in turn_ctx.entity_relationship_section
+    assert "Acme Website" in turn_ctx.entity_relationship_section

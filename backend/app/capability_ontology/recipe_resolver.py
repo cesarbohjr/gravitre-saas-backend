@@ -18,6 +18,7 @@ class ResolvedRecipeStep:
     resolved_vendor: str | None
     ambiguous: bool
     resolution: CapabilityResolution | None
+    optional: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -28,6 +29,7 @@ class ResolvedRecipeStep:
             "resolvedAction": self.resolved_action,
             "resolvedVendor": self.resolved_vendor,
             "ambiguous": self.ambiguous,
+            "optional": self.optional,
         }
         if self.resolution is not None:
             payload["resolution"] = {
@@ -82,6 +84,7 @@ def _resolve_step(
             resolved_vendor=None,
             ambiguous=False,
             resolution=None,
+            optional=step.optional,
         )
 
     args = {"preferred_vendor": preferred_vendor} if preferred_vendor else None
@@ -101,6 +104,7 @@ def _resolve_step(
         resolved_vendor=resolution.resolved_vendor,
         ambiguous=resolution.ambiguous,
         resolution=resolution,
+        optional=step.optional,
     )
 
 
@@ -128,11 +132,11 @@ def resolve_recipe(
     )
 
     invoke_steps = [s for s in resolved_steps if s.step_type == "invoke_tool" and s.capability_id]
-    ambiguous = tuple(s.step_id for s in invoke_steps if s.ambiguous)
+    ambiguous = tuple(s.step_id for s in invoke_steps if s.ambiguous and not s.optional)
     unresolved = tuple(
         s.step_id
         for s in invoke_steps
-        if not s.ambiguous and not s.resolved_action
+        if not s.ambiguous and not s.resolved_action and not s.optional
     )
 
     if ambiguous:
