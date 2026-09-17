@@ -555,6 +555,8 @@ def preflight_read_action(
     elif isinstance(execution_step, dict):
         step_id = str(execution_step.get("step_id") or "") or None
         action_key = action_key or str(execution_step.get("action_key") or "")
+    plan_id = plan_id or (str(ctx.get("plan_id") or "").strip() or None)
+    step_id = step_id or (str(ctx.get("step_id") or "").strip() or None)
 
     result = PreflightResult(
         status="blocked",

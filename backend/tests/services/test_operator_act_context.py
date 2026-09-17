@@ -33,6 +33,16 @@ def test_operator_act_json_is_computable_and_gates_writes() -> None:
     assert any(row["kind"] == "read" for row in ctx.reachable_actions) or ctx.reachable_actions == []
 
 
+def test_sole_connected_crm_is_not_asked() -> None:
+    ctx = build_operator_act_context(
+        user_text="Show me the deals that need attention.",
+        connected_integrations=["hubspot", "slack"],
+    )
+    assert ctx.payload["policy"]["do_not_ask_unconnected_vendors"] is True
+    assert ctx.payload["sole_connected_domains"]["crm"] == ["hubspot"]
+    assert "do not ask which crm" in ctx.section.lower()
+
+
 def test_disconnected_has_no_reachable_vendor() -> None:
     ctx = build_operator_act_context(
         user_text="list deals",

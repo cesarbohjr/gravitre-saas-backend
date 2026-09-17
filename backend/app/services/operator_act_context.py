@@ -42,6 +42,9 @@ _MAX_ACTIONS_READ = 8
 _MAX_ACTIONS_WRITE = 6
 _MAX_LEDGER_SLOTS = 16
 _MAX_SLOT_CHARS = 200
+_CRM_VENDORS = frozenset({"hubspot", "salesforce", "pipedrive", "engagebay"})
+_FINANCE_VENDORS = frozenset({"quickbooks", "xero", "stripe"})
+_SUPPORT_VENDORS = frozenset({"zendesk", "freshdesk", "intercom"})
 
 
 @dataclass(frozen=True)
@@ -145,6 +148,11 @@ def build_operator_act_context(
         reachable.extend(_compact_actions(vendor, include_writes=include_writes))
 
     extra = interrupt.get("extra") if isinstance(interrupt, dict) else None
+    sole_domains = {
+        "crm": sorted(_CRM_VENDORS.intersection(connected)),
+        "finance": sorted(_FINANCE_VENDORS.intersection(connected)),
+        "support": sorted(_SUPPORT_VENDORS.intersection(connected)),
+    }
     payload: dict[str, Any] = {
         "intent": intent,
         "vague": vague,
@@ -158,7 +166,9 @@ def build_operator_act_context(
             "writes_require_explicit_confirm": True,
             "prefer_connected_read_when_vague": True,
             "disconnected_is_unreachable": True,
+            "do_not_ask_unconnected_vendors": True,
         },
+        "sole_connected_domains": {k: v for k, v in sole_domains.items() if v},
     }
     if isinstance(extra, dict) and extra:
         payload["interrupt"] = extra
@@ -183,6 +193,9 @@ def build_operator_act_context(
             "reachable for READ this turn. Writes are reachable only after explicit user "
             "confirm; never execute a silent write.",
             f"Connected systems: {connected_line}",
+            "If a domain has exactly one connected vendor (for example CRM=hubspot), "
+            "use that vendor for READ. Do not ask which CRM, finance, or support system "
+            "to use when the alternative is not connected this turn.",
             vague_rule,
             "<operator_act_json>",
             json.dumps(payload, separators=(",", ":"), default=str)[:6000],

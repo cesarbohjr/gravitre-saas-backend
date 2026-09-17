@@ -900,19 +900,62 @@ class ReActEngine:
                 connected_integrations=connected,
             )
             if preflight is not None and not preflight.ok:
+                from app.services.f2_read_repair import repair_blocked_read
+
+                repaired = repair_blocked_read(
+                    blocked=preflight,
+                    ctx=ctx,
+                    invoke_action=target,
+                    args=args,
+                    user_message=user_message,
+                    connected_integrations=connected,
+                )
+                if repaired is None:
+                    return {
+                        "success": False,
+                        "tool": tool_name,
+                        "action": invoke_action,
+                        "error_code": preflight.error_class,
+                        "error": preflight.user_message(),
+                        "repair_hint": preflight.repair_hint,
+                        "provider_invoked": False,
+                        "observation_status": "preflight_blocked",
+                        "plan_id": preflight.plan_id,
+                        "step_id": preflight.step_id,
+                        "capability_id": preflight.capability_id,
+                        "action_key": preflight.action_key,
+                    }
+                invoke_action = repaired.action
+                execute_args = dict(repaired.args)
+                if repaired.preflight is not None and repaired.preflight.ok:
+                    ctx = dc_replace(ctx, preflight_result=repaired.preflight)
+                from app.services.tool_service import invoke_tool
+                from app.services.tool_types import ToolError
+
+                try:
+                    repaired_result = invoke_tool(ctx, invoke_action, execute_args)
+                except ToolError as exc:
+                    return {
+                        "success": False,
+                        "tool": tool_name,
+                        "action": invoke_action,
+                        "error_code": exc.code,
+                        "error": str(exc),
+                        "provider_invoked": False,
+                        "observation_status": "repair_failed",
+                        "repair_reason": repaired.reason,
+                    }
                 return {
-                    "success": False,
+                    "success": bool(repaired_result.success),
                     "tool": tool_name,
                     "action": invoke_action,
-                    "error_code": preflight.error_class,
-                    "error": preflight.user_message(),
-                    "repair_hint": preflight.repair_hint,
-                    "provider_invoked": False,
-                    "observation_status": "preflight_blocked",
-                    "plan_id": preflight.plan_id,
-                    "step_id": preflight.step_id,
-                    "capability_id": preflight.capability_id,
-                    "action_key": preflight.action_key,
+                    "result": repaired_result.data,
+                    "connector_id": repaired_result.connector_id,
+                    "error": repaired_result.error_message,
+                    "error_code": repaired_result.error_code,
+                    "provider_invoked": bool(repaired_result.success),
+                    "observation_status": "repaired" if repaired_result.success else "repair_failed",
+                    "repair_reason": repaired.reason,
                 }
             if preflight is not None and preflight.ok:
                 ctx = dc_replace(ctx, preflight_result=preflight)

@@ -90,7 +90,21 @@ async def test_single_property_auto_executes_without_clarification() -> None:
         return_value=("token", None),
     ), patch(
         "app.connectors.google_analytics.run_ga4_report",
-        side_effect=[fake_report, fake_report, source_report],
+        side_effect=[fake_report, source_report],
+    ), patch(
+        "app.services.analytics_traffic_overview_service.invoke_tool",
+        return_value=SimpleNamespace(success=True, data=fake_report, error_message=None),
+    ), patch(
+        "app.services.analytics_traffic_overview_service.preflight_read_action",
+        return_value=SimpleNamespace(
+            ok=True,
+            status="ready",
+            compiled_parameters={"property_id": "123", "start_date": "30daysAgo", "end_date": "today"},
+            resource={"name": "Gravitre Website", "id": "123"},
+            time_window={"interpretation": "action_spec_default"},
+            user_message=lambda: "",
+            error_class=None,
+        ),
     ):
         turn = await try_analytics_traffic_overview_turn(
             message="Tell me about my GA4 website traffic.",

@@ -301,6 +301,19 @@ def _audit_metadata(ctx: ToolContext, action: str, connector_id: str | None, ext
         meta["task_id"] = ctx.task_id
     if ctx.run_id:
         meta["run_id"] = ctx.run_id
+        meta["plan_id"] = ctx.run_id
+    proof = getattr(ctx, "preflight_result", None)
+    if proof is not None:
+        meta["preflight_status"] = getattr(proof, "status", None)
+        meta["preflight_duration_ms"] = getattr(proof, "duration_ms", None)
+        meta["spec_revision"] = getattr(proof, "spec_revision", None)
+        meta["capability_id"] = getattr(proof, "capability_id", None)
+        meta["turn_id"] = getattr(proof, "turn_id", None)
+        if getattr(proof, "plan_id", None):
+            meta["plan_id"] = proof.plan_id
+        if getattr(proof, "step_id", None):
+            meta["step_id"] = proof.step_id
+        meta["provider_invoked"] = True
     if extra:
         meta.update(extra)
     return meta

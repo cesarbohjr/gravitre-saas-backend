@@ -283,7 +283,7 @@ def test_invoke_tool_defense_does_not_call_provider_when_preflight_fails():
     assert proof.ok
     bound = replace(tool_ctx, preflight_result=proof)
     with patch("app.services.tool_service.enforce_rate_limit"):
-        with patch("app.services.tool_service.write_audit_event"):
+        with patch("app.services.tool_service.write_audit_event") as audit:
             with patch(
                 "app.services.agent_tool_permissions.list_agent_tool_permissions",
                 return_value=[{"connector_type": "google_analytics", "scopes": ["google_analytics:read"], "expires_at": None}],
@@ -299,6 +299,9 @@ def test_invoke_tool_defense_does_not_call_provider_when_preflight_fails():
                     result = invoke_tool(bound, "analytics.reports.run", dict(proof.compiled_parameters))
     assert result.success is True
     assert called["params"]["property_id"] == "123"
+    metadatas = [call.kwargs.get("metadata") or {} for call in audit.call_args_list]
+    assert any(meta.get("preflight_status") == "ready" for meta in metadatas)
+    assert any(meta.get("spec_revision") for meta in metadatas)
 
 
 def test_write_actions_are_not_f1_preflighted():

@@ -21,7 +21,10 @@ from app.services.connector_semantic_registry import (
     resolve_connector_from_text,
 )
 from app.services.canonical_time_resolver import resolve_time_window
+from app.services.read_preflight import preflight_read_action
 from app.services.reference_resolver import resolve_reference, store_active_analysis
+from app.services.tool_service import invoke_tool
+from app.services.tool_types import ToolContext, ToolValidationError
 
 logger = get_logger(__name__)
 
@@ -615,8 +618,42 @@ async def try_analytics_traffic_overview_turn(
             "workflow_status": "blocked",
         }
 
+    from dataclasses import replace
+
     from app.connectors.google_analytics import GoogleAnalyticsAPIError, run_ga4_report
     from app.connectors.google_analytics_oauth import ensure_google_analytics_session
+
+    proof = preflight_read_action(
+        context={
+            "action_key": "google_analytics.reports.run",
+            "capability_id": "analytics.traffic_overview",
+            "org_id": org_id,
+            "client": client,
+            "settings": active_settings,
+            "user_message": message,
+            "connected_integrations": list(connected),
+            "task_state": task_state or {},
+            "environment_name": "production",
+        }
+    )
+    if not proof.ok:
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": proof.user_message(),
+            "task_state": task_state or {},
+            "workflow_status": "blocked",
+            "preflight_status": proof.status,
+            "error_class": proof.error_class,
+        }
+
+    property_id = str(proof.compiled_parameters.get("property_id") or resolution.resource_id)
+    property_name = (proof.resource or {}).get("name") or resolution.display_name or f"Property {property_id}"
+    start_date = str(proof.compiled_parameters.get("start_date") or "")
+    end_date = str(proof.compiled_parameters.get("end_date") or "")
+    interp = str((proof.time_window or {}).get("interpretation") or "")
+    if not start_date or not end_date:
+        start_date, end_date, interp = _traffic_date_range(message)
 
     token, err = ensure_google_analytics_session(
         client,
@@ -636,10 +673,7 @@ async def try_analytics_traffic_overview_turn(
             "workflow_status": "blocked",
         }
 
-    property_id = resolution.resource_id
-    property_name = resolution.display_name or f"Property {property_id}"
     metrics = ["activeUsers", "sessions", "screenPageViews"]
-    start_date, end_date, interp = _traffic_date_range(message)
     previous_start, previous_end = "60daysAgo", "31daysAgo"
     if interp == "previous_calendar_month":
         from datetime import date, timedelta
@@ -649,13 +683,21 @@ async def try_analytics_traffic_overview_turn(
         previous_start = date(prior_end.year, prior_end.month, 1).isoformat()
         previous_end = prior_end.isoformat()
     try:
-        current = run_ga4_report(
-            token,
-            property_id,
-            start_date=start_date,
-            end_date=end_date,
-            metrics=metrics,
+        tool_ctx = ToolContext(
+            settings=active_settings,
+            client=client,
+            org_id=org_id,
+            actor_id="analytics-traffic-overview",
+            environment_name="production",
         )
+        invoked = invoke_tool(
+            replace(tool_ctx, preflight_result=proof),
+            "analytics.reports.run",
+            dict(proof.compiled_parameters),
+        )
+        if not invoked.success or not isinstance(invoked.data, dict):
+            raise GoogleAnalyticsAPIError(invoked.error_message or "analytics.reports.run failed")
+        current = invoked.data
         previous = run_ga4_report(
             token,
             property_id,
@@ -671,6 +713,15 @@ async def try_analytics_traffic_overview_turn(
             dimensions=["sessionDefaultChannelGroup"],
             metrics=["sessions"],
         )
+    except ToolValidationError as exc:
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": str(exc),
+            "task_state": task_state or {},
+            "workflow_status": "blocked",
+            "error_class": getattr(exc, "code", None),
+        }
     except GoogleAnalyticsAPIError as exc:
         logger.warning("ga4_traffic_overview_failed org=%s property=%s err=%s", org_id, property_id, exc)
         return {
