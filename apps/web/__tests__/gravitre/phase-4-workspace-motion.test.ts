@@ -19,6 +19,8 @@ describe("UX Reset Phase 4 — shared workspace motion", () => {
     )
     expect(floatSrc).toMatch(/layoutId=\{reduceMotion \? undefined : GRAVITRE_AI_WORKSPACE_LAYOUT_ID\}/)
     expect(shellSrc).toMatch(/layoutId=\{reduceMotion \? undefined : GRAVITRE_AI_WORKSPACE_LAYOUT_ID\}/)
+    expect(floatSrc).toMatch(/data-gravitre-workspace-layout-id/)
+    expect(shellSrc).toMatch(/data-gravitre-workspace-layout-id/)
     expect(floatSrc).toMatch(/MOTION\.major/)
     expect(shellSrc).toMatch(/MOTION\.major/)
   })

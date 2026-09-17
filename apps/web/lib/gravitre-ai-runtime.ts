@@ -24,6 +24,7 @@ export type GravitreAiRuntimeDebugSnapshot = {
   agentScopeName: string | null
   selected: { kind: string; id: string; label: string } | null
   voiceModality: string | null
+  voicePresence: string | null
   lastChatRequestSummary: Record<string, unknown> | null
 }
 
@@ -86,6 +87,7 @@ export function getGravitreAiRuntimeDebugSnapshot(): GravitreAiRuntimeDebugSnaps
     agentScopeName: workspaceFields.agentScopeName ?? null,
     selected: workspaceFields.selected ?? null,
     voiceModality: workspaceFields.voiceModality ?? null,
+    voicePresence: workspaceFields.voicePresence ?? null,
   }
 }
 

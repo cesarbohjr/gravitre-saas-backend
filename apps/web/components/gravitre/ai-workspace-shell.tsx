@@ -135,6 +135,7 @@ export function GravitreAIWorkspaceShell({
       )}
       data-gravitre-ai-shell=""
       data-gravitre-ai-shell-mode={mode}
+      data-gravitre-workspace-layout-id={reduceMotion ? "reduced-motion" : GRAVITRE_AI_WORKSPACE_LAYOUT_ID}
       role={isFullscreen ? "dialog" : "region"}
       aria-modal={isFullscreen ? true : undefined}
       aria-label="Gravitre AI workspace"

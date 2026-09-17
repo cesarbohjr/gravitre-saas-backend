@@ -16,6 +16,8 @@ export type CanonicalAiDebug = {
   agentScopeId: string | null
   agentScopeName: string | null
   selected: { kind: string; id: string; label: string } | null
+  voiceModality: string | null
+  voicePresence: string | null
   lastChatRequestSummary: Record<string, unknown> | null
 }
 
@@ -32,11 +34,28 @@ export function uiMessageStream(text: string, delayMs = 0): string {
   return chunks.join("")
 }
 
-export async function mockCanonicalChat(page: Page, options?: { slowMs?: number; body?: string }) {
+export function uiToolThenTextStream(text: string): string {
+  const chunks = [
+    `data: ${JSON.stringify({ type: "start" })}\n\n`,
+    `data: ${JSON.stringify({ type: "tool-input-start", toolCallId: "t1", toolName: "searchKnowledgeBase" })}\n\n`,
+    `data: ${JSON.stringify({ type: "tool-input-available", toolCallId: "t1", toolName: "searchKnowledgeBase", input: { query: "northwind" } })}\n\n`,
+    `data: ${JSON.stringify({ type: "tool-output-available", toolCallId: "t1", output: { results: [] } })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-start", id: "0" })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-delta", id: "0", delta: text })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-end", id: "0" })}\n\n`,
+    `data: ${JSON.stringify({ type: "finish" })}\n\n`,
+    "data: [DONE]\n\n",
+  ]
+  return chunks.join("")
+}
+
+export async function mockCanonicalChat(page: Page, options?: { slowMs?: number; body?: string; toolThenText?: boolean }) {
   const posts: unknown[] = []
   await page.route("**/api/chat", async (route: Route) => {
     posts.push(route.request().postDataJSON())
-    const body = uiMessageStream(options?.body ?? "Northwind pipeline looks healthy.")
+    const body = options?.toolThenText
+      ? uiToolThenTextStream(options?.body ?? "Northwind pipeline looks healthy.")
+      : uiMessageStream(options?.body ?? "Northwind pipeline looks healthy.")
     if (options?.slowMs) {
       await new Promise((resolve) => setTimeout(resolve, options.slowMs))
     }

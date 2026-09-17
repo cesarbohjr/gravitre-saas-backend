@@ -198,6 +198,7 @@ export function GravitreFloatingWorkspace({
       transition={{ duration: reduceMotion ? 0 : MOTION.major, ease: [0.22, 1, 0.36, 1] }}
       className="pointer-events-auto fixed bottom-5 left-5 z-[85] flex flex-col overflow-hidden rounded-[var(--g-radius-panel)] border border-divide bg-[color:var(--g-surface-1)] shadow-2xl"
       data-gravitre-float-workspace=""
+      data-gravitre-workspace-layout-id={reduceMotion ? "reduced-motion" : GRAVITRE_AI_WORKSPACE_LAYOUT_ID}
       role="region"
       aria-label="Gravitre AI"
     >

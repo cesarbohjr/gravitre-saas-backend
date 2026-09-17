@@ -1,11 +1,20 @@
+import { existsSync } from "node:fs"
+import path from "node:path"
 import { test, expect } from "@playwright/test"
 import { loadBillingFixtures, prepareAdminAppSession } from "./helpers/auth"
 
+const fixturesPath = path.resolve(__dirname, ".fixtures", "billing-users.json")
+const skipLiveHub =
+  process.env.PLAYWRIGHT_SKIP_BACKEND === "1" || !existsSync(fixturesPath)
+
 /**
  * G5/G8 UI — Intelligence hub map + inspector + Ask Gravitre SSE focus.
- * Runs against local Playwright webServer stack (not prod browser auth).
+ * Live login tests need FastAPI + billing fixtures. I11 hub chrome is also
+ * covered on `/e2e/shots/intelligence` (see ux-reset-live-proof.spec.ts).
  */
 test.describe("Intelligence hub UI", () => {
+  test.skip(skipLiveHub, "Live Intelligence needs FastAPI and billing fixtures")
+
   test.beforeEach(async ({ page }) => {
     const fixtures = loadBillingFixtures()
     await prepareAdminAppSession(page, fixtures.activeTrial, "/intelligence")

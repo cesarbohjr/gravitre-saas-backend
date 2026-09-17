@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react"
 import { hasSupabasePublicEnv, supabaseClient } from "@/lib/supabaseClient"
 import type { User, Session } from "@supabase/supabase-js"
 
@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(hasSupabasePublicEnv)
+  const e2eSignedOutRef = useRef(false)
 
   useEffect(() => {
     if (!hasSupabasePublicEnv) {
@@ -55,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Validate with Supabase before trusting local session storage.
     withTimeout(supabaseClient.auth.getUser(), AUTH_INIT_TIMEOUT_MS)
       .then(({ data: { user } }) => {
-        if (!mounted) return
+        if (!mounted || e2eSignedOutRef.current) return
         setUser(user ?? null)
         if (user) {
           void supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return
+      if (!mounted || e2eSignedOutRef.current) return
       if (event === "SIGNED_OUT") {
         setSession(null)
         setUser(null)
@@ -112,6 +113,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { session } } = await supabaseClient.auth.refreshSession()
     setSession(session)
     setUser(session?.user ?? null)
+  }, [])
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E !== "1") return
+    const w = window as Window & {
+      __GRAVITRE_AUTH_TEST?: { clearSession: () => void }
+    }
+    w.__GRAVITRE_AUTH_TEST = {
+      clearSession: () => {
+        e2eSignedOutRef.current = true
+        setUser(null)
+        setSession(null)
+        setLoading(false)
+      },
+    }
+    return () => {
+      delete w.__GRAVITRE_AUTH_TEST
+    }
   }, [])
 
   return (

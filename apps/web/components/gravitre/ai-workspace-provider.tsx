@@ -361,6 +361,8 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       agentScopeId: agentScope?.agentId ?? null,
       agentScopeName: agentScope?.name ?? null,
       selected: selectedEntity,
+      voiceModality: voice?.modality ?? null,
+      voicePresence: voice?.presence ?? null,
     })
   }, [
     presentationMode,
@@ -368,6 +370,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
     pathname,
     agentScope,
     selectedEntity,
+    voice,
   ])
 
   useEffect(() => {
@@ -380,6 +383,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
         restoreFromHelper: typeof restoreFromHelper
         setAgentScope: typeof setAgentScope
         setSelectedEntity: typeof setSelectedEntity
+        setVoice: typeof setVoice
       }
     }
     w.__GRAVITRE_AI_TEST = {
@@ -389,6 +393,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       restoreFromHelper,
       setAgentScope,
       setSelectedEntity,
+      setVoice,
     }
     return () => {
       delete w.__GRAVITRE_AI_TEST
@@ -400,6 +405,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
     restoreFromHelper,
     setAgentScope,
     setSelectedEntity,
+    setVoice,
   ])
 
   const value = useMemo<GravitreAIWorkspaceContextValue>(
