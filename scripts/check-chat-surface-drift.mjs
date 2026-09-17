@@ -240,6 +240,18 @@ for (const rel of requiredImporters) {
     failures.push(`${rel}: missing required chat surface`)
     continue
   }
+
+  // Agent chat is a scoped summon of the canonical workspace — not a second useChat.
+  if (rel.includes("agents/") && rel.includes("/chat/")) {
+    if (!src.includes("summonWorkspace") || !src.includes("setAgentScope")) {
+      failures.push(`${rel}: must summon the canonical workspace with agentScope (no second chat runtime)`)
+    }
+    if (/\buseChat\s*\(/.test(src)) {
+      failures.push(`${rel}: must not call useChat — voice/composer live on AiWorkspace`)
+    }
+    continue
+  }
+
   const usesSharedComposer =
     src.includes("SharedChatComposerControls") || src.includes("GravitreAIConversationComposer")
   if (!usesSharedComposer) {
@@ -255,9 +267,6 @@ for (const rel of requiredImporters) {
     failures.push(
       `${rel}: must wire full-duplex voice via duplex={...} on SharedChatComposerControls`,
     )
-  }
-  if (rel.includes("agents/") && !/ai-chat-surface/.test(src)) {
-    failures.push(`${rel}: agent chat shell must include ai-chat-surface (same canvas tokens as /ai)`)
   }
   if (!src.includes("spoken_mode")) {
     failures.push(`${rel}: must send spoken_mode on chat transport when Voice modality is active`)

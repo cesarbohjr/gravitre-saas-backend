@@ -81,3 +81,6 @@ export function deriveCanonicalPresentation(args: {
   if (canonical === "minimized") return "compact"
   return canonical
 }
+
+/** Shared Framer layout id — compact/expanded/fullscreen are one physical frame. */
+export const GRAVITRE_AI_WORKSPACE_LAYOUT_ID = "gravitre-ai-workspace-frame"

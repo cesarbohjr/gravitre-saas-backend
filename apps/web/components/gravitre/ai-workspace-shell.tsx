@@ -43,6 +43,8 @@ import { NucleoChat, NucleoPanelToggle } from "@/components/icons/nucleo/semanti
 import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { MOTION } from "@/lib/design-system"
+import { GRAVITRE_AI_WORKSPACE_LAYOUT_ID } from "@/lib/gravitre-ai-presentation"
 import { useMotionPrefs } from "@/lib/animations"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
 import {
@@ -119,11 +121,12 @@ export function GravitreAIWorkspaceShell({
   return createPortal(
     <motion.div
       ref={containerRef}
+      layoutId={reduceMotion ? undefined : GRAVITRE_AI_WORKSPACE_LAYOUT_ID}
       tabIndex={-1}
       initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
-      transition={{ duration: reduceMotion ? 0.01 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: reduceMotion ? 0 : MOTION.major, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
         "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-2xl focus:outline-none",
         isFullscreen

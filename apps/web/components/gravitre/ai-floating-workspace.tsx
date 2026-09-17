@@ -64,6 +64,8 @@ import {
   type GravitreHelperPresence,
 } from "@/lib/gravitre-ai-presence"
 import { useWindowResize, type WindowSize } from "@/hooks/use-window-resize"
+import { MOTION } from "@/lib/design-system"
+import { GRAVITRE_AI_WORKSPACE_LAYOUT_ID } from "@/lib/gravitre-ai-presentation"
 import {
   clampFloatSize,
   clampFloatTranslate,
@@ -176,6 +178,7 @@ export function GravitreFloatingWorkspace({
 
   return createPortal(
     <motion.div
+      layoutId={reduceMotion ? undefined : GRAVITRE_AI_WORKSPACE_LAYOUT_ID}
       drag
       dragListener={false}
       dragControls={dragControls}
@@ -192,7 +195,7 @@ export function GravitreFloatingWorkspace({
       initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-      transition={{ duration: reduceMotion ? 0.01 : 0.18, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: reduceMotion ? 0 : MOTION.major, ease: [0.22, 1, 0.36, 1] }}
       className="pointer-events-auto fixed bottom-5 left-5 z-[85] flex flex-col overflow-hidden rounded-[var(--g-radius-panel)] border border-divide bg-[color:var(--g-surface-1)] shadow-2xl"
       data-gravitre-float-workspace=""
       role="region"
