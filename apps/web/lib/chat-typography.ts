@@ -17,7 +17,7 @@ export const CHAT_BUBBLE_BASE_CLASS =
 
 /** User turns — brand green (not marketing blue / ChatGPT purple). */
 export const CHAT_USER_BUBBLE_CLASS =
-  "bg-[color:var(--g-brand)] px-3 py-2 text-white shadow-[var(--np-shadow)]"
+  "bg-[color:var(--g-brand)] px-3 py-2 text-white"
 
 /**
  * Assistant turns — no card.

@@ -7,8 +7,8 @@ import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
@@ -2519,7 +2519,7 @@ function ConnectorsPageContent() {
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
   const [addModalPreset, setAddModalPreset] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"topology" | "grid">("topology")
+  const [viewMode, setViewMode] = useState<"topology" | "grid">("grid")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [isLiveRefreshing, setIsLiveRefreshing] = useState(false)
@@ -2861,6 +2861,7 @@ function ConnectorsPageContent() {
           className={cn("w-full min-w-0", chromeCollapsed && "py-2 sm:py-2")}
           actions={
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <AskGravitreSummonButton />
               <Button
                 type="button"
                 variant="ghost"
@@ -3061,10 +3062,10 @@ function ConnectorsPageContent() {
                     size="sm"
                     className="h-9 w-9 rounded-l-none p-0"
                     onClick={() => setViewMode("grid")}
-                    aria-label="Grid view"
+                    aria-label="List view"
                     aria-pressed={viewMode === "grid"}
                   >
-                    <LayoutGrid className="h-4 w-4" />
+                    <List className="h-4 w-4" />
                   </Button>
                 </div>
               </>
@@ -3118,7 +3119,6 @@ function ConnectorsPageContent() {
 
         {/* Network Topology View */}
         <div className="relative min-h-0 min-w-0 w-full flex-1">
-          <ConnectorsAtmosphere className="z-0" />
           <div className="relative z-[1] h-full min-h-0 overflow-auto p-4 pb-28 md:p-6 md:pb-28">
           {connectors.length > 0 && (
             <div className="mb-4 flex justify-end">
@@ -3262,9 +3262,9 @@ function ConnectorsPageContent() {
             </div>
           )}
 
-          {/* Desktop: Grid view */}
+          {/* Desktop: compact list (default). Topology remains opt-in. */}
           {viewMode === "grid" && (
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="hidden md:flex md:flex-col md:gap-2">
               {filteredConnectors.map((connector) => (
                 <ConnectorNode
                   key={connector.id}

@@ -46,6 +46,7 @@ export function UserAccountAvatar({
         <AvatarImage src={resolvedAvatar} alt={resolvedName || "User avatar"} />
       ) : null}
       <AvatarFallback
+        suppressHydrationWarning
         className={cn(
           "bg-blue-500 font-semibold text-white",
           fallbackClassName,

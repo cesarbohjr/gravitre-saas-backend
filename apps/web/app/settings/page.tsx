@@ -340,7 +340,7 @@ function SecuritySettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
+      <div className="flex items-center justify-between border-b border-divide py-3">
         <div className="flex items-center gap-3">
           <Lock className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -380,7 +380,7 @@ function SecuritySettings() {
           </Button>
         </div>
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
+      <div className="flex items-center justify-between border-b border-divide py-3">
         <div className="flex items-center gap-3">
           <Shield className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -392,7 +392,7 @@ function SecuritySettings() {
           {twoFaEnabled ? "Enabled" : "Enable"}
         </Button>
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
+      <div className="flex items-center justify-between border-b border-divide py-3">
         <div className="flex items-center gap-3">
           <Globe className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -684,7 +684,7 @@ function NotificationSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
+      <div className="flex items-center justify-between border-b border-divide py-3">
         <div className="flex items-center gap-3">
           <Mail className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -699,7 +699,7 @@ function NotificationSettings() {
           className="h-4 w-4 rounded border-border" 
         />
       </div>
-      <div className="flex items-center justify-between rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
+      <div className="flex items-center justify-between border-b border-divide py-3">
         <div className="flex items-center gap-3">
           <Bell className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -1340,7 +1340,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
         
         <div className="space-y-3">
-          <label className="flex items-center justify-between p-3 rounded-lg border border-divide bg-[color:var(--g-surface-2)] cursor-pointer hover:bg-secondary/50 transition-colors">
+          <label className="flex cursor-pointer items-center justify-between border-b border-divide py-3 hover:bg-secondary/30">
             <div className="flex items-center gap-3">
               <Shield className="h-4 w-4 text-muted-foreground" />
               <div>
@@ -1351,7 +1351,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
             <input type="checkbox" defaultChecked className="rounded border-border" />
           </label>
 
-          <label className="flex items-center justify-between p-3 rounded-lg border border-divide bg-[color:var(--g-surface-2)] cursor-pointer hover:bg-secondary/50 transition-colors">
+          <label className="flex cursor-pointer items-center justify-between border-b border-divide py-3 hover:bg-secondary/30">
             <div className="flex items-center gap-3">
               <Info className="h-4 w-4 text-muted-foreground" />
               <div>
@@ -1524,7 +1524,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
+      <div className="border-b border-divide py-3">
         <p className="text-sm font-medium text-foreground">Gravitre Lite Seats</p>
         <p className="text-xs text-muted-foreground mt-1">
           Included: {summary?.included_display ?? (summary?.unlimited ? "Unlimited" : String(summary?.included ?? 0))}
@@ -1780,7 +1780,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
 
       {addons.length > 0 ? (
         <>
-          <div className="rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4">
+          <div className="border-b border-divide py-3">
             <p className="text-sm font-medium text-foreground">Monthly addon total</p>
             <p className="text-lg font-semibold text-foreground mt-1">${monthlyTotal.toFixed(2)}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -2051,7 +2051,7 @@ function SettingsContent() {
   const renderContent = () => {
     if (!canAccessSettingsSection(activeSection, isAdmin)) {
       return (
-        <div className="rounded-lg border border-divide bg-[color:var(--g-surface-2)] p-4 text-sm text-muted-foreground">
+        <div className="border-b border-divide py-3 text-sm text-muted-foreground">
           Admin or owner permission is required to manage this section.
         </div>
       )

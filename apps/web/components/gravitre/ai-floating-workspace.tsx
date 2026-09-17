@@ -48,7 +48,7 @@
  * unchanged — the one already-approved Lucide exception.
  */
 
-import { useCallback, useEffect, useMemo, useState, type PointerEvent, type PropsWithChildren } from "react"
+import { useCallback, useEffect, useMemo, useState, type PointerEvent, type PropsWithChildren, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { motion, useDragControls, useMotionValue, useReducedMotion } from "framer-motion"
 // GripVertical is the ONE approved Lucide exception for the drag-handle/
@@ -87,6 +87,7 @@ export type GravitreFloatingWorkspaceProps = PropsWithChildren<{
   /** Transitions straight to Fullscreen. Previously unreachable from here, so
    * fullscreen took two steps (expand, then fullscreen) for no reason. */
   onEnterFullscreen?: () => void
+  titleAccessory?: ReactNode
 }>
 
 export function GravitreFloatingWorkspace({
@@ -94,6 +95,7 @@ export function GravitreFloatingWorkspace({
   onClose,
   onExpand,
   onEnterFullscreen,
+  titleAccessory,
   children,
 }: GravitreFloatingWorkspaceProps) {
   const dragControls = useDragControls()
@@ -206,10 +208,13 @@ export function GravitreFloatingWorkspace({
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
             <NucleoChat className="h-3.5 w-3.5" />
           </span>
-          <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
+            {titleAccessory}
+          </div>
           <span
             className={cn(
-              "ml-1 flex items-center gap-1 rounded-full bg-[color:var(--g-surface-2)] px-1.5 py-0.5 text-[10px] font-medium",
+              "ml-1 hidden shrink-0 items-center gap-1 rounded-full bg-[color:var(--g-surface-2)] px-1.5 py-0.5 text-[10px] font-medium sm:flex",
               copy.tone,
             )}
           >

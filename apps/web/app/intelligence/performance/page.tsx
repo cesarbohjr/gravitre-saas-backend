@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context"
 import { ApiError } from "@/lib/fetcher"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { ArrowsClockwise } from "@phosphor-icons/react"
 
 const copy = {
@@ -63,7 +64,9 @@ export default function IntelligencePerformancePage() {
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
-            <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
+            <div className="flex items-center gap-3">
+              <AskGravitreSummonButton />
+              <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
               <ArrowsClockwise
                 className={`mr-2 h-4 w-4 ${isValidating ? "animate-spin" : ""}`}
                 weight="bold"
@@ -71,6 +74,7 @@ export default function IntelligencePerformancePage() {
               />
               Refresh
             </Button>
+            </div>
           }
         />
 

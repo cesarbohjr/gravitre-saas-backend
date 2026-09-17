@@ -414,8 +414,21 @@ function IntelligenceCenterInner() {
           </div>
         </section>
 
-        {/* Contextual support — subordinate to the map */}
-        <div className="mx-auto max-w-[1600px] space-y-8 px-4 py-8 md:px-6">
+        {/* Contextual support — closed until asked; map stays the product */}
+        <details className="mx-auto max-w-[1600px] px-4 py-6 md:px-6">
+          <summary className="cursor-pointer list-none">
+            <div className="flex items-center justify-between gap-3 border-b border-divide pb-3">
+              <div>
+                <p className={TYPE.eyebrow}>Evidence</p>
+                <h2 className={TYPE.sectionTitle}>Attention, learnings, and impact</h2>
+                <p className={cn(TYPE.bodyMuted, "mt-1")}>
+                  Open after you pick something on the map — not a second dashboard around the graph.
+                </p>
+              </div>
+              <span className="text-xs text-muted-foreground">Show</span>
+            </div>
+          </summary>
+          <div className="space-y-8 pt-6">
           <WhatNeedsAttentionCompact
             signals={signals}
             isLoading={signalsLoading}
@@ -517,7 +530,8 @@ function IntelligenceCenterInner() {
               </div>
             </div>
           </details>
-        </div>
+          </div>
+        </details>
       </div>
     </AppShell>
   )

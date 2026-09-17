@@ -60,6 +60,7 @@ import {
   GravitreAIConversationTranscript,
 } from "@/components/gravitre/ai-conversation-core"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
+import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
 import { useAiFullPageSlot } from "@/components/gravitre/ai-full-page-slot"
 import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
 import { GravitreAIWorkspaceShellBridge } from "@/app/ai/_components/ai-workspace-shell-bridge"
@@ -291,8 +292,8 @@ export function AiWorkspace({
   // collapse toggles. Deliberately local (not lifted into the provider):
   // nothing outside this component needs to read/persist it, and both
   // panels default open, matching today's page's own defaults.
-  const [shellLeftCollapsed, setShellLeftCollapsed] = useState(false)
-  const [shellRightCollapsed, setShellRightCollapsed] = useState(false)
+  const [shellLeftCollapsed, setShellLeftCollapsed] = useState(true)
+  const [shellRightCollapsed, setShellRightCollapsed] = useState(true)
   const { data: authMe } = useSWR(user ? "auth-me-chat-approver" : null, () => authApi.me())
   const canApproveWrites = (() => {
     const selectedId = getSelectedOrgFromStorage()?.id
@@ -2529,11 +2530,8 @@ export function AiWorkspace({
 
             <div className="min-w-0 shrink">
               <p className="truncate text-[15px] font-bold sm:text-sm">Chat</p>
+              <GravitreAIContextIndicator />
             </div>
-
-            <span className="hidden shrink-0 text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--chat-surface-muted)] md:inline">
-              Answer · Search · Execute
-            </span>
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
               {/* Desktop chrome */}
@@ -2851,7 +2849,7 @@ export function AiWorkspace({
                     key={example.text}
                     type="button"
                     onClick={() => void submitPrompt(example.text)}
-                    className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] px-3 py-1.5 text-center text-xs text-[color:var(--chat-surface-muted)] shadow-[var(--np-shadow)] transition-all hover:border-[color:var(--g-brand-border)] hover:text-foreground"
+                    className="px-1 py-1 text-center text-xs text-[color:var(--chat-surface-muted)] hover:text-foreground hover:underline"
                   >
                     {example.text}
                   </button>

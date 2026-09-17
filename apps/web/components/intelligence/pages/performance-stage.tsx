@@ -84,7 +84,28 @@ export function PerformanceStage({
         />
       </div>
 
-      <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading outcome attribution…</p>
+      ) : (
+        <OutcomeAttributionFlow
+          paths={paths}
+          selectedPathId={selectedPathId}
+          onPathChange={setPathId}
+        />
+      )}
+
+      {hasNoAttribution && metricsReady ? (
+        <p className={cn(TYPE.meta, "border-b border-divide py-2")}>
+          {qualityFlagToCopy("NO_OUTCOME_ATTRIBUTION")}
+        </p>
+      ) : null}
+
+      <details>
+        <summary className="cursor-pointer list-none border-b border-divide py-2">
+          <p className={TYPE.eyebrow}>Metrics</p>
+          <p className={cn(TYPE.meta, "mt-0.5")}>Totals for the selected view — after the path, not instead of it.</p>
+        </summary>
+      <div className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-4 lg:grid-cols-4">
         {viewMode === "impact" ? (
           <>
             <GravitreMetric
@@ -165,23 +186,8 @@ export function PerformanceStage({
             />
           </>
         ) : null}
-      </section>
-
-      {hasNoAttribution && metricsReady ? (
-        <p className={cn(TYPE.meta, "rounded-[var(--np-radius-md)] border border-divide px-3 py-2")}>
-          {qualityFlagToCopy("NO_OUTCOME_ATTRIBUTION")}
-        </p>
-      ) : null}
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading outcome attribution…</p>
-      ) : (
-        <OutcomeAttributionFlow
-          paths={paths}
-          selectedPathId={selectedPathId}
-          onPathChange={setPathId}
-        />
-      )}
+      </div>
+      </details>
 
       <div className="space-y-3">
         <div>

@@ -11,6 +11,7 @@ import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
@@ -958,11 +959,14 @@ function ApprovalsContent() {
               }
               icon={<NucleoApproval className="h-5 w-5" />}
               actions={
-                <DataFreshness
-                  updatedAt={data ? Date.now() : null}
-                  isRefreshing={isValidating}
-                  onRefresh={() => mutate()}
-                />
+                <div className="flex items-center gap-3">
+                  <AskGravitreSummonButton />
+                  <DataFreshness
+                    updatedAt={data ? Date.now() : null}
+                    isRefreshing={isValidating}
+                    onRefresh={() => mutate()}
+                  />
+                </div>
               }
             />
             <div className="px-3 sm:px-4 pb-3 sm:pb-4">

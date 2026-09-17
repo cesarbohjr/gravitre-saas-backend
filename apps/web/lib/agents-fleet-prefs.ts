@@ -32,7 +32,7 @@ export type AgentsFleetPrefs = {
 
 export const DEFAULT_AGENTS_FLEET_PREFS: AgentsFleetPrefs = {
   version: 1,
-  view: "team",
+  view: "list",
   sort: "name",
   sortDir: "asc",
   filters: {

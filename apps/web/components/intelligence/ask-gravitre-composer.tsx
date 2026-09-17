@@ -9,13 +9,11 @@
  */
 
 import { useCallback, useEffect, useState } from "react"
-import { ArrowRight } from "@phosphor-icons/react"
-import { ArrowUp } from "lucide-react"
+import { ArrowUp, ArrowRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { useGravitreAIWorkspace, type GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
 import type { AssistantVisualization } from "@/lib/intelligence/assistant-visualization"
 
@@ -73,47 +71,24 @@ export function AskGravitreComposer({
 
   return (
     <section
-      className={cn(
-        isMap
-          ? "rounded-[var(--np-radius-lg)] border border-divide/80 bg-[color:var(--g-surface-1)]/90 p-3 shadow-sm backdrop-blur-sm"
-          : "rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]",
-        className,
-      )}
+      className={cn(isMap ? "p-0" : "py-1", className)}
       aria-labelledby="ask-gravitre-heading"
       data-ask-gravitre-composer=""
       data-ask-gravitre-entry=""
     >
-      {!isMap ? (
-        <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] bg-[color:var(--g-intelligence-surface)] text-[color:var(--g-intelligence)]">
-            <NucleoIntelligence className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className={TYPE.eyebrow}>Ask Gravitre</p>
-            <h2 id="ask-gravitre-heading" className={TYPE.sectionTitle}>
-              Ask Gravitre
-            </h2>
-            <p className={cn(TYPE.bodyMuted, "mt-1")}>
-              Opens the same Gravitre workspace — this page stays underneath.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <p id="ask-gravitre-heading" className="sr-only">
-          Ask Gravitre
-        </p>
-      )}
+      <p id="ask-gravitre-heading" className={isMap ? "sr-only" : cn(TYPE.sectionTitle, "mb-3")}>
+        Ask Gravitre
+      </p>
 
-      <div className={cn("flex flex-wrap gap-2", isMap ? "mb-3" : "mt-4")}>
+      <div className={cn("flex flex-col gap-1.5", isMap ? "mb-3" : "mb-3")}>
         {questions.map((question) => (
           <button
             key={question}
             type="button"
             onClick={() => summon(question, true)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-divide bg-[color:var(--g-surface-2)] px-3 py-1.5 text-xs font-medium text-[color:var(--g-text-secondary)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-surface)] hover:text-[color:var(--g-brand)]"
+            className="text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline"
           >
             {question}
-            <ArrowRight className="h-3 w-3" aria-hidden />
           </button>
         ))}
       </div>

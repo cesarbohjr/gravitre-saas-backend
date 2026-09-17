@@ -26,6 +26,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react"
 import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { GravitreAIMobileSheet, type GravitreAIMobileSheetMode } from "@/components/gravitre/ai-mobile-sheet"
+import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
 import {
   GravitreAIConversationComposer,
   GravitreAIConversationTranscript,
@@ -127,7 +128,13 @@ export function GravitreAIMobileSheetBridge({
   }, [])
 
   return (
-    <GravitreAIMobileSheet mode={mode} presence={presence} onModeChange={onModeChange} onClose={onClose}>
+    <GravitreAIMobileSheet
+      mode={mode}
+      presence={presence}
+      onModeChange={onModeChange}
+      onClose={onClose}
+      titleAccessory={<GravitreAIContextIndicator className="mt-0.5" />}
+    >
       {/* Positioned wrapper so the contained orb fills the sheet, not the composer. */}
       <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">

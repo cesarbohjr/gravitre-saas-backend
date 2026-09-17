@@ -292,6 +292,10 @@ describe("useGravitreAIWorkspace", () => {
       label: "Acme Corporation",
     })
     expect(sink.value?.composerIntent?.text).toBe("What changed for Acme?")
+    act(() => {
+      sink.value!.clearSelectedEntity()
+    })
+    expect(sink.value?.pageContext.selected).toBeNull()
     expect(sink.value?.composerIntent?.submit).toBe(true)
     expect(sink.value?.agentScope).toBeNull()
   })
@@ -335,5 +339,20 @@ describe("useGravitreAIWorkspace", () => {
     expect(sink.value?.pageContext.selected).toBeNull()
     expect(sink.value?.agentScope).toBeNull()
     expect(sink.value?.canonicalPresentation).toBe("compact")
+  })
+
+  it("minimizeToHelper keeps voice snapshot (continue session, do not remount)", () => {
+    pathnameState.value = "/home"
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    act(() => {
+      sink.value!.setPresentationMode("compact")
+      sink.value!.setFloatWorkspaceOpen(true)
+      sink.value!.setVoice({ modality: "voice", presence: "listening", billing: false })
+      sink.value!.minimizeToHelper()
+    })
+    expect(sink.value?.voice?.presence).toBe("listening")
+    expect(sink.value?.canonicalPresentation).toBe("minimized")
+    expect(sink.value?.floatWorkspaceOpen).toBe(false)
   })
 })

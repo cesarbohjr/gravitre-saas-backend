@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
 import { NucleoAgent, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { 
   Plus, 
   Search,
@@ -64,7 +65,6 @@ import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
-import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { FleetControls, FleetControlsCollapsed, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
@@ -739,6 +739,7 @@ export default function AgentsPage() {
   const rosterActions = (
     <>
       {chromeToggle}
+      <AskGravitreSummonButton />
       <Button onClick={() => router.push("/agents/new")} className="gap-2">
         <Plus className="h-4 w-4" />
         <span className="hidden sm:inline">New Agent</span>
@@ -856,9 +857,8 @@ export default function AgentsPage() {
             </>
           )}
 
-          {/* TEAM / LIST / GRAPH — Nodus Connectors atmosphere + department DnD */}
+          {/* LIST / TEAM / GRAPH — no decorative atmosphere */}
           <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-4">
-            <ConnectorsAtmosphere className="z-0" />
             <div className="relative z-10 w-full min-h-[360px] flex-1 sm:min-h-0">
               {error ? (
                 <WorkSectionErrorCard

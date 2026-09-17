@@ -100,6 +100,7 @@ export interface GravitreAIMobileSheetProps {
    * "Minimize to helper" button or by dragging below the smallest snap
    * point (`vaul`'s own `dismissible` gesture handling). */
   onClose: () => void
+  titleAccessory?: ReactNode
   children: ReactNode
 }
 
@@ -108,6 +109,7 @@ export function GravitreAIMobileSheet({
   presence,
   onModeChange,
   onClose,
+  titleAccessory,
   children,
 }: GravitreAIMobileSheetProps) {
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -184,10 +186,13 @@ export function GravitreAIMobileSheet({
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
                 <NucleoChat className="h-3.5 w-3.5" />
               </span>
-              <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
+                {titleAccessory}
+              </div>
               <span
                 className={cn(
-                  "ml-1 flex items-center gap-1 rounded-full bg-[color:var(--g-surface-2)] px-1.5 py-0.5 text-[10px] font-medium",
+                  "ml-1 hidden shrink-0 items-center gap-1 rounded-full bg-[color:var(--g-surface-2)] px-1.5 py-0.5 text-[10px] font-medium sm:flex",
                   copy.tone,
                 )}
               >

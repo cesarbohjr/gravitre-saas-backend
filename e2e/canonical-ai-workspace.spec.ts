@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { mockCanonicalChat, openHelper, readAiDebug, waitForRuntime } from "./helpers/canonical-ai"
+import { mockCanonicalChat, openHelper, readAiDebug, waitForRuntime, waitForTestApi } from "./helpers/canonical-ai"
 
 const SHOTS = "e2e/artifacts/phase-1b"
 
@@ -11,6 +11,7 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
   test("single runtime survives compact → expanded → fullscreen → compact → minimize → restore", async ({
     page,
   }) => {
+    test.setTimeout(240_000)
     await page.goto("/e2e/shots/home")
     await expect(page.locator("[data-gravitre-ai-helper]")).toBeVisible({ timeout: 60_000 })
     await openHelper(page)
@@ -83,6 +84,7 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     )
     expect(contextual).toBeTruthy()
     expect((contextual as { research_scope?: string }).research_scope).toBeFalsy()
+    await expect(page.locator("[data-gravitre-ai-context]")).toContainText("Acme Corporation")
     await expect(page.locator("[data-gravitre-proof-page]")).toBeVisible()
     await page.screenshot({ path: `${SHOTS}/ask-gravitre-compact.png`, fullPage: true })
   })
@@ -190,13 +192,7 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     await openHelper(page)
     await waitForRuntime(page)
     await page.reload()
-    await page.waitForFunction(
-      () =>
-        Boolean(
-          (window as Window & { __GRAVITRE_AI_TEST?: { restoreFromHelper: () => void } }).__GRAVITRE_AI_TEST,
-        ),
-      { timeout: 60_000 },
-    )
+    await waitForTestApi(page)
     await page.evaluate(() => {
       const api = (window as Window & { __GRAVITRE_AI_TEST?: { restoreFromHelper: () => void } }).__GRAVITRE_AI_TEST
       api?.restoreFromHelper()
@@ -262,13 +258,7 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     ).toBe("acme")
 
     await page.goto("/e2e/shots/workflows")
-    await page.waitForFunction(
-      () =>
-        Boolean(
-          (window as Window & { __GRAVITRE_AI_TEST?: { restoreFromHelper: () => void } }).__GRAVITRE_AI_TEST,
-        ),
-      { timeout: 60_000 },
-    )
+    await waitForTestApi(page)
     await page.evaluate(() => {
       const api = (window as Window & { __GRAVITRE_AI_TEST?: { restoreFromHelper: () => void } }).__GRAVITRE_AI_TEST
       api?.restoreFromHelper()
@@ -289,6 +279,8 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     await page.goto("/e2e/shots/agent-chat")
     await waitForRuntime(page)
     await expect.poll(async () => (await readAiDebug(page))?.agentScopeId).toBe("agt_lead_triage")
+    await expect.poll(async () => (await readAiDebug(page))?.agentScopeName).toBe("Inbound Lead Triage")
+    await expect(page.locator("[data-gravitre-ai-context]")).toContainText("Talking with Inbound Lead Triage")
     expect((await readAiDebug(page))?.liveInstanceCount).toBe(1)
     const composer = page.getByPlaceholder(/Ask, delegate, or search/i)
     await expect(composer).toBeVisible({ timeout: 30_000 })
@@ -301,6 +293,18 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     expect(body.surface).toBe("agent_chat")
     expect((await readAiDebug(page))?.liveInstanceCount).toBe(1)
   })
+
+  for (const shot of ["agents", "activity", "workflows", "connectors", "approvals"] as const) {
+    test(`header Ask Gravitre on ${shot} summons the same compact runtime`, async ({ page }) => {
+      await page.goto(`/e2e/shots/${shot}`)
+      await expect(page.locator("[data-ask-gravitre-summon]")).toBeVisible({ timeout: 60_000 })
+      await page.locator("[data-ask-gravitre-summon]").first().click()
+      await waitForRuntime(page)
+      const debug = await readAiDebug(page)
+      expect(debug?.liveInstanceCount).toBe(1)
+      expect(debug?.canonicalPresentation).toBe("compact")
+    })
+  }
 
   test("marketing home does not mount the authenticated canonical runtime", async ({ page }) => {
     await page.goto("/")

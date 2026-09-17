@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
 import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { StatusChip } from "@/components/gravitre/visual"
 import {
   DropdownMenu,
@@ -331,6 +332,7 @@ export default function WorkflowsPage() {
             icon={<NucleoWorkflow className="h-5 w-5" />}
             actions={
             <>
+              <AskGravitreSummonButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className={cn("gap-2", RADIUS.control)}>

@@ -35,7 +35,7 @@ export default function AgentChatPage({
     if (!agent?.id) return
     const scope = {
       agentId: agent.id,
-      name: agent.name,
+      name: (agent.name || "").trim() || "this agent",
       role: agent.role ?? null,
       responseStyle: agent.responseStyle ?? null,
     }

@@ -34,6 +34,7 @@ import type { KeyboardEvent, ReactNode, RefObject } from "react"
 import { useEffect, useRef, useState } from "react"
 import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { GravitreFloatingWorkspace } from "@/components/gravitre/ai-floating-workspace"
+import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
 import {
   GravitreAIConversationComposer,
   GravitreAIConversationTranscript,
@@ -151,6 +152,7 @@ export function GravitreAIFloatBridge({
       onClose={onClose}
       onExpand={onExpand}
       onEnterFullscreen={onEnterFullscreen}
+      titleAccessory={<GravitreAIContextIndicator className="mt-0.5" />}
     >
       <div
         ref={bodyRef}

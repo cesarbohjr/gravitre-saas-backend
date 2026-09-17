@@ -44,6 +44,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Icon } from "@/lib/icons"
 import { NucleoActivity, NucleoSearch } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { businessOutcomesApi, workObjectsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -341,6 +342,7 @@ function ActivityPageInner() {
           icon={<NucleoActivity className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              <AskGravitreSummonButton />
               {tab === "all" || tab === "objects" ? (
                 <DataFreshness
                   updatedAt={

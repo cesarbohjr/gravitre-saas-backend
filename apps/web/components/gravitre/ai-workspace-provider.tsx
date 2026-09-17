@@ -197,6 +197,8 @@ export interface GravitreAIWorkspaceContextValue {
   summonWorkspace: (options?: GravitreAISummonOptions) => void
   agentScope: GravitreAIAgentScope | null
   setAgentScope: (scope: GravitreAIAgentScope | null) => void
+  /** Clears object selection without starting a new thread. */
+  clearSelectedEntity: () => void
   composerIntent: GravitreAIComposerIntent | null
   consumeComposerIntent: () => void
   pageContext: GravitreAIPageContext
@@ -306,6 +308,10 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
     setComposerIntent(null)
   }, [])
 
+  const clearSelectedEntity = useCallback(() => {
+    setSelectedEntity(null)
+  }, [])
+
   const summonWorkspace = useCallback(
     (options?: GravitreAISummonOptions) => {
       if (options && "selected" in options) {
@@ -399,6 +405,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       summonWorkspace,
       agentScope,
       setAgentScope,
+      clearSelectedEntity,
       composerIntent,
       consumeComposerIntent,
       pageContext,
@@ -420,6 +427,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       canonicalPresentation,
       summonWorkspace,
       agentScope,
+      clearSelectedEntity,
       composerIntent,
       consumeComposerIntent,
       pageContext,

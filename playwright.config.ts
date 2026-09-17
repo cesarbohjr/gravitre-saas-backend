@@ -13,6 +13,8 @@ const isWin = process.platform === "win32"
 const venvPython = join(backendCwd, ".venv", isWin ? "Scripts" : "bin", isWin ? "python.exe" : "python")
 const pythonCmd = existsSync(venvPython) ? venvPython : "python"
 
+const skipBackend = process.env.PLAYWRIGHT_SKIP_BACKEND === "1"
+
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.spec.ts",
@@ -32,18 +34,22 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
-    {
-      command: `${pythonCmd} -m uvicorn app.main:app --host 127.0.0.1 --port 8000`,
-      cwd: "backend",
-      url: `${backendURL}/health`,
-      reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
-      timeout: 120_000,
-      env: {
-        ...e2eEnv,
-        APP_ENV: e2eEnv.APP_ENV ?? "dev",
-        FASTAPI_BASE_URL: backendURL,
-      },
-    },
+    ...(skipBackend
+      ? []
+      : [
+          {
+            command: `${pythonCmd} -m uvicorn app.main:app --host 127.0.0.1 --port 8000`,
+            cwd: "backend",
+            url: `${backendURL}/health`,
+            reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
+            timeout: 120_000,
+            env: {
+              ...e2eEnv,
+              APP_ENV: e2eEnv.APP_ENV ?? "dev",
+              FASTAPI_BASE_URL: backendURL,
+            },
+          },
+        ]),
     {
       command: `pnpm dev --port ${webPort}`,
       cwd: "apps/web",

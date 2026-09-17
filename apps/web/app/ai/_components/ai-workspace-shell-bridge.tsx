@@ -31,6 +31,7 @@ import {
   type GravitreAIWorkspaceShellMode,
 } from "@/components/gravitre/ai-workspace-shell"
 import { GravitreAILeftPanel, type GravitreAILeftPanelProps } from "@/components/gravitre/ai-left-panel"
+import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
 import { GravitreAIRightPanel, type GravitreAIRightPanelProps } from "@/components/gravitre/ai-right-panel"
 import {
   GravitreAIConversationComposer,
@@ -167,6 +168,7 @@ export function GravitreAIWorkspaceShellBridge({
       onEnterFullscreen={onEnterFullscreen}
       onExitFullscreen={onExitFullscreen}
       onClose={onClose}
+      titleAccessory={<GravitreAIContextIndicator className="mt-0.5" />}
       leftPanel={<GravitreAILeftPanel {...leftPanelProps} />}
       rightPanel={
         <GravitreAIRightPanel

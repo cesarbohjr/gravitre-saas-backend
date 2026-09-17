@@ -11,6 +11,7 @@ import { NucleoChat } from "@/components/icons/nucleo/semantic"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { GravitreOrb } from "@/components/gravitre/assistant/voice-presentation"
 import { cn } from "@/lib/utils"
+import { formatGravitreAiContextLabel, gravitreHelperStatusCopy } from "@/lib/gravitre-ai-context-label"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { useAuth } from "@/lib/auth-context"
@@ -73,6 +74,7 @@ export function GravitreAIHelper() {
     conversation,
     approval,
     voice,
+    agentScope,
   } = useGravitreAIWorkspace()
   const { user, loading } = useAuth()
 
@@ -90,6 +92,12 @@ export function GravitreAIHelper() {
 
   const presence = deriveGravitreHelperPresence({ conversation, approval, voice })
   const copy = GRAVITRE_HELPER_PRESENCE_COPY[presence]
+  const contextLabel = formatGravitreAiContextLabel({
+    agentName: agentScope?.name,
+    selectedKind: pageContext.selected?.kind,
+    selectedLabel: pageContext.selected?.label,
+  })
+  const helperStatus = gravitreHelperStatusCopy(presence, copy.label, contextLabel)
   const orbActive =
     presence === "listening" ||
     presence === "thinking" ||
@@ -147,7 +155,9 @@ export function GravitreAIHelper() {
             <span className="text-xs font-semibold text-[color:var(--g-text-primary)]">
               Gravitre AI
             </span>
-            <span className={cn("text-[11px] font-medium", copy.tone)}>{copy.label}</span>
+            <span className={cn("max-w-[180px] truncate text-[11px] font-medium", copy.tone)}>
+              {helperStatus}
+            </span>
           </span>
         </button>
       </TooltipTrigger>

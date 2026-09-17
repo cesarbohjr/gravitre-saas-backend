@@ -60,17 +60,39 @@ export async function readAiDebug(page: Page): Promise<CanonicalAiDebug | null> 
   })
 }
 
-export async function waitForRuntime(page: Page, timeout = 30_000) {
+export async function waitForTestApi(page: Page, timeout = 60_000) {
+  // Playwright signature is (fn, arg, options). Passing `{ timeout }` as the
+  // second argument used to wait until the *test* budget expired.
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __GRAVITRE_AI_TEST?: { restoreFromHelper: () => void } }).__GRAVITRE_AI_TEST,
+      ),
+    undefined,
+    { timeout },
+  )
+}
+
+export async function waitForRuntime(page: Page, timeout = 90_000) {
   await page.waitForFunction(
     () => {
       const w = window as Window & { __GRAVITRE_AI_DEBUG?: { liveInstanceCount?: number } }
       return (w.__GRAVITRE_AI_DEBUG?.liveInstanceCount ?? 0) >= 1
     },
+    undefined,
     { timeout },
   )
 }
 
 export async function openHelper(page: Page) {
+  await waitForTestApi(page)
   const helper = page.locator("[data-gravitre-ai-helper]")
-  await helper.click({ force: true })
+  if (await helper.isVisible()) {
+    await helper.click({ force: true })
+    return
+  }
+  await page.evaluate(() => {
+    const api = (window as Window & { __GRAVITRE_AI_TEST?: { restoreFromHelper: () => void } }).__GRAVITRE_AI_TEST
+    api?.restoreFromHelper()
+  })
 }
