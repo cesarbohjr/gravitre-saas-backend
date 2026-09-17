@@ -21,6 +21,9 @@ describe("UX Reset Phase 5 — contextual Ask Gravitre", () => {
       "app/agents/[id]/page.tsx",
       "app/workflows/[id]/page.tsx",
       "app/connectors/[id]/page.tsx",
+      "app/training/page.tsx",
+      "app/models/page.tsx",
+      "app/intelligence/model-studio/page.tsx",
     ]
     for (const rel of pages) {
       const src = readFileSync(resolve(webRoot, rel), "utf8")
@@ -36,6 +39,7 @@ describe("UX Reset Phase 5 — contextual Ask Gravitre", () => {
       "app/connectors/page.tsx",
       "app/intelligence/page.tsx",
       "components/intelligence/pages/performance-stage.tsx",
+      "app/marketplace/assets/page.tsx",
     ]
     for (const rel of files) {
       const src = readFileSync(resolve(webRoot, rel), "utf8")

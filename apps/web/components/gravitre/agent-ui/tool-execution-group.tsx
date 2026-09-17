@@ -32,14 +32,6 @@ export function ToolExecutionGroup({
 
   if (invocations.length === 0) return null
 
-  if (invocations.length === 1) {
-    return (
-      <div className={cn("not-prose mb-2", className)}>
-        <ToolChip invocation={invocations[0]} />
-      </div>
-    )
-  }
-
   return (
     <div className={cn("not-prose mb-2", className)}>
       <button

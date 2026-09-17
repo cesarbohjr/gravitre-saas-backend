@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { ModelStudioStage } from "@/components/intelligence/pages/model-studio-stage"
-import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { useAuth } from "@/lib/auth-context"
 
 export default function ModelStudioPage() {
@@ -25,7 +25,7 @@ export default function ModelStudioPage() {
         <GravitrePageHeader
           title="Model Studio"
           description="Create, train, evaluate, deploy, and inspect runs. Training is folded in here — not a separate hub tab."
-          icon={<NucleoIntelligence className="h-5 w-5" />}
+          actions={<AskGravitreSummonButton />}
         />
         <IntelligenceShell activeTab="model-studio" loadState="READY">
           <ModelStudioStage enabled={Boolean(user)} />

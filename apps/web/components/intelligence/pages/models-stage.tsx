@@ -6,7 +6,6 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { EmptyState } from "@/components/gravitre/empty-state"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { BusinessModelCard } from "@/components/intelligence/business-model-card"
 import { ModelUsageTopology } from "@/components/intelligence/model-usage-topology"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
@@ -49,12 +48,24 @@ export function ModelsStage({
             Purpose, business status, and where models are used — not an engineering registry dump.
           </p>
         </div>
-        <SegmentedControl
-          ariaLabel="Models view"
-          options={VIEW_OPTIONS}
-          value={view}
-          onChange={setView}
-        />
+        <nav aria-label="Models view" className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          {VIEW_OPTIONS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setView(item.id)}
+              className={cn(
+                TYPE.meta,
+                "underline-offset-4",
+                view === item.id
+                  ? "text-[color:var(--g-text-primary)] underline"
+                  : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       <ModelUsageTopology models={catalog} />

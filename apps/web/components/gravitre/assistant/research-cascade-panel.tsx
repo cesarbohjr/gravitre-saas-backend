@@ -15,19 +15,6 @@ type ResearchCascadePanelProps = {
   className?: string
 }
 
-function bandClass(band?: string | null): string {
-  switch (band) {
-    case "high":
-      return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
-    case "medium":
-      return "bg-amber-500/15 text-amber-900 dark:text-amber-100"
-    case "low":
-      return "bg-rose-500/15 text-rose-900 dark:text-rose-100"
-    default:
-      return "bg-muted text-muted-foreground"
-  }
-}
-
 export function ResearchCascadePanel({ cascade, className }: ResearchCascadePanelProps) {
   if (!cascade) return null
 
@@ -42,53 +29,36 @@ export function ResearchCascadePanel({ cascade, className }: ResearchCascadePane
   if (!hasScores && !hasActions) return null
 
   const breakdown = cascade.source_breakdown ?? {}
+  const sourceCount = cascade.source_count ?? cascade.top_sources?.length ?? 0
+  const summaryBits = [
+    formatConfidenceBand(cascade.confidence_band),
+    sourceCount ? `${sourceCount} source${sourceCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean)
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-border/60 bg-card/50 px-4 py-3 text-sm",
-        className,
-      )}
-    >
+    <details className={cn("text-sm", className)}>
+      <summary className="cursor-pointer text-xs text-muted-foreground">
+        Research{summaryBits.length ? ` · ${summaryBits.join(" · ")}` : ""}
+      </summary>
+      <div className="mt-2 space-y-3">
       {hasScores ? (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Research confidence</span>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                bandClass(cascade.confidence_band),
-              )}
-            >
-              {formatConfidenceBand(cascade.confidence_band)}
-            </span>
-            {cascade.retrieval_score != null ? (
-              <span className="text-xs text-muted-foreground">
-                Score {formatRetrievalScore(cascade.retrieval_score)}
-              </span>
-            ) : null}
-            {cascade.source_count != null ? (
-              <span className="text-xs text-muted-foreground">
-                {cascade.source_count} source{cascade.source_count === 1 ? "" : "s"}
-              </span>
-            ) : null}
-          </div>
+          {cascade.retrieval_score != null ? (
+            <p className="text-xs text-muted-foreground">
+              Score {formatRetrievalScore(cascade.retrieval_score)}
+            </p>
+          ) : null}
 
           {Object.keys(breakdown).length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {Object.entries(breakdown).map(([kind, count]) => (
-                <span
-                  key={kind}
-                  className="rounded-md border border-border/50 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground"
-                >
-                  {kindLabel(kind)} · {count}
-                </span>
-              ))}
-            </div>
+            <p className="text-xs text-muted-foreground">
+              {Object.entries(breakdown)
+                .map(([kind, count]) => `${kindLabel(kind)} · ${count}`)
+                .join(" · ")}
+            </p>
           ) : null}
 
           {(cascade.top_sources?.length ?? 0) > 0 ? (
-            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+            <ul className="space-y-1 text-xs text-muted-foreground">
               {cascade.top_sources!.slice(0, 4).map((source, index) => {
                 const url = source.url?.trim()
                 const isExternal = url?.startsWith("http://") || url?.startsWith("https://")
@@ -117,13 +87,13 @@ export function ResearchCascadePanel({ cascade, className }: ResearchCascadePane
       ) : null}
 
       {hasActions ? (
-        <div className={cn(hasScores && "mt-3 border-t border-border/50 pt-3")}>
+        <div className={cn(hasScores && "border-t border-border/50 pt-3")}>
           <p className="text-xs font-medium text-muted-foreground">Suggested follow-up actions</p>
           <ul className="mt-2 space-y-2">
             {cascade.research_actions!.map((action) => (
               <li
                 key={action.invoke_action ?? action.label}
-                className="flex items-start gap-2 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-2 text-xs"
+                className="flex items-start gap-2 py-1 text-xs"
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground">{action.label ?? action.invoke_action}</p>
@@ -132,7 +102,7 @@ export function ResearchCascadePanel({ cascade, className }: ResearchCascadePane
                   ) : null}
                 </div>
                 {action.requires_approval ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-900 dark:text-amber-100">
+                  <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-amber-900 dark:text-amber-100">
                     <ShieldAlert className="h-3 w-3" aria-hidden />
                     Approval required
                   </span>
@@ -147,6 +117,7 @@ export function ResearchCascadePanel({ cascade, className }: ResearchCascadePane
           ) : null}
         </div>
       ) : null}
-    </div>
+      </div>
+    </details>
   )
 }

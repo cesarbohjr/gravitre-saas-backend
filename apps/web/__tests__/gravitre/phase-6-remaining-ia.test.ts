@@ -10,6 +10,7 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
     expect(src).toMatch(/useState<"grid" \| "table">\("table"\)/)
     expect(src).toMatch(/Totals/)
     expect(src).not.toMatch(/workflow\{runningCount > 1/)
+    expect(src).not.toMatch(/isMobile \? "grid"/)
   })
 
   it("activity is a list, not a KPI dashboard wrap", () => {
@@ -51,7 +52,17 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
 
     const training = readFileSync(resolve(webRoot, "app/training/page.tsx"), "utf8")
     expect(training).toMatch(/aria-label="Training sections"/)
+    expect(training).toMatch(/AskGravitreSummonButton/)
     expect(training).not.toMatch(/TabsList/)
+    expect(training).not.toMatch(/IntelligenceHubTabs/)
     expect(training).not.toMatch(/rounded-2xl border border-border\/70 bg-card\/80/)
+
+    const loop = readFileSync(
+      resolve(webRoot, "components/gravitre/learning-surfaces-callout.tsx"),
+      "utf8",
+    )
+    expect(loop).toMatch(/aria-label="Learning loop navigation"/)
+    expect(loop).not.toMatch(/bg-gradient-to-br/)
+    expect(loop).not.toMatch(/rounded-2xl/)
   })
 })

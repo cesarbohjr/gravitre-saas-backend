@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils"
 import { LearningSurfacesCallout } from "@/components/gravitre/learning-surfaces-callout"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { TrainingOverview } from "@/components/gravitre/training-overview"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -549,6 +549,7 @@ function TrainingPageContent() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              <AskGravitreSummonButton />
               <Button variant="outline" size="sm" asChild>
                 <Link href={APP_ROUTES.builtInModels}>Built-in models</Link>
               </Button>
@@ -567,8 +568,6 @@ function TrainingPageContent() {
             </div>
           }
         />
-
-        <IntelligenceHubTabs active="model-studio" />
 
         {loadError && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

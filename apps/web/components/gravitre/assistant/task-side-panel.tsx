@@ -61,7 +61,7 @@ function PanelSection({
   action?: React.ReactNode
   children: React.ReactNode
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const sectionId = `task-panel-${title.toLowerCase()}`
 
   return (

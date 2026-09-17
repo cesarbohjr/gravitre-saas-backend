@@ -9,7 +9,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { BuiltInModelsPanel } from "@/app/intelligence/models/page"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { ModelsStage } from "@/components/intelligence/pages/models-stage"
 import { studioIntentById } from "@/lib/intelligence/model-catalog-display"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -58,6 +58,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -241,7 +242,8 @@ export default function ModelsPage() {
           description={SURFACE_COPY.models.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <AskGravitreSummonButton />
               <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
                 <RefreshCw className={cn("mr-1 h-4 w-4", isValidating && "animate-spin")} />
                 Refresh
@@ -263,37 +265,58 @@ export default function ModelsPage() {
           this tab renders the exact same BuiltInModelsPanel component.
         */}
         <Tabs value={modelsTab} onValueChange={(value) => setModelsTab(value as "registry" | "built-in")}>
-          <TabsList>
-            <TabsTrigger value="registry">Registry</TabsTrigger>
-            <TabsTrigger value="built-in">Built-in models</TabsTrigger>
-          </TabsList>
+          <nav aria-label="Models catalog" className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            {(
+              [
+                { id: "registry" as const, label: "Registry" },
+                { id: "built-in" as const, label: "Built-in models" },
+              ]
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setModelsTab(item.id)}
+                className={cn(
+                  "text-xs underline-offset-4",
+                  modelsTab === item.id
+                    ? "text-[color:var(--g-text-primary)] underline"
+                    : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
           <TabsContent value="built-in" className="pt-4">
             <BuiltInModelsPanel />
           </TabsContent>
           <TabsContent value="registry" className="space-y-6 pt-4">
 
         {models.length > 0 || isLoading ? (
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric
-              label="Registered"
-              value={isLoading && models.length === 0 ? "—" : models.length}
-              hint={isLoading && models.length === 0 ? "Loading models…" : "Registry scope"}
-            />
-            <GravitreMetric
-              label="In production use"
-              value={isLoading && models.length === 0 ? "—" : stats.deployed}
-              hint="Deployed versions only"
-            />
-            <GravitreMetric
-              label="Ready to deploy"
-              value={isLoading && models.length === 0 ? "—" : stats.ready}
-            />
-            <GravitreMetric
-              label="Learning from data"
-              value={isLoading && models.length === 0 ? "—" : stats.training}
-              hint={describeStatus("training").phrase}
-            />
-          </section>
+          <details className="text-sm">
+            <summary className="cursor-pointer text-xs text-muted-foreground">Totals</summary>
+            <section className="mt-3 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+              <GravitreMetric
+                label="Registered"
+                value={isLoading && models.length === 0 ? "—" : models.length}
+                hint={isLoading && models.length === 0 ? "Loading models…" : "Registry scope"}
+              />
+              <GravitreMetric
+                label="In production use"
+                value={isLoading && models.length === 0 ? "—" : stats.deployed}
+                hint="Deployed versions only"
+              />
+              <GravitreMetric
+                label="Ready to deploy"
+                value={isLoading && models.length === 0 ? "—" : stats.ready}
+              />
+              <GravitreMetric
+                label="Learning from data"
+                value={isLoading && models.length === 0 ? "—" : stats.training}
+                hint={describeStatus("training").phrase}
+              />
+            </section>
+          </details>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">

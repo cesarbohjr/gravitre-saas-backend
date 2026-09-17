@@ -54,6 +54,7 @@ import type {
 } from "@/types/api"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
 import {
   EntitlementBadge,
@@ -384,6 +385,12 @@ function MarketplaceAssetsContent() {
   const [busy, setBusy] = useState<string | null>(null)
   const [installTarget, setInstallTarget] = useState<MarketplaceAssetSummary | null>(null)
   const [installOpen, setInstallOpen] = useState(false)
+
+  usePublishGravitreAISelection(
+    installTarget
+      ? { kind: "marketplace_asset", id: installTarget.id, label: installTarget.title }
+      : null,
+  )
 
   useEffect(() => {
     if (initialSlug) {

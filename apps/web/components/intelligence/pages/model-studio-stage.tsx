@@ -8,7 +8,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import { Button } from "@/components/ui/button"
 import { mlModelsApi, trainingApi } from "@/lib/api"
@@ -77,13 +76,24 @@ export function ModelStudioStage({
             separate hub tab.
           </p>
         </div>
-        <SegmentedControl
-          ariaLabel="Model Studio action"
-          options={[...STUDIO_SEGMENTS]}
-          value={segment}
-          onChange={setSegment}
-          className="w-full max-w-full flex-wrap"
-        />
+        <nav aria-label="Model Studio action" className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          {STUDIO_SEGMENTS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSegment(item.id)}
+              className={cn(
+                TYPE.meta,
+                "underline-offset-4",
+                segment === item.id
+                  ? "text-[color:var(--g-text-primary)] underline"
+                  : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {segment === "create" ? (

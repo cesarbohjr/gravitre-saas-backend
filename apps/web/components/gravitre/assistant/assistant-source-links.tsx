@@ -77,7 +77,7 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
         if (found.length) {
           citations.push(...found)
         }
-        // Honest empty: do not invent a "Sources checked" chip with no citations.
+        // Honest empty: do not invent a sources chip with no citations.
         break
       }
       case "getConnectorStatus":
@@ -119,11 +119,20 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
 
   if (!links.length && !citations.length && !webOrKbInvoked) return null
 
+  const sourceCount = citations.length
+  const summary =
+    sourceCount > 0
+      ? `Sources (${sourceCount})`
+      : webOrKbInvoked
+        ? "Sources"
+        : "Related"
+
   return (
-    <div className="not-prose mt-3 space-y-2 text-xs text-muted-foreground">
+    <details className="not-prose mt-3 text-xs text-muted-foreground">
+      <summary className="cursor-pointer text-foreground/80">{summary}</summary>
+      <div className="mt-2 space-y-2">
       {citations.length ? (
         <div className="space-y-1.5">
-          <div className="font-medium text-foreground/80">Sources checked</div>
           <ol className="list-decimal space-y-1 pl-4">
             {citations.map((citation) => (
               <li key={`${citation.href}:${citation.title}`} className="leading-snug">
@@ -143,12 +152,9 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
           </ol>
         </div>
       ) : webOrKbInvoked ? (
-        <div className="space-y-1">
-          <div className="font-medium text-foreground/80">Sources checked</div>
-          <p className="text-[11px] leading-snug text-muted-foreground">
-            No relevant sources found for this question.
-          </p>
-        </div>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          No relevant sources found for this question.
+        </p>
       ) : null}
       {links.length ? (
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
@@ -162,6 +168,7 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
           ))}
         </div>
       ) : null}
-    </div>
+      </div>
+    </details>
   )
 }
