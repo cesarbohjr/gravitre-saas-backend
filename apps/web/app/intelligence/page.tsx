@@ -53,39 +53,22 @@ import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-fo
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
-import {
-  ArrowRight,
-  Brain,
-  ChartLineUp,
-  Cpu,
-  Database,
-  Sparkle,
-} from "@phosphor-icons/react"
 
 const ADVANCED_LINK_GROUPS = [
   {
     heading: "Measure",
     description: "Business reports and predictive ops.",
-    links: [
-      { ...SURFACE_COPY.hubLinks.reports, icon: ChartLineUp },
-      { ...SURFACE_COPY.hubLinks.predictive, icon: ChartLineUp },
-    ],
+    links: [SURFACE_COPY.hubLinks.reports, SURFACE_COPY.hubLinks.predictive],
   },
   {
     heading: "Models",
     description: "Registry, built-in catalog, and training.",
-    links: [
-      { ...SURFACE_COPY.hubLinks.builtIn, icon: Cpu },
-      { ...SURFACE_COPY.hubLinks.models, icon: Database },
-    ],
+    links: [SURFACE_COPY.hubLinks.builtIn, SURFACE_COPY.hubLinks.models],
   },
   {
     heading: "Knowledge",
     description: "Learning hub and org memory.",
-    links: [
-      { ...SURFACE_COPY.hubLinks.learning, icon: Sparkle },
-      { ...SURFACE_COPY.hubLinks.memory, icon: Brain },
-    ],
+    links: [SURFACE_COPY.hubLinks.learning, SURFACE_COPY.hubLinks.memory],
   },
 ]
 
@@ -445,9 +428,9 @@ function IntelligenceCenterInner() {
 
           <WhyGravitrePanel className="relative" data={whyEvidence} isLoading={whyEvidenceLoading} />
 
-          <details className="group rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]">
-            <summary className="cursor-pointer list-none px-5 py-4 marker:content-none">
-              <div className="flex items-center justify-between gap-3">
+          <details className="group">
+            <summary className="cursor-pointer list-none">
+              <div className="flex items-center justify-between gap-3 border-b border-divide pb-3">
                 <div>
                   <p className={TYPE.eyebrow}>Advanced</p>
                   <h2 className={TYPE.sectionTitle}>Models, training, routing, and deep tools</h2>
@@ -456,26 +439,24 @@ function IntelligenceCenterInner() {
                     primary experience.
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground group-open:rotate-180">▼</span>
+                <span className="text-xs text-muted-foreground">Show</span>
               </div>
             </summary>
-            <div className="space-y-6 border-t border-divide px-5 py-5">
+            <div className="space-y-6 pt-6">
               <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
 
-              <div className="grid gap-[var(--np-kpi-gap)] lg:grid-cols-2">
-                <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]/50 p-5">
+              <div className="space-y-6">
+                <section>
                   <h3 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.routingTrace}</h3>
                   <p className={cn(TYPE.bodyMuted, "mt-1")}>
                     {SURFACE_COPY.sections.routingTraceHint}
                   </p>
-                  <div className="mt-4 rounded-[var(--np-radius-md)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-4 py-6 text-center">
-                    <p className={TYPE.cardTitle}>No live routing trace on this hub</p>
-                    <p className={cn(TYPE.meta, "mt-1")}>
-                      Per-turn traces appear on chat surfaces with real SSE metadata.
-                    </p>
-                  </div>
+                  <p className={cn(TYPE.meta, "mt-3 border-b border-divide py-3")}>
+                    No live routing trace on this hub. Per-turn traces appear on chat surfaces with
+                    real SSE metadata.
+                  </p>
                 </section>
-                <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]/50 p-5">
+                <section>
                   <h3 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.latestSimulation}</h3>
                   <p className={cn(TYPE.bodyMuted, "mt-1")}>
                     {SURFACE_COPY.sections.latestSimulationHint}
@@ -490,33 +471,27 @@ function IntelligenceCenterInner() {
 
               {ADVANCED_LINK_GROUPS.map((group) => (
                 <section key={group.heading} aria-labelledby={`adv-${group.heading}`}>
-                  <div className="mb-3">
+                  <div className="mb-2">
                     <h3 id={`adv-${group.heading}`} className={TYPE.eyebrow}>
                       {group.heading}
                     </h3>
                     <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {group.links.map((link) => {
-                      const LinkIcon = link.icon
-                      return (
-                        <Link
-                          key={link.route}
-                          href={link.route}
-                          className="group rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] p-4 transition-colors hover:border-[color:var(--g-brand-border)]"
-                        >
-                          <div className="flex items-start gap-3">
-                            <LinkIcon className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--g-intelligence)]" />
-                            <span className="min-w-0 flex-1">
-                              <span className={TYPE.cardTitle}>{link.title}</span>
-                              <p className={cn(TYPE.meta, "mt-1")}>{link.summary}</p>
-                            </span>
-                            <ArrowRight className="h-4 w-4 shrink-0 opacity-50 group-hover:translate-x-0.5" />
-                          </div>
-                        </Link>
-                      )
-                    })}
-                  </div>
+                  <nav className="flex flex-col gap-1" aria-label={group.heading}>
+                    {group.links.map((link) => (
+                      <Link
+                        key={link.route}
+                        href={link.route}
+                        className={cn(
+                          TYPE.meta,
+                          "py-1.5 underline-offset-4 hover:text-[color:var(--g-text-primary)] hover:underline",
+                        )}
+                      >
+                        {link.title}
+                        <span className="ml-2 text-[color:var(--g-text-muted)]">{link.summary}</span>
+                      </Link>
+                    ))}
+                  </nav>
                 </section>
               ))}
 

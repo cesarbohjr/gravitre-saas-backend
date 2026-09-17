@@ -10,6 +10,7 @@
  */
 
 import { Suspense, useEffect, useState } from "react"
+import { LayoutGroup } from "framer-motion"
 import { AiWorkspace } from "@/app/ai/_components/ai-workspace"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
@@ -35,7 +36,9 @@ export function GravitreAIWorkspaceHost() {
 
   return (
     <Suspense fallback={null}>
-      <AiWorkspace />
+      <LayoutGroup id="gravitre-ai-workspace">
+        <AiWorkspace />
+      </LayoutGroup>
     </Suspense>
   )
 }

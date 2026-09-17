@@ -306,6 +306,15 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     })
   }
 
+  test("Agents hub is text links; Connectors default is list rows", async ({ page }) => {
+    await page.goto("/e2e/shots/agents")
+    await expect(page.getByRole("navigation", { name: "Agents hub" })).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByRole("navigation", { name: "Agents hub" }).getByRole("link", { name: "Roster" })).toBeVisible()
+
+    await page.goto("/e2e/shots/connectors")
+    await expect(page.locator("[data-gravitre-connector-row]").first()).toBeVisible({ timeout: 60_000 })
+  })
+
   test("marketing home does not mount the authenticated canonical runtime", async ({ page }) => {
     await page.goto("/")
     const debug = await readAiDebug(page)

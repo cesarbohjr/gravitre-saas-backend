@@ -20,6 +20,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     const src = readFileSync(resolve(webRoot, "app/connectors/page.tsx"), "utf8")
     expect(src).toMatch(/useState<"topology" \| "grid">\("grid"\)/)
     expect(src).toMatch(/variant="list"/)
+    expect(src).toMatch(/data-gravitre-connector-row/)
     expect(src).not.toMatch(/ConnectorsAtmosphere/)
   })
 
@@ -27,6 +28,8 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     const src = readFileSync(resolve(webRoot, "app/intelligence/page.tsx"), "utf8")
     expect(src).toMatch(/Attention, learnings, and impact/)
     expect(src).toMatch(/<details className="mx-auto max-w-\[1600px\]/)
+    expect(src).toMatch(/aria-label=\{group\.heading\}/)
+    expect(src).not.toMatch(/hover:border-\[color:var\(--g-brand-border\)\]/)
   })
 
   it("performance shows attribution before collapsed metrics", () => {
@@ -38,5 +41,15 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     const metrics = src.indexOf("Totals for the selected view")
     expect(flow).toBeGreaterThan(0)
     expect(metrics).toBeGreaterThan(flow)
+  })
+
+  it("settings preference chrome uses rows, not elevated cards", () => {
+    const src = readFileSync(resolve(webRoot, "app/settings/page.tsx"), "utf8")
+    expect(src).toMatch(/AI Operator/)
+    const operatorIdx = src.indexOf("AI Operator")
+    const operatorWindow = src.slice(Math.max(0, operatorIdx - 700), operatorIdx)
+    expect(operatorWindow).toMatch(/border-b border-divide py-3/)
+    expect(operatorWindow).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
+    expect(src).toMatch(/Enable/)
   })
 })

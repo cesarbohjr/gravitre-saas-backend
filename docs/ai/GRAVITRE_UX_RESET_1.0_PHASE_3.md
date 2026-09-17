@@ -4,8 +4,6 @@
 
 Pass language: **PASS / FAIL / NOT PROVEN / BLOCKED**.
 
-Tip on `main`: `81937f28` (Phase 2 visual + Phase 3 chrome flatten). Follow-up: connector **list rows** (not topology cards stacked).
-
 ---
 
 ## Added
@@ -13,22 +11,24 @@ Tip on `main`: `81937f28` (Phase 2 visual + Phase 3 chrome flatten). Follow-up: 
 - Text hub links on Agents / Multi-agent / Training (replaces pill `HubTabs` on that strip).
 - Closed “Evidence” disclosure under the Relationships map.
 - Closed “Metrics” disclosure on Performance, after the attribution path.
-- Connector list `variant="list"`: name, type/status, Details, overflow menu. Topology nodes stay for opt-in network view.
+- Connector list `variant="list"` + `data-gravitre-connector-row`: name, type/status, Details, overflow menu. Topology nodes stay for opt-in network view.
+- Intelligence Advanced tools as **text links**, not a card grid.
 
 ## Changed
 
 - Agents fleet **default view = list** (team/graph remain available). Existing localStorage prefs keep the stored view.
 - Connectors **default view = compact list**; network topology is opt-in.
-- Settings preference rows: border-bottom rows instead of nested surface cards (Meson addon Enable blocks unchanged — those are real billing controls).
+- Settings preference rows (security, notifications, model use-case, add-department, usage meters, overage): border-bottom rows instead of nested surface cards. Meson addon Enable blocks unchanged — those are real billing controls. API keys, webhooks, and department objects stay bounded because they are independently addressable records.
 
 ## Removed
 
-- `ConnectorsAtmosphere` on `/agents` and `/connectors` (decorative canvas behind the job).
+- `ConnectorsAtmosphere` on `/agents` and `/connectors`.
 - Permanent KPI-first Performance layout.
 - Permanent card stack around the Intelligence map.
 - Mobile connector hub + card stack as the default list.
+- Advanced Intelligence icon-tile grid.
 
-**Not removed:** graph/team views, connector topology toggle, settings sidebar, Intelligence Advanced tools, kill-switch, marketing isolation, Meson-as-not-chat, Meson addon Enable/Disable (authorized billing).
+**Not removed:** graph/team views, connector topology toggle, settings sidebar, Intelligence Advanced tools (now text), kill-switch, marketing isolation, Meson-as-not-chat, Meson addon Enable/Disable (authorized billing).
 
 ---
 
@@ -36,9 +36,7 @@ Tip on `main`: `81937f28` (Phase 2 visual + Phase 3 chrome flatten). Follow-up: 
 
 Phase 3 implements plan item 6 as a **chrome flatten**, not a rewrite of fleet/graph/connectors data.
 
-Vercel production **READY** for `81937f28` — alias `gravitre.app` (`dpl_GRAwjH4iYXkQ2JMVferajqgv8gY9`). Authenticated click-through of every surface: **NOT PROVEN** (session expired in verification browser). Source + Vitest **PASS**.
-
-Railway backend: not required (frontend-only).
+Source + Vitest **PASS** (5 tests, 2026-09-17). Playwright shots: Agents hub text links + Connectors list rows (harness). Authenticated production click-through: **NOT PROVEN**.
 
 ---
 
@@ -47,16 +45,18 @@ Railway backend: not required (frontend-only).
 | Surface | Job | What changed |
 | --- | --- | --- |
 | `/agents` | Find a teammate | List first; no atmosphere; text hub nav |
-| `/intelligence` | Understand relationships | Map first; evidence behind `<details>` |
+| `/intelligence` | Understand relationships | Map first; evidence behind `<details>`; Advanced is text |
 | `/intelligence/performance` | Diagnose outcomes | Path first; metrics on demand |
-| `/settings` | Change a preference | Rows, not card-per-group on the main page |
+| `/settings` | Change a preference | Rows for preferences; objects/billing keep bounds |
 | `/connectors` | Connect a service | Compact list rows first; topology optional |
 
 ---
 
 ## C. Tests
 
-Vitest `phase-3-product-ia.test.ts` (source + default prefs) — **PASS** 4 tests (2026-09-17).
+Vitest `phase-3-product-ia.test.ts` — **PASS** 5 tests.
+
+Playwright `Agents hub is text links; Connectors default is list rows` — run with the canonical spec (shots).
 
 Production authenticated PASS: **NOT PROVEN**.
 

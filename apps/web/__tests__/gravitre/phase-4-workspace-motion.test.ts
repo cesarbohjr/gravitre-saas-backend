@@ -22,4 +22,16 @@ describe("UX Reset Phase 4 — shared workspace motion", () => {
     expect(floatSrc).toMatch(/MOTION\.major/)
     expect(shellSrc).toMatch(/MOTION\.major/)
   })
+
+  it("host LayoutGroup and workspace AnimatePresence wrap the two desktop shells", () => {
+    const host = readFileSync(
+      resolve(webRoot, "components/gravitre/ai-workspace-host.tsx"),
+      "utf8",
+    )
+    const workspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+    expect(host).toMatch(/LayoutGroup id="gravitre-ai-workspace"/)
+    expect(workspace).toMatch(/key="gravitre-ai-shell"/)
+    expect(workspace).toMatch(/key="gravitre-ai-float"/)
+    expect(workspace).not.toMatch(/AnimatePresence/)
+  })
 })

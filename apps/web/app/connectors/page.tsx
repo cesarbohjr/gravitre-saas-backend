@@ -578,7 +578,7 @@ function ConnectorNode({
 
   if (variant === "list") {
     return (
-      <div className="flex items-center gap-3 border-b border-divide py-2.5">
+      <div className="flex items-center gap-3 border-b border-divide py-2.5" data-gravitre-connector-row="">
         <ConnectorIcon
           vendor={connector.type}
           status={connector.status === "syncing" ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
@@ -3232,24 +3232,6 @@ function ConnectorsPageContent() {
             </div>
           ) : (
           <>
-          {/* Mobile: compact list */}
-          <div className="md:hidden">
-            {filteredConnectors.map((connector) => (
-              <ConnectorNode
-                key={connector.id}
-                connector={connector}
-                position="right"
-                variant="list"
-                onConfigure={() => setConfigureModal(connector)}
-                onSync={handleSync}
-                onTestConnection={handleTestConnection}
-                onReconnect={handleReconnectOAuth}
-                onDelete={() => setDeleteModal(connector)}
-              />
-            ))}
-          </div>
-
-          {/* Desktop: Network topology view */}
           {viewMode === "topology" && (
             <div className="relative hidden min-h-[600px] md:block">
               <div className="flex items-center justify-center gap-0">
@@ -3293,7 +3275,7 @@ function ConnectorsPageContent() {
 
           {/* Desktop: compact list (default). Topology remains opt-in. */}
           {viewMode === "grid" && (
-            <div className="hidden md:block">
+            <div>
               {filteredConnectors.map((connector) => (
                 <ConnectorNode
                   key={connector.id}

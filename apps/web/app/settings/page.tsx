@@ -1277,7 +1277,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
+          <div className="flex items-center justify-between border-b border-divide py-3">
             <div className="flex items-center gap-3">
               {/* Two peer rows telling apart task types, so the categorical
                   --chart-* ramp rather than health tones (emerald here did not
@@ -1297,7 +1297,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
             />
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
+          <div className="flex items-center justify-between border-b border-divide py-3">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-1/10 text-chart-1">
                 <Users className="h-4 w-4" />
@@ -1677,7 +1677,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
         ))}
       </div>
 
-      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] space-y-3">
+      <div className="space-y-3 border-b border-divide py-3">
         <p className="text-sm font-medium text-foreground">Add Department</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input
@@ -1840,7 +1840,7 @@ function SoftUsageMeter({
   const pct = hasLimit ? Math.min(100, (used / included) * 100) : 0
 
   return (
-    <div className="flex flex-col rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+    <div className="flex flex-col border-b border-divide py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-foreground">{label}</p>
         {hasLimit ? (
@@ -1937,7 +1937,7 @@ function BillingUsageSettings() {
         ) : null}
       </div>
 
-      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+      <div className="border-b border-divide py-3">
         <p className="text-sm font-medium text-foreground">Estimated overage</p>
         <p className="mt-1 text-2xl font-semibold tabular-nums">${totalEstimatedOverage.toFixed(2)}</p>
         {showResearch && researchOverageUsd > 0 ? (

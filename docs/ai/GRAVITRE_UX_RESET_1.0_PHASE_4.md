@@ -10,6 +10,10 @@ Pass language: **PASS / FAIL / NOT PROVEN / BLOCKED**.
 
 - Shared Framer `layoutId` `gravitre-ai-workspace-frame` on compact (float) and expanded/fullscreen shells.
 - `GRAVITRE_AI_WORKSPACE_LAYOUT_ID` in `gravitre-ai-presentation.ts`.
+- `LayoutGroup id="gravitre-ai-workspace"` on `GravitreAIWorkspaceHost` so portaled compact/expanded frames share layout identity.
+- Stable React keys `gravitre-ai-float` / `gravitre-ai-shell` on the exclusive desktop shells.
+
+AnimatePresence was **not** wrapped around the bridges: those are not motion nodes (the `motion.div` lives inside a portal). Wrapping them delayed first mount in Playwright.
 
 ## Changed
 
@@ -17,14 +21,14 @@ Pass language: **PASS / FAIL / NOT PROVEN / BLOCKED**.
 
 ## Removed
 
-- Instant chrome swap without a shared layout identity.
+- Instant chrome swap without a shared layout identity (shells still exclusive; morph is layout, not two runtimes).
 
-**Not changed:** runtime owner (`useChat` in `AiWorkspace`), drag geometry, kill-switch XOR, marketing isolation.
+**Not changed:** runtime owner (`useChat` in `AiWorkspace`), drag geometry, kill-switch XOR, marketing isolation, mobile vaul sheet.
 
 ---
 
 ## A. Result
 
-Phase 4 is **source PASS**. Live morph in production: **NOT PROVEN** until the deploy that includes this commit.
+Phase 4 is **source PASS** (Vitest `phase-4-workspace-motion.test.ts`, 2 tests). Live morph in production: **NOT PROVEN** until this commit is on the production alias.
 
-Also: chat-surface-drift now treats `/agents/[id]/chat` as a canonical summon (no second composer).
+Also: chat-surface-drift treats `/agents/[id]/chat` as a canonical summon (no second composer).

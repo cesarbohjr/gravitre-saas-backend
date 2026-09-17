@@ -2339,9 +2339,14 @@ export function AiWorkspace({
       )
     }
 
-    if (presentationMode === "expanded" || presentationMode === "fullscreen") {
-      return (
+    const useDesktopShell =
+      presentationMode === "expanded" || presentationMode === "fullscreen"
+
+    return (
+      <>
+        {useDesktopShell ? (
         <GravitreAIWorkspaceShellBridge
+          key="gravitre-ai-shell"
           mode={presentationMode}
           presence={presence}
           onMinimizeToFloat={() => setPresentationMode("float")}
@@ -2424,11 +2429,9 @@ export function AiWorkspace({
           onKeyDown={onKeyDown}
           voice={surfaceVoiceProps}
         />
-      )
-    }
-
-    return (
+        ) : (
       <GravitreAIFloatBridge
+        key="gravitre-ai-float"
         presence={presence}
         onClose={closeToHelper}
         onExpand={() => setPresentationMode("expanded")}
@@ -2475,6 +2478,8 @@ export function AiWorkspace({
         onKeyDown={onKeyDown}
         voice={surfaceVoiceProps}
       />
+        )}
+      </>
     )
   }
 
