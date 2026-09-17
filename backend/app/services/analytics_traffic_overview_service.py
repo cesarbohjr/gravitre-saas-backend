@@ -123,7 +123,9 @@ def detect_analytics_traffic_intent(
     caps = resolve_analytics_capabilities_for_message(message, connected_integrations=list(connected))
     if caps and caps[0] == "google_analytics":
         return AnalyticsTrafficIntent(connector_id="google_analytics")
-    return None
+    # Named website-traffic language with no connected analytics still belongs
+    # to this handler so we return connect guidance instead of a web-search detour.
+    return AnalyticsTrafficIntent(connector_id="google_analytics")
 
 
 def should_suppress_knowledge_base_for_turn(

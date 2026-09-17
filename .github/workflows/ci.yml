@@ -181,6 +181,16 @@ jobs:
         working-directory: .
         run: python scripts/lint-smoke-harness.py
 
+      - name: Golden benchmark (Phase A + traffic scenarios)
+        run: python -m pytest tests/services/test_phase_a_cognitive_runtime_benchmark.py tests/services/test_golden_benchmark_traffic.py -q
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+
       - name: Run tests
         run: python -m pytest -q
         env:

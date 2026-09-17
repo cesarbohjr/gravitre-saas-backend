@@ -180,6 +180,34 @@ jobs:
           path: docs/delivery/smoke-post-deploy-chat-live.json
           if-no-files-found: ignore
 
+      - name: Golden benchmark live smoke (isolated org)
+        if: always()
+        env:
+          LIVE_API_BASE: https://api.gravitre.app
+          EXPECT_SHA: ${{ needs.detect-backend-changes.outputs.ref }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          set +e
+          pip install httpx PyJWT python-dotenv supabase
+          python3 scripts/smoke-golden-benchmark-live.py
+          CODE=$?
+          set -e
+          echo "golden_benchmark_live_exit=$CODE"
+          # 0 PASS / 2 NOT RUN or PARTIAL skip are acceptable; 1 FAIL is a warning
+          if [ "$CODE" -eq 1 ]; then
+            echo "::warning::Golden benchmark live smoke FAIL — see artifact"
+          fi
+
+      - name: Upload golden benchmark live artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-golden-benchmark-live
+          path: docs/delivery/smoke-golden-benchmark-live.json
+          if-no-files-found: ignore
+
       - name: MSP enrichment workflow live smoke
         if: always()
         env:

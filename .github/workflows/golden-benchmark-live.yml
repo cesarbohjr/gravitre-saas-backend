@@ -1,0 +1,64 @@
+name: Golden benchmark live
+
+# Isolated-org live smoke for audit §33 traffic scenarios.
+# Structural pytest is merge-blocking in ci.yml. This workflow is optional live.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "40 6 * * 1"
+
+concurrency:
+  group: golden-benchmark-live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Golden traffic live smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Skip if live secrets missing
+        id: secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SUPABASE_JWT_SECRET" ]; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+            echo "Skipping golden benchmark live smoke — SUPABASE secrets not configured"
+          else
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run isolated-org live smoke
+        if: steps.secrets.outputs.skip != '1'
+        env:
+          LIVE_API_BASE: https://api.gravitre.app
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          pip install httpx PyJWT python-dotenv supabase
+          set +e
+          python scripts/smoke-golden-benchmark-live.py
+          CODE=$?
+          set -e
+          echo "exit=$CODE"
+          if [ "$CODE" -eq 1 ]; then
+            exit 1
+          fi
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-golden-benchmark-live
+          path: docs/delivery/smoke-golden-benchmark-live.json
+          if-no-files-found: ignore

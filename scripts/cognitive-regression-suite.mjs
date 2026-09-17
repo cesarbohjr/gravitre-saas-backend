@@ -57,8 +57,9 @@ mustExist("backend/tests/test_cognitive_nlu_adversarial_battery.py")
 mustExist("backend/app/services/response_composer.py")
 mustExist("backend/app/services/response_envelope.py")
 mustExist("scripts/scan_response_composer_bypass.py")
-mustExist("backend/tests/test_response_composer.py")
-mustExist("backend/tests/test_response_composer_bypass.py")
+mustExist("backend/tests/services/test_phase_a_cognitive_runtime_benchmark.py")
+mustExist("backend/tests/services/test_golden_benchmark_traffic.py")
+mustExist("scripts/smoke-golden-benchmark-live.py")
 mustContain(
   "backend/app/operators/agent_intelligence.py",
   "compose_reply_events",
@@ -333,6 +334,7 @@ mustContain(
       "tests/test_response_composer_bypass.py",
       "tests/services/test_canonical_cognitive_ingress.py",
       "tests/services/test_phase_a_cognitive_runtime_benchmark.py",
+      "tests/services/test_golden_benchmark_traffic.py",
       "tests/services/test_phase_b_cognitive_runtime.py",
       "tests/services/test_phase_c_cognitive_runtime.py",
       "tests/services/test_phase_d_cognitive_runtime.py",

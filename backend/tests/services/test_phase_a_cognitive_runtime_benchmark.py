@@ -23,19 +23,22 @@ from app.services.resolution_trace_service import ResolutionTraceBuilder
 @pytest.mark.asyncio
 async def test_scenario_a_ga4_traffic_single_property_auto_select() -> None:
     """SCENARIO A — GA4 traffic, one property, no clarification."""
-    conn = {"id": "conn-1", "config": {"property_id": "123", "property_name": "Main Site"}}
+    resolution = ResourceResolution(
+        status="resolved",
+        connector_id="google_analytics",
+        connection_id="conn-1",
+        resource_type="property",
+        resource_id="123",
+        display_name="Main Site",
+        candidate_count=1,
+        resolution_reason="linked_config",
+    )
     with patch(
         "app.services.analytics_traffic_overview_service.resolve_resource",
-        return_value=ResourceResolution(
-            status="resolved",
-            connector_id="google_analytics",
-            connection_id="conn-1",
-            resource_type="property",
-            resource_id="123",
-            display_name="Main Site",
-            candidate_count=1,
-            resolution_reason="linked_config",
-        ),
+        return_value=resolution,
+    ), patch(
+        "app.services.read_preflight.resolve_resource",
+        return_value=resolution,
     ), patch(
         "app.connectors.google_analytics_oauth.ensure_google_analytics_session",
         return_value=("token", None),
