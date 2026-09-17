@@ -19,6 +19,7 @@ from app.connectors.action_catalog.f1_read_slice import (
 from app.connectors.action_catalog.models import ActionSpec, ParameterSourceRule
 from app.connectors.action_catalog.registry import get_action_spec
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.canonical_time_resolver import TimeWindow, resolve_time_window
 from app.services.connector_resource_resolver import ResourceResolution, resolve_resource
 from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
@@ -531,7 +532,7 @@ def preflight_read_action(
     """Compile CAPABILITY→ACTION→RESOURCE→PARAMETERS→AVAILABILITY→CONSTRAINTS for F1 READ."""
     started = time.perf_counter()
     ctx = dict(context or {})
-    proposed = strip_untrusted_preflight_markers(dict(ctx.get("proposed_args") or {}))
+    proposed = strip_untrusted_preflight_markers(safe_normalize_stored_dict(ctx.get("proposed_args")))
     user_message = str(ctx.get("user_message") or ctx.get("message") or "")
     org_id = str(ctx.get("org_id") or "")
     client = ctx.get("client")

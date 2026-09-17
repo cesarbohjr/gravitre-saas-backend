@@ -79,7 +79,7 @@ def _zone(name: str | None) -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
-def _today(timezone_name: str | None, *, now: datetime | None = None) -> tuple[date, str]:
+def _calendar_today(timezone_name: str | None, *, now: datetime | None = None) -> tuple[date, str]:
     tz_name = str(timezone_name or "UTC").strip() or "UTC"
     tz = _zone(tz_name)
     current = now.astimezone(tz) if now is not None else datetime.now(tz)
@@ -122,7 +122,7 @@ def resolve_time_window(
     if not detected:
         return None
     key, phrase = detected
-    today, tz_label = _today(timezone_name, now=now)
+    today, tz_label = _calendar_today(timezone_name, now=now)
 
     if key == "today":
         start = end = today

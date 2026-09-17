@@ -60,7 +60,7 @@ def test_unimplemented_vendor_typed_unavailable() -> None:
     conn = {"id": "c1", "config": {}}
     with patch("app.services.connector_resource_resolver._connector_row", return_value=conn):
         res = resolve_resource(
-            connector_id="zendesk",
+            connector_id="asana",
             client=object(),
             org_id="o",
             settings=SimpleNamespace(),
