@@ -213,6 +213,11 @@ def get_workflow_schema(action_key: str) -> ActionWorkflowSchema | None:
     key = action_key.strip().lower()
     if key in _TEST_SCHEMA_REGISTRY:
         return _TEST_SCHEMA_REGISTRY[key]
+    from app.connectors.action_catalog.registry import get_action_spec
+
+    spec = get_action_spec(key)
+    if spec and spec.workflow_schema:
+        return spec.workflow_schema
     from app.connectors.action_catalog.workflow_schemas_batch_25 import WORKFLOW_SCHEMAS_BATCH_25
 
     if key in WORKFLOW_SCHEMAS_BATCH_25:

@@ -881,6 +881,15 @@ def clear_action_schema_cache() -> None:
     _inferred_cache.clear()
 
 
+def _action_spec_input_schema(action_key: str) -> dict[str, Any] | None:
+    from app.connectors.action_catalog.registry import get_action_spec
+
+    spec = get_action_spec(action_key)
+    if spec and spec.input_schema:
+        return spec.input_schema
+    return None
+
+
 def resolve_action_schema(
     action_key: str,
     *,
@@ -891,6 +900,10 @@ def resolve_action_schema(
 ) -> dict[str, Any]:
     """Resolve JSON Schema for an action: override → extension → catalog → inferred."""
     key = action_key.strip()
+    spec_schema = _action_spec_input_schema(key)
+    if spec_schema:
+        return normalize_schema(spec_schema)
+
     if key in ACTION_PARAMETERS:
         return normalize_schema(ACTION_PARAMETERS[key])
 

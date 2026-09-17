@@ -267,6 +267,9 @@ def materialize_action_spec(spec: ActionSpec) -> ActionSpec:
                 updates[key] = value
         if updates:
             merged = replace(spec, **updates)
+    from app.connectors.action_catalog.canonical_action_schema import stamp_canonical_schemas
+
+    merged = stamp_canonical_schemas(merged)
     return replace(merged, spec_revision=compute_spec_revision(merged))
 
 
