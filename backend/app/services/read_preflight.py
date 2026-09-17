@@ -312,9 +312,8 @@ def _pick_from_source(
         value = _first_present(referent, names)
         return (value, 0.8) if value is not None else None
     if source == "RESOURCE_RESOLVER" and resource and resource.status == "resolved":
-        if rule.parameter in {"property_id", "site_url", "portal_id", "realm_id", "subdomain"}:
-            return resource.resource_id, float(resource.confidence or 0.9)
-        return resource.resource_id, float(resource.confidence or 0.9)
+        prior = float(resource.confidence or 0.9)  # confidence-honesty-ok: resolver prior, not user-facing
+        return resource.resource_id, prior
     if source == "CONNECTOR_METADATA" and isinstance(connector_row, dict):
         cfg = connector_row.get("config") if isinstance(connector_row.get("config"), dict) else {}
         value = _first_present({**connector_row, **cfg}, names)
@@ -667,7 +666,7 @@ def preflight_read_action(
                     resource_type=resolution.resource_type,
                     resource_id=resource_id,
                     display_name=str(matched.get("display_name") or matched.get("site_url") or resource_id),
-                    confidence=0.9,
+                    confidence=0.9,  # confidence-honesty-ok: domain bind prior, not user-facing
                     resolution_reason="tenant_domain_binding",
                     candidate_count=1,
                     candidates=(matched,),
@@ -787,7 +786,7 @@ def preflight_read_action(
                     parameter=key,
                     source="MODEL_INFERENCE",
                     value=value,
-                    confidence=0.4,
+                    confidence=0.4,  # confidence-honesty-ok: leftover model arg prior, not user-facing
                     classification="FILLED",
                 )
             )
