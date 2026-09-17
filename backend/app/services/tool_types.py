@@ -76,6 +76,7 @@ class ToolContext:
     step_type: str | None = None
     connector_timeout_seconds: int | None = None
     conversation_id: str | None = None
+    preflight_result: Any = None
 
 
 @dataclass

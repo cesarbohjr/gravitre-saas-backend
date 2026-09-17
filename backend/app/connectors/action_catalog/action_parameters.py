@@ -808,6 +808,54 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         },
         "required": [],
     },
+    "google_analytics.reports.run": {
+        "type": "object",
+        "properties": {
+            "property_id": {"type": "string", "description": "GA4 property id (derived when linked)."},
+            "start_date": {"type": "string"},
+            "end_date": {"type": "string"},
+            "metrics": {"type": "array", "items": {"type": "string"}},
+            "dimensions": {"type": "array", "items": {"type": "string"}},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "analytics.reports.run": {
+        "type": "object",
+        "properties": {
+            "property_id": {"type": "string"},
+            "start_date": {"type": "string"},
+            "end_date": {"type": "string"},
+            "metrics": {"type": "array", "items": {"type": "string"}},
+            "dimensions": {"type": "array", "items": {"type": "string"}},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "google_search_console.searchAnalytics.query": {
+        "type": "object",
+        "properties": {
+            "site_url": {"type": "string"},
+            "start_date": {"type": "string"},
+            "end_date": {"type": "string"},
+            "dimensions": {"type": "array", "items": {"type": "string"}},
+            "row_limit": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "searchconsole.searchAnalytics.query": {
+        "type": "object",
+        "properties": {
+            "site_url": {"type": "string"},
+            "start_date": {"type": "string"},
+            "end_date": {"type": "string"},
+            "dimensions": {"type": "array", "items": {"type": "string"}},
+            "row_limit": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
 }
 
 

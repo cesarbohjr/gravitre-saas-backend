@@ -43,7 +43,10 @@ def _connector_row(
     connector_id: str,
     *,
     environment_name: str = "production",
+    override: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
+    if isinstance(override, dict) and (override.get("id") or override.get("config") or override.get("type")):
+        return override
     from app.connectors.repository import get_connector_by_type
 
     row = get_connector_by_type(
@@ -96,7 +99,13 @@ def resolve_ga4_property(
 ) -> ResourceResolution:
     """Discover GA4 property from linked config or Admin API listing."""
     connector_id = "google_analytics"
-    conn = _connector_row(client, org_id, connector_id, environment_name=environment_name)
+    override = None
+    if isinstance(conversation_context, dict):
+        raw = conversation_context.get("_connector_row")
+        override = raw if isinstance(raw, dict) else None
+    conn = _connector_row(
+        client, org_id, connector_id, environment_name=environment_name, override=override
+    )
     if not conn:
         return ResourceResolution(
             status="not_found",
@@ -198,21 +207,31 @@ def resolve_resource(
     resource_type: str | None = None,
     environment_name: str = "default",
     conversation_context: dict[str, Any] | None = None,
+    connector_row: dict[str, Any] | None = None,
 ) -> ResourceResolution:
     """Generic entry — dispatches to vendor-specific adapters."""
     vendor = str(connector_id or "").strip().lower()
     rtype = str(resource_type or "").strip().lower()
+    override = connector_row
+    if override is None and isinstance(conversation_context, dict):
+        raw = conversation_context.get("_connector_row")
+        override = raw if isinstance(raw, dict) else None
 
     if vendor == "google_analytics" and (not rtype or rtype == "property"):
+        merged_ctx = dict(conversation_context or {})
+        if override:
+            merged_ctx["_connector_row"] = override
         return resolve_ga4_property(
             client=client,
             org_id=org_id,
             settings=settings,
             environment_name=environment_name,
-            conversation_context=conversation_context,
+            conversation_context=merged_ctx,
         )
 
-    conn = _connector_row(client, org_id, vendor, environment_name=environment_name)
+    conn = _connector_row(
+        client, org_id, vendor, environment_name=environment_name, override=override
+    )
     if not conn:
         return ResourceResolution(
             status="not_found",

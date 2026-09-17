@@ -17,8 +17,10 @@ def _implemented_tools() -> set[str]:
 
 @lru_cache(maxsize=1)
 def get_vendor_catalog() -> dict[str, VendorCatalogSpec]:
+    from app.connectors.action_catalog.f1_read_slice import materialize_vendor_catalog
+
     base = {spec.vendor: spec for spec in VENDOR_DEFINITIONS}
-    return merge_catalog_extensions(base)
+    return materialize_vendor_catalog(merge_catalog_extensions(base))
 
 
 def list_catalog_vendors() -> list[str]:
@@ -143,8 +145,10 @@ def all_catalog_action_specs() -> list[ActionSpec]:
 
 
 def get_action_spec(action_key: str) -> ActionSpec | None:
-    """Lookup a catalog ActionSpec by canonical tool key."""
-    key = action_key.strip().lower()
+    """Return the single catalog ActionSpec (F1 fields already materialized)."""
+    from app.connectors.action_catalog.f1_read_slice import catalog_action_key
+
+    key = catalog_action_key(action_key.strip().lower() if action_key else "")
     if "." not in key:
         return None
     vendor = key.split(".", 1)[0]

@@ -340,6 +340,20 @@ def resolve_google_ads_customer(
     )
 
 
+def resolve_zendesk(*, conn: dict[str, Any], **_: Any) -> ResourceResolution:
+    subdomain = _config_value(conn, "subdomain", "zendesk_subdomain")
+    if subdomain:
+        return _resolved_connection(
+            connector_id="zendesk",
+            connection_id=str(conn.get("id") or ""),
+            resource_type="subdomain",
+            resource_id=subdomain,
+            display_name=f"{subdomain}.zendesk.com",
+            reason="linked_subdomain_config",
+        )
+    return resolve_connection_only(connector_id="zendesk", conn=conn, resource_type="subdomain")
+
+
 RESOURCE_ADAPTER_REGISTRY: dict[str, AdapterFn] = {
     "hubspot": resolve_hubspot,
     "salesforce": resolve_salesforce,
@@ -349,4 +363,5 @@ RESOURCE_ADAPTER_REGISTRY: dict[str, AdapterFn] = {
     "quickbooks": resolve_quickbooks,
     "google_search_console": resolve_gsc_site,
     "google_ads": resolve_google_ads_customer,
+    "zendesk": resolve_zendesk,
 }

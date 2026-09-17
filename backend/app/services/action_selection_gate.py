@@ -84,3 +84,30 @@ def gate_workflow_invoke(
             f"action_selection_gate: {resolved} missing required params: {missing}"
         )
     return resolved
+
+
+def gate_read_preflight(
+    *,
+    action: str,
+    args: dict[str, Any] | None,
+    context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """F1 READ: compile and validate before provider execution (same gate as ReAct/invoke)."""
+    from app.connectors.action_catalog.f1_read_slice import is_f1_read_action
+    from app.services.read_preflight import apply_preflight_to_params, preflight_read_action
+
+    resolved = resolve_call_time_action(action)
+    if not is_f1_read_action(resolved) and not is_f1_read_action(action):
+        return dict(args or {})
+    result = preflight_read_action(
+        context={
+            **(context or {}),
+            "action_key": action,
+            "proposed_args": dict(args or {}),
+        },
+    )
+    if not result.ok:
+        raise ValueError(
+            f"action_selection_gate: {resolved} preflight {result.error_class}: {result.blocking_reason}"
+        )
+    return apply_preflight_to_params(dict(args or {}), result)

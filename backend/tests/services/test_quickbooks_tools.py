@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from app.services.read_preflight import preflight_read_action
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext
 
@@ -63,6 +65,19 @@ def test_quickbooks_invoices_list_success():
                                 }
                             ],
                         ):
-                            result = invoke_tool(tool_ctx, "quickbooks.invoices.list", {"limit": 10})
+                            proof = preflight_read_action(
+                                context={
+                                    "action_key": "quickbooks.invoices.list",
+                                    "org_id": "org-1",
+                                    "client": tool_ctx.client,
+                                    "settings": settings,
+                                    "proposed_args": {"limit": 10},
+                                    "connector_row": conn,
+                                    "connected_integrations": ["quickbooks"],
+                                }
+                            )
+                            assert proof.ok, proof.as_dict()
+                            bound = replace(tool_ctx, preflight_result=proof)
+                            result = invoke_tool(bound, "quickbooks.invoices.list", {"limit": 10})
     assert result.success is True
     assert result.data["queryResponse"]["Invoice"][0]["Id"] == "1"

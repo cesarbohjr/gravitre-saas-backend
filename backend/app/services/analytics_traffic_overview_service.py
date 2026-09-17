@@ -20,9 +20,28 @@ from app.services.connector_semantic_registry import (
     resolve_analytics_capabilities_for_message,
     resolve_connector_from_text,
 )
+from app.services.canonical_time_resolver import resolve_time_window
 from app.services.reference_resolver import resolve_reference, store_active_analysis
 
 logger = get_logger(__name__)
+
+
+def _traffic_date_range(message: str, *, timezone_name: str | None = None) -> tuple[str, str, str]:
+    """Compile dates from the canonical time resolver + ActionSpec defaults (not a parallel schema)."""
+    window = resolve_time_window(message, timezone_name=timezone_name)
+    if window is not None:
+        return window.start_iso, window.end_iso, window.interpretation
+    from app.connectors.action_catalog.registry import get_action_spec
+
+    spec = get_action_spec("google_analytics.reports.run")
+    start, end = "30daysAgo", "today"
+    if spec is not None:
+        for rule in spec.parameter_source_rules:
+            if rule.parameter == "start_date" and rule.default not in (None, ""):
+                start = str(rule.default)
+            if rule.parameter == "end_date" and rule.default not in (None, ""):
+                end = str(rule.default)
+    return start, end, "action_spec_default"
 
 # Broad business questions about website / analytics performance.
 _ANALYTICS_TRAFFIC_OVERVIEW = re.compile(
@@ -282,7 +301,8 @@ async def _try_cross_source_website_overview_turn(
         "org_id": org_id,
         "client": client,
         "settings": settings,
-        "task_state": task_state or {},
+        "task_state": {**(task_state or {}), "user_message": message},
+        "message": message,
     }
     observations = await execute_read_steps_parallel(plan, context=ctx, handler=_handler)
     plan = apply_observations_to_plan(plan, observations)
@@ -334,6 +354,8 @@ async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
     org_id = str(ctx.get("org_id") or "")
     client = ctx.get("client")
     settings = ctx.get("settings")
+    task_state = ctx.get("task_state") if isinstance(ctx.get("task_state"), dict) else {}
+    start_date, end_date, _interp = _traffic_date_range(str(task_state.get("user_message") or ctx.get("message") or ""))
     resolution = resolve_resource(
         connector_id="google_analytics",
         client=client,
@@ -365,8 +387,8 @@ async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
         current = run_ga4_report(
             token,
             resolution.resource_id,
-            start_date="30daysAgo",
-            end_date="today",
+            start_date=start_date,
+            end_date=end_date,
             metrics=["activeUsers", "sessions"],
         )
     except GoogleAnalyticsAPIError as exc:
@@ -383,7 +405,7 @@ async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
         step_id=step.step_id,
         connector_id="google_analytics",
         success=True,
-        summary=f"GA4: {int(users or 0):,} active users, {int(sessions or 0):,} sessions (30d)",
+        summary=f"GA4: {int(users or 0):,} active users, {int(sessions or 0):,} sessions ({start_date}–{end_date})",
         structured={
             "property_id": resolution.resource_id,
             "property_name": resolution.display_name,
@@ -401,6 +423,8 @@ async def _gsc_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
     org_id = str(ctx.get("org_id") or "")
     client = ctx.get("client")
     settings = ctx.get("settings")
+    task_state = ctx.get("task_state") if isinstance(ctx.get("task_state"), dict) else {}
+    start_date, end_date, _interp = _traffic_date_range(str(task_state.get("user_message") or ctx.get("message") or ""))
     resolution = resolve_resource(
         connector_id="google_search_console",
         client=client,
@@ -432,8 +456,8 @@ async def _gsc_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
         report = query_search_analytics(
             token,
             resolution.resource_id,
-            start_date="28daysAgo",
-            end_date="today",
+            start_date=start_date,
+            end_date=end_date,
             dimensions=["page"],
             row_limit=5,
         )
@@ -615,26 +639,35 @@ async def try_analytics_traffic_overview_turn(
     property_id = resolution.resource_id
     property_name = resolution.display_name or f"Property {property_id}"
     metrics = ["activeUsers", "sessions", "screenPageViews"]
+    start_date, end_date, interp = _traffic_date_range(message)
+    previous_start, previous_end = "60daysAgo", "31daysAgo"
+    if interp == "previous_calendar_month":
+        from datetime import date, timedelta
+
+        start = date.fromisoformat(start_date)
+        prior_end = start - timedelta(days=1)
+        previous_start = date(prior_end.year, prior_end.month, 1).isoformat()
+        previous_end = prior_end.isoformat()
     try:
         current = run_ga4_report(
             token,
             property_id,
-            start_date="30daysAgo",
-            end_date="today",
+            start_date=start_date,
+            end_date=end_date,
             metrics=metrics,
         )
         previous = run_ga4_report(
             token,
             property_id,
-            start_date="60daysAgo",
-            end_date="31daysAgo",
+            start_date=previous_start,
+            end_date=previous_end,
             metrics=metrics,
         )
         source_report = run_ga4_report(
             token,
             property_id,
-            start_date="30daysAgo",
-            end_date="today",
+            start_date=start_date,
+            end_date=end_date,
             dimensions=["sessionDefaultChannelGroup"],
             metrics=["sessions"],
         )

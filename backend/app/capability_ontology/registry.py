@@ -146,6 +146,56 @@ CAPABILITY_REGISTRY: dict[str, CapabilityDefinition] = {
             VendorCapabilityBinding("stripe", "stripe.refunds.create", "Stripe refund"),
         ),
     ),
+    "search.performance": CapabilityDefinition(
+        capability_id="search.performance",
+        label="Search performance",
+        description="Read search impressions, clicks, and page performance from Search Console.",
+        domain="analytics",
+        kind="read",
+        bindings=(
+            VendorCapabilityBinding(
+                "google_search_console",
+                "google_search_console.searchAnalytics.query",
+                "GSC search analytics",
+                kind="read",
+            ),
+        ),
+    ),
+    "crm.deals.read": CapabilityDefinition(
+        capability_id="crm.deals.read",
+        label="Read CRM deals",
+        description="Search or list high-value deals in the customer's connected CRM.",
+        domain="crm",
+        kind="read",
+        bindings=(
+            VendorCapabilityBinding("hubspot", "hubspot.deals.search", "HubSpot deals", kind="read"),
+        ),
+    ),
+    "finance.invoices.read": CapabilityDefinition(
+        capability_id="finance.invoices.read",
+        label="Read invoices",
+        description="List invoices from the customer's connected finance system.",
+        domain="finance",
+        kind="read",
+        bindings=(
+            VendorCapabilityBinding(
+                "quickbooks",
+                "quickbooks.invoices.list",
+                "QuickBooks invoices",
+                kind="read",
+            ),
+        ),
+    ),
+    "support.tickets.read": CapabilityDefinition(
+        capability_id="support.tickets.read",
+        label="Read support tickets",
+        description="List tickets from the customer's connected support system.",
+        domain="support",
+        kind="read",
+        bindings=(
+            VendorCapabilityBinding("zendesk", "zendesk.tickets.list", "Zendesk tickets", kind="read"),
+        ),
+    ),
 }
 
 

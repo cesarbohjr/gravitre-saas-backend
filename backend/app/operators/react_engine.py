@@ -656,6 +656,7 @@ class ReActEngine:
                                     tool_name,
                                     tool_args,
                                     allowed_tool_names=allowed_tool_names,
+                                    user_message=task,
                                 )
                                 for _tc, tool_name, tool_args, _cid, _w in batch
                             ]
@@ -671,6 +672,7 @@ class ReActEngine:
                                 tool_name,
                                 tool_args,
                                 allowed_tool_names=allowed_tool_names,
+                                user_message=task,
                             )
                         )
                 elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -813,6 +815,7 @@ class ReActEngine:
         args: dict[str, Any] | None = None,
         *,
         allowed_tool_names: set[str] | frozenset[str] | None = None,
+        user_message: str = "",
     ) -> dict[str, Any]:
         """Route a model tool call through ToolRegistry → invoke_tool."""
         if allowed_tool_names is not None and tool_name not in allowed_tool_names:
@@ -881,7 +884,40 @@ class ReActEngine:
         )
         if blocked is not None:
             return blocked
-        return await self.registry.execute_tool(ctx=ctx, tool_name=tool_name, args=args)
+        execute_args = dict(args or {})
+        from dataclasses import replace as dc_replace
+
+        from app.connectors.action_catalog.f1_read_slice import is_f1_read_action
+        from app.services.read_preflight import react_preflight_args
+
+        target = invoke_action or tool_name
+        if is_f1_read_action(target) or is_f1_read_action(tool_name):
+            execute_args, preflight = react_preflight_args(
+                ctx=ctx,
+                invoke_action=target,
+                args=args,
+                user_message=user_message,
+                connected_integrations=connected,
+            )
+            if preflight is not None and not preflight.ok:
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "action": invoke_action,
+                    "error_code": preflight.error_class,
+                    "error": preflight.user_message(),
+                    "repair_hint": preflight.repair_hint,
+                    "provider_invoked": False,
+                    "observation_status": "preflight_blocked",
+                    "plan_id": preflight.plan_id,
+                    "step_id": preflight.step_id,
+                    "capability_id": preflight.capability_id,
+                    "action_key": preflight.action_key,
+                }
+            if preflight is not None and preflight.ok:
+                ctx = dc_replace(ctx, preflight_result=preflight)
+                execute_args = dict(preflight.compiled_parameters)
+        return await self.registry.execute_tool(ctx=ctx, tool_name=tool_name, args=execute_args)
 
     async def _chat_with_tools(
         self,

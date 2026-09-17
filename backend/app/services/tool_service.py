@@ -4706,6 +4706,12 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         except AutonomousBudgetExceededError as exc:
             raise ToolValidationError(str(exc), code=exc.code) from exc
 
+    from app.connectors.action_catalog.f1_read_slice import is_f1_read_action
+    from app.services.read_preflight import enforce_invoke_preflight
+
+    if is_f1_read_action(action):
+        params = enforce_invoke_preflight(ctx, action, params)
+
     executor = _resolve_tool_executor(action, ctx)
     if not executor:
         raise ToolNotFoundError(f"Unknown tool action: {action}")

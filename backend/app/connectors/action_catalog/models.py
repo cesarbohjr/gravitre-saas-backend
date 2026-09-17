@@ -9,6 +9,36 @@ from app.connectors.action_catalog.tool_aliases import catalog_tool_is_implement
 ActionTier = Literal["v1", "v2", "v3", "v4"]
 ActionKind = Literal["read", "write", "advanced"]
 
+ParameterSource = Literal[
+    "USER_EXPLICIT",
+    "REFERENCE_STATE",
+    "TASK_CONTEXT",
+    "BUSINESS_IDENTITY",
+    "RESOURCE_RESOLVER",
+    "CONNECTOR_METADATA",
+    "TIME_RESOLVER",
+    "CAPABILITY_RECIPE",
+    "ACTION_DEFAULT",
+    "PREVIOUS_OBSERVATION",
+    "MODEL_INFERENCE",
+    "MUST_ASK_USER",
+]
+
+
+@dataclass(frozen=True)
+class ParameterSourceRule:
+    """Ordered deterministic sources for one ActionSpec parameter.
+
+    required_by_api is independent of required_from_user.
+    """
+
+    parameter: str
+    sources: tuple[ParameterSource, ...]
+    required_by_api: bool = False
+    required_from_user: bool = False
+    aliases: tuple[str, ...] = ()
+    default: Any = None
+
 
 @dataclass(frozen=True)
 class WorkflowFieldSpec:
@@ -50,6 +80,19 @@ class ActionSpec:
     # BusinessOutcome Diff/Undo — real catalog property (None = irreversible / no diff).
     compensating_action: str | None = None
     supports_diff: bool | None = None
+    # Canonical ActionSpec extras (F1 READ slice populates; others stay empty).
+    capabilities: tuple[str, ...] = ()
+    required_parameters: tuple[str, ...] = ()
+    optional_parameters: tuple[str, ...] = ()
+    parameter_source_rules: tuple[ParameterSourceRule, ...] = ()
+    resource_requirements: tuple[str, ...] = ()
+    auth_scope_requirements: tuple[str, ...] = ()
+    provider_constraints: dict[str, Any] | None = None
+    availability_requirements: tuple[str, ...] = ()
+    governance_classification: str = ""
+    execution_adapter: str | None = None
+    observation_adapter: str | None = None
+    spec_revision: str = ""
 
     @property
     def tool(self) -> str:
