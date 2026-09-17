@@ -18,6 +18,7 @@ This review answers whether Gravitre can **actually execute** the business tasks
 
 | Section | Document | Status |
 |---------|----------|--------|
+| **Manus-like autonomous business execution (full platform)** | [gravitre-autonomous-business-execution-audit-2026-09.md](./gravitre-autonomous-business-execution-audit-2026-09.md) | **Complete (audit-only)** |
 | **Connector action wiring & capability completeness** | [connector-action-wiring-audit.md](./connector-action-wiring-audit.md) | **Complete (audit-only)** |
 | Parameter ledger / Module B turn controller | [module-b-architecture-reference.md](./module-b-architecture-reference.md) | Reference (prior audits) |
 | Connector catalog implementation matrix | [connector-catalog-audit-latest.json](./connector-catalog-audit-latest.json) | Regenerated 2026-09-17 |
