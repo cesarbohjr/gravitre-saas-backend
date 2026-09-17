@@ -418,6 +418,7 @@ export function IntelligenceGraphStage({
 
       <div
         ref={containerRef}
+        id="intelligence-map-canvas"
         data-testid="intelligence-map-canvas"
         tabIndex={0}
         onKeyDown={handleKeyDown}

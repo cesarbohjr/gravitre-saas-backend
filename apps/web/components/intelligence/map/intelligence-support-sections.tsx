@@ -7,6 +7,7 @@ import { TYPE } from "@/lib/design-system"
 import { readString } from "@/lib/intelligence/helpers"
 import { cn } from "@/lib/utils"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { buildLearningInsightMapHref } from "@/lib/intelligence/learning-map-focus"
 import { ArrowRight, Warning } from "@phosphor-icons/react"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
@@ -140,6 +141,16 @@ export function WhatGravitreLearnedSection({
               <p className={cn(TYPE.cardTitle, "line-clamp-3")}>{row.statement}</p>
               {row.learnedAt ? (
                 <p className={cn(TYPE.meta, "mt-1")}>Learned {row.learnedAt}</p>
+              ) : null}
+              {row.id ? (
+                <Link
+                  href={buildLearningInsightMapHref(row.id)}
+                  className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--g-brand)] hover:underline"
+                  data-testid="overview-learning-map-link"
+                >
+                  View on intelligence map
+                  <ArrowRight className="h-3 w-3" aria-hidden />
+                </Link>
               ) : null}
             </li>
           ))}

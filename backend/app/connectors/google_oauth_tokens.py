@@ -9,6 +9,23 @@ import httpx
 from app.connectors.google_oauth_common import GOOGLE_TOKEN_URL
 
 
+class GoogleOAuthRefreshError(RuntimeError):
+    """Token endpoint returned a typed OAuth error (not a generic HTTP failure)."""
+
+    def __init__(self, error: str, description: str = "") -> None:
+        self.error = (error or "").strip() or "oauth_error"
+        self.description = (description or "").strip()
+        self.reconnect_required = self.error == "invalid_grant"
+        detail = self.description or self.error
+        super().__init__(detail)
+
+
+def format_google_refresh_failure(exc: BaseException) -> str:
+    if isinstance(exc, GoogleOAuthRefreshError) and exc.reconnect_required:
+        return "Google access expired. Reconnect this Google connector."
+    return f"Token refresh failed: {exc}"
+
+
 def token_payload_from_response(data: dict[str, Any]) -> dict[str, Any]:
     expires_in = int(data.get("expires_in") or 3600)
     now = int(time.time())
@@ -29,7 +46,19 @@ def token_request(*, client_id: str, client_secret: str, body: dict[str, str]) -
             data=body,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            payload: dict[str, Any] = {}
+            try:
+                raw = response.json()
+                if isinstance(raw, dict):
+                    payload = raw
+            except Exception:  # noqa: BLE001
+                payload = {}
+            err = str(payload.get("error") or "").strip()
+            desc = str(payload.get("error_description") or "").strip()
+            if err:
+                raise GoogleOAuthRefreshError(err, desc)
+            response.raise_for_status()
         return token_payload_from_response(response.json())
 
 

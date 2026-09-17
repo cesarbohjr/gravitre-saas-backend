@@ -50,8 +50,10 @@ export function ResearchPlanPanel({
   const stepCounter = formatStepCounter(namedSteps)
   const showNamedSteps = namedSteps.length >= 2
   const panelTitle = namedSteps.length >= 2 ? "Progress" : "Research plan"
+  const planSummary = String(pendingTask?.plan_summary ?? "").trim()
+  const planRationale = String(pendingTask?.plan_rationale ?? "").trim()
 
-  if (!stages.length && !showNamedSteps && !strategicPlan?.goal) return null
+  if (!stages.length && !showNamedSteps && !strategicPlan?.goal && !planSummary) return null
 
   return (
     <div
@@ -70,8 +72,13 @@ export function ResearchPlanPanel({
         </div>
       </div>
 
-      {strategicPlan?.goal ? (
+      {planSummary ? (
+        <p className="mt-2 text-xs text-foreground">{planSummary}</p>
+      ) : strategicPlan?.goal ? (
         <p className="mt-2 text-xs text-foreground">{strategicPlan.goal}</p>
+      ) : null}
+      {planRationale && planRationale !== planSummary ? (
+        <p className="mt-1 text-[11px] text-muted-foreground">{planRationale}</p>
       ) : null}
 
       {stages.length > 0 ? (

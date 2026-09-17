@@ -14,7 +14,12 @@ from app.connectors.google_oauth_common import (
     google_oauth_credentials,
     google_oauth_redirect_uri,
 )
-from app.connectors.google_oauth_tokens import exchange_google_code, refresh_google_token
+from app.connectors.google_oauth_tokens import (
+    exchange_google_code,
+    format_google_refresh_failure,
+    GoogleOAuthRefreshError,
+    refresh_google_token,
+)
 from app.connectors.hubspot_oauth import (
     _connector_environment,
     load_oauth_tokens,
@@ -91,9 +96,10 @@ def refresh_google_calendar_tokens_if_needed(
             )
             store_oauth_tokens(client, org_id, connector_id, tokens, settings)
             logger.info("google_calendar_token_refreshed org_id=%s connector_id=%s", org_id, connector_id)
-        except httpx.HTTPError as exc:
-            mark_connector_oauth_failure(client, org_id, connector_id, "Token refresh failed")
-            return None, f"Token refresh failed: {exc}"
+        except (GoogleOAuthRefreshError, httpx.HTTPError) as exc:
+            msg = format_google_refresh_failure(exc)
+            mark_connector_oauth_failure(client, org_id, connector_id, msg)
+            return None, msg
 
     return tokens, None
 

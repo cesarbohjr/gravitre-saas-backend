@@ -21,6 +21,7 @@ export type NamedProgressStep = {
   /** Human label with any status prefix stripped. Never "Routing tier: research". */
   label: string
   status: ProgressStepStatus
+  rationale?: string
 }
 
 export type PendingTaskLike =
@@ -31,6 +32,9 @@ export type PendingTaskLike =
       } | null
       type?: string
       status?: string
+      plan_summary?: string
+      plan_rationale?: string
+      plan_steps?: unknown[] | null
     }
   | null
   | undefined
@@ -116,28 +120,36 @@ export function deriveNamedProgressSteps(
     }))
   }
 
-  const steps = pendingTask?.params?.steps
-  if (!Array.isArray(steps)) return []
+  const planned = Array.isArray(pendingTask?.params?.steps)
+    ? pendingTask.params.steps
+    : Array.isArray(pendingTask?.plan_steps)
+      ? pendingTask.plan_steps
+      : null
+  if (!planned) return []
 
   const currentIdx = Number(pendingTask?.params?.current_step_index ?? -1)
-  return steps
+  return planned
     .map((step, index) => {
-      const rawLabel =
-        step && typeof step === "object" && "label" in step
-          ? String((step as { label?: unknown }).label ?? "")
-          : ""
+      const raw = step && typeof step === "object" ? (step as { label?: unknown; rationale?: unknown; status?: unknown }) : null
+      const rawLabel = raw ? String(raw.label ?? "") : ""
       const stripped = stripStepPrefix(rawLabel)
       const label = stripped
         ? sanitizeUserActivityLabel(stripped)
         : `Step ${index + 1}`
       if (!label || label === SAFE_STATUS_FALLBACK) return null
+      const fromStatus = String(raw?.status ?? "").toLowerCase()
       const status: ProgressStepStatus =
-        currentIdx >= 0 && index < currentIdx
+        fromStatus === "completed" || fromStatus === "done"
           ? "done"
-          : currentIdx >= 0 && index === currentIdx
+          : fromStatus === "running" || fromStatus === "current"
             ? "current"
-            : "pending"
-      return { label, status }
+            : currentIdx >= 0 && index < currentIdx
+              ? "done"
+              : currentIdx >= 0 && index === currentIdx
+                ? "current"
+                : "pending"
+      const rationale = String(raw?.rationale ?? "").trim()
+      return rationale ? { label, status, rationale } : { label, status }
     })
     .filter((step): step is NamedProgressStep => Boolean(step))
 }

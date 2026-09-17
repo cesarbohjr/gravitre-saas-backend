@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.execution_plan_service import ExecutionPlan, ExecutionStep, StepKind
 from app.services.pending_action_service import (
@@ -175,9 +176,22 @@ def project_pending_task_from_plan(
     if primary is not None:
         pending.setdefault("action", primary.action_key or primary.title)
         pending.setdefault("connector_id", primary.connector_id)
-        pending.setdefault("params", dict(primary.meta.get("args") or {}))
+        pending.setdefault("params", safe_normalize_stored_dict(primary.meta, key="args"))
     pending["_projection"] = True
     pending["_projection_source"] = "execution_plan"
+    pending["plan_summary"] = plan.summary or plan.objective or ""
+    pending["plan_rationale"] = plan.replan_reason or plan.objective or plan.summary or ""
+    pending["plan_steps"] = [
+        {
+            "label": step.title or step.action_key or step.step_id,
+            "kind": step.kind,
+            "connector_id": step.connector_id,
+            "action_key": step.action_key,
+            "status": step.status,
+            "rationale": safe_normalize_stored_dict(step.meta).get("rationale"),
+        }
+        for step in plan.steps
+    ]
     return pending
 
 

@@ -36,6 +36,19 @@ from app.core.safe_dict import safe_normalize_stored_dict
 logger = get_logger(__name__)
 
 
+def _unified_stop_requested(
+    org_id: str,
+    conversation_id: str | None,
+    settings: Settings | None,
+) -> bool:
+    cid = (conversation_id or "").strip()
+    if not org_id or not cid:
+        return False
+    from app.services.chat_turn_cancel_service import is_stop_requested
+
+    return is_stop_requested(org_id, cid, settings=settings)
+
+
 def _log_unified_turn_breakdown(
     org_id: str,
     breakdown: dict[str, Any],
@@ -1183,6 +1196,13 @@ async def run_unified_turn_shadow(
         progressive_round_ms: list[int] = []
         # Up to 2 rounds: search_catalog_tools may load full schemas then continue.
         for prog_round in range(2):
+            if _unified_stop_requested(org_id, conversation_id, active):
+                return UnifiedTurnShadowResult(
+                    outcome_kind="skipped",
+                    fallthrough_reason="chat_stop",
+                    error="stopped",
+                    connected_integrations=list(connected_integrations or []),
+                )
             # Pure conversational / human-moment venting: never attach tools.
             # Empathy-warranting turns must not derail into connector calls (rule 10).
             conversational_no_tools = shape_label == "conversational"
@@ -1369,6 +1389,11 @@ async def run_unified_turn_shadow(
     )
 
     forced = resolve_qa_force_tool(active, header_value=qa_force_tool)
+    if _unified_stop_requested(org_id, conversation_id, active):
+        result.outcome_kind = "skipped"
+        result.fallthrough_reason = "chat_stop"
+        result.error = "stopped"
+        return result
     if tool_calls or forced:
         if forced:
             try:

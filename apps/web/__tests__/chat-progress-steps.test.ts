@@ -133,4 +133,26 @@ describe("isActionProgressStep", () => {
     expect(isActionProgressStep("Step 1/4: x")).toBe(true)
     expect(isActionProgressStep("Thinking about it")).toBe(false)
   })
+
+  it("falls back to ExecutionPlan projection steps with rationale", () => {
+    const steps = deriveNamedProgressSteps([], {
+      plan_summary: "List HubSpot contacts",
+      plan_rationale: "Connected HubSpot is reachable for this read.",
+      plan_steps: [
+        {
+          label: "HubSpot contacts.list",
+          kind: "read",
+          status: "pending",
+          rationale: "Use the connected CRM, not a guessed vendor.",
+        },
+      ],
+    })
+    expect(steps).toEqual([
+      {
+        label: "HubSpot contacts.list",
+        status: "pending",
+        rationale: "Use the connected CRM, not a guessed vendor.",
+      },
+    ])
+  })
 })

@@ -36,6 +36,7 @@ from app.services.pipecat_voice.voice_tool_narration import (
     narrate_tool_started,
 )
 from app.services.voice_session_service import normalize_spoken_text, split_speakable_chunks
+from app.services.chat_turn_cancel_service import is_stop_requested
 
 logger = get_logger(__name__)
 
@@ -114,6 +115,17 @@ class GravitreCognitiveLLMService(LLMService):
 
         user_text, history = _messages_from_context(context)
         if not user_text:
+            return
+        if is_stop_requested(
+            str(self._org_id or ""),
+            self._conversation_id,
+            settings=self._app_settings,
+        ):
+            logger.info(
+                "pipecat_voice_chat_stop org_id=%s conversation_id=%s",
+                self._org_id,
+                self._conversation_id,
+            )
             return
         intelligence = get_agent_intelligence()
         # `normalize_spoken_text` forces sentence-terminal punctuation onto
@@ -207,6 +219,17 @@ class GravitreCognitiveLLMService(LLMService):
                 mode=resolve_voice_session_intelligence_mode(user_text),
             )
         async for event in events_source:
+            if is_stop_requested(
+                str(self._org_id or ""),
+                self._conversation_id,
+                settings=self._app_settings,
+            ):
+                logger.info(
+                    "pipecat_voice_chat_stop_mid_stream org_id=%s conversation_id=%s",
+                    self._org_id,
+                    self._conversation_id,
+                )
+                break
             if isinstance(event, AssistantStreamComplete):
                 continue
             if not isinstance(event, AssistantStreamEvent):

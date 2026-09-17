@@ -4,7 +4,9 @@ OAuth connector for Marketing Agent GA4 read access (Data API groundwork).
 
 **Platform setup:** use the shared [GOOGLE_OAUTH.md](./GOOGLE_OAUTH.md) guide (`npm run google:setup`, `google:fill-env`, `google:railway`, `google:check`).
 
-Redirect URI: `{API_PUBLIC_URL}/api/connectors/oauth/google_analytics/callback`
+Redirect URI (shared Google client, same as Gmail/Calendar): `{API_PUBLIC_URL}/api/connectors/oauth/google/callback`
+
+Do not register a per-product `/google_analytics/callback` on the shared GCP client.
 
 Env (either naming works): `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` or `GOOGLE_ANALYTICS_CLIENT_ID` / `GOOGLE_ANALYTICS_CLIENT_SECRET`
 
@@ -21,7 +23,7 @@ OAuth scope: `https://www.googleapis.com/auth/analytics.readonly`
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/api/connectors/oauth/google_analytics/start` | Start OAuth |
-| GET | `/api/connectors/oauth/google_analytics/callback` | OAuth callback |
+| GET | `/api/connectors/oauth/google/callback` | Shared Google OAuth callback (GA4 included) |
 | GET | `/api/connectors/{id}/google-analytics/properties` | List linkable properties |
 | PUT | `/api/connectors/{id}/google-analytics/property` | Link `propertyId` |
 
