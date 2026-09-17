@@ -19,7 +19,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   it("connectors default to a compact list without atmosphere", () => {
     const src = readFileSync(resolve(webRoot, "app/connectors/page.tsx"), "utf8")
     expect(src).toMatch(/useState<"topology" \| "grid">\("grid"\)/)
-    expect(src).toMatch(/md:flex md:flex-col md:gap-2/)
+    expect(src).toMatch(/variant="list"/)
     expect(src).not.toMatch(/ConnectorsAtmosphere/)
   })
 

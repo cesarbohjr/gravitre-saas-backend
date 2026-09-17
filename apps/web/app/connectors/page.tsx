@@ -521,6 +521,7 @@ function ConnectorNode({
   onTestConnection,
   onReconnect,
   onDelete,
+  variant = "topology",
 }: { 
   connector: Connector
   position: "left" | "right"
@@ -529,6 +530,7 @@ function ConnectorNode({
   onTestConnection: (connectorId: string) => Promise<void>
   onReconnect?: (connector: Connector) => Promise<void>
   onDelete: () => void
+  variant?: "topology" | "list"
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const config = statusConfig[connector.status] ?? statusConfig.disconnected
@@ -537,6 +539,69 @@ function ConnectorNode({
 
   const handleSync = async () => {
     await onSync(connector.id)
+  }
+
+  const optionsMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={`${connector.name} options`}>
+          <MoreVertical className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-36">
+        <DropdownMenuItem onClick={onConfigure}>
+          <Settings className="h-3.5 w-3.5 mr-2" />
+          Configure
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
+          <RefreshCw className={cn("h-3.5 w-3.5 mr-2", isSyncing && "animate-spin")} />
+          Sync Now
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void onTestConnection(connector.id)}>
+          <Wifi className="h-3.5 w-3.5 mr-2" />
+          Test Connection
+        </DropdownMenuItem>
+        {connectorNeedsOAuthReconnect(connector) && onReconnect && (
+          <DropdownMenuItem onClick={() => void onReconnect(connector)}>
+            <ExternalLink className="h-3.5 w-3.5 mr-2" />
+            {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onDelete} className="text-destructive">
+          <Trash2 className="h-3.5 w-3.5 mr-2" />
+          Remove
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
+  if (variant === "list") {
+    return (
+      <div className="flex items-center gap-3 border-b border-divide py-2.5">
+        <ConnectorIcon
+          vendor={connector.type}
+          status={connector.status === "syncing" ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
+          size="sm"
+          showStatusIndicator={false}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{connector.name}</p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {connector.type}
+            {" · "}
+            {isSyncing ? "Syncing" : connectorStatusLabel(connector)}
+          </p>
+        </div>
+        <Link
+          href={`/connectors/${connector.id}`}
+          className="shrink-0 text-xs text-[color:var(--g-text-muted)] underline-offset-4 hover:text-[color:var(--g-text-primary)] hover:underline"
+        >
+          Details
+        </Link>
+        {optionsMenu}
+      </div>
+    )
   }
 
   return (
@@ -593,38 +658,9 @@ function ConnectorNode({
               </div>
             </div>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100" aria-label={`${connector.name} options`}>
-                  <MoreVertical className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36">
-                <DropdownMenuItem onClick={onConfigure}>
-                  <Settings className="h-3.5 w-3.5 mr-2" />
-                  Configure
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
-                  <RefreshCw className={cn("h-3.5 w-3.5 mr-2", isSyncing && "animate-spin")} />
-                  Sync Now
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void onTestConnection(connector.id)}>
-                  <Wifi className="h-3.5 w-3.5 mr-2" />
-                  Test Connection
-                </DropdownMenuItem>
-                {connectorNeedsOAuthReconnect(connector) && onReconnect && (
-                    <DropdownMenuItem onClick={() => void onReconnect(connector)}>
-                      <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                      {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
-                    </DropdownMenuItem>
-                  )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                  Remove
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="shrink-0 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-within:opacity-100">
+              {optionsMenu}
+            </div>
           </div>
 
           <ConnectorReadinessBadges availability={connector.availability} />
@@ -3196,28 +3232,21 @@ function ConnectorsPageContent() {
             </div>
           ) : (
           <>
-          {/* Mobile: Card list view */}
-          <div className="md:hidden space-y-4">
-            {/* Mobile Hub Summary — same hub language as desktop / homepage */}
-            <div className="flex items-center justify-center py-4">
-              <CentralHub connectedCount={hubConnectedCount} totalCount={hubTotalCount} />
-            </div>
-            
-            {/* Mobile connector cards */}
-            <div className="space-y-3">
-              {filteredConnectors.map((connector) => (
-                <ConnectorNode
-                  key={connector.id}
-                  connector={connector}
-                  position="right"
-                  onConfigure={() => setConfigureModal(connector)}
-                  onSync={handleSync}
-                  onTestConnection={handleTestConnection}
-                  onReconnect={handleReconnectOAuth}
-                  onDelete={() => setDeleteModal(connector)}
-                />
-              ))}
-            </div>
+          {/* Mobile: compact list */}
+          <div className="md:hidden">
+            {filteredConnectors.map((connector) => (
+              <ConnectorNode
+                key={connector.id}
+                connector={connector}
+                position="right"
+                variant="list"
+                onConfigure={() => setConfigureModal(connector)}
+                onSync={handleSync}
+                onTestConnection={handleTestConnection}
+                onReconnect={handleReconnectOAuth}
+                onDelete={() => setDeleteModal(connector)}
+              />
+            ))}
           </div>
 
           {/* Desktop: Network topology view */}
@@ -3264,12 +3293,13 @@ function ConnectorsPageContent() {
 
           {/* Desktop: compact list (default). Topology remains opt-in. */}
           {viewMode === "grid" && (
-            <div className="hidden md:flex md:flex-col md:gap-2">
+            <div className="hidden md:block">
               {filteredConnectors.map((connector) => (
                 <ConnectorNode
                   key={connector.id}
                   connector={connector}
                   position="right"
+                  variant="list"
                   onConfigure={() => setConfigureModal(connector)}
                   onSync={handleSync}
                   onTestConnection={handleTestConnection}

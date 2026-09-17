@@ -4,6 +4,8 @@
 
 Pass language: **PASS / FAIL / NOT PROVEN / BLOCKED**.
 
+Tip on `main`: `81937f28` (Phase 2 visual + Phase 3 chrome flatten). Follow-up: connector **list rows** (not topology cards stacked).
+
 ---
 
 ## Added
@@ -11,10 +13,11 @@ Pass language: **PASS / FAIL / NOT PROVEN / BLOCKED**.
 - Text hub links on Agents / Multi-agent / Training (replaces pill `HubTabs` on that strip).
 - Closed “Evidence” disclosure under the Relationships map.
 - Closed “Metrics” disclosure on Performance, after the attribution path.
+- Connector list `variant="list"`: name, type/status, Details, overflow menu. Topology nodes stay for opt-in network view.
 
 ## Changed
 
-- Agents fleet **default view = list** (team/graph remain available).
+- Agents fleet **default view = list** (team/graph remain available). Existing localStorage prefs keep the stored view.
 - Connectors **default view = compact list**; network topology is opt-in.
 - Settings preference rows: border-bottom rows instead of nested surface cards (Meson addon Enable blocks unchanged — those are real billing controls).
 
@@ -23,14 +26,19 @@ Pass language: **PASS / FAIL / NOT PROVEN / BLOCKED**.
 - `ConnectorsAtmosphere` on `/agents` and `/connectors` (decorative canvas behind the job).
 - Permanent KPI-first Performance layout.
 - Permanent card stack around the Intelligence map.
+- Mobile connector hub + card stack as the default list.
 
-**Not removed:** graph/team views, connector topology toggle, settings sidebar, Intelligence Advanced tools, kill-switch, marketing isolation, Meson-as-not-chat.
+**Not removed:** graph/team views, connector topology toggle, settings sidebar, Intelligence Advanced tools, kill-switch, marketing isolation, Meson-as-not-chat, Meson addon Enable/Disable (authorized billing).
 
 ---
 
 ## A. Executive result
 
-Phase 3 implements plan item 6 as a **chrome flatten**, not a rewrite of fleet/graph/connectors data. Live authenticated click-through of every surface: **NOT PROVEN** in this slice (source + Vitest).
+Phase 3 implements plan item 6 as a **chrome flatten**, not a rewrite of fleet/graph/connectors data.
+
+Vercel production **READY** for `81937f28` — alias `gravitre.app` (`dpl_GRAwjH4iYXkQ2JMVferajqgv8gY9`). Authenticated click-through of every surface: **NOT PROVEN** (session expired in verification browser). Source + Vitest **PASS**.
+
+Railway backend: not required (frontend-only).
 
 ---
 
@@ -42,15 +50,15 @@ Phase 3 implements plan item 6 as a **chrome flatten**, not a rewrite of fleet/g
 | `/intelligence` | Understand relationships | Map first; evidence behind `<details>` |
 | `/intelligence/performance` | Diagnose outcomes | Path first; metrics on demand |
 | `/settings` | Change a preference | Rows, not card-per-group on the main page |
-| `/connectors` | Connect a service | Compact list first; topology optional |
+| `/connectors` | Connect a service | Compact list rows first; topology optional |
 
 ---
 
 ## C. Tests
 
-Vitest `phase-3-product-ia.test.ts` (source + default prefs).
+Vitest `phase-3-product-ia.test.ts` (source + default prefs) — **PASS** 4 tests (2026-09-17).
 
-Production PASS / deploy: **not claimed**.
+Production authenticated PASS: **NOT PROVEN**.
 
 ---
 
