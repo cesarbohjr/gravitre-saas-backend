@@ -4075,6 +4075,9 @@ class AgentIntelligence:
         permitted_registry = expand_registry_with_connected_integrations(permitted_registry, connected_list)
         from app.services.tool_router import narrow_permitted_tools_for_capability
 
+        from app.services.action_execute_now import unavailable_vendors_from_org_context
+
+        org_snapshot = org_context if isinstance(org_context, dict) else {}
         permitted_registry, _tool_route_meta = narrow_permitted_tools_for_capability(
             permitted_registry,
             classification={
@@ -4082,6 +4085,7 @@ class AgentIntelligence:
                 "_query": refined_query,
             },
             connected_integrations=connected_list,
+            unavailable_vendors=unavailable_vendors_from_org_context(org_snapshot),
         )
 
         clarification = await get_clarification_engine(active_settings).should_clarify(

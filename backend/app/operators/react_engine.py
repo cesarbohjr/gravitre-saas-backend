@@ -397,12 +397,22 @@ class ReActEngine:
         from app.services.tool_router import react_max_tools_for_classification
 
         _react_max_tools = react_max_tools_for_classification(tool_classification)
+        from app.services.action_execute_now import unavailable_vendors_from_org_context
+
+        org_snapshot = getattr(ctx, "org_context", None)
+        if not isinstance(org_snapshot, dict):
+            extra = getattr(ctx, "extra", None)
+            if isinstance(extra, dict):
+                org_snapshot = extra.get("org_context")
         tools, tool_visibility = narrow_tools_for_turn(
             all_tools,
             query=tool_query or task,
             classification=tool_classification,
             connector_names=tuple(connector_focus or ()),
             connected_integrations=list(connected or []),
+            unavailable_vendors=unavailable_vendors_from_org_context(
+                org_snapshot if isinstance(org_snapshot, dict) else None
+            ),
             max_tools=_react_max_tools,
         )
         if not tools:

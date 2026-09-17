@@ -97,5 +97,5 @@ Recurring parameter failures are **primarily a combination** (not a single cause
 1. Approve architecture direction (single schema + preflight + parameter source rules).
 2. Prioritize P0 actions from health matrix (schema/executor disagreement on high-traffic reads).
 3. Expand capability ontology for marketing/analytics business asks (traffic, GSC, campaigns).
-4. Add `CAN_THIS_ACTION_EXECUTE_NOW` check to planner/tool router before tool_choice.
+4. Add `CAN_THIS_ACTION_EXECUTE_NOW` check to planner/tool router before tool_choice. **Shipped 2026-09-17** — `app/services/action_execute_now.py`; wired in `narrow_tools_for_turn`, `embed_narrow_tools_for_turn`, `narrow_permitted_tools_for_capability`. Cheap snapshot only (no per-tool `force_live`). See `docs/ai/PHASE_EXECUTE_NOW.md`.
 5. Define connector certification states (Section R) as product/process — not code yet.

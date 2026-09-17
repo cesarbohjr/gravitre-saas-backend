@@ -46,6 +46,7 @@ def narrow_permitted_tools_for_capability(
     *,
     classification: dict[str, Any] | None,
     connected_integrations: list[str] | None = None,
+    unavailable_vendors: list[str] | None = None,
     max_tools: int | None = None,
 ) -> tuple[list[str], dict[str, Any]]:
     """Filter registry-permitted tools to capability binding vendors + platform utilities."""
@@ -54,14 +55,24 @@ def narrow_permitted_tools_for_capability(
     cap_id = str(cls.get("capability_id") or "").strip().lower()
     budget = max_tools if max_tools is not None else react_max_tools_for_classification(cls)
 
+    from app.services.action_execute_now import filter_tool_names_executable_now
+
+    def _apply_execute_now(names: list[str], meta: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
+        filtered, execute_stats = filter_tool_names_executable_now(
+            names,
+            connected_integrations=connected_integrations,
+            unavailable_vendors=unavailable_vendors,
+        )
+        return filtered, {**meta, **execute_stats, "visibleTools": len(filtered)}
+
     if not cap_id:
         if len(tools) > budget:
-            return tools[:budget], {"toolRouter": "budget_only", "maxTools": budget}
-        return tools, {"toolRouter": "unscoped", "maxTools": budget}
+            return _apply_execute_now(tools[:budget], {"toolRouter": "budget_only", "maxTools": budget})
+        return _apply_execute_now(tools, {"toolRouter": "unscoped", "maxTools": budget})
 
     definition = get_capability(cap_id)
     if definition is None:
-        return tools, {"toolRouter": "unknown_capability", "capabilityId": cap_id}
+        return _apply_execute_now(tools, {"toolRouter": "unknown_capability", "capabilityId": cap_id})
 
     connected = {str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()}
     resolution = resolve_capability(
@@ -104,10 +115,13 @@ def narrow_permitted_tools_for_capability(
     if len(deduped) > budget:
         deduped = deduped[:budget]
 
-    return deduped, {
-        "toolRouter": "capability_scoped",
-        "capabilityId": cap_id,
-        "vendors": sorted(vendors),
-        "maxTools": budget,
-        "visibleTools": len(deduped),
-    }
+    return _apply_execute_now(
+        deduped,
+        {
+            "toolRouter": "capability_scoped",
+            "capabilityId": cap_id,
+            "vendors": sorted(vendors),
+            "maxTools": budget,
+            "visibleTools": len(deduped),
+        },
+    )

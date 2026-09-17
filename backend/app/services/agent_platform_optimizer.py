@@ -258,6 +258,7 @@ def narrow_tools_for_turn(
     classification: dict[str, Any] | None = None,
     connector_names: tuple[str, ...] | list[str] | None = None,
     connected_integrations: list[str] | None = None,
+    unavailable_vendors: list[str] | None = None,
     requires_action: bool | None = None,
     max_tools: int = _MAX_TOOLS_DEFAULT,
     max_per_connector: int = _MAX_PER_CONNECTOR,
@@ -344,6 +345,13 @@ def narrow_tools_for_turn(
         query=query,
         classification=classification,
     )
+    from app.services.action_execute_now import filter_tools_executable_now
+
+    compressed, execute_now_stats = filter_tools_executable_now(
+        compressed,
+        connected_integrations=connected,
+        unavailable_vendors=unavailable_vendors,
+    )
     stats = {
         "totalTools": len(tools),
         "catalogTools": len(tools),
@@ -352,6 +360,7 @@ def narrow_tools_for_turn(
         "actionRequired": action_required,
         "compressed": True,
         **capability_stats,
+        **execute_now_stats,
     }
     from app.services.narrowed_tools import mark_narrowed
 

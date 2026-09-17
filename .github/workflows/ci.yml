@@ -182,7 +182,7 @@ jobs:
         run: python scripts/lint-smoke-harness.py
 
       - name: Golden benchmark (Phase A + traffic scenarios)
-        run: python -m pytest tests/services/test_phase_a_cognitive_runtime_benchmark.py tests/services/test_golden_benchmark_traffic.py -q
+        run: python -m pytest tests/services/test_phase_a_cognitive_runtime_benchmark.py tests/services/test_golden_benchmark_traffic.py tests/services/test_action_execute_now.py -q
         env:
           APP_ENV: dev
           SUPABASE_URL: https://test.supabase.co

@@ -163,6 +163,7 @@ def embed_narrow_tools_for_turn(
     settings: Settings,
     org_id: str | None = None,
     connected_integrations: list[str] | None = None,
+    unavailable_vendors: list[str] | None = None,
     classification: dict[str, Any] | None = None,
     requires_action: bool | None = None,
     max_tools: int = 16,
@@ -284,6 +285,13 @@ def embed_narrow_tools_for_turn(
             query=query,
             classification=classification,
         )
+        from app.services.action_execute_now import filter_tools_executable_now
+
+        visible, execute_now_stats = filter_tools_executable_now(
+            visible,
+            connected_integrations=connected,
+            unavailable_vendors=unavailable_vendors,
+        )
         stats = {
             "totalTools": len(tools),
             "catalogTools": len(tools),
@@ -300,6 +308,7 @@ def embed_narrow_tools_for_turn(
             "embed_narrow_total_ms": narrow_total_ms,
             **tool_partial,
             **capability_stats,
+            **execute_now_stats,
         }
         from app.services.narrowed_tools import mark_narrowed
 
@@ -313,6 +322,7 @@ def embed_narrow_tools_for_turn(
             query=query,
             classification=classification,
             connected_integrations=connected_integrations,
+            unavailable_vendors=unavailable_vendors,
             requires_action=requires_action,
             max_tools=max_tools,
             max_per_connector=max_per_connector,

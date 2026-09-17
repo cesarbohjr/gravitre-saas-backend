@@ -365,7 +365,7 @@ Ideal model: `resource_type`, `resource_id`, `display_name`, `canonical_identity
 
 **Gap:** Planner/ReAct does **not consistently call** `evaluate_connector_availability(action_key=…)` before selecting a tool. Fresh intents go ReAct-first (`connector_chat_routing.should_run_connector_preflight` returns false).
 
-**`CAN_THIS_ACTION_EXECUTE_NOW`:** **Not implemented as named function.** Closest: matrix `implementation_status` + availability service — consulted in governed chat path, not universal.
+**`CAN_THIS_ACTION_EXECUTE_NOW`:** Implemented as `app.services.action_execute_now.can_this_action_execute_now` (alias `CAN_THIS_ACTION_EXECUTE_NOW`). Applied before `tool_choice` in `narrow_tools_for_turn`, `embed_narrow_tools_for_turn`, and `narrow_permitted_tools_for_capability`. Uses connected/unavailable snapshots — **not** per-tool `evaluate_connector_availability(force_live=True)` and **not** HMAC preflight. See `docs/ai/PHASE_EXECUTE_NOW.md`.
 
 ---
 
