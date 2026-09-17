@@ -551,6 +551,12 @@ Do **not** collapse to single "connected" flag.
 | tenant isolation | org scoping PASS |
 | live smoke | evidence-linked PASS per engineering standards |
 
+### Process definition (2026-09-17)
+
+Section R states are defined as **product/process only** (no runtime enum, no customer badge) in [connector-certification-states.md](./connector-certification-states.md).
+
+**Split the proposed ladder:** Track A catalog acceptance (engineering, per action) vs Track B tenant execution (org row / `execution_available` / execute-now) vs Track C partner marketplace (existing registry sandbox). Do not collapse to a single “connected” or “certified” flag. Customer-facing certification chrome is **out of scope** until separately authorized.
+
 ---
 
 ## S. Connector Action Health Matrix

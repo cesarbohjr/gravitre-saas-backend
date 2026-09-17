@@ -25,6 +25,7 @@ This review answers whether Gravitre can **actually execute** the business tasks
 | Connector action health matrix (machine-readable) | [connector-action-health-matrix.json](./connector-action-health-matrix.json) | Generated 2026-09-17 |
 | STA-303 error code taxonomy | [sta303-connector-error-codes-audit.md](./sta303-connector-error-codes-audit.md) | Reference |
 | HubSpot search schema dead-end (exemplar) | [hubspot-search-validation-dead-end.md](./hubspot-search-validation-dead-end.md) | Live-proven class |
+| Connector certification states (Section R) | [connector-certification-states.md](./connector-certification-states.md) | **Process only (2026-09-17)** — no code / no customer badge |
 
 ---
 
@@ -98,4 +99,4 @@ Recurring parameter failures are **primarily a combination** (not a single cause
 2. Prioritize P0 actions from health matrix (schema/executor disagreement on high-traffic reads).
 3. Expand capability ontology for marketing/analytics business asks (traffic, GSC, campaigns).
 4. Add `CAN_THIS_ACTION_EXECUTE_NOW` check to planner/tool router before tool_choice. **Shipped 2026-09-17** — `app/services/action_execute_now.py`; wired in `narrow_tools_for_turn`, `embed_narrow_tools_for_turn`, `narrow_permitted_tools_for_capability`. Cheap snapshot only (no per-tool `force_live`). See `docs/ai/PHASE_EXECUTE_NOW.md`.
-5. Define connector certification states (Section R) as product/process — not code yet.
+5. Define connector certification states (Section R) as product/process — not code yet. **Documented 2026-09-17** — [connector-certification-states.md](./connector-certification-states.md). Internal Track A/B/C only; no customer Certified/TRAINED badge, no schema, no Enable toggle.

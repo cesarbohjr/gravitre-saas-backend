@@ -63,6 +63,12 @@ mustExist("scripts/smoke-golden-benchmark-live.py")
 mustExist("backend/app/services/action_execute_now.py")
 mustExist("backend/tests/services/test_action_execute_now.py")
 mustExist("docs/ai/PHASE_EXECUTE_NOW.md")
+mustExist("docs/delivery/connector-certification-states.md")
+mustContain(
+  "docs/delivery/connector-certification-states.md",
+  "no customer-visible",
+  "process-only: no customer certification chrome",
+)
 mustContain(
   "backend/app/operators/agent_intelligence.py",
   "compose_reply_events",
