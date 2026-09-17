@@ -1,0 +1,56 @@
+---
+description: Gravitre UX Reset — object-first IA, Nodus restraint, one canonical AI workspace. Consult before any apps/web UI change.
+globs: apps/web/**/*.{tsx,ts,css}
+alwaysApply: false
+---
+
+# Gravitre UX (Reset 1.0)
+
+Primary principle: **object first, action second, details on demand.**
+
+Most surfaces answer: what am I looking at? what can I do? what happened? what needs my attention? Everything else progressively discloses.
+
+Do not start a page by choosing components. Start with the user job.
+
+## Hard stops
+
+- **No card-first design.** A card needs a real boundary: independently movable dashboard widget, selectable entity, temporary elevated object, or distinct transactional object. “This information belongs together” is not enough — use type and proximity.
+- **No card-in-card.**
+- **No tab-first IA.** Tabs only for truly parallel views of the same object.
+- **No decorative pills.** Status, filter, category, or removable selection only.
+- **Shadows** only when an object is elevationally above another surface.
+- **One primary action** per screen.
+- **Nucleo icons are functional**, not decoration.
+- **Nodus is restraint**, not “put everything in rounded white cards.”
+- **AI should reduce UI.** Do not add an AI widget on top of seven filters if the user can ask instead.
+- Every redesign proposal must say what is added, changed, **and removed**.
+
+## One Gravitre AI workspace
+
+One runtime, conversation, composer, context model, voice system, tool/execution system, workspace.
+
+Presentation states (not separate products): MINIMIZED, COMPACT, EXPANDED, FULLSCREEN.
+
+- Compact is the default when asking from another page (header, conversation, composer). No permanent history/sources/tasks rails.
+- `/ai` is fullscreen of the same workspace. `/assistant` may redirect. Keep deep links.
+- Agent chat is the same workspace + agent scope. Keep `/agents/[id]/chat`.
+- Ask Gravitre is an entry that summons the workspace. It must not call `useChat`.
+- No inspector / artifact panel when nothing is selected.
+- Voice is a composer/conversation state, not another product.
+- AuthGate: logged-out users do not see authenticated AI. Marketing demo chat stays isolated. Meson stays non-chat.
+
+Do not add a second `useChat` for embedded, agent, Ask Gravitre, or voice.
+
+Authenticated Gravitre is calm and direct. Do not compensate for application UX with Three.js, WebGL, or decorative graphics. Marketing may be expressive.
+
+## Frontend change checklist (answer before building)
+
+1. What user problem does this solve?
+2. Does an existing component already solve it?
+3. Can typography/layout solve this without another container?
+4. Is this another card / tab / pill / duplicate action?
+5. Can AI/context eliminate this control?
+6. Does it align with Nodus?
+7. Is it simpler than the current implementation?
+
+If it adds complexity without corresponding user value: **do not build it.**

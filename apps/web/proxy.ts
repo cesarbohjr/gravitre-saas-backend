@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { clickupRootOAuthRedirect } from "@/lib/clickup-oauth-callback"
 import { usesMarketingProviderTree } from "@/lib/is-marketing-route"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
 
 function withRouteKind(
@@ -41,6 +42,15 @@ export async function proxy(request: NextRequest) {
   const clickupRedirect = clickupRootOAuthRedirect(request)
   if (clickupRedirect) {
     return clickupRedirect
+  }
+
+  if (pathname === "/assistant" || pathname.startsWith("/assistant/")) {
+    const url = request.nextUrl.clone()
+    url.pathname = APP_ROUTES.gravitreAi
+    if (!url.searchParams.get("mode")) {
+      url.searchParams.set("mode", "chat")
+    }
+    return NextResponse.redirect(url)
   }
 
   const { response: supabaseResponse, user } = await updateSession(request)

@@ -100,3 +100,40 @@ def test_compiled_turn_context_trace_invariant_fields() -> None:
     assert trace["compile_duration_ms"] == 12.5
     assert trace["context_sources_included"] == ["user_message"]
     assert trace["retrievals_performed"] == []
+
+
+@pytest.mark.asyncio
+async def test_compile_includes_workspace_focus_block() -> None:
+    with patch(
+        "app.services.unified_turn_knowledge_context.build_unified_turn_knowledge_context",
+        new_callable=AsyncMock,
+        return_value=("", {"skipped": "test"}),
+    ):
+        compiled = await compile_unified_reasoning_context(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="What do we know about this?",
+            task_state={},
+            conversation_history=[],
+            connected_integrations=[],
+            client=MagicMock(),
+            classification={"intent_class": "chitchat", "intent": "general"},
+            workspace_focus={
+                "resolution": "resolved",
+                "surface": "ai_chat",
+                "route": "/intelligence",
+                "selection": {"object_type": "entity", "object_id": "acme", "label": "Acme"},
+                "canonical": {
+                    "object_type": "company",
+                    "object_id": "acme",
+                    "name": "Acme",
+                    "store": "org_knowledge_nodes",
+                },
+            },
+        )
+    labels = [label for label, _ in compiled.context_parts()]
+    assert "workspace_focus" in labels
+    included = [d.source for d in compiled.inclusion_decisions if d.action == "INCLUDE"]
+    assert "workspace_focus" in included
+

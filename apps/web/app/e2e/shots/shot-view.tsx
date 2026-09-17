@@ -8,6 +8,8 @@ import ApprovalsPage from "@/app/approvals/page"
 import ConnectorsPage from "@/app/connectors/page"
 import HomePage from "@/app/home/page"
 import WorkflowsPage from "@/app/workflows/page"
+import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
+import AgentChatProofPage from "./_components/agent-chat-proof-page"
 
 import { ShotAuthProvider } from "./shot-auth"
 
@@ -27,6 +29,8 @@ export const SHOT_SURFACES = {
   connectors: ConnectorsPage,
   home: HomePage,
   workflows: WorkflowsPage,
+  proof: AiWorkspaceProofPage,
+  "agent-chat": AgentChatProofPage,
 } as const
 
 export function ShotSurface({ name }: { name: keyof typeof SHOT_SURFACES }) {

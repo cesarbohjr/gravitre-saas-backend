@@ -1609,8 +1609,9 @@ class AgentIntelligence:
         department: str | None = None,
         spoken_mode: bool = False,
         composer_failure_probe: str | None = None,
-        interrupt_payload: dict[str, Any] | None = None,
-    ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
+    interrupt_payload: dict[str, Any] | None = None,
+    workspace_focus: dict[str, Any] | None = None,
+) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
         Non-streaming execute_task() is unchanged for operator async, jobs, workflows,
@@ -1635,6 +1636,32 @@ class AgentIntelligence:
 
             client = get_supabase_client(active_settings)
         _mark("client_ready")
+
+        resolved_workspace_focus: dict[str, Any] | None = None
+        try:
+            from app.schemas.workspace_focus import WorkspaceFocus
+            from app.services.workspace_focus_resolver import resolve_workspace_focus
+
+            parsed_focus = None
+            if workspace_focus:
+                parsed_focus = WorkspaceFocus.model_validate(workspace_focus)
+            resolved_workspace_focus = resolve_workspace_focus(
+                org_id=org_id,
+                client=client,
+                focus=parsed_focus,
+                environment_name=environment_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("workspace_focus_parse_or_resolve_failed org_id=%s error=%s", org_id, exc)
+            resolved_workspace_focus = {
+                "resolution": "unresolved",
+                "surface": None,
+                "route": None,
+                "selection": None,
+                "canonical": None,
+                "duration_ms": 0.0,
+            }
+        _mark("workspace_focus_resolved")
 
         task_text = query.strip()
         from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
@@ -3011,6 +3038,20 @@ class AgentIntelligence:
                 environment_name=environment_name,
                 spoken_mode=bool(spoken_mode),
                 intent="chat",
+                parameters={
+                    "workspace_focus": {
+                        "resolution": (resolved_workspace_focus or {}).get("resolution"),
+                        "surface": (resolved_workspace_focus or {}).get("surface"),
+                        "route": (resolved_workspace_focus or {}).get("route"),
+                        "selection": (resolved_workspace_focus or {}).get("selection"),
+                        "canonical_id": ((resolved_workspace_focus or {}).get("canonical") or {}).get(
+                            "object_id"
+                        ),
+                        "canonical_type": ((resolved_workspace_focus or {}).get("canonical") or {}).get(
+                            "object_type"
+                        ),
+                    }
+                },
                 task_state=task_state if isinstance(task_state, dict) else None,
                 conversation_history=conversation_history,
                 client=client,
@@ -3040,11 +3081,25 @@ class AgentIntelligence:
                     **task_state,
                     "_cognitive_turn_id": cognitive_ctx.turn_id,
                     "_reasoning_depth": reasoning_depth,
+                    "_workspace_focus_turn": {
+                        "resolution": (resolved_workspace_focus or {}).get("resolution"),
+                        "selection": (resolved_workspace_focus or {}).get("selection"),
+                        "canonical": (resolved_workspace_focus or {}).get("canonical"),
+                        "route": (resolved_workspace_focus or {}).get("route"),
+                        "surface": (resolved_workspace_focus or {}).get("surface"),
+                    },
                 }
             else:
                 task_state = {
                     "_cognitive_turn_id": cognitive_ctx.turn_id,
                     "_reasoning_depth": reasoning_depth,
+                    "_workspace_focus_turn": {
+                        "resolution": (resolved_workspace_focus or {}).get("resolution"),
+                        "selection": (resolved_workspace_focus or {}).get("selection"),
+                        "canonical": (resolved_workspace_focus or {}).get("canonical"),
+                        "route": (resolved_workspace_focus or {}).get("route"),
+                        "surface": (resolved_workspace_focus or {}).get("surface"),
+                    },
                 }
             # Emit per-stage kernel timings for voice latency Phase 0/6 evidence.
             _stage_ms = {
@@ -3167,6 +3222,7 @@ class AgentIntelligence:
             getattr(active_settings, "context_compiler_unified_live_v1", True)
         ):
             from app.services.context_compiler import compile_unified_reasoning_context
+            from app.services.workspace_focus_resolver import workspace_focus_trace_meta
 
             _compiled_unified_reasoning = await compile_unified_reasoning_context(
                 org_id=org_id,
@@ -3186,12 +3242,14 @@ class AgentIntelligence:
                 mode=requested_mode,
                 agent=early_agent,
                 surface=_surface,
+                workspace_focus=resolved_workspace_focus,
             )
             _boot_cognitive_trace(task_state if isinstance(task_state, dict) else None)
             if _cognitive_trace_builder is not None:
                 _cognitive_trace_builder.mark(
                     "context_compile_unified",
                     **_compiled_unified_reasoning.to_trace_dict(),
+                    **(workspace_focus_trace_meta(resolved_workspace_focus) if resolved_workspace_focus else {}),
                 )
                 _cognitive_trace_builder.mark("model_reasoning_started", path="unified_live")
 
@@ -3987,6 +4045,7 @@ class AgentIntelligence:
             prepare_turn=_prepare_with_classification,
             cognitive_ctx=cognitive_ctx,
             prefetched_turn_ctx=_prefetched_turn_ctx,
+            workspace_focus=resolved_workspace_focus,
         )
         if _cognitive_trace_builder is not None:
             from dataclasses import asdict, is_dataclass

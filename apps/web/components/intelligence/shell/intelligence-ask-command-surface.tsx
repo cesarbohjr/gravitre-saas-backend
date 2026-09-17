@@ -8,6 +8,7 @@ import { useMemo } from "react"
 import { IntelligenceCommandBar } from "@/components/intelligence/shell/intelligence-command-bar"
 import { useAskGravitreSuggestions } from "@/components/intelligence/ask-gravitre-composer"
 import type { AssistantVisualization } from "@/lib/intelligence/assistant-visualization"
+import type { GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
 
 const FALLBACK_QUESTIONS = [
   "What changed today?",
@@ -22,12 +23,14 @@ export function IntelligenceAskCommandSurface({
   onVisualization,
   pendingQuestion,
   onPendingQuestionConsumed,
+  selected,
 }: {
   enabled: boolean
   pageSuggestedQuestions?: string[]
   onVisualization?: (visualization: AssistantVisualization) => void
   pendingQuestion?: string | null
   onPendingQuestionConsumed?: () => void
+  selected?: GravitreAISelectedEntity | null
 }) {
   const { data: dailyBriefing } = useAskGravitreSuggestions(enabled)
 
@@ -56,6 +59,7 @@ export function IntelligenceAskCommandSurface({
       onVisualization={onVisualization}
       pendingQuestion={pendingQuestion}
       onPendingQuestionConsumed={onPendingQuestionConsumed}
+      selected={selected}
     />
   )
 }

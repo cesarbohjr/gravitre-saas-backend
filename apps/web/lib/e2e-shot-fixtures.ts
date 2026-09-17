@@ -701,6 +701,8 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   },
 
   "/api/agents": { agents },
+  "/api/agents/agt_lead_triage": { agent: agents[0] },
+  "/api/agents/agt_deal_desk": { agent: agents[1] },
 
   // Agents 4.0 GRAPH — swarm parent→subtask edges (capture harness only).
   "/api/agent-swarm": {

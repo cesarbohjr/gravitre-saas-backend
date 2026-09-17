@@ -15,6 +15,7 @@ export function IntelligenceCommandBar({
   onPendingQuestionConsumed,
   variant = "map",
   className,
+  selected,
 }: {
   suggestions?: string[] | null
   onVisualization?: (visualization: AssistantVisualization) => void
@@ -22,6 +23,7 @@ export function IntelligenceCommandBar({
   onPendingQuestionConsumed?: () => void
   variant?: "map" | "card"
   className?: string
+  selected?: import("@/components/gravitre/ai-workspace-provider").GravitreAISelectedEntity | null
 }) {
   return (
     <AskGravitreComposer
@@ -30,6 +32,7 @@ export function IntelligenceCommandBar({
       onVisualization={onVisualization}
       pendingQuestion={pendingQuestion}
       onPendingQuestionConsumed={onPendingQuestionConsumed}
+      selected={selected}
       className={cn(className)}
     />
   )

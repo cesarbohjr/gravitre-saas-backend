@@ -14,9 +14,10 @@ import { AiWorkspace } from "@/app/ai/_components/ai-workspace"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 
-function isAiPath(pathname: string): boolean {
+function isWorkspaceArmPath(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
-  return path === "/ai" || path.startsWith("/ai/")
+  if (path === "/ai" || path.startsWith("/ai/")) return true
+  return /^\/agents\/[^/]+\/chat\/?$/.test(path)
 }
 
 export function GravitreAIWorkspaceHost() {
@@ -25,7 +26,7 @@ export function GravitreAIWorkspaceHost() {
 
   useEffect(() => {
     if (!GRAVITRE_AI_FLOAT_ENABLED) return
-    if (floatWorkspaceOpen || isAiPath(pageContext.pathname)) {
+    if (floatWorkspaceOpen || isWorkspaceArmPath(pageContext.pathname)) {
       setArmed(true)
     }
   }, [floatWorkspaceOpen, pageContext.pathname])

@@ -92,10 +92,13 @@ describe("useGravitreAIWorkspace", () => {
     })
   })
 
-  it("defaults presentationMode to 'expanded' — preserves today's full-page behavior", () => {
+  it("defaults presentationMode to 'expanded' when not auto-opening /ai", () => {
+    pathnameState.value = "/dashboard"
     const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
     mount(sink)
     expect(sink.value?.presentationMode).toBe("expanded")
+    expect(sink.value?.floatWorkspaceOpen).toBe(false)
+    expect(sink.value?.canonicalPresentation).toBe("minimized")
   })
 
   it("exposes pageContext from the current route, independent of conversation state", () => {
@@ -105,21 +108,20 @@ describe("useGravitreAIWorkspace", () => {
     mount(sink)
     expect(sink.value?.pageContext.pathname).toBe("/agents/42/chat")
     expect(sink.value?.pageContext.params).toEqual({ id: "42" })
+    expect(sink.value?.pageContext.selected).toBeNull()
     // Conversation must start untouched by pageContext.
     expect(sink.value?.conversation).toBeNull()
   })
 
   it(
-    "auto-opens floatWorkspaceOpen on a direct /ai visit — Cesar's " +
-      "2026-09-09 decision resolving architecture doc Open decision #4 " +
-      "(a direct /ai visit now opens the same Expanded shell reached from " +
-      "any other page's Helper \u2192 Float \u2192 Expand)",
+    "auto-opens floatWorkspaceOpen on a direct /ai visit as fullscreen of the canonical workspace",
     () => {
       pathnameState.value = "/ai"
       const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
       mount(sink)
       expect(sink.value?.floatWorkspaceOpen).toBe(true)
-      expect(sink.value?.presentationMode).toBe("expanded")
+      expect(sink.value?.presentationMode).toBe("fullscreen")
+      expect(sink.value?.canonicalPresentation).toBe("fullscreen")
     },
   )
 
@@ -159,7 +161,7 @@ describe("useGravitreAIWorkspace", () => {
       sink.value!.setFloatWorkspaceOpen(true)
     })
     expect(sink.value?.floatWorkspaceOpen).toBe(true)
-    expect(sink.value?.presentationMode).toBe("expanded")
+    expect(sink.value?.presentationMode).toBe("fullscreen")
   })
 
   it("setPresentationMode updates state without disturbing pageContext or conversation", () => {
@@ -254,4 +256,84 @@ describe("useGravitreAIWorkspace", () => {
       expect(sink.value?.instanceId).not.toBe(firstInstanceId)
     },
   )
+
+  it("maps compact onto the shipped float mode and reports canonicalPresentation", () => {
+    pathnameState.value = "/dashboard"
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    expect(sink.value?.canonicalPresentation).toBe("minimized")
+    act(() => {
+      sink.value!.setPresentationMode("compact")
+      sink.value!.setFloatWorkspaceOpen(true)
+    })
+    expect(sink.value?.presentationMode).toBe("float")
+    expect(sink.value?.canonicalPresentation).toBe("compact")
+  })
+
+  it("summonWorkspace opens compact over the current page with composer intent and selected entity", () => {
+    pathnameState.value = "/intelligence"
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    act(() => {
+      sink.value!.summonWorkspace({
+        presentation: "compact",
+        composerText: "What changed for Acme?",
+        submit: true,
+        selected: { kind: "entity", id: "acme", label: "Acme Corporation" },
+        agentScope: null,
+      })
+    })
+    expect(sink.value?.floatWorkspaceOpen).toBe(true)
+    expect(sink.value?.presentationMode).toBe("float")
+    expect(sink.value?.canonicalPresentation).toBe("compact")
+    expect(sink.value?.pageContext.selected).toEqual({
+      kind: "entity",
+      id: "acme",
+      label: "Acme Corporation",
+    })
+    expect(sink.value?.composerIntent?.text).toBe("What changed for Acme?")
+    expect(sink.value?.composerIntent?.submit).toBe(true)
+    expect(sink.value?.agentScope).toBeNull()
+  })
+
+  it("summonWorkspace can apply agent scope without creating a second runtime owner", () => {
+    pathnameState.value = "/agents/42/chat"
+    paramsState.value = { id: "42" }
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    act(() => {
+      sink.value!.summonWorkspace({
+        presentation: "fullscreen",
+        agentScope: { agentId: "42", name: "Lead Enrichment Coordinator" },
+      })
+    })
+    expect(sink.value?.canonicalPresentation).toBe("fullscreen")
+    expect(sink.value?.agentScope?.agentId).toBe("42")
+    expect(sink.value?.agentScope?.name).toBe("Lead Enrichment Coordinator")
+  })
+
+  it("clears selected entity and agent scope when leaving the surface that set them", () => {
+    pathnameState.value = "/intelligence"
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    act(() => {
+      sink.value!.summonWorkspace({
+        presentation: "compact",
+        selected: { kind: "entity", id: "acme", label: "Acme Corporation" },
+        agentScope: { agentId: "sales", name: "Sales Agent" },
+      })
+    })
+    expect(sink.value?.pageContext.selected?.id).toBe("acme")
+    expect(sink.value?.agentScope?.agentId).toBe("sales")
+
+    pathnameState.value = "/intelligence/performance"
+    act(() => {
+      root!.render(
+        createElement(GravitreAIWorkspaceProvider, null, createElement(Probe, { sink })),
+      )
+    })
+    expect(sink.value?.pageContext.selected).toBeNull()
+    expect(sink.value?.agentScope).toBeNull()
+    expect(sink.value?.canonicalPresentation).toBe("compact")
+  })
 })

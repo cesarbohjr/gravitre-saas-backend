@@ -39,6 +39,7 @@ export default function ShotsLayout({ children }: { children: React.ReactNode })
   var F = ${JSON.stringify(SHOT_FIXTURES)};
   var REF = ${JSON.stringify(projectRef)};
   var realFetch = window.fetch.bind(window);
+  window.__GRAVITRE_AI_INSTRUMENT = true;
 
   // @supabase/ssr's browser client reads its session from a cookie, so a
   // fetch-level patch alone still leaves the app logged out and rendering the
@@ -117,6 +118,11 @@ export default function ShotsLayout({ children }: { children: React.ReactNode })
 
     if (Object.prototype.hasOwnProperty.call(F, path)) {
       return Promise.resolve(json(F[path]));
+    }
+    // Canonical chat must reach Playwright route mocks / the live proxy.
+    // Swallowing /api/chat as empty JSON made duplicate-submit proofs impossible.
+    if (path === "/api/chat" || path.indexOf("/api/chat?") === 0) {
+      return realFetch(input, init);
     }
     // Fail soft for un-fixtured product endpoints: an empty 200 renders an
     // empty section, whereas a network error would surface an error banner

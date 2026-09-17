@@ -48,6 +48,7 @@ from app.services.conversation_context_service import (
 )
 from app.services.conversation_state_service import get_conversation_state_service
 from app.services.assistant_mode import resolve_assistant_model
+from app.schemas.workspace_focus import WorkspaceFocus
 from app.services.assistant_tools import (
     DEFAULT_ASSISTANT_TOOLS,
     TOOL_DISPLAY_NAMES,
@@ -176,6 +177,8 @@ class AssistantChatRequest(BaseModel):
     spoken_mode: bool = False
     # Optional surface tag for GIBE/learning metadata ("voice" | "assistant" | …).
     surface: str | None = None
+    # Per-turn product focus (route + optional selected object). Agent scope stays agent_id.
+    workspace_focus: WorkspaceFocus | None = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -638,6 +641,7 @@ def _build_stream(
     assistant_system_prompt: str | None = None,
     intelligence_hub_deterministic_answer: str | None = None,
     http_request: Request | None = None,
+    workspace_focus: dict[str, Any] | None = None,
 ):
     """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
 
@@ -795,6 +799,7 @@ def _build_stream(
                     spoken_mode=bool(spoken_mode),
                     composer_failure_probe=composer_failure_probe,
                     interrupt_payload=interrupt,
+                    workspace_focus=workspace_focus,
                 ):
                     if await stream_should_stop(
                         http_request, org_id, conversation_id, settings=settings
@@ -1439,6 +1444,7 @@ async def assistant_chat(
             assistant_system_prompt=system_prompt,
             intelligence_hub_deterministic_answer=intelligence_hub_deterministic_answer,
             http_request=request,
+            workspace_focus=body.workspace_focus.model_dump() if body.workspace_focus else None,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

@@ -9,24 +9,26 @@
  * reduce or close. Describing the manifest in one testable place makes that class
  * of drift a test failure instead of a bug report.
  *
- * Vocabulary note. The spec for this work names the states CLOSED / MINIMIZED /
- * COMPACT / WINDOWED / EXPANDED / FULLSCREEN. This codebase already ships
- * `GravitrePresentationMode` as "helper" | "float" | "expanded" | "fullscreen"
- * plus a separate `floatWorkspaceOpen` flag, and those names appear across many
- * components and tests. Renaming them would be a large, risky change that buys
- * nothing functional, so the existing names are kept and mapped here:
+ * Vocabulary note (UX Reset 1.0 Phase 1A). Canonical names are
+ * minimized / compact / expanded / fullscreen. Shipped React state still uses
+ * helper / float / expanded / fullscreen. Mapping lives in
+ * `gravitre-ai-presentation.ts` — do not rename call sites in this slice.
  *
- *   CLOSED / MINIMIZED -> floatWorkspaceOpen === false (launcher visible)
- *   WINDOWED           -> "float"
- *   EXPANDED           -> "expanded"
- *   FULLSCREEN         -> "fullscreen"
- *   embedded           -> on /ai with floatWorkspaceOpen === false (page IS the chat)
- *
- * COMPACT has no separate mode; the float window is resizable and covers it.
+ *   MINIMIZED  -> floatWorkspaceOpen === false (launcher visible); legacy "helper"
+ *   COMPACT    -> "float"
+ *   EXPANDED   -> "expanded"
+ *   FULLSCREEN -> "fullscreen"  (/ai is this presentation of the same runtime)
+ *   embedded   -> /ai slot fallback when the overlay is closed
  */
 
-/** Matches GravitrePresentationMode in ai-workspace-provider.tsx. */
-export type ChatWindowMode = "helper" | "float" | "expanded" | "fullscreen"
+import {
+  toLegacyPresentationMode,
+  type GravitrePresentationInput,
+  type LegacyPresentationMode,
+} from "@/lib/gravitre-ai-presentation"
+
+/** Matches legacy GravitrePresentationMode in ai-workspace-provider.tsx. */
+export type ChatWindowMode = LegacyPresentationMode
 
 /**
  * Every surface that can be on screen. `embedded` is not a presentation mode --
@@ -114,15 +116,19 @@ export function isExitControl(id: ChatWindowControlId): boolean {
  * "helper" is not a restore target -- restoring to the launcher would be a no-op
  * that looks like the click did nothing -- so it falls back to the windowed mode.
  */
-export function restoreTargetMode(previous: ChatWindowMode | null | undefined): ChatWindowMode {
-  if (!previous || previous === "helper") return "float"
-  return previous
+export function restoreTargetMode(
+  previous: GravitrePresentationInput | ChatWindowMode | null | undefined,
+): ChatWindowMode {
+  const legacy = toLegacyPresentationMode(previous ?? "float")
+  if (legacy === "helper") return "float"
+  return legacy
 }
 
 /**
  * The mode to remember when closing to the launcher. Recording "helper" would
  * lose the information the restore depends on.
  */
-export function modeToRemember(current: ChatWindowMode): ChatWindowMode {
-  return current === "helper" ? "float" : current
+export function modeToRemember(current: GravitrePresentationInput | ChatWindowMode): ChatWindowMode {
+  const legacy = toLegacyPresentationMode(current)
+  return legacy === "helper" ? "float" : legacy
 }

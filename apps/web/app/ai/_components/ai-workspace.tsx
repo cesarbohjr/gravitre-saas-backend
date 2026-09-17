@@ -67,7 +67,15 @@ import { GravitreAIMobileSheetBridge } from "@/app/ai/_components/ai-mobile-shee
 import type { GravitreAIMobileSheetMode } from "@/components/gravitre/ai-mobile-sheet"
 import { useGravitreMobileViewport } from "@/hooks/use-gravitre-mobile-viewport"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
+import { toLegacyPresentationMode } from "@/lib/gravitre-ai-presentation"
 import { deriveGravitreHelperPresence } from "@/lib/gravitre-ai-presence"
+import {
+  CANONICAL_AI_RUNTIME_OWNER_ID,
+  publishGravitreAiWorkspaceDebug,
+  recordCanonicalChatSubmit,
+  registerGravitreAiChatRuntime,
+} from "@/lib/gravitre-ai-runtime"
+import { buildWorkspaceFocusPayload } from "@/lib/gravitre-workspace-focus"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
@@ -204,7 +212,9 @@ function parseWorkspaceMode(value: string | null): ModeId {
 
 function isAiWorkspacePath(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
-  return path === "/ai" || path.startsWith("/ai/")
+  if (path === "/ai" || path.startsWith("/ai/")) return true
+  if (process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1" && path === "/e2e/shots/ai") return true
+  return false
 }
 
 export function AiWorkspace({
@@ -233,7 +243,13 @@ export function AiWorkspace({
     conversation,
     approval,
     voice,
+    agentScope,
+    composerIntent,
+    consumeComposerIntent,
+    pageContext,
   } = useGravitreAIWorkspace()
+
+  useEffect(() => registerGravitreAiChatRuntime(CANONICAL_AI_RUNTIME_OWNER_ID), [])
   // Phase 4 — reuses the existing `md` (768px) breakpoint already governing
   // MobileBottomNav/ConversationSidebar's drawer mode/LiveActivityRail (see
   // ai-mobile-sheet.tsx's file header). Determines whether the
@@ -259,20 +275,18 @@ export function AiWorkspace({
     ? searchParams.get("m")?.trim() || initialMessageId
     : initialMessageId
 
-  // Phase 5 — navigating onto `/ai` while Float is open collapses into the
-  // full-page surface of the SAME runtime (no second useChat). Opening Float
-  // while already on `/ai` (shortcut) is intentionally left alone.
+  // Phase 5 / UX Reset 1.0 — landing on `/ai` is fullscreen of this same runtime.
   const prevPathnameRef = useRef(pathname)
   useEffect(() => {
     if (!GRAVITRE_AI_FLOAT_ENABLED) return
     const wasAi = isAiWorkspacePath(prevPathnameRef.current)
     const nowAi = isAiWorkspacePath(pathname)
     prevPathnameRef.current = pathname
-    if (!wasAi && nowAi && floatWorkspaceOpen) {
-      setFloatWorkspaceOpen(false)
-      setPresentationMode("expanded")
+    if (!wasAi && nowAi) {
+      setPresentationMode("fullscreen")
+      setFloatWorkspaceOpen(true)
     }
-  }, [pathname, floatWorkspaceOpen, setFloatWorkspaceOpen, setPresentationMode])
+  }, [pathname, setFloatWorkspaceOpen, setPresentationMode])
   // Phase 3 — local UI state for the Expanded/Fullscreen shell's panel
   // collapse toggles. Deliberately local (not lifted into the provider):
   // nothing outside this component needs to read/persist it, and both
@@ -450,6 +464,10 @@ export function AiWorkspace({
   const missingConversationVerificationRef = useRef<string | null>(null)
   const connectedFileRefsRef = useRef<ConnectedFileAttachment[]>([])
   const messagesRef = useRef<UIMessage[]>([])
+  const agentScopeRef = useRef(agentScope)
+  agentScopeRef.current = agentScope
+  const pageContextRef = useRef(pageContext)
+  pageContextRef.current = pageContext
   const [connectedFilePickerOpen, setConnectedFilePickerOpen] = useState(false)
   const [connectedFileAttachments, setConnectedFileAttachments] = useState<ConnectedFileAttachment[]>([])
 
@@ -510,20 +528,31 @@ export function AiWorkspace({
             ...(getDepartmentHeader() ? { "x-department": getDepartmentHeader()! } : {}),
           }
         },
-        body: () => ({
-          ...buildChatOrgPayload(),
-          mode: chatMode,
-          conversation_id: activeConversationIdRef.current,
-          preferred_persona: preferredPersonaRef.current,
-          department: selectedDepartment === "all" ? undefined : selectedDepartment,
-          cross_department: crossDepartmentRef.current,
-          research_scope: researchScopeRef.current ?? undefined,
-          connected_file_refs:
-            connectedFileRefsRef.current.length > 0 ? connectedFileRefsRef.current : undefined,
-          // Same spoken_mode path as agent chat → execute_task_streaming(spoken_mode=True).
-          spoken_mode: modalityRef.current === "voice",
-          surface: modalityRef.current === "voice" ? "voice" : "ai_chat",
-        }),
+        body: () => {
+          const scoped = agentScopeRef.current
+          const surface =
+            modalityRef.current === "voice" ? "voice" : scoped ? "agent_chat" : "ai_chat"
+          const workspace_focus = buildWorkspaceFocusPayload({
+            surface,
+            route: pageContextRef.current.pathname,
+            selected: pageContextRef.current.selected,
+          })
+          return {
+            ...buildChatOrgPayload(),
+            mode: scoped ? "agent" : chatMode,
+            conversation_id: activeConversationIdRef.current,
+            preferred_persona: scoped?.responseStyle || preferredPersonaRef.current,
+            department: selectedDepartment === "all" ? undefined : selectedDepartment,
+            cross_department: crossDepartmentRef.current,
+            research_scope: researchScopeRef.current ?? undefined,
+            connected_file_refs:
+              connectedFileRefsRef.current.length > 0 ? connectedFileRefsRef.current : undefined,
+            spoken_mode: modalityRef.current === "voice",
+            surface,
+            ...(scoped ? { agent_id: scoped.agentId } : {}),
+            ...(workspace_focus ? { workspace_focus } : {}),
+          }
+        },
       }),
     [chatMode, selectedDepartment],
   )
@@ -1606,6 +1635,17 @@ export function AiWorkspace({
         "Please read the attached connected file(s) and summarize the key points I should know."
 
       setSessionBusy(true)
+      recordCanonicalChatSubmit({
+        surface: agentScopeRef.current ? "agent_chat" : "ai_chat",
+        agentId: agentScopeRef.current?.agentId ?? null,
+        selected: pageContextRef.current.selected,
+        pathname: pageContextRef.current.pathname,
+        workspace_focus: buildWorkspaceFocusPayload({
+          surface: agentScopeRef.current ? "agent_chat" : "ai_chat",
+          route: pageContextRef.current.pathname,
+          selected: pageContextRef.current.selected,
+        }),
+      })
       await ensureSelectedOrg()
       crossDepartmentRef.current = isCrossDepartmentPrompt(effectivePrompt)
       researchScopeRef.current = null
@@ -1647,6 +1687,18 @@ export function AiWorkspace({
     initialPromptSentRef.current = true
     void submitPrompt(resolvedInitialPrompt)
   }, [resolvedInitialPrompt, submitPrompt])
+
+  useEffect(() => {
+    if (!composerIntent) return
+    const intent = composerIntent
+    consumeComposerIntent()
+    if (intent.submit && intent.text.trim()) {
+      void submitPrompt(intent.text)
+      return
+    }
+    if (intent.text) setInput(intent.text)
+    queueMicrotask(() => inputRef.current?.focus())
+  }, [composerIntent, consumeComposerIntent, submitPrompt])
 
   const handleSelectConversation = useCallback(
     async (id: string) => {
@@ -1806,6 +1858,13 @@ export function AiWorkspace({
 
   const isChatBusy = status === "submitted" || status === "streaming"
   const isStreaming = status === "streaming"
+
+  useEffect(() => {
+    publishGravitreAiWorkspaceDebug({
+      conversationId: activeConversationId,
+      streamStatus: status,
+    })
+  }, [activeConversationId, status])
   const [canContinueAfterStop, setCanContinueAfterStop] = useState(false)
   const abortChatTurn = useCallback(() => {
     stopChatTurn({ conversationId: activeConversationIdRef.current, stopStream: stop })
@@ -2226,7 +2285,8 @@ export function AiWorkspace({
     // desktop expanded/fullscreen branch below, so resizing across the
     // `md` breakpoint while the workspace is open swaps shells live.
     if (isMobileWorkspaceViewport) {
-      const mobileMode: GravitreAIMobileSheetMode = presentationMode === "helper" ? "float" : presentationMode
+      const legacyMode = toLegacyPresentationMode(presentationMode)
+      const mobileMode: GravitreAIMobileSheetMode = legacyMode === "helper" ? "float" : legacyMode
       return (
         <GravitreAIMobileSheetBridge
           mode={mobileMode}

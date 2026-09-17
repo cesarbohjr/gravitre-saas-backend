@@ -58,6 +58,7 @@ async def compile_assistant_turn_context(
     prepare_turn: PrepareTurnFn,
     cognitive_ctx: Any = None,
     prefetched_turn_ctx: Any = None,
+    workspace_focus: dict[str, Any] | None = None,
 ) -> tuple[Any, CompiledTurnContextMeta]:
     """Run orchestrator context assembly once; merge kernel sections when present."""
     intent_class = None
@@ -80,6 +81,16 @@ async def compile_assistant_turn_context(
         source = "inline"
 
     kernel_merged = merge_kernel_sections(turn_ctx, cognitive_ctx)
+    if workspace_focus and turn_ctx is not None:
+        try:
+            from app.services.workspace_focus_resolver import format_workspace_focus_compiler_block
+
+            block = format_workspace_focus_compiler_block(workspace_focus)
+            if block and hasattr(turn_ctx, "entity_relationship_section"):
+                prior = getattr(turn_ctx, "entity_relationship_section", None) or ""
+                turn_ctx.entity_relationship_section = "\n\n".join(p for p in (prior, block) if p).strip()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("context_compiler_workspace_focus_merge_skipped error=%s", exc)
     meta = CompiledTurnContextMeta(
         intent_class=intent_class,
         capability_id=capability_id,
@@ -167,6 +178,7 @@ async def compile_unified_reasoning_context(
     mode: str | None = None,
     agent: dict[str, Any] | None = None,
     surface: str | None = None,
+    workspace_focus: dict[str, Any] | None = None,
 ) -> CompiledTurnContext:
     """Assemble unified-LIVE reasoning context through one canonical contract (E4).
 
@@ -386,6 +398,18 @@ async def compile_unified_reasoning_context(
     else:
         _record("surface_context", "EXCLUDE", f"surface:{surface or 'assistant'}")
 
+    if workspace_focus and (workspace_focus.get("selection") or workspace_focus.get("route")):
+        from app.services.workspace_focus_resolver import format_workspace_focus_compiler_block
+
+        focus_block = format_workspace_focus_compiler_block(workspace_focus)
+        if focus_block:
+            _add_part("workspace_focus", focus_block)
+            _record("workspace_focus", "INCLUDE", str(workspace_focus.get("resolution") or "present"))
+        else:
+            _record("workspace_focus", "EXCLUDE", "empty_block")
+    else:
+        _record("workspace_focus", "EXCLUDE", "absent")
+
     _add_part("user_message", f"USER MESSAGE:\n{(message or '').strip()}")
     _record("user_message", "INCLUDE", "required")
 
@@ -401,5 +425,5 @@ async def compile_unified_reasoning_context(
         inclusion_decisions=tuple(decisions),
         compile_duration_ms=compile_ms,
         token_estimate=_estimate_tokens(user_content),
-        metadata={"surface": surface or "assistant"},
+        metadata={"surface": surface or "assistant", "workspace_focus": workspace_focus or None},
     )

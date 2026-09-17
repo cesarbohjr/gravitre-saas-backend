@@ -63,7 +63,7 @@ test.describe("Intelligence hub UI", () => {
 
     const input = composer.getByLabel("Ask Gravitre")
     await input.fill("What agents are currently active?")
-    await composer.getByRole("button", { name: "Send" }).click()
+    await composer.getByRole("button", { name: /Ask Gravitre|Send/i }).click()
 
     const map = page.getByTestId("intelligence-map-canvas")
     await expect(map.locator("button.ring-2").first()).toBeVisible({ timeout: 90_000 })

@@ -32,6 +32,7 @@ import {
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
 import type { IntelligenceMapSelection } from "@/components/intelligence/map/intelligence-map"
+import type { GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
 import { OverviewLivingMap } from "@/components/intelligence/pages/overview-living-map"
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
@@ -120,6 +121,29 @@ function IntelligenceSectionRedirect() {
   return null
 }
 
+function selectedEntityFromMapSelection(selection: IntelligenceMapSelection): GravitreAISelectedEntity | null {
+  if (!selection) return null
+  if (selection.kind === "agent") {
+    return { kind: "agent", id: selection.agent.id, label: selection.agent.name }
+  }
+  if (selection.kind === "department") {
+    return {
+      kind: "department",
+      id: selection.department.id,
+      label: selection.department.id,
+    }
+  }
+  if (selection.kind === "signal") {
+    const id = String(selection.signal.id ?? selection.signal.title ?? "")
+    const label = String(selection.signal.title ?? selection.signal.id ?? "signal")
+    return { kind: "signal", id, label }
+  }
+  if (selection.kind === "satellite") {
+    return { kind: selection.node.kind || "entity", id: selection.node.id, label: selection.node.label }
+  }
+  return { kind: "relationship", id: selection.edgeId, label: selection.label }
+}
+
 function IntelligenceCenterInner() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
@@ -136,6 +160,7 @@ function IntelligenceCenterInner() {
   const [mapDimIds, setMapDimIds] = useState<string[]>([])
   const [mapFocusIds, setMapFocusIds] = useState<string[]>([])
   const [composerPendingQuestion, setComposerPendingQuestion] = useState<string | null>(null)
+  const askSelected = useMemo(() => selectedEntityFromMapSelection(mapSelection), [mapSelection])
 
   const { data: outcomes, error, mutate } = useSWR(
     user ? ["intelligence/outcomes", 7] : null,
@@ -353,6 +378,7 @@ function IntelligenceCenterInner() {
                   onVisualization={handleAssistantVisualization}
                   pendingQuestion={composerPendingQuestion}
                   onPendingQuestionConsumed={() => setComposerPendingQuestion(null)}
+                  selected={askSelected}
                 />
               }
             >
