@@ -509,10 +509,24 @@ def bind_args_from_ledger(
     args: dict[str, Any] | None,
     ledger: ParameterLedger,
 ) -> dict[str, Any]:
-    """Fill missing plan args from ledger using the action's workflow schema."""
+    """Fill missing plan args from ledger using ActionSpec rules, then workflow schema."""
     from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
+    from app.connectors.action_catalog.registry import get_action_spec
 
     filled = dict(args or {})
+    spec = get_action_spec(invoke_action) if invoke_action else None
+    if spec is not None and is_f1_write_action(spec.id):
+        for rule in spec.parameter_source_rules:
+            names = (rule.parameter, *rule.aliases)
+            if any(str(filled.get(name) or "").strip() for name in names):
+                continue
+            value = _ledger_value_for_keys(ledger, names)
+            if value is None and any(n in FREE_TEXT_ARG_KEYS for n in names):
+                value = ledger.get("quoted")
+            if value:
+                filled[rule.parameter] = value
+
     schema = get_workflow_schema(invoke_action)
     fields = ()
     if schema:

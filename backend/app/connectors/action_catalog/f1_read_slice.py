@@ -405,6 +405,7 @@ def compute_spec_revision(spec: ActionSpec) -> str:
         "constraints": spec.provider_constraints or {},
         "availability": list(spec.availability_requirements),
         "governance": spec.governance_classification,
+        "risk_class": getattr(spec, "risk_class", "") or "",
         "rules": [
             {
                 "parameter": rule.parameter,
@@ -422,6 +423,10 @@ def compute_spec_revision(spec: ActionSpec) -> str:
 def materialize_action_spec(spec: ActionSpec) -> ActionSpec:
     """Fill empty F1 fields from the build overlay; catalog-owned fields win."""
     overlay = _OVERLAYS.get(spec.id)
+    if overlay is None:
+        from app.connectors.action_catalog.f1_write_slice import write_overlay_for
+
+        overlay = write_overlay_for(spec.id)
     merged = spec
     if overlay:
         updates: dict[str, Any] = {}

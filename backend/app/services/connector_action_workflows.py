@@ -259,7 +259,7 @@ def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
         due_on = str(args.get("due_on") or "").strip()
         if due_on:
             details["Due"] = due_on
-    elif plan.invoke_action == "gmail.messages.send":
+    elif plan.invoke_action in {"gmail.messages.send", "email.send"}:
         # Always surface recipient/subject/body so "yes" is not a blind approve.
         to = str(args.get("to") or args.get("email") or "").strip()
         subject = str(args.get("subject") or "").strip()
@@ -270,6 +270,13 @@ def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
             _display("subject", "Subject", subject)
         if body:
             details["Body"] = body[:200] + ("…" if len(body) > 200 else "")
+    elif plan.invoke_action == "slack.post_message":
+        channel = str(args.get("channel") or "").strip()
+        text = str(args.get("text") or args.get("message") or "").strip()
+        if channel:
+            details["Channel"] = channel
+        if text:
+            details["Message"] = text[:200] + ("…" if len(text) > 200 else "")
     elif args.get("properties") and isinstance(args["properties"], dict):
         for key, value in args["properties"].items():
             if value:

@@ -156,8 +156,9 @@ def workflow_schema_for_spec(spec: ActionSpec) -> ActionWorkflowSchema:
 
 def should_stamp_canonical_schema(spec: ActionSpec) -> bool:
     from app.connectors.action_catalog.f1_read_slice import is_f1_read_action
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
 
-    return is_f1_read_action(spec.id) or spec.id in HUBSPOT_SEARCH_ACTIONS
+    return is_f1_read_action(spec.id) or is_f1_write_action(spec.id) or spec.id in HUBSPOT_SEARCH_ACTIONS
 
 
 def stamp_canonical_schemas(spec: ActionSpec) -> ActionSpec:

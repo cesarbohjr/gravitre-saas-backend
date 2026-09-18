@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.catalog_write_authority import invoke_action_requires_write_approval
+from app.services.tool_types import ToolContext
 from app.services.conversation_turn_controller import bind_canvas_step_args
 from app.services.tool_service import STEP_TYPE_TO_ACTION
 
@@ -155,6 +156,35 @@ def load_run_for_write_gate(client: Any, org_id: str, run_id: str | None) -> dic
     except Exception:  # noqa: BLE001
         return None
     return None
+
+
+def bind_f1_write_hmac_context(
+    *,
+    tool_ctx: ToolContext,
+    action: str,
+    params: dict[str, Any] | None,
+    intent_text: str = "",
+    task_state: dict[str, Any] | None = None,
+) -> tuple[ToolContext, dict[str, Any]]:
+    """Compile F1 WRITEs onto the canvas invoke context. Approval is separate."""
+    from dataclasses import replace
+
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
+    from app.services.write_preflight import compile_write_for_context
+
+    invoke_params = dict(params or {})
+    if not is_f1_write_action(action):
+        return tool_ctx, invoke_params
+    proof = compile_write_for_context(
+        ctx=tool_ctx,
+        invoke_action=action,
+        args=invoke_params,
+        user_message=intent_text,
+        task_state=task_state,
+    )
+    if not proof.ok:
+        raise ValueError(proof.user_message() or "Write parameters could not be compiled.")
+    return replace(tool_ctx, preflight_result=proof), dict(proof.compiled_parameters)
 
 
 def enrich_canvas_step_config_from_ledger(

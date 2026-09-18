@@ -895,6 +895,28 @@ class ReActEngine:
             run_row = load_run_for_write_gate(ctx.client, ctx.org_id, ctx.run_id)
             if run_row is not None:
                 if run_allows_catalog_write_execution(run_row):
+                    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
+                    from app.services.write_preflight import compile_write_for_context
+
+                    if is_f1_write_action(invoke_action):
+                        proof = compile_write_for_context(
+                            ctx=ctx,
+                            invoke_action=invoke_action,
+                            args=args,
+                            user_message=user_message,
+                            connected_integrations=connected,
+                        )
+                        if not proof.ok:
+                            return {
+                                "success": False,
+                                "tool": tool_name,
+                                "action": invoke_action,
+                                "error_code": proof.error_class or "WRITE_COMPILE_BLOCKED",
+                                "error": proof.user_message(),
+                                "provider_invoked": False,
+                            }
+                        ctx = dc_replace(ctx, preflight_result=proof)
+                        args = dict(proof.compiled_parameters)
                     return await self.registry.execute_tool(
                         ctx=ctx, tool_name=tool_name, args=args
                     )
@@ -919,6 +941,8 @@ class ReActEngine:
             user_id=ctx.actor_id,
             agent_id=ctx.agent_id,
             settings=self.settings,
+            user_message=user_message,
+            connected_integrations=connected,
         )
         if blocked is not None:
             return blocked

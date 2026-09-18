@@ -90,6 +90,7 @@ class ActionSpec:
     provider_constraints: dict[str, Any] | None = None
     availability_requirements: tuple[str, ...] = ()
     governance_classification: str = ""
+    risk_class: str = ""
     execution_adapter: str | None = None
     observation_adapter: str | None = None
     spec_revision: str = ""

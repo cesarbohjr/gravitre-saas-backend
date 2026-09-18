@@ -7,7 +7,16 @@ from uuid import uuid4
 
 from app.services.conversational_execution_service import CONFIRM_PATTERN
 
-StepKind = Literal["read", "write", "clarify", "compose", "workflow", "agent_delegation"]
+StepKind = Literal[
+    "read",
+    "write",
+    "clarify",
+    "compose",
+    "workflow",
+    "agent_delegation",
+    "hypothesis",
+    "evidence",
+]
 StepStatus = Literal["pending", "running", "completed", "failed", "skipped"]
 PlanTerminal = Literal[
     "pending",
@@ -399,6 +408,16 @@ def reconcile_execution_plan(
         )
 
     from app.services.cognitive_execution_replanner import build_cross_source_analytics_plan
+    from app.services.multi_source_diagnostic import build_multi_source_diagnostic_plan
+
+    diagnostic = build_multi_source_diagnostic_plan(
+        message,
+        connected_integrations=connected_integrations,
+        turn_id=turn_id,
+        conversation_id=conversation_id,
+    )
+    if diagnostic is not None:
+        return diagnostic
 
     cross = build_cross_source_analytics_plan(
         message,
@@ -490,7 +509,7 @@ def apply_observations_to_plan(
     for step in plan.steps:
         obs = obs_by_step.get(step.step_id)
         if obs is None:
-            if step.kind != "compose":
+            if step.kind not in {"compose", "hypothesis"}:
                 all_done = False
             updated_steps.append(step)
             continue

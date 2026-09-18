@@ -4612,6 +4612,13 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     from dataclasses import replace
 
     params = dict(params or {})
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
+    from app.services.write_preflight import enforce_invoke_write_preflight
+
+    f1_write = is_f1_write_action(action)
+    if f1_write:
+        params = enforce_invoke_write_preflight(ctx, action, params)
+
     from app.capability_ontology.resolver import resolve_capability_invoke_action
     from app.connectors.action_catalog.tool_aliases import resolve_registry_action
 
@@ -4628,7 +4635,8 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         except Exception:  # noqa: BLE001
             connected_hint = []
 
-    cap_resolution = resolve_capability_invoke_action(
+    # Catalog F1 WRITE keys (e.g. email.send) collide with capability ids — do not re-resolve.
+    cap_resolution = None if f1_write else resolve_capability_invoke_action(
         action,
         connected_integrations=connected_hint or None,
         query=str(params.pop("_capability_query", "") or ""),
@@ -4721,7 +4729,9 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             raise ToolValidationError(str(exc), code=exc.code) from exc
 
     from app.connectors.action_catalog.f1_read_slice import is_f1_read_action
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
     from app.services.read_preflight import enforce_invoke_preflight
+    from app.services.write_preflight import enforce_invoke_write_preflight
 
     if is_f1_read_action(action):
         params = enforce_invoke_preflight(ctx, action, params)
@@ -4739,6 +4749,8 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     proof.plan_id = plan_id
                 if not getattr(proof, "step_id", None):
                     proof.step_id = step_id
+    elif is_f1_write_action(action):
+        params = enforce_invoke_write_preflight(ctx, action, params)
 
     executor = _resolve_tool_executor(action, ctx)
     if not executor:

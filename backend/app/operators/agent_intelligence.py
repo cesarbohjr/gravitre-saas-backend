@@ -4964,6 +4964,10 @@ class AgentIntelligence:
                 answer=str(react_result.answer or ""),
             )
             task_state = {**(task_state or {}), **_react_plan_patch}
+            diagnostic = _react_plan_patch.get("diagnostic_conclusion")
+            if isinstance(diagnostic, dict) and diagnostic.get("message"):
+                if not diagnostic.get("sufficient") or not str(react_result.answer or "").strip():
+                    react_result.answer = str(diagnostic["message"])
             if _cognitive_trace_builder is not None:
                 _cognitive_trace_builder.link("execution_plan", _react_plan_runtime.plan.plan_id)
                 _cognitive_trace_builder.link("execution_strategy", "REACT")

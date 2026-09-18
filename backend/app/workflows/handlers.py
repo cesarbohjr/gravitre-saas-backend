@@ -137,6 +137,26 @@ def _enforce_canvas_write_authority(context: StepContext) -> None:
         )
 
 
+def _invoke_canvas_registered_tool(
+    context: StepContext,
+    action: str,
+    invoke_params: dict[str, Any],
+    *,
+    intent_text: str = "",
+    task_state: dict[str, Any] | None = None,
+):
+    from app.services.canvas_write_gate import bind_f1_write_hmac_context
+
+    tool_ctx, bound = bind_f1_write_hmac_context(
+        tool_ctx=tool_context_from_step(context),
+        action=action,
+        params=invoke_params,
+        intent_text=intent_text,
+        task_state=task_state,
+    )
+    return invoke_tool(tool_ctx, action, bound)
+
+
 class InvokeToolHandler(StepHandler):
     """STA-39: run a registered connector tool action from workflow config."""
 
@@ -160,17 +180,17 @@ class InvokeToolHandler(StepHandler):
             raise ValueError("invoke_tool requires config.action")
         # Module B Phase 3 — canvas NL→args via shared ledger/schema path.
         # task_state may be injected on run parameters; otherwise intent_text alone fills.
+        params = context.parameters if isinstance(context.parameters, dict) else {}
+        task_state = params.get("task_state") if isinstance(params.get("task_state"), dict) else None
+        intent_text = str(
+            cfg.get("intent_text")
+            or cfg.get("prompt")
+            or params.get("intent_text")
+            or ""
+        )
         try:
             from app.services.canvas_write_gate import enrich_canvas_step_config_from_ledger
 
-            params = context.parameters if isinstance(context.parameters, dict) else {}
-            task_state = params.get("task_state") if isinstance(params.get("task_state"), dict) else None
-            intent_text = str(
-                cfg.get("intent_text")
-                or cfg.get("prompt")
-                or params.get("intent_text")
-                or ""
-            )
             if task_state or intent_text:
                 cfg = enrich_canvas_step_config_from_ledger(
                     invoke_action=str(action),
@@ -191,11 +211,12 @@ class InvokeToolHandler(StepHandler):
         from app.services.action_selection_gate import gate_workflow_invoke
 
         resolved_action = gate_workflow_invoke(action=str(action), args=invoke_params)
-        tool_ctx = tool_context_from_step(context)
-        result = invoke_tool(
-            tool_ctx,
+        result = _invoke_canvas_registered_tool(
+            context,
             resolved_action,
             invoke_params,
+            intent_text=intent_text,
+            task_state=task_state,
         )
         if not result.success:
             detail = str(result.error_message or result.error_code or "tool invoke failed")
@@ -212,7 +233,7 @@ class InvokeToolHandler(StepHandler):
                 invoke_action=str(resolved_action),
                 result_data=result.data if isinstance(result.data, dict) else result.to_step_output(),
                 settings=context.settings,
-                ctx=tool_ctx,
+                ctx=tool_context_from_step(context),
                 environment_name=context.environment_name or "production",
                 request_params=invoke_params,
             )
@@ -248,8 +269,8 @@ class SlackPostMessageHandler(StepHandler):
     def execute(self, context: StepContext) -> dict[str, Any]:
         _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
-        result = invoke_tool(
-            tool_context_from_step(context),
+        result = _invoke_canvas_registered_tool(
+            context,
             action,
             params_for_step(
                 self.step_type,
@@ -305,8 +326,8 @@ class EmailSendHandler(StepHandler):
     def execute(self, context: StepContext) -> dict[str, Any]:
         _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
-        result = invoke_tool(
-            tool_context_from_step(context),
+        result = _invoke_canvas_registered_tool(
+            context,
             action,
             params_for_step(self.step_type, context.config or {}, context.parameters),
         )

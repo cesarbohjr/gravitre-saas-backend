@@ -1926,6 +1926,48 @@ class ChatConnectorExecutionService:
                             result=deferred,
                         )
                     return deferred
+            from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
+            from app.services.write_preflight import compile_write_for_context
+
+            if is_f1_write_action(plan.invoke_action):
+                raw_args = dict(plan.args or {})
+                user_message = str(
+                    (approved_params or {}).get("_user_message")
+                    or raw_args.pop("_user_message", "")
+                    or ""
+                )
+                proof = compile_write_for_context(
+                    ctx=ctx,
+                    invoke_action=plan.invoke_action,
+                    args=raw_args,
+                    user_message=user_message,
+                    connected_integrations=[plan.integration] if plan.integration else None,
+                )
+                if not proof.ok:
+                    failed = ExecutionResult(
+                        success=False,
+                        entity_type="connector",
+                        entity_id="",
+                        connector_management_url="/connectors",
+                        result_url=(f"/ai?c={conversation_id}" if conversation_id else "/ai"),
+                        title=plan.label,
+                        body=proof.user_message() or "Write parameters could not be compiled.",
+                        integration=plan.integration,
+                        task_label=plan.label,
+                        error_code=proof.error_class or "WRITE_COMPILE_BLOCKED",
+                    )
+                    if own_terminal_outcome:
+                        self._finalize_connector_outcome(
+                            client,
+                            org_id=org_id,
+                            user_id=user_id,
+                            conversation_id=conversation_id,
+                            plan=plan,
+                            result=failed,
+                        )
+                    return failed
+                ctx = replace(ctx, preflight_result=proof)
+                plan = replace(plan, args=dict(proof.compiled_parameters))
             observation = await self._registry.execute_invoke_action(
                 ctx=ctx,
                 invoke_action=plan.invoke_action,

@@ -249,6 +249,14 @@ def resolve_user_write_approval_required(
     elif identity and identity.trust_level == "write_with_approval" and is_write:
         requires = True
 
+    from app.connectors.action_catalog.f1_write_slice import requires_write_approval_always
+    from app.connectors.action_catalog.registry import get_action_spec
+
+    spec = get_action_spec(invoke_action) if invoke_action else None
+    risk_class = str(getattr(spec, "risk_class", "") or "") if spec is not None else ""
+    if requires_write_approval_always(invoke_action, risk_class=risk_class):
+        requires = True
+
     return requires, invoke_action, integration, label
 
 
@@ -262,6 +270,9 @@ def block_react_write_execution(
     user_id: str | None = None,
     agent_id: str | None = None,
     settings: Any | None = None,
+    user_message: str = "",
+    connected_integrations: list[str] | None = None,
+    task_state: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """If this ReAct tool call needs user approval per HITL policy, block execution."""
     from app.services.hitl_policy_service import classify_action_kind
@@ -330,6 +341,11 @@ def block_react_write_execution(
             tool_name, registry
         )
         requires = False
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action, requires_write_approval_always
+
+    if requires_write_approval_always(invoke_action or invoke_probe):
+        requires = True
+        invoke_action = invoke_action or invoke_probe
     if not requires:
         return None
     raw_args = dict(args or {})
@@ -337,8 +353,44 @@ def block_react_write_execution(
     # chat confirmation uses pending_task, not a model-supplied approval_id.
     raw_args.pop("approval_id", None)
     raw_args.pop("approvalId", None)
-    user_message: str | None = None
+    compile_message = str(user_message or "")
+    capability_user_message: str | None = None
     from app.capability_ontology.tool_bridge import is_capability_tool_name, resolve_capability_tool_execution
+
+    if is_f1_write_action(invoke_action):
+        from types import SimpleNamespace as _NS
+
+        from app.services.tool_types import ToolContext
+        from app.services.write_preflight import compile_write_for_context
+
+        proof = compile_write_for_context(
+            ctx=ToolContext(
+                settings=settings or _NS(),
+                client=client,
+                org_id=str(org_id or ""),
+                actor_id=str(user_id or ""),
+            ),
+            invoke_action=invoke_action,
+            args=raw_args,
+            user_message=compile_message,
+            connected_integrations=connected_integrations,
+            task_state=task_state,
+        )
+        if not proof.ok:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_action,
+                "integration": integration,
+                "label": label,
+                "pending_approval": False,
+                "error_code": proof.error_class or "WRITE_COMPILE_BLOCKED",
+                "error": proof.user_message(),
+                "repair_hint": proof.repair_hint,
+                "provider_invoked": False,
+                "args": raw_args,
+            }
+        raw_args = dict(proof.compiled_parameters)
 
     if is_capability_tool_name(tool_name):
         from app.capability_ontology.conversational_grace import (
@@ -358,7 +410,7 @@ def block_react_write_execution(
             args=raw_args,
         )
         cap_definition = get_capability(cap_resolution.capability_id)
-        user_message = format_capability_resolved_user_message(
+        capability_user_message = format_capability_resolved_user_message(
             definition=cap_definition,
             resolution=cap_resolution,
             action_verb="create that after you confirm",
@@ -375,7 +427,7 @@ def block_react_write_execution(
             "Write actions require explicit user approval before execution. "
             "Do not retry this tool; the user will confirm or edit the plan."
         ),
-        "user_message": user_message,
+        "user_message": capability_user_message,
         "args": raw_args,
     }
 
@@ -743,11 +795,13 @@ async def materialize_react_write_approval_turn(
     if not plan:
         return None
 
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
     from app.services.chat_connector_execution_service import (
         ChatConnectorExecutionService,
         enrich_plan_inference_metadata,
     )
     from app.services.connector_action_workflows import (
+        format_write_approval_message,
         missing_params_stage_patch,
         scrub_gmail_write_plan,
     )
@@ -758,21 +812,72 @@ async def materialize_react_write_approval_turn(
     from app.services.connector_session_state import load_connector_session
     from app.services.conversation_state_service import get_conversation_state_service
     from app.services.pack_common_intent_defaults import apply_pack_common_defaults
+    from app.services.tool_types import ToolContext
+    from app.services.write_preflight import compile_write_for_context
 
     # STA-305 — ReAct plans must carry the same inference metadata as governed chat.
     plan = enrich_plan_inference_metadata(plan, message=message or "")
     plan = apply_pack_common_defaults(plan, message=message or "")
-    inference_context = ParameterInferenceContext(
-        message=message or "",
-        conversation_history=list((task_state or {}).get("recent_user_messages") or []),
-        task_state=task_state or {},
-        connector_session=load_connector_session(task_state or {}),
-        client=client,
-        org_id=org_id,
-        settings=settings,
-        environment_name=environment_name,
-    )
-    plan = infer_missing_parameters(plan, inference_context)
+    if is_f1_write_action(plan.invoke_action):
+        proof = compile_write_for_context(
+            ctx=ToolContext(
+                settings=settings,
+                client=client,
+                org_id=org_id,
+                actor_id="",
+                environment_name=environment_name,
+            ),
+            invoke_action=plan.invoke_action,
+            args=plan.args,
+            user_message=message or "",
+            connected_integrations=[plan.integration] if plan.integration else None,
+            task_state=task_state,
+        )
+        if not proof.ok:
+            state = get_conversation_state_service(settings)
+            staged_missing = missing_params_stage_patch(
+                plan, message or "", task_state=task_state or {}
+            )
+            if staged_missing:
+                clarification, stage_patch = staged_missing
+                await state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    {**stage_patch, "recent_user_messages": [message or ""]},
+                    client=client,
+                )
+                refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": clarification.dialogue_mode or "clarify",
+                    "message": proof.user_message() or clarification.message,
+                    "task_state": refreshed,
+                    "pending_task": refreshed.get("pending_task"),
+                    "workflow_status": clarification.status,
+                }
+            refreshed = await state.get_task_state(conversation_id, org_id, client=client)
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarify",
+                "message": proof.user_message(),
+                "task_state": refreshed,
+                "pending_task": None,
+            }
+        from dataclasses import replace as _replace
+
+        plan = _replace(plan, args={**dict(proof.compiled_parameters), "_user_message": message or ""})
+    else:
+        inference_context = ParameterInferenceContext(
+            message=message or "",
+            conversation_history=list((task_state or {}).get("recent_user_messages") or []),
+            task_state=task_state or {},
+            connector_session=load_connector_session(task_state or {}),
+            client=client,
+            org_id=org_id,
+            settings=settings,
+            environment_name=environment_name,
+        )
+        plan = infer_missing_parameters(plan, inference_context)
     plan = scrub_gmail_write_plan(plan)
 
     state = get_conversation_state_service(settings)

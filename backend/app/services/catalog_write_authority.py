@@ -150,9 +150,17 @@ def find_matrix_entry_for_tool_registry_key(tool_registry_key: str) -> Any | Non
 def invoke_action_requires_write_approval(action: str) -> bool:
     """Shared write classification for an invoke_tool / connector action key.
 
-    1) Catalog matrix row → ``catalog_action_requires_write_approval``
-    2) Else suffix fallback (same last-resort used by chat/ReAct)
+    1) F1 WRITE slice / labeled risk class always requires approval
+    2) Catalog matrix row → ``catalog_action_requires_write_approval``
+    3) Else suffix fallback (same last-resort used by chat/ReAct)
     """
+    from app.connectors.action_catalog.f1_write_slice import requires_write_approval_always
+    from app.connectors.action_catalog.registry import get_action_spec
+
+    spec = get_action_spec(action) if action else None
+    risk_class = str(getattr(spec, "risk_class", "") or "") if spec is not None else ""
+    if requires_write_approval_always(action, risk_class=risk_class):
+        return True
     entry = find_matrix_entry_for_invoke_action(action)
     if entry is not None:
         return matrix_entry_requires_write_approval(entry)

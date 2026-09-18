@@ -392,3 +392,10 @@ def test_resume_pollution_then_explicit_fill_live_path():
     args = (resume_patch.get("pending_task") or {}).get("params", {}).get("args") or {}
     assert args.get("subject") == "Integration proof"
     assert "quick side" not in (args.get("subject") or "").lower()
+
+
+def test_bind_email_send_uses_action_spec_recipient_alias():
+    ledger = ParameterLedger()
+    ledger.upsert("recipient", "ada@example.com")
+    args = bind_args_from_ledger("email.send", {}, ledger)
+    assert args.get("to") == "ada@example.com"

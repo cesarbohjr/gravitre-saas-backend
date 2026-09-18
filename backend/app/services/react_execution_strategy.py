@@ -31,9 +31,21 @@ class ReactPlanRuntime:
         pending = [
             s
             for s in self.plan.steps
-            if s.kind in {"read", "write", "clarify", "compose", "workflow", "agent_delegation"}
+            if s.kind in {
+                "read",
+                "write",
+                "clarify",
+                "compose",
+                "workflow",
+                "agent_delegation",
+                "hypothesis",
+                "evidence",
+            }
             and s.status == "pending"
         ]
+        executable = [s for s in pending if s.kind in {"evidence", "read", "write"}]
+        if executable:
+            return executable[0].step_id
         if pending:
             return pending[0].step_id
         step_id = f"react_{iteration}_{tool_name}"
@@ -162,6 +174,12 @@ def finalize_react_execution_plan(
     else:
         plan = mark_plan_terminal(plan, "failed")
     plan.execution_strategy = "REACT"
+    if plan.source == "multi_source_diagnostic":
+        from app.services.multi_source_diagnostic import conclude_diagnostic
+
+        verdict = conclude_diagnostic(plan, runtime.observations)
+        plan.replan_reason = str(verdict.get("status") or "")
+        runtime.plan = plan
     return plan, runtime.observations
 
 
@@ -180,4 +198,15 @@ def execution_plan_patch_from_react_runtime(
 
     patch: dict[str, Any] = {**execution_plan_patch(plan), **observations_patch(observations)}
     patch["react_execution_plan_id"] = plan.plan_id
+    if plan.source == "multi_source_diagnostic":
+        from app.services.multi_source_diagnostic import conclude_diagnostic
+
+        verdict = conclude_diagnostic(plan, observations)
+        patch["diagnostic_conclusion"] = verdict
+        if not verdict.get("sufficient"):
+            patch["diagnostic_answer"] = verdict.get("message")
+        elif answer.strip():
+            patch["diagnostic_answer"] = answer
+        else:
+            patch["diagnostic_answer"] = verdict.get("message")
     return patch
