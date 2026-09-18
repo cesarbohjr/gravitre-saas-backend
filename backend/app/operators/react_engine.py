@@ -938,8 +938,13 @@ class ReActEngine:
                 connected_integrations=connected,
             )
             if preflight is not None and not preflight.ok:
-                from app.services.f2_read_repair import repair_blocked_read
+                from app.services.f2_read_repair import RepairBudget, repair_blocked_read
 
+                budget = getattr(plan_runtime, "repair_budget", None) if plan_runtime is not None else None
+                if budget is None:
+                    budget = RepairBudget.fresh()
+                    if plan_runtime is not None:
+                        plan_runtime.repair_budget = budget
                 repaired = repair_blocked_read(
                     blocked=preflight,
                     ctx=ctx,
@@ -947,8 +952,17 @@ class ReActEngine:
                     args=args,
                     user_message=user_message,
                     connected_integrations=connected,
+                    budget=budget,
                 )
-                if repaired is None:
+                if (
+                    repaired is None
+                    or repaired.preflight is None
+                    or not repaired.preflight.ok
+                ):
+                    traces = list(getattr(budget, "traces", []) or [])
+                    exhausted = any(
+                        (row.get("reason") == "budget_exhausted") for row in traces
+                    )
                     return {
                         "success": False,
                         "tool": tool_name,
@@ -962,11 +976,12 @@ class ReActEngine:
                         "step_id": preflight.step_id,
                         "capability_id": preflight.capability_id,
                         "action_key": preflight.action_key,
+                        "repair_budget_exhausted": exhausted,
+                        "repair_traces": traces[-3:],
                     }
                 invoke_action = repaired.action
                 execute_args = dict(repaired.args)
-                if repaired.preflight is not None and repaired.preflight.ok:
-                    ctx = dc_replace(ctx, preflight_result=repaired.preflight)
+                ctx = dc_replace(ctx, preflight_result=repaired.preflight)
                 from app.services.tool_service import invoke_tool
                 from app.services.tool_types import ToolError
 
@@ -982,6 +997,8 @@ class ReActEngine:
                         "provider_invoked": False,
                         "observation_status": "repair_failed",
                         "repair_reason": repaired.reason,
+                        "repair_class": repaired.repair_class,
+                        "repair_budget_remaining": repaired.budget_remaining,
                     }
                 return {
                     "success": bool(repaired_result.success),
@@ -994,6 +1011,9 @@ class ReActEngine:
                     "provider_invoked": bool(repaired_result.success),
                     "observation_status": "repaired" if repaired_result.success else "repair_failed",
                     "repair_reason": repaired.reason,
+                    "repair_class": repaired.repair_class,
+                    "repair_budget_remaining": repaired.budget_remaining,
+                    "repair_traces": list(budget.traces)[-3:],
                 }
             if preflight is not None and preflight.ok:
                 ctx = dc_replace(ctx, preflight_result=preflight)

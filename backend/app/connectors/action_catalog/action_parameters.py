@@ -390,7 +390,38 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
     },
     "slack.conversations.list": {
         "type": "object",
-        "properties": {**_COMMON_READ},
+        "properties": {
+            "types": {
+                "type": "string",
+                "description": "Comma-separated Slack conversation types.",
+                "default": "public_channel,private_channel",
+            },
+            "limit": {"type": "integer", "default": 100},
+            "cursor": {"type": "string"},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "google_calendar.events.list": {
+        "type": "object",
+        "properties": {
+            "calendar_id": {"type": "string", "default": "primary"},
+            "time_min": {"type": "string", "description": "RFC3339 window start."},
+            "time_max": {"type": "string", "description": "RFC3339 window end."},
+            "max_results": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "calendar.events.list": {
+        "type": "object",
+        "properties": {
+            "calendar_id": {"type": "string", "default": "primary"},
+            "time_min": {"type": "string"},
+            "time_max": {"type": "string"},
+            "max_results": {"type": "integer", "default": 25},
+            "connector_id": _CONNECTOR_ID,
+        },
         "required": [],
     },
     "slack.conversations.history": {
@@ -792,6 +823,18 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
             "list_id": {"type": "string", "description": "Optional ClickUp list id."},
             "team_id": {"type": "string", "description": "Optional ClickUp team/workspace id."},
             "include_closed": {"type": "boolean", "default": False},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "salesforce.leads.search": {
+        "type": "object",
+        "properties": {
+            "email": {"type": "string"},
+            "company": {"type": "string"},
+            "status": {"type": "string"},
+            "soql": {"type": "string", "description": "Optional full SOQL override."},
+            "limit": {"type": "integer", "default": 25},
             "connector_id": _CONNECTOR_ID,
         },
         "required": [],

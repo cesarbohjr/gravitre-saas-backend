@@ -17,11 +17,15 @@ from app.services.execution_plan_service import (
 )
 
 
+from app.services.f2_read_repair import RepairBudget
+
+
 @dataclass
 class ReactPlanRuntime:
     plan: ExecutionPlan
     observations: list[ExecutionObservation] = field(default_factory=list)
     step_index: int = 0
+    repair_budget: RepairBudget = field(default_factory=RepairBudget.fresh)
 
     def next_step_id(self, tool_name: str, iteration: int) -> str:
         pending = [

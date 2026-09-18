@@ -77,7 +77,15 @@ _UNTRUSTED_MARKERS = (
 )
 
 _PROOF_SECRET = secrets.token_bytes(32)
-_RESOURCE_PARAMS = {"property_id", "site_url", "portal_id", "realm_id", "subdomain"}
+_RESOURCE_PARAMS = {
+    "property_id",
+    "site_url",
+    "portal_id",
+    "realm_id",
+    "subdomain",
+    "instance_url",
+    "team_id",
+}
 _SEARCH_HINT = re.compile(r"(?i)\b(high[- ]value|amount|stage|pipeline|won|lost|closed)\b")
 
 
@@ -226,9 +234,9 @@ def _pick_from_source(
             return None
         if rule.parameter in _RESOURCE_PARAMS:
             return None
-        if rule.parameter in {"start_date", "end_date"} and time_window is not None:
-            expected = time_window.start_iso if rule.parameter == "start_date" else time_window.end_iso
-            if str(value).strip() != expected:
+        if rule.parameter in {"start_date", "end_date", "time_min", "time_max"} and time_window is not None:
+            expected = _time_value_for_parameter(rule.parameter, time_window)
+            if expected is not None and str(value).strip() != expected:
                 return None
         return value, 1.0
     if source == "MODEL_INFERENCE":
@@ -239,7 +247,7 @@ def _pick_from_source(
             if resource and resource.status == "resolved" and str(value).strip() == str(resource.resource_id).strip():
                 return value, 0.4
             return None
-        if rule.parameter in {"start_date", "end_date"} and time_window is not None:
+        if rule.parameter in {"start_date", "end_date", "time_min", "time_max"} and time_window is not None:
             return None
         return value, 0.35
     if source == "TASK_CONTEXT":
@@ -276,10 +284,9 @@ def _pick_from_source(
             return value, 0.6
         return None
     if source == "TIME_RESOLVER" and time_window is not None:
-        if rule.parameter == "start_date":
-            return time_window.start_iso, 0.99
-        if rule.parameter == "end_date":
-            return time_window.end_iso, 0.99
+        resolved = _time_value_for_parameter(rule.parameter, time_window)
+        if resolved is not None:
+            return resolved, 0.99
         return None
     if source == "CAPABILITY_RECIPE" and rule.default is not None:
         return rule.default, 0.7
@@ -292,17 +299,30 @@ def _pick_from_source(
     return None
 
 
+def _time_value_for_parameter(parameter: str, time_window: TimeWindow) -> str | None:
+    if parameter == "start_date":
+        return time_window.start_iso
+    if parameter == "end_date":
+        return time_window.end_iso
+    if parameter == "time_min":
+        return f"{time_window.start_iso}T00:00:00"
+    if parameter == "time_max":
+        return f"{time_window.end_iso}T23:59:59"
+    return None
+
+
 def _validate_constraints(spec: ActionSpec, compiled: dict[str, Any]) -> str | None:
     constraints = spec.provider_constraints or {}
     if constraints.get("date_order") == "start_lte_end":
-        start = str(compiled.get("start_date") or "")
-        end = str(compiled.get("end_date") or "")
+        start = str(compiled.get("start_date") or compiled.get("time_min") or "")
+        end = str(compiled.get("end_date") or compiled.get("time_max") or "")
         if start and end and start > end:
             return "start_date after end_date"
     limit_max = constraints.get("limit_max")
-    if limit_max is not None and "limit" in compiled:
+    limit_value = compiled.get("limit", compiled.get("max_results"))
+    if limit_max is not None and limit_value is not None:
         try:
-            if int(compiled["limit"]) > int(limit_max) or int(compiled["limit"]) < 1:
+            if int(limit_value) > int(limit_max) or int(limit_value) < 1:
                 return "limit out of range"
         except (TypeError, ValueError):
             return "limit not an integer"

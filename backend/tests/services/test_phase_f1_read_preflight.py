@@ -34,6 +34,9 @@ def _ctx(**overrides):
             "hubspot",
             "quickbooks",
             "zendesk",
+            "salesforce",
+            "google_calendar",
+            "slack",
         ],
         "timezone": "America/Los_Angeles",
         "now": FROZEN,
@@ -130,6 +133,54 @@ def test_last_month_is_previous_calendar_month_not_rolling_30():
             "What tickets are open?",
             {},
         ),
+        (
+            "hubspot.deals.list",
+            "hubspot",
+            "portal",
+            "99887",
+            "List my deals",
+            {},
+        ),
+        (
+            "hubspot.contacts.search",
+            "hubspot",
+            "portal",
+            "99887",
+            "Find contacts named Ada",
+            {"query": "Ada"},
+        ),
+        (
+            "hubspot.companies.search",
+            "hubspot",
+            "portal",
+            "99887",
+            "Search companies named Acme",
+            {"query": "Acme"},
+        ),
+        (
+            "salesforce.leads.search",
+            "salesforce",
+            "org",
+            "https://acme.my.salesforce.com",
+            "Search Salesforce leads",
+            {},
+        ),
+        (
+            "google_calendar.events.list",
+            "google_calendar",
+            "calendar",
+            "primary",
+            "List my calendar events last month",
+            {},
+        ),
+        (
+            "slack.conversations.list",
+            "slack",
+            "workspace",
+            "T123",
+            "List Slack channels",
+            {},
+        ),
     ],
 )
 def test_f1_preflight_compiles_without_user_parameter_questions(action, connector, rtype, rid, message, proposed):
@@ -154,6 +205,12 @@ def test_f1_preflight_compiles_without_user_parameter_questions(action, connecto
         assert sources["property_id"] == "RESOURCE_RESOLVER"
         assert sources["start_date"] == "TIME_RESOLVER"
         assert result.shadow_diff and result.shadow_diff["property_id"]["proposed"] == "wrong-model-id"
+    if action == "google_calendar.events.list":
+        assert result.compiled_parameters["time_min"] == "2026-08-01T00:00:00"
+        assert result.compiled_parameters["time_max"] == "2026-08-31T23:59:59"
+        assert sources["time_min"] == "TIME_RESOLVER"
+    if action == "salesforce.leads.search":
+        assert "Lead" in str(result.compiled_parameters.get("soql") or "")
 
 
 def test_website_traffic_optimized_and_react_paths_share_time_and_resource():
@@ -314,8 +371,11 @@ def test_write_actions_are_not_f1_preflighted():
 def test_routing_parity_crm_finance_support():
     cases = [
         ("hubspot.deals.search", "hubspot", "portal", "p1", "Show my high-value deals"),
+        ("hubspot.deals.list", "hubspot", "portal", "p1", "List my deals"),
         ("quickbooks.invoices.list", "quickbooks", "company", "r1", "List recent invoices"),
         ("zendesk.tickets.list", "zendesk", "subdomain", "acme", "What tickets are open?"),
+        ("salesforce.leads.search", "salesforce", "org", "https://acme.my.salesforce.com", "Search Salesforce leads"),
+        ("slack.conversations.list", "slack", "workspace", "T123", "List Slack channels"),
     ]
     for action, connector, rtype, rid, message in cases:
         with patch(
