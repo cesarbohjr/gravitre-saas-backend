@@ -1,20 +1,15 @@
 import type { ComponentType, SVGProps } from "react"
 import {
-  NucleoAgent,
   NucleoApproval,
   NucleoActivity,
-  NucleoIntelligence,
+  NucleoChat,
+  NucleoConnector,
+  NucleoHistory,
+  NucleoRun,
   NucleoSearch,
   NucleoVoice,
   NucleoWorkflow,
 } from "@/components/icons/nucleo/semantic"
-import {
-  NavChart,
-  NavDatabase,
-  NavTarget,
-  NavTasks,
-  NavSparkles,
-} from "@/components/icons/nodus-nav/outline"
 import type { AgentIdentityColorId, AgentRoleIconId, AgentDepartmentId } from "./types"
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
@@ -72,27 +67,27 @@ export const IDENTITY_COLOR_TOKENS: Record<
 }
 
 /**
- * Role → icon. Nucleo first; Nodus-nav fills sales/finance/analytics until
- * additional Nucleo Sharp glyphs are imported in Phase 1.
+ * Role → Nucleo function mark. No AiOutline24, sparkle, brain, or wand
+ * as generic AI identity.
  */
 export const ROLE_ICON_REGISTRY: Record<
   AgentRoleIconId,
   { label: string; category: string; Icon: IconComponent; source: "nucleo" | "nodus-nav" }
 > = {
-  sales: { label: "Sales", category: "Sales", Icon: NavTarget as IconComponent, source: "nodus-nav" },
+  sales: { label: "Sales", category: "Sales", Icon: NucleoRun, source: "nucleo" },
   support: { label: "Support", category: "Support", Icon: NucleoVoice, source: "nucleo" },
-  finance: { label: "Finance", category: "Finance", Icon: NavChart as IconComponent, source: "nodus-nav" },
+  finance: { label: "Finance", category: "Finance", Icon: NucleoActivity, source: "nucleo" },
   ops: { label: "Operations", category: "Operations", Icon: NucleoWorkflow, source: "nucleo" },
   research: { label: "Research", category: "Research", Icon: NucleoSearch, source: "nucleo" },
-  analytics: { label: "Analytics", category: "Analytics", Icon: NavChart as IconComponent, source: "nodus-nav" },
+  analytics: { label: "Analytics", category: "Analytics", Icon: NucleoActivity, source: "nucleo" },
   reliability: { label: "Reliability", category: "Engineering", Icon: NucleoActivity, source: "nucleo" },
   security: { label: "Security", category: "Security", Icon: NucleoApproval, source: "nucleo" },
-  recruiting: { label: "Recruiting", category: "Recruiting", Icon: NavTasks as IconComponent, source: "nodus-nav" },
-  marketing: { label: "Marketing", category: "Marketing", Icon: NavSparkles as IconComponent, source: "nodus-nav" },
-  knowledge: { label: "Knowledge", category: "Knowledge", Icon: NucleoIntelligence, source: "nucleo" },
+  recruiting: { label: "Recruiting", category: "Recruiting", Icon: NucleoChat, source: "nucleo" },
+  marketing: { label: "Marketing", category: "Marketing", Icon: NucleoRun, source: "nucleo" },
+  knowledge: { label: "Knowledge", category: "Knowledge", Icon: NucleoHistory, source: "nucleo" },
   workflow: { label: "Workflow", category: "Workflow", Icon: NucleoWorkflow, source: "nucleo" },
-  data: { label: "Data", category: "Data", Icon: NavDatabase as IconComponent, source: "nodus-nav" },
-  general: { label: "General AI", category: "General AI", Icon: NucleoAgent, source: "nucleo" },
+  data: { label: "Data", category: "Data", Icon: NucleoConnector, source: "nucleo" },
+  general: { label: "General", category: "Operations", Icon: NucleoWorkflow, source: "nucleo" },
 }
 
 export const DEPARTMENT_ACCENT: Record<
@@ -113,7 +108,7 @@ export const DEPARTMENT_ACCENT: Record<
   general: { label: "General", accentClass: "text-[color:var(--g-text-muted)]", colorHint: "violet" },
 }
 
-/** Suggest icon from role / name text — brain/knowledge only when appropriate. */
+/** Suggest icon from role / name text — function marks, not cartoon AI. */
 export function suggestRoleIcon(role: string, name = "", department = ""): AgentRoleIconId {
   const text = `${role} ${name} ${department}`.toLowerCase()
   if (/secur|compliance|risk|vulnerab/.test(text)) return "security"

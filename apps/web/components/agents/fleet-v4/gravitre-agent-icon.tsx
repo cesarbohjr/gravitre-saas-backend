@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { NUCLEO_SIZE } from "@/lib/design-system"
 import { IDENTITY_COLOR_TOKENS, ROLE_ICON_REGISTRY } from "./identity-tokens"
 import type { AgentIdentityColorId, AgentRoleIconId, AgentRuntimeState, IdentitySize } from "./types"
 import { GravitreAgentStatusDot } from "./gravitre-agent-status"
@@ -11,10 +12,10 @@ const TILE_SIZE: Record<IdentitySize, string> = {
   lg: "h-14 w-14 rounded-[var(--np-radius-md,8px)]",
 }
 
-const ICON_SIZE: Record<IdentitySize, string> = {
-  sm: "h-4 w-4",
-  md: "h-[18px] w-[18px]",
-  lg: "h-6 w-6",
+const ICON_PX: Record<IdentitySize, number> = {
+  sm: NUCLEO_SIZE.row,
+  md: NUCLEO_SIZE.secondary,
+  lg: NUCLEO_SIZE.identity,
 }
 
 export interface GravitreAgentIconProps {
@@ -38,7 +39,8 @@ export function GravitreAgentIcon({
   elevated = false,
 }: GravitreAgentIconProps) {
   const color = IDENTITY_COLOR_TOKENS[identityColor]
-  const { Icon } = ROLE_ICON_REGISTRY[icon]
+  const entry = ROLE_ICON_REGISTRY[icon] ?? ROLE_ICON_REGISTRY.general
+  const { Icon } = entry
 
   return (
     <span
@@ -52,7 +54,7 @@ export function GravitreAgentIcon({
       )}
       aria-hidden
     >
-      <Icon className={cn(ICON_SIZE[size], color.iconClass)} />
+      <Icon size={ICON_PX[size]} className={color.iconClass} />
       {showStatusDot && runtimeState ? (
         <span className="absolute -bottom-0.5 -right-0.5">
           <GravitreAgentStatusDot state={runtimeState} />

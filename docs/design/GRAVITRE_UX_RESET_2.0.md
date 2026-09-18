@@ -1,6 +1,6 @@
 # GRAVITRE UX RESET 2.0
 
-**Status:** Cesar **design selections recorded 2026-09-18**. Phase A/B Command OS **started on existing `AiWorkspace`**. Agents / relationships / performance production remain gated.
+**Status:** Cesar **design selections recorded 2026-09-18**. Phase A/B Command OS **on existing `AiWorkspace`**. Phase C Operating Team **started on `/agents`**. Relationships / Performance production remain gated.
 
 **Do not** reopen one-runtime architecture unless a regression is evidenced.
 
@@ -29,7 +29,7 @@
 
 **Harness:** `/dev/ai-workspace-preview?s=&scene=` · **Canvas:** `gravitre-ux-reset-2.canvas.tsx` · **Shots:** `e2e/artifacts/ux-reset-2-review/`
 
-**Production UI changed this slice:** Phase B Command OS on `AiWorkspace` only (inspector + work canvas). Not Agents/Relationships/Performance/Connectors production.
+**Production UI changed this slice:** Phase B Command OS on `AiWorkspace`. Phase C Operating Team on `/agents` (TEAM default, Nucleo role marks, no hub glow). Relationships / Performance / Connectors production remain gated.
 
 ---
 
@@ -83,7 +83,7 @@ Layers are called out separately: Architecture / Interaction / IA / Visual / Mot
 | Expanded rails collapsed by default | Progressive | Defaults collapsed; toggles remain | **COMPLETE** (IA) | Phase 2 | expanded/fs | TaskSidePanel + LiveActivityRail still rails | Inspector language |
 | Message chrome | No giant cards | User bubble no drop shadow; still chat bubbles | **PARTIAL** (visual) | Phase 2 | AI | Premium transcript | AI 2.0 polish |
 | Sources / execution / artifacts | After answer | `<details>` in transcript (Phase 7) | **COMPLETE** (IA disclosure); **PARTIAL** (rails remain) | `assistant-source-links.tsx`, `chat-execution-panel.tsx`, `task-side-panel.tsx` | AI | Contextual inspector vs sticky panel | Artifact workspace |
-| Agents list/team/graph | Find teammate | Hub text links; default list; team/graph exist | **COMPLETE** (IA); **PARTIAL** (visual/identity) | `agents/page.tsx`; avatars still color/pulse | `/agents` | Nucleo role identity; graph motion | Agents 2.0 |
+| Agents list/team/graph | Find teammate | TEAM default; department coworkers; Nucleo role marks; inspector on selection | **PARTIAL** (Phase C started); avatars still on identity editor | `agents/page.tsx`; `DEFAULT_AGENTS_FLEET_PREFS.view === "team"` | `/agents` | Live session **NOT PROVEN** | Operating Team |
 | Agent profile | Text sections | Text nav + totals disclosure | **COMPLETE** (IA) | `agents/[id]/page.tsx` | detail | Surface vs card residual | Polish |
 | Relationships graph-first | Graph hero | Intelligence map primary; no `/relationships` route | **PARTIAL** | `intelligence/page.tsx`; Memory still `TabsList` | intelligence, memory | Dedicated relationships UX | Relationships 2.0 |
 | Performance pipeline | Metrics → pipeline → trace | Attribution path; metrics in disclosure; `AgentContributionCard` remains | **PARTIAL** | `performance` stage | `/intelligence/performance` | Diagnostic story visualization | Performance 2.0 |
@@ -442,7 +442,7 @@ Candidates: Trace, Flow, Focus, Resolve, Status, EntityIdentity, AgentIdentity, 
 
 ### Q. Exact first production slice
 
-Phase A primitives and Phase B Command OS on existing `AiWorkspace` started 2026-09-18. No Lucide purge. No connector list-restore.
+Phase A primitives and Phase B Command OS on existing `AiWorkspace`. Phase C Operating Team on `/agents` started 2026-09-18. No Lucide purge. No connector list-restore.
 
 Proof bar for that slice: unit tests in this change · Playwright / visual regression / authenticated live **NOT PROVEN** · voice **MANUAL REQUIRED** · tools **NOT PROVEN**.
 
@@ -455,4 +455,4 @@ Artifacts: `e2e/artifacts/ux-reset-2-review/`
 
 ## STOP
 
-Phase C Agents / D Relationships / E Performance remain gated until Cesar proceeds on those surfaces.
+Phase D Relationships / E Performance remain gated until Cesar proceeds on those surfaces.

@@ -63,7 +63,7 @@ export function useAgentsFleetPrefs() {
                 ...prev,
                 ...patch,
                 filters: patch.filters ? { ...prev.filters, ...patch.filters } : prev.filters,
-                version: 1 as const,
+                version: 2 as const,
               }
         persist(next)
         return next

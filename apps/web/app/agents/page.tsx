@@ -31,35 +31,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
-import { NucleoAgent, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { 
   Plus, 
   Search,
-  RefreshCw,
-  Sparkles,
-  Brain,
-  MessageSquare,
-  Database,
-  Play,
-  Pause,
-  Settings,
   X,
-  ChevronRight,
   ChevronUp,
   ChevronDown,
   PanelRightClose,
   PanelRightOpen,
-  Shield,
-  BookOpen,
   Users,
-  Activity,
-  Zap,
-  Bot,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { TYPE } from "@/lib/design-system"
+import { NUCLEO_SIZE } from "@/lib/design-system"
 import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
@@ -448,7 +434,7 @@ function MesonBuildButton({
               isOpen && "bg-[color:var(--g-surface-active)] text-[color:var(--g-text-primary)]",
             )}
           >
-            <NucleoIntelligence className="h-4 w-4 text-[color:var(--g-intelligence)]" />
+            <NucleoWorkflow className="h-4 w-4 text-[color:var(--g-intelligence)]" />
             <span className="hidden font-medium sm:inline">Build with Meson</span>
             <span className="text-sm font-medium sm:hidden">Meson</span>
           </Button>
@@ -800,7 +786,7 @@ export default function AgentsPage() {
                 eyebrow="AI Team"
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description={SURFACE_COPY.pages.agents.description}
-                icon={<NucleoAgent className="h-5 w-5" />}
+                icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
                 actions={
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {rosterActions}
@@ -913,7 +899,7 @@ export default function AgentsPage() {
                   prefs.filters.role ||
                   prefs.filters.model ? (
                     <GravitreEmpty
-                      icon={<Bot className="h-5 w-5" />}
+                      icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
                       title="No agents match"
                       hint="Try clearing search or filters."
                       action={
@@ -932,9 +918,9 @@ export default function AgentsPage() {
                     />
                   ) : (
                     <GravitreEmpty
-                      icon={<Bot className="h-5 w-5" />}
+                      icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
                       title="No agents yet"
-                      hint="Create your first AI teammate to start delegating work."
+                      hint="Create your first teammate to start delegating work."
                       action={
                         <Button onClick={() => router.push("/agents/new")} className="gap-2">
                           <Plus className="h-4 w-4" />

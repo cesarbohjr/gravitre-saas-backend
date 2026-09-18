@@ -2,15 +2,32 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
-import { DEFAULT_AGENTS_FLEET_PREFS } from "@/lib/agents-fleet-prefs"
+import { DEFAULT_AGENTS_FLEET_PREFS, normalizeAgentsFleetPrefs } from "@/lib/agents-fleet-prefs"
 
 const webRoot = resolve(__dirname, "../..")
 
 describe("UX Reset Phase 3 — product IA flatten", () => {
-  it("agents roster defaults to list, not team cards", () => {
-    expect(DEFAULT_AGENTS_FLEET_PREFS.view).toBe("list")
+  it("agents roster defaults to the operating team view", () => {
+    expect(DEFAULT_AGENTS_FLEET_PREFS.view).toBe("team")
+    expect(normalizeAgentsFleetPrefs({ version: 1, view: "list" }).view).toBe("team")
+    expect(normalizeAgentsFleetPrefs({ version: 2, view: "list" }).view).toBe("list")
     const src = readFileSync(resolve(webRoot, "app/agents/page.tsx"), "utf8")
     expect(src).not.toMatch(/ConnectorsAtmosphere/)
+    expect(src).not.toMatch(/NucleoAgent/)
+    const identity = readFileSync(resolve(webRoot, "components/agents/fleet-v4/identity-tokens.ts"), "utf8")
+    expect(identity).not.toMatch(/NucleoAgent/)
+    expect(identity).not.toMatch(/NavSparkles/)
+    expect(identity).not.toMatch(/NucleoIntelligence/)
+    const team = readFileSync(resolve(webRoot, "components/agents/fleet-v4/team-view.tsx"), "utf8")
+    expect(team).not.toMatch(/NodusGravitreHub/)
+    expect(team).not.toMatch(/nodusGlow/)
+    const inspector = readFileSync(
+      resolve(webRoot, "components/agents/fleet-v4/agent-fleet-inspector.tsx"),
+      "utf8",
+    )
+    expect(inspector).not.toMatch(/AgentIdentityAvatar/)
+    const graph = readFileSync(resolve(webRoot, "components/agents/fleet-v4/graph-view.tsx"), "utf8")
+    expect(graph).not.toMatch(/ConnectorsAtmosphere/)
     const tabs = readFileSync(resolve(webRoot, "components/agents/agents-hub-tabs.tsx"), "utf8")
     expect(tabs).not.toMatch(/from \"@\/components\/gravitre\/hub-tabs\"/)
     expect(tabs).toMatch(/aria-label="Agents hub"/)

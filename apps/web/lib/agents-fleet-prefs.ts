@@ -22,7 +22,7 @@ export type AgentsFleetFilters = {
 }
 
 export type AgentsFleetPrefs = {
-  version: 1
+  version: 2
   view: AgentsFleetViewPref
   sort: AgentsFleetSortId
   sortDir: "asc" | "desc"
@@ -31,8 +31,8 @@ export type AgentsFleetPrefs = {
 }
 
 export const DEFAULT_AGENTS_FLEET_PREFS: AgentsFleetPrefs = {
-  version: 1,
-  view: "list",
+  version: 2,
+  view: "team",
   sort: "name",
   sortDir: "asc",
   filters: {
@@ -43,7 +43,7 @@ export const DEFAULT_AGENTS_FLEET_PREFS: AgentsFleetPrefs = {
   },
 }
 
-export const AGENTS_FLEET_STORAGE_KEY = "gravitre:agentsFleet:v1"
+export const AGENTS_FLEET_STORAGE_KEY = "gravitre:agentsFleet:v2"
 
 export function isAgentsFleetView(value: unknown): value is AgentsFleetViewPref {
   return value === "team" || value === "list" || value === "graph"
@@ -67,9 +67,16 @@ export function normalizeAgentsFleetPrefs(raw: unknown): AgentsFleetPrefs {
     string,
     unknown
   >
+  const storedVersion = o.version === 2 ? 2 : 1
+  let view = isAgentsFleetView(o.view) ? o.view : DEFAULT_AGENTS_FLEET_PREFS.view
+  // Phase 3 stored list as the implicit default. Phase C product default is TEAM;
+  // keep list only after an explicit v2 save.
+  if (storedVersion < 2 && view === "list") {
+    view = "team"
+  }
   return {
-    version: 1,
-    view: isAgentsFleetView(o.view) ? o.view : DEFAULT_AGENTS_FLEET_PREFS.view,
+    version: 2,
+    view,
     sort: isAgentsFleetSort(o.sort) ? o.sort : DEFAULT_AGENTS_FLEET_PREFS.sort,
     sortDir: o.sortDir === "desc" ? "desc" : "asc",
     filters: {

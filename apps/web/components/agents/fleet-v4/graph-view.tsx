@@ -3,7 +3,6 @@
 import { useCallback, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { NucleoConnector, NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { layoutFleetGraph } from "@/lib/agents-fleet-graph"
 import { DEPARTMENT_ACCENT } from "./identity-tokens"
@@ -247,7 +246,6 @@ export function GraphView({
           className,
         )}
       >
-        <ConnectorsAtmosphere className="z-0" />
         <p className="relative z-10 text-sm text-[color:var(--g-text-muted)]">
           {emptyHint ?? "No agents to graph."}
         </p>
@@ -294,7 +292,6 @@ export function GraphView({
       ) : null}
 
       <div className="relative min-h-[420px] overflow-auto rounded-[var(--np-radius-lg)] border border-divide">
-        <ConnectorsAtmosphere className="z-0" />
         <div
           ref={canvasRef}
           className="relative z-10 p-4"

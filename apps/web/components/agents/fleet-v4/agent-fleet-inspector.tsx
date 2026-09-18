@@ -1,14 +1,32 @@
 "use client"
 
 import Link from "next/link"
-import { Brain, Database, MessageSquare, Pause, Play, RefreshCw, Settings } from "lucide-react"
+import { Database, MessageSquare, Pause, Play, RefreshCw, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { StatusChip } from "@/components/gravitre/visual"
+import { NucleoHistory } from "@/components/icons/nucleo/semantic"
+import { LEGACY_COLOR_TO_IDENTITY, LEGACY_ICON_TO_ROLE } from "@/lib/agent-identity-bridge"
+import { isAgentAvatarColorId, isAgentIconId } from "@/lib/agent-identity"
 import { AGENT_DEPARTMENT_OPTIONS, normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { normalizeAgentStatus, presentAgentStatus } from "@/lib/agent-runtime-status"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
+import { GravitreAgentIdentity } from "./gravitre-agent-identity"
+import { IDENTITY_COLOR_TOKENS, ROLE_ICON_REGISTRY, suggestRoleIcon } from "./identity-tokens"
+import type { AgentIdentityColorId, AgentRoleIconId } from "./types"
+
+function inspectorRoleIcon(agent: AgentFleetInspectorAgent): AgentRoleIconId {
+  if (agent.icon && agent.icon in ROLE_ICON_REGISTRY) return agent.icon as AgentRoleIconId
+  if (agent.icon && isAgentIconId(agent.icon)) return LEGACY_ICON_TO_ROLE[agent.icon]
+  return suggestRoleIcon(agent.role, agent.name, agent.department)
+}
+
+function inspectorIdentityColor(agent: AgentFleetInspectorAgent): AgentIdentityColorId {
+  const color = agent.avatarColor
+  if (color && color in IDENTITY_COLOR_TOKENS) return color as AgentIdentityColorId
+  if (color && isAgentAvatarColorId(color)) return LEGACY_COLOR_TO_IDENTITY[color]
+  return "violet"
+}
 
 /**
  * Unified Agents 4.0 inspector body — one content model for sheet + desktop panel.
@@ -80,7 +98,11 @@ export function AgentFleetInspectorBody({
       <div className={cn("border-b border-border", dense ? "px-5 py-5" : "p-6")}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <AgentIdentityAvatar agent={agent} size={dense ? "md" : "lg"} showStatusDot />
+            <GravitreAgentIdentity
+              icon={inspectorRoleIcon(agent)}
+              identityColor={inspectorIdentityColor(agent)}
+              size={dense ? "md" : "lg"}
+            />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className={cn(TYPE.sectionTitle, "truncate")}>{agent.name}</h2>
@@ -258,7 +280,7 @@ export function AgentFleetInspectorBody({
           ) : null}
           <Button variant="outline" size="sm" className="gap-1.5" asChild>
             <Link href={`/agents/${agent.id}?tab=training`}>
-              <Brain className="h-3.5 w-3.5" />
+              <NucleoHistory className="h-3.5 w-3.5" />
               Train
             </Link>
           </Button>

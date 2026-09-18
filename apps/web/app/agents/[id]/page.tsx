@@ -17,7 +17,7 @@ import {
 } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
-import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { cn } from "@/lib/utils"
@@ -326,7 +326,7 @@ export default function AgentProfilePage({
           eyebrow="AI Team"
           title={agent.name}
           description={`${agent.role} · ${agent.tagline}`}
-          icon={<NucleoAgent className="h-5 w-5" />}
+          icon={<NucleoWorkflow className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <AskGravitreSummonButton />

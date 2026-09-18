@@ -9,11 +9,10 @@ import {
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
-import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import {
   ArrowLeft,
   ArrowRight,
-  Sparkles,
   Database,
   Shield,
   Check,
@@ -240,7 +239,7 @@ export default function NewAgentPage() {
           eyebrow="AI Team"
           title="Add Team Member"
           description="Configure purpose, skills, apps, and limits for a new agent."
-          icon={<NucleoAgent className="h-5 w-5" />}
+          icon={<NucleoWorkflow className="h-5 w-5" />}
           actions={
             <Button variant="outline" asChild>
               <Link href="/agents" className="gap-1">
@@ -383,7 +382,7 @@ export default function NewAgentPage() {
 
                 <GravitreSurface>
                   <div className="flex items-start gap-3">
-                    <Sparkles className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                    <NucleoWorkflow className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-foreground">AI will suggest capabilities</p>
                       <p className="text-sm text-muted-foreground">

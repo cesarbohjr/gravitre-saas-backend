@@ -6,7 +6,6 @@ import { setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { GravitreAgentStatus } from "./gravitre-agent-status"
-import { NodusGlowFrame } from "./nodus-fleet-chrome"
 import type { FleetAgent } from "./types"
 
 export function GravitreAgentCard({
@@ -14,9 +13,6 @@ export function GravitreAgentCard({
   selected,
   onSelect,
   draggable = false,
-  /** Nodus Aceternity glow frame (TEAM topology). */
-  nodusGlow = false,
-  /** Dense TEAM canvas card — less chrome, more cards fit. */
   compact = false,
   className,
 }: {
@@ -24,7 +20,6 @@ export function GravitreAgentCard({
   selected?: boolean
   onSelect?: (id: string) => void
   draggable?: boolean
-  nodusGlow?: boolean
   compact?: boolean
   className?: string
 }) {
@@ -36,7 +31,7 @@ export function GravitreAgentCard({
     })
   }
 
-  const inner = (
+  return (
     <button
       type="button"
       data-fleet-interactive=""
@@ -44,13 +39,9 @@ export function GravitreAgentCard({
       draggable={draggable}
       onDragStart={onDragStart}
       className={cn(
-        "group w-full text-left transition-[border-color,box-shadow]",
+        "group w-full rounded-[var(--np-radius-md)] border border-divide bg-white text-left shadow-[var(--np-shadow)] transition-[border-color,box-shadow] hover:border-[color:var(--g-brand-border)]",
         compact ? "p-2" : "p-3",
-        nodusGlow
-          ? "rounded-[calc(var(--np-radius-md,8px)-1px)] bg-transparent"
-          : "rounded-[var(--np-radius-md)] border border-divide bg-white shadow-[var(--np-shadow)] hover:border-[color:var(--g-brand-border)]",
-        !nodusGlow && selected && "border-[color:var(--g-brand)]/50 ring-2 ring-[color:var(--g-brand)]/40",
-        nodusGlow && selected && "ring-2 ring-[color:var(--g-brand)]/45 ring-offset-1",
+        selected && "border-[color:var(--g-brand)]/50 ring-2 ring-[color:var(--g-brand)]/40",
         draggable && "cursor-grab active:cursor-grabbing",
         className,
       )}
@@ -98,8 +89,13 @@ export function GravitreAgentCard({
               </span>
             )}
           </div>
-          {!compact && agent.currentActivity ? (
-            <p className="mt-2 truncate text-xs text-[color:var(--g-text-primary)]">
+          {agent.currentActivity ? (
+            <p
+              className={cn(
+                "truncate text-[color:var(--g-text-primary)]",
+                compact ? "mt-1 text-[10px]" : "mt-2 text-xs",
+              )}
+            >
               {agent.currentActivity}
             </p>
           ) : null}
@@ -112,7 +108,11 @@ export function GravitreAgentCard({
                 <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
                   {agent.successRate}% · {agent.lastActiveLabel}
                 </span>
-              ) : null}
+              ) : (
+                <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
+                  {agent.lastActiveLabel}
+                </span>
+              )}
             </div>
           ) : (
             <p className="mt-1 text-[9px] font-medium uppercase tracking-wide text-[color:var(--g-brand)]">
@@ -122,17 +122,5 @@ export function GravitreAgentCard({
         </div>
       </div>
     </button>
-  )
-
-  if (!nodusGlow) return inner
-
-  return (
-    <NodusGlowFrame
-      className={cn("w-full shadow-md", compact && "max-w-[200px]")}
-      contentClassName="bg-white dark:bg-neutral-900"
-      size={compact ? "sm" : "md"}
-    >
-      {inner}
-    </NodusGlowFrame>
   )
 }

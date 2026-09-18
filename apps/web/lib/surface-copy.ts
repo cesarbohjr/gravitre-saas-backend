@@ -148,7 +148,8 @@ export const SURFACE_COPY = {
     agents: {
       title: "Agents",
       rosterTitle: "AI Team",
-      description: "Agents that run workflows, answer chat, and act on your connectors.",
+      description:
+        "Coworkers by department and function. One Intelligence Core — TEAM default; list and graph remain.",
       profileTitle: "Agent profile",
       profileListHint: "Pick an agent to review measured health, performance, learning, and outcomes.",
       profileEmpty: "Create an agent to see its intelligence profile.",
