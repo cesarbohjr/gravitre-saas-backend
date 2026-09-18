@@ -99,3 +99,51 @@ def test_traffic_recipe_without_ga4_is_partial():
     assert resolved is not None
     assert resolved.status == "partial"
     assert "read_ga4" in resolved.unresolved_steps
+
+
+def test_pipeline_health_resolves_hubspot_read_only():
+    resolved = resolve_recipe(
+        "sales.pipeline.health",
+        connected_integrations=["hubspot"],
+        query="How is the pipeline?",
+    )
+    assert resolved is not None
+    assert resolved.status == "fully_resolved"
+    by_id = {s.step_id: s for s in resolved.steps}
+    assert by_id["read_deals"].resolved_action == "hubspot.deals.search"
+    assert all(s.step_type != "invoke_tool" or "create" not in (s.resolved_action or "") for s in resolved.steps)
+
+
+def test_receivables_resolves_qbo_without_write():
+    resolved = resolve_recipe(
+        "finance.receivables.overdue",
+        connected_integrations=["quickbooks"],
+        query="Show overdue invoices",
+    )
+    assert resolved is not None
+    assert resolved.status == "fully_resolved"
+    by_id = {s.step_id: s for s in resolved.steps}
+    assert by_id["read_invoices"].resolved_action == "quickbooks.invoices.list"
+
+
+def test_support_trends_resolves_zendesk_read():
+    resolved = resolve_recipe(
+        "support.issue_trends",
+        connected_integrations=["zendesk"],
+        query="What are our support ticket trends?",
+    )
+    assert resolved is not None
+    assert resolved.status == "fully_resolved"
+    by_id = {s.step_id: s for s in resolved.steps}
+    assert by_id["read_tickets"].resolved_action == "zendesk.tickets.list"
+
+
+def test_gsc_optional_not_exclusive_on_pipeline_recipe():
+    """GSC must not become a required vendor on non-analytics recipes."""
+    resolved = resolve_recipe(
+        "sales.pipeline.health",
+        connected_integrations=["hubspot", "google_search_console"],
+        query="pipeline health",
+    )
+    assert resolved is not None
+    assert resolved.status == "fully_resolved"

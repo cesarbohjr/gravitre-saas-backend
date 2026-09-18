@@ -40,6 +40,37 @@ _RECIPE_TRIGGERS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "triage this lead",
         ),
     ),
+    (
+        "sales.pipeline.health",
+        (
+            "pipeline health",
+            "how is the pipeline",
+            "how are deals doing",
+            "show my deals",
+            "open deals",
+            "pipeline this month",
+        ),
+    ),
+    (
+        "finance.receivables.overdue",
+        (
+            "overdue invoices",
+            "outstanding invoices",
+            "receivables",
+            "who owes us",
+            "unpaid invoices",
+        ),
+    ),
+    (
+        "support.issue_trends",
+        (
+            "support tickets",
+            "ticket trends",
+            "open tickets",
+            "support issues",
+            "zendesk queue",
+        ),
+    ),
 )
 
 

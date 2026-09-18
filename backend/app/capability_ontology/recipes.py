@@ -127,6 +127,45 @@ DEPARTMENT_RECIPES: dict[str, DepartmentRecipe] = {
         risk_level="low",
         requires_approval=False,
     ),
+    "sales.pipeline.health": DepartmentRecipe(
+        recipe_id="sales.pipeline.health",
+        name="Pipeline health",
+        description="Read connected CRM deals for a pipeline health snapshot. No write steps.",
+        department="sales",
+        steps=(
+            RecipeStepSpec("trigger", "Pipeline question", "trigger"),
+            RecipeStepSpec("read_deals", "Read pipeline deals", "invoke_tool", "crm.deals.read"),
+            RecipeStepSpec("compose", "Compose pipeline snapshot", "agent"),
+        ),
+        risk_level="low",
+        requires_approval=False,
+    ),
+    "finance.receivables.overdue": DepartmentRecipe(
+        recipe_id="finance.receivables.overdue",
+        name="Overdue receivables",
+        description="List invoices from the connected finance system. No write or refund steps.",
+        department="finance",
+        steps=(
+            RecipeStepSpec("trigger", "Receivables question", "trigger"),
+            RecipeStepSpec("read_invoices", "Read invoices", "invoke_tool", "finance.invoices.read"),
+            RecipeStepSpec("compose", "Compose receivables snapshot", "agent"),
+        ),
+        risk_level="low",
+        requires_approval=False,
+    ),
+    "support.issue_trends": DepartmentRecipe(
+        recipe_id="support.issue_trends",
+        name="Support issue trends",
+        description="List tickets from the connected support system. No ticket writes.",
+        department="support",
+        steps=(
+            RecipeStepSpec("trigger", "Support question", "trigger"),
+            RecipeStepSpec("read_tickets", "Read support tickets", "invoke_tool", "support.tickets.read"),
+            RecipeStepSpec("compose", "Compose issue snapshot", "agent"),
+        ),
+        risk_level="low",
+        requires_approval=False,
+    ),
 }
 
 

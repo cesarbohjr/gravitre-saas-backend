@@ -4472,14 +4472,11 @@ class AgentIntelligence:
 
         tool_results: list[dict[str, Any]] = []
         named_progress_steps: list[str] = list(research_steps) + list(tool_progress)
-        from app.services.analytics_traffic_overview_service import (
-            should_suppress_knowledge_base_for_turn,
-        )
+        from app.services.source_selection_hierarchy import prefer_live_systems
 
-        if "knowledge_base" in tool_names and not should_suppress_knowledge_base_for_turn(
+        if "knowledge_base" in tool_names and not prefer_live_systems(
             task_text,
             connected_integrations=connected_list,
-            task_state=task_state,
         ):
             kb_output = knowledge_base_output_from_retrieval(
                 rag_sources,
