@@ -1,20 +1,22 @@
 "use client"
 
 /**
- * I7 — Performance: outcome attribution flow first, then view-mode contribution.
+ * UX Reset 2.0 Phase E — Diagnostic workspace: Outcome → stages → span → evidence.
+ * Pipeline/waterfall stays subordinate. Real instrumentation only.
  */
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
-import { AgentContributionCard } from "@/components/intelligence/agent-contribution-card"
+import { AgentContributionRow } from "@/components/intelligence/agent-contribution-card"
 import { OutcomeAttributionFlow } from "@/components/intelligence/outcome-attribution-flow"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import { enterpriseApi, type IntelligencePageContextResponse } from "@/lib/api"
 import { readNumber } from "@/lib/intelligence/helpers"
 import {
   PERFORMANCE_VIEW_MODES,
+  outcomeHeadline,
   pickPrimaryOutcomePath,
   roiMetricDisplay,
   type PerformanceViewMode,
@@ -73,13 +75,21 @@ export function PerformanceStage({
     pageContext?.qualityFlags?.includes("NO_OUTCOME_ATTRIBUTION") ||
     (metricsReady && paths.every((p) => p.presentStepCount <= 1))
 
+  const headline = outcomeHeadline(activePath)
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
         <div>
-          <p className={TYPE.eyebrow}>Is Gravitre making the business better?</p>
-          <p className={cn(TYPE.meta, "mt-0.5")}>
-            Evidence-backed outcomes only. Unknown stays unknown — never a false zero.
+          <p className={TYPE.eyebrow}>Outcome</p>
+          <h2 className={cn(TYPE.sectionTitle, "mt-1")}>
+            {isLoading
+              ? "Loading diagnostic…"
+              : headline ?? "No measured outcome in this window"}
+          </h2>
+          <p className={cn(TYPE.meta, "mt-1")}>
+            Evidence-backed results only. Unknown stays unknown — never a false zero.
+            Waterfall timings appear only when a span is instrumented.
           </p>
         </div>
         <SegmentedControl
@@ -196,6 +206,16 @@ export function PerformanceStage({
       </div>
       </details>
 
+      <details>
+        <summary className="cursor-pointer list-none border-b border-divide py-2">
+          <p className={TYPE.eyebrow}>Instrumentation</p>
+          <p className={cn(TYPE.meta, "mt-0.5")}>
+            Pipeline and waterfall stay subordinate. This window has no per-span duration
+            telemetry — bars are omitted rather than invented.
+          </p>
+        </summary>
+      </details>
+
       <div className="space-y-3">
         <div>
           <p className={TYPE.eyebrow}>Agent contribution</p>
@@ -206,12 +226,12 @@ export function PerformanceStage({
         ) : !roi || roi.agents.length === 0 ? (
           <EmptyState
             title="No agent contribution in this period"
-            description="Contribution cards appear when agents complete recorded work. Hours saved stay estimates until measured time-on-task exists."
+            description="Rows appear when agents complete recorded work. Hours saved stay estimates until measured time-on-task exists."
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="divide-y divide-[color:var(--g-border-default)] border-y border-[color:var(--g-border-default)]">
             {roi.agents.map((agent) => (
-              <AgentContributionCard key={agent.agentId} agent={agent} viewMode={viewMode} />
+              <AgentContributionRow key={agent.agentId} agent={agent} viewMode={viewMode} />
             ))}
           </div>
         )}

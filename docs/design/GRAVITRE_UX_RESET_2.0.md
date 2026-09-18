@@ -1,6 +1,6 @@
 # GRAVITRE UX RESET 2.0
 
-**Status:** Cesar **design selections recorded 2026-09-18**. Phase A/B Command OS **on existing `AiWorkspace`**. Phase C Operating Team **on `/agents`**. Phase D Evidence graph **on Learning relationships**. Performance production remains gated.
+**Status:** Cesar **design selections recorded 2026-09-18**. Phase A/B Command OS **on existing `AiWorkspace`**. Phase C Operating Team **on `/agents`**. Phase D Evidence graph **on Learning relationships**. Phase E Diagnostic workspace **on `/intelligence/performance`**. Phase F Intent + orchestration **on the workflow builder**. Runs / Connectors production remain later.
 
 **Do not** reopen one-runtime architecture unless a regression is evidenced.
 
@@ -29,7 +29,7 @@
 
 **Harness:** `/dev/ai-workspace-preview?s=&scene=` · **Canvas:** `gravitre-ux-reset-2.canvas.tsx` · **Shots:** `e2e/artifacts/ux-reset-2-review/`
 
-**Production UI changed this slice:** Phase B Command OS on `AiWorkspace`. Phase C Operating Team on `/agents`. Phase D Evidence graph on the Learning relationships workspace (inspector on selection; Focus / Pin / Neighborhood). Performance / Connectors production remain gated.
+**Production UI changed this slice:** Phase B Command OS on `AiWorkspace`. Phase C Operating Team on `/agents`. Phase D Evidence graph on Learning relationships. Phase E Diagnostic workspace on `/intelligence/performance` (outcome → stages → span/evidence; inspector on selection; no invented waterfall). Phase F Intent strip + TRACE overlay + inspect-on-node on `workflows/[id]/builder`. Connectors production remain gated.
 
 ---
 
@@ -86,12 +86,12 @@ Layers are called out separately: Architecture / Interaction / IA / Visual / Mot
 | Agents list/team/graph | Find teammate | TEAM default; department coworkers; Nucleo role marks; inspector on selection | **PARTIAL** (Phase C started); avatars still on identity editor | `agents/page.tsx`; `DEFAULT_AGENTS_FLEET_PREFS.view === "team"` | `/agents` | Live session **NOT PROVEN** | Operating Team |
 | Agent profile | Text sections | Text nav + totals disclosure | **COMPLETE** (IA) | `agents/[id]/page.tsx` | detail | Surface vs card residual | Polish |
 | Relationships graph-first | Graph hero | Graph default; evidence inspector only on selection; Focus/Pin/Neighborhood | **PARTIAL** (Phase D started) | `relationships-workspace.tsx`; graph default in `use-relationships-workspace.ts` | learning relationships | Live session **NOT PROVEN** | Evidence graph |
-| Performance pipeline | Metrics → pipeline → trace | Attribution path; metrics in disclosure; `AgentContributionCard` remains | **PARTIAL** | `performance` stage | `/intelligence/performance` | Diagnostic story visualization | Performance 2.0 |
+| Performance pipeline | Metrics → pipeline → trace | Diagnostic: Outcome headline, contributing stages, inspector on selection, metrics disclosure, contribution rows; waterfall omitted without span telemetry | **PARTIAL** (Phase E started) | `performance-stage.tsx`; `outcome-attribution-flow.tsx` | `/intelligence/performance` | Live session **NOT PROVEN**; no instrumented duration bars yet | Performance 2.0 |
 | Settings rows | Not card-per-field | Many preference rows flattened; orgs page still cards; residual bordered groups | **PARTIAL** | `settings/page.tsx`, `settings/organizations/page.tsx` | settings | Document model | Settings 2.0 |
 | Connectors compact | List default; topology opt-in | **COMPLETE (management list).** `useState("grid")` is a **misnamed key**; the `"grid"` branch renders `variant="list"` and the toggle `aria-label` is “List view”. Phase 3 test **requires** `"grid"` + `variant="list"`. Discovery still uses `AvailableConnectorsStrip` (logo chips), not app-store cards. Topology is opt-in. | **COMPLETE** list management; **PARTIAL** discovery vs management split | `connectors/page.tsx` ~2565, 3109–3310; `phase-3-product-ia.test.ts` | `/connectors` | Design A/B/C for discovery vs management — do not “restore list” as if it were lost | Connectors 2.0 exploration |
 | Connector detail | Flatten | ~26 shadcn Cards | **NOT STARTED** (1.0 leftover) | `connectors/[id]/page.tsx` | detail | Document/split | 2.0 |
 | Workflows table-first | Find/run | Table default all widths (Phase 7) | **COMPLETE** (IA) | `workflows/page.tsx` | `/workflows` | Builder Badge density | Workflows 2.0 = canvas |
-| Workflow builder | Not tab-first | Canvas primary; ~31 Badges | **PARTIAL** | `workflows/[id]/builder/page.tsx` | builder | Node chrome | Workflow 2.0 |
+| Workflow builder | Not tab-first | Canvas primary; intent statement above canvas; config via Inspect sheet; TRACE overlay (path emphasis, no invented timings) | **PARTIAL** (Phase F started) | `workflows/[id]/builder/page.tsx` | builder | Badge density; live **NOT PROVEN** | Workflow 2.0 |
 | Workflow detail | Flatten | ~28 Cards | **NOT STARTED** | `workflows/[id]/page.tsx` | detail | — | 2.0 |
 | Activity list | No KPI wrap | Two-pane; KPI wrap removed | **COMPLETE** (IA) | `activity/page.tsx`; `/runs` → activity | activity | Trace viz | Runs 2.0 |
 | Marketplace tiles | Keep discovery | Intentionally kept PriceBadge/tiles | **COMPLETE** (kept) | marketplace assets | marketplace | Operational vs discovery | Marketplace 2.0 |
@@ -442,7 +442,7 @@ Candidates: Trace, Flow, Focus, Resolve, Status, EntityIdentity, AgentIdentity, 
 
 ### Q. Exact first production slice
 
-Phase A primitives and Phase B Command OS on existing `AiWorkspace`. Phase C Operating Team on `/agents` started 2026-09-18. No Lucide purge. No connector list-restore.
+Phase A primitives and Phase B Command OS on existing `AiWorkspace`. Phase C Operating Team on `/agents`. Phase D Evidence graph on Learning relationships. Phase E Diagnostic workspace on Performance. Phase F Intent + TRACE on the workflow builder started 2026-09-18. No Lucide purge. No connector list-restore.
 
 Proof bar for that slice: unit tests in this change · Playwright / visual regression / authenticated live **NOT PROVEN** · voice **MANUAL REQUIRED** · tools **NOT PROVEN**.
 
@@ -455,4 +455,4 @@ Artifacts: `e2e/artifacts/ux-reset-2-review/`
 
 ## STOP
 
-Phase E Performance remains gated until Cesar proceeds on that surface.
+Phase F Workflows Intent + TRACE started. Runs (outcome-first, TRACE drill-down) remain gated until Cesar proceeds on that surface.

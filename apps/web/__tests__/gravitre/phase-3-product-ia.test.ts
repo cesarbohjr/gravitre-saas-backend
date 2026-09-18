@@ -62,15 +62,27 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(toolbar).toMatch(/>\s*Focus\s*</)
   })
 
-  it("performance shows attribution before collapsed metrics", () => {
+  it("performance leads with outcome then stages; inspector closed until selection", () => {
     const src = readFileSync(
       resolve(webRoot, "components/intelligence/pages/performance-stage.tsx"),
       "utf8",
     )
-    const flow = src.indexOf("OutcomeAttributionFlow")
+    const outcome = src.indexOf("{TYPE.eyebrow}>Outcome</p>")
+    const flow = src.lastIndexOf("<OutcomeAttributionFlow")
     const metrics = src.indexOf("Totals for the selected view")
-    expect(flow).toBeGreaterThan(0)
+    expect(outcome).toBeGreaterThan(0)
+    expect(flow).toBeGreaterThan(outcome)
     expect(metrics).toBeGreaterThan(flow)
+    expect(src).toMatch(/AgentContributionRow/)
+    expect(src).not.toMatch(/AgentContributionCard/)
+    expect(src).toMatch(/bars are omitted rather than invented/)
+    const flowSrc = readFileSync(
+      resolve(webRoot, "components/intelligence/outcome-attribution-flow.tsx"),
+      "utf8",
+    )
+    expect(flowSrc).toMatch(/Contributing stages/)
+    expect(flowSrc).toMatch(/useState<string \| null>\(null\)/)
+    expect(flowSrc).toMatch(/\{selected \?/)
   })
 
   it("settings preference chrome uses rows, not elevated cards", () => {
@@ -81,5 +93,13 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(operatorWindow).toMatch(/border-b border-divide py-3/)
     expect(operatorWindow).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
     expect(src).toMatch(/Enable/)
+  })
+
+  it("workflow builder states intent then canvas and inspects config on the node", () => {
+    const src = readFileSync(resolve(webRoot, "app/workflows/[id]/builder/page.tsx"), "utf8")
+    expect(src).toMatch(/data-review-surface="workflow-intent"/)
+    expect(src).toMatch(/traceOverlay/)
+    expect(src).toMatch(/Inspect ·/)
+    expect(src).toMatch(/not behind Ask/)
   })
 })

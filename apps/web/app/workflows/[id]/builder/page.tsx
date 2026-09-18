@@ -2242,7 +2242,7 @@ function ConfigPanel({
             <div>
               <SheetTitle className="text-left">{node.name}</SheetTitle>
               <SheetDescription className="text-left">
-                {config.label} Configuration
+                Inspect · {config.label}. Configuration lives here, not behind Ask.
               </SheetDescription>
             </div>
           </div>
@@ -3377,6 +3377,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [traceOverlay, setTraceOverlay] = useState(false)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
   const [searchQuery, setSearchQuery] = useState("")
   const filteredOrgAgents = useMemo(
@@ -4857,6 +4858,22 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
 
+        <div
+          data-review-surface="workflow-intent"
+          className="flex-shrink-0 border-b border-border bg-card/80 px-3 py-2 md:px-4"
+        >
+          <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Intent
+          </p>
+          <p className="mt-0.5 text-sm font-medium text-foreground">
+            {(workflowMeta.description || "").trim() ||
+              "Name the outcome this workflow should produce — then orchestrate it on the canvas."}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Select a node to inspect configuration. Ask does not hide setup.
+          </p>
+        </div>
+
         {/* Main content */}
         <div className="flex flex-1 min-h-0 flex-col md:flex-row">
           {/* Left library panel - conditionally shown */}
@@ -5433,9 +5450,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           {/* Canvas */}
           <div 
             ref={canvasRef}
+            data-trace-overlay={traceOverlay ? "on" : "off"}
             className={cn(
               "flex-1 relative overflow-auto bg-background touch-pan-x touch-pan-y",
-              isDraggingConnection && "cursor-crosshair"
+              isDraggingConnection && "cursor-crosshair",
+              traceOverlay && "ring-1 ring-inset ring-[color:var(--g-signal)]/40",
             )}
             onClick={handleCanvasClick}
             onDragOver={(e) => {
@@ -5462,6 +5481,17 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             }}
             onTouchEnd={handleConnectionDragEnd}
           >
+            {traceOverlay ? (
+              <div className="pointer-events-none absolute right-4 top-4 z-20 max-w-sm border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] px-3 py-2 text-xs text-foreground">
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  TRACE
+                </p>
+                <p className="mt-1">
+                  Orchestration path on this canvas. Duration bars appear only from a real run —
+                  never invented.
+                </p>
+              </div>
+            ) : null}
             {/* Enhanced grid background with subtle gradient */}
             <div className="absolute inset-0">
               {/* Radial gradient overlay for depth */}
@@ -5763,8 +5793,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       d={pathD}
                       stroke={strokeColor}
                       strokeWidth={isDecisionSource ? "3" : "2.5"}
-                      fill="none"
-                      opacity={isDimmedPath ? "0.4" : "0.9"}
+                    fill="none"
+                    opacity={
+                      traceOverlay
+                        ? "1"
+                        : isDimmedPath
+                          ? "0.4"
+                          : "0.9"
+                    }
                       strokeLinecap="round"
                       strokeDasharray={isEvaluating && isDecisionSource ? "8 4" : undefined}
                     >
@@ -6185,6 +6221,17 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               >
                 <FileSearch className="h-3.5 w-3.5" />
                 Preview
+              </Button>
+              <Button
+                variant={traceOverlay ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-3 gap-1.5 text-xs"
+                aria-pressed={traceOverlay}
+                onClick={() => setTraceOverlay((on) => !on)}
+                title="TRACE overlay"
+              >
+                <Activity className="h-3.5 w-3.5" />
+                TRACE
               </Button>
             </div>
 

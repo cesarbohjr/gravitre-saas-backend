@@ -27,6 +27,20 @@ export function pickPrimaryOutcomePath(
   return [...paths].sort((a, b) => b.presentStepCount - a.presentStepCount)[0] ?? null
 }
 
+/** Prefer a present outcome / impact step label; never invent a business result. */
+export function outcomeHeadline(path: OutcomeAttributionPath | null | undefined): string | null {
+  if (!path) return null
+  const ranked = [...path.steps]
+    .filter((step) => step.present && (step.kind === "outcome" || step.kind === "business_impact"))
+    .reverse()
+  const labeled = ranked.find((step) => step.label.trim().length > 0)
+  if (labeled?.label) return labeled.label
+  const anyPresent = [...path.steps].reverse().find((step) => step.present && step.label.trim())
+  if (anyPresent?.label) return anyPresent.label
+  const scope = path.scopeLabel.trim()
+  return scope.length > 0 ? scope : null
+}
+
 export function roiMetricIsUnknown(metric: AgentRoiMetric | null | undefined): boolean {
   if (!metric) return true
   const provenance: AgentRoiProvenance | undefined = metric.provenance

@@ -7,6 +7,36 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import type { AgentRoiRow } from "@/types/api"
 
+export function AgentContributionRow({
+  agent,
+  viewMode,
+}: {
+  agent: AgentRoiRow
+  viewMode: PerformanceViewMode
+}) {
+  const metrics = metricsForView(agent, viewMode)
+  return (
+    <div
+      data-testid="agent-contribution-row"
+      className="grid gap-3 py-3 sm:grid-cols-[minmax(8rem,1fr)_repeat(3,minmax(0,1fr))]"
+    >
+      <p className="text-sm font-medium text-foreground">{agent.agentName}</p>
+      {metrics.map((metric) => {
+        const display = roiMetricDisplay(metric)
+        return (
+          <div key={metric.label}>
+            <p className={TYPE.eyebrow}>{metric.label}</p>
+            <p className={cn("mt-0.5 text-sm tabular-nums", display.unknown && "text-muted-foreground")}>
+              {display.value}
+            </p>
+            {display.hint ? <p className={cn(TYPE.meta, "mt-0.5")}>{display.hint}</p> : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function AgentContributionCard({
   agent,
   viewMode,

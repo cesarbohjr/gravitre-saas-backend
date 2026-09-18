@@ -24,13 +24,10 @@ export function OutcomeAttributionFlow({
 }) {
   const reducedMotion = useReducedMotion()
   const active = paths.find((p) => p.id === selectedPathId) ?? paths[0]
-  const [selectedKind, setSelectedKind] = useState<string | null>(
-    active?.steps.find((s) => s.present)?.kind ?? active?.steps[0]?.kind ?? null,
-  )
+  const [selectedKind, setSelectedKind] = useState<string | null>(null)
 
   useEffect(() => {
-    const next = active?.steps.find((s) => s.present)?.kind ?? active?.steps[0]?.kind ?? null
-    setSelectedKind(next)
+    setSelectedKind(null)
   }, [active?.id])
 
   if (!active) {
@@ -41,29 +38,28 @@ export function OutcomeAttributionFlow({
           className,
         )}
       >
-        <p className={TYPE.cardTitle}>Outcome attribution flow</p>
+        <p className={TYPE.cardTitle}>No contributing stages</p>
         <p className={cn(TYPE.meta, "mt-1")}>{qualityFlagToCopy("NO_OUTCOME_ATTRIBUTION")}</p>
       </div>
     )
   }
 
-  const selected = active.steps.find((s) => s.kind === selectedKind) ?? active.steps[0]
+  const selected = selectedKind
+    ? active.steps.find((s) => s.kind === selectedKind)
+    : undefined
 
   return (
     <section
-      className={cn(
-        "overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]",
-        className,
-      )}
+      className={cn("bg-[color:var(--g-surface-1)]", className)}
       aria-labelledby="outcome-flow-heading"
     >
-      <div className="flex flex-col gap-3 border-b border-divide px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-divide pb-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p id="outcome-flow-heading" className={TYPE.eyebrow}>
-            Outcome attribution flow
+            Contributing stages
           </p>
           <p className={cn(TYPE.meta, "mt-0.5")}>
-            How work becomes a measured result — click any step for evidence.
+            Select a stage to inspect the span and evidence. Inspector stays closed until then.
           </p>
         </div>
         {paths.length > 1 ? (
@@ -89,8 +85,8 @@ export function OutcomeAttributionFlow({
         )}
       </div>
 
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <ol className="space-y-0 px-4 py-4">
+      <div className={cn("grid gap-6 pt-4", selected && "lg:grid-cols-[minmax(0,1fr)_18rem]")}>
+        <ol className="space-y-0">
           {active.steps.map((step, index) => {
             const selectedStep = step.kind === selected?.kind
             return (
@@ -103,7 +99,9 @@ export function OutcomeAttributionFlow({
                 ) : null}
                 <button
                   type="button"
-                  onClick={() => setSelectedKind(step.kind)}
+                  onClick={() =>
+                    setSelectedKind((prev) => (prev === step.kind ? null : step.kind))
+                  }
                   aria-pressed={selectedStep}
                   className={cn(
                     "relative z-[1] mb-3 flex w-full items-start gap-3 rounded-[var(--np-radius-md)] border px-3 py-2.5 text-left transition-colors",
@@ -136,16 +134,22 @@ export function OutcomeAttributionFlow({
           })}
         </ol>
 
-        <aside className="border-t border-divide bg-[color:var(--g-surface-2)]/30 p-4 lg:border-l lg:border-t-0">
-          <motion.div
-            key={selected?.kind}
-            initial={reducedMotion ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reducedMotion ? 0 : 0.2 }}
-          >
-            <StepInspector step={selected} />
-          </motion.div>
-        </aside>
+        {selected ? (
+          <aside className="border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] p-4">
+            <motion.div
+              key={selected.kind}
+              initial={reducedMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reducedMotion ? 0 : 0.2 }}
+            >
+              <StepInspector step={selected} />
+            </motion.div>
+          </aside>
+        ) : (
+          <p className={cn(TYPE.meta, "lg:col-span-2")}>
+            Select a contributing stage — inspector stays closed until then.
+          </p>
+        )}
       </div>
     </section>
   )
@@ -153,12 +157,12 @@ export function OutcomeAttributionFlow({
 
 function StepInspector({ step }: { step?: OutcomePathStep }) {
   if (!step) {
-    return <p className={TYPE.meta}>Select a step to inspect evidence.</p>
+    return null
   }
   return (
     <div className="space-y-3">
       <div>
-        <p className={TYPE.eyebrow}>Evidence path</p>
+        <p className={TYPE.eyebrow}>Selected span</p>
         <p className="mt-1 text-sm font-medium text-foreground">{step.title}</p>
         <p className={cn(TYPE.meta, "mt-0.5")}>{step.label}</p>
       </div>

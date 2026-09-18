@@ -16,7 +16,7 @@ import { ArrowsClockwise } from "@phosphor-icons/react"
 const copy = {
   title: "Performance",
   description:
-    "Is Gravitre making the business better? Outcome attribution, contribution, and evidence — not a telemetry dashboard.",
+    "Diagnostic workspace: outcome first, then contributing stages, selected span, and evidence. Waterfall stays subordinate.",
 }
 
 export default function IntelligencePerformancePage() {

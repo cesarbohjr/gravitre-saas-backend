@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  outcomeHeadline,
   pickPrimaryOutcomePath,
   roiMetricDisplay,
   roiMetricIsUnknown,
@@ -48,6 +49,35 @@ describe("performance-display", () => {
     expect(display.unknown).toBe(false)
     expect(display.value).toContain("h")
     expect(display.hint.toLowerCase()).toContain("estimate")
+  })
+
+  it("uses a present outcome label and never invents a result", () => {
+    expect(
+      outcomeHeadline({
+        id: "p",
+        scopeId: "p",
+        scopeLabel: "Scope only",
+        presentStepCount: 2,
+        complete: false,
+        steps: [
+          {
+            kind: "action",
+            title: "Action",
+            label: "contacts.update",
+            present: true,
+            evidence: [],
+          },
+          {
+            kind: "outcome",
+            title: "Outcome",
+            label: "Contact assigned",
+            present: true,
+            evidence: ["record 12"],
+          },
+        ],
+      }),
+    ).toBe("Contact assigned")
+    expect(outcomeHeadline(null)).toBeNull()
   })
 
   it("maps unknown step quality notes to human copy", () => {
