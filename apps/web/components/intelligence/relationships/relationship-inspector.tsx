@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { NucleoAgent } from "@/components/icons/nucleo/semantic"
+import { NucleoChat } from "@/components/icons/nucleo/semantic"
 import { entityTypeLabel, knowledgeNodeTypeLabel, relationshipTypeLabel } from "@/lib/learning-ui-copy"
 import { intelligenceApi } from "@/lib/api"
 import { CLUSTER_PREFIX, detectAggregateClusters } from "@/lib/relationships-graph/aggregate-edges"
@@ -293,6 +293,14 @@ export function RelationshipInspector({
           ) : null}
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          <div className="space-y-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-active)] p-3 text-sm">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+              Why this link
+            </p>
+            <p className="leading-relaxed text-[color:var(--g-text-secondary)]">
+              {relationshipLearnedCopy(String(rel.relationship_type ?? ""))}
+            </p>
+          </div>
           <div className="space-y-2 text-sm">
             <div>
               <p className="text-[11px] text-[color:var(--g-text-muted)]">From</p>
@@ -351,7 +359,7 @@ export function RelationshipInspector({
         <div className="flex flex-col gap-2 border-t border-divide p-4">
           <Button type="button" variant="outline" size="sm" className="gap-2" asChild>
             <Link href={askHref}>
-              <NucleoAgent className="h-4 w-4" aria-hidden />
+              <NucleoChat className="h-4 w-4" aria-hidden />
               Ask Gravitre AI
             </Link>
           </Button>
@@ -470,7 +478,7 @@ export function RelationshipInspector({
       <div className="flex flex-col gap-2 border-t border-divide p-4">
         <Button type="button" variant="outline" size="sm" className="gap-2" asChild>
           <Link href={askHref}>
-            <NucleoAgent className="h-4 w-4" aria-hidden />
+              <NucleoChat className="h-4 w-4" aria-hidden />
             Ask Gravitre AI
           </Link>
         </Button>

@@ -127,7 +127,7 @@ function buildElements(
 }
 
 function RelationshipGraphCanvasInner({ workspace }: { workspace: RelationshipsWorkspaceState }) {
-  const { filtered, nodes, labelFor, selection, setSelection, expandedClusters } = workspace
+  const { filtered, nodes, labelFor, selection, setSelection, expandedClusters, pinnedIds, neighborhoodOn } = workspace
 
   const elements = useMemo(() => {
     const built = buildElements(filtered, nodes, labelFor)
@@ -141,13 +141,37 @@ function RelationshipGraphCanvasInner({ workspace }: { workspace: RelationshipsW
     return layoutGraphElements(aggregated.nodes, aggregated.edges)
   }, [filtered, nodes, labelFor, expandedClusters])
 
-  const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(elements.nodes)
-  const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState(elements.edges)
+  const focusedElements = useMemo(() => {
+    let { nodes: nextNodes, edges: nextEdges } = elements
+    if (neighborhoodOn && selection?.kind === "node") {
+      const keep = new Set<string>([selection.nodeId])
+      for (const edge of nextEdges) {
+        if (edge.source === selection.nodeId || edge.target === selection.nodeId) {
+          keep.add(edge.source)
+          keep.add(edge.target)
+        }
+      }
+      nextNodes = nextNodes.filter((n) => keep.has(n.id))
+      nextEdges = nextEdges.filter((e) => keep.has(e.source) && keep.has(e.target))
+    }
+    if (pinnedIds.size > 0) {
+      nextNodes = nextNodes.map((n) => ({
+        ...n,
+        style: pinnedIds.has(n.id)
+          ? { ...n.style, outline: "2px solid var(--g-brand)", outlineOffset: "2px" }
+          : n.style,
+      }))
+    }
+    return { nodes: nextNodes, edges: nextEdges }
+  }, [elements, neighborhoodOn, pinnedIds, selection])
+
+  const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(focusedElements.nodes)
+  const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState(focusedElements.edges)
 
   useEffect(() => {
-    setFlowNodes(elements.nodes)
-    setFlowEdges(elements.edges)
-  }, [elements.nodes, elements.edges, setFlowNodes, setFlowEdges])
+    setFlowNodes(focusedElements.nodes)
+    setFlowEdges(focusedElements.edges)
+  }, [focusedElements.nodes, focusedElements.edges, setFlowNodes, setFlowEdges])
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes, edges: selectedEdges }: OnSelectionChangeParams) => {

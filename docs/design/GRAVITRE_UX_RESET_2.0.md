@@ -1,6 +1,6 @@
 # GRAVITRE UX RESET 2.0
 
-**Status:** Cesar **design selections recorded 2026-09-18**. Phase A/B Command OS **on existing `AiWorkspace`**. Phase C Operating Team **started on `/agents`**. Relationships / Performance production remain gated.
+**Status:** Cesar **design selections recorded 2026-09-18**. Phase A/B Command OS **on existing `AiWorkspace`**. Phase C Operating Team **on `/agents`**. Phase D Evidence graph **on Learning relationships**. Performance production remains gated.
 
 **Do not** reopen one-runtime architecture unless a regression is evidenced.
 
@@ -29,7 +29,7 @@
 
 **Harness:** `/dev/ai-workspace-preview?s=&scene=` · **Canvas:** `gravitre-ux-reset-2.canvas.tsx` · **Shots:** `e2e/artifacts/ux-reset-2-review/`
 
-**Production UI changed this slice:** Phase B Command OS on `AiWorkspace`. Phase C Operating Team on `/agents` (TEAM default, Nucleo role marks, no hub glow). Relationships / Performance / Connectors production remain gated.
+**Production UI changed this slice:** Phase B Command OS on `AiWorkspace`. Phase C Operating Team on `/agents`. Phase D Evidence graph on the Learning relationships workspace (inspector on selection; Focus / Pin / Neighborhood). Performance / Connectors production remain gated.
 
 ---
 
@@ -85,7 +85,7 @@ Layers are called out separately: Architecture / Interaction / IA / Visual / Mot
 | Sources / execution / artifacts | After answer | `<details>` in transcript (Phase 7) | **COMPLETE** (IA disclosure); **PARTIAL** (rails remain) | `assistant-source-links.tsx`, `chat-execution-panel.tsx`, `task-side-panel.tsx` | AI | Contextual inspector vs sticky panel | Artifact workspace |
 | Agents list/team/graph | Find teammate | TEAM default; department coworkers; Nucleo role marks; inspector on selection | **PARTIAL** (Phase C started); avatars still on identity editor | `agents/page.tsx`; `DEFAULT_AGENTS_FLEET_PREFS.view === "team"` | `/agents` | Live session **NOT PROVEN** | Operating Team |
 | Agent profile | Text sections | Text nav + totals disclosure | **COMPLETE** (IA) | `agents/[id]/page.tsx` | detail | Surface vs card residual | Polish |
-| Relationships graph-first | Graph hero | Intelligence map primary; no `/relationships` route | **PARTIAL** | `intelligence/page.tsx`; Memory still `TabsList` | intelligence, memory | Dedicated relationships UX | Relationships 2.0 |
+| Relationships graph-first | Graph hero | Graph default; evidence inspector only on selection; Focus/Pin/Neighborhood | **PARTIAL** (Phase D started) | `relationships-workspace.tsx`; graph default in `use-relationships-workspace.ts` | learning relationships | Live session **NOT PROVEN** | Evidence graph |
 | Performance pipeline | Metrics → pipeline → trace | Attribution path; metrics in disclosure; `AgentContributionCard` remains | **PARTIAL** | `performance` stage | `/intelligence/performance` | Diagnostic story visualization | Performance 2.0 |
 | Settings rows | Not card-per-field | Many preference rows flattened; orgs page still cards; residual bordered groups | **PARTIAL** | `settings/page.tsx`, `settings/organizations/page.tsx` | settings | Document model | Settings 2.0 |
 | Connectors compact | List default; topology opt-in | **COMPLETE (management list).** `useState("grid")` is a **misnamed key**; the `"grid"` branch renders `variant="list"` and the toggle `aria-label` is “List view”. Phase 3 test **requires** `"grid"` + `variant="list"`. Discovery still uses `AvailableConnectorsStrip` (logo chips), not app-store cards. Topology is opt-in. | **COMPLETE** list management; **PARTIAL** discovery vs management split | `connectors/page.tsx` ~2565, 3109–3310; `phase-3-product-ia.test.ts` | `/connectors` | Design A/B/C for discovery vs management — do not “restore list” as if it were lost | Connectors 2.0 exploration |
@@ -455,4 +455,4 @@ Artifacts: `e2e/artifacts/ux-reset-2-review/`
 
 ## STOP
 
-Phase D Relationships / E Performance remain gated until Cesar proceeds on those surfaces.
+Phase E Performance remains gated until Cesar proceeds on that surface.

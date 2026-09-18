@@ -14,6 +14,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { RELATIONSHIPS_SMOKE_DATA, relationshipTypeLabel } from "@/lib/learning-ui-copy"
 import type { SortKey, ViewMode } from "@/lib/relationships-graph/types"
 import { Graph, Plus, Table } from "@phosphor-icons/react"
+import { NucleoSearch } from "@/components/icons/nucleo/semantic"
+import { NUCLEO_SIZE } from "@/lib/design-system"
 import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
 
 export function RelationshipToolbar({
@@ -43,6 +45,13 @@ export function RelationshipToolbar({
     setShowTestData,
     perspective,
     setPerspective,
+    selection,
+    neighborhoodOn,
+    setNeighborhoodOn,
+    pinnedIds,
+    togglePin,
+    labelFor,
+    nodes,
   } = workspace
 
   return (
@@ -68,6 +77,55 @@ export function RelationshipToolbar({
           </ToggleGroupItem>
         </ToggleGroup>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            disabled={!selection}
+            onClick={() => {
+              if (!selection) return
+              setViewMode("graph")
+              if (selection.kind === "node") {
+                const seeded = nodes.find((n) => `seed::${n.id}` === selection.nodeId)
+                const label = seeded
+                  ? String(seeded.name ?? "")
+                  : labelFor(selection.nodeId.split("::")[0], selection.nodeId.split("::").slice(1).join("::"))
+                if (label) {
+                  setQuery(label)
+                  setPage(0)
+                }
+              }
+            }}
+          >
+            <NucleoSearch size={NUCLEO_SIZE.row} aria-hidden />
+            Focus
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={neighborhoodOn ? "secondary" : "outline"}
+            className="gap-1.5"
+            disabled={selection?.kind !== "node"}
+            aria-pressed={neighborhoodOn}
+            onClick={() => {
+              setViewMode("graph")
+              setNeighborhoodOn((on) => !on)
+            }}
+          >
+            Neighborhood
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={selection?.kind === "node" && pinnedIds.has(selection.nodeId) ? "secondary" : "outline"}
+            disabled={selection?.kind !== "node"}
+            onClick={() => {
+              if (selection?.kind === "node") togglePin(selection.nodeId)
+            }}
+          >
+            Pin
+          </Button>
           <Badge variant="outline" className="font-normal tabular-nums">
             {filtered.length} shown
             {relationships.length !== filtered.length ? ` of ${relationships.length}` : ""}

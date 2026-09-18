@@ -278,7 +278,7 @@ export const RELATIONSHIPS_ONBOARDING = {
 export const RELATIONSHIPS_GUIDE = {
   title: "Organization knowledge graph",
   lead:
-    "See who and what exists in your org and how Gravitre connects them when agents answer questions. Add confirmed entities; review learned relationships.",
+    "Graph is primary. Select a node or edge to inspect evidence — meaning, source, provenance, and why the link exists. Search, focus, filter, zoom, pan, pin, neighborhood, and path stay on this workspace.",
   nodesTitle: "Organization knowledge",
   nodesBody:
     "Entities you add by hand: companies, people, customers, vendors, products. Agents use them to recognize names in your org instead of guessing.",

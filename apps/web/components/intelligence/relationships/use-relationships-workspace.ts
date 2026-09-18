@@ -42,6 +42,8 @@ export function useRelationshipsWorkspace({
   const [showTestData, setShowTestData] = useState(false)
   const [perspective, setPerspective] = useState("all")
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(() => new Set())
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => new Set())
+  const [neighborhoodOn, setNeighborhoodOn] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -52,6 +54,7 @@ export function useRelationshipsWorkspace({
 
   useEffect(() => {
     if (selection) setInspectorOpen(true)
+    if (selection?.kind !== "node") setNeighborhoodOn(false)
   }, [selection])
 
   const glossary = (data?.glossary ?? []) as RelationshipRow[]
@@ -177,7 +180,7 @@ export function useRelationshipsWorkspace({
     }
   }
 
-  function focusExistingEntity(entityType: string, entityId: string, _label?: string) {
+  function focusExistingEntity(entityType: string, entityId: string, label?: string) {
     const nodeId = entityId.includes("::") ? entityId : entityKey(entityType, entityId)
     const seeded = nodes.find((n) => String(n.id) === entityId)
     setSelection({
@@ -186,6 +189,7 @@ export function useRelationshipsWorkspace({
     })
     setInspectorOpen(true)
     setViewMode("graph")
+    if (label?.trim()) setQuery(label.trim())
   }
 
   async function createNode(nodeType: string, nodeName: string): Promise<{ ok: boolean; nodeId?: string }> {
@@ -302,6 +306,18 @@ export function useRelationshipsWorkspace({
     focusExistingEntity,
     removeNode,
     updateNode,
+    pinnedIds,
+    neighborhoodOn,
+    setNeighborhoodOn,
+    togglePin: (nodeId: string) => {
+      setPinnedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(nodeId)) next.delete(nodeId)
+        else next.add(nodeId)
+        return next
+      })
+    },
+    clearPins: () => setPinnedIds(new Set()),
   }
 }
 

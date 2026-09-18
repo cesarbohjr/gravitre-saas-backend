@@ -47,6 +47,19 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/<details className="mx-auto max-w-\[1600px\]/)
     expect(src).toMatch(/aria-label=\{group\.heading\}/)
     expect(src).not.toMatch(/hover:border-\[color:var\(--g-brand-border\)\]/)
+    const workspace = readFileSync(
+      resolve(webRoot, "components/intelligence/relationships/relationships-workspace.tsx"),
+      "utf8",
+    )
+    expect(workspace).toMatch(/viewMode === "graph"/)
+    expect(workspace).toMatch(/\{selection \?/)
+    expect(workspace).not.toMatch(/RelationshipMetrics/)
+    const toolbar = readFileSync(
+      resolve(webRoot, "components/intelligence/relationships/relationship-toolbar.tsx"),
+      "utf8",
+    )
+    expect(toolbar).toMatch(/Neighborhood/)
+    expect(toolbar).toMatch(/>\s*Focus\s*</)
   })
 
   it("performance shows attribution before collapsed metrics", () => {
