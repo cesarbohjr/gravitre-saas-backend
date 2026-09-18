@@ -1,6 +1,7 @@
 # Connector certification states (Section R) — product / process
 
 **Status:** PROCESS ONLY — no schema, no runtime state machine, no customer UI  
+**process-only: no customer certification chrome**  
 **Date:** 2026-09-17  
 **Anchor:** [connector-action-wiring-audit.md § R](./connector-action-wiring-audit.md#r-future-connector-acceptance-standard-proposed--not-implemented) and invariant **R** (“Connected” ≠ all actions available)  
 **Does not expand F1. Does not change WRITE inference or G8.**
