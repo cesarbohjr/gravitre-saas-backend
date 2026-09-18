@@ -17,7 +17,7 @@ from app.services.analytics_traffic_overview_service import (
     _compose_cross_source_message,
     try_analytics_traffic_overview_turn,
 )
-from app.services.canonical_time_resolver import resolve_time_window
+from app.services.canonical_time_resolver import resolve_time_window, user_facing_time_label
 from app.services.clarification_policy import decide_from_resource_resolution
 from app.services.cognitive_execution_replanner import build_cross_source_analytics_plan
 from app.services.connector_resource_resolver import ResourceResolution
@@ -223,3 +223,42 @@ def test_golden_g_multi_source_user_copy_omits_vendor_names() -> None:
     assert "ga4" not in lowered
     for token in LEAK:
         assert token not in lowered
+
+
+def test_golden_i_last_month_label_is_not_last_30_days() -> None:
+    from app.services.analytics_traffic_overview_service import _compose_overview_message
+
+    window = resolve_time_window(ANCHOR, timezone_name="America/Los_Angeles", now=FROZEN)
+    label = user_facing_time_label(window)
+    empty = {"metricHeaders": [], "rows": [], "totals": []}
+    message = _compose_overview_message(
+        property_name="Acme site",
+        current=empty,
+        previous=empty,
+        timeframe_label=label,
+    )
+    assert "last 30 days" not in message.lower()
+    assert "august 2026" in message.lower()
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "How did the website do last month?",
+        "Compare website traffic with August.",
+        "What drove traffic last month?",
+        "Show me traffic sources.",
+        "Which pages performed best?",
+        "How is organic search doing?",
+        "How is our site doing?",
+    ],
+)
+def test_golden_traffic_variants_share_canonical_time_when_last_month(query: str) -> None:
+    window = resolve_time_window(query, timezone_name="America/Los_Angeles", now=FROZEN)
+    if "last month" in query.lower() or "august" in query.lower():
+        assert window is not None
+        assert window.start.month == 8
+        assert window.end.month == 8
+        assert "30 days" not in user_facing_time_label(window).lower()
+    label = user_facing_time_label(window) if window else ""
+    assert "property_id" not in label

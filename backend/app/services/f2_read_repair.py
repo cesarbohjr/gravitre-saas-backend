@@ -75,8 +75,8 @@ def repair_blocked_read(
                 "user_message": user_message,
                 "environment_name": ctx.environment_name,
                 "connected_integrations": list(connected),
-                "turn_id": getattr(ctx, "conversation_id", None),
-                "plan_id": getattr(ctx, "run_id", None),
+                "turn_id": getattr(ctx, "turn_id", None) or getattr(ctx, "conversation_id", None),
+                "plan_id": getattr(ctx, "plan_id", None),
                 "step_id": getattr(ctx, "step_id", None),
             }
         )

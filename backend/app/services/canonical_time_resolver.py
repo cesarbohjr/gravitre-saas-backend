@@ -71,6 +71,73 @@ class TimeWindow:
         }
 
 
+def time_window_from_mapping(payload: dict[str, Any] | None) -> TimeWindow | None:
+    if not isinstance(payload, dict):
+        return None
+    start_raw = str(payload.get("start") or payload.get("start_iso") or "").strip()
+    end_raw = str(payload.get("end") or payload.get("end_iso") or "").strip()
+    if not start_raw or not end_raw:
+        return None
+    try:
+        start = date.fromisoformat(start_raw[:10])
+        end = date.fromisoformat(end_raw[:10])
+    except ValueError:
+        return None
+    return TimeWindow(
+        start=start,
+        end=end,
+        timezone=str(payload.get("timezone") or "UTC"),
+        interpretation=str(payload.get("interpretation") or "compiled"),
+        source_phrase=str(payload.get("source_phrase") or ""),
+    )
+
+
+def previous_comparable_window(window: TimeWindow) -> TimeWindow:
+    """Period immediately before the compiled window (same length in calendar months when possible)."""
+    prior_end = window.start - timedelta(days=1)
+    span_days = (window.end - window.start).days
+    if window.interpretation in {"previous_calendar_month", "named_calendar_month", "current_calendar_month_to_date"}:
+        prior_start = date(prior_end.year, prior_end.month, 1)
+        return TimeWindow(
+            start=prior_start,
+            end=prior_end,
+            timezone=window.timezone,
+            interpretation="comparison_period_before_compiled",
+            source_phrase=window.source_phrase,
+        )
+    prior_start = prior_end - timedelta(days=max(span_days, 0))
+    return TimeWindow(
+        start=prior_start,
+        end=prior_end,
+        timezone=window.timezone,
+        interpretation="comparison_period_before_compiled",
+        source_phrase=window.source_phrase,
+    )
+
+
+def user_facing_time_label(
+    window: TimeWindow | dict[str, Any] | None,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> str:
+    resolved = window if isinstance(window, TimeWindow) else time_window_from_mapping(window)
+    start = (resolved.start_iso if resolved else None) or start_date
+    end = (resolved.end_iso if resolved else None) or end_date
+    interp = (resolved.interpretation if resolved else "") or ""
+    if interp == "previous_calendar_month" and resolved is not None:
+        return resolved.start.strftime("%B %Y")
+    if interp == "named_calendar_month" and resolved is not None:
+        return resolved.start.strftime("%B %Y")
+    if interp in {"rolling_30_calendar_days", "action_spec_default"} or start in {"30daysAgo", "28daysAgo"}:
+        return "the last 30 days"
+    if start and end and start not in {"30daysAgo", "7daysAgo"} and "daysAgo" not in start:
+        return f"{start} to {end}"
+    if start and end:
+        return f"{start} to {end}"
+    return "the selected period"
+
+
 def _zone(name: str | None) -> ZoneInfo:
     tz_name = str(name or "UTC").strip() or "UTC"
     try:

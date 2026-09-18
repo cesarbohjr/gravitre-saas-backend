@@ -73,6 +73,7 @@ def blocks_from_ga4_reports(
     property_name: str,
     current: dict[str, Any],
     previous: dict[str, Any],
+    timeframe_label: str | None = None,
 ) -> list[ResponseBlock]:
     from app.services.analytics_traffic_overview_service import _metric_total, _pct_change
 
@@ -93,7 +94,7 @@ def blocks_from_ga4_reports(
     return [
         ResponseBlock(
             type="metrics",
-            title=f"{property_name} (last 30 days)",
+            title=f"{property_name} ({timeframe_label or 'last 30 days'})",
             metrics=tuple(metrics),
             meta={"source": "google_analytics"},
         )

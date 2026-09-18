@@ -301,7 +301,8 @@ def _audit_metadata(ctx: ToolContext, action: str, connector_id: str | None, ext
         meta["task_id"] = ctx.task_id
     if ctx.run_id:
         meta["run_id"] = ctx.run_id
-        meta["plan_id"] = ctx.run_id
+    if getattr(ctx, "plan_id", None):
+        meta["plan_id"] = ctx.plan_id
     proof = getattr(ctx, "preflight_result", None)
     if proof is not None:
         meta["preflight_status"] = getattr(proof, "status", None)
@@ -4724,6 +4725,20 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
     if is_f1_read_action(action):
         params = enforce_invoke_preflight(ctx, action, params)
+        proof = ctx.preflight_result
+        if getattr(ctx, "cognitive_invoke", False):
+            plan_id = getattr(proof, "plan_id", None) or getattr(ctx, "plan_id", None)
+            step_id = getattr(proof, "step_id", None) or getattr(ctx, "step_id", None)
+            if not plan_id or not step_id:
+                raise ToolValidationError(
+                    "Cognitive connector execution requires plan_id and step_id",
+                    code="PLAN_LINEAGE_REQUIRED",
+                )
+            if proof is not None:
+                if not getattr(proof, "plan_id", None):
+                    proof.plan_id = plan_id
+                if not getattr(proof, "step_id", None):
+                    proof.step_id = step_id
 
     executor = _resolve_tool_executor(action, ctx)
     if not executor:

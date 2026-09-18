@@ -77,6 +77,10 @@ class ToolContext:
     connector_timeout_seconds: int | None = None
     conversation_id: str | None = None
     preflight_result: Any = None
+    plan_id: str | None = None
+    turn_id: str | None = None
+    capability_id: str | None = None
+    cognitive_invoke: bool = False
 
 
 @dataclass

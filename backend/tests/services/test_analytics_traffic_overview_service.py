@@ -14,6 +14,36 @@ from app.services.analytics_traffic_overview_service import (
 )
 from app.services.chat_connector_execution_service import ChatConnectorExecutionService
 from app.services.clarification_policy import decide_resource_clarification
+from app.services.execution_plan_service import ExecutionObservation
+from app.services.tool_types import NormalizedResult
+
+
+def _sealed_reports(current: dict, source: dict):
+    def _call(*, step, **_kwargs):
+        proof = SimpleNamespace(
+            ok=True,
+            status="ready",
+            compiled_parameters={"property_id": "123", "start_date": "30daysAgo", "end_date": "today"},
+            resource={"name": "Gravitre Website", "id": "123", "reason": "linked_config"},
+            time_window={"interpretation": "action_spec_default"},
+            user_message=lambda: "",
+            error_class=None,
+            as_dict=lambda: {},
+            connector_id="google_analytics",
+            capability_id="analytics.traffic_overview",
+        )
+        data = source if "source" in str(step.step_id) else current
+        invoked = NormalizedResult(success=True, action="analytics.reports.run", data=data)
+        obs = ExecutionObservation(
+            step_id=step.step_id,
+            connector_id="google_analytics",
+            success=True,
+            summary="ok",
+            plan_id="plan-1",
+        )
+        return invoked, proof, obs
+
+    return _call
 
 
 def test_is_analytics_traffic_overview_intent_matches_screenshot_prompt() -> None:
@@ -89,22 +119,8 @@ async def test_single_property_auto_executes_without_clarification() -> None:
         "app.connectors.google_analytics_oauth.ensure_google_analytics_session",
         return_value=("token", None),
     ), patch(
-        "app.connectors.google_analytics.run_ga4_report",
-        side_effect=[fake_report, source_report],
-    ), patch(
-        "app.services.analytics_traffic_overview_service.invoke_tool",
-        return_value=SimpleNamespace(success=True, data=fake_report, error_message=None),
-    ), patch(
-        "app.services.analytics_traffic_overview_service.preflight_read_action",
-        return_value=SimpleNamespace(
-            ok=True,
-            status="ready",
-            compiled_parameters={"property_id": "123", "start_date": "30daysAgo", "end_date": "today"},
-            resource={"name": "Gravitre Website", "id": "123"},
-            time_window={"interpretation": "action_spec_default"},
-            user_message=lambda: "",
-            error_class=None,
-        ),
+        "app.services.analytics_traffic_overview_service.invoke_sealed_f1_read",
+        side_effect=_sealed_reports(fake_report, source_report),
     ):
         turn = await try_analytics_traffic_overview_turn(
             message="Tell me about my GA4 website traffic.",

@@ -43,8 +43,20 @@ async def test_scenario_a_ga4_traffic_single_property_auto_select() -> None:
         "app.connectors.google_analytics_oauth.ensure_google_analytics_session",
         return_value=("token", None),
     ), patch(
-        "app.connectors.google_analytics.run_ga4_report",
-        return_value={"metricHeaders": [], "rows": [], "totals": []},
+        "app.services.analytics_traffic_overview_service.invoke_sealed_f1_read",
+        return_value=(
+            SimpleNamespace(success=True, data={"metricHeaders": [], "rows": [], "totals": []}, error_message=None),
+            SimpleNamespace(
+                ok=True,
+                compiled_parameters={"property_id": "123", "start_date": "30daysAgo", "end_date": "today"},
+                resource={"name": "Main Site", "id": "123", "reason": "linked_config"},
+                time_window={"interpretation": "action_spec_default"},
+                user_message=lambda: "",
+                error_class=None,
+                as_dict=lambda: {},
+            ),
+            SimpleNamespace(success=True, summary="ok", plan_id="p", step_id="s"),
+        ),
     ):
         turn = await try_analytics_traffic_overview_turn(
             message="Tell me about my GA4 website traffic.",

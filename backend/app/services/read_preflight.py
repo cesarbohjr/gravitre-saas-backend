@@ -19,7 +19,7 @@ from app.connectors.action_catalog.models import ActionSpec, ParameterSourceRule
 from app.connectors.action_catalog.registry import get_action_spec
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
-from app.services.canonical_time_resolver import TimeWindow, resolve_time_window
+from app.services.canonical_time_resolver import TimeWindow, resolve_time_window, time_window_from_mapping
 from app.services.connector_resource_resolver import ResourceResolution, resolve_resource
 from app.services.domain_property_binding import match_resource_to_domain
 from app.services.org_business_identity import merge_business_identity
@@ -564,11 +564,17 @@ def preflight_read_action(
         )
 
     identity = business_identity_from_context({**task_state, **ctx})
-    time_window = resolve_time_window(
-        user_message,
-        timezone_name=identity.get("timezone"),
-        now=ctx.get("now"),
-    )
+    override = ctx.get("time_window_override")
+    if isinstance(override, TimeWindow):
+        time_window = override
+    elif isinstance(override, dict):
+        time_window = time_window_from_mapping(override)
+    else:
+        time_window = resolve_time_window(
+            user_message,
+            timezone_name=identity.get("timezone"),
+            now=ctx.get("now"),
+        )
     if time_window:
         result.time_window = time_window.as_dict()
 
@@ -844,9 +850,10 @@ def react_preflight_args(
             "user_message": user_message,
             "environment_name": ctx.environment_name,
             "connected_integrations": connected_integrations,
-            "turn_id": getattr(ctx, "conversation_id", None),
-            "plan_id": getattr(ctx, "run_id", None),
+            "turn_id": getattr(ctx, "turn_id", None) or getattr(ctx, "conversation_id", None),
+            "plan_id": getattr(ctx, "plan_id", None),
             "step_id": getattr(ctx, "step_id", None),
+            "capability_id": getattr(ctx, "capability_id", None),
         },
     )
     if not result.ok:

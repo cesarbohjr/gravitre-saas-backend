@@ -72,9 +72,6 @@ from app.operators.assistant_sse import (
     sse_start,
     sse_start_step,
     sse_suggestions,
-    sse_text_delta,
-    sse_text_end,
-    sse_text_start,
 )
 from app.services.chat_turn_cancel_service import clear_stop, request_stop, stream_should_stop
 from app.services.chat_stream_replay_service import (
@@ -852,11 +849,22 @@ def _build_stream(
         if cancelled:
             assistant_text = "".join(streamed_text_parts).strip()
             if not assistant_text:
-                text_id, start_ev = sse_text_start()
-                yield assistant_event_to_sse_line(start_ev)
-                yield assistant_event_to_sse_line(sse_text_delta(text_id, "Stopped."))
-                yield assistant_event_to_sse_line(sse_text_end(text_id))
-                assistant_text = "Stopped."
+                from app.services.response_composer import compose_reply_events
+
+                packed = await compose_reply_events(
+                    {"success": False, "data": {"text": "Stopped."}, "cancelled": True},
+                    kind="stopped",
+                    draft="Stopped.",
+                    user_message=user_text,
+                    settings=settings,
+                    org_id=org_id,
+                    client=None,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                )
+                assistant_text = packed.text or "Stopped."
+                for ev in packed.events:
+                    yield assistant_event_to_sse_line(ev)
             logger.info(
                 "assistant.chat.stopped org_id=%s conversation_id=%s streamed_chars=%s",
                 org_id,
@@ -1873,15 +1881,33 @@ async def execute_conversation_task(
         )
     task_state = await state_service.get_task_state(conversation_id, org_id, client=client)
     if execution.success:
-        assistant_text = (
+        draft = (
             (execution.body or "").strip()
             or (
                 f"Created {execution.title}."
                 + (f" Open {execution.result_url} to review." if execution.result_url else "")
             )
         )
+        kind = "success"
     else:
-        assistant_text = (execution.body or "").strip() or "That didn't go through."
+        draft = (execution.body or "").strip() or "That didn't go through."
+        kind = "error"
+    from app.services.response_composer import compose_user_reply
+
+    assistant_text = await compose_user_reply(
+        {
+            "success": execution.success,
+            "data": {"text": draft},
+        },
+        kind=kind,
+        draft=draft,
+        user_message="Approved",
+        settings=settings,
+        org_id=org_id,
+        client=client,
+        user_id=user_id,
+        conversation_id=conversation_id,
+    )
     # Approve-button path must always append chat turns — history must show the
     # human approval and the post-send confirmation (data integrity, not UI-only).
     persisted_conv, persisted_assistant_id = _persist_conversation_turn(

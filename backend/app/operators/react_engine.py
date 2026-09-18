@@ -354,6 +354,17 @@ class ReActEngine:
                 environment_name=ctx.environment_name,
             )
 
+        if plan_runtime is None:
+            from app.services.react_execution_strategy import prepare_react_execution_plan
+
+            plan_runtime = prepare_react_execution_plan(
+                message=task,
+                task_state={},
+                connected_integrations=list(connected or []),
+                conversation_id=getattr(ctx, "conversation_id", None),
+                turn_id=getattr(ctx, "turn_id", None),
+            )
+
         from app.services.assistant_routing_tier import resolve_tool_loop_model
 
         explicit_tool_model = str(model or "").strip() or None
@@ -667,6 +678,8 @@ class ReActEngine:
                                     tool_args,
                                     allowed_tool_names=allowed_tool_names,
                                     user_message=task,
+                                    plan_runtime=plan_runtime,
+                                    iteration=iteration,
                                 )
                                 for _tc, tool_name, tool_args, _cid, _w in batch
                             ]
@@ -683,6 +696,8 @@ class ReActEngine:
                                 tool_args,
                                 allowed_tool_names=allowed_tool_names,
                                 user_message=task,
+                                plan_runtime=plan_runtime,
+                                iteration=iteration,
                             )
                         )
                 elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -826,8 +841,21 @@ class ReActEngine:
         *,
         allowed_tool_names: set[str] | frozenset[str] | None = None,
         user_message: str = "",
+        plan_runtime: Any | None = None,
+        iteration: int = 0,
     ) -> dict[str, Any]:
         """Route a model tool call through ToolRegistry → invoke_tool."""
+        from dataclasses import replace as dc_replace
+
+        if plan_runtime is not None:
+            step_id = plan_runtime.next_step_id(tool_name, iteration)
+            ctx = dc_replace(
+                ctx,
+                plan_id=plan_runtime.plan.plan_id,
+                step_id=step_id,
+                cognitive_invoke=True,
+                capability_id=plan_runtime.plan.capability_id,
+            )
         if allowed_tool_names is not None and tool_name not in allowed_tool_names:
             return {
                 "success": False,

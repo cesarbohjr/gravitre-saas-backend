@@ -4713,6 +4713,10 @@ class AgentIntelligence:
             if isinstance(_blocks, list) and _blocks:
                 compose_extra["response_blocks"] = _blocks
                 compose_extra["data"]["response_blocks"] = _blocks
+            _ar = _analytics_turn.get("analytics_result")
+            if isinstance(_ar, dict):
+                compose_extra["analytics_result"] = _ar
+                compose_extra["data"]["analytics_result"] = _ar
             packed = await _composed_reply(
                 response_text,
                 kind="canned",

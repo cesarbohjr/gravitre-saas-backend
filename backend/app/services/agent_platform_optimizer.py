@@ -251,6 +251,31 @@ def compress_tool_definitions_aggressive(tools: list[dict[str, Any]]) -> list[di
     return [compress_tool_definition_aggressive(tool) for tool in tools]
 
 
+_CAPABILITY_ELIGIBLE_PREFIXES: dict[str, tuple[str, ...]] = {
+    "analytics.traffic_overview": ("google_analytics", "analytics.", "google_search_console"),
+    "search.performance": ("google_search_console",),
+    "crm.deals.read": ("hubspot",),
+    "finance.invoices.read": ("quickbooks",),
+    "support.tickets.read": ("zendesk",),
+}
+
+
+def _capability_eligible_prefixes(classification: dict[str, Any] | None) -> tuple[str, ...] | None:
+    cap = str((classification or {}).get("capability_id") or "").strip()
+    return _CAPABILITY_ELIGIBLE_PREFIXES.get(cap)
+
+
+def _tool_matches_eligible(tool: dict[str, Any], prefixes: tuple[str, ...]) -> bool:
+    name = str((tool.get("function") or {}).get("name") or tool.get("name") or "").lower()
+    integration = str(_tool_integration(tool) or "").lower()
+    blob = f"{integration}.{name}"
+    for prefix in prefixes:
+        p = prefix.lower()
+        if blob.startswith(p) or integration.startswith(p.rstrip(".")) or p.rstrip(".") in name:
+            return True
+    return False
+
+
 def narrow_tools_for_turn(
     tools: list[dict[str, Any]],
     *,
@@ -284,9 +309,16 @@ def narrow_tools_for_turn(
     )
 
     tokens = _query_tokens(query)
+    eligible_prefixes = _capability_eligible_prefixes(classification)
     scored: list[tuple[float, dict[str, Any]]] = []
     for tool in connector_tools:
         integration = _tool_integration(tool)
+        if unavailable_vendors and integration in {str(v).strip().lower() for v in unavailable_vendors}:
+            continue
+        if connected and integration not in connected and integration not in {"platform", "mcp", "browser"}:
+            continue
+        if eligible_prefixes and not _tool_matches_eligible(tool, eligible_prefixes):
+            continue
         if focus and integration not in focus and integration not in {"platform", "mcp", "browser"}:
             continue
         if not action_required and _is_write_tool(tool):
@@ -310,6 +342,10 @@ def narrow_tools_for_turn(
             if not _is_write_tool(tool):
                 continue
             integration = _tool_integration(tool)
+            if connected and integration not in connected:
+                continue
+            if eligible_prefixes and not _tool_matches_eligible(tool, eligible_prefixes):
+                continue
             if focus and integration not in focus:
                 continue
             if tool in selected_connector:
@@ -322,7 +358,16 @@ def narrow_tools_for_turn(
             key=lambda row: row[0],
             reverse=True,
         )
-        selected_connector = [t for _, t in rescored[: max_tools - len(platform_tools)]]
+        selected_connector = []
+        for _, tool in rescored:
+            integration = _tool_integration(tool)
+            if connected and integration not in connected and integration not in {"platform", "mcp", "browser"}:
+                continue
+            if eligible_prefixes and not _tool_matches_eligible(tool, eligible_prefixes):
+                continue
+            selected_connector.append(tool)
+            if len(selected_connector) >= max(1, max_tools - len(platform_tools)):
+                break
 
     selected_connector = _ensure_connected_tool_coverage(
         selected_connector,
@@ -352,6 +397,20 @@ def narrow_tools_for_turn(
         connected_integrations=connected,
         unavailable_vendors=unavailable_vendors,
     )
+    if eligible_prefixes:
+        cap_domain = str((classification or {}).get("capability_id") or "").split(".")[0]
+        filtered: list[dict[str, Any]] = []
+        for tool in compressed:
+            if _is_platform_tool(tool):
+                filtered.append(tool)
+                continue
+            name = _tool_name(tool)
+            if name.startswith("capability__") and cap_domain and cap_domain in name:
+                filtered.append(tool)
+                continue
+            if _tool_matches_eligible(tool, eligible_prefixes):
+                filtered.append(tool)
+        compressed = filtered
     stats = {
         "totalTools": len(tools),
         "catalogTools": len(tools),

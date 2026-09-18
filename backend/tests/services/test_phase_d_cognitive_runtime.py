@@ -72,6 +72,7 @@ def test_blocks_from_ga4_reports_renders_metrics() -> None:
         property_name="Main Site",
         current=current,
         previous=previous,
+        timeframe_label="last 30 days",
     )
     assert len(blocks) == 1
     assert blocks[0].type == "metrics"

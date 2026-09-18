@@ -84,6 +84,7 @@ def _mock_prepare_stream(monkeypatch):
     router = MagicMock()
     router.prepare_stream = AsyncMock(return_value=MagicMock())
     monkeypatch.setattr(assistant_module, "get_model_router", lambda: router)
+    monkeypatch.setattr(assistant_module, "stream_should_stop", AsyncMock(return_value=False))
     return router
 
 
