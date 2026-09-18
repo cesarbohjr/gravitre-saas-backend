@@ -25,6 +25,41 @@ class ResourceResolution:
     candidate_count: int = 0
     candidates: tuple[dict[str, Any], ...] = field(default_factory=tuple)
 
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "connector_id": self.connector_id,
+            "connection_id": self.connection_id,
+            "resource_type": self.resource_type,
+            "resource_id": self.resource_id,
+            "display_name": self.display_name,
+            "confidence": self.confidence,
+            "resolution_reason": self.resolution_reason,
+            "candidate_count": self.candidate_count,
+            "candidates": [dict(row) for row in self.candidates if isinstance(row, dict)],
+        }
+
+    @classmethod
+    def from_mapping(cls, raw: dict[str, Any] | None) -> ResourceResolution | None:
+        if not isinstance(raw, dict) or not raw.get("connector_id"):
+            return None
+        status = str(raw.get("status") or "not_found")
+        if status not in {"resolved", "ambiguous", "not_found", "not_authorized", "unavailable"}:
+            status = "not_found"
+        cands = raw.get("candidates") or ()
+        return cls(
+            status=status,  # type: ignore[arg-type]
+            connector_id=str(raw.get("connector_id") or ""),
+            connection_id=str(raw.get("connection_id") or "") or None,
+            resource_type=str(raw.get("resource_type") or ""),
+            resource_id=str(raw.get("resource_id") or ""),
+            display_name=str(raw.get("display_name") or ""),
+            confidence=float(raw.get("confidence") or 0.0),
+            resolution_reason=str(raw.get("resolution_reason") or ""),
+            candidate_count=int(raw.get("candidate_count") or 0),
+            candidates=tuple(row for row in cands if isinstance(row, dict)),
+        )
+
 
 @dataclass(frozen=True)
 class ResourceResolutionRequest:

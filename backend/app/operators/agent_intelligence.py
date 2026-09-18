@@ -4705,8 +4705,18 @@ class AgentIntelligence:
                 )
             )
             dialogue_mode = str(_analytics_turn.get("dialogue_mode") or "answer")
+            ws = str(_analytics_turn.get("workflow_status") or _analytics_turn.get("plan_terminal_status") or "completed")
+            compose_kind = (
+                "clarify"
+                if ws in {"needs clarification", "clarifying"}
+                else (
+                    "error"
+                    if ws in {"blocked", "failed", "connector_not_connected"}
+                    else "canned"
+                )
+            )
             compose_extra: dict[str, Any] = {
-                "success": True,
+                "success": ws == "completed",
                 "data": {"text": response_text},
             }
             _blocks = _analytics_turn.get("response_blocks")
@@ -4719,7 +4729,7 @@ class AgentIntelligence:
                 compose_extra["data"]["analytics_result"] = _ar
             packed = await _composed_reply(
                 response_text,
-                kind="canned",
+                kind=compose_kind,
                 extra=compose_extra,
                 trace_state=task_state if isinstance(task_state, dict) else None,
             )

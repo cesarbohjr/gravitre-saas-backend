@@ -262,3 +262,14 @@ def test_golden_traffic_variants_share_canonical_time_when_last_month(query: str
         assert "30 days" not in user_facing_time_label(window).lower()
     label = user_facing_time_label(window) if window else ""
     assert "property_id" not in label
+
+
+def test_react_compile_matches_sc_last_month_window() -> None:
+    """General/ReAct path uses the same compiled calendar window as FAST_PATH."""
+    window = resolve_time_window(ANCHOR, timezone_name="America/Los_Angeles", now=FROZEN)
+    assert window is not None
+    with patch("app.services.read_preflight.resolve_resource", return_value=_resolved()):
+        result = preflight_read_action(context=_ctx())
+    assert result.ok
+    assert result.compiled_parameters["start_date"] == window.start_iso
+    assert result.compiled_parameters["end_date"] == window.end_iso

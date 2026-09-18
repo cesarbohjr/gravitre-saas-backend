@@ -156,7 +156,10 @@ async def apply_canonical_cognitive_resolution(
         "run_resource": needs.run_resource,
         "analytics_short_circuit": needs.analytics_short_circuit,
         "reason": needs.reason,
+        "capability_id": "analytics.traffic_overview" if needs.analytics_short_circuit else None,
     }
+    if result.resource is not None:
+        merged["e1_resource"] = result.resource.as_dict()
     merged = attach_compiled_task(
         merged,
         objective_text=message,

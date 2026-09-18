@@ -1,0 +1,263 @@
+"""2.0-B — tenant-scoped BusinessEntity join fabric.
+
+Joins provider bindings (HubSpot company, QBO customer, Zendesk org, GA4/GSC website)
+only with explicit evidence and confidence. Never silent-merge below threshold.
+Person joins are exact alias/email only (Memory HMAC exactness; no fuzzy names).
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Literal
+from uuid import uuid4
+
+from app.services.entity_resolution_store import normalize_alias, upsert_resolution
+from app.services.org_business_identity import normalize_host
+
+JOIN_CONFIDENCE_THRESHOLD = 0.85
+
+JoinStatus = Literal[
+    "joined",
+    "created",
+    "refused_low_confidence",
+    "refused_ambiguous",
+    "refused_cross_org",
+    "refused_kind_mismatch",
+]
+
+
+@dataclass(frozen=True)
+class EntityEvidence:
+    kind: str
+    value: str
+    source: str
+
+
+@dataclass(frozen=True)
+class EntityBinding:
+    system: str
+    resource_type: str
+    resource_id: str
+    confidence: float
+    evidence: tuple[EntityEvidence, ...] = ()
+
+
+@dataclass(frozen=True)
+class BusinessEntity:
+    id: str
+    org_id: str
+    display_name: str
+    kind: str
+    bindings: tuple[EntityBinding, ...] = ()
+    evidence: tuple[EntityEvidence, ...] = ()
+    confidence: float = 0.0
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "org_id": self.org_id,
+            "display_name": self.display_name,
+            "kind": self.kind,
+            "confidence": self.confidence,
+            "bindings": [
+                {
+                    "system": b.system,
+                    "resource_type": b.resource_type,
+                    "resource_id": b.resource_id,
+                    "confidence": b.confidence,
+                    "evidence": [
+                        {"kind": e.kind, "value": e.value, "source": e.source} for e in b.evidence
+                    ],
+                }
+                for b in self.bindings
+            ],
+            "evidence": [
+                {"kind": e.kind, "value": e.value, "source": e.source} for e in self.evidence
+            ],
+        }
+
+
+@dataclass(frozen=True)
+class JoinDecision:
+    status: JoinStatus
+    entity: BusinessEntity | None = None
+    reason: str = ""
+
+
+def _norm_email(value: str) -> str:
+    return str(value or "").strip().lower()
+
+
+def _norm_name(value: str) -> str:
+    return normalize_alias(value)
+
+
+def website_entity_from_identity(
+    *,
+    org_id: str,
+    identity: dict[str, Any],
+    ga4_property_id: str | None = None,
+    gsc_site_url: str | None = None,
+) -> BusinessEntity | None:
+    """Project a website BusinessEntity from tenant identity + unique bindings."""
+    host = str(identity.get("host") or normalize_host(str(identity.get("website") or "")))
+    if not org_id or not host:
+        return None
+    evidence = (
+        EntityEvidence(kind="host", value=host, source=str(identity.get("source") or "identity")),
+    )
+    bindings: list[EntityBinding] = []
+    if ga4_property_id:
+        bindings.append(
+            EntityBinding(
+                system="google_analytics",
+                resource_type="property",
+                resource_id=str(ga4_property_id),
+                confidence=0.9,
+                evidence=evidence,
+            )
+        )
+    if gsc_site_url:
+        bindings.append(
+            EntityBinding(
+                system="google_search_console",
+                resource_type="site",
+                resource_id=str(gsc_site_url),
+                confidence=0.9,
+                evidence=evidence,
+            )
+        )
+    return BusinessEntity(
+        id=f"website:{org_id}:{host}",
+        org_id=str(org_id),
+        display_name=host,
+        kind="website",
+        bindings=tuple(bindings),
+        evidence=evidence,
+        confidence=0.9 if bindings else 0.7,
+    )
+
+
+def join_provider_bindings(
+    *,
+    org_id: str,
+    display_name: str,
+    kind: str,
+    left: EntityBinding,
+    right: EntityBinding,
+    extra_evidence: tuple[EntityEvidence, ...] = (),
+    existing_left_entity_id: str | None = None,
+    existing_right_entity_id: str | None = None,
+) -> JoinDecision:
+    """Join two provider records into one BusinessEntity or refuse."""
+    if not org_id:
+        return JoinDecision(status="refused_cross_org", reason="missing_org")
+    if left.system == right.system and left.resource_id != right.resource_id:
+        return JoinDecision(status="refused_ambiguous", reason="same_system_distinct_ids")
+    conf = min(float(left.confidence), float(right.confidence))
+    if conf < JOIN_CONFIDENCE_THRESHOLD:
+        return JoinDecision(status="refused_low_confidence", reason="below_threshold")
+
+    left_keys = _evidence_keys(left.evidence + extra_evidence)
+    right_keys = _evidence_keys(right.evidence + extra_evidence)
+    if kind == "person":
+        if not _person_exact_match(left_keys, right_keys):
+            return JoinDecision(status="refused_ambiguous", reason="person_not_exact")
+    elif kind in {"company", "website"}:
+        if not _org_exact_match(left_keys, right_keys, kind=kind):
+            return JoinDecision(status="refused_ambiguous", reason="insufficient_exact_evidence")
+    else:
+        return JoinDecision(status="refused_kind_mismatch", reason="unsupported_kind")
+
+    if (
+        existing_left_entity_id
+        and existing_right_entity_id
+        and existing_left_entity_id != existing_right_entity_id
+    ):
+        return JoinDecision(status="refused_ambiguous", reason="already_bound_distinct_entities")
+
+    entity_id = existing_left_entity_id or existing_right_entity_id or str(uuid4())
+    status: JoinStatus = "joined" if (existing_left_entity_id or existing_right_entity_id) else "created"
+    entity = BusinessEntity(
+        id=entity_id,
+        org_id=str(org_id),
+        display_name=display_name,
+        kind=kind,
+        bindings=(left, right) if left.system != right.system else (left,),
+        evidence=tuple(dict.fromkeys(left.evidence + right.evidence + extra_evidence)),
+        confidence=conf,
+    )
+    return JoinDecision(status=status, entity=entity, reason="exact_evidence")
+
+
+def persist_business_entity(client: Any, entity: BusinessEntity) -> int:
+    """Store join bindings in org_entity_resolution_records. Never raises."""
+    written = 0
+    for binding in entity.bindings:
+        if upsert_resolution(
+            client,
+            org_id=entity.org_id,
+            alias=f"{binding.system}:{binding.resource_id}",
+            entity_type="business_entity",
+            entity_id=entity.id,
+            integration=binding.system,
+            source="business_entity_fabric",
+            confidence=binding.confidence,
+        ):
+            written += 1
+        if upsert_resolution(
+            client,
+            org_id=entity.org_id,
+            alias=entity.id,
+            entity_type="business_entity",
+            entity_id=binding.resource_id,
+            integration=binding.system,
+            source="business_entity_fabric",
+            confidence=binding.confidence,
+        ):
+            written += 1
+    return written
+
+
+def _evidence_keys(evidence: tuple[EntityEvidence, ...]) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {}
+    for item in evidence:
+        key = str(item.kind or "").strip().lower()
+        value = str(item.value or "").strip()
+        if key == "host":
+            value = normalize_host(value)
+        elif key == "email":
+            value = _norm_email(value)
+        elif key in {"legal_name", "name", "display_name"}:
+            value = _norm_name(value)
+        if not key or not value:
+            continue
+        out.setdefault(key, set()).add(value)
+    return out
+
+
+def _person_exact_match(left: dict[str, set[str]], right: dict[str, set[str]]) -> bool:
+    if left.get("email") and right.get("email") and left["email"] & right["email"]:
+        return True
+    if left.get("name") and right.get("name") and left["name"] & right["name"]:
+        return True
+    return False
+
+
+def _org_exact_match(
+    left: dict[str, set[str]],
+    right: dict[str, set[str]],
+    *,
+    kind: str,
+) -> bool:
+    if left.get("host") and right.get("host") and left["host"] & right["host"]:
+        return True
+    if kind == "company" and left.get("email") and right.get("email") and left["email"] & right["email"]:
+        return True
+    name_l = left.get("legal_name") or left.get("name") or left.get("display_name") or set()
+    name_r = right.get("legal_name") or right.get("name") or right.get("display_name") or set()
+    if name_l and name_r and name_l & name_r and left.get("host") and right.get("host") and left["host"] & right["host"]:
+        return True
+    if name_l and name_r and name_l & name_r and not (left.get("host") or right.get("host")):
+        # Name-only is not enough — would be a silent merge.
+        return False
+    return False

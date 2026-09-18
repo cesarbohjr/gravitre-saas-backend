@@ -184,6 +184,50 @@ def test_compile_before_react_in_agent_intelligence() -> None:
 def test_infrastructure_exception_classes_documented() -> None:
     assert "health" in INFRASTRUCTURE_INVOKE_ACTORS
     assert "post_publish_marketing" in INFRASTRUCTURE_INVOKE_ACTORS
+    assert "workflow_engine" in INFRASTRUCTURE_INVOKE_ACTORS
+
+
+def test_workflow_tool_context_is_not_cognitive_invoke() -> None:
+    from types import SimpleNamespace
+
+    from app.services.tool_service import tool_context_from_step
+
+    ctx = tool_context_from_step(
+        SimpleNamespace(
+            settings=SimpleNamespace(),
+            client=MagicMock(),
+            org_id="org-1",
+            user_id="user-1",
+            environment_name="production",
+            run_id="run-1",
+            step_id="step-1",
+            step_type="invoke_tool",
+            parameters={},
+            config={"connector_id": "google_analytics"},
+        )
+    )
+    assert ctx.cognitive_invoke is False
+    assert ctx.plan_id == "workflow:run-1"
+    assert ctx.step_id == "step-1"
+
+
+def test_short_circuit_requires_e1_flag() -> None:
+    import asyncio
+
+    from app.services.canonical_cognitive_resolution import try_analytics_short_circuit_turn
+
+    async def _run():
+        return await try_analytics_short_circuit_turn(
+            message=ANCHOR,
+            resolution=None,
+            org_id="org-1",
+            client=object(),
+            settings=SimpleNamespace(),
+            connected_integrations=["google_analytics"],
+            task_state={},
+        )
+
+    assert asyncio.run(_run()) is None
 
 
 def test_ga4_metric_blocks_use_compiled_timeframe_label() -> None:

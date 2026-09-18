@@ -116,6 +116,22 @@ CHIP_STATUS: dict[str, str] = {
 }
 
 
+def align_draft_to_compiled_timeframe(text: str, envelope: dict[str, Any] | None) -> str:
+    """Composer owns presentation of compiled time; never keep last-30-days when the task window is not that."""
+    env = envelope if isinstance(envelope, dict) else {}
+    payload = env.get("analytics_result")
+    if not isinstance(payload, dict) and isinstance(env.get("data"), dict):
+        payload = env["data"].get("analytics_result")
+    if not isinstance(payload, dict):
+        return text
+    label = str(payload.get("timeframe") or "").strip()
+    if not label or not text:
+        return text
+    if "30" in label.replace(" ", "").lower():
+        return text
+    return re.sub(r"(?i)\b(?:the\s+)?last\s+30\s+days\b", label, text)
+
+
 def looks_like_raw_backend(text: str | None) -> bool:
     """True when text looks like a stack, SQL, exception, or internal identifier."""
     raw = (text or "").strip()
@@ -414,6 +430,8 @@ async def compose_user_reply(
         text = merge_blocks_with_prose(structured_blocks, text)
         must_compose = must_compose and looks_like_raw_backend(text)
 
+    text = align_draft_to_compiled_timeframe(text, env)
+
     if must_compose or not text:
         composed = await _llm_compose(
             kind=resolved_kind,
@@ -465,6 +483,7 @@ async def compose_user_reply(
         if looks_like_raw_backend(text):
             text = _fallback_text(resolved_kind, env)
             fallback = True
+    text = align_draft_to_compiled_timeframe(text, env)
 
     code = str(env.get("error_code") or "").strip()
     if code and len(code) >= 4:

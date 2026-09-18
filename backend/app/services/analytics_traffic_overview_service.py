@@ -12,7 +12,7 @@ from app.services.clarification_policy import (
     decide_from_resource_resolution,
     format_not_connected_message,
 )
-from app.services.connector_resource_resolver import resolve_resource
+from app.services.connector_resource_resolver import ResourceResolution, resolve_resource
 from app.services.connector_semantic_registry import (
     connector_display_name,
     mentions_analytics_traffic_language,
@@ -533,11 +533,16 @@ async def try_analytics_traffic_overview_turn(
     )
     if cross is not None:
         return cross
-    intent = detect_analytics_traffic_intent(
-        message,
-        task_state=task_state,
-        connected_integrations=connected_integrations,
-    )
+    needs = (task_state or {}).get("cognitive_resolution_needs") if isinstance(task_state, dict) else {}
+    e1_routed = isinstance(needs, dict) and bool(needs.get("analytics_short_circuit"))
+    if e1_routed:
+        intent = AnalyticsTrafficIntent(connector_id="google_analytics")
+    else:
+        intent = detect_analytics_traffic_intent(
+            message,
+            task_state=task_state,
+            connected_integrations=connected_integrations,
+        )
     if intent is None:
         return None
 
@@ -571,13 +576,23 @@ async def try_analytics_traffic_overview_turn(
             "reference_resolution": reference.reason,
         }
 
-    resolution = resolve_resource(
-        connector_id=intent.connector_id,
-        client=client,
-        org_id=org_id,
-        settings=active_settings,
-        conversation_context=task_state,
+    e1_resource = ResourceResolution.from_mapping(
+        (task_state or {}).get("e1_resource") if isinstance(task_state, dict) else None
     )
+    if e1_resource is not None and e1_resource.connector_id in {
+        "",
+        intent.connector_id,
+        "google_analytics",
+    }:
+        resolution = e1_resource
+    else:
+        resolution = resolve_resource(
+            connector_id=intent.connector_id,
+            client=client,
+            org_id=org_id,
+            settings=active_settings,
+            conversation_context=task_state,
+        )
     if resolution.status == "ambiguous":
         decision = decide_from_resource_resolution(
             resolution,
@@ -828,7 +843,7 @@ async def try_analytics_traffic_overview_turn(
     message_out = enforce_terminal_turn_outcome(
         message_out,
         task_state=merged_state,
-        workflow_status="completed",
+        workflow_status=str(plan.terminal_status or "completed"),
     )
     from app.services.structured_assistant_response import blocks_from_ga4_reports
 
@@ -846,7 +861,9 @@ async def try_analytics_traffic_overview_turn(
         "dialogue_mode": "answer",
         "message": message_out,
         "task_state": merged_state,
-        "workflow_status": "completed",
+        "workflow_status": plan.terminal_status,
+        "plan_terminal_status": plan.terminal_status,
+        "execution_strategy": "FAST_PATH",
         "business_intent": "analytics.traffic_overview",
         "response_blocks": response_blocks,
         "analytics_result": analytics_result,

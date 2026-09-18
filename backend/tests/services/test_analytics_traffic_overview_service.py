@@ -179,3 +179,42 @@ async def test_ambiguous_property_returns_named_clarification() -> None:
     assert turn is not None
     assert turn.get("dialogue_mode") == "clarifying"
     assert "three" in str(turn.get("message") or "").lower() or "3" in str(turn.get("message") or "")
+
+
+@pytest.mark.asyncio
+async def test_e1_resolved_resource_skips_second_discovery() -> None:
+    fake_report = {
+        "metricHeaders": [{"name": "activeUsers"}, {"name": "sessions"}, {"name": "screenPageViews"}],
+        "totals": [{"metricValues": [{"value": "100"}, {"value": "120"}, {"value": "300"}]}],
+        "rows": [],
+    }
+    with patch(
+        "app.services.analytics_traffic_overview_service.resolve_resource",
+        side_effect=AssertionError("duplicate resource discovery"),
+    ), patch(
+        "app.services.analytics_traffic_overview_service.invoke_sealed_f1_read",
+        side_effect=_sealed_reports(fake_report, {"rows": []}),
+    ):
+        turn = await try_analytics_traffic_overview_turn(
+            message="Tell me what my website traffic was last month.",
+            org_id="org-1",
+            client=object(),
+            settings=SimpleNamespace(),
+            connected_integrations=["google_analytics"],
+            task_state={
+                "cognitive_resolution_needs": {"analytics_short_circuit": True},
+                "e1_resource": {
+                    "status": "resolved",
+                    "connector_id": "google_analytics",
+                    "resource_id": "123",
+                    "display_name": "Gravitre Website",
+                    "resolution_reason": "e1",
+                    "candidate_count": 1,
+                    "connection_id": "conn-1",
+                    "resource_type": "property",
+                },
+            },
+        )
+    assert turn is not None
+    assert turn.get("execution_strategy") == "FAST_PATH"
+    assert turn.get("plan_terminal_status") == "completed"

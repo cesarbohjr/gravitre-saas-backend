@@ -8,6 +8,8 @@ Exception classes (no cognitive plan lineage required):
 - background connector health
 - post-publish marketing metric poll
 - billing/marketplace non-chat jobs
+- workflow_engine / canvas run invoke_tool (plan_id may be workflow-scoped, not chat ExecutionPlan)
+- background_job non-user maintenance
 """
 from __future__ import annotations
 
@@ -33,6 +35,8 @@ INFRASTRUCTURE_INVOKE_ACTORS = frozenset(
         "post_publish_marketing",
         "marketplace",
         "billing",
+        "workflow_engine",
+        "background_job",
     }
 )
 

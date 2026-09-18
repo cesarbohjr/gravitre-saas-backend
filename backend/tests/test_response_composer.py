@@ -126,6 +126,17 @@ async def test_compose_timeout_and_permission_are_natural_language():
     assert "permission" in permission.lower() or "didn't go through" in permission.lower()
 
 
+def test_align_draft_to_compiled_timeframe_replaces_last_30_days():
+    from app.services.response_composer import align_draft_to_compiled_timeframe
+
+    out = align_draft_to_compiled_timeframe(
+        "Traffic over the last 30 days was steady.",
+        {"analytics_result": {"timeframe": "August 2026"}},
+    )
+    assert "last 30 days" not in out.lower()
+    assert "August 2026" in out
+
+
 @pytest.mark.asyncio
 async def test_compose_clarify_is_specific_not_generic_when_draft_names_the_choice():
     async def clarify_fn(**kwargs):

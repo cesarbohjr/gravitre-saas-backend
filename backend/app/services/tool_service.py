@@ -4956,14 +4956,16 @@ def tool_context_from_step(context: Any) -> ToolContext:
         settings=context.settings,
         client=context.client,
         org_id=context.org_id,
-        actor_id=context.user_id or "",
+        actor_id=context.user_id or "workflow_engine",
         environment_name=context.environment_name or "production",
         run_id=context.run_id,
+        plan_id=getattr(context, "plan_id", None) or (f"workflow:{context.run_id}" if context.run_id else None),
         step_id=context.step_id,
         step_type=context.step_type,
         operator_id=operator_id,
         transparency_log_id=transparency_log_id,
         connector_id=(context.config or {}).get("connector_id"),
+        cognitive_invoke=False,
     )
 
 
