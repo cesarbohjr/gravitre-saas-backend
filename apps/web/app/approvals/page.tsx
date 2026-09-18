@@ -9,7 +9,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { GravitrePageHeader, GravitreEmpty } from "@/components/gravitre/nodus-product"
 import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
@@ -37,16 +37,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { 
-  Check, 
-  X, 
-  Clock, 
   Shield, 
   User, 
   Workflow, 
   AlertCircle,
   ChevronRight,
-  Eye,
-  Zap,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -357,8 +352,6 @@ function DecisionCard({
   onSelect,
   onApprove, 
   onReject,
-  isSubmitting,
-  pendingActionId,
   readOnly = false,
   teamMembers = [],
 }: { 
@@ -367,14 +360,11 @@ function DecisionCard({
   onSelect: () => void
   onApprove: (id: string) => void
   onReject: (id: string) => void
-  isSubmitting?: boolean
-  pendingActionId?: string | null
   readOnly?: boolean
   teamMembers?: ApiUser[]
 }) {
   const TypeIcon = typeIcons[approval.type]
   const config = priorityConfig[approval.priority]
-  const actionBusy = Boolean(isSubmitting && pendingActionId === approval.id)
   const requester = resolveRequesterIdentity(approval, teamMembers)
 
   return (
@@ -502,33 +492,9 @@ function DecisionCard({
 
         {/* Quick Actions */}
         {!readOnly && approval.status === "pending" ? (
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 gap-1.5 text-xs flex-1 cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-              disabled={actionBusy}
-              onClick={(e) => {
-                e.stopPropagation()
-                onReject(approval.id)
-              }}
-            >
-              <X className="h-3.5 w-3.5" />
-              {actionBusy ? "Rejecting…" : "Reject"}
-            </Button>
-            <Button 
-              size="sm" 
-              className="h-8 gap-1.5 text-xs flex-1 cursor-pointer"
-              disabled={actionBusy}
-              onClick={(e) => {
-                e.stopPropagation()
-                onApprove(approval.id)
-              }}
-            >
-              <Check className="h-3.5 w-3.5" />
-              {actionBusy ? "Approving…" : "Approve"}
-            </Button>
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Select to decide
+          </p>
         ) : approval.context.runId ? (
           <Button
             variant="outline"
@@ -592,12 +558,12 @@ function DetailPanel({
 }) {
   if (!approval) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary mb-4">
-          <Eye className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <p className="text-sm text-muted-foreground">Select a request to view details</p>
-      </div>
+      <GravitreEmpty
+        className="h-full border-0 shadow-none"
+        icon={<NucleoApproval className="h-5 w-5" />}
+        title="Nothing selected"
+        hint="Select a request — inspector stays closed until then."
+      />
     )
   }
 
@@ -647,7 +613,7 @@ function DetailPanel({
         <PreActionCard
           payload={preActionFromApproval(approval)}
           variant="approvals"
-          hideActions={false}
+          hideActions
         />
 
         {/* AI Recommendation */}
@@ -768,24 +734,25 @@ function DetailPanel({
           </Button>
         ) : null}
         <div className={cn("flex items-center gap-3", approval.status !== "pending" && "hidden")}>
-          <Button 
-            variant="outline" 
-            size="lg" 
-            className="flex-1 gap-2 h-11 cursor-pointer hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+          <Button
+            size="lg"
+            className="flex-1 gap-2 h-11 cursor-pointer"
+            disabled={actionBusy}
+            data-review-cta="approve"
+            onClick={() => onApprove(approval.id)}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {actionBusy ? "Approving…" : "Approve"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            className="gap-2 h-11 cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             disabled={actionBusy}
             onClick={() => onReject(approval.id)}
           >
             <XCircle className="h-4 w-4" />
             {actionBusy ? "Rejecting…" : "Reject"}
-          </Button>
-          <Button 
-            size="lg" 
-            className="flex-1 gap-2 h-11 cursor-pointer"
-            disabled={actionBusy}
-            onClick={() => onApprove(approval.id)}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {actionBusy ? "Approving…" : "Approve"}
           </Button>
         </div>
       </div>
@@ -846,10 +813,6 @@ function ApprovalsContent() {
       setSelectedId(deepLinkId)
     }
   }, [searchParams])
-
-  // Stats
-  const highPriorityCount = pendingApprovals.filter(a => a.priority === "high").length
-  const aiRecommendedCount = pendingApprovals.filter(a => a.aiRecommendation?.action === "approve").length
 
   const handleApprove = async (runId: string, comment?: string) => {
     if (isSubmitting) return
@@ -1009,22 +972,7 @@ function ApprovalsContent() {
               </button>
             </div>
 
-            {/* Quick stats */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {queueTab === "pending" && highPriorityCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/10 border border-destructive/20">
-                  <AlertTriangle className="h-3 w-3 text-destructive" />
-                  <span className="text-xs font-medium text-destructive">{highPriorityCount} urgent</span>
-                </div>
-              )}
-              {queueTab === "pending" && aiRecommendedCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/10 border border-success/20">
-                  <NucleoIntelligence className="h-3 w-3 text-success" />
-                  <span className="text-xs font-medium text-success">{aiRecommendedCount} AI-approved</span>
-                </div>
-              )}
-            </div>
-            </div>
+          </div>
           </div>
 
           {/* Error banner */}
@@ -1036,7 +984,7 @@ function ApprovalsContent() {
           )}
 
           {/* Queue list */}
-          <div className="flex-1 overflow-auto space-y-2 p-2.5 sm:p-3">
+          <div className="flex-1 overflow-auto space-y-2 p-2.5 sm:p-3" data-review-surface="approvals-queue">
             <AnimatePresence>
               {visibleApprovals.map((approval) => (
                 <DecisionCard
@@ -1046,8 +994,6 @@ function ApprovalsContent() {
                   onSelect={() => setSelectedId(approval.id)}
                   onApprove={handleApprove}
                   onReject={handleRejectWithPrompt}
-                  isSubmitting={isSubmitting}
-                  pendingActionId={pendingActionId}
                   readOnly={queueTab === "history"}
                   teamMembers={teamMembers}
                 />
@@ -1073,7 +1019,7 @@ function ApprovalsContent() {
         </div>
 
         {/* Right: Detail Panel - Hidden on mobile unless item selected */}
-        <div className={`flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 ${!selectedApproval ? "hidden lg:block" : ""}`}>
+        <div className={`flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 ${!selectedApproval ? "hidden lg:block" : ""}`} data-review-surface="approvals-inspect">
           <DetailPanel 
             approval={selectedApproval} 
             onApprove={handleApprove}

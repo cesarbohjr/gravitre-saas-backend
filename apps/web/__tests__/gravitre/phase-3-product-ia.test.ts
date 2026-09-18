@@ -125,4 +125,15 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(activity).toMatch(/inspector stays closed until then/)
     expect(activity).toMatch(/\?trace=1/)
   })
+
+  it("approvals queue is decision-first with one primary CTA after selection", () => {
+    const src = readFileSync(resolve(webRoot, "app/approvals/page.tsx"), "utf8")
+    expect(src).toMatch(/data-review-surface="approvals-queue"/)
+    expect(src).toMatch(/data-review-surface="approvals-inspect"/)
+    expect(src).toMatch(/data-review-cta="approve"/)
+    expect(src).toMatch(/inspector stays closed until then/)
+    expect(src).toMatch(/Select to decide/)
+    expect(src).not.toMatch(/AI-approved/)
+    expect(src).toMatch(/hideActions/)
+  })
 })

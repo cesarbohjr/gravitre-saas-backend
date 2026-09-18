@@ -1,6 +1,6 @@
 # GRAVITRE UX RESET 2.0
 
-**Status:** Cesar **design selections recorded 2026-09-18**. Phase A–G shipped in prior slices. Phase H Connectors **Discovery → Management** on `/connectors`. Approvals / remaining hubs remain later.
+**Status:** Cesar **design selections recorded 2026-09-18**. Phase A–H shipped. Phase I Approvals **queue + one primary CTA** on `/approvals`. Remaining hubs remain later.
 
 **Do not** reopen one-runtime architecture unless a regression is evidenced.
 
@@ -29,7 +29,7 @@
 
 **Harness:** `/dev/ai-workspace-preview?s=&scene=` · **Canvas:** `gravitre-ux-reset-2.canvas.tsx` · **Shots:** `e2e/artifacts/ux-reset-2-review/`
 
-**Production UI changed this slice:** Phase G outcome/evidence on `/activity` + `/runs/[id]`. Phase H Discovery → Management on `/connectors` (compact logos, dense connected list, topology optional, inspector on selection). Approvals remain gated.
+**Production UI changed this slice:** Phase I queue + inspect on `/approvals` (select to decide; Approve is the primary CTA; Reject is secondary). No invented prices or Enable toggles.
 
 ---
 
@@ -455,4 +455,4 @@ Artifacts: `e2e/artifacts/ux-reset-2-review/`
 
 ## STOP
 
-Phase H Connectors Discovery → Management started. Approvals (queue + one CTA) remain gated until Cesar proceeds on that surface.
+Phase I Approvals queue + one primary CTA started. Remaining hubs (intelligence, models/training, settings, marketplace) remain later.
