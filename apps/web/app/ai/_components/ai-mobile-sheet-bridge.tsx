@@ -27,6 +27,9 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type R
 import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { GravitreAIMobileSheet, type GravitreAIMobileSheetMode } from "@/components/gravitre/ai-mobile-sheet"
 import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
+import { GravitreAIWorkCanvas } from "@/components/gravitre/ai-work-canvas"
+import { hasWorkArtifact, shouldRevealInspector } from "@/lib/gravitre-command-os"
+import { TaskSidePanel } from "@/components/gravitre/assistant/task-side-panel"
 import {
   GravitreAIConversationComposer,
   GravitreAIConversationTranscript,
@@ -51,6 +54,7 @@ export interface GravitreAIMobileSheetBridgeProps {
   dialogueMode?: string | null
   executionResult?: ChatExecutionResult | null
   pendingTask?: ChatPendingTask | null
+  progressSteps?: string[] | null
   confirmExecuting?: boolean
   onConfirmExecution?: () => void
   onRejectExecution?: () => void
@@ -96,6 +100,7 @@ export function GravitreAIMobileSheetBridge({
   dialogueMode,
   executionResult,
   pendingTask,
+  progressSteps,
   confirmExecuting,
   onConfirmExecution,
   onRejectExecution,
@@ -123,9 +128,18 @@ export function GravitreAIMobileSheetBridge({
 }: GravitreAIMobileSheetBridgeProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const [orbHost, setOrbHost] = useState<HTMLDivElement | null>(null)
+  const [mobileFocus, setMobileFocus] = useState<"conversation" | "work" | "inspect">("conversation")
   useEffect(() => {
     setOrbHost(bodyRef.current)
   }, [])
+
+  const showWork = hasWorkArtifact({ executionResult, pendingTask })
+  const showInspect = shouldRevealInspector({ progressSteps, pendingTask })
+  useEffect(() => {
+    if (showInspect) setMobileFocus("inspect")
+    else if (showWork) setMobileFocus("work")
+    else setMobileFocus("conversation")
+  }, [showInspect, showWork])
 
   return (
     <GravitreAIMobileSheet
@@ -185,6 +199,32 @@ export function GravitreAIMobileSheetBridge({
           voiceOrbContainer={orbHost}
         />
       </div>
+      {mobileFocus !== "conversation" ? (
+        <div
+          className="absolute inset-x-0 bottom-0 top-2 overflow-y-auto border-t border-divide bg-[color:var(--g-canvas)] p-4"
+          style={{ boxShadow: "var(--g-shadow-elevated)" }}
+        >
+          <button
+            type="button"
+            className="text-xs text-[color:var(--g-text-muted)]"
+            onClick={() => setMobileFocus("conversation")}
+          >
+            Back to conversation
+          </button>
+          {mobileFocus === "inspect" ? (
+            <TaskSidePanel
+              conversationId={conversationId}
+              progressSteps={progressSteps}
+              pendingTask={pendingTask}
+              className="mt-3 flex"
+            />
+          ) : (
+            <div className="mt-3">
+              <GravitreAIWorkCanvas executionResult={executionResult} pendingTask={pendingTask} />
+            </div>
+          )}
+        </div>
+      ) : null}
       </div>
     </GravitreAIMobileSheet>
   )

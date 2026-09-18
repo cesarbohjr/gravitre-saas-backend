@@ -163,6 +163,20 @@ export const MOTION = {
   spring: { type: "spring" as const, stiffness: 400, damping: 32 },
 } as const
 
+/** Nucleo Sharp 24 Outline sizes (UX Reset 2.0, locked). */
+export const NUCLEO_SIZE = {
+  /** Dense row / table actions */
+  row: 14,
+  /** Default product icon */
+  default: 16,
+  /** Secondary controls */
+  secondary: 18,
+  /** Composer / command controls */
+  composer: 20,
+  /** Identity / graph emphasis only */
+  identity: 24,
+} as const
+
 /**
  * Motion concepts (UI 3.0 grammar). Labels only — intensity and reduced-motion
  * behaviour live in `animations.ts` / voice presentation / CSS `--g-motion-*`.
@@ -182,6 +196,12 @@ export const MOTION_CONCEPT = {
   FOCUS: "focus",
   /** Shared packet motif (Design Pass 2) — marketing Intelligence Field first. */
   SIGNAL: "signal",
+  REVEAL: "reveal",
+  EXPAND: "expand",
+  COLLAPSE: "collapse",
+  CONNECT: "connect",
+  EXECUTE: "execute",
+  COMPLETE: "complete",
 } as const
 
 /**

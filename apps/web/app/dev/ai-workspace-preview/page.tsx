@@ -1,20 +1,21 @@
 /**
- * PHASE 0 PROTOTYPE ROUTE — isolated, unlinked, mock-data only.
- *
- * Not in any nav, not in sitemap, not wired to real conversation/agent/voice
- * state. See docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md
- * Part C3 for the plan this implements, and _components/ai-workspace-prototype.tsx
- * for the actual components.
+ * UX Reset 2.0 design exploration — isolated, unlinked, mock-data only.
+ * One harness. Not a second product runtime.
  */
 
+import { Suspense } from "react"
 import type { Metadata } from "next"
-import { AiWorkspacePrototype } from "./_components/ai-workspace-prototype"
+import { DesignExplorationShell } from "./_components/design-exploration-shell"
 
 export const metadata: Metadata = {
-  title: "AI Workspace Preview (internal)",
+  title: "UX Reset 2.0 design exploration (internal)",
   robots: { index: false, follow: false },
 }
 
 export default function AiWorkspacePreviewPage() {
-  return <AiWorkspacePrototype />
+  return (
+    <Suspense fallback={<p className="p-6 text-sm">Loading exploration…</p>}>
+      <DesignExplorationShell />
+    </Suspense>
+  )
 }

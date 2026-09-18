@@ -26,6 +26,14 @@ Playwright against `/e2e/shots/*` (fixture session + mocked `/api/chat`). Not a 
 
 ---
 
+## Production deploy
+
+Frontend **READY** `dpl_9Sgmgc2W1MP7165H2VyedEM5hQj7` @ `f8960857601c8d75e666d165d0b52c4262b6cdb3`, aliased to `gravitre.app`. Railway skipped (no backend change).
+
+Authenticated `https://gravitre.app/ai` → `/login` (Welcome back). Production click-through **NOT PROVEN**. No local `e2e/.fixtures/billing-users.json`; I11 live login tests remain skipped. Do not seed production billing users without an explicit choice.
+
+---
+
 ## Results (harness)
 
 | Item | Harness | Production authenticated |

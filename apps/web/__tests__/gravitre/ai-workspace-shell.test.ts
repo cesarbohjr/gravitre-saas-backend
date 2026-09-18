@@ -179,7 +179,7 @@ describe("GravitreAIWorkspaceShell — shared window controls", () => {
     }
     click("Hide conversation history")
     expect(onToggleLeft).toHaveBeenCalledTimes(1)
-    click("Hide context panel")
+    click("Hide inspector")
     expect(onToggleRight).toHaveBeenCalledTimes(1)
     click("Collapse to floating window")
     expect(onMinimizeToFloat).toHaveBeenCalledTimes(1)
@@ -197,5 +197,17 @@ describe("GravitreAIWorkspaceShell — shared window controls", () => {
     })
     const shell = document.body.querySelector("[data-gravitre-ai-shell]") as HTMLElement
     expect(shell.querySelector("#right-btn")).toBeNull()
+  })
+
+  it("hides the inspect control when inspectorAvailable is false", () => {
+    root = createRoot(container)
+    act(() => {
+      root!.render(
+        createElement(GravitreAIWorkspaceShell, baseProps({ inspectorAvailable: false, rightCollapsed: false })),
+      )
+    })
+    const shell = document.body.querySelector("[data-gravitre-ai-shell]") as HTMLElement
+    expect(shell.querySelector('[aria-label="Show inspector"]')).toBeNull()
+    expect(shell.querySelector('[aria-label="Hide inspector"]')).toBeNull()
   })
 })

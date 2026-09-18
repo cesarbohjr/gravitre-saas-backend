@@ -43,7 +43,7 @@ import { NucleoChat, NucleoPanelToggle } from "@/components/icons/nucleo/semanti
 import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { MOTION } from "@/lib/design-system"
+import { MOTION, NUCLEO_SIZE } from "@/lib/design-system"
 import { GRAVITRE_AI_WORKSPACE_LAYOUT_ID } from "@/lib/gravitre-ai-presentation"
 import { useMotionPrefs } from "@/lib/animations"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
@@ -64,6 +64,8 @@ export interface GravitreAIWorkspaceShellProps {
   onToggleLeft: () => void
   rightCollapsed: boolean
   onToggleRight: () => void
+  /** When false, Inspect control stays hidden (no empty inspector). */
+  inspectorAvailable?: boolean
   /** Collapses back down to the Float window (still open, smaller). */
   onMinimizeToFloat: () => void
   /** Enters Fullscreen. Only meaningful/rendered when `mode === "expanded"`. */
@@ -86,6 +88,7 @@ export function GravitreAIWorkspaceShell({
   onToggleLeft,
   rightCollapsed,
   onToggleRight,
+  inspectorAvailable = true,
   onMinimizeToFloat,
   onEnterFullscreen,
   onExitFullscreen,
@@ -143,7 +146,7 @@ export function GravitreAIWorkspaceShell({
       <div className="flex shrink-0 items-center justify-between border-b border-divide px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
-            <NucleoChat className="h-3.5 w-3.5" />
+            <NucleoChat width={NUCLEO_SIZE.default} height={NUCLEO_SIZE.default} />
           </span>
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
@@ -178,19 +181,21 @@ export function GravitreAIWorkspaceShell({
             aria-pressed={!leftCollapsed}
             onClick={onToggleLeft}
           >
-            <NucleoPanelToggle className="h-3.5 w-3.5" />
+            <NucleoPanelToggle width={NUCLEO_SIZE.row} height={NUCLEO_SIZE.row} />
           </Button>
+          {inspectorAvailable ? (
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            aria-label={rightCollapsed ? "Show context panel" : "Hide context panel"}
+            aria-label={rightCollapsed ? "Show inspector" : "Hide inspector"}
             aria-pressed={!rightCollapsed}
             onClick={onToggleRight}
           >
-            <NucleoPanelToggle className="h-3.5 w-3.5 scale-x-[-1]" />
+            <NucleoPanelToggle width={NUCLEO_SIZE.row} height={NUCLEO_SIZE.row} className="scale-x-[-1]" />
           </Button>
+          ) : null}
             </>
           }
         />

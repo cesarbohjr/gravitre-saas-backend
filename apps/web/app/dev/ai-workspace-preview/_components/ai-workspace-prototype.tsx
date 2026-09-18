@@ -28,12 +28,12 @@ import {
   GripVertical,
   Paperclip,
   Send,
-  Sparkles,
 } from "lucide-react"
 import {
   NucleoChat,
   NucleoApproval,
   NucleoClose,
+  NucleoRun,
   NucleoVoice,
 } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
@@ -263,7 +263,7 @@ function MessageBubble({ message }: { message: MockMessage }) {
   if (message.role === "tool") {
     return (
       <div className="my-1.5 flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-2.5 py-1.5 text-[11px] text-[color:var(--g-text-muted)]">
-        <Sparkles className="h-3 w-3 shrink-0 text-[color:var(--g-signal)]" aria-hidden />
+        <NucleoRun className="h-3 w-3 shrink-0 text-[color:var(--g-signal)]" aria-hidden />
         <span className="truncate">
           <span className="font-medium text-[color:var(--g-text-primary)]">{message.toolName}</span>
           {" · "}

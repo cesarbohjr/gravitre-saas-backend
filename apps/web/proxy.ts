@@ -92,6 +92,9 @@ export async function proxy(request: NextRequest) {
     "/gtg",
     // Playwright ExecutionResult harness (page itself 404s unless PLAYWRIGHT_E2E=1)
     "/e2e",
+    // Internal design exploration (noindex). Must be reachable without a session
+    // so Cesar can review UX Reset 2.0 concepts without a product login.
+    "/dev",
   ]
 
   const isPublicPath = publicPaths.some(

@@ -110,6 +110,7 @@ import {
   shouldHideProgressPanel,
 } from "@/lib/chat-agent-status"
 import { hostedFilesFromUnknown } from "@/components/gravitre/assistant/file-reference-chip"
+import { shouldRevealInspector } from "@/lib/gravitre-command-os"
 import {
   shouldShowTaskSidePanel,
   TaskSidePanel,
@@ -289,9 +290,8 @@ export function AiWorkspace({
     }
   }, [pathname, setFloatWorkspaceOpen, setPresentationMode])
   // Phase 3 — local UI state for the Expanded/Fullscreen shell's panel
-  // collapse toggles. Deliberately local (not lifted into the provider):
-  // nothing outside this component needs to read/persist it, and both
-  // panels default open, matching today's page's own defaults.
+  // collapse toggles. History starts collapsed (optional). Inspector stays
+  // closed until Command OS has something to inspect.
   const [shellLeftCollapsed, setShellLeftCollapsed] = useState(true)
   const [shellRightCollapsed, setShellRightCollapsed] = useState(true)
   const { data: authMe } = useSWR(user ? "auth-me-chat-approver" : null, () => authApi.me())
@@ -489,6 +489,21 @@ export function AiWorkspace({
     }
     return hostedFilesFromUnknown(structured)
   }, [executionResult, activeConversationId])
+
+  const inspectorAvailable = shouldRevealInspector({
+    progressSteps: researchProgressSteps,
+    pendingTask,
+  })
+  const prevInspectorAvailable = useRef(false)
+  useEffect(() => {
+    if (inspectorAvailable && !prevInspectorAvailable.current) {
+      setShellRightCollapsed(false)
+    }
+    if (!inspectorAvailable) {
+      setShellRightCollapsed(true)
+    }
+    prevInspectorAvailable.current = inspectorAvailable
+  }, [inspectorAvailable])
 
   const [historySearch, setHistorySearch] = useState("")
   const deferredHistorySearch = useDeferredValue(historySearch.trim())
@@ -2303,6 +2318,7 @@ export function AiWorkspace({
           dialogueMode={dialogueMode}
           executionResult={executionResult}
           pendingTask={pendingTask}
+          progressSteps={researchProgressSteps}
           confirmExecuting={confirmExecuting}
           onConfirmExecution={() => void handleConfirmExecution()}
           onRejectExecution={handleRejectExecution}

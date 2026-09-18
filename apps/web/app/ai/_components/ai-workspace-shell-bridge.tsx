@@ -26,6 +26,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react"
 import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
+import { cn } from "@/lib/utils"
 import {
   GravitreAIWorkspaceShell,
   type GravitreAIWorkspaceShellMode,
@@ -33,6 +34,8 @@ import {
 import { GravitreAILeftPanel, type GravitreAILeftPanelProps } from "@/components/gravitre/ai-left-panel"
 import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
 import { GravitreAIRightPanel, type GravitreAIRightPanelProps } from "@/components/gravitre/ai-right-panel"
+import { GravitreAIWorkCanvas } from "@/components/gravitre/ai-work-canvas"
+import { hasWorkArtifact, shouldRevealInspector } from "@/lib/gravitre-command-os"
 import {
   GravitreAIConversationComposer,
   GravitreAIConversationTranscript,
@@ -156,14 +159,25 @@ export function GravitreAIWorkspaceShellBridge({
     setOrbHost(bodyRef.current)
   }, [])
 
+  const inspectorAvailable = shouldRevealInspector({
+    progressSteps: rightPanelProps.progressSteps ?? null,
+    pendingTask: rightPanelProps.pendingTask ?? null,
+  })
+  const showWork = hasWorkArtifact({
+    executionResult,
+    pendingTask,
+    hostedFiles: rightPanelProps.hostedFiles ?? null,
+  })
+
   return (
     <GravitreAIWorkspaceShell
       mode={mode}
       presence={presence}
       leftCollapsed={leftCollapsed}
       onToggleLeft={onToggleLeft}
-      rightCollapsed={rightCollapsed}
+      rightCollapsed={rightCollapsed || !inspectorAvailable}
       onToggleRight={onToggleRight}
+      inspectorAvailable={inspectorAvailable}
       onMinimizeToFloat={onMinimizeToFloat}
       onEnterFullscreen={onEnterFullscreen}
       onExitFullscreen={onExitFullscreen}
@@ -181,31 +195,41 @@ export function GravitreAIWorkspaceShellBridge({
       {/* Positioned wrapper so the contained voice orb fills the shell body rather
           than the composer strip. */}
       <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        <GravitreAIConversationTranscript
-          routeKey="/ai"
-          messages={messages}
-          showWaiting={showWaiting}
-          isStreaming={isStreaming}
-          status={status}
-          isBusy={isBusy}
-          agentStatusLabel={agentStatusLabel}
-          dialogueMode={dialogueMode}
-          executionResult={executionResult}
-          pendingTask={pendingTask}
-          confirmExecuting={confirmExecuting}
-          onConfirmExecution={onConfirmExecution}
-          onRejectExecution={onRejectExecution}
-          onModifyExecution={onModifyExecution}
-          canApprove={canApprove}
-          conversationId={conversationId}
-          conversationTitle={conversationTitle}
-          onRegenerate={onRegenerate}
-          assistantLabel={assistantLabel}
-          waitingLabel={waitingLabel}
-          canContinueAfterStop={canContinueAfterStop}
-          onContinueAfterStop={onContinueAfterStop}
-        />
+      <div
+        className={cn(
+          "min-h-0 flex-1",
+          showWork ? "grid overflow-hidden md:grid-cols-[minmax(240px,1fr)_1.15fr]" : "overflow-y-auto px-3 py-3",
+        )}
+      >
+        <div className={cn(showWork && "min-h-0 overflow-y-auto px-3 py-3")}>
+          <GravitreAIConversationTranscript
+            routeKey="/ai"
+            messages={messages}
+            showWaiting={showWaiting}
+            isStreaming={isStreaming}
+            status={status}
+            isBusy={isBusy}
+            agentStatusLabel={agentStatusLabel}
+            dialogueMode={dialogueMode}
+            executionResult={executionResult}
+            pendingTask={pendingTask}
+            confirmExecuting={confirmExecuting}
+            onConfirmExecution={onConfirmExecution}
+            onRejectExecution={onRejectExecution}
+            onModifyExecution={onModifyExecution}
+            canApprove={canApprove}
+            conversationId={conversationId}
+            conversationTitle={conversationTitle}
+            onRegenerate={onRegenerate}
+            assistantLabel={assistantLabel}
+            waitingLabel={waitingLabel}
+            canContinueAfterStop={canContinueAfterStop}
+            onContinueAfterStop={onContinueAfterStop}
+          />
+        </div>
+        {showWork ? (
+          <GravitreAIWorkCanvas executionResult={executionResult} pendingTask={pendingTask} />
+        ) : null}
       </div>
       <div className="shrink-0 border-t border-divide p-2.5">
         <GravitreAIConversationComposer
