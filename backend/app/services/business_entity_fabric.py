@@ -189,9 +189,66 @@ def join_provider_bindings(
     return JoinDecision(status=status, entity=entity, reason="exact_evidence")
 
 
+def _is_uuid(value: str) -> bool:
+    try:
+        from uuid import UUID
+
+        UUID(str(value))
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def persist_join_store(client: Any, entity: BusinessEntity) -> int:
+    """Write accepted joins to org_business_entities. Never raises. No-op for non-uuid org ids."""
+    if client is None or not _is_uuid(entity.org_id):
+        return 0
+    try:
+        evidence = [{"kind": e.kind, "value": e.value, "source": e.source} for e in entity.evidence]
+        upserted = (
+            client.table("org_business_entities")
+            .upsert(
+                {
+                    "org_id": entity.org_id,
+                    "canonical_key": entity.id[:200],
+                    "display_name": entity.display_name[:200],
+                    "kind": entity.kind,
+                    "confidence": float(entity.confidence),
+                    "evidence": evidence,
+                },
+                on_conflict="org_id,canonical_key",
+            )
+            .execute()
+        )
+        rows = upserted.data if isinstance(getattr(upserted, "data", None), list) else []
+        row_id = str((rows[0] or {}).get("id") or "") if rows else ""
+        written = 1 if rows else 0
+        if not row_id:
+            return written
+        for binding in entity.bindings:
+            client.table("org_business_entity_bindings").upsert(
+                {
+                    "org_id": entity.org_id,
+                    "entity_id": row_id,
+                    "system": binding.system,
+                    "resource_type": binding.resource_type,
+                    "resource_id": binding.resource_id,
+                    "confidence": float(binding.confidence),
+                    "evidence": [
+                        {"kind": e.kind, "value": e.value, "source": e.source} for e in binding.evidence
+                    ],
+                },
+                on_conflict="org_id,system,resource_type,resource_id",
+            ).execute()
+            written += 1
+        return written
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def persist_business_entity(client: Any, entity: BusinessEntity) -> int:
-    """Store join bindings in org_entity_resolution_records. Never raises."""
-    written = 0
+    """Store accepted joins in the 2.0-B table plus alias projection. Never raises."""
+    written = persist_join_store(client, entity)
     for binding in entity.bindings:
         if upsert_resolution(
             client,

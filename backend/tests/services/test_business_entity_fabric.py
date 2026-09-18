@@ -155,7 +155,18 @@ def test_refuses_existing_distinct_entity_ids() -> None:
     assert decision.status == "refused_ambiguous"
 
 
-def test_persist_is_org_scoped() -> None:
+def test_join_store_skipped_for_non_uuid_org() -> None:
+    from app.services.business_entity_fabric import persist_join_store
+
+    client = MagicMock()
+    entity = website_entity_from_identity(
+        org_id="org-1",
+        identity={"host": "acme.example"},
+        ga4_property_id="123",
+    )
+    assert entity is not None
+    assert persist_join_store(client, entity) == 0
+    client.table.assert_not_called()
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[]
