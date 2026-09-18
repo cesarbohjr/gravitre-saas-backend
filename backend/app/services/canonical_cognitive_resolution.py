@@ -59,6 +59,16 @@ def assess_cognitive_resolution_needs(
             run_resource=False,
             reason=f"reference_{reference.kind}",
         )
+    if reference.matched and reference.kind == "referent":
+        from app.services.task_continuity import frame_is_analytics
+
+        analytics = frame_is_analytics(state)
+        return CognitiveResolutionNeeds(
+            run_semantic=True,
+            run_resource=analytics,
+            analytics_short_circuit=analytics,
+            reason="reference_referent",
+        )
 
     if _CHITCHAT_RE.match(text):
         return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="chitchat")

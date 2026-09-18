@@ -13,8 +13,10 @@ HARNESS_TERMINAL_RULES = (
 )
 
 HARNESS_REFERENCE_RULES = (
-    "Resolve yes/no/all-N/that against structured task_state (offered_action, pending_task, "
-    "previous_option_set, active_analysis) — not conversation prose alone."
+    "Resolve yes/no/all-N/that against the current ExecutionPlan frame "
+    "(pending_task, pending_action, offered_action, previous_option_set, "
+    "active_analysis, compiled_task projection) — not conversation prose alone. "
+    "Follow-ups keep the same plan_id unless the user starts a new task."
 )
 
 HARNESS_COMPOSE_RULES = (

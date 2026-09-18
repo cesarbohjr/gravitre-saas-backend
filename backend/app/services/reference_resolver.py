@@ -40,7 +40,7 @@ _ALL_OPTIONS_RE = re.compile(
 )
 
 _ORDINAL_RE = re.compile(
-    r"(?is)^\s*(?:the\s+)?(first|second|third|1st|2nd|3rd|\d+(?:st|nd|rd|th)?)\s*(?:one|option)?\s*[.!]?\s*$",
+    r"(?is)^\s*(?:the\s+)?(first|second|third|last|1st|2nd|3rd|\d+(?:st|nd|rd|th)?)\s*(?:one|option)?\s*[.!]?\s*$",
 )
 
 _THOSE_RE = re.compile(r"(?is)\b(those|these|them|it|that|same one|same as before)\b")
@@ -103,6 +103,13 @@ def _pending_confirmation_target(state: dict[str, Any]) -> str | None:
         return "pending_task"
     if isinstance(offered, dict) and offered.get("confirmation_required"):
         return "offered_action"
+    pending_action = state.get("pending_action")
+    if isinstance(pending_action, dict) and pending_action.get("status") in {
+        "awaiting_user",
+        "awaiting_user_confirmation",
+        "awaiting_confirm",
+    }:
+        return "pending_action"
     return None
 
 
@@ -111,12 +118,34 @@ def _ordinal_index(text: str) -> int | None:
     if not match:
         return None
     token = match.group(1).lower()
-    mapping = {"first": 0, "1st": 0, "second": 1, "2nd": 1, "third": 2, "3rd": 2}
+    mapping = {"first": 0, "1st": 0, "second": 1, "2nd": 1, "third": 2, "3rd": 2, "last": -1}
     if token in mapping:
         return mapping[token]
     digits = re.match(r"(\d+)", token)
     if digits:
         return max(int(digits.group(1)) - 1, 0)
+    return None
+
+
+def _task_frame_referent(state: dict[str, Any]) -> dict[str, Any] | None:
+    analysis = _active_analysis(state)
+    if analysis:
+        return analysis
+    compiled = state.get("compiled_task") if isinstance(state.get("compiled_task"), dict) else {}
+    if compiled.get("capability_id") or compiled.get("sources") or compiled.get("plan_id"):
+        return {
+            "kind": compiled.get("capability_id") or "task",
+            "plan_id": compiled.get("plan_id"),
+            "objective_text": compiled.get("objective_text"),
+            "sources": compiled.get("sources"),
+        }
+    plan = state.get("execution_plan") if isinstance(state.get("execution_plan"), dict) else {}
+    if plan.get("plan_id"):
+        return {
+            "kind": plan.get("capability_id") or "task",
+            "plan_id": plan.get("plan_id"),
+            "objective_text": plan.get("objective") or plan.get("summary"),
+        }
     return None
 
 
@@ -158,18 +187,21 @@ def resolve_reference(message: str, task_state: dict[str, Any] | None) -> Refere
         )
 
     ordinal = _ordinal_index(text)
-    if ordinal is not None and options and ordinal < len(options):
-        item = options[ordinal]
-        return ReferenceResolution(
-            kind="select_option",
-            matched=True,
-            reason="ordinal_option",
-            selected_option_ids=(str(item.get("id") or item.get("label") or ordinal),),
-            selected_indices=(ordinal,),
-        )
+    if ordinal is not None and options:
+        if ordinal < 0:
+            ordinal = len(options) + ordinal
+        if 0 <= ordinal < len(options):
+            item = options[ordinal]
+            return ReferenceResolution(
+                kind="select_option",
+                matched=True,
+                reason="ordinal_option",
+                selected_option_ids=(str(item.get("id") or item.get("label") or ordinal),),
+                selected_indices=(ordinal,),
+            )
 
     if _COMPARE_THAT_RE.search(text) or (text.lower().strip() in {"that", "it", "same one", "same as before"}):
-        referent = _active_analysis(state)
+        referent = _task_frame_referent(state)
         if referent:
             return ReferenceResolution(
                 kind="referent",
@@ -179,7 +211,7 @@ def resolve_reference(message: str, task_state: dict[str, Any] | None) -> Refere
             )
 
     if _THOSE_RE.search(text):
-        referent = _active_analysis(state)
+        referent = _task_frame_referent(state)
         if referent:
             return ReferenceResolution(
                 kind="referent",

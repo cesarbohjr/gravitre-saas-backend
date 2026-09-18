@@ -58,6 +58,7 @@ class CompiledTask:
     preflight_status: str | None = None
     turn_id: str | None = None
     org_id: str | None = None
+    plan_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -73,6 +74,7 @@ class CompiledTask:
             "preflight_status": self.preflight_status,
             "turn_id": self.turn_id,
             "org_id": self.org_id,
+            "plan_id": self.plan_id,
         }
 
 
@@ -93,6 +95,7 @@ def project_compiled_task(
     objective = str(
         objective_text
         or state.get("cognitive_resolution_message")
+        or (state.get("execution_plan") or {}).get("summary")
         or (state.get("execution_plan") or {}).get("objective")
         or ""
     ).strip()
@@ -214,6 +217,7 @@ def project_compiled_task(
         preflight_status=preflight_status,
         turn_id=turn_id,
         org_id=str(org_id or trace.get("tenant_id") or "").strip() or None,
+        plan_id=str(plan.get("plan_id") or "").strip() or None,
     )
 
 

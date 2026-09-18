@@ -114,6 +114,10 @@ def detect_analytics_traffic_intent(
     connected_integrations: list[str] | None = None,
 ) -> AnalyticsTrafficIntent | None:
     if not is_analytics_traffic_overview_intent(message, task_state=task_state):
+        from app.services.task_continuity import frame_is_analytics, is_continuity_followup
+
+        if is_continuity_followup(message, task_state) and frame_is_analytics(task_state):
+            return AnalyticsTrafficIntent(connector_id="google_analytics", is_followup=True)
         return None
     connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
     explicit = resolve_all_connectors_from_text(message)

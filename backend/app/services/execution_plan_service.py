@@ -251,14 +251,22 @@ def continue_execution_plan(
     *,
     message: str | None = None,
     turn_id: str | None = None,
+    follow_up: bool = False,
 ) -> ExecutionPlan:
     """Mark plan continuation without minting a new plan_id."""
     plan.continuation_of_plan_id = plan.plan_id
-    plan.terminal_status = "running"
+    if follow_up:
+        plan.revision = int(plan.revision or 1) + 1
+        plan.replan_reason = "follow_up"
+        plan.terminal_status = "pending"
+        if message:
+            plan.summary = str(message)[:240]
+    else:
+        plan.terminal_status = "running"
+        if message:
+            plan.summary = plan.summary or message[:240]
     if turn_id:
         plan.turn_id = turn_id
-    if message:
-        plan.summary = plan.summary or message[:240]
     return plan
 
 
@@ -305,14 +313,28 @@ def reconcile_execution_plan(
     text = (message or "").strip()
 
     existing = ExecutionPlan.from_dict(state.get("execution_plan"))
-    if existing is not None and existing.terminal_status in {"pending", "running", "waiting_for_approval"} and existing.steps:
-        if turn_id:
-            existing.turn_id = turn_id
-        if conversation_id:
-            existing.conversation_id = conversation_id
-        if _is_confirm_utterance(text):
-            return continue_execution_plan(existing, message=text, turn_id=turn_id)
-        return existing
+    from app.services.task_continuity import decide_task_continuity, is_restart_utterance
+
+    if existing is not None and existing.steps:
+        restart = is_restart_utterance(text, state)
+        if existing.terminal_status in {"pending", "running", "waiting_for_approval"} and not restart:
+            if turn_id:
+                existing.turn_id = turn_id
+            if conversation_id:
+                existing.conversation_id = conversation_id
+            if _is_confirm_utterance(text):
+                return continue_execution_plan(existing, message=text, turn_id=turn_id)
+            return existing
+        if existing.terminal_status in {"completed", "partial", "blocked"} and not restart:
+            if decide_task_continuity(text, state) == "continue":
+                if conversation_id:
+                    existing.conversation_id = conversation_id
+                return continue_execution_plan(
+                    existing,
+                    message=text,
+                    turn_id=turn_id,
+                    follow_up=True,
+                )
 
     offered = state.get("offered_action")
     if isinstance(offered, dict) and offered.get("execution_plan_id"):
