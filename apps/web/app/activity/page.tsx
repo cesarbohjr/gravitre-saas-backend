@@ -200,14 +200,14 @@ function ActivityPageInner() {
       : outcomes.find((o) => o.id === selectedOutcomeId) ||
         outcomes.find((o) => o.runId === selectedOutcomeId) ||
         null
-  // Desktop keeps first-row preview; mobile only opens detail after an explicit tap.
-  const selectedOutcome = selectedOutcomeExplicit ?? outcomes[0] ?? null
+  // Inspector only on explicit selection — no first-row preview rail.
+  const selectedOutcome = selectedOutcomeExplicit
 
   const selectedWorkObjectExplicit =
     selectedWorkObjectId == null
       ? null
       : workObjects.find((o) => o.id === selectedWorkObjectId) || null
-  const selectedWorkObject = selectedWorkObjectExplicit ?? workObjects[0] ?? null
+  const selectedWorkObject = selectedWorkObjectExplicit
 
   const mobileDetailOpen =
     tab === "objects" ? selectedWorkObjectId != null : selectedOutcomeId != null
@@ -866,12 +866,14 @@ function ActivityPageInner() {
                   <div className="flex items-center justify-between gap-3">
                   <span className={cn(TYPE.eyebrow, "truncate")}>
                     {tab === "objects"
-                      ? selectedWorkObject?.title || "WorkObject detail"
-                      : selectedOutcome?.title || "Detail"}
+                      ? selectedWorkObject?.title || "Inspect"
+                      : selectedOutcome
+                        ? "Outcome"
+                        : "Inspect"}
                   </span>
                   {tab === "objects" ? null : selectedOutcome?.runId ? (
                     <Link
-                      href={`/runs/${selectedOutcome.runId}`}
+                      href={`/runs/${selectedOutcome.runId}?trace=1`}
                       className={cn(
                         "inline-flex shrink-0 items-center gap-1 rounded-[var(--np-radius-md)] px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-[color:var(--g-surface-2)] hover:text-foreground",
                         INTERACTION,
@@ -983,6 +985,7 @@ function ActivityPageInner() {
                         exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
                         transition={{ duration: MOTION.base }}
                       >
+                        <p className={TYPE.eyebrow}>Outcome</p>
                         <BusinessOutcomeView outcome={selectedOutcome} density="timeline" />
                       </motion.div>
                     </AnimatePresence>
@@ -991,7 +994,7 @@ function ActivityPageInner() {
                       className="border-0 shadow-none"
                       icon={<NucleoSearch className="h-5 w-5" />}
                       title="Nothing selected"
-                      hint="Pick an item from the list to inspect its evidence and timeline."
+                      hint="Select a run — inspector stays closed until then."
                     />
                   )}
                 </div>

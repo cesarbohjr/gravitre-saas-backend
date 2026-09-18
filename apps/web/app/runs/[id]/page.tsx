@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useMemo, useState } from "react"
+import { use, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -45,6 +45,13 @@ import {
   type BusinessOutcomeDto,
 } from "@/components/gravitre/business-outcome/business-outcome-view"
 import { summarizeStepError, humanizeLogLine, normalizeStepLogs } from "@/lib/runs/step-summary"
+import {
+  collectRunActions,
+  collectRunSystems,
+  lastCompletedStepSummary,
+  runOutcomeHeadline,
+} from "@/lib/runs/run-outcome-display"
+import { TYPE } from "@/lib/design-system"
 import type { ApprovalBatchView, RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
 type StepStatus = ExecutionStepView["status"]
@@ -202,6 +209,12 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const { id } = use(params)
   const { user, loading: authLoading } = useAuth()
   const { isAdmin } = useOrgAdmin()
+  const [traceOpen, setTraceOpen] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("trace") === "1") setTraceOpen(true)
+  }, [])
 
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false)
   const [isRollingBack, setIsRollingBack] = useState(false)
@@ -280,6 +293,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     { revalidateOnFocus: false },
   )
   const businessOutcome = (businessOutcomePayload?.businessOutcome || null) as BusinessOutcomeDto | null
+  const outcomeHeadline = runOutcomeHeadline({
+    businessTitle: businessOutcome?.title,
+    goal: run.goal,
+    lastCompletedSummary: lastCompletedStepSummary(steps),
+  })
+  const recordedSystems = collectRunSystems(steps)
+  const recordedActions = collectRunActions(steps)
+  const recordedOutput = lastCompletedStepSummary(steps)
 
   async function handlePause() {
     if (!isAdmin) {
@@ -597,9 +618,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           className="shrink-0"
-          eyebrow="Execution"
-          title={headerTitle}
-          description={headerDescription}
+          eyebrow="Outcome"
+          title={outcomeHeadline ?? "No measured outcome recorded"}
+          description="Result first. TRACE is a drill-down — timings appear only from this run’s steps."
           icon={<NucleoWorkflow className="h-5 w-5" />}
           actions={runActions}
         >
@@ -619,6 +640,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             <EnvironmentBadge
               environment={run.environment === "production" ? "production" : "staging"}
             />
+            <span className="text-xs text-muted-foreground">{headerTitle}</span>
           </div>
         </GravitrePageHeader>
 
@@ -639,6 +661,49 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               Pause and cancel require admin access.
             </div>
           )}
+
+          <section data-review-surface="run-outcome" className="space-y-2 border-b border-divide pb-4">
+            <p className={TYPE.eyebrow}>Evidence</p>
+            <p className={cn(TYPE.meta)}>{headerDescription}</p>
+            <ul className="space-y-1.5 text-sm text-foreground">
+              <li>
+                Terminal: {run.status.replace(/_/g, " ")}
+              </li>
+              <li>Systems: {recordedSystems.length ? recordedSystems.join(", ") : "None recorded"}</li>
+              <li>Actions: {recordedActions.length ? recordedActions.join(", ") : "None recorded"}</li>
+              <li>Output: {recordedOutput ?? "None recorded"}</li>
+              <li>
+                Recoveries:{" "}
+                {compensationSummary
+                  ? `${compensationSummary.compensated} compensated · ${compensationSummary.failed} failed`
+                  : "None recorded"}
+              </li>
+            </ul>
+          </section>
+
+          {businessOutcome ? (
+            <div className="space-y-2">
+              <BusinessOutcomeView outcome={businessOutcome} density="timeline" />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8"
+                onClick={async () => {
+                  try {
+                    const md = await businessOutcomesApi.exportMarkdown(id)
+                    await navigator.clipboard.writeText(md)
+                    toast.success("BusinessOutcome export copied (same DTO as chat/timeline)")
+                  } catch (err) {
+                    toast.error("Export failed", {
+                      description: err instanceof Error ? err.message : "Please try again.",
+                    })
+                  }
+                }}
+              >
+                Copy export (same DTO)
+              </Button>
+            </div>
+          ) : null}
 
           {run.stepsTotal > 0 ? (
             <GravitreSurface className="p-4" padded={false}>
@@ -686,7 +751,12 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             </GravitreSurface>
           ) : null}
 
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+          <details>
+            <summary className="cursor-pointer list-none border-b border-divide py-2">
+              <p className={TYPE.eyebrow}>Run metrics</p>
+              <p className={cn(TYPE.meta, "mt-0.5")}>Duration and counts — after the outcome, not instead of it.</p>
+            </summary>
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-4 lg:grid-cols-4">
             <GravitreMetric label="Duration" value={run.duration} icon={<Clock className="h-4 w-4" />} />
             <GravitreMetric
               label="Records processed"
@@ -700,6 +770,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             />
             <GravitreMetric label="Started" value={run.startedAt} icon={<Clock className="h-4 w-4" />} />
           </section>
+          </details>
 
           <GravitreSurface className="p-4" padded={false}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -905,6 +976,18 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             </div>
           )}
 
+          <details
+            open={traceOpen}
+            onToggle={(event) => setTraceOpen((event.target as HTMLDetailsElement).open)}
+            data-review-surface="run-trace"
+          >
+            <summary className="cursor-pointer list-none border-b border-divide py-2">
+              <p className={TYPE.eyebrow}>TRACE</p>
+              <p className={cn(TYPE.meta, "mt-0.5")}>
+                Drill-down into this run’s recorded steps. No invented waterfall.
+              </p>
+            </summary>
+            <div className="space-y-4 pt-4">
           <GravitreSurface padded={false}>
             <div className="border-b border-divide p-4">
               <h2 className="text-sm font-semibold text-foreground">Execution Flow</h2>
@@ -958,37 +1041,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 data.
               </p>
             </div>
-            {businessOutcome ? (
-              <div className="border-b border-divide p-4">
-                <BusinessOutcomeView outcome={businessOutcome} density="timeline" />
-                <div className="mt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    onClick={async () => {
-                      try {
-                        const md = await businessOutcomesApi.exportMarkdown(id)
-                        await navigator.clipboard.writeText(md)
-                        toast.success("BusinessOutcome export copied (same DTO as chat/timeline)")
-                      } catch (err) {
-                        toast.error("Export failed", {
-                          description: err instanceof Error ? err.message : "Please try again.",
-                        })
-                      }
-                    }}
-                  >
-                    Copy export (same DTO)
-                  </Button>
-                </div>
-              </div>
-            ) : null}
             <ExecutionTimeline
               steps={steps}
               onRetryStep={handleRetryStep}
               isRetrying={isRetryingStep}
             />
           </GravitreSurface>
+            </div>
+          </details>
 
           {canCompensate && (
             <GravitreSurface padded={false}>

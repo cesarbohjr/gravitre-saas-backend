@@ -185,7 +185,7 @@ export const SURFACE_COPY = {
     connectors: {
       title: "Connectors",
       headline: "Connectors",
-      description: "Connected systems.",
+      description: "Discover available systems, then manage the ones that are connected.",
     },
     memory: {
       title: "Memory",

@@ -33,12 +33,21 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(tabs).toMatch(/aria-label="Agents hub"/)
   })
 
-  it("connectors default to a compact list without atmosphere", () => {
+  it("connectors default to discovery then a compact management list", () => {
     const src = readFileSync(resolve(webRoot, "app/connectors/page.tsx"), "utf8")
     expect(src).toMatch(/useState<"topology" \| "grid">\("grid"\)/)
     expect(src).toMatch(/variant="list"/)
     expect(src).toMatch(/data-gravitre-connector-row/)
+    expect(src).toMatch(/data-review-surface="connectors-management"/)
+    expect(src).toMatch(/inspector stays closed until then/)
     expect(src).not.toMatch(/ConnectorsAtmosphere/)
+    const strip = readFileSync(
+      resolve(webRoot, "components/connectors/available-connectors-strip.tsx"),
+      "utf8",
+    )
+    expect(strip).toMatch(/data-review-surface="connectors-discovery"/)
+    expect(strip).toMatch(/>Discovery</)
+    expect(strip).not.toMatch(/Available\s*</)
   })
 
   it("relationships map is not wrapped in a permanent evidence dashboard", () => {
@@ -101,5 +110,19 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/traceOverlay/)
     expect(src).toMatch(/Inspect ·/)
     expect(src).toMatch(/not behind Ask/)
+  })
+
+  it("runs lead with outcome evidence and keep TRACE as a drill-down", () => {
+    const run = readFileSync(resolve(webRoot, "app/runs/[id]/page.tsx"), "utf8")
+    const outcome = run.indexOf('data-review-surface="run-outcome"')
+    const trace = run.indexOf('data-review-surface="run-trace"')
+    expect(outcome).toBeGreaterThan(0)
+    expect(trace).toBeGreaterThan(outcome)
+    expect(run).toMatch(/eyebrow="Outcome"/)
+    expect(run).toMatch(/Drill-down into this run/)
+    const activity = readFileSync(resolve(webRoot, "app/activity/page.tsx"), "utf8")
+    expect(activity).not.toMatch(/selectedOutcomeExplicit \?\? outcomes\[0\]/)
+    expect(activity).toMatch(/inspector stays closed until then/)
+    expect(activity).toMatch(/\?trace=1/)
   })
 })

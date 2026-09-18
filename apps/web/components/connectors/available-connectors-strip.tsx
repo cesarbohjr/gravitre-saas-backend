@@ -2,10 +2,8 @@
 
 import { useEffect, useRef } from "react"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
-import { NucleoArrowRight } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { CHIP } from "@/lib/design-system"
 
 export type AvailableConnectorEntry = {
   vendorKey: string
@@ -73,19 +71,18 @@ export function AvailableConnectorsStrip({
 
   return (
     <section
-      aria-label="Available connectors"
+      aria-label="Discovery"
+      data-review-surface="connectors-discovery"
       className={cn(
-        // min-w-0 keeps this strip inside AppShell (overflow-x-hidden); without
-        // it the card track grows to content width and the right edge clips.
         "w-full min-w-0 border-b border-border bg-secondary/20 px-4 py-2.5 md:px-6",
         className,
       )}
     >
       <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-          <h2 className="text-sm font-semibold text-foreground">Available connectors</h2>
+          <h2 className="text-sm font-semibold text-foreground">Discovery</h2>
           <p className="text-xs text-muted-foreground">
-            Self-serve integrations ready to connect from this workspace.
+            Available systems as compact logos. Connect from here — not an app-store catalog.
           </p>
         </div>
         {showBrowseAll && (
@@ -103,19 +100,10 @@ export function AvailableConnectorsStrip({
             key={entry.vendorKey}
             type="button"
             onClick={() => onSelect(entry.type)}
-            className="group flex w-[200px] max-w-[80vw] shrink-0 items-center gap-3 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] px-3 py-2.5 text-left shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-soft)]"
+            className="group flex shrink-0 items-center gap-2 border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] px-2.5 py-1.5 text-left"
           >
-            <ConnectorIcon vendor={entry.type} size="sm" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="truncate text-sm font-medium capitalize text-foreground">{entry.type}</span>
-                <span className={cn(CHIP.compact, "border border-divide bg-transparent font-medium normal-case tracking-normal text-[color:var(--g-text-muted)]")}>
-                  Available
-                </span>
-              </div>
-              <p className="truncate text-[11px] text-muted-foreground">{entry.description}</p>
-            </div>
-            <NucleoArrowRight size={16} className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            <ConnectorIcon vendor={entry.type} size="xs" showStatusIndicator={false} />
+            <span className="max-w-[9rem] truncate text-sm capitalize text-foreground">{entry.type}</span>
           </button>
         ))}
       </div>

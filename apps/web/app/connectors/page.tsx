@@ -72,6 +72,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -3124,7 +3125,13 @@ function ConnectorsPageContent() {
 
         {!chromeCollapsed ? (
         <>
-        {/* Live Stats Bar */}
+        <details>
+          <summary className="cursor-pointer list-none border-b border-divide px-4 py-2 md:px-6">
+            <p className={TYPE.eyebrow}>Health totals</p>
+            <p className={cn(TYPE.meta, "mt-0.5")}>
+              Counts from the last refresh — after discovery and management, not instead of them.
+            </p>
+          </summary>
         <div className="border-b border-border bg-secondary/30 px-4 md:px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-4 md:gap-8">
@@ -3153,6 +3160,7 @@ function ConnectorsPageContent() {
             </div>
           </div>
         </div>
+        </details>
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
         <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
@@ -3288,9 +3296,17 @@ function ConnectorsPageContent() {
             </div>
           )}
 
-          {/* Desktop: compact list (default). Topology remains opt-in. */}
+          {/* Management: compact list (default). Topology remains opt-in. */}
           {viewMode === "grid" && (
-            <div>
+            <div data-review-surface="connectors-management">
+              <div className="mb-3">
+                <p className={TYPE.eyebrow}>Management</p>
+                <p className={cn(TYPE.meta, "mt-0.5")}>
+                  Connected systems as a dense list. Topology is optional.
+                </p>
+              </div>
+              <div className={cn("grid gap-4", focusedConnector && "lg:grid-cols-[minmax(0,1fr)_16rem]")}>
+                <div>
               {filteredConnectors.map((connector) => (
                 <ConnectorNode
                   key={connector.id}
@@ -3305,6 +3321,30 @@ function ConnectorsPageContent() {
                   onFocus={setFocusedConnector}
                 />
               ))}
+                </div>
+                {focusedConnector ? (
+                  <aside className="h-fit border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] p-3 text-sm">
+                    <p className={TYPE.eyebrow}>Inspect</p>
+                    <p className="mt-2 font-medium text-foreground">{focusedConnector.name}</p>
+                    <ul className={cn(TYPE.meta, "mt-2 space-y-1")}>
+                      <li>Status: {focusedConnector.status}</li>
+                      <li>Vendor: {focusedConnector.type}</li>
+                    </ul>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-3 h-8"
+                      onClick={() => setConfigureModal(focusedConnector)}
+                    >
+                      Configure
+                    </Button>
+                  </aside>
+                ) : (
+                  <p className={cn(TYPE.meta, "lg:col-span-2")}>
+                    Select a connected system — inspector stays closed until then.
+                  </p>
+                )}
+              </div>
             </div>
           )}
           </>
