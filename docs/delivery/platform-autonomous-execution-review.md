@@ -26,6 +26,7 @@ This review answers whether Gravitre can **actually execute** the business tasks
 | STA-303 error code taxonomy | [sta303-connector-error-codes-audit.md](./sta303-connector-error-codes-audit.md) | Reference |
 | HubSpot search schema dead-end (exemplar) | [hubspot-search-validation-dead-end.md](./hubspot-search-validation-dead-end.md) | Live-proven class |
 | Connector certification states (Section R) | [connector-certification-states.md](./connector-certification-states.md) | **Process only (2026-09-17)** — no code / no customer badge |
+| **Re-audit 2.0 (post E1–E5/F1)** | [gravitre-autonomous-execution-reaudit-2.0.md](./gravitre-autonomous-execution-reaudit-2.0.md) | **AUDIT ONLY (2026-09-18)** — code + `/health`; not LIVE_USER_PROVEN |
 
 ---
 
