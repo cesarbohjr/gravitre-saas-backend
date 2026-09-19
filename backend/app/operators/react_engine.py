@@ -873,6 +873,7 @@ class ReActEngine:
             block_react_write_execution,
             tool_requires_user_write_approval,
         )
+        from app.services.voice_barge_in_write import resolve_write_interrupt
 
         connected: list[str] = []
         if ctx.client and ctx.org_id:
@@ -949,7 +950,10 @@ class ReActEngine:
             settings=self.settings,
             user_message=user_message,
             connected_integrations=connected,
-            interrupt=interrupt,
+            interrupt=resolve_write_interrupt(
+                interrupt=interrupt,
+                stop_requested=_react_loop_stop_requested(ctx),
+            ),
         )
         if blocked is not None:
             return blocked

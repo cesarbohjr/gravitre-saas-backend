@@ -4844,6 +4844,15 @@ class AgentIntelligence:
         from app.services.execution_plan_service import execution_plan_patch
 
         task_state = {**(task_state or {}), **execution_plan_patch(_react_plan_runtime.plan)}
+        from app.services.voice_barge_in_write import resolve_write_interrupt
+
+        live_interrupt = resolve_write_interrupt(
+            interrupt=interrupt_payload,
+            stop_requested=bool(
+                conversation_id
+                and _chat_stop_requested(org_id, conversation_id, settings=active_settings)
+            ),
+        )
 
         async for event in self.react_engine.run_streaming(
             ctx=ctx,
@@ -4862,7 +4871,7 @@ class AgentIntelligence:
             connector_focus=connector_focus,
             plan_runtime=_react_plan_runtime,
             conversation_history=prepared_context.messages,
-            interrupt=interrupt_payload,
+            interrupt=live_interrupt,
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}

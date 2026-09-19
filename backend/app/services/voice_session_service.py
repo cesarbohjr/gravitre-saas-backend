@@ -218,11 +218,26 @@ async def stream_voice_turn_events(
     resolved_conversation_id = (conversation_id or "").strip() or None
     _fmt, audio_content_type = normalize_elevenlabs_output_format(tts_output_format)
     tts_output_format = _fmt
+    write_stop_armed = False
 
     def _cancelled() -> bool:
+        nonlocal write_stop_armed
+        hit = False
         if should_cancel and should_cancel():
-            return True
-        return is_turn_cancelled(resolved_turn_id)
+            hit = True
+        elif is_turn_cancelled(resolved_turn_id):
+            hit = True
+        if hit and not write_stop_armed and org_id and resolved_conversation_id:
+            write_stop_armed = True
+            from app.services.voice_barge_in_write import mark_voice_barge_in_stop
+
+            mark_voice_barge_in_stop(
+                org_id=org_id,
+                conversation_id=resolved_conversation_id,
+                settings=settings,
+                user_id=user_id,
+            )
+        return hit
 
     yield {
         "type": "voice.session.started",

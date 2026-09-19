@@ -108,6 +108,39 @@ def resolve_flux_turn_mode_label(settings: Any) -> str | None:
     return key if key in FLUX_TURN_PRESETS else None
 
 
+def catalog_lexicon_terms(
+    connected_integrations: list[str] | None,
+    *,
+    max_terms: int = 12,
+    max_per_vendor: int = 3,
+) -> tuple[list[str], list[str]]:
+    """READ-oriented ActionSpec names for ASR repair — never person names."""
+    from app.connectors.action_catalog.registry import get_vendor_spec
+
+    terms: list[str] = []
+    sources: list[str] = []
+    for vendor in connected_integrations or []:
+        spec = get_vendor_spec(str(vendor or ""))
+        if spec is None:
+            continue
+        taken = 0
+        for action in spec.v1:
+            if str(getattr(action, "kind", "") or "") != "read":
+                continue
+            label = _normalize_term(str(getattr(action, "name", "") or ""))
+            if not label or len(label) > 48:
+                continue
+            terms.append(label)
+            taken += 1
+            if taken >= max_per_vendor:
+                break
+        if taken:
+            sources.append(f"catalog_read:{spec.vendor}")
+        if len(terms) >= max_terms:
+            break
+    return _dedupe_terms(terms, max_terms=max_terms), sources
+
+
 def build_voice_keyterms(
     *,
     enabled: bool,
@@ -152,6 +185,9 @@ def build_voice_keyterms(
         terms.append(_vendor_label(vendor))
     if connected:
         sources.append("connected_integrations")
+        catalog_terms, catalog_sources = catalog_lexicon_terms(connected, max_terms=12)
+        terms.extend(catalog_terms)
+        sources.extend(catalog_sources)
 
     ident = identity if isinstance(identity, dict) else {}
     host = _normalize_term(str(ident.get("host") or ident.get("website") or ""))

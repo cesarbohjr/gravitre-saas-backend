@@ -31,6 +31,8 @@ Append-only. Does not replace 3.0-A closeout or retire LIVE_USER_PROVEN gaps.
 - **TTS context cancel:** barge-in calls ElevenLabs `close_context` and **keeps** the session WebSocket (`voice.tts.context_cancelled`). Not a session teardown / InterruptibleTTS reconnect.
 - **WebRTC eval:** `voice_webrtc_eval.py` measures startup / media RTT / jitter / loss / reconnect / region. `production_allows_webrtc_media() == false`. Production transport remains `websocket_pcm16_json`.
 - Lane B still must not serve live customer audio.
+- **Barge-in WRITE safety (3.0-C):** TRUE_INTERRUPT / `/api/voice/session/cancel` / HTTP Talk turn cancel arms conversation stop (`voice.barge_in.write_gate`). ReAct refreshes the interrupt at WRITE execute time so an uncommitted write is `write_commit_interrupted` (`provider_invoked=false`). READs are not speculative-cancelled by this gate.
+- **ASR catalog lexicon:** Deepgram keyterms add a bounded set of connected-vendor **READ** ActionSpec names (no employee personal names).
 
 ---
 

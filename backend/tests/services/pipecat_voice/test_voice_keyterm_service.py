@@ -35,6 +35,8 @@ def test_build_voice_keyterms_includes_org_agent_and_connectors():
     assert meta["keyterm_count"] == len(terms)
     assert "org_name" in meta["keyterm_sources"]
     assert "connected_integrations" in meta["keyterm_sources"]
+    assert any(str(s).startswith("catalog_read:") for s in meta["keyterm_sources"])
+    assert "Sarah Smith" not in terms
 
 
 def test_build_voice_keyterms_includes_identity_host_not_people():

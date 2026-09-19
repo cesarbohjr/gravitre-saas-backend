@@ -484,6 +484,14 @@ def post_session_cancel(
     from app.services.voice_session_service import request_turn_cancel
 
     request_turn_cancel(body.turn_id)
+    if _org and body.conversation_id:
+        from app.services.voice_barge_in_write import mark_voice_barge_in_stop
+
+        mark_voice_barge_in_stop(
+            org_id=str(_org),
+            conversation_id=body.conversation_id,
+            user_id=str(_user.get("id") or _user.get("user_id") or "") or None,
+        )
     return {
         "ok": True,
         "turn_id": body.turn_id,

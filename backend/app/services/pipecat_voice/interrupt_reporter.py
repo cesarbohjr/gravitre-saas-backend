@@ -128,6 +128,14 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     conversation_id=self._conversation_id,
                     result=tts_cancel,
                 )
+            from app.services.voice_barge_in_write import mark_voice_barge_in_stop
+
+            mark_voice_barge_in_stop(
+                org_id=self._org_id,
+                conversation_id=self._conversation_id,
+                settings=self._settings,
+                user_id=self._user_id,
+            )
             payload = {
                 "type": "speech.interrupted",
                 "tts_provider": "elevenlabs",
