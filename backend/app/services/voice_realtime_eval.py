@@ -28,6 +28,12 @@ BENCHMARK_DIMENSIONS = (
     "traceability",
     "governance",
     "context_parity",
+    "webrtc_connection_startup",
+    "webrtc_media_rtt",
+    "webrtc_jitter",
+    "webrtc_packet_loss",
+    "webrtc_reconnect",
+    "webrtc_region",
 )
 
 
@@ -46,6 +52,8 @@ def production_allows_lane(lane: str) -> bool:
 
 
 def eval_card(*, lane: str) -> dict[str, Any]:
+    from app.services.voice_webrtc_eval import webrtc_eval_card
+
     return {
         "lane": lane,
         "production_default": lane == PRODUCTION_LANE,
@@ -53,4 +61,5 @@ def eval_card(*, lane: str) -> dict[str, Any]:
         "tools_must_use_execute_task_streaming": True,
         "speculative_write": False,
         "benchmark_dimensions": list(BENCHMARK_DIMENSIONS),
+        "webrtc": webrtc_eval_card(),
     }

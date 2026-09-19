@@ -29,3 +29,9 @@ def test_production_lane_is_cascade_only():
     assert resolve_eval_lane(None) == LANE_A
     assert production_allows_lane(LANE_A) is True
     assert production_allows_lane(LANE_B) is False
+
+
+def test_webrtc_eval_does_not_swap_production_media():
+    from app.services.voice_webrtc_eval import production_allows_webrtc_media
+
+    assert production_allows_webrtc_media() is False

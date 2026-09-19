@@ -211,6 +211,7 @@ def build_pipecat_voice_task(
         user_id=user_id,
         conversation_id=conversation_id,
         spoken_ledger=spoken_ledger,
+        tts_service=tts,
     )
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
@@ -340,6 +341,9 @@ def build_pipecat_voice_task(
         "tts_transport": "websocket",
         "tts_warmup": "elevenlabs_ws_preconnect",
         "barge_in": "elevenlabs_interrupt_report",
+        "tts_context_cancel": "elevenlabs_close_context_keep_session",
+        "media_transport": "websocket_pcm16_json",
+        "webrtc_eval_production": False,
         "speak_v2": False,
         "speak_v2_note": "N/A — live TTS is ElevenLabs Flash, not Deepgram Speak v2",
         "speculative_prefetch": "read_only_embed_knowledge_tool_docs",

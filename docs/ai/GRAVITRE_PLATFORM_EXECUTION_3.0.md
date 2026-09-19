@@ -1,6 +1,6 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A CLOSEOUT + 3.0-C STARTED (2026-09-19). Production voice remains cascade lane A. Native realtime (lane B) is eval-only.  
+**Status:** 3.0-A CLOSEOUT + 3.0-C IN PROGRESS (2026-09-19). Production voice remains cascade lane A (JSON PCM16 WebSocket). Native realtime (lane B) and WebRTC media are eval-only.  
 **Date:** 2026-09-18  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 
@@ -19,6 +19,18 @@ No customer-facing prices, Certified/TRAINED badges, or Enable toggles. Certific
 7. **Public product behaviors, not private architecture.** Adapt *what users experience* (fast ack, barge-in, durable tasks, artifacts). Do not import vendor internals.
 8. **Evidence-linked PASS.** UNIT_TEST ≠ LIVE_USER_PROVEN. Voice Metric A and Metric B stay separate ([voice-slo-two-metric-standard](../delivery/voice-slo-two-metric-standard-2026-09-11.md)).
 9. **No metric may silently degrade another.** Accuracy, autonomy, latency, concision, context quality, execution success, voice naturalness, safety, recoverability, observability.
+
+---
+
+## 3.0-C progress (2026-09-19)
+
+Append-only. Does not replace 3.0-A closeout or retire LIVE_USER_PROVEN gaps.
+
+- Spoken Metric A/B samples: HTTP Talk probe `scripts/verify-voice-slo-two-metric-live.py` → `docs/delivery/voice-slo-two-metric-live.json` captured `2026-09-19T07:53:33Z` against `/health` SHA `653303a3…` org `f07e57c0-…`. Metric A samples ms `[1166, 375, 392, 318, 340]` P50 **375** / P95 **1166** — P50 under 500ms, P95 over 800ms (**FAIL** on the two-number A bar). Metric B `[26989, 53054, 22849, 8719, 30029]` P50 **26989** / P95 **53054** vs 5s/8s (**FAIL**). A and B stay separate; blending forbidden. Conversations include `5317f08c-a36b-427e-be04-a3d4ca699265`.
+- Pipecat path now records Metric B on `AssistantStreamComplete` for operator/tool turns (`voice.slo.metric_b`, source `pipecat_composed_final`). Metric A remains duplex first-speech.
+- **TTS context cancel:** barge-in calls ElevenLabs `close_context` and **keeps** the session WebSocket (`voice.tts.context_cancelled`). Not a session teardown / InterruptibleTTS reconnect.
+- **WebRTC eval:** `voice_webrtc_eval.py` measures startup / media RTT / jitter / loss / reconnect / region. `production_allows_webrtc_media() == false`. Production transport remains `websocket_pcm16_json`.
+- Lane B still must not serve live customer audio.
 
 ---
 

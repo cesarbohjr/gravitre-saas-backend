@@ -178,7 +178,27 @@ def main() -> int:
     a_p95 = _pctl(a_vals, 0.95)
     b_p50 = _pctl(b_vals, 0.5)
     b_p95 = _pctl(b_vals, 0.95)
-    a_pass = a_p50 is not None and a_p50 < 500
+    a_pass = (
+        a_p50 is not None
+        and a_p95 is not None
+        and a_p50 < 500
+        and a_p95 < 800
+    )
+    b_pass = (
+        b_p50 is not None
+        and b_p95 is not None
+        and b_p50 < 5000
+        and b_p95 < 8000
+    )
+    if a_pass and b_pass:
+        verdict = "PASS — Metric A and Metric B both met on this spoken sample"
+    elif a_pass:
+        verdict = (
+            "PARTIAL — Metric A met; Metric B missed P50<5s / P95<8s "
+            "(not blended; do not treat as a single voice-latency number)"
+        )
+    else:
+        verdict = "FAIL — Metric A did not meet P50<500ms / P95<800ms"
     out = {
         "probe": "voice_slo_two_metric",
         "captured_at": datetime.now(timezone.utc).isoformat(),
@@ -202,14 +222,11 @@ def main() -> int:
             "p95_ms": b_p95,
             "target_p50_ms": 5000,
             "target_p95_ms": 8000,
+            "pass": b_pass,
         },
         "blended_voice_latency": None,
         "turns": turns,
-        "verdict": (
-            "PASS — Metric A P50 <500ms on operator-shaped spoken sample"
-            if a_pass
-            else "FAIL — Metric A P50 did not meet the hard <500ms bar"
-        ),
+        "verdict": verdict,
         "note": (
             "STA-343 narration is the Metric A speech mechanism. Metric B is "
             "completion of the same plan-without-execute operator turns. "

@@ -37,6 +37,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         user_id: str | None = None,
         conversation_id: str | None = None,
         spoken_ledger: Any | None = None,
+        tts_service: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -58,6 +59,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._org_id = org_id
         self._user_id = user_id
         self._conversation_id = conversation_id
+        self._tts_service = tts_service
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -108,6 +110,24 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 else (self._spoken_aligned or draft or "")
             ).strip()
             full = (draft or self._spoken_aligned or spoken).strip()
+            tts_cancel: dict[str, Any] = {}
+            if self._tts_service is not None:
+                from app.services.pipecat_voice.tts_context_cancel import (
+                    cancel_elevenlabs_tts_context,
+                    record_tts_context_cancel,
+                )
+
+                tts_cancel = await cancel_elevenlabs_tts_context(
+                    self._tts_service,
+                    keep_session=True,
+                )
+                record_tts_context_cancel(
+                    self._settings,
+                    org_id=self._org_id,
+                    user_id=self._user_id,
+                    conversation_id=self._conversation_id,
+                    result=tts_cancel,
+                )
             payload = {
                 "type": "speech.interrupted",
                 "tts_provider": "elevenlabs",
@@ -117,6 +137,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 "full_draft_text": full[:2000],
                 "interrupted": True,
                 "playback_offset_ms": self._last_playback_offset_ms,
+                "tts_context_cancel": tts_cancel or None,
             }
             # Phase 5 (conversational polish): tell the client which text was
             # actually heard so the next turn's history is not padded with a tail

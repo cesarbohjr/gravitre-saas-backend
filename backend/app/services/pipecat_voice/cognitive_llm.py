@@ -163,6 +163,7 @@ class GravitreCognitiveLLMService(LLMService):
         first_delta_at: float | None = None
         first_speakable_chunk_at: float | None = None
         tts_requested_at: float | None = None
+        complete_event: AssistantStreamComplete | None = None
         # Phase 6 (conversational-realism): real TTFB metrics for the LLM
         # bridge itself. GravitreCognitiveLLMService never streams tokens
         # through Pipecat's stock LLM adapters, so this stage's TTFB is not
@@ -231,6 +232,7 @@ class GravitreCognitiveLLMService(LLMService):
                 )
                 break
             if isinstance(event, AssistantStreamComplete):
+                complete_event = event
                 continue
             if not isinstance(event, AssistantStreamEvent):
                 continue
@@ -354,6 +356,26 @@ class GravitreCognitiveLLMService(LLMService):
             speculative_v2=spec_tuning.v2_enabled,
             tts_chunk_v2=chunk_tuning.v2_enabled,
         )
+        if complete_event is not None:
+            from app.services.pipecat_voice.voice_latency_metrics import record_voice_slo_metric
+            from app.services.voice_slo import METRIC_B_ID, operator_task_for_metric_b
+
+            completion_ms = int((time.perf_counter() - turn_start) * 1000)
+            if operator_task_for_metric_b(
+                loop_stage_spoken=bool(complete_event.pending_task),
+                tool_results=complete_event.tool_results,
+            ):
+                record_voice_slo_metric(
+                    self._app_settings,
+                    metric=METRIC_B_ID,
+                    org_id=self._org_id,
+                    user_id=self._user_id,
+                    conversation_id=self._conversation_id,
+                    ms=completion_ms,
+                    source="pipecat_composed_final",
+                    operator_task=True,
+                    composed=True,
+                )
 
     async def _flush_client_text(self, filt: SpokenMarkdownStreamFilter) -> None:
         """Release withheld transcript text before another writer emits.
