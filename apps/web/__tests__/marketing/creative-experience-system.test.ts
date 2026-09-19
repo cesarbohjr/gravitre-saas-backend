@@ -80,3 +80,15 @@ describe("departments converge pilot storyboard", () => {
     expect(beats.some((b) => b.type === "packet" && b.to === "operations")).toBe(true)
   })
 })
+
+describe("pilot 2 orchestration storyboard", () => {
+  it("pauses into failure from parallel and continues approval path", async () => {
+    const { nextPhase, PHASE_ORDER } = await import(
+      "@/components/marketing/creative/scenes/agent-orchestration/storyboard"
+    )
+    expect(nextPhase("parallel", "failure")).toBe("failure")
+    expect(nextPhase("waiting", "success")).toBe("verify")
+    expect(PHASE_ORDER).toContain("waiting")
+    expect(PHASE_ORDER).toContain("verify")
+  })
+})

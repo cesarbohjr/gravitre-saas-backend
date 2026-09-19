@@ -12,6 +12,7 @@ import { Button } from "@/components/marketing/nodus/button"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
 import { GibeTraceVisual } from "@/components/marketing/system/gibe-trace-visual"
+import { AgentOrchestrationField } from "@/components/marketing/creative"
 import { GravitreReveal, GravitreTrace } from "@/components/marketing/system/motion"
 import { GravitreSection, GravitreSectionHeader } from "@/components/marketing/system/section"
 
@@ -74,6 +75,21 @@ export function TechnologyPage() {
         />
         <GravitreTrace>
           <GibeTraceVisual />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Orchestration"
+          title="One intent, coordinated work, one verified outcome"
+          description="An illustrative Task Decomposition Field — how a request can become a plan, specialized capabilities, tools, approval, and evidence. Not a live run."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <AgentOrchestrationField />
         </GravitreTrace>
       </GravitreSection>
 

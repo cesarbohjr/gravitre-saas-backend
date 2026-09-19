@@ -11,4 +11,7 @@ export {
   topologyEdgeCount,
   type TopologyLayout,
 } from "./primitives/relational-topology"
+export { GravitreAgentNode } from "./primitives/agent-node"
+export { GravitreEvidenceMark } from "./primitives/evidence-mark"
+export { AgentOrchestrationField } from "./scenes/agent-orchestration/orchestration-field"
 
