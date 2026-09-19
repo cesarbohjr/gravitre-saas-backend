@@ -1,0 +1,102 @@
+{
+  "probe": "3.0_b_jit_efficiency_live",
+  "started_at": "2026-09-19T08:59:03.694568+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "turns_requested": 12,
+  "expect_sha": "f6171725",
+  "health": {
+    "git_sha": "f61717253d7f0a0bde03f73c2ab5777955cf6968",
+    "status": "ok"
+  },
+  "conversation_id": "6221f9ff-8ccc-43d9-ace6-7ccd51b46778",
+  "turn_results": [
+    {
+      "prompt": "Tell me what my website traffic was last month.",
+      "http_status": 200,
+      "elapsed_ms": 16516,
+      "assistant_excerpt": "I don\u2019t have website analytics connected here. I can only read Google Ads, HubSpot, Apollo, and platform health, not site traffic.\nI don\u2019t have website analytics connected here, so I can\u2019t see last mo",
+      "errors": []
+    },
+    {
+      "prompt": "How are HubSpot deals performing this quarter?",
+      "http_status": 200,
+      "elapsed_ms": 28040,
+      "assistant_excerpt": "I don\u2019t have enough information yet to summarize the quarter cleanly. What I can verify from the connected data:\n- HubSpot list access is Connected.\n- The search action for this workspace is not Conne",
+      "errors": []
+    },
+    {
+      "prompt": "Summarize open Zendesk tickets for billing issues.",
+      "http_status": 200,
+      "elapsed_ms": 17749,
+      "assistant_excerpt": "I don\u2019t have enough information to answer this yet. If you want, I can pull the Zendesk ticket set for the previous calendar month and summarize the billing-related ones.",
+      "errors": []
+    },
+    {
+      "prompt": "What did Google Search Console show for clicks last week?",
+      "http_status": 200,
+      "elapsed_ms": 26216,
+      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me which Google Search Console property or connector to use, and I\u2019ll pull last week\u2019s clicks.I can\u2019t pull that yet \u2014 Google Analytics isn\u2019t connected. Connec",
+      "errors": []
+    },
+    {
+      "prompt": "Hello \u2014 quick check that you can hear me.",
+      "http_status": 200,
+      "elapsed_ms": 5793,
+      "assistant_excerpt": "Yep, I\u2019m here. What\u2019s on your mind?",
+      "errors": []
+    },
+    {
+      "prompt": "Show QuickBooks invoice totals for March.",
+      "http_status": 200,
+      "elapsed_ms": 35338,
+      "assistant_excerpt": "I don\u2019t have QuickBooks connected here, so I can\u2019t read invoice totals for March.",
+      "errors": []
+    },
+    {
+      "prompt": "Which connectors are connected right now?",
+      "http_status": 200,
+      "elapsed_ms": 6829,
+      "assistant_excerpt": "Connected right now: Apollo, Google Ads, Google Search Console, and HubSpot.",
+      "errors": []
+    },
+    {
+      "prompt": "Compare traffic from organic search vs paid last month.",
+      "http_status": 200,
+      "elapsed_ms": 34002,
+      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me which data source to use for traffic, and I\u2019ll compare organic search vs paid for last month.",
+      "errors": []
+    },
+    {
+      "prompt": "Find HubSpot contacts added in the last 7 days.",
+      "http_status": 200,
+      "elapsed_ms": 35000,
+      "assistant_excerpt": "Found 20 HubSpot contacts from the recent list page, but I don\u2019t have enough information yet to verify that each was added in the last 7 days because the current result is only a paginated list, not a",
+      "errors": []
+    },
+    {
+      "prompt": "What analytics property should I use for gravitre.app?",
+      "http_status": 200,
+      "elapsed_ms": 26022,
+      "assistant_excerpt": "The evidence is split. - One source says to create **a Google Analytics property** for the site.\n- Another says to use **one GA4 property with separate web and app data streams**. I can\u2019t verify which",
+      "errors": []
+    },
+    {
+      "prompt": "Give me a one-sentence summary of yesterday's site sessions.",
+      "http_status": 200,
+      "elapsed_ms": 19959,
+      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me which analytics source to use for yesterday\u2019s site sessions, and I\u2019ll give you a one-sentence summary.",
+      "errors": []
+    },
+    {
+      "prompt": "List any overdue support tickets in Zendesk.",
+      "http_status": 200,
+      "elapsed_ms": 26368,
+      "assistant_excerpt": "I don\u2019t have the Zendesk ticket data here, so I can\u2019t list overdue tickets yet. Connect Zendesk or give me access to the ticket export, and I\u2019ll pull out the overdue ones.",
+      "errors": []
+    }
+  ],
+  "turns_ok": 12,
+  "finished_at": "2026-09-19T09:03:45.114492+00:00",
+  "verdict": "PASS \u2014 12/12 turns HTTP 200 @ f61717253d7f"
+}

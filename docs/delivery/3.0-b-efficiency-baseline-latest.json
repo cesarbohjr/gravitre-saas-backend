@@ -1,0 +1,458 @@
+{
+  "probe": "3.0_b_efficiency_baseline",
+  "generated_at": "2026-09-19T09:04:05.058960+00:00",
+  "window_hours": 24,
+  "window_since": "2026-09-18T09:04:02.402744+00:00",
+  "org_scope": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "health": {
+    "git_sha": "3c7608c1dc44ab407c1a4609e37db073567fcdc0",
+    "status": "ok",
+    "timestamp": "2026-09-19T09:04:02.949369+00:00"
+  },
+  "baseline_a_reference": {
+    "path": "docs/delivery/3.0-a-latency-baseline-latest.json",
+    "git_sha": "401554cc7bfb13791cfa08a6d7bfddc10f6c252d"
+  },
+  "audit_actions": {
+    "tool_namespace": "runtime.jit.tool_namespace",
+    "context_profile": "runtime.jit.context_profile",
+    "critical_path": "runtime.turn_latency.critical_path"
+  },
+  "rows_fetched": {
+    "runtime.jit.tool_namespace": 14,
+    "runtime.jit.context_profile": 0,
+    "runtime.turn_latency.critical_path": 49
+  },
+  "tool_namespace": {
+    "sample_count": 14,
+    "retrieval_methods": {
+      "embedding_narrow_tools_for_turn": 14
+    },
+    "embedding_turns": 14,
+    "eligible_prefix_turns": 1,
+    "spoken_chat_no_tools_turns": 0,
+    "total_tools": {
+      "sample_count": 14,
+      "p50_ms": 86,
+      "p95_ms": 86,
+      "max_ms": 86
+    },
+    "visible_tools": {
+      "sample_count": 14,
+      "p50_ms": 20,
+      "p95_ms": 20,
+      "max_ms": 20
+    },
+    "payload_bytes": {
+      "sample_count": 14,
+      "p50_ms": 5187,
+      "p95_ms": 5306,
+      "max_ms": 5306
+    },
+    "narrow_ms": {
+      "sample_count": 14,
+      "p50_ms": 33,
+      "p95_ms": 52,
+      "max_ms": 56
+    },
+    "visible_pct_of_total": {
+      "sample_count": 14,
+      "p50_ms": 23,
+      "p95_ms": 23,
+      "max_ms": 23,
+      "unit": "visible_pct_of_total"
+    }
+  },
+  "context_profile": {
+    "sample_count": 0,
+    "shadow_turns": 0,
+    "active_turns": 0,
+    "tokens_used": {
+      "sample_count": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    "token_budget": {
+      "sample_count": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    "candidate_count": {
+      "sample_count": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    "selected_count": {
+      "sample_count": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    "legacy_prompt_chars": {
+      "sample_count": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    "ranked_prompt_chars": {
+      "sample_count": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    },
+    "char_savings_vs_legacy": {
+      "sample_count": 0,
+      "p50_ms": null,
+      "p95_ms": null,
+      "max_ms": null
+    }
+  },
+  "critical_path_after_3_0_b": {
+    "sample_count": 49,
+    "turn_total_ms": {
+      "sample_count": 49,
+      "p50_ms": 13204,
+      "p95_ms": 25163,
+      "max_ms": 47953
+    },
+    "dominant_delta_ms": {
+      "sample_count": 49,
+      "p50_ms": 7196,
+      "p95_ms": 22882,
+      "max_ms": 41919
+    },
+    "by_dominant_stage": {
+      "COMPOSER": {
+        "sample_count": 5,
+        "p50_ms": 18724,
+        "p95_ms": 41919,
+        "max_ms": 41919,
+        "win_count": 5
+      },
+      "CONNECTED_INTEGRATIONS": {
+        "sample_count": 5,
+        "p50_ms": 1094,
+        "p95_ms": 1223,
+        "max_ms": 1223,
+        "win_count": 5
+      },
+      "CONNECTOR_PREVIEW": {
+        "sample_count": 2,
+        "p50_ms": 4007,
+        "p95_ms": 4818,
+        "max_ms": 4818,
+        "win_count": 2
+      },
+      "CONTEXT_BUILD": {
+        "sample_count": 3,
+        "p50_ms": 8543,
+        "p95_ms": 13778,
+        "max_ms": 13778,
+        "win_count": 3
+      },
+      "PLANNING": {
+        "sample_count": 6,
+        "p50_ms": 3147,
+        "p95_ms": 5234,
+        "max_ms": 5234,
+        "win_count": 6
+      },
+      "RESOLUTION": {
+        "sample_count": 2,
+        "p50_ms": 41,
+        "p95_ms": 90,
+        "max_ms": 90,
+        "win_count": 2
+      },
+      "UNIFIED_LIVE_RESOLVED": {
+        "sample_count": 26,
+        "p50_ms": 8164,
+        "p95_ms": 14230,
+        "max_ms": 22882,
+        "win_count": 26
+      }
+    },
+    "by_stage_delta_ms": {
+      "COMPOSER": {
+        "sample_count": 49,
+        "p50_ms": 0,
+        "p95_ms": 18724,
+        "max_ms": 41919
+      },
+      "CONNECTED_INTEGRATIONS": {
+        "sample_count": 42,
+        "p50_ms": 685,
+        "p95_ms": 1417,
+        "max_ms": 1566
+      },
+      "CONNECTOR_PREVIEW": {
+        "sample_count": 5,
+        "p50_ms": 2852,
+        "p95_ms": 4818,
+        "max_ms": 4818
+      },
+      "CONNECTOR_TURN": {
+        "sample_count": 4,
+        "p50_ms": 2492,
+        "p95_ms": 2521,
+        "max_ms": 2521
+      },
+      "CONTEXT_BUILD": {
+        "sample_count": 44,
+        "p50_ms": 138,
+        "p95_ms": 7623,
+        "max_ms": 13778
+      },
+      "CONTEXT_COMPILE_UNIFIED": {
+        "sample_count": 37,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 0
+      },
+      "CONVERSATIONAL_EXECUTION": {
+        "sample_count": 13,
+        "p50_ms": 0,
+        "p95_ms": 5,
+        "max_ms": 6
+      },
+      "DIALOGUE_SETTINGS_FULL": {
+        "sample_count": 37,
+        "p50_ms": 23,
+        "p95_ms": 35,
+        "max_ms": 46
+      },
+      "ENGINE_SETTINGS": {
+        "sample_count": 42,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 0
+      },
+      "ENRICH_CLASSIFICATION": {
+        "sample_count": 37,
+        "p50_ms": 67,
+        "p95_ms": 123,
+        "max_ms": 141
+      },
+      "INTENT_GATEWAY": {
+        "sample_count": 11,
+        "p50_ms": 86,
+        "p95_ms": 146,
+        "max_ms": 146
+      },
+      "KERNEL_PRE_ACT": {
+        "sample_count": 11,
+        "p50_ms": 918,
+        "p95_ms": 1436,
+        "max_ms": 1436
+      },
+      "KNOWLEDGE_BASE_EMITTED": {
+        "sample_count": 8,
+        "p50_ms": 146,
+        "p95_ms": 724,
+        "max_ms": 724
+      },
+      "MCP_TOOLS": {
+        "sample_count": 11,
+        "p50_ms": 0,
+        "p95_ms": 1,
+        "max_ms": 1
+      },
+      "MODEL_TTFT": {
+        "sample_count": 47,
+        "p50_ms": 0,
+        "p95_ms": 61,
+        "max_ms": 75
+      },
+      "NETWORK": {
+        "sample_count": 93,
+        "p50_ms": 2,
+        "p95_ms": 25,
+        "max_ms": 55
+      },
+      "PARAMETER_LEDGER": {
+        "sample_count": 37,
+        "p50_ms": 75,
+        "p95_ms": 115,
+        "max_ms": 169
+      },
+      "PERSONA_RESOLVED": {
+        "sample_count": 37,
+        "p50_ms": 199,
+        "p95_ms": 356,
+        "max_ms": 442
+      },
+      "PLANNING": {
+        "sample_count": 26,
+        "p50_ms": 1365,
+        "p95_ms": 4455,
+        "max_ms": 5234
+      },
+      "PREFLIGHT": {
+        "sample_count": 9,
+        "p50_ms": 4315,
+        "p95_ms": 5667,
+        "max_ms": 5667
+      },
+      "PRE_KERNEL_ENTRY": {
+        "sample_count": 37,
+        "p50_ms": 0,
+        "p95_ms": 21,
+        "max_ms": 30
+      },
+      "PRE_TURN_SHAPE": {
+        "sample_count": 13,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "QUERY_REWRITE": {
+        "sample_count": 9,
+        "p50_ms": 24,
+        "p95_ms": 38,
+        "max_ms": 38
+      },
+      "REACT_ENTRY": {
+        "sample_count": 3,
+        "p50_ms": 312,
+        "p95_ms": 375,
+        "max_ms": 375
+      },
+      "RESOLUTION": {
+        "sample_count": 156,
+        "p50_ms": 0,
+        "p95_ms": 99,
+        "max_ms": 314
+      },
+      "ROUTER_ENRICHMENTS": {
+        "sample_count": 37,
+        "p50_ms": 0,
+        "p95_ms": 5627,
+        "max_ms": 6221
+      },
+      "ROUTING_CLASSIFIED": {
+        "sample_count": 42,
+        "p50_ms": 0,
+        "p95_ms": 9,
+        "max_ms": 10
+      },
+      "SENTIMENT": {
+        "sample_count": 37,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "SPOKEN_LITE_DECIDED": {
+        "sample_count": 37,
+        "p50_ms": 135,
+        "p95_ms": 192,
+        "max_ms": 310
+      },
+      "TASK_CLASSIFIER": {
+        "sample_count": 37,
+        "p50_ms": 70,
+        "p95_ms": 132,
+        "max_ms": 147
+      },
+      "TASK_STATE_INITIAL": {
+        "sample_count": 37,
+        "p50_ms": 22,
+        "p95_ms": 91,
+        "max_ms": 178
+      },
+      "TOOL_DISCOVERY": {
+        "sample_count": 36,
+        "p50_ms": 0,
+        "p95_ms": 154,
+        "max_ms": 203
+      },
+      "TTS_BUFFER": {
+        "sample_count": 5,
+        "p50_ms": 4,
+        "p95_ms": 162,
+        "max_ms": 162
+      },
+      "TURN_SHAPE_CLASSIFIED": {
+        "sample_count": 13,
+        "p50_ms": 0,
+        "p95_ms": 1,
+        "max_ms": 1
+      },
+      "UNDERSTANDING": {
+        "sample_count": 37,
+        "p50_ms": 114,
+        "p95_ms": 2864,
+        "max_ms": 2934
+      },
+      "UNDERSTANDING_AUDIT": {
+        "sample_count": 37,
+        "p50_ms": 58,
+        "p95_ms": 136,
+        "max_ms": 156
+      },
+      "UNIFIED_LIVE_RESOLVED": {
+        "sample_count": 37,
+        "p50_ms": 7196,
+        "p95_ms": 13636,
+        "max_ms": 22882
+      },
+      "UNIFIED_SHADOW_SCHEDULED": {
+        "sample_count": 13,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "VOICE_EXPRESSION_BOUND": {
+        "sample_count": 37,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      }
+    }
+  },
+  "stage_regression_vs_3_0_a": {
+    "stages": {
+      "CONTEXT_BUILD": {
+        "before_p50_ms": 244,
+        "before_p95_ms": 8543,
+        "after_p50_ms": 138,
+        "after_p95_ms": 7623,
+        "p50_regressed": false,
+        "p95_regressed": false,
+        "before_sample_count": 29,
+        "after_sample_count": 44
+      },
+      "TOOL_DISCOVERY": {
+        "before_p50_ms": 0,
+        "before_p95_ms": 125,
+        "after_p50_ms": 0,
+        "after_p95_ms": 154,
+        "p50_regressed": false,
+        "p95_regressed": true,
+        "before_sample_count": 20,
+        "after_sample_count": 36
+      }
+    },
+    "any_regression": true
+  },
+  "note": "Efficiency samples from runtime.jit.* only. Stage regression compares critical-path p50/p95 to frozen 3.0-A snapshot \u2014 any_regression=true requires named trade before claiming 3.0-B gate PASS.",
+  "evidence_sample": {
+    "tool_namespace": [
+      {
+        "id": "ffa68118-4c79-4e2e-ac59-84cebb52129b",
+        "created_at": "2026-09-19T09:04:01.917926+00:00"
+      },
+      {
+        "id": "f26ecae6-70b7-499c-8721-d4fe2f49fef6",
+        "created_at": "2026-09-19T09:03:45.68461+00:00"
+      },
+      {
+        "id": "1929c93a-51ab-4f1a-b091-6da46e17ea4d",
+        "created_at": "2026-09-19T09:03:29.7065+00:00"
+      }
+    ],
+    "context_profile": []
+  }
+}
