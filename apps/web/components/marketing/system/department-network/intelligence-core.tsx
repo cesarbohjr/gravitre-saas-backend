@@ -1,62 +1,108 @@
 "use client"
 
+/**
+ * GravitreIntelligenceCore — Relational Topology (Creative Experience System 1.0).
+ * Geometry changes by state; not a spinning orb. In-flow for 3×3 grid layout.
+ */
+
 import { AnimatePresence, motion } from "framer-motion"
 import { LogoSVG } from "@/components/marketing/nodus/logo"
+import { topologyForCoreState } from "@/components/marketing/creative/primitives/relational-topology"
+import { CREATIVE_TOKENS } from "@/components/marketing/creative/core/tokens"
 import { CORE_STATE_LABEL, type CoreState } from "./types"
 import { cn } from "@/lib/utils"
 
-/**
- * Intelligence core — Nodus hub language (conic spin rings + mark).
- * In-flow (not absolute) so the 3×3 grid owns layout.
- */
 export function GravitreIntelligenceCore({
   state = "idle",
   reduced = false,
+  learnedEdgeCount = 0,
 }: {
   state?: CoreState
   reduced?: boolean
+  /** Session permanent relationships — visual density cue after LEARN */
+  learnedEdgeCount?: number
 }) {
   const label = CORE_STATE_LABEL[state]
-  const pulsing = state !== "idle" && state !== "verified" && state !== "learned" && !reduced
   const resolved = state === "verified" || state === "learned"
+  const layout = topologyForCoreState(state === "idle" && learnedEdgeCount > 0 ? "learned" : state)
 
   return (
     <div className="relative flex flex-col items-center gap-2">
-      <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        {[88, 112, 136].map((size) => (
-          <div
-            key={size}
-            className="absolute rounded-full border border-[color:color-mix(in_oklch,var(--g-intelligence)_18%,#eaedf1)]"
-            style={{ width: size, height: size }}
-          />
-        ))}
-        {!reduced ? (
-          <motion.div
-            className="absolute h-[100px] w-[100px] rounded-full border border-[color:color-mix(in_oklch,var(--color-brand,#16a374)_30%,transparent)]"
-            animate={pulsing ? { scale: [1, 1.08, 1], opacity: [0.35, 0.7, 0.35] } : { scale: 1, opacity: 0.2 }}
-            transition={{ duration: 2.4, repeat: pulsing ? Infinity : 0, ease: "easeInOut" }}
-          />
-        ) : null}
-      </div>
-
       <motion.div
         initial={false}
-        animate={{ scale: pulsing ? 1.03 : resolved ? 1.02 : 1 }}
+        animate={{ scale: resolved ? 1.02 : 1 }}
         transition={{ duration: 0.35 }}
         className={cn(
-          "relative h-16 w-16 overflow-hidden rounded-xl bg-gray-200 p-px shadow-xl dark:bg-neutral-700",
-          resolved && "ring-1 ring-[color:var(--color-brand,#16a374)]",
+          "relative flex h-[7.25rem] w-[7.25rem] items-center justify-center overflow-hidden rounded-2xl border bg-white shadow-[var(--shadow-aceternity)]",
+          resolved
+            ? "border-[color:var(--color-brand,#16a374)]"
+            : "border-[color:var(--color-line,#eaedf1)]",
         )}
       >
-        {!reduced ? (
-          <>
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand,#16a374)_20%,transparent_30%)]" />
-          </>
-        ) : null}
-        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[10px] bg-white text-[color:var(--color-brand,#16a374)]">
-          <LogoSVG className="size-6" />
-          <span className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]">
+        <svg viewBox="0 0 80 72" className="absolute inset-0 h-full w-full" aria-hidden>
+          {layout.edges.map(([a, b], i) => {
+            const pa = layout.nodes[a]
+            const pb = layout.nodes[b]
+            if (!pa || !pb) return null
+            const isOutbound =
+              layout.outboundIndices.includes(a) || layout.outboundIndices.includes(b)
+            const isInbound =
+              layout.inboundIndex === a || layout.inboundIndex === b
+            return (
+              <motion.line
+                key={`e-${state}-${i}`}
+                x1={pa.x}
+                y1={pa.y}
+                x2={pb.x}
+                y2={pb.y}
+                stroke={
+                  isInbound
+                    ? CREATIVE_TOKENS.signal
+                    : isOutbound
+                      ? CREATIVE_TOKENS.action
+                      : resolved
+                        ? CREATIVE_TOKENS.action
+                        : "color-mix(in srgb, var(--g-intelligence) 45%, #c5c9d0)"
+                }
+                strokeWidth={isOutbound || isInbound ? 1.6 : 1.15}
+                strokeLinecap="round"
+                initial={reduced ? false : { opacity: 0 }}
+                animate={{ opacity: mutedEdgeOpacity(state, isInbound, isOutbound) }}
+                transition={{ duration: 0.35 }}
+              />
+            )
+          })}
+          {layout.nodes.map((p, i) => {
+            const isCenter = i === 0
+            const isInbound = i === layout.inboundIndex
+            const isOutbound = layout.outboundIndices.includes(i)
+            const r = isCenter ? 5.5 : isInbound || isOutbound ? 3.2 : 2.6
+            return (
+              <motion.circle
+                key={`n-${state}-${i}`}
+                cx={p.x}
+                cy={p.y}
+                r={r}
+                fill={
+                  isCenter
+                    ? "var(--color-brand, #16a374)"
+                    : isInbound
+                      ? "var(--color-blue-500)"
+                      : isOutbound
+                        ? "var(--color-brand, #16a374)"
+                        : "color-mix(in srgb, var(--g-intelligence) 35%, #9aa3ad)"
+                }
+                initial={reduced ? false : { scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, delay: reduced ? 0 : i * 0.02 }}
+              />
+            )
+          })}
+        </svg>
+
+        <div className="relative z-10 flex flex-col items-center justify-center rounded-lg bg-white/90 px-2 py-1 text-[color:var(--color-brand,#16a374)] shadow-sm backdrop-blur-[1px]">
+          <LogoSVG className="size-5" />
+          <span className="mt-0.5 text-[7px] font-bold uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]">
             Core
           </span>
         </div>
@@ -79,4 +125,11 @@ export function GravitreIntelligenceCore({
       </AnimatePresence>
     </div>
   )
+}
+
+function mutedEdgeOpacity(state: CoreState, inbound: boolean, outbound: boolean): number {
+  if (state === "idle") return 0.55
+  if (inbound || outbound) return 0.95
+  if (state === "learning" || state === "learned") return 0.9
+  return 0.75
 }

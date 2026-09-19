@@ -46,11 +46,21 @@ export function GravitreDepartmentNetwork({
   const inView = useInView(rootRef, { amount: 0.3, once: false })
   const startedRef = useRef(false)
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [docHidden, setDocHidden] = useState(false)
+
+  useEffect(() => {
+    const onVis = () => setDocHidden(document.hidden)
+    onVis()
+    document.addEventListener("visibilitychange", onVis)
+    return () => document.removeEventListener("visibilitychange", onVis)
+  }, [])
 
   const { state, playFromDepartment, playNextAuto, setHoverFocus } = useNetworkStory({ reduced })
 
+  const canAutoplay = autoplay && !reduced && inView && !docHidden
+
   useEffect(() => {
-    if (!autoplay || reduced || !inView) return
+    if (!canAutoplay) return
     if (!startedRef.current) {
       startedRef.current = true
       const t = setTimeout(() => {
@@ -58,10 +68,10 @@ export function GravitreDepartmentNetwork({
       }, 500)
       return () => clearTimeout(t)
     }
-  }, [autoplay, inView, playNextAuto, reduced])
+  }, [canAutoplay, playNextAuto])
 
   useEffect(() => {
-    if (!autoplay || reduced || !inView) return
+    if (!canAutoplay) return
     if (state.running) {
       if (idleTimer.current) clearTimeout(idleTimer.current)
       return
@@ -73,7 +83,7 @@ export function GravitreDepartmentNetwork({
     return () => {
       if (idleTimer.current) clearTimeout(idleTimer.current)
     }
-  }, [autoplay, inView, playNextAuto, reduced, state.running, state.scenarioId])
+  }, [canAutoplay, playNextAuto, state.running, state.scenarioId])
 
   return (
     <div ref={rootRef} className={cn("relative mx-auto w-full", className)}>
@@ -102,12 +112,14 @@ export function GravitreDepartmentNetwork({
               const ek = edgeKey(dept, "core")
               const kind = state.activeEdges.get(ek) ?? null
               const muted = state.mutedDepts.has(dept) && !kind
+              const learned = state.learnedEdges.has(ek)
               return (
                 <GravitreSignalPath
                   key={dept}
                   d={d}
                   activeKind={kind}
                   muted={muted}
+                  learned={learned}
                   reduced={reduced}
                 />
               )
@@ -149,7 +161,11 @@ export function GravitreDepartmentNetwork({
 
             <div />
             <div className="relative flex min-h-[7.5rem] items-center justify-center self-center">
-              <GravitreIntelligenceCore state={state.coreState} reduced={reduced} />
+              <GravitreIntelligenceCore
+                state={state.coreState}
+                reduced={reduced}
+                learnedEdgeCount={state.learnedEdges.size}
+              />
             </div>
             <div />
 
@@ -196,10 +212,15 @@ export function GravitreDepartmentNetwork({
             <p className="mt-3 text-center text-xs text-[color:var(--g-text-muted)]">
               {reduced
                 ? "Departments share one governed intelligence layer."
-                : "Hover a department, or click to run a short story."}
+                : state.learnedEdges.size > 0
+                  ? `Learned relationships this session: ${state.learnedEdges.size}. Hover a department, or click to run another story.`
+                  : "Hover a department, or click to run a short story."}
             </p>
           )}
         </AnimatePresence>
+        <p className="mt-2 text-center text-[11px] leading-relaxed text-[color:var(--g-text-muted)]">
+          Illustrative story of shared organizational context — not live org telemetry.
+        </p>
       </div>
     </div>
   )

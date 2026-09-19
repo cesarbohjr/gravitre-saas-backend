@@ -8,6 +8,7 @@ export type CoreState =
   | "idle"
   | "receiving"
   | "connecting"
+  | "reasoning"
   | "coordinating"
   | "acting"
   | "verifying"
@@ -43,6 +44,7 @@ export const DEPARTMENT_META: Record<DepartmentId, { label: string; short: strin
 export const CORE_STATE_LABEL: Partial<Record<CoreState, string>> = {
   receiving: "Receiving",
   connecting: "Connecting context",
+  reasoning: "Reasoning",
   coordinating: "Coordinating",
   acting: "Acting",
   verifying: "Verifying",

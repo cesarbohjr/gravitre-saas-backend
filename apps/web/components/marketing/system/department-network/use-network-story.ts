@@ -21,6 +21,8 @@ export type NetworkStoryState = {
   resolvedDepts: Set<DepartmentId>
   mutedDepts: Set<DepartmentId>
   activeEdges: Map<string, PacketKind>
+  /** Permanent relationships after LEARN — persist across scenarios this session */
+  learnedEdges: Set<string>
   packets: ActivePacket[]
   caption: string | null
   running: boolean
@@ -33,6 +35,7 @@ export const NETWORK_STORY_IDLE: NetworkStoryState = {
   resolvedDepts: new Set(),
   mutedDepts: new Set(),
   activeEdges: new Map(),
+  learnedEdges: new Set(),
   packets: [],
   caption: null,
   running: false,
@@ -100,7 +103,27 @@ export function useNetworkStory(options: { reduced: boolean }) {
       }
 
       if (beat.type === "core") {
-        patch((s) => ({ ...s, coreState: beat.state, caption: beat.caption ?? s.caption }))
+        patch((s) => {
+          let learnedEdges = s.learnedEdges
+          if (beat.state === "learned") {
+            const involved = [...s.activeDepts, ...s.resolvedDepts]
+            learnedEdges = new Set(s.learnedEdges)
+            for (let i = 0; i < involved.length; i++) {
+              for (let j = i + 1; j < involved.length; j++) {
+                const a = involved[i]
+                const b = involved[j]
+                if (a && b) learnedEdges.add(edgeKey(a, b))
+              }
+              if (involved[i]) learnedEdges.add(edgeKey(involved[i]!, "core"))
+            }
+          }
+          return {
+            ...s,
+            coreState: beat.state,
+            caption: beat.caption ?? s.caption,
+            learnedEdges,
+          }
+        })
         await wait(duration, signal)
         return
       }
@@ -121,11 +144,14 @@ export function useNetworkStory(options: { reduced: boolean }) {
       }
 
       if (beat.type === "settle") {
-        patch(() => ({
+        patch((s) => ({
           ...NETWORK_STORY_IDLE,
+          learnedEdges: s.learnedEdges,
           caption: beat.caption ?? null,
           running: true,
           scenarioId,
+          // Keep denser core if the system has learned this session
+          coreState: s.learnedEdges.size > 0 ? "idle" : "idle",
         }))
         await wait(duration, signal)
         return
@@ -206,8 +232,9 @@ export function useNetworkStory(options: { reduced: boolean }) {
       abortRef.current = ac
       runningLock.current = true
 
-      patch(() => ({
+      patch((s) => ({
         ...NETWORK_STORY_IDLE,
+        learnedEdges: s.learnedEdges,
         running: true,
         scenarioId: scenario.id,
       }))
@@ -218,7 +245,10 @@ export function useNetworkStory(options: { reduced: boolean }) {
           await runBeat(beat, ac.signal, scenario.id)
         }
         if (!ac.signal.aborted && mountedRef.current) {
-          patch(() => NETWORK_STORY_IDLE)
+          patch((s) => ({
+            ...NETWORK_STORY_IDLE,
+            learnedEdges: s.learnedEdges,
+          }))
         }
       } catch (err) {
         if (!(err instanceof DOMException && err.name === "AbortError")) {
@@ -256,11 +286,15 @@ export function useNetworkStory(options: { reduced: boolean }) {
     (dept: DepartmentId | null) => {
       if (runningLock.current) return
       if (!dept) {
-        patch(() => NETWORK_STORY_IDLE)
+        patch((s) => ({
+          ...NETWORK_STORY_IDLE,
+          learnedEdges: s.learnedEdges,
+        }))
         return
       }
-      patch(() => ({
+      patch((s) => ({
         ...NETWORK_STORY_IDLE,
+        learnedEdges: s.learnedEdges,
         activeDepts: new Set([dept]),
         mutedDepts: new Set(ALL_DEPTS.filter((d) => d !== dept)),
         activeEdges: new Map([[edgeKey(dept, "core"), "signal"]]),

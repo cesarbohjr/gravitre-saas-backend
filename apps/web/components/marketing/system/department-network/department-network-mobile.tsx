@@ -19,9 +19,21 @@ type MobileBeat = {
 }
 
 const MOBILE_BEATS: MobileBeat[] = [
-  { from: "sales", to: "support", caption: "Sales creates a signal. Support receives what it needs." },
-  { from: "support", to: "finance", caption: "Support creates a signal. Finance works from the same intelligence." },
-  { from: "sales", to: "operations", caption: "One business event. Multiple coordinated departments." },
+  {
+    from: "sales",
+    to: "support",
+    caption: "Sales signal → Gravitre → Support returns context.",
+  },
+  {
+    from: "sales",
+    to: "finance",
+    caption: "Gravitre coordinates Finance and Operations from the same intelligence.",
+  },
+  {
+    from: "support",
+    to: "operations",
+    caption: "Outcomes return. A relationship stays — Learned.",
+  },
 ]
 
 const LABELS: Record<DepartmentId, string> = {
@@ -156,6 +168,9 @@ export function DepartmentNetworkMobile({ reduced }: { reduced: boolean }) {
       </AnimatePresence>
       <p className="mt-2 max-w-xs text-center text-sm font-medium text-[color:var(--g-text-secondary)]">
         {beat.caption}
+      </p>
+      <p className="max-w-xs text-center text-[11px] text-[color:var(--g-text-muted)]">
+        Illustrative story — not live org telemetry.
       </p>
     </div>
   )

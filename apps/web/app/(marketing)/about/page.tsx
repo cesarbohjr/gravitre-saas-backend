@@ -62,7 +62,7 @@ export default function AboutPage() {
           align="center"
           badge="One brain"
           title="Departments converge"
-          description="Work starts anywhere. Gravitre connects the context. The right teams act. Results come back. The business learns."
+          description="Work starts anywhere. Gravitre connects the context. The right teams act. Results come back. The business learns — and a relationship stays."
           className="mb-6"
         />
         <GravitreTrace>

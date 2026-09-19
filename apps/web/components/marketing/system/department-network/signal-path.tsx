@@ -11,19 +11,21 @@ const KIND_MID: Record<PacketKind, string> = {
 }
 
 /**
- * Path TRACE — idle mineral stroke + Nodus-style sweeping gradient when active
- * (same motion.linearGradient language as homepage HorizontalLine / RightSideSVG).
+ * Path TRACE — idle mineral stroke + sweeping gradient when active.
+ * Learned edges stay as a permanent brand hairline (system remembered).
  */
 export function GravitreSignalPath({
   d,
   activeKind = null,
   muted = false,
   reduced = false,
+  learned = false,
 }: {
   d: string
   activeKind?: PacketKind | null
   muted?: boolean
   reduced?: boolean
+  learned?: boolean
 }) {
   const uid = useId().replace(/:/g, "")
   const gradId = `gv-dept-path-${uid}`
@@ -39,6 +41,16 @@ export function GravitreSignalPath({
         strokeLinecap="round"
         opacity={muted ? 0.2 : 0.65}
       />
+      {learned && !active ? (
+        <path
+          d={d}
+          fill="none"
+          stroke="var(--color-brand, #16a374)"
+          strokeWidth={1.75}
+          strokeLinecap="round"
+          opacity={0.55}
+        />
+      ) : null}
       {active ? (
         <>
           <path

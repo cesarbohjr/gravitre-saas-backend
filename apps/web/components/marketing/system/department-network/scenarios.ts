@@ -1,11 +1,108 @@
 import type { DepartmentId, NetworkScenario } from "./types"
 
 /**
- * Configuration-driven converge stories.
- * Work starts anywhere → Gravitre connects context → teams act → results return → business learns.
+ * Configuration-driven converge stories (Creative Experience System Pilot 1).
+ * Primary storyboard: Sales signal → Core → Support → Finance/Ops → outcomes → LEARNED edge.
+ * Honesty: scripted metaphor for shared org context — not live telemetry.
  */
 
 export const NETWORK_SCENARIOS: NetworkScenario[] = [
+  {
+    id: "org-exchange",
+    label: "Organizational intelligence exchange",
+    source: "sales",
+    beats: [
+      { type: "activate", dept: "sales", caption: "Sales creates a business signal.", durationMs: 700 },
+      {
+        type: "packet",
+        from: "sales",
+        to: "core",
+        kind: "signal",
+        caption: "The signal enters Gravitre.",
+        durationMs: 1100,
+      },
+      {
+        type: "core",
+        state: "receiving",
+        caption: "Gravitre receives the signal.",
+        durationMs: 700,
+      },
+      {
+        type: "core",
+        state: "connecting",
+        caption: "Context assembles.",
+        durationMs: 900,
+      },
+      {
+        type: "packet",
+        from: "core",
+        to: "support",
+        kind: "action",
+        caption: "Support has relevant context.",
+        durationMs: 1000,
+      },
+      {
+        type: "packet",
+        from: "support",
+        to: "core",
+        kind: "learn",
+        caption: "Support returns what Gravitre needs.",
+        durationMs: 1000,
+      },
+      {
+        type: "core",
+        state: "coordinating",
+        caption: "Finance and Operations need the result.",
+        durationMs: 800,
+      },
+      {
+        type: "packet",
+        from: "core",
+        to: "finance",
+        kind: "action",
+        caption: "Gravitre → Finance.",
+        durationMs: 950,
+      },
+      {
+        type: "packet",
+        from: "core",
+        to: "operations",
+        kind: "action",
+        caption: "Gravitre → Operations.",
+        durationMs: 950,
+      },
+      { type: "resolve", dept: "finance", durationMs: 400 },
+      { type: "resolve", dept: "operations", durationMs: 400 },
+      {
+        type: "packet",
+        from: "finance",
+        to: "core",
+        kind: "learn",
+        caption: "Outcomes return.",
+        durationMs: 900,
+      },
+      {
+        type: "packet",
+        from: "operations",
+        to: "core",
+        kind: "learn",
+        durationMs: 900,
+      },
+      {
+        type: "core",
+        state: "verifying",
+        caption: "Evidence attaches.",
+        durationMs: 700,
+      },
+      {
+        type: "core",
+        state: "learned",
+        caption: "Learned — a relationship stays in the shared intelligence.",
+        durationMs: 1100,
+      },
+      { type: "settle", durationMs: 800 },
+    ],
+  },
   {
     id: "sales-support",
     label: "Sales → Support",
@@ -74,58 +171,6 @@ export const NETWORK_SCENARIOS: NetworkScenario[] = [
         kind: "learn",
         caption: "The outcome returns.",
         durationMs: 1000,
-      },
-      { type: "core", state: "learned", caption: "The shared intelligence improves.", durationMs: 900 },
-      { type: "settle", durationMs: 800 },
-    ],
-  },
-  {
-    id: "sales-many",
-    label: "Sales → Finance + Ops",
-    source: "sales",
-    beats: [
-      { type: "activate", dept: "sales", caption: "Sales creates a signal.", durationMs: 700 },
-      {
-        type: "packet",
-        from: "sales",
-        to: "core",
-        kind: "signal",
-        caption: "Gravitre receives context.",
-        durationMs: 1100,
-      },
-      { type: "core", state: "coordinating", caption: "Gravitre coordinates the teams.", durationMs: 900 },
-      {
-        type: "packet",
-        from: "core",
-        to: "finance",
-        kind: "action",
-        caption: "Finance works from the same intelligence.",
-        durationMs: 1000,
-      },
-      {
-        type: "packet",
-        from: "core",
-        to: "operations",
-        kind: "action",
-        caption: "Operations acts in parallel.",
-        durationMs: 1000,
-      },
-      { type: "resolve", dept: "finance", durationMs: 400 },
-      { type: "resolve", dept: "operations", durationMs: 400 },
-      {
-        type: "packet",
-        from: "finance",
-        to: "core",
-        kind: "learn",
-        caption: "The outcome returns.",
-        durationMs: 900,
-      },
-      {
-        type: "packet",
-        from: "operations",
-        to: "core",
-        kind: "learn",
-        durationMs: 900,
       },
       { type: "core", state: "learned", caption: "The shared intelligence improves.", durationMs: 900 },
       { type: "settle", durationMs: 800 },
