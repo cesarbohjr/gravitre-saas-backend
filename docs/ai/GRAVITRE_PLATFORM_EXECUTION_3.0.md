@@ -52,6 +52,7 @@ Append-only. Does not replace 3.0-A closeout or retire LIVE_USER_PROVEN gaps.
 - Lane B still must not serve live customer audio.
 - **Barge-in WRITE safety (3.0-C):** TRUE_INTERRUPT / `/api/voice/session/cancel` / HTTP Talk turn cancel arms conversation stop (`voice.barge_in.write_gate`). ReAct refreshes the interrupt at WRITE execute time so an uncommitted write is `write_commit_interrupted` (`provider_invoked=false`). READs are not speculative-cancelled by this gate. Gaps closed: canvas write path, `invoke_tool` last-line check, `execute_plan` ToolContext now carries `conversation_id`, speculative generation cancelled on barge-in.
 - **ASR catalog lexicon:** Deepgram keyterms add a bounded set of connected-vendor **READ** ActionSpec names (no employee personal names).
+- **Eval lanes A/B/C:** `lane_comparison()` + [gravitre-3.0-c-eval-lanes.md](../delivery/gravitre-3.0-c-eval-lanes.md). Production serving is always cascade A (`production_voice_lane` ignores `VOICE_REALTIME_EVAL_LANE=B`). Scores **NOT_RUN**. TTS idle-expiry policy: refresh warm socket after 45s idle, never while speaking.
 
 ---
 

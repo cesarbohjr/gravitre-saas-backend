@@ -360,6 +360,7 @@ def build_pipecat_voice_task(
         "tts_model": str(model),
         "tts_transport": "websocket",
         "tts_warmup": "elevenlabs_ws_preconnect",
+        "tts_idle_expiry_s": 45,
         "barge_in": "elevenlabs_interrupt_report",
         "tts_context_cancel": "elevenlabs_close_context_keep_session",
         "media_transport": "websocket_pcm16_json",

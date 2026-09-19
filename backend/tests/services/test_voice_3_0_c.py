@@ -26,9 +26,27 @@ def test_stop_is_true_interrupt():
 
 
 def test_production_lane_is_cascade_only():
+    from app.services.voice_realtime_eval import production_voice_lane, shadow_eval_lane
+    from types import SimpleNamespace
+
     assert resolve_eval_lane(None) == LANE_A
     assert production_allows_lane(LANE_A) is True
     assert production_allows_lane(LANE_B) is False
+    assert production_voice_lane(SimpleNamespace(voice_realtime_eval_lane="B")) == LANE_A
+    assert shadow_eval_lane(SimpleNamespace(voice_realtime_eval_lane="B")) == LANE_B
+
+
+def test_lane_comparison_does_not_invent_scores_or_enable_b():
+    from app.services.voice_realtime_eval import LANE_C, lane_comparison
+
+    table = lane_comparison()
+    assert table["production_recommendation"] == LANE_A
+    assert table["eval_hypothesis_if_b_fails_governance"] == LANE_C
+    assert table["blended_voice_latency"] is None
+    assert table["lanes"][LANE_B]["production_allowed"] is False
+    assert table["lanes"][LANE_B]["native_provider_tools"] is False
+    assert table["lanes"][LANE_A]["scores"] == "NOT_RUN"
+    assert table["lanes"][LANE_B]["speculative_write"] is False
 
 
 def test_webrtc_eval_does_not_swap_production_media():

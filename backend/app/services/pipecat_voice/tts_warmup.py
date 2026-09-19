@@ -8,6 +8,24 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
+TTS_IDLE_EXPIRY_S = 45.0
+
+
+def tts_idle_should_refresh(
+    *,
+    last_activity_monotonic: float | None,
+    now_monotonic: float,
+    idle_expiry_s: float = TTS_IDLE_EXPIRY_S,
+    speaking: bool = False,
+) -> bool:
+    """Refresh a warm TTS socket after idle expiry — never mid-utterance."""
+    if speaking:
+        return False
+    if last_activity_monotonic is None:
+        return False
+    return (now_monotonic - last_activity_monotonic) >= float(idle_expiry_s)
+
+
 async def warm_elevenlabs_tts_connection(tts: Any) -> dict[str, Any]:
     """Open the ElevenLabs WS before the first speakable token.
 

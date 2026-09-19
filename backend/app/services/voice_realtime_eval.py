@@ -51,6 +51,16 @@ def production_allows_lane(lane: str) -> bool:
     return lane == LANE_A
 
 
+def production_voice_lane(_settings: Any | None = None) -> str:
+    """Serving path is always cascade A. Eval env vars must not swap it."""
+    return PRODUCTION_LANE
+
+
+def shadow_eval_lane(settings: Any | None) -> str:
+    """Named eval lane for comparison only — never a production transport/model swap."""
+    return resolve_eval_lane(settings)
+
+
 def eval_card(*, lane: str) -> dict[str, Any]:
     from app.services.voice_webrtc_eval import webrtc_eval_card
 
@@ -62,4 +72,50 @@ def eval_card(*, lane: str) -> dict[str, Any]:
         "speculative_write": False,
         "benchmark_dimensions": list(BENCHMARK_DIMENSIONS),
         "webrtc": webrtc_eval_card(),
+    }
+
+
+def lane_comparison(*, measured: dict[str, Any] | None = None) -> dict[str, Any]:
+    """A vs B vs C architecture table. Missing measurements stay NOT_RUN."""
+    rows = {
+        LANE_A: {
+            "path": "Deepgram STT → execute_task_streaming → ElevenLabs",
+            "production_allowed": True,
+            "native_provider_tools": False,
+            "tools": "execute_task_streaming only",
+            "speculative_write": False,
+            "media_transport": "websocket_pcm16_json",
+        },
+        LANE_B: {
+            "path": "speech/audio model → execute_task_streaming for tools → audio",
+            "production_allowed": False,
+            "native_provider_tools": False,
+            "tools": "execute_task_streaming only (provider-native tools forbidden)",
+            "speculative_write": False,
+            "media_transport": "eval",
+            "risk": "ungoverned tools / lost HMAC trace if miswired",
+        },
+        LANE_C: {
+            "path": "realtime conversation frontend + Gravitre work backend",
+            "production_allowed": False,
+            "native_provider_tools": False,
+            "tools": "execute_task_streaming only",
+            "speculative_write": False,
+            "media_transport": "eval",
+            "note": "preferred eval successor if B fails governance or traceability",
+        },
+    }
+    scores = measured if isinstance(measured, dict) else {}
+    for lane, row in rows.items():
+        sample = scores.get(lane)
+        row["measured"] = bool(isinstance(sample, dict) and sample)
+        row["scores"] = sample if row["measured"] else "NOT_RUN"
+        row["eval_card"] = eval_card(lane=lane)
+    return {
+        "production_voice_lane": PRODUCTION_LANE,
+        "production_recommendation": PRODUCTION_LANE,
+        "eval_hypothesis_if_b_fails_governance": LANE_C,
+        "blended_voice_latency": None,
+        "lanes": rows,
+        "benchmark_dimensions": list(BENCHMARK_DIMENSIONS),
     }
