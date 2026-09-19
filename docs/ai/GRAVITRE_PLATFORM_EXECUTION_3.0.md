@@ -22,6 +22,20 @@ No customer-facing prices, Certified/TRAINED badges, or Enable toggles. Certific
 
 ---
 
+## 3.0-A closeout (2026-09-19)
+
+Append-only. Measurement gate closed; SLO targets **not met** (honest baseline).
+
+- F1 live: `docs/delivery/f1-live-verify-2026-09-19.json` @ `67944d59`
+- Voice Metric A/B probe: `docs/delivery/voice-slo-two-metric-live.json` @ `401554cc` — A p50 **377**/p95 **1215** (**FAIL** P95); B p50 **24815**/p95 **49257** (**FAIL**)
+- Spoken critical-path: n=15 cohort; audit `408eb58c-58db-4a77-bc7c-b2e37713019e` @ `2026-09-19T08:16:59.406Z`
+- Aggregator: `docs/delivery/3.0-a-latency-baseline-latest.json`
+- Full report: `docs/delivery/gravitre-3.0-a-baseline.md`
+
+## 3.0-B kickoff (2026-09-19)
+
+First objective: JIT context scoring + eligible-tool namespace — reuse `narrow_tools_for_turn` / `embed_narrow_tools_for_turn`; measure token + stage p50/p95 vs 3.0-A baseline (must not regress without named trade).
+
 ## 3.0-C progress (2026-09-19)
 
 Append-only. Does not replace 3.0-A closeout or retire LIVE_USER_PROVEN gaps.
