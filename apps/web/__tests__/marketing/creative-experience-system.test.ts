@@ -178,3 +178,23 @@ describe("pilot 3 knowledge fabric storyboard", () => {
     expect(parseKfStateParam("verify", { hostname: "localhost" })).toBeNull()
   })
 })
+
+describe("phase 7 connector fabric storyboard", () => {
+  it("uses capability ports and pauses WRITE for approval", async () => {
+    const { PHASE_ORDER, CAPABILITY_PORTS, writeWaiting, nextPhase } = await import(
+      "@/components/marketing/creative/scenes/connector-fabric/storyboard"
+    )
+    expect(PHASE_ORDER).toContain("write_waiting")
+    expect(CAPABILITY_PORTS.every((p) => p.caps.length > 0)).toBe(true)
+    expect(writeWaiting("write_waiting")).toBe(true)
+    expect(nextPhase("write_waiting")).toBe("execute")
+  })
+
+  it("parses cfState only on local hosts", async () => {
+    const { parseCfStateParam } = await import(
+      "@/components/marketing/creative/scenes/connector-fabric/storyboard"
+    )
+    expect(parseCfStateParam("write_waiting", { hostname: "localhost" })).toBe("write_waiting")
+    expect(parseCfStateParam("write_waiting", { hostname: "gravitre.app" })).toBeNull()
+  })
+})

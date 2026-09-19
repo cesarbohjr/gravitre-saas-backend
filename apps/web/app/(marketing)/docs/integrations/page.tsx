@@ -7,8 +7,8 @@ import { PlanBadge } from "@/components/docs/plan-badge"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingPageHero, MarketingRails } from "@/components/marketing/nodus/page-shell"
+import { ConnectorFabricField } from "@/components/marketing/creative"
 import {
-  ConnectorHubVisual,
   GravitreSection,
   GravitreSectionHeader,
   GravitreTrace,
@@ -58,13 +58,13 @@ export default function IntegrationsIndexPage() {
       <GravitreSection>
         <GravitreSectionHeader
           align="center"
-          badge="Connector hub"
-          title="Your stack into one governed center"
-          description="Auth, scopes, and executability checked before agents or workflows act — not a logo wall of claims."
+          badge="Connector fabric"
+          title="Capability ports — not a logo wall"
+          description="An illustrative fabric — auth, scopes, READ, and governed WRITE. Not a live inventory of your stack."
           className="mb-6"
         />
         <GravitreTrace>
-          <ConnectorHubVisual />
+          <ConnectorFabricField />
         </GravitreTrace>
       </GravitreSection>
 
