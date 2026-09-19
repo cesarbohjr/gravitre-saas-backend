@@ -137,3 +137,44 @@ describe("pilot 2 orchestration storyboard", () => {
     expect(parseCreativeStateParam("nope", { hostname: "localhost" })).toBeNull()
   })
 })
+
+describe("pilot 3 knowledge fabric storyboard", () => {
+  it("keeps beat order and converges only exact normalized pairs", async () => {
+    const {
+      PHASE_ORDER,
+      convergingMentionIds,
+      resolvedEntityLabel,
+      showFuzzyReject,
+      nextPhase,
+    } = await import("@/components/marketing/creative/scenes/knowledge-fabric/storyboard")
+    expect(PHASE_ORDER[0]).toBe("quiet")
+    expect(PHASE_ORDER).toContain("match")
+    expect(PHASE_ORDER).toContain("reject_fuzzy")
+    expect(convergingMentionIds("match")).toEqual(["m1", "m2"])
+    expect(resolvedEntityLabel("match")).toBe("Acme Corp")
+    expect(showFuzzyReject("reject_fuzzy")).toBe(true)
+    expect(nextPhase("match")).toBe("reject_fuzzy")
+  })
+
+  it("never reports fuzzy person merge", async () => {
+    const { MENTIONS, convergingMentionIds, PHASE_ORDER } = await import(
+      "@/components/marketing/creative/scenes/knowledge-fabric/storyboard"
+    )
+    const fuzzyIds = MENTIONS.filter((m) => m.fuzzyPersonDemo).map((m) => m.id)
+    expect(fuzzyIds).toEqual(["m3", "m4"])
+    for (const phase of PHASE_ORDER) {
+      const converged = convergingMentionIds(phase)
+      expect(converged.some((id) => fuzzyIds.includes(id))).toBe(false)
+    }
+  })
+
+  it("parses kfState only on local hosts", async () => {
+    const { parseKfStateParam } = await import(
+      "@/components/marketing/creative/scenes/knowledge-fabric/storyboard"
+    )
+    expect(parseKfStateParam("match", { hostname: "localhost" })).toBe("match")
+    expect(parseKfStateParam("reject_fuzzy", { hostname: "127.0.0.1" })).toBe("reject_fuzzy")
+    expect(parseKfStateParam("match", { hostname: "gravitre.app" })).toBeNull()
+    expect(parseKfStateParam("verify", { hostname: "localhost" })).toBeNull()
+  })
+})

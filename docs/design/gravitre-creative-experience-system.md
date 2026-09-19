@@ -115,9 +115,10 @@ Task Decomposition Field (SVG first): request → plan fragments → agents → 
 
 ---
 
-## O. Knowledge Fabric — **A primary** (Pilot 3)
+## O. Knowledge Fabric — **A primary** (Pilot 3) — SHIPPED
 
-Entity Convergence (exact/normalized ER — label honesty; not fuzzy person match).
+Entity Convergence (exact/normalized ER — label honesty; not fuzzy person match).  
+Production: SVG `EntityConvergenceField` on `/features/technology` — see [`gravitre-creative-pilot3-knowledge-fabric.md`](gravitre-creative-pilot3-knowledge-fabric.md). No Three/R3F.
 
 ---
 

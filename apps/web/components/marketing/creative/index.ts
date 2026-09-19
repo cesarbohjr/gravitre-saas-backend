@@ -14,4 +14,5 @@ export {
 export { GravitreAgentNode } from "./primitives/agent-node"
 export { GravitreEvidenceMark } from "./primitives/evidence-mark"
 export { AgentOrchestrationField } from "./scenes/agent-orchestration/orchestration-field"
+export { EntityConvergenceField } from "./scenes/knowledge-fabric/entity-convergence-field"
 

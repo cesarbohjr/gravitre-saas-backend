@@ -1,7 +1,7 @@
 # Creative Experience System — Pilot 2 Agent Orchestration
 
 **Status:** APPROVED AND SHIPPED (SVG Task Decomposition Field on `/features/technology`)  
-**Progress:** W.1–W.8 done · Pilot 2 production plan complete · next bible step = Pilot 3 Knowledge Fabric  
+**Progress:** W.1–W.8 done · Pilot 2 production plan complete · Pilot 3 Knowledge Fabric shipped (see pilot3 doc)  
 **Upstream:** Pilot 1 shipped (Relational Topology + Departments Converge). **Do not reopen Pilot 1.**  
 **Bible:** [`docs/design/gravitre-creative-experience-system.md`](gravitre-creative-experience-system.md)  
 **Foundation:** `apps/web/components/marketing/creative/`  
