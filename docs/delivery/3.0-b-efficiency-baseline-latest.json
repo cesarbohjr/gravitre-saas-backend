@@ -1,16 +1,16 @@
 {
   "probe": "3.0_b_efficiency_baseline",
-  "generated_at": "2026-09-19T09:04:05.058960+00:00",
-  "window_hours": 24,
-  "window_since": "2026-09-18T09:04:02.402744+00:00",
+  "generated_at": "2026-09-19T09:20:13.989319+00:00",
+  "window_hours": 1,
+  "window_since": "2026-09-19T08:20:10.460386+00:00",
   "org_scope": "f07e57c0-1501-4000-8000-c04e57a00001",
   "health": {
-    "git_sha": "3c7608c1dc44ab407c1a4609e37db073567fcdc0",
+    "git_sha": "622c7afcb11cee4ef26cc3d62616f737ef6d6359",
     "status": "ok",
-    "timestamp": "2026-09-19T09:04:02.949369+00:00"
+    "timestamp": "2026-09-19T09:20:11.387448+00:00"
   },
   "baseline_a_reference": {
-    "path": "docs/delivery/3.0-a-latency-baseline-latest.json",
+    "path": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\3.0-a-latency-baseline-latest.json",
     "git_sha": "401554cc7bfb13791cfa08a6d7bfddc10f6c252d"
   },
   "audit_actions": {
@@ -19,396 +19,321 @@
     "critical_path": "runtime.turn_latency.critical_path"
   },
   "rows_fetched": {
-    "runtime.jit.tool_namespace": 14,
-    "runtime.jit.context_profile": 0,
-    "runtime.turn_latency.critical_path": 49
+    "runtime.jit.tool_namespace": 26,
+    "runtime.jit.context_profile": 10,
+    "runtime.turn_latency.critical_path": 39
   },
   "tool_namespace": {
-    "sample_count": 14,
+    "sample_count": 26,
     "retrieval_methods": {
-      "embedding_narrow_tools_for_turn": 14
+      "embedding_narrow_tools_for_turn": 24,
+      "keyword_narrow_tools_for_turn": 2
     },
-    "embedding_turns": 14,
+    "embedding_turns": 24,
     "eligible_prefix_turns": 1,
     "spoken_chat_no_tools_turns": 0,
     "total_tools": {
-      "sample_count": 14,
+      "sample_count": 26,
       "p50_ms": 86,
       "p95_ms": 86,
       "max_ms": 86
     },
     "visible_tools": {
-      "sample_count": 14,
+      "sample_count": 26,
       "p50_ms": 20,
       "p95_ms": 20,
       "max_ms": 20
     },
     "payload_bytes": {
-      "sample_count": 14,
-      "p50_ms": 5187,
+      "sample_count": 26,
+      "p50_ms": 5134,
       "p95_ms": 5306,
       "max_ms": 5306
     },
     "narrow_ms": {
-      "sample_count": 14,
+      "sample_count": 26,
       "p50_ms": 33,
-      "p95_ms": 52,
-      "max_ms": 56
+      "p95_ms": 56,
+      "max_ms": 80
     },
     "visible_pct_of_total": {
-      "sample_count": 14,
+      "sample_count": 26,
       "p50_ms": 23,
-      "p95_ms": 23,
-      "max_ms": 23,
+      "p95_ms": 200,
+      "max_ms": 200,
       "unit": "visible_pct_of_total"
     }
   },
   "context_profile": {
-    "sample_count": 0,
+    "sample_count": 10,
     "shadow_turns": 0,
-    "active_turns": 0,
+    "active_turns": 10,
     "tokens_used": {
-      "sample_count": 0,
-      "p50_ms": null,
-      "p95_ms": null,
-      "max_ms": null
+      "sample_count": 10,
+      "p50_ms": 859,
+      "p95_ms": 1906,
+      "max_ms": 1906
     },
     "token_budget": {
-      "sample_count": 0,
-      "p50_ms": null,
-      "p95_ms": null,
-      "max_ms": null
+      "sample_count": 10,
+      "p50_ms": 12000,
+      "p95_ms": 12000,
+      "max_ms": 12000
     },
     "candidate_count": {
-      "sample_count": 0,
-      "p50_ms": null,
-      "p95_ms": null,
-      "max_ms": null
+      "sample_count": 10,
+      "p50_ms": 2,
+      "p95_ms": 8,
+      "max_ms": 8
     },
     "selected_count": {
-      "sample_count": 0,
-      "p50_ms": null,
-      "p95_ms": null,
-      "max_ms": null
+      "sample_count": 10,
+      "p50_ms": 2,
+      "p95_ms": 8,
+      "max_ms": 8
     },
     "legacy_prompt_chars": {
-      "sample_count": 0,
-      "p50_ms": null,
-      "p95_ms": null,
-      "max_ms": null
+      "sample_count": 10,
+      "p50_ms": 310,
+      "p95_ms": 4122,
+      "max_ms": 4122
     },
     "ranked_prompt_chars": {
-      "sample_count": 0,
-      "p50_ms": null,
-      "p95_ms": null,
-      "max_ms": null
+      "sample_count": 10,
+      "p50_ms": 3291,
+      "p95_ms": 7498,
+      "max_ms": 7498
     },
     "char_savings_vs_legacy": {
-      "sample_count": 0,
-      "p50_ms": null,
-      "p95_ms": null,
-      "max_ms": null
+      "sample_count": 10,
+      "p50_ms": 0,
+      "p95_ms": 0,
+      "max_ms": 0
     }
   },
   "critical_path_after_3_0_b": {
-    "sample_count": 49,
+    "sample_count": 39,
     "turn_total_ms": {
-      "sample_count": 49,
-      "p50_ms": 13204,
-      "p95_ms": 25163,
-      "max_ms": 47953
+      "sample_count": 39,
+      "p50_ms": 8501,
+      "p95_ms": 21801,
+      "max_ms": 25163
     },
     "dominant_delta_ms": {
-      "sample_count": 49,
-      "p50_ms": 7196,
-      "p95_ms": 22882,
-      "max_ms": 41919
+      "sample_count": 39,
+      "p50_ms": 5822,
+      "p95_ms": 14230,
+      "max_ms": 22882
     },
     "by_dominant_stage": {
-      "COMPOSER": {
-        "sample_count": 5,
-        "p50_ms": 18724,
-        "p95_ms": 41919,
-        "max_ms": 41919,
-        "win_count": 5
-      },
       "CONNECTED_INTEGRATIONS": {
-        "sample_count": 5,
-        "p50_ms": 1094,
-        "p95_ms": 1223,
-        "max_ms": 1223,
-        "win_count": 5
-      },
-      "CONNECTOR_PREVIEW": {
-        "sample_count": 2,
-        "p50_ms": 4007,
-        "p95_ms": 4818,
-        "max_ms": 4818,
-        "win_count": 2
-      },
-      "CONTEXT_BUILD": {
-        "sample_count": 3,
-        "p50_ms": 8543,
-        "p95_ms": 13778,
-        "max_ms": 13778,
-        "win_count": 3
-      },
-      "PLANNING": {
-        "sample_count": 6,
-        "p50_ms": 3147,
-        "p95_ms": 5234,
-        "max_ms": 5234,
-        "win_count": 6
+        "sample_count": 11,
+        "p50_ms": 530,
+        "p95_ms": 1786,
+        "max_ms": 1786,
+        "win_count": 11
       },
       "RESOLUTION": {
-        "sample_count": 2,
-        "p50_ms": 41,
-        "p95_ms": 90,
-        "max_ms": 90,
-        "win_count": 2
+        "sample_count": 6,
+        "p50_ms": 44,
+        "p95_ms": 334,
+        "max_ms": 334,
+        "win_count": 6
       },
       "UNIFIED_LIVE_RESOLVED": {
-        "sample_count": 26,
-        "p50_ms": 8164,
-        "p95_ms": 14230,
+        "sample_count": 22,
+        "p50_ms": 7821,
+        "p95_ms": 14744,
         "max_ms": 22882,
-        "win_count": 26
+        "win_count": 22
       }
     },
     "by_stage_delta_ms": {
       "COMPOSER": {
-        "sample_count": 49,
+        "sample_count": 39,
         "p50_ms": 0,
-        "p95_ms": 18724,
-        "max_ms": 41919
+        "p95_ms": 0,
+        "max_ms": 0
       },
       "CONNECTED_INTEGRATIONS": {
-        "sample_count": 42,
-        "p50_ms": 685,
-        "p95_ms": 1417,
-        "max_ms": 1566
-      },
-      "CONNECTOR_PREVIEW": {
-        "sample_count": 5,
-        "p50_ms": 2852,
-        "p95_ms": 4818,
-        "max_ms": 4818
-      },
-      "CONNECTOR_TURN": {
-        "sample_count": 4,
-        "p50_ms": 2492,
-        "p95_ms": 2521,
-        "max_ms": 2521
+        "sample_count": 33,
+        "p50_ms": 560,
+        "p95_ms": 1374,
+        "max_ms": 1849
       },
       "CONTEXT_BUILD": {
-        "sample_count": 44,
-        "p50_ms": 138,
-        "p95_ms": 7623,
-        "max_ms": 13778
+        "sample_count": 15,
+        "p50_ms": 67,
+        "p95_ms": 1915,
+        "max_ms": 7623
       },
       "CONTEXT_COMPILE_UNIFIED": {
-        "sample_count": 37,
+        "sample_count": 22,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "CONVERSATIONAL_EXECUTION": {
-        "sample_count": 13,
-        "p50_ms": 0,
+        "sample_count": 3,
+        "p50_ms": 4,
         "p95_ms": 5,
-        "max_ms": 6
+        "max_ms": 5
       },
       "DIALOGUE_SETTINGS_FULL": {
-        "sample_count": 37,
-        "p50_ms": 23,
-        "p95_ms": 35,
+        "sample_count": 22,
+        "p50_ms": 22,
+        "p95_ms": 37,
         "max_ms": 46
       },
       "ENGINE_SETTINGS": {
-        "sample_count": 42,
+        "sample_count": 33,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "ENRICH_CLASSIFICATION": {
-        "sample_count": 37,
-        "p50_ms": 67,
-        "p95_ms": 123,
-        "max_ms": 141
-      },
-      "INTENT_GATEWAY": {
-        "sample_count": 11,
-        "p50_ms": 86,
-        "p95_ms": 146,
-        "max_ms": 146
-      },
-      "KERNEL_PRE_ACT": {
-        "sample_count": 11,
-        "p50_ms": 918,
-        "p95_ms": 1436,
-        "max_ms": 1436
+        "sample_count": 22,
+        "p50_ms": 65,
+        "p95_ms": 95,
+        "max_ms": 116
       },
       "KNOWLEDGE_BASE_EMITTED": {
-        "sample_count": 8,
-        "p50_ms": 146,
-        "p95_ms": 724,
-        "max_ms": 724
-      },
-      "MCP_TOOLS": {
-        "sample_count": 11,
-        "p50_ms": 0,
-        "p95_ms": 1,
-        "max_ms": 1
+        "sample_count": 3,
+        "p50_ms": 153,
+        "p95_ms": 193,
+        "max_ms": 193
       },
       "MODEL_TTFT": {
-        "sample_count": 47,
+        "sample_count": 25,
         "p50_ms": 0,
         "p95_ms": 61,
-        "max_ms": 75
+        "max_ms": 65
       },
       "NETWORK": {
-        "sample_count": 93,
+        "sample_count": 78,
         "p50_ms": 2,
-        "p95_ms": 25,
-        "max_ms": 55
+        "p95_ms": 16,
+        "max_ms": 32
       },
       "PARAMETER_LEDGER": {
-        "sample_count": 37,
-        "p50_ms": 75,
-        "p95_ms": 115,
+        "sample_count": 22,
+        "p50_ms": 64,
+        "p95_ms": 100,
         "max_ms": 169
       },
       "PERSONA_RESOLVED": {
-        "sample_count": 37,
-        "p50_ms": 199,
-        "p95_ms": 356,
-        "max_ms": 442
+        "sample_count": 22,
+        "p50_ms": 187,
+        "p95_ms": 390,
+        "max_ms": 439
       },
       "PLANNING": {
-        "sample_count": 26,
-        "p50_ms": 1365,
-        "p95_ms": 4455,
-        "max_ms": 5234
-      },
-      "PREFLIGHT": {
-        "sample_count": 9,
-        "p50_ms": 4315,
-        "p95_ms": 5667,
-        "max_ms": 5667
+        "sample_count": 22,
+        "p50_ms": 843,
+        "p95_ms": 1812,
+        "max_ms": 4036
       },
       "PRE_KERNEL_ENTRY": {
-        "sample_count": 37,
+        "sample_count": 22,
         "p50_ms": 0,
         "p95_ms": 21,
-        "max_ms": 30
+        "max_ms": 21
       },
       "PRE_TURN_SHAPE": {
-        "sample_count": 13,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
-        "max_ms": 1
+        "max_ms": 0
       },
       "QUERY_REWRITE": {
-        "sample_count": 9,
-        "p50_ms": 24,
-        "p95_ms": 38,
-        "max_ms": 38
-      },
-      "REACT_ENTRY": {
         "sample_count": 3,
-        "p50_ms": 312,
-        "p95_ms": 375,
-        "max_ms": 375
+        "p50_ms": 20,
+        "p95_ms": 22,
+        "max_ms": 22
       },
       "RESOLUTION": {
-        "sample_count": 156,
+        "sample_count": 122,
         "p50_ms": 0,
-        "p95_ms": 99,
-        "max_ms": 314
+        "p95_ms": 85,
+        "max_ms": 334
       },
       "ROUTER_ENRICHMENTS": {
-        "sample_count": 37,
+        "sample_count": 22,
         "p50_ms": 0,
-        "p95_ms": 5627,
-        "max_ms": 6221
+        "p95_ms": 3585,
+        "max_ms": 3726
       },
       "ROUTING_CLASSIFIED": {
-        "sample_count": 42,
+        "sample_count": 33,
         "p50_ms": 0,
-        "p95_ms": 9,
+        "p95_ms": 5,
         "max_ms": 10
       },
       "SENTIMENT": {
-        "sample_count": 37,
+        "sample_count": 22,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 1
       },
       "SPOKEN_LITE_DECIDED": {
-        "sample_count": 37,
-        "p50_ms": 135,
+        "sample_count": 22,
+        "p50_ms": 115,
         "p95_ms": 192,
-        "max_ms": 310
+        "max_ms": 198
       },
       "TASK_CLASSIFIER": {
-        "sample_count": 37,
-        "p50_ms": 70,
-        "p95_ms": 132,
-        "max_ms": 147
+        "sample_count": 22,
+        "p50_ms": 65,
+        "p95_ms": 108,
+        "max_ms": 114
       },
       "TASK_STATE_INITIAL": {
-        "sample_count": 37,
-        "p50_ms": 22,
-        "p95_ms": 91,
+        "sample_count": 22,
+        "p50_ms": 19,
+        "p95_ms": 85,
         "max_ms": 178
       },
       "TOOL_DISCOVERY": {
         "sample_count": 36,
         "p50_ms": 0,
-        "p95_ms": 154,
-        "max_ms": 203
-      },
-      "TTS_BUFFER": {
-        "sample_count": 5,
-        "p50_ms": 4,
-        "p95_ms": 162,
-        "max_ms": 162
+        "p95_ms": 132,
+        "max_ms": 168
       },
       "TURN_SHAPE_CLASSIFIED": {
-        "sample_count": 13,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 1,
         "max_ms": 1
       },
       "UNDERSTANDING": {
-        "sample_count": 37,
-        "p50_ms": 114,
-        "p95_ms": 2864,
-        "max_ms": 2934
+        "sample_count": 22,
+        "p50_ms": 1047,
+        "p95_ms": 2389,
+        "max_ms": 2884
       },
       "UNDERSTANDING_AUDIT": {
-        "sample_count": 37,
-        "p50_ms": 58,
-        "p95_ms": 136,
+        "sample_count": 22,
+        "p50_ms": 51,
+        "p95_ms": 132,
         "max_ms": 156
       },
       "UNIFIED_LIVE_RESOLVED": {
-        "sample_count": 37,
-        "p50_ms": 7196,
-        "p95_ms": 13636,
+        "sample_count": 22,
+        "p50_ms": 7821,
+        "p95_ms": 14744,
         "max_ms": 22882
       },
       "UNIFIED_SHADOW_SCHEDULED": {
-        "sample_count": 13,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
-        "max_ms": 1
+        "max_ms": 0
       },
       "VOICE_EXPRESSION_BOUND": {
-        "sample_count": 37,
+        "sample_count": 22,
         "p50_ms": 0,
         "p95_ms": 0,
-        "max_ms": 1
+        "max_ms": 0
       }
     }
   },
@@ -417,18 +342,18 @@
       "CONTEXT_BUILD": {
         "before_p50_ms": 244,
         "before_p95_ms": 8543,
-        "after_p50_ms": 138,
-        "after_p95_ms": 7623,
+        "after_p50_ms": 67,
+        "after_p95_ms": 1915,
         "p50_regressed": false,
         "p95_regressed": false,
         "before_sample_count": 29,
-        "after_sample_count": 44
+        "after_sample_count": 15
       },
       "TOOL_DISCOVERY": {
         "before_p50_ms": 0,
         "before_p95_ms": 125,
         "after_p50_ms": 0,
-        "after_p95_ms": 154,
+        "after_p95_ms": 132,
         "p50_regressed": false,
         "p95_regressed": true,
         "before_sample_count": 20,
@@ -441,18 +366,31 @@
   "evidence_sample": {
     "tool_namespace": [
       {
-        "id": "ffa68118-4c79-4e2e-ac59-84cebb52129b",
-        "created_at": "2026-09-19T09:04:01.917926+00:00"
+        "id": "944de3e8-f541-4223-8132-038f31c04417",
+        "created_at": "2026-09-19T09:19:11.297404+00:00"
       },
       {
-        "id": "f26ecae6-70b7-499c-8721-d4fe2f49fef6",
-        "created_at": "2026-09-19T09:03:45.68461+00:00"
+        "id": "cf2302df-6812-4cd6-a0ef-ae055028e2ac",
+        "created_at": "2026-09-19T09:18:50.687465+00:00"
       },
       {
-        "id": "1929c93a-51ab-4f1a-b091-6da46e17ea4d",
-        "created_at": "2026-09-19T09:03:29.7065+00:00"
+        "id": "f931de9b-f52f-4773-a224-f16d28211f25",
+        "created_at": "2026-09-19T09:18:36.990132+00:00"
       }
     ],
-    "context_profile": []
+    "context_profile": [
+      {
+        "id": "5ecd3d4f-3caa-4fee-9ede-7a2cc0cc17e4",
+        "created_at": "2026-09-19T09:19:11.74434+00:00"
+      },
+      {
+        "id": "ab18d370-32ec-4a7f-9e88-c15ac93b4c50",
+        "created_at": "2026-09-19T09:18:50.768788+00:00"
+      },
+      {
+        "id": "10b4aa45-5dbf-4ab2-87d3-d5ac25a88788",
+        "created_at": "2026-09-19T09:18:37.070636+00:00"
+      }
+    ]
   }
 }
