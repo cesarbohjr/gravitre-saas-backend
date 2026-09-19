@@ -978,20 +978,6 @@ async def run_unified_turn_shadow(
             if knowledge_block:
                 _add_part("knowledge_fabric", knowledge_block)
             unified_turn_knowledge_meta = knowledge_meta if knowledge_meta else None
-            if isinstance(unified_turn_knowledge_meta, dict) and unified_turn_knowledge_meta.get(
-                "contextRanking"
-            ):
-                from app.services.jit_efficiency_service import record_jit_context_profile
-
-                record_jit_context_profile(
-                    active,
-                    org_id=org_id,
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    context_ranking=unified_turn_knowledge_meta.get("contextRanking"),
-                    classification=classification,
-                    spoken_mode=spoken_mode,
-                )
         else:
             unified_turn_knowledge_meta = (
                 {"skipped": "remind_me_turn"} if remind_me else None
@@ -1185,6 +1171,20 @@ async def run_unified_turn_shadow(
         "context_size_breakdown": context_size_breakdown,
         "context_real_tokens_total": context_real_tokens_total,
     }
+    if isinstance(unified_turn_knowledge_meta, dict) and unified_turn_knowledge_meta.get(
+        "contextRanking"
+    ):
+        from app.services.jit_efficiency_service import record_jit_context_profile
+
+        record_jit_context_profile(
+            active,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            context_ranking=unified_turn_knowledge_meta.get("contextRanking"),
+            classification=classification,
+            spoken_mode=spoken_mode,
+        )
     if unified_turn_knowledge_meta:
         breakdown["unifiedTurnKnowledge"] = unified_turn_knowledge_meta
     for _embed_key in (
