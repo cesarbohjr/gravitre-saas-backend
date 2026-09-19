@@ -38,6 +38,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         conversation_id: str | None = None,
         spoken_ledger: Any | None = None,
         tts_service: Any | None = None,
+        speculative_coordinator: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -60,6 +61,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._user_id = user_id
         self._conversation_id = conversation_id
         self._tts_service = tts_service
+        self._speculative_coordinator = speculative_coordinator
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -136,6 +138,12 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 settings=self._settings,
                 user_id=self._user_id,
             )
+            coordinator = self._speculative_coordinator
+            if coordinator is not None and hasattr(coordinator, "cancel"):
+                try:
+                    coordinator.cancel()
+                except Exception:  # noqa: BLE001
+                    pass
             payload = {
                 "type": "speech.interrupted",
                 "tts_provider": "elevenlabs",

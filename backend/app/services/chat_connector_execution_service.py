@@ -1851,6 +1851,7 @@ class ChatConnectorExecutionService:
             org_id=org_id,
             actor_id=user_id,
             environment_name=environment_name,
+            conversation_id=conversation_id or None,
         )
         from app.services.approval_action_binding import (
             ApprovalActionMismatchError,

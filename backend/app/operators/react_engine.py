@@ -901,6 +901,22 @@ class ReActEngine:
 
             run_row = load_run_for_write_gate(ctx.client, ctx.org_id, ctx.run_id)
             if run_row is not None:
+                live_interrupt = resolve_write_interrupt(
+                    interrupt=interrupt,
+                    stop_requested=_react_loop_stop_requested(ctx),
+                )
+                if live_interrupt:
+                    from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED
+
+                    return {
+                        "success": False,
+                        "tool": tool_name,
+                        "action": invoke_action,
+                        "error_code": WRITE_COMMIT_INTERRUPTED,
+                        "error": "Stopped before sending. The write was not executed.",
+                        "provider_invoked": False,
+                        "observation_status": "write_commit_interrupted",
+                    }
                 if run_allows_catalog_write_execution(run_row):
                     from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
                     from app.services.write_preflight import compile_write_for_context

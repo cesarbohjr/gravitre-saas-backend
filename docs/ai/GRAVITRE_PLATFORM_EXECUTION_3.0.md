@@ -1,6 +1,6 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A CLOSEOUT + 3.0-C IN PROGRESS (2026-09-19). Production voice remains cascade lane A (JSON PCM16 WebSocket). Native realtime (lane B) and WebRTC media are eval-only.  
+**Status:** 3.0-A **MEASUREMENT GATE CLOSED** (2026-09-19, SHA `401554cc`); **3.0-B IN PROGRESS**. Production voice remains cascade lane A (JSON PCM16 WebSocket). Native realtime (lane B) and WebRTC media are eval-only.  
 **Date:** 2026-09-18  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 
@@ -31,7 +31,7 @@ Append-only. Does not replace 3.0-A closeout or retire LIVE_USER_PROVEN gaps.
 - **TTS context cancel:** barge-in calls ElevenLabs `close_context` and **keeps** the session WebSocket (`voice.tts.context_cancelled`). Not a session teardown / InterruptibleTTS reconnect.
 - **WebRTC eval:** `voice_webrtc_eval.py` measures startup / media RTT / jitter / loss / reconnect / region. `production_allows_webrtc_media() == false`. Production transport remains `websocket_pcm16_json`.
 - Lane B still must not serve live customer audio.
-- **Barge-in WRITE safety (3.0-C):** TRUE_INTERRUPT / `/api/voice/session/cancel` / HTTP Talk turn cancel arms conversation stop (`voice.barge_in.write_gate`). ReAct refreshes the interrupt at WRITE execute time so an uncommitted write is `write_commit_interrupted` (`provider_invoked=false`). READs are not speculative-cancelled by this gate.
+- **Barge-in WRITE safety (3.0-C):** TRUE_INTERRUPT / `/api/voice/session/cancel` / HTTP Talk turn cancel arms conversation stop (`voice.barge_in.write_gate`). ReAct refreshes the interrupt at WRITE execute time so an uncommitted write is `write_commit_interrupted` (`provider_invoked=false`). READs are not speculative-cancelled by this gate. Gaps closed: canvas write path, `invoke_tool` last-line check, `execute_plan` ToolContext now carries `conversation_id`, speculative generation cancelled on barge-in.
 - **ASR catalog lexicon:** Deepgram keyterms add a bounded set of connected-vendor **READ** ActionSpec names (no employee personal names).
 
 ---

@@ -4619,6 +4619,10 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     if f1_write:
         params = enforce_invoke_write_preflight(ctx, action, params)
 
+    from app.services.voice_barge_in_write import raise_if_barge_in_blocks_invoke
+
+    raise_if_barge_in_blocks_invoke(ctx, action)
+
     from app.capability_ontology.resolver import resolve_capability_invoke_action
     from app.connectors.action_catalog.tool_aliases import resolve_registry_action
 

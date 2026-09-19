@@ -212,6 +212,7 @@ def build_pipecat_voice_task(
         conversation_id=conversation_id,
         spoken_ledger=spoken_ledger,
         tts_service=tts,
+        speculative_coordinator=speculative_coordinator,
     )
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.

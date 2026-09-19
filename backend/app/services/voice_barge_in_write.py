@@ -35,6 +35,48 @@ def resolve_write_interrupt(
     return interrupt if isinstance(interrupt, dict) else None
 
 
+def action_is_mutating_write(action: str) -> bool:
+    """Catalog write authority — do not treat READs as interruptible commits."""
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
+    from app.services.catalog_write_authority import invoke_action_requires_write_approval
+
+    key = str(action or "").strip()
+    if not key:
+        return False
+    if is_f1_write_action(key):
+        return True
+    return bool(invoke_action_requires_write_approval(key))
+
+
+def conversation_stop_blocks_invoke(ctx: Any, action: str) -> bool:
+    oid = str(getattr(ctx, "org_id", "") or "").strip()
+    cid = str(getattr(ctx, "conversation_id", "") or "").strip()
+    if not oid or not cid:
+        return False
+    if not action_is_mutating_write(action):
+        return False
+    from app.services.chat_turn_cancel_service import is_stop_requested
+
+    return is_stop_requested(
+        oid,
+        cid,
+        settings=getattr(ctx, "settings", None),
+    )
+
+
+def raise_if_barge_in_blocks_invoke(ctx: Any, action: str) -> None:
+    """Last-line invoke_tool defense: uncommitted WRITE after barge-in/stop."""
+    if not conversation_stop_blocks_invoke(ctx, action):
+        return
+    from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED
+    from app.services.tool_types import ToolValidationError
+
+    raise ToolValidationError(
+        "Stopped before sending. The write was not executed.",
+        code=WRITE_COMMIT_INTERRUPTED,
+    )
+
+
 def mark_voice_barge_in_stop(
     *,
     org_id: str | None,
@@ -48,6 +90,14 @@ def mark_voice_barge_in_stop(
     if not oid or not cid:
         return False
     from app.services.chat_turn_cancel_service import request_stop
+
+    if settings is None:
+        try:
+            from app.config import get_settings
+
+            settings = get_settings()
+        except Exception:  # noqa: BLE001
+            settings = None
 
     ok = request_stop(oid, cid, settings=settings)
     if ok and settings and user_id:
