@@ -392,6 +392,11 @@ def narrow_tools_for_turn(
     )
     from app.services.action_execute_now import filter_tools_executable_now
 
+    _, execute_now_catalog = filter_tools_executable_now(
+        tools,
+        connected_integrations=connected,
+        unavailable_vendors=unavailable_vendors,
+    )
     compressed, execute_now_stats = filter_tools_executable_now(
         compressed,
         connected_integrations=connected,
@@ -420,6 +425,9 @@ def narrow_tools_for_turn(
         "compressed": True,
         **capability_stats,
         **execute_now_stats,
+        "executeNowDropped": int(execute_now_catalog.get("executeNowDropped") or 0),
+        "executeNowDropReasons": execute_now_catalog.get("executeNowDropReasons") or {},
+        "executeNowDroppedNames": execute_now_catalog.get("executeNowDroppedNames") or [],
     }
     from app.services.narrowed_tools import mark_narrowed
 
