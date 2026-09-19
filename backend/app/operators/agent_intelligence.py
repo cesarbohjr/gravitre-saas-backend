@@ -1795,6 +1795,27 @@ class AgentIntelligence:
                 trace_dict = _cognitive_trace_builder.trace.as_dict()
                 env["cognitive_turn_trace"] = trace_dict
                 env["data"]["turn_id"] = trace_dict.get("turn_id")
+                try:
+                    from app.services.turn_latency_trace import record_critical_path
+
+                    combined = dict(_pre_kernel_checkpoints)
+                    combined.update(_cognitive_trace_builder.cumulative_ms())
+                    analysis = record_critical_path(
+                        active_settings,
+                        org_id=org_id,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        turn_id=str(trace_dict.get("turn_id") or ""),
+                        marks=combined,
+                        spoken_mode=bool(spoken_mode),
+                    )
+                    env["data"]["latency_critical_path"] = {
+                        "dominant_stage": analysis.get("dominant_stage"),
+                        "dominant_ms": analysis.get("dominant_ms"),
+                        "total_ms": analysis.get("total_ms"),
+                    }
+                except Exception:  # noqa: BLE001
+                    pass
             return env
 
         async def _composed_reply(
@@ -4840,6 +4861,7 @@ class AgentIntelligence:
             connector_focus=connector_focus,
             plan_runtime=_react_plan_runtime,
             conversation_history=prepared_context.messages,
+            interrupt=interrupt_payload,
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}

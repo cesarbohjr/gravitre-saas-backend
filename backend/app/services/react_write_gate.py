@@ -26,6 +26,26 @@ from app.services.connector_action_workflows import format_write_approval_messag
 from app.core.safe_dict import safe_normalize_stored_dict
 
 WRITE_APPROVAL_REQUIRED = "write_approval_required"
+WRITE_COMMIT_INTERRUPTED = "write_commit_interrupted"
+_WRITE_INTERRUPT_SIGNALS = frozenset(
+    {"stop", "cancel", "barge_in", "true_interrupt", "interrupt", "aborted"}
+)
+
+
+def interrupt_blocks_write_commit(
+    interrupt: dict[str, Any] | None = None,
+    task_state: dict[str, Any] | None = None,
+) -> bool:
+    """True when barge-in/stop arrived before WRITE commit. Never speculative-cancel READs."""
+    payload: dict[str, Any] = interrupt if isinstance(interrupt, dict) else {}
+    if not payload and isinstance(task_state, dict):
+        nested = task_state.get("interrupt")
+        payload = nested if isinstance(nested, dict) else {}
+    signal = str(
+        payload.get("signal") or payload.get("reason") or payload.get("type") or ""
+    ).strip().lower()
+    return signal in _WRITE_INTERRUPT_SIGNALS
+
 
 # Platform writes that must use the same chat approval gate as connector writes.
 # Explicit allowlist (Wave 1 / PR #90 pattern) — not a blanket assistant_* skip.
@@ -50,7 +70,9 @@ __all__ = (
     "PLATFORM_PENDING_TASK_TYPES",
     "PLATFORM_WRITE_TOOLS",
     "WRITE_APPROVAL_REQUIRED",
+    "WRITE_COMMIT_INTERRUPTED",
     "block_react_write_execution",
+    "interrupt_blocks_write_commit",
     "catalog_action_requires_write_approval",
     "catalog_scopes_indicate_mutation",
     "first_structured_connector_plan_from_react",
@@ -273,9 +295,23 @@ def block_react_write_execution(
     user_message: str = "",
     connected_integrations: list[str] | None = None,
     task_state: dict[str, Any] | None = None,
+    interrupt: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """If this ReAct tool call needs user approval per HITL policy, block execution."""
     from app.services.hitl_policy_service import classify_action_kind
+
+    if interrupt_blocks_write_commit(interrupt, task_state):
+        is_write_early, invoke_early, _, _ = tool_requires_user_write_approval(tool_name, registry)
+        if is_write_early:
+            return {
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_early,
+                "error_code": WRITE_COMMIT_INTERRUPTED,
+                "error": "Stopped before sending. The write was not executed.",
+                "provider_invoked": False,
+                "observation_status": "write_commit_interrupted",
+            }
 
     is_write_probe, invoke_probe, _, label_probe = tool_requires_user_write_approval(
         tool_name, registry

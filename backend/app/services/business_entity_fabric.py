@@ -112,7 +112,7 @@ def website_entity_from_identity(
                 system="google_analytics",
                 resource_type="property",
                 resource_id=str(ga4_property_id),
-                confidence=0.9,
+                confidence=0.9,  # confidence-honesty-ok: unique host bind prior, not user-facing
                 evidence=evidence,
             )
         )
@@ -122,7 +122,7 @@ def website_entity_from_identity(
                 system="google_search_console",
                 resource_type="site",
                 resource_id=str(gsc_site_url),
-                confidence=0.9,
+                confidence=0.9,  # confidence-honesty-ok: unique host bind prior, not user-facing
                 evidence=evidence,
             )
         )
@@ -133,7 +133,7 @@ def website_entity_from_identity(
         kind="website",
         bindings=tuple(bindings),
         evidence=evidence,
-        confidence=0.9 if bindings else 0.7,
+        confidence=0.9 if bindings else 0.7,  # confidence-honesty-ok: bind prior, not user-facing
     )
 
 
@@ -187,6 +187,58 @@ def join_provider_bindings(
         confidence=conf,
     )
     return JoinDecision(status=status, entity=entity, reason="exact_evidence")
+
+
+def fold_company_bindings(
+    *,
+    org_id: str,
+    display_name: str,
+    bindings: tuple[EntityBinding, ...] | list[EntityBinding],
+) -> JoinDecision:
+    """Join HubSpot/QBO/Zendesk (etc.) company rows on exact host/email evidence.
+
+    STA-312 Option B (Cesar sole owner): no fuzzy person names. Company joins
+    require shared host. Name-only is refused.
+    """
+    ordered = [b for b in bindings if b is not None]
+    if len(ordered) < 2:
+        return JoinDecision(status="refused_ambiguous", reason="need_two_systems")
+    last = join_provider_bindings(
+        org_id=org_id,
+        display_name=display_name,
+        kind="company",
+        left=ordered[0],
+        right=ordered[1],
+    )
+    if last.entity is None:
+        return last
+    entity = last.entity
+    for nxt in ordered[2:]:
+        nxt_join = join_provider_bindings(
+            org_id=org_id,
+            display_name=display_name,
+            kind="company",
+            left=entity.bindings[0],
+            right=nxt,
+            extra_evidence=entity.evidence,
+            existing_left_entity_id=entity.id,
+        )
+        if nxt_join.entity is None:
+            return nxt_join
+        merged = list(entity.bindings)
+        if not any(b.system == nxt.system and b.resource_id == nxt.resource_id for b in merged):
+            merged.append(nxt)
+        entity = BusinessEntity(
+            id=entity.id,
+            org_id=entity.org_id,
+            display_name=display_name,
+            kind="company",
+            bindings=tuple(merged),
+            evidence=tuple(dict.fromkeys(entity.evidence + nxt_join.entity.evidence)),
+            confidence=min(entity.confidence, nxt.confidence),
+        )
+        last = JoinDecision(status="joined", entity=entity, reason="exact_evidence")
+    return last
 
 
 def _is_uuid(value: str) -> bool:

@@ -54,7 +54,7 @@ class ResourceResolution:
             resource_type=str(raw.get("resource_type") or ""),
             resource_id=str(raw.get("resource_id") or ""),
             display_name=str(raw.get("display_name") or ""),
-            confidence=float(raw.get("confidence") or 0.0),
+            confidence=float(raw.get("confidence") or 0.0),  # confidence-honesty-ok: stored resolver prior, default 0 not invented live score
             resolution_reason=str(raw.get("resolution_reason") or ""),
             candidate_count=int(raw.get("candidate_count") or 0),
             candidates=tuple(row for row in cands if isinstance(row, dict)),

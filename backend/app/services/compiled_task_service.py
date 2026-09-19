@@ -228,6 +228,27 @@ def attach_compiled_task(
     state = dict(task_state) if isinstance(task_state, dict) else {}
     projected = project_compiled_task(state, **kwargs)
     state["compiled_task"] = projected.as_dict()
+    try:
+        from app.services.business_entity_fabric import website_entity_from_identity
+        from app.services.org_business_identity import merge_business_identity
+
+        identity = merge_business_identity(
+            org_id=str(kwargs.get("org_id") or projected.org_id or ""),
+            context=state,
+            user_message=projected.objective_text,
+            client=None,
+        )
+        params = projected.compiled_parameters if isinstance(projected.compiled_parameters, dict) else {}
+        entity = website_entity_from_identity(
+            org_id=str(projected.org_id or kwargs.get("org_id") or ""),
+            identity=identity,
+            ga4_property_id=str(params.get("property_id") or "") or None,
+            gsc_site_url=str(params.get("site_url") or "") or None,
+        )
+        if entity is not None:
+            state["business_entity"] = entity.as_dict()
+    except Exception:  # noqa: BLE001
+        pass
     return state
 
 

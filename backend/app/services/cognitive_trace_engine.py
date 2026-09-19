@@ -83,6 +83,14 @@ class CognitiveTraceBuilder:
         self.mark("terminal", reason="turn_complete")
         return self.trace
 
+    def cumulative_ms(self) -> dict[str, int]:
+        out: dict[str, int] = {}
+        running = 0.0
+        for stage in self.trace.stages:
+            running += float(stage.duration_ms or 0.0)
+            out[stage.stage] = int(running)
+        return out
+
     def emit_log(self) -> None:
         payload = self.trace.as_dict()
         logger.info(

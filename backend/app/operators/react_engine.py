@@ -276,6 +276,7 @@ class ReActEngine:
         connector_focus: tuple[str, ...] | list[str] | None = None,
         plan_runtime: Any | None = None,
         conversation_history: list[dict[str, Any]] | None = None,
+        interrupt: dict[str, Any] | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Streaming variant — same reasoning loop as run(), yields progress events."""
         async for event in self._react_loop(
@@ -296,6 +297,7 @@ class ReActEngine:
             connector_focus=connector_focus,
             plan_runtime=plan_runtime,
             conversation_history=conversation_history,
+            interrupt=interrupt,
         ):
             yield event
 
@@ -319,6 +321,7 @@ class ReActEngine:
         connector_focus: tuple[str, ...] | list[str] | None = None,
         plan_runtime: Any | None = None,
         conversation_history: list[dict[str, Any]] | None = None,
+        interrupt: dict[str, Any] | None = None,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Shared ReAct implementation for run() and run_streaming()."""
         import uuid
@@ -680,6 +683,7 @@ class ReActEngine:
                                     user_message=task,
                                     plan_runtime=plan_runtime,
                                     iteration=iteration,
+                                    interrupt=interrupt,
                                 )
                                 for _tc, tool_name, tool_args, _cid, _w in batch
                             ]
@@ -698,6 +702,7 @@ class ReActEngine:
                                 user_message=task,
                                 plan_runtime=plan_runtime,
                                 iteration=iteration,
+                                interrupt=interrupt,
                             )
                         )
                 elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -843,6 +848,7 @@ class ReActEngine:
         user_message: str = "",
         plan_runtime: Any | None = None,
         iteration: int = 0,
+        interrupt: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Route a model tool call through ToolRegistry → invoke_tool."""
         from dataclasses import replace as dc_replace
@@ -943,6 +949,7 @@ class ReActEngine:
             settings=self.settings,
             user_message=user_message,
             connected_integrations=connected,
+            interrupt=interrupt,
         )
         if blocked is not None:
             return blocked

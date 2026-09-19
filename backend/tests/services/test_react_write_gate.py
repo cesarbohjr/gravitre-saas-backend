@@ -10,7 +10,9 @@ from app.operators.react_engine import ReActEngine
 from app.services.connector_action_workflows import format_write_approval_message
 from app.services.react_write_gate import (
     WRITE_APPROVAL_REQUIRED,
+    WRITE_COMMIT_INTERRUPTED,
     block_react_write_execution,
+    interrupt_blocks_write_commit,
     materialize_react_write_approval_turn,
     pending_write_from_react,
     plan_from_react_write,
@@ -567,3 +569,29 @@ async def test_react_write_chain_gate_then_execute_plan_with_synthetic_agent():
     assert result.error_code is None
     svc.execute_plan.assert_awaited_once()
     assert svc.execute_plan.await_args.kwargs["plan"].invoke_action == "apollo.lists.create"
+
+
+def test_barge_in_blocks_write_commit_not_read() -> None:
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    assert interrupt_blocks_write_commit({"reason": "barge_in"}) is True
+    assert interrupt_blocks_write_commit({"signal": "stop"}) is True
+    assert interrupt_blocks_write_commit(None) is False
+    blocked = block_react_write_execution(
+        "apollo_lists_create",
+        {"name": "MSP"},
+        registry,
+        interrupt={"reason": "barge_in"},
+    )
+    assert blocked is not None
+    assert blocked["error_code"] == WRITE_COMMIT_INTERRUPTED
+    assert blocked["provider_invoked"] is False
+    read_ok = block_react_write_execution(
+        "apollo_lists_list",
+        {},
+        registry,
+        interrupt={"reason": "barge_in"},
+    )
+    assert read_ok is None
+

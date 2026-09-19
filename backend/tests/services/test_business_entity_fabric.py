@@ -182,3 +182,30 @@ def test_join_store_skipped_for_non_uuid_org() -> None:
     row = client.table.return_value.insert.call_args[0][0]
     assert row["org_id"] == "org-1"
     assert row["entity_type"] == "business_entity"
+
+
+def test_fold_hubspot_qbo_zendesk_on_shared_host() -> None:
+    from app.services.business_entity_fabric import fold_company_bindings
+
+    decision = fold_company_bindings(
+        org_id="org-1",
+        display_name="Acme",
+        bindings=(
+            _company("hubspot", "hs-1", host="acme.example", name="Acme Inc"),
+            _company("quickbooks", "qbo-1", host="acme.example", name="Acme Inc"),
+            EntityBinding(
+                system="zendesk",
+                resource_type="organization",
+                resource_id="zd-1",
+                confidence=0.9,  # confidence-honesty-ok: test fixture
+                evidence=(
+                    EntityEvidence(kind="host", value="acme.example", source="zendesk"),
+                    EntityEvidence(kind="legal_name", value="Acme Inc", source="zendesk"),
+                ),
+            ),
+        ),
+    )
+    assert decision.status in {"created", "joined"}
+    assert decision.entity is not None
+    assert {b.system for b in decision.entity.bindings} == {"hubspot", "quickbooks", "zendesk"}
+
