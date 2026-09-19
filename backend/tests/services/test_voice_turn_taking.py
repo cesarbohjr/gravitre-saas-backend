@@ -48,3 +48,23 @@ def test_utterance_end_pending_then_finalize():
     assert state.pending_finalize is True
     assert maybe_finalize_user_turn(state, now_ms=500) is None  # patient = 1100ms
     assert maybe_finalize_user_turn(state, now_ms=1300) == "what's your name"
+
+
+def test_complete_command_uses_shorter_adaptive_floor():
+    from app.services.voice_turn_taking import adaptive_floor_ms
+
+    state = TurnTakingState(sensitivity=TurnSensitivity.NORMAL)
+    state = on_user_partial(state, text="show my pipeline this month", now_ms=0)
+    assert adaptive_floor_ms(state) < state.floor_ms()
+    assert maybe_finalize_user_turn(state, now_ms=200) is None
+    assert maybe_finalize_user_turn(state, now_ms=400) == "show my pipeline this month"
+
+
+def test_trailing_conjunction_keeps_longer_floor():
+    from app.services.voice_turn_taking import adaptive_floor_ms
+
+    state = TurnTakingState(sensitivity=TurnSensitivity.NORMAL)
+    state = on_user_partial(state, text="the drop was because", now_ms=0)
+    assert adaptive_floor_ms(state) > state.floor_ms()
+    assert maybe_finalize_user_turn(state, now_ms=700) is None
+

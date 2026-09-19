@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from app.services.semantic_turn import looks_incomplete_continuation, looks_like_quick_command, looks_semantically_complete
+
 
 class TurnSensitivity(str, Enum):
     EAGER = "eager"
@@ -55,6 +57,7 @@ class TurnTakingState:
     user_speech_started_at_ms: float | None = None
     last_user_update_ms: float | None = None
     last_vad_speech_ms: float | None = None
+    last_partial_gap_ms: float | None = None
     agent_speaking: bool = False
     agent_speech_started_at_ms: float | None = None
     pending_finalize: bool = False
@@ -85,6 +88,8 @@ def on_user_partial(
         return state
     if state.user_speech_started_at_ms is None:
         state.user_speech_started_at_ms = now_ms
+    if state.last_user_update_ms is not None:
+        state.last_partial_gap_ms = now_ms - state.last_user_update_ms
     state.last_user_update_ms = now_ms
     if vad_speech:
         state.last_vad_speech_ms = now_ms
@@ -144,6 +149,20 @@ def _agent_is_brief_ack(state: TurnTakingState, now_ms: float) -> bool:
     return (now_ms - state.agent_speech_started_at_ms) <= AGENT_ACK_MAX_MS
 
 
+def adaptive_floor_ms(state: TurnTakingState) -> int:
+    """Shorter delay for complete commands; longer for incomplete explanatory speech."""
+    base = state.floor_ms()
+    text = state.provisional_user_text
+    if looks_like_quick_command(text) and looks_semantically_complete(text):
+        return max(250, int(base * 0.55))
+    if looks_incomplete_continuation(text):
+        return int(base * 1.25)
+    gap = state.last_partial_gap_ms
+    if gap is not None and gap < 180:
+        return int(base * 1.15)
+    return base
+
+
 def maybe_finalize_user_turn(state: TurnTakingState, *, now_ms: float) -> str | None:
     """Finalize only when user sustained the floor long enough after last revision.
 
@@ -158,7 +177,7 @@ def maybe_finalize_user_turn(state: TurnTakingState, *, now_ms: float) -> str | 
     if last is None:
         return None
     elapsed = now_ms - last
-    if elapsed < state.floor_ms():
+    if elapsed < adaptive_floor_ms(state):
         return None
     # If agent is mid long utterance, wait (user barge-in revises via on_user_partial).
     if state.agent_speaking and not _agent_is_brief_ack(state, now_ms):
@@ -188,6 +207,7 @@ def snapshot(state: TurnTakingState) -> dict[str, Any]:
     return {
         "sensitivity": state.sensitivity.value,
         "floor_ms": state.floor_ms(),
+        "adaptive_floor_ms": adaptive_floor_ms(state),
         "floor": state.floor.value,
         "provisional_user_text": state.provisional_user_text,
         "pending_finalize": state.pending_finalize,

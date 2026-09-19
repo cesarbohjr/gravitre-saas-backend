@@ -1,6 +1,6 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A IN PROGRESS (2026-09-18) — spec remains binding; implementation started after Cesar instruction to close 2.0 blockers and start 3.0. Do not start 3.0-C native-realtime or 3.0-D Cowork sessions until 3.0-A live gate.  
+**Status:** 3.0-A CLOSEOUT + 3.0-C STARTED (2026-09-19). Production voice remains cascade lane A. Native realtime (lane B) is eval-only.  
 **Date:** 2026-09-18  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 

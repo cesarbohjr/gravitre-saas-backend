@@ -39,6 +39,7 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 
 from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
@@ -96,11 +97,19 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         enable_interruptions: bool = True,
         grace_period_s: float = DEFAULT_GRACE_PERIOD_S,
         on_classification: ClassificationCallback | None = None,
+        gravitre_settings: Any | None = None,
+        gravitre_org_id: str | None = None,
+        gravitre_user_id: str | None = None,
+        gravitre_conversation_id: str | None = None,
         **kwargs,
     ):
         super().__init__(enable_interruptions=enable_interruptions, **kwargs)
         self._grace_period_s = grace_period_s
         self._on_classification = on_classification
+        self._gravitre_settings = gravitre_settings
+        self._gravitre_org_id = gravitre_org_id
+        self._gravitre_user_id = gravitre_user_id
+        self._gravitre_conversation_id = gravitre_conversation_id
 
         self._bot_speaking = False
         self._pending = False
@@ -238,3 +247,23 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             result = self._on_classification(decision)
             if result is not None:
                 await result
+        try:
+            from app.services.voice_interrupt_outcome import record_interrupt_outcome
+
+            settings = getattr(self, "_gravitre_settings", None)
+            org_id = str(getattr(self, "_gravitre_org_id", "") or "")
+            user_id = getattr(self, "_gravitre_user_id", None)
+            conversation_id = getattr(self, "_gravitre_conversation_id", None)
+            if settings is not None and org_id:
+                record_interrupt_outcome(
+                    settings,
+                    org_id=org_id,
+                    user_id=str(user_id) if user_id else None,
+                    conversation_id=str(conversation_id) if conversation_id else None,
+                    classification=classification,
+                    text=self._buffer_text,
+                    decision_latency_ms=decision_latency_ms,
+                    resolved_by_timeout=resolved_by_timeout,
+                )
+        except Exception:  # noqa: BLE001
+            pass

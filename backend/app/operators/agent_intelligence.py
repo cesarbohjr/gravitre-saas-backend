@@ -4591,6 +4591,7 @@ class AgentIntelligence:
         available_tools = await self.get_agent_tools(
             agent, connected_list, permitted_tools=permitted_registry, org_id=org_id, client=client
         )
+        _mark("tool_discovery")
         permission_agent_id = _permission_scoped_agent_id(
             agent, agent_id or str(agent.get("id") or "") or None
         )

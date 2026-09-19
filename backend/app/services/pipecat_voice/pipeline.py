@@ -227,7 +227,15 @@ def build_pipecat_voice_task(
         # stop-command still does, matching Flux's own recommended
         # should_interrupt=True default (ExternalUserTurnStrategies).
         user_params_kwargs["user_turn_strategies"] = UserTurnStrategies(
-            start=[BackchannelAwareUserTurnStartStrategy(enable_interruptions=True)],
+            start=[
+                BackchannelAwareUserTurnStartStrategy(
+                    enable_interruptions=True,
+                    gravitre_settings=settings,
+                    gravitre_org_id=org_id,
+                    gravitre_user_id=user_id,
+                    gravitre_conversation_id=conversation_id,
+                )
+            ],
             stop=[ExternalUserTurnStopStrategy()],
         )
     user_agg, assistant_agg = LLMContextAggregatorPair(

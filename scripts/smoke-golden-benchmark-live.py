@@ -78,6 +78,7 @@ def load_env() -> dict[str, str]:
 def parse_sse(raw: str) -> dict[str, Any]:
     texts: list[str] = []
     errors: list[str] = []
+    latency: dict[str, Any] | None = None
     for block in re.split(r"\n\n+", raw or ""):
         data_lines = [ln[5:].lstrip() for ln in block.splitlines() if ln.startswith("data:")]
         if not data_lines:
@@ -94,7 +95,10 @@ def parse_sse(raw: str) -> dict[str, Any]:
             texts.append(str(obj.get("delta") or obj.get("text") or ""))
         if typ == "error":
             errors.append(str(obj.get("errorText") or obj.get("error") or "error"))
-    return {"assistant": "".join(texts).strip(), "errors": errors}
+        data = obj.get("data") if isinstance(obj.get("data"), dict) else {}
+        if isinstance(data.get("latency_critical_path"), dict):
+            latency = data["latency_critical_path"]
+    return {"assistant": "".join(texts).strip(), "errors": errors, "latency_critical_path": latency}
 
 
 def classify(assistant: str, errors: list[str], raw: str) -> tuple[str, str]:
@@ -209,6 +213,8 @@ async def main() -> int:
     errors = parsed.get("errors") or []
     report["assistant_excerpt"] = assistant[:500]
     report["stream_errors"] = errors
+    if parsed.get("latency_critical_path"):
+        report["latency_critical_path"] = parsed["latency_critical_path"]
     if report.get("http_status") != 200:
         label, detail = "FAIL", f"http {report.get('http_status')}"
     else:

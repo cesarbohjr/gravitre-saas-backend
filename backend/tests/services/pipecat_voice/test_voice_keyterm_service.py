@@ -37,6 +37,18 @@ def test_build_voice_keyterms_includes_org_agent_and_connectors():
     assert "connected_integrations" in meta["keyterm_sources"]
 
 
+def test_build_voice_keyterms_includes_identity_host_not_people():
+    terms, meta = build_voice_keyterms(
+        enabled=True,
+        org_name="Acme",
+        identity={"host": "acme.example", "company_name": "Acme"},
+        connected_integrations=["hubspot"],
+    )
+    assert "acme.example" in terms
+    assert "business_identity_host" in meta["keyterm_sources"]
+    assert "Sarah Smith" not in terms
+
+
 def test_build_voice_keyterms_dedupes_and_caps():
     terms, meta = build_voice_keyterms(
         enabled=True,

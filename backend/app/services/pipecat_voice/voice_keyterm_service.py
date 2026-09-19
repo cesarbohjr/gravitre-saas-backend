@@ -114,6 +114,7 @@ def build_voice_keyterms(
     org_name: str | None = None,
     agent: dict[str, Any] | None = None,
     connected_integrations: list[str] | None = None,
+    identity: dict[str, Any] | None = None,
     max_terms: int = 50,
 ) -> tuple[list[str], dict[str, Any]]:
     """Build a bounded keyterm list for Deepgram Flux (no raw audio/PII)."""
@@ -151,6 +152,17 @@ def build_voice_keyterms(
         terms.append(_vendor_label(vendor))
     if connected:
         sources.append("connected_integrations")
+
+    ident = identity if isinstance(identity, dict) else {}
+    host = _normalize_term(str(ident.get("host") or ident.get("website") or ""))
+    if host:
+        terms.append(host)
+        sources.append("business_identity_host")
+    brand = _normalize_term(str(ident.get("brand") or ident.get("company_name") or ident.get("legal_name") or ""))
+    if brand and brand.casefold() != (org or "").casefold():
+        terms.append(brand)
+        sources.append("business_identity_brand")
+    # Never inject employee personal names — WRITE identity stays confirm-gated.
 
     capped = _dedupe_terms(terms, max_terms=max(1, min(int(max_terms or 50), 100)))
     meta["keyterm_count"] = len(capped)

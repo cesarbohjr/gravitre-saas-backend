@@ -198,6 +198,7 @@ async def pipecat_voice_ws(
             org_name=org_name,
             agent=agent,
             connected_integrations=connected,
+            identity={"company_name": org_name} if org_name else None,
             max_terms=int(getattr(settings, "voice_keyterms_max", 50) or 50),
         )
 

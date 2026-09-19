@@ -651,6 +651,11 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("VOICE_FLUX_TURN_MODE", "voice_flux_turn_mode"),
     )
+    voice_realtime_eval_lane: str = Field(
+        default="A",
+        validation_alias=AliasChoices("VOICE_REALTIME_EVAL_LANE", "voice_realtime_eval_lane"),
+        description="3.0-C eval lane A/B/C. Production audio stays A regardless of B/C.",
+    )
     # Voice 3.0 Phase 4 — latency tuning (default OFF).
     voice_speculative_v2: bool = Field(
         default=False,
