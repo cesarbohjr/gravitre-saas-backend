@@ -9,17 +9,19 @@
 | F1 island live traffic | **PASS** | `docs/delivery/f1-live-verify-2026-09-19.json` @ `/health` `67944d59`; `tool.invoke.completed` @ `2026-09-19T07:20:00.547Z` |
 | Text critical-path traces | **PASS** | `runtime.turn_latency.critical_path` @ `2026-09-19T07:19:23.916Z` conv `a2b5c0a8-…` |
 | Voice Metric A/B live probe | **PASS (measured)** | `docs/delivery/voice-slo-two-metric-live.json` @ `/health` `653303a3` @ `2026-09-19T07:53:33Z` |
-| Voice critical-path (`spoken_mode=true`) | **PARTIAL → ship on next backend tip** | HTTP Talk + Pipecat now call `record_voice_turn_critical_path`; re-probe after deploy |
+| Voice critical-path (`spoken_mode=true`) | **PASS** | n=15 voice cohort @ SHA `401554cc`; audit `408eb58c-…` @ `2026-09-19T08:16:59.406Z` conv `b51f1608-…` |
 | Aggregator | **PASS** | `scripts/aggregate-3.0-a-latency-baseline.py` → `docs/delivery/3.0-a-latency-baseline-latest.json` |
 | HMAC / WRITE / barge-in | **UNCHANGED** | No weakening in this slice |
 | `compiled_task` | **OPTIONAL_PROJECTION** | Unchanged |
 
-## Voice Metric A/B (isolated org, n=5 HTTP Talk, SHA `653303a3`)
+## Voice Metric A/B (isolated org, n=5 HTTP Talk, SHA `401554cc`)
 
 | Metric | p50 | p95 | Target | SLO |
 |--------|-----|-----|--------|-----|
-| **A** — first honest audio | **375 ms** | **1166 ms** | 500 / 800 | **FAIL** (P95) |
-| **B** — operator completion | **26989 ms** | **53054 ms** | 5000 / 8000 | **FAIL** |
+| **A** — first honest audio | **377 ms** | **1215 ms** | 500 / 800 | **FAIL** (P95) |
+| **B** — operator completion | **24815 ms** | **49257 ms** | 5000 / 8000 | **FAIL** |
+
+Audit-backed (24h): `voice.slo.metric_a` n=10 p50 **2 ms** / p95 **482 ms**; `voice.slo.metric_b` n=10 p50 **23846 ms** / p95 **52587 ms** (includes duplex + HTTP samples; probe client measures wall TTFA/complete separately).
 
 Anchor conversation: `5317f08c-a36b-427e-be04-a3d4ca699265`. A and B stay separate; do not blend.
 
@@ -30,7 +32,7 @@ Anchor conversation: `5317f08c-a36b-427e-be04-a3d4ca699265`. A and B stay separa
 | Turn total | 13.4 s | 22.7 s |
 | Dominant stage delta | 8.0 s | 9.9 s |
 
-Dominant stage wins: `UNIFIED_LIVE_RESOLVED` (11/13). Voice cohort was n=0 before `record_voice_turn_critical_path` ship.
+Dominant stage wins (text): `UNIFIED_LIVE_RESOLVED`. Voice cohort (n=15): dominant p50 **5.2 s** / p95 **26.8 s**; wins split `COMPOSER`, `UNIFIED_LIVE_RESOLVED`, `CONTEXT_BUILD`.
 
 ## Before / after (honest)
 

@@ -1,21 +1,21 @@
 {
   "probe": "voice_slo_two_metric",
-  "captured_at": "2026-09-19T07:53:33.339576+00:00",
-  "git_sha": "653303a318050c2219cc5af23878339464181a2a",
-  "health_timestamp": "2026-09-19T07:51:07.267596+00:00",
+  "captured_at": "2026-09-19T08:16:59.979215+00:00",
+  "git_sha": "401554cc7bfb13791cfa08a6d7bfddc10f6c252d",
+  "health_timestamp": "2026-09-19T08:14:38.307180+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "sample_n": 5,
   "metric_a": {
     "id": "time_to_first_honest_response",
     "samples_ms": [
-      1166,
-      375,
-      392,
-      318,
-      340
+      579,
+      1215,
+      377,
+      368,
+      371
     ],
-    "p50_ms": 375,
-    "p95_ms": 1166,
+    "p50_ms": 377,
+    "p95_ms": 1215,
     "hard_target_p50_ms": 500,
     "hard_target_p95_ms": 800,
     "pass": false
@@ -23,14 +23,14 @@
   "metric_b": {
     "id": "operator_task_completion_latency",
     "samples_ms": [
-      26989,
-      53054,
-      22849,
-      8719,
-      30029
+      12960,
+      49257,
+      24815,
+      18754,
+      31946
     ],
-    "p50_ms": 26989,
-    "p95_ms": 53054,
+    "p50_ms": 24815,
+    "p95_ms": 49257,
     "target_p50_ms": 5000,
     "target_p95_ms": 8000,
     "pass": false
@@ -39,58 +39,58 @@
   "turns": [
     {
       "http_status": 200,
-      "conversation_id": "5317f08c-a36b-427e-be04-a3d4ca699265",
-      "metric_a_ms": 1166,
-      "first_text_ms": 468,
-      "metric_b_ms": 26989,
+      "conversation_id": "8b65cd91-6839-49db-8b76-03a8bc1820be",
+      "metric_a_ms": 579,
+      "first_text_ms": 265,
+      "metric_b_ms": 12960,
       "first_tool_sse_ms": null,
       "timeline_head": [
         {
-          "ms": 467,
+          "ms": 264,
           "type": "voice.session.accepted"
         },
         {
-          "ms": 468,
+          "ms": 265,
           "type": "voice.session.started"
         },
         {
-          "ms": 468,
+          "ms": 265,
           "type": "voice.text.delta"
         },
         {
-          "ms": 953,
+          "ms": 440,
           "type": "voice.ttft"
         },
         {
-          "ms": 1162,
+          "ms": 574,
           "type": "voice.ttfa"
         },
         {
-          "ms": 1162,
+          "ms": 574,
           "type": "voice.agent_speech.start"
         },
         {
-          "ms": 1166,
+          "ms": 579,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 1170,
+          "ms": 581,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 1174,
+          "ms": 585,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 1180,
+          "ms": 595,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 1180,
+          "ms": 595,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 1184,
+          "ms": 595,
           "type": "voice.audio.delta"
         }
       ],
@@ -98,46 +98,227 @@
     },
     {
       "http_status": 200,
-      "conversation_id": "385f908b-9d2b-460a-9857-88a64e3a25a5",
-      "metric_a_ms": 375,
-      "first_text_ms": 236,
-      "metric_b_ms": 53054,
-      "first_tool_sse_ms": 22215,
+      "conversation_id": "b84263dd-ea4f-476f-a090-5f1f64c08605",
+      "metric_a_ms": 1215,
+      "first_text_ms": 1052,
+      "metric_b_ms": 49257,
+      "first_tool_sse_ms": 17953,
       "timeline_head": [
         {
-          "ms": 236,
+          "ms": 991,
           "type": "voice.session.accepted"
         },
         {
-          "ms": 236,
+          "ms": 992,
           "type": "voice.session.started"
         },
         {
-          "ms": 236,
+          "ms": 1052,
           "type": "voice.text.delta"
         },
         {
-          "ms": 237,
+          "ms": 1123,
           "type": "voice.ttft"
         },
         {
-          "ms": 371,
+          "ms": 1211,
           "type": "voice.ttfa"
         },
         {
-          "ms": 371,
+          "ms": 1211,
           "type": "voice.agent_speech.start"
         },
         {
-          "ms": 375,
+          "ms": 1215,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 379,
+          "ms": 1219,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 383,
+          "ms": 1222,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 1226,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 1228,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 1233,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "912381a6-065d-4f55-84b8-f72996a0c451",
+      "metric_a_ms": 377,
+      "first_text_ms": 266,
+      "metric_b_ms": 24815,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 266,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 266,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 266,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 270,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 359,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 377,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 377,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 390,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 390,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 390,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 390,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 423,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "720ef5c1-37dc-49ec-8afc-23b53b985b60",
+      "metric_a_ms": 368,
+      "first_text_ms": 258,
+      "metric_b_ms": 18754,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 258,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 258,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 258,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 258,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 362,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 362,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 368,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 370,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 374,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 378,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 382,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 386,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "b51f1608-8a93-4a86-bacd-be9b3afd5adb",
+      "metric_a_ms": 371,
+      "first_text_ms": 292,
+      "metric_b_ms": 31946,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 292,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 292,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 292,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 292,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 365,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 366,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 371,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 373,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 377,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 381,
           "type": "voice.audio.delta"
         },
         {
@@ -145,188 +326,7 @@
           "type": "voice.audio.delta"
         },
         {
-          "ms": 389,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 392,
-          "type": "voice.audio.delta"
-        }
-      ],
-      "stream_error": null
-    },
-    {
-      "http_status": 200,
-      "conversation_id": "dd01ce89-8961-48ca-8a86-4e5e534920d4",
-      "metric_a_ms": 392,
-      "first_text_ms": 274,
-      "metric_b_ms": 22849,
-      "first_tool_sse_ms": null,
-      "timeline_head": [
-        {
-          "ms": 273,
-          "type": "voice.session.accepted"
-        },
-        {
-          "ms": 274,
-          "type": "voice.session.started"
-        },
-        {
-          "ms": 274,
-          "type": "voice.text.delta"
-        },
-        {
-          "ms": 277,
-          "type": "voice.ttft"
-        },
-        {
           "ms": 387,
-          "type": "voice.ttfa"
-        },
-        {
-          "ms": 389,
-          "type": "voice.agent_speech.start"
-        },
-        {
-          "ms": 392,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 396,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 398,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 402,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 407,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 408,
-          "type": "voice.audio.delta"
-        }
-      ],
-      "stream_error": null
-    },
-    {
-      "http_status": 200,
-      "conversation_id": "1a8cbdb4-ee65-4532-8609-7250534f808d",
-      "metric_a_ms": 318,
-      "first_text_ms": 230,
-      "metric_b_ms": 8719,
-      "first_tool_sse_ms": null,
-      "timeline_head": [
-        {
-          "ms": 230,
-          "type": "voice.session.accepted"
-        },
-        {
-          "ms": 230,
-          "type": "voice.session.started"
-        },
-        {
-          "ms": 230,
-          "type": "voice.text.delta"
-        },
-        {
-          "ms": 231,
-          "type": "voice.ttft"
-        },
-        {
-          "ms": 318,
-          "type": "voice.ttfa"
-        },
-        {
-          "ms": 318,
-          "type": "voice.agent_speech.start"
-        },
-        {
-          "ms": 318,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 322,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 326,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 330,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 332,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 336,
-          "type": "voice.audio.delta"
-        }
-      ],
-      "stream_error": null
-    },
-    {
-      "http_status": 200,
-      "conversation_id": "c16895db-1153-46a3-bbd0-830b004840fc",
-      "metric_a_ms": 340,
-      "first_text_ms": 250,
-      "metric_b_ms": 30029,
-      "first_tool_sse_ms": null,
-      "timeline_head": [
-        {
-          "ms": 249,
-          "type": "voice.session.accepted"
-        },
-        {
-          "ms": 250,
-          "type": "voice.session.started"
-        },
-        {
-          "ms": 250,
-          "type": "voice.text.delta"
-        },
-        {
-          "ms": 250,
-          "type": "voice.ttft"
-        },
-        {
-          "ms": 334,
-          "type": "voice.ttfa"
-        },
-        {
-          "ms": 334,
-          "type": "voice.agent_speech.start"
-        },
-        {
-          "ms": 340,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 342,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 346,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 350,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 354,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 358,
           "type": "voice.audio.delta"
         }
       ],
