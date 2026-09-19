@@ -1,0 +1,74 @@
+{
+  "measured_at": "2026-09-19T08:54:40Z",
+  "page": "https://gravitre.app/features/technology",
+  "tool": "lighthouse@12.6.0",
+  "three_in_apps_web_package_json": false,
+  "three_in_pnpm_lock": false,
+  "desktop": {
+    "fetchTime": "2026-09-19T08:54:01.175Z",
+    "url": "https://gravitre.app/features/technology",
+    "formFactor": "desktop",
+    "performanceScore": 0.79,
+    "LCP": {
+      "score": 0.55,
+      "numericValue": 2227.2019999999998,
+      "displayValue": "2.2 s"
+    },
+    "INP": {
+      "score": null,
+      "numericValue": null,
+      "displayValue": null
+    },
+    "CLS": {
+      "score": 1,
+      "numericValue": 0.00006808510638297873,
+      "displayValue": "0"
+    },
+    "TBT": {
+      "score": 0.96,
+      "numericValue": 105.5,
+      "displayValue": "110 ms"
+    },
+    "FCP": {
+      "score": 1,
+      "numericValue": 370.70199999999977,
+      "displayValue": "0.4 s"
+    }
+  },
+  "mobile": {
+    "fetchTime": "2026-09-19T08:54:40.945Z",
+    "url": "https://gravitre.app/features/technology",
+    "formFactor": "mobile",
+    "performanceScore": 0.48,
+    "LCP": {
+      "score": 0,
+      "numericValue": 10764.76,
+      "displayValue": "10.8 s"
+    },
+    "INP": {
+      "score": null,
+      "numericValue": null,
+      "displayValue": null
+    },
+    "CLS": {
+      "score": 0.98,
+      "numericValue": 0.0583232077764277,
+      "displayValue": "0.058"
+    },
+    "TBT": {
+      "score": 0.26,
+      "numericValue": 1036.5,
+      "displayValue": "1,040 ms"
+    },
+    "FCP": {
+      "score": 0.97,
+      "numericValue": 1389.76,
+      "displayValue": "1.4 s"
+    }
+  },
+  "notes": [
+    "INP empty on navigation-only LH runs (no interaction sample)",
+    "TBT used as lab main-thread proxy",
+    "Mobile LCP includes full page (GIBE+orchestration+legacy), not Pilot 2 scene alone"
+  ]
+}

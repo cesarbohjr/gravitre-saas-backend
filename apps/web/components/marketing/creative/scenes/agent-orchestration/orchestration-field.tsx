@@ -21,7 +21,10 @@ import {
   PHASE_CAPTION,
   PLAN_CHIPS,
   TOOLS,
+  activePathId,
   nextPhase,
+  parseCreativeStateParam,
+  pathStatesForPhase,
   type OrchestrationPhase,
 } from "./storyboard"
 
@@ -114,6 +117,7 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const inView = useInView(rootRef, { amount: 0.25, once: false })
   const [hidden, setHidden] = useState(false)
+  const [frozenPhase, setFrozenPhase] = useState<OrchestrationPhase | null>(null)
   const [phase, setPhase] = useState<OrchestrationPhase>("quiet")
   const [mode, setMode] = useState<"success" | "failure">("success")
 
@@ -125,26 +129,53 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
   }, [])
 
   useEffect(() => {
-    if (reduced || !inView || hidden) return
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const frozen = parseCreativeStateParam(params.get("creativeState"), {
+      hostname: window.location.hostname,
+    })
+    setFrozenPhase(frozen)
+    if (frozen) setPhase(frozen)
+  }, [])
+
+  useEffect(() => {
+    if (frozenPhase || reduced || !inView || hidden) return
     const t = window.setTimeout(() => setPhase((p) => nextPhase(p, mode)), phase === "waiting" ? 1600 : 1100)
     return () => window.clearTimeout(t)
-  }, [phase, reduced, inView, hidden, mode])
+  }, [phase, reduced, inView, hidden, mode, frozenPhase])
 
   const showPlan = ["plan", "delegate", "tools", "parallel", "waiting", "verify", "outcome", "learned", "failure"].includes(phase)
   const showAgents = ["delegate", "tools", "parallel", "waiting", "verify", "outcome", "learned", "failure"].includes(phase)
   const showTools = ["tools", "parallel", "waiting", "verify", "outcome", "learned", "failure"].includes(phase)
   const waiting = phase === "waiting"
   const failed = phase === "failure"
+  const paths = pathStatesForPhase(phase)
+  const pathId = activePathId(phase)
+  const sceneError = failed // only the failed branch — never whole-scene flood
+  const researchOkOnFailure = failed && paths.research === "success"
 
   return (
-    <div ref={rootRef} className={cn("mx-auto w-full max-w-4xl", className)}>
+    <div
+      ref={rootRef}
+      className={cn("mx-auto w-full max-w-4xl", className)}
+      data-testid="agent-orchestration-field"
+      data-creative-phase={phase}
+      data-creative-path-id={pathId ?? undefined}
+      data-creative-path-research={paths.research}
+      data-creative-path-write={paths.write}
+      data-creative-scene-error={sceneError && !researchOkOnFailure ? "1" : "0"}
+      data-creative-frozen={frozenPhase ? "1" : "0"}
+    >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5">
+        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="orchestration-reduced">
           <ReducedModel />
         </div>
       ) : (
         <>
-          <div className="hidden rounded-2xl border border-divide bg-white p-4 md:block md:p-6">
+          <div
+            className="hidden rounded-2xl border border-divide bg-white p-4 md:block md:p-6"
+            data-testid="orchestration-desktop"
+          >
             <div className="grid grid-cols-[1.1fr_1.4fr_1fr] gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">Intent</p>
@@ -172,13 +203,21 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
                   <p className="mt-2 text-sm text-[color:var(--g-text-muted)]">Resolves after verification.</p>
                 )}
                 {(phase === "verify" || phase === "outcome" || phase === "learned") && (
-                  <div className="mt-2 flex flex-col gap-1">
+                  <div className="mt-2 flex flex-col gap-1" data-testid="orchestration-evidence">
                     <GravitreEvidenceMark label="Sources" />
                     <GravitreEvidenceMark label="Run outcome" />
                   </div>
                 )}
-                {waiting ? <div className="mt-2"><GravitreEvidenceMark label="Needs approval" tone="waiting" /></div> : null}
-                {failed ? <div className="mt-2"><GravitreEvidenceMark label="Send failed" tone="error" /></div> : null}
+                {waiting ? (
+                  <div className="mt-2" data-testid="orchestration-waiting">
+                    <GravitreEvidenceMark label="Needs approval" tone="waiting" />
+                  </div>
+                ) : null}
+                {failed ? (
+                  <div className="mt-2" data-testid="orchestration-failure-mark">
+                    <GravitreEvidenceMark label="Send failed" tone="error" />
+                  </div>
+                ) : null}
               </div>
             </div>
             {showAgents ? (
@@ -188,7 +227,7 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
                     key={role.id}
                     label={role.label}
                     icon={ROLE_ICONS[role.id]}
-                    active={showAgents}
+                    active={showAgents && !(failed && role.id === "support")}
                     waiting={waiting && role.id === "ops"}
                     failed={failed && role.id === "support"}
                   />
@@ -205,7 +244,10 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
             ) : null}
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-divide bg-white p-4 md:hidden">
+          <div
+            className="space-y-3 rounded-2xl border border-divide bg-white p-4 md:hidden"
+            data-testid="orchestration-mobile"
+          >
             <p className="text-sm font-medium">{ILLUSTRATIVE_REQUEST}</p>
             <MiniTopology phase={phase} />
             {showPlan ? (
@@ -222,7 +264,7 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
                     key={role.id}
                     label={role.label}
                     icon={ROLE_ICONS[role.id]}
-                    active
+                    active={!(failed && role.id === "support")}
                     waiting={waiting && role.id === "ops"}
                     failed={failed && role.id === "support"}
                   />
@@ -230,7 +272,9 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
               </div>
             ) : null}
             {(phase === "verify" || phase === "outcome" || phase === "learned") && (
-              <GravitreEvidenceMark label="Sources + run outcome" />
+              <div data-testid="orchestration-evidence">
+                <GravitreEvidenceMark label="Sources + run outcome" />
+              </div>
             )}
           </div>
         </>
@@ -245,7 +289,7 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
           className={cn("rounded-md border px-2 py-1 text-[11px]", mode === "success" ? "border-brand text-brand" : "border-divide")}
           onClick={() => {
             setMode("success")
-            setPhase("quiet")
+            setPhase(frozenPhase ?? "quiet")
           }}
         >
           Success path
@@ -255,7 +299,7 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
           className={cn("rounded-md border px-2 py-1 text-[11px]", mode === "failure" ? "border-red-400 text-red-700" : "border-divide")}
           onClick={() => {
             setMode("failure")
-            setPhase("parallel")
+            setPhase(frozenPhase ?? "parallel")
           }}
         >
           Failure path

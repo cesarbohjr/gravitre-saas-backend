@@ -1,10 +1,13 @@
 # Creative Experience System — Pilot 2 Agent Orchestration
 
 **Status:** APPROVED AND SHIPPED (SVG Task Decomposition Field on `/features/technology`)  
+**Progress:** W.1–W.8 done · Pilot 2 production plan complete · next bible step = Pilot 3 Knowledge Fabric  
 **Upstream:** Pilot 1 shipped (Relational Topology + Departments Converge). **Do not reopen Pilot 1.**  
 **Bible:** [`docs/design/gravitre-creative-experience-system.md`](gravitre-creative-experience-system.md)  
 **Foundation:** `apps/web/components/marketing/creative/`  
-**Engine inventory (2026-09-18):** `three` / `@react-three/fiber` / `@react-three/drei` still **absent** from `apps/web/package.json`.
+**Engine inventory (2026-09-19):** `three` / `@react-three/fiber` / `@react-three/drei` still **absent** from `apps/web/package.json` (W.7 confirmed).  
+**Product grammar note:** [`gravitre-creative-product-ui-grammar.md`](gravitre-creative-product-ui-grammar.md) (W.8)  
+**Perf evidence:** [`docs/delivery/pilot2-w7-lcp-inp.md`](../delivery/pilot2-w7-lcp-inp.md)
 
 Illustrative request (not live):  
 **“Find at-risk customers and prepare the right follow-up.”**
@@ -382,39 +385,42 @@ Do **not** fork a second creative framework. Do **not** modify Pilot 1 departmen
 
 ## V. Test plan
 
-Widths: 390, 430, 768, 1024, 1280, 1440, 1728  
+Widths: 390, 430, 768, 1024, 1280, 1440, 1728 — covered by `e2e/creative-pilot2-orchestration-widths.spec.ts`  
 
 States: default, active, delegation, parallel, waiting approval, verification, failure, resolved, learned (optional), reduced-motion, offscreen, document.hidden  
 
-Deterministic: `?creativeState=verify` (dev-only)  
+Deterministic: `?creativeState=verify` (localhost / 127.0.0.1 only — ignored on public hosts)  
 
-Unit: storyboard beat order; Evidence present at VERIFY; approval continues same path id; failure does not paint entire scene error.
+Unit: storyboard beat order; Evidence present at VERIFY; approval continues same path id; failure does not paint entire scene error — `apps/web/__tests__/marketing/creative-experience-system.test.ts`
 
 ---
 
 ## W. Production implementation plan (only after Cesar approval)
 
-1. Extract/share Signal Trace if needed; add Agent Node + Evidence Mark primitives  
-2. Implement SVG Task Decomposition Field scene + mobile + reduced  
-3. Wire approval + failure alternate loops  
-4. Mount on agreed marketing route behind Nodus section chrome  
-5. Honesty footnote + a11y captions  
-6. Vitest + Playwright widths  
-7. Measure LCP/INP; no Three  
-8. Document product-UI grammar extraction opportunities (Activity / Approvals) — no wholesale import  
+1. ✅ Extract/share Signal Trace if needed; add Agent Node + Evidence Mark primitives  
+2. ✅ Implement SVG Task Decomposition Field scene + mobile + reduced  
+3. ✅ Wire approval + failure alternate loops  
+4. ✅ Mount on agreed marketing route behind Nodus section chrome  
+5. ✅ Honesty footnote + a11y captions  
+6. ✅ Vitest + Playwright widths + localhost `?creativeState=` freeze  
+   - Unit: `apps/web/__tests__/marketing/creative-experience-system.test.ts`  
+   - E2E: `e2e/creative-pilot2-orchestration-widths.spec.ts` (390–1728)  
+7. ✅ Measure LCP/INP on `/features/technology`; confirm no Three  
+   - Evidence: `docs/delivery/pilot2-w7-lcp-inp.md` + `docs/delivery/pilot2-technology-webvitals-summary.json`  
+   - Desktop LCP 2.2 s PASS vs 3.3 s bar @ 2026-09-19T08:54:01Z; no Three in package.json/lock  
+8. ✅ Document product-UI grammar extraction opportunities (Activity / Approvals) — no wholesale import  
+   - `docs/design/gravitre-creative-product-ui-grammar.md`  
 
 **R3F path:** closed unless Cesar rejects SVG verdict.
 
+**Pilot 2 complete.** Next program step: bible **Pilot 3 Knowledge Fabric** (do not reopen Pilot 1/2 production unless Cesar reopens).
+
 ---
 
-## Approval asks (Cesar)
+## Approval asks (Cesar) — CLOSED
 
-1. Approve **Concept B — Task Decomposition Field** as Pilot 2 spatial model  
-2. Approve **SVG wins** — do **not** install Three/R3F for Pilot 2  
-3. Approve illustrative request + honesty labeling  
-4. Approve Agent Node + Evidence Mark as the only new primitives  
-5. Approve target marketing surface (suggest Features/Technology — not reopening `/about` Pilot 1)  
-
-# STOP FOR CESAR'S REVIEW
-
-No Pilot 2 production code merge until these are approved.
+1. ✅ **Concept B — Task Decomposition Field**  
+2. ✅ **SVG wins** — Three/R3F not installed  
+3. ✅ Illustrative request + honesty labeling  
+4. ✅ Agent Node + Evidence Mark only new primitives  
+5. ✅ Surface: `/features/technology` (Pilot 1 `/about` untouched)

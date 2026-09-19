@@ -82,13 +82,58 @@ describe("departments converge pilot storyboard", () => {
 })
 
 describe("pilot 2 orchestration storyboard", () => {
-  it("pauses into failure from parallel and continues approval path", async () => {
+  it("keeps beat order and pauses into failure from parallel", async () => {
     const { nextPhase, PHASE_ORDER } = await import(
       "@/components/marketing/creative/scenes/agent-orchestration/storyboard"
     )
+    expect(PHASE_ORDER).toEqual([
+      "quiet",
+      "intent",
+      "understand",
+      "plan",
+      "delegate",
+      "tools",
+      "parallel",
+      "waiting",
+      "verify",
+      "outcome",
+      "learned",
+    ])
     expect(nextPhase("parallel", "failure")).toBe("failure")
     expect(nextPhase("waiting", "success")).toBe("verify")
     expect(PHASE_ORDER).toContain("waiting")
     expect(PHASE_ORDER).toContain("verify")
+  })
+
+  it("continues the same governed write path id through approval", async () => {
+    const { activePathId, GOVERNED_WRITE_PATH_ID, nextPhase } = await import(
+      "@/components/marketing/creative/scenes/agent-orchestration/storyboard"
+    )
+    const waitingId = activePathId("waiting")
+    const afterApprove = nextPhase("waiting", "success")
+    expect(afterApprove).toBe("verify")
+    expect(waitingId).toBe(GOVERNED_WRITE_PATH_ID)
+    expect(activePathId(afterApprove)).toBe(waitingId)
+  })
+
+  it("shows evidence at VERIFY and keeps failure scoped to one path", async () => {
+    const { phaseAtLeast, pathStatesForPhase } = await import(
+      "@/components/marketing/creative/scenes/agent-orchestration/storyboard"
+    )
+    expect(phaseAtLeast("verify", "verify")).toBe(true)
+    const failed = pathStatesForPhase("failure")
+    expect(failed.research).toBe("success")
+    expect(failed.write).toBe("error")
+    expect(failed.research).not.toBe("error")
+  })
+
+  it("parses creativeState only on local hosts", async () => {
+    const { parseCreativeStateParam } = await import(
+      "@/components/marketing/creative/scenes/agent-orchestration/storyboard"
+    )
+    expect(parseCreativeStateParam("verify", { hostname: "localhost" })).toBe("verify")
+    expect(parseCreativeStateParam("failure", { hostname: "127.0.0.1" })).toBe("failure")
+    expect(parseCreativeStateParam("verify", { hostname: "gravitre.app" })).toBeNull()
+    expect(parseCreativeStateParam("nope", { hostname: "localhost" })).toBeNull()
   })
 })
