@@ -677,6 +677,7 @@ async def run_unified_turn_shadow(
                 settings=active,
                 org_id=org_id,
                 connected_integrations=connected,
+                classification=classification,
                 requires_action=None,
                 max_tools=max_tools,
             )
@@ -684,6 +685,7 @@ async def run_unified_turn_shadow(
             visible, tool_stats = narrow_tools_for_turn(
                 all_tools,
                 query=retrieval_query or message,
+                classification=classification,
                 connected_integrations=connected,
                 requires_action=None,
                 max_tools=max_tools,
@@ -768,6 +770,24 @@ async def run_unified_turn_shadow(
             source=str((tool_stats or {}).get("retrievalMethod") or "narrow_tools_for_turn"),
         )
         tool_stats = {**(tool_stats or {}), "progressiveDisclosure": False}
+
+    from app.services.jit_efficiency_service import record_jit_tool_namespace
+
+    _jit_payload_bytes = tool_stats.get("progressivePayloadBytes")
+    if _jit_payload_bytes is None:
+        _jit_payload_bytes = tool_stats.get("fullNarrowedPayloadBytes")
+    record_jit_tool_namespace(
+        active,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        tool_stats=tool_stats,
+        classification=classification,
+        visible_tools=list(attach_tools or []),
+        narrow_ms=int((t_after_narrow - t_after_registry) * 1000),
+        payload_bytes=int(_jit_payload_bytes) if isinstance(_jit_payload_bytes, (int, float)) else None,
+        spoken_mode=spoken_mode,
+    )
 
     # E4: reasoning context owned by ContextCompiler when provided upstream.
     _compiled_ctx = compiled_reasoning_context
@@ -958,6 +978,20 @@ async def run_unified_turn_shadow(
             if knowledge_block:
                 _add_part("knowledge_fabric", knowledge_block)
             unified_turn_knowledge_meta = knowledge_meta if knowledge_meta else None
+            if isinstance(unified_turn_knowledge_meta, dict) and unified_turn_knowledge_meta.get(
+                "contextRanking"
+            ):
+                from app.services.jit_efficiency_service import record_jit_context_profile
+
+                record_jit_context_profile(
+                    active,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    context_ranking=unified_turn_knowledge_meta.get("contextRanking"),
+                    classification=classification,
+                    spoken_mode=spoken_mode,
+                )
         else:
             unified_turn_knowledge_meta = (
                 {"skipped": "remind_me_turn"} if remind_me else None

@@ -19,10 +19,12 @@ from app.core.logging import get_logger
 from app.services.agent_platform_optimizer import (
     compress_tool_definitions,
     narrow_tools_for_turn,
+    _capability_eligible_prefixes,
     _is_platform_tool,
     _is_write_tool,
     _mentioned_connectors,
     _tool_integration,
+    _tool_matches_eligible,
     _tool_name,
     _WRITE_TOOL_HINT,
 )
@@ -199,11 +201,24 @@ def embed_narrow_tools_for_turn(
             else bool((classification or {}).get("requires_action"))
             or bool(_WRITE_TOOL_HINT.search(query or ""))
         )
+        eligible_prefixes = _capability_eligible_prefixes(classification)
 
         candidates: list[dict[str, Any]] = []
         for tool in connector_tools:
             integration = _tool_integration(tool)
+            if unavailable_vendors and integration in {
+                str(v).strip().lower() for v in unavailable_vendors
+            }:
+                continue
+            if connected and integration not in connected and integration not in {
+                "platform",
+                "mcp",
+                "browser",
+            }:
+                continue
             if focus and integration not in focus and integration not in {"platform", "mcp", "browser"}:
+                continue
+            if eligible_prefixes and not _tool_matches_eligible(tool, eligible_prefixes):
                 continue
             if not action_required and _is_write_tool(tool):
                 continue
@@ -214,7 +229,11 @@ def embed_narrow_tools_for_turn(
                 if not _is_write_tool(tool):
                     continue
                 integration = _tool_integration(tool)
+                if connected and integration not in connected:
+                    continue
                 if focus and integration not in focus:
+                    continue
+                if eligible_prefixes and not _tool_matches_eligible(tool, eligible_prefixes):
                     continue
                 if tool not in candidates:
                     candidates.append(tool)
@@ -292,6 +311,20 @@ def embed_narrow_tools_for_turn(
             connected_integrations=connected,
             unavailable_vendors=unavailable_vendors,
         )
+        if eligible_prefixes:
+            cap_domain = str((classification or {}).get("capability_id") or "").split(".")[0]
+            filtered: list[dict[str, Any]] = []
+            for tool in visible:
+                if _is_platform_tool(tool):
+                    filtered.append(tool)
+                    continue
+                name = _tool_name(tool)
+                if name.startswith("capability__") and cap_domain and cap_domain in name:
+                    filtered.append(tool)
+                    continue
+                if _tool_matches_eligible(tool, eligible_prefixes):
+                    filtered.append(tool)
+            visible = filtered
         stats = {
             "totalTools": len(tools),
             "catalogTools": len(tools),
@@ -302,6 +335,7 @@ def embed_narrow_tools_for_turn(
             "retrievalMethod": "embedding_narrow_tools_for_turn",
             "embeddingToolRetrieval": True,
             "embeddingCandidateCount": len(candidates),
+            "eligiblePrefixesApplied": bool(eligible_prefixes),
             "topSimilarity": round(float(ranked[0][0]), 4) if ranked else None,
             **query_partial,
             "embed_similarity_rank_ms": similarity_ms,

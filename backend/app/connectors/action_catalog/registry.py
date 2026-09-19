@@ -144,6 +144,24 @@ def all_catalog_action_specs() -> list[ActionSpec]:
     return specs
 
 
+@lru_cache(maxsize=512)
+def _get_action_spec_cached(normalized_key: str, spec_revision: str) -> ActionSpec | None:
+    """Revision-keyed cache entry — new revision yields a fresh cache slot."""
+    vendor = normalized_key.split(".", 1)[0]
+    spec = get_vendor_spec(vendor)
+    if not spec:
+        return None
+    for action in spec.all_actions():
+        if action.id.lower() == normalized_key and action.spec_revision == spec_revision:
+            return action
+    return None
+
+
+def clear_action_spec_cache() -> None:
+    """Invalidate ActionSpec cache after catalog hot reload in tests."""
+    _get_action_spec_cached.cache_clear()
+
+
 def get_action_spec(action_key: str) -> ActionSpec | None:
     """Return the single catalog ActionSpec (F1 fields already materialized)."""
     from app.connectors.action_catalog.f1_read_slice import catalog_action_key
@@ -157,5 +175,5 @@ def get_action_spec(action_key: str) -> ActionSpec | None:
         return None
     for action in spec.all_actions():
         if action.id.lower() == key:
-            return action
+            return _get_action_spec_cached(key, action.spec_revision)
     return None

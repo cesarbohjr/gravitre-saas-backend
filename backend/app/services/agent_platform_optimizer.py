@@ -423,6 +423,7 @@ def narrow_tools_for_turn(
         "focusedConnectors": sorted(focus),
         "actionRequired": action_required,
         "compressed": True,
+        "eligiblePrefixesApplied": bool(eligible_prefixes),
         **capability_stats,
         **execute_now_stats,
         "executeNowDropped": int(execute_now_catalog.get("executeNowDropped") or 0),

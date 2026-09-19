@@ -1,6 +1,6 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A **MEASUREMENT GATE CLOSED** (2026-09-19, SHA `401554cc`); **3.0-B IN PROGRESS**. Production voice remains cascade lane A (JSON PCM16 WebSocket). Native realtime (lane B) and WebRTC media are eval-only.  
+**Status:** 3.0-A **MEASUREMENT GATE CLOSED** (2026-09-19, SHA `401554cc`); **3.0-B SHIPPED (source)** — JIT audits + eligible-tool namespace + ActionSpec cache; live gate compare **NOT RUN** until deploy + traffic. Production voice remains cascade lane A (JSON PCM16 WebSocket). Native realtime (lane B) and WebRTC media are eval-only.  
 **Date:** 2026-09-18  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 
@@ -32,9 +32,14 @@ Append-only. Measurement gate closed; SLO targets **not met** (honest baseline).
 - Aggregator: `docs/delivery/3.0-a-latency-baseline-latest.json`
 - Full report: `docs/delivery/gravitre-3.0-a-baseline.md`
 
-## 3.0-B kickoff (2026-09-19)
+## 3.0-B shipped (2026-09-19)
 
-First objective: JIT context scoring + eligible-tool namespace — reuse `narrow_tools_for_turn` / `embed_narrow_tools_for_turn`; measure token + stage p50/p95 vs 3.0-A baseline (must not regress without named trade).
+- **JIT audits:** `runtime.jit.tool_namespace`, `runtime.jit.context_profile` (`jit_efficiency_service.py`); wired from unified-turn narrow + knowledge `contextRanking` (shadow mode default).
+- **Eligible-tool namespace:** `classification` passed on unified-turn keyword + embed paths; embed path applies capability-eligible prefixes (same as keyword narrow).
+- **ActionSpec cache:** revision-keyed `@lru_cache` on `get_action_spec`.
+- **Aggregator:** `scripts/aggregate-3.0-b-efficiency-baseline.py` compares stage p50/p95 vs frozen `docs/delivery/3.0-a-latency-baseline-latest.json`.
+- **Gate:** token + stage p50/p95 must not regress vs 3.0-A without named trade — **NOT RUN** on prod until deploy + isolated-org traffic.
+- **Delivery:** `docs/delivery/gravitre-3.0-b-efficiency.md`.
 
 ## 3.0-C progress (2026-09-19)
 
