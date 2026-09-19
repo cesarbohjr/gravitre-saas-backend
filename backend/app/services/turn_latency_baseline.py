@@ -82,6 +82,16 @@ def aggregate_critical_path_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def aggregate_slo_metric_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    values: list[int] = []
+    for row in rows:
+        meta = parse_audit_metadata(row)
+        raw = meta.get("ms")
+        if isinstance(raw, (int, float)):
+            values.append(int(raw))
+    return stats_ms(values)
+
+
 def split_cohorts(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     text: list[dict[str, Any]] = []
     voice: list[dict[str, Any]] = []

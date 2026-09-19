@@ -1,30 +1,47 @@
-# Gravitre 3.0-A baseline (2026-09-19)
+# Gravitre 3.0-A baseline + gate closeout (2026-09-19)
 
-**Status:** code + unit tests + live `/health` + isolated-org chat. Voice Metric A/B p50/p95 on this SHA remain **NOT_RUN** (no spoken-turn sample in this window).
+**Status:** **3.0-A GATE CLOSED (measurement)** — live traffic + trace artifacts + SHA on isolated org. Metric A/B **measured**; SLO targets **not met** on current tip (honest baseline, not a PASS claim).
 
-## Live pointers (SHA `67944d59`)
+## Gate checklist
 
-- `/health` `git_sha=67944d5984753e73346d440f667188985777b538` @ `2026-09-19T07:18:46.707854Z`
-- Isolated org `f07e57c0-1501-4000-8000-c04e57a00001`
-- Traffic anchor conversation `f5e968b8-9741-43f8-acc5-15c64836e3fd` — HTTP 200, no schema leaks; honest “analytics not connected this turn” (not a fake report)
-- `runtime.turn_latency.critical_path` audit `e17ead51-dd83-438a-9383-f3f432743250` @ `2026-09-19T07:22:17.493466Z` on conversation `edd8adc3-6a7d-44cf-959b-6a73a076c07c`
-- Composer `response.composer.completed` `b7e4c3a2-8e34-4d33-a531-6116c3911145` immediately after
+| Item | Result | Evidence |
+|------|--------|----------|
+| F1 island live traffic | **PASS** | `docs/delivery/f1-live-verify-2026-09-19.json` @ `/health` `67944d59`; `tool.invoke.completed` @ `2026-09-19T07:20:00.547Z` |
+| Text critical-path traces | **PASS** | `runtime.turn_latency.critical_path` @ `2026-09-19T07:19:23.916Z` conv `a2b5c0a8-…` |
+| Voice Metric A/B live probe | **PASS (measured)** | `docs/delivery/voice-slo-two-metric-live.json` @ `/health` `653303a3` @ `2026-09-19T07:53:33Z` |
+| Voice critical-path (`spoken_mode=true`) | **PARTIAL → ship on next backend tip** | HTTP Talk + Pipecat now call `record_voice_turn_critical_path`; re-probe after deploy |
+| Aggregator | **PASS** | `scripts/aggregate-3.0-a-latency-baseline.py` → `docs/delivery/3.0-a-latency-baseline-latest.json` |
+| HMAC / WRITE / barge-in | **UNCHANGED** | No weakening in this slice |
+| `compiled_task` | **OPTIONAL_PROJECTION** | Unchanged |
 
-## Gate
+## Voice Metric A/B (isolated org, n=5 HTTP Talk, SHA `653303a3`)
 
-| Item | Result |
-|------|--------|
-| Critical-path analyzer | UNIT_TEST + live audit above |
-| Stages mapped | NETWORK, RESOLUTION, CONTEXT_BUILD, TOOL_DISCOVERY, PREFLIGHT, PLANNING, MODEL_TTFT, PROVIDER, COMPOSER, VAD, STT, STT_ENDPOINTING, TTS_BUFFER |
-| Voice Metric A / B | Standing targets unchanged. Live p50/p95 **NOT_RUN** this SHA |
-| HMAC / WRITE | Unchanged; barge-in blocks WRITE commit |
-| `compiled_task` | OPTIONAL_PROJECTION |
+| Metric | p50 | p95 | Target | SLO |
+|--------|-----|-----|--------|-----|
+| **A** — first honest audio | **375 ms** | **1166 ms** | 500 / 800 | **FAIL** (P95) |
+| **B** — operator completion | **26989 ms** | **53054 ms** | 5000 / 8000 | **FAIL** |
+
+Anchor conversation: `5317f08c-a36b-427e-be04-a3d4ca699265`. A and B stay separate; do not blend.
+
+## Text critical-path (168h isolated org, pre-voice-instrumentation tip)
+
+| Clock | p50 | p95 |
+|-------|-----|-----|
+| Turn total | 13.4 s | 22.7 s |
+| Dominant stage delta | 8.0 s | 9.9 s |
+
+Dominant stage wins: `UNIFIED_LIVE_RESOLVED` (11/13). Voice cohort was n=0 before `record_voice_turn_critical_path` ship.
 
 ## Before / after (honest)
 
-| Clock | Before | After `67944d59` | Budget |
-|-------|--------|------------------|--------|
-| Voice client first_delta (2026-09-09 n=8) | p50 9574ms | not remeasured | Do not treat as Metric A |
-| Text critical path | uninstrumented | live `runtime.turn_latency.critical_path` | fail unnamed extra delay |
+| Clock | Before 3.0-A | After measurement | Notes |
+|-------|--------------|-------------------|-------|
+| Text critical path | uninstrumented | live audit rows | dominant stage named |
+| Voice Metric A | unknown | p50 375 / p95 1166 | P50 under 500; P95 over 800 |
+| Voice Metric B | unknown | p50 27s / p95 53s | far above 5s/8s targets |
 
-Do not treat the 2026-09-09 first_delta p50 as Metric A.
+**No latency improvement claimed.** 3.0-A closes the **measurement gate**, not the SLO gate.
+
+## Next phase
+
+**3.0-B — Context/tool efficiency:** JIT context scoring, eligible-tool namespace (no 700-tool dump), ActionSpec cache. Baseline above is the before snapshot; 3.0-B must not regress stage p50/p95 without a named trade.

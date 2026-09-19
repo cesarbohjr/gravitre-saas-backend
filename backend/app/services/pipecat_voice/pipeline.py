@@ -328,6 +328,25 @@ def build_pipecat_voice_task(
                     source="duplex_first_speech",
                     composed=True,
                 )
+            from app.services.turn_latency_trace import (
+                build_voice_pipecat_turn_marks,
+                record_voice_turn_critical_path,
+            )
+
+            voice_marks = build_voice_pipecat_turn_marks(
+                end_to_end_ms=e2e_ms,
+                user_turn_finalization_ms=user_turn_finalization_ms,
+                ttfb_by_processor_ms=ttfb_by_processor_ms,
+            )
+            record_voice_turn_critical_path(
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                turn_id=None,
+                marks=voice_marks,
+                transport="pipecat_duplex",
+            )
         except Exception as exc:  # noqa: BLE001
             logger.debug("pipecat_voice_latency_breakdown_sample_failed error=%s", exc)
 

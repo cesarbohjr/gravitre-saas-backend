@@ -623,6 +623,36 @@ async def stream_voice_turn_events(
                 operator_task=True,
                 composed=True,
             )
+        try:
+            from app.services.turn_latency_trace import (
+                build_voice_http_turn_marks,
+                record_voice_turn_critical_path,
+            )
+
+            breakdown_ints: dict[str, int] = {}
+            if isinstance(unified_breakdown, dict):
+                for key, raw in unified_breakdown.items():
+                    if isinstance(raw, (int, float)):
+                        breakdown_ints[str(key)] = int(raw)
+            voice_marks = build_voice_http_turn_marks(
+                completion_ms=completion_ms,
+                first_text_ms=first_text_ms,
+                first_audio_ms=first_audio_ms,
+                classify_done_ms=classify_done_ms,
+                pre_act_done_ms=pre_act_done_ms,
+                unified_breakdown=breakdown_ints or None,
+            )
+            record_voice_turn_critical_path(
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=resolved_conversation_id,
+                turn_id=resolved_turn_id,
+                marks=voice_marks,
+                transport="http_talk",
+            )
+        except Exception:  # noqa: BLE001
+            pass
     # Flush remainder after turn.complete so audio may continue even after text is rendered.
     rem = text_buffer.strip()
     if rem and not _cancelled():

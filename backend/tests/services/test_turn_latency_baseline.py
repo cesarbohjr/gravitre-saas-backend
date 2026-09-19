@@ -1,7 +1,7 @@
 """3.0-A critical-path baseline aggregation."""
 from __future__ import annotations
 
-from app.services.turn_latency_baseline import aggregate_critical_path_rows
+from app.services.turn_latency_baseline import aggregate_critical_path_rows, aggregate_slo_metric_rows
 
 
 def test_aggregate_critical_path_rows_percentiles_and_stages() -> None:
@@ -40,3 +40,10 @@ def test_aggregate_critical_path_rows_percentiles_and_stages() -> None:
     assert out["by_dominant_stage"]["CONTEXT_BUILD"]["win_count"] == 1
     assert out["by_dominant_stage"]["MODEL_TTFT"]["win_count"] == 1
     assert out["by_stage_delta_ms"]["NETWORK"]["sample_count"] == 2
+
+
+def test_aggregate_slo_metric_rows() -> None:
+    rows = [{"metadata": {"ms": 400}}, {"metadata": {"ms": 800}}]
+    out = aggregate_slo_metric_rows(rows)
+    assert out["sample_count"] == 2
+    assert out["p50_ms"] == 400

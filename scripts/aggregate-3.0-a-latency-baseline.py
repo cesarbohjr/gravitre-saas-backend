@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.services.turn_latency_baseline import (  # noqa: E402
     aggregate_critical_path_rows,
+    aggregate_slo_metric_rows,
     split_cohorts,
 )
 from app.services.turn_latency_trace import AUDIT_ACTION  # noqa: E402
@@ -148,6 +149,10 @@ def build_report(*, hours: int, org_id: str | None, all_orgs: bool) -> dict[str,
         "voice_slo_audit_rows": {
             AUDIT_METRIC_A: len(metric_a_rows),
             AUDIT_METRIC_B: len(metric_b_rows),
+        },
+        "voice_slo_measured": {
+            "metric_a": aggregate_slo_metric_rows(metric_a_rows),
+            "metric_b": aggregate_slo_metric_rows(metric_b_rows),
         },
         "note": (
             "Baselines are measured p50/p95 from runtime.turn_latency.critical_path only. "

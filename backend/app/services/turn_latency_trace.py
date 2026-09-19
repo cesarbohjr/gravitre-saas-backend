@@ -50,7 +50,107 @@ STAGE_CANONICAL = {
     "end_to_end_ms": "NETWORK",
     "llm_first_token_ms": "MODEL_TTFT",
     "tts_requested_ms": "TTS_BUFFER",
+    "ttfa_ms": "TTS_BUFFER",
+    "ttft_ms": "MODEL_TTFT",
 }
+
+
+def build_voice_http_turn_marks(
+    *,
+    completion_ms: int,
+    first_text_ms: int | None = None,
+    first_audio_ms: int | None = None,
+    classify_done_ms: int | None = None,
+    pre_act_done_ms: int | None = None,
+    unified_breakdown: dict[str, Any] | None = None,
+) -> dict[str, int]:
+    """Cumulative voice HTTP Talk marks from session wall clocks."""
+    marks: dict[str, int] = {"client_ready": 0}
+    if classify_done_ms is not None:
+        marks["resolution"] = int(classify_done_ms)
+    if pre_act_done_ms is not None:
+        marks["preflight"] = int(pre_act_done_ms)
+    if first_text_ms is not None:
+        marks["llm_first_token_ms"] = int(first_text_ms)
+    if first_audio_ms is not None:
+        marks["tts_first_byte"] = int(first_audio_ms)
+    if unified_breakdown:
+        for key, raw in unified_breakdown.items():
+            if isinstance(raw, (int, float)):
+                val = int(raw)
+                if val >= 0:
+                    marks[str(key)] = val
+    marks["terminal"] = int(completion_ms)
+    return marks
+
+
+def build_voice_pipecat_turn_marks(
+    *,
+    end_to_end_ms: int | None,
+    user_turn_finalization_ms: int | None = None,
+    llm_first_token_ms: int | None = None,
+    llm_first_speakable_chunk_ms: int | None = None,
+    tts_requested_ms: int | None = None,
+    ttfb_by_processor_ms: dict[str, int] | None = None,
+) -> dict[str, int]:
+    """Cumulative Pipecat duplex marks from observer + LLM bridge timings."""
+    marks: dict[str, int] = {"client_ready": 0}
+    if user_turn_finalization_ms is not None:
+        marks["user_turn_finalization_ms"] = int(user_turn_finalization_ms)
+    if llm_first_token_ms is not None:
+        marks["llm_first_token_ms"] = int(llm_first_token_ms)
+    if llm_first_speakable_chunk_ms is not None:
+        marks["generation"] = int(llm_first_speakable_chunk_ms)
+    if tts_requested_ms is not None:
+        marks["tts_requested_ms"] = int(tts_requested_ms)
+    for proc, ms in (ttfb_by_processor_ms or {}).items():
+        key = str(proc)
+        if "CognitiveLLM" in key or key.endswith("LLMService"):
+            marks.setdefault("llm_first_token_ms", int(ms))
+        elif "TTS" in key or "ElevenLabs" in key:
+            marks.setdefault("tts_first_byte", int(ms))
+    if end_to_end_ms is not None:
+        marks["end_to_end_ms"] = int(end_to_end_ms)
+        marks["terminal"] = int(end_to_end_ms)
+    return marks
+
+
+def record_voice_turn_critical_path(
+    settings: Any,
+    *,
+    org_id: str,
+    user_id: str | None,
+    conversation_id: str | None,
+    turn_id: str | None,
+    marks: dict[str, int] | None,
+    transport: str,
+) -> dict[str, Any]:
+    """Voice-specific critical-path write (spoken_mode=True, transport label)."""
+    payload_marks = dict(marks or {})
+    analysis = analyze_cumulative_checkpoints(payload_marks)
+    analysis["turn_id"] = turn_id
+    analysis["spoken_mode"] = True
+    analysis["voice_transport"] = str(transport or "")
+    if not org_id or not user_id:
+        logger.debug("voice_turn_critical_path_skipped reason=missing_org_or_user")
+        return analysis
+    try:
+        from app.workflows.audit import write_audit_event
+        from app.workflows.repository import get_supabase_client
+
+        client = get_supabase_client(settings)
+        write_audit_event(
+            client,
+            org_id,
+            user_id,
+            AUDIT_ACTION,
+            "conversation",
+            conversation_id or org_id,
+            analysis,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("voice_turn_critical_path_write_failed error=%s", exc)
+    return analysis
 
 
 def map_stage(name: str) -> str:
