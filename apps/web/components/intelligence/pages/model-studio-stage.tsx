@@ -99,27 +99,43 @@ export function ModelStudioStage({
       {segment === "create" ? (
         <div className="space-y-4">
           <p className="text-sm text-foreground">What do you want this model to do?</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {STUDIO_INTENTS.map((item) => {
-              const selected = intent === item.id
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setIntent(item.id)}
-                  aria-pressed={selected}
-                  className={cn(
-                    "rounded-[var(--np-radius-md)] border px-4 py-3 text-left transition-colors",
-                    selected
-                      ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-intelligence-surface)]"
-                      : "border-divide hover:border-[color:var(--g-brand-border)]",
-                  )}
-                >
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className={cn(TYPE.meta, "mt-1")}>{item.description}</p>
-                </button>
-              )
-            })}
+          <div className="flex flex-col border border-divide lg:flex-row">
+            <ul className="min-w-0 flex-1 divide-y divide-divide" data-review-surface="studio-queue">
+              {STUDIO_INTENTS.map((item) => {
+                const selected = intent === item.id
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => setIntent(item.id)}
+                      aria-pressed={selected}
+                      className={cn(
+                        "w-full px-3 py-2.5 text-left",
+                        selected
+                          ? "bg-[color:var(--g-surface-2)]"
+                          : "hover:bg-[color:var(--g-surface-2)]/50",
+                      )}
+                    >
+                      <p className="text-sm font-medium text-foreground">{item.label}</p>
+                      <p className={cn(TYPE.meta, "mt-0.5")}>{item.description}</p>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            {intent ? (
+              <div className="flex-1 border-t border-divide p-4 lg:border-t-0 lg:border-l" data-review-surface="studio-inspect">
+                <p className={TYPE.eyebrow}>Intent</p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {STUDIO_INTENTS.find((item) => item.id === intent)?.label}
+                </p>
+                <p className={cn(TYPE.meta, "mt-1")}>
+                  {STUDIO_INTENTS.find((item) => item.id === intent)?.description}
+                </p>
+              </div>
+            ) : (
+              <p className="sr-only">Select an intent — inspector stays closed until then.</p>
+            )}
           </div>
           <Button onClick={startCreate} disabled={!intent} className="gap-1.5">
             Continue to register
@@ -144,12 +160,9 @@ export function ModelStudioStage({
               }}
             />
           ) : (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-divide border border-divide">
               {datasets.slice(0, 8).map((dataset) => (
-                <li
-                  key={dataset.id}
-                  className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2 text-sm"
-                >
+                <li key={dataset.id} className="px-3 py-2 text-sm">
                   {dataset.name}
                 </li>
               ))}
@@ -179,7 +192,7 @@ export function ModelStudioStage({
               <Link
                 key={model.id}
                 href={model.href}
-                className="block rounded-[var(--np-radius-md)] border border-divide px-3 py-2 hover:border-[color:var(--g-brand-border)]"
+                className="block border-b border-divide px-3 py-2 last:border-b-0"
               >
                 <p className="text-sm font-medium">{model.name}</p>
                 <p className={TYPE.meta}>{model.businessStatus}</p>
@@ -203,7 +216,7 @@ export function ModelStudioStage({
               <Link
                 key={model.id}
                 href={model.href}
-                className="block rounded-[var(--np-radius-md)] border border-divide px-3 py-2 hover:border-[color:var(--g-brand-border)]"
+                className="block border-b border-divide px-3 py-2 last:border-b-0"
               >
                 <p className="text-sm font-medium">{model.name}</p>
                 <p className={TYPE.meta}>
@@ -228,7 +241,7 @@ export function ModelStudioStage({
             jobs.slice(0, 12).map((job) => {
               const status = describeStatus(job.status)
               return (
-                <div key={job.id} className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2">
+                <div key={job.id} className="border-b border-divide px-3 py-2 last:border-b-0">
                   <p className="text-sm font-medium">{job.dataset_name || job.model_base}</p>
                   <p className={TYPE.meta}>
                     {status.phrase} · {Math.round(job.progress ?? 0)}%

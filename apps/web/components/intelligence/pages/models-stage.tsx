@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { EmptyState } from "@/components/gravitre/empty-state"
-import { BusinessModelCard } from "@/components/intelligence/business-model-card"
+import { BusinessModelsList } from "@/components/intelligence/business-model-card"
 import { ModelUsageTopology } from "@/components/intelligence/model-usage-topology"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -83,11 +83,7 @@ export function ModelsStage({
           }
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {catalog.map((model) => (
-            <BusinessModelCard key={model.id} model={model} view={view} />
-          ))}
-        </div>
+        <BusinessModelsList models={catalog} view={view} />
       )}
 
       <p className={cn(TYPE.meta, "text-pretty")}>

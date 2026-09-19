@@ -752,7 +752,6 @@ function TrainingPageContent() {
               />
               <div className="flex flex-wrap gap-2">
                 <Button
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
                   onClick={() => void handleCreateDataset()}
                   disabled={isCreatingDataset || !datasetName.trim()}
                 >
@@ -785,7 +784,7 @@ function TrainingPageContent() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.18 }}
-                      className="rounded-xl border border-border p-3 bg-background/40 hover:bg-background/70 transition-colors"
+                      className="border-b border-divide py-3 last:border-b-0"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1">
@@ -1090,7 +1089,7 @@ function TrainingPageContent() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.18 }}
-                      className="rounded-xl border border-border p-3 bg-background/40 hover:bg-background/70 transition-colors"
+                      className="border-b border-divide py-3 last:border-b-0"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -1113,7 +1112,7 @@ function TrainingPageContent() {
                       </div>
                       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
                         <motion.div
-                          className="relative h-full overflow-hidden bg-gradient-to-r from-blue-500 to-cyan-400"
+                          className="relative h-full overflow-hidden bg-[color:var(--g-brand)]"
                           initial={{ width: 0 }}
                           animate={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
                           transition={{ duration: 0.45, ease: "easeOut" }}
@@ -1198,7 +1197,6 @@ function TrainingPageContent() {
               className="min-h-24 rounded-lg border border-border bg-background/80 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             />
             <Button
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
               onClick={() => void handleCreateInstruction()}
               disabled={isCreatingInstruction || !instructionName.trim() || !instructionContent.trim()}
             >
@@ -1216,7 +1214,7 @@ function TrainingPageContent() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.18 }}
-                  className="rounded-xl border border-border p-3 bg-background/40 hover:bg-background/70 transition-colors"
+                  className="border-b border-divide py-3 last:border-b-0"
                 >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -1310,7 +1308,7 @@ function TrainingPageContent() {
               ))}
             </select>
             <Button
-              className="md:col-span-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+              className="md:col-span-2"
               onClick={() => void handleAssignFineTunedModel()}
               disabled={isAssigningModel || !effectiveAssignAgentId}
             >
@@ -1329,7 +1327,7 @@ function TrainingPageContent() {
                 .map((agent) => {
                   const model = fineTunedModels.find((m) => m.id === agent.trainedModelId)
                   return (
-                    <div key={agent.id} className="rounded-xl border border-border p-3 bg-background/40 text-sm">
+                    <div key={agent.id} className="border-b border-divide py-3 text-sm last:border-b-0">
                       <span className="font-medium text-foreground">{agent.name}</span>
                       <span className="text-muted-foreground">
                         {" "}

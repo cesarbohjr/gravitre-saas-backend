@@ -173,4 +173,44 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(memory).toMatch(/inspector stays closed until then/)
     expect(memory).toMatch(/selectedCandidate \?/)
   })
+
+  it("models catalog and studio are list plus inspector, not card grids", () => {
+    const stage = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/models-stage.tsx"),
+      "utf8",
+    )
+    expect(stage).toMatch(/BusinessModelsList/)
+    expect(stage).not.toMatch(/md:grid-cols-2/)
+
+    const list = readFileSync(
+      resolve(webRoot, "components/intelligence/business-model-card.tsx"),
+      "utf8",
+    )
+    expect(list).toMatch(/data-review-surface="models-queue"/)
+    expect(list).toMatch(/data-review-surface="models-inspect"/)
+    expect(list).toMatch(/inspector stays closed until then/)
+    expect(list).toMatch(/data-review-cta="open-model"/)
+    expect(list).not.toMatch(/from \"@\/components\/ui\/card\"/)
+
+    const brain = readFileSync(
+      resolve(webRoot, "components/gravitre/built-in-models-brain.tsx"),
+      "utf8",
+    )
+    expect(brain).toMatch(/data-review-surface="models-queue"/)
+    expect(brain).toMatch(/inspector stays closed until then/)
+    expect(brain).not.toMatch(/rounded-2xl/)
+    expect(brain).not.toMatch(/LayoutGrid/)
+    expect(brain).not.toMatch(/min-h-\[188px\]/)
+
+    const studio = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
+      "utf8",
+    )
+    expect(studio).toMatch(/data-review-surface="studio-queue"/)
+    expect(studio).toMatch(/inspector stays closed until then/)
+    expect(studio).not.toMatch(/sm:grid-cols-2 lg:grid-cols-3/)
+
+    const training = readFileSync(resolve(webRoot, "app/training/page.tsx"), "utf8")
+    expect(training).not.toMatch(/from-emerald-500 to-teal-500/)
+  })
 })

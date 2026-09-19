@@ -2,25 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
 import {
-  Brain,
-  ChartLine,
-  CircleHelp,
-  Database,
-  LayoutGrid,
-  List,
-  MessageSquareText,
-  Network,
-  Plus,
-  Rocket,
-  Search,
-  Sparkles,
-  Users,
-  Wallet,
-  Workflow,
   ArrowRight,
-  type LucideIcon,
+  CircleHelp,
+  Search,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { formatScore } from "@/lib/intelligence/helpers"
 import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
+import { TYPE } from "@/lib/design-system"
 import {
   BUILT_IN_MODEL_DOMAINS,
   domainLabel,
@@ -39,17 +25,6 @@ import {
 } from "@/lib/built-in-model-catalog"
 
 type FilterKey = "all" | "active" | "needs_data" | "roadmap"
-type ViewMode = "directory" | "table"
-
-const DOMAIN_ICONS: Record<BuiltInModelDomainId, LucideIcon> = {
-  customer: Users,
-  workflows: Workflow,
-  search: Search,
-  revenue: Wallet,
-  support: MessageSquareText,
-  learning: Brain,
-  future: Sparkles,
-}
 
 function toneDot(tone: ReturnType<typeof statusTone>): string {
   if (tone === "ready") return "bg-primary"
@@ -81,105 +56,24 @@ function filterItems(items: BuiltInModelListItem[], filter: FilterKey, query: st
   })
 }
 
-function ModelCard({
-  row,
-  selected,
-  onSelect,
-}: {
-  row: BuiltInModelListItem
-  selected: boolean
-  onSelect: () => void
-}) {
-  const tone = statusTone(row.status)
-  const Icon = DOMAIN_ICONS[row.guide.domain] ?? Network
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "group flex h-full min-h-[188px] w-full flex-col rounded-xl border bg-card p-4 text-left transition",
-        "hover:border-primary/35 hover:shadow-[0_8px_28px_-12px_color-mix(in_oklch,var(--primary)_35%,transparent)]",
-        selected
-          ? "border-primary/50 ring-2 ring-primary/20"
-          : "border-border/70 shadow-sm",
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1",
-            tone === "ready" && "bg-primary/10 text-primary ring-primary/20",
-            tone === "learning" && "bg-[oklch(0.95_0.02_250)] text-[oklch(0.45_0.16_250)] ring-[oklch(0.85_0.04_250)] dark:bg-[oklch(0.22_0.03_250)] dark:text-[oklch(0.85_0.08_250)] dark:ring-[oklch(0.35_0.04_250)]",
-            (tone === "planned" || tone === "off") && "bg-muted text-muted-foreground ring-border/70",
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="truncate text-sm font-semibold tracking-tight text-foreground">{row.guide.label}</p>
-            <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", toneDot(tone))} aria-hidden />
-          </div>
-          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{row.id}</p>
-        </div>
-      </div>
-
-      <p className="mt-3 line-clamp-3 flex-1 text-[13px] leading-relaxed text-muted-foreground">
-        {row.guide.summary}
-      </p>
-
-      {row.sufficiency.value != null ? (
-        <div className="mt-3 space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>Data gate</span>
-            <span className="tabular-nums">{row.sufficiency.label}</span>
-          </div>
-          <Progress value={row.sufficiency.value} className="h-1" />
-        </div>
-      ) : null}
-
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-        <p className="truncate text-[11px] text-muted-foreground">{domainLabel(row.guide.domain)}</p>
-        <ModelStatusBadge status={row.status} size="sm" showDetail={false} />
-      </div>
-    </button>
-  )
-}
-
 function DetailPanel({ row }: { row: BuiltInModelListItem }) {
-  const Icon = DOMAIN_ICONS[row.guide.domain] ?? Network
   const tone = statusTone(row.status)
   return (
-    <motion.aside
-      key={row.id}
-      initial={{ opacity: 0, x: 8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25 }}
-      className="flex h-full flex-col rounded-xl border border-border/70 bg-card shadow-sm"
-    >
-      <div className="border-b border-border/60 p-5">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
-            <Icon className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-semibold tracking-tight text-foreground">{row.guide.label}</h3>
-            </div>
-            <p className="mt-0.5 font-mono text-xs text-muted-foreground">{row.id}</p>
-          </div>
-        </div>
+    <aside className="flex h-full flex-col" data-review-surface="models-inspect">
+      <div className="border-b border-divide p-4">
+        <h3 className="text-base font-medium tracking-tight text-foreground">{row.guide.label}</h3>
+        <p className="mt-0.5 font-mono text-xs text-muted-foreground">{row.id}</p>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{row.guide.summary}</p>
         <ModelStatusBadge status={row.status} className="mt-3" />
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-4 p-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Why train it</p>
+          <p className={TYPE.eyebrow}>Why train it</p>
           <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">{row.guide.whyItMatters}</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Data gate</p>
+          <p className={TYPE.eyebrow}>Data gate</p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{row.guide.dataExplainer}</p>
           {row.sufficiency.value != null ? (
             <div className="mt-3 space-y-1.5">
@@ -202,20 +96,20 @@ function DetailPanel({ row }: { row: BuiltInModelListItem }) {
             </p>
           ) : null}
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-2">
+        <div className="grid grid-cols-2 gap-3 text-xs">
+          <div>
             <p className="text-muted-foreground">Outcome score</p>
             <p className="mt-0.5 font-medium tabular-nums text-foreground">{formatScore(row.outcomeScore)}</p>
           </div>
-          <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-2">
+          <div>
             <p className="text-muted-foreground">Last trained</p>
             <p className="mt-0.5 font-medium text-foreground">{row.lastTrained === "—" ? "Not yet" : row.lastTrained}</p>
           </div>
         </div>
       </div>
 
-      <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 p-4">
-        <Button size="sm" asChild className="gap-1.5">
+      <div className="mt-auto flex flex-wrap gap-2 border-t border-divide p-4">
+        <Button size="sm" asChild className="gap-1.5" data-review-cta="open-model">
           <Link href={`${APP_ROUTES.builtInModels}/${encodeURIComponent(row.id)}`}>
             Open model
             <ArrowRight className="h-3.5 w-3.5" />
@@ -227,7 +121,7 @@ function DetailPanel({ row }: { row: BuiltInModelListItem }) {
           </Button>
         )}
       </div>
-    </motion.aside>
+    </aside>
   )
 }
 
@@ -240,7 +134,6 @@ export function BuiltInModelsBrain({
   filter: FilterKey
   onFilterChange?: (filter: FilterKey) => void
 }) {
-  const [view, setView] = useState<ViewMode>("directory")
   const [query, setQuery] = useState("")
   const [domain, setDomain] = useState<BuiltInModelDomainId | "all">("all")
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -250,7 +143,7 @@ export function BuiltInModelsBrain({
 
   useEffect(() => {
     if (selectedId && !filtered.some((r) => r.id === selectedId)) {
-      setSelectedId(filtered[0]?.id ?? null)
+      setSelectedId(null)
     }
   }, [filtered, selectedId])
 
@@ -262,57 +155,29 @@ export function BuiltInModelsBrain({
 
   return (
     <div className="space-y-5">
-      {/* Compact brand header */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-card">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-90"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 80% at 0% 0%, color-mix(in oklch, var(--primary) 14%, transparent), transparent 55%), radial-gradient(ellipse 50% 60% at 100% 0%, color-mix(in oklch, oklch(0.55 0.16 250) 10%, transparent), transparent 50%)",
-          }}
-        />
-        <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-          <div className="max-w-xl space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Org ML brain</p>
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">Built-in models</h2>
-            <p className="text-sm text-muted-foreground">
-              Uniform catalog of learners trained on your org signals. Select a model for why it matters and how to feed it.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1.5 font-medium text-primary">
-              <Brain className="h-3.5 w-3.5" />
-              {health.trained + health.learning} active
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-[oklch(0.7_0.08_250)]/40 bg-[oklch(0.95_0.02_250)] px-2.5 py-1.5 font-medium text-[oklch(0.42_0.14_250)] dark:bg-[oklch(0.2_0.03_250)] dark:text-[oklch(0.85_0.06_250)]">
-              <Sparkles className="h-3.5 w-3.5" />
-              {health.learning} learning
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border/70 bg-background/80 px-2.5 py-1.5 font-medium text-muted-foreground">
-              <Database className="h-3.5 w-3.5" />
-              {health.collecting} need data
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border/70 bg-background/80 px-2.5 py-1.5 font-medium text-muted-foreground">
-              <CircleHelp className="h-3.5 w-3.5" />
-              {health.planned} roadmap
-            </span>
-          </div>
-        </div>
+      <section>
+        <p className={TYPE.eyebrow}>Catalog</p>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Built-in models</h2>
+        <p className={cn(TYPE.meta, "mt-1")}>
+          Learners trained on org signals. Select a row — inspector stays closed until then.
+        </p>
+        <p className={cn(TYPE.meta, "mt-2")}>
+          {health.trained + health.learning} active · {health.learning} learning · {health.collecting} need data ·{" "}
+          {health.planned} roadmap
+        </p>
       </section>
 
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/80 p-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search models, domains, or ids…"
-            className="h-9 border-border/70 bg-background pl-8 text-sm"
+            className="h-9 border-divide bg-background pl-8 text-sm"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <nav aria-label="Built-in model filters" className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           {(
             [
               ["all", "All"],
@@ -321,185 +186,121 @@ export function BuiltInModelsBrain({
               ["roadmap", "Roadmap"],
             ] as const
           ).map(([id, label]) => (
-            <Button
+            <button
               key={id}
-              size="sm"
-              variant={filter === id ? "default" : "ghost"}
-              className="h-8 px-2.5 text-xs"
+              type="button"
+              className={cn(
+                TYPE.meta,
+                "underline-offset-4",
+                filter === id
+                  ? "text-[color:var(--g-text-primary)] underline"
+                  : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+              )}
               onClick={() => onFilterChange?.(id)}
             >
               {label}
-            </Button>
+            </button>
           ))}
-          <span className="mx-1 hidden h-5 w-px bg-border sm:inline-block" />
-          <Button
-            size="sm"
-            variant={view === "directory" ? "secondary" : "ghost"}
-            className="h-8 w-8 p-0"
-            aria-label="Directory view"
-            onClick={() => setView("directory")}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            variant={view === "table" ? "secondary" : "ghost"}
-            className="h-8 w-8 p-0"
-            aria-label="Table view"
-            onClick={() => setView("table")}
-          >
-            <List className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        </nav>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        <Button
-          size="sm"
-          variant={domain === "all" ? "secondary" : "outline"}
-          className="h-7 rounded-full px-3 text-[11px]"
+      <nav aria-label="Model domains" className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <button
+          type="button"
+          className={cn(
+            TYPE.meta,
+            "underline-offset-4",
+            domain === "all"
+              ? "text-[color:var(--g-text-primary)] underline"
+              : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+          )}
           onClick={() => setDomain("all")}
         >
           All domains
-        </Button>
-        {domainsInCatalog.map((d) => {
-          const Icon = DOMAIN_ICONS[d.id]
-          return (
-            <Button
-              key={d.id}
-              size="sm"
-              variant={domain === d.id ? "secondary" : "outline"}
-              className="h-7 gap-1.5 rounded-full px-3 text-[11px]"
-              onClick={() => setDomain(d.id)}
-            >
-              <Icon className="h-3 w-3" />
-              {d.title}
-            </Button>
-          )
-        })}
-      </div>
+        </button>
+        {domainsInCatalog.map((d) => (
+          <button
+            key={d.id}
+            type="button"
+            className={cn(
+              TYPE.meta,
+              "underline-offset-4",
+              domain === d.id
+                ? "text-[color:var(--g-text-primary)] underline"
+                : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+            )}
+            onClick={() => setDomain(d.id)}
+          >
+            {d.title}
+          </button>
+        ))}
+      </nav>
 
       {filtered.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground">
+        <p className="border border-dashed border-divide px-4 py-10 text-center text-sm text-muted-foreground">
           No models match this filter.
         </p>
-      ) : view === "table" ? (
-        <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
-          <table className="min-w-full text-sm">
-            <thead className="border-b border-border/70 bg-secondary/30 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium">Model</th>
-                <th className="px-4 py-3 font-medium">Domain</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Data gate</th>
-                <th className="px-4 py-3 font-medium">Outcome</th>
-                <th className="px-4 py-3 font-medium" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row) => {
-                const tone = statusTone(row.status)
-                return (
-                  <tr
-                    key={row.id}
-                    className={cn(
-                      "border-b border-border/50 last:border-0 transition hover:bg-secondary/20",
-                      selectedId === row.id && "bg-primary/5",
-                    )}
-                  >
-                    <td className="px-4 py-3">
-                      <button type="button" className="text-left" onClick={() => setSelectedId(row.id)}>
-                        <div className="flex items-center gap-2">
-                          <span className={cn("h-2 w-2 rounded-full", toneDot(tone))} />
-                          <span className="font-medium text-foreground">{row.guide.label}</span>
-                        </div>
-                        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{row.id}</p>
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{domainLabel(row.guide.domain)}</td>
-                    <td className="px-4 py-3">
-                      <ModelStatusBadge status={row.status} size="sm" showDetail={false} />
-                    </td>
-                    <td className="px-4 py-3 tabular-nums text-muted-foreground">
-                      {row.sufficiency.value == null ? "—" : row.sufficiency.label}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">{formatScore(row.outcomeScore)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`${APP_ROUTES.builtInModels}/${encodeURIComponent(row.id)}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                      >
-                        Open
-                        <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          {/* Equal-height directory — no per-domain orphan rows */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3"
-          >
-            {filtered.map((row) => (
-              <ModelCard
-                key={row.id}
-                row={row}
-                selected={selectedId === row.id}
-                onSelect={() => setSelectedId(row.id === selectedId ? null : row.id)}
-              />
-            ))}
-          </motion.div>
-
-          <div className="xl:sticky xl:top-4 xl:self-start">
-            {selected ? (
-              <DetailPanel row={selected} />
-            ) : (
-              <div className="flex min-h-[320px] flex-col justify-between rounded-xl border border-dashed border-border/70 bg-secondary/15 p-5">
-                <div className="space-y-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
-                    <ChartLine className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Select a model</p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      Click any card for a plain-language brief, data gate, and deep link — like an experiment
-                      detail pane.
-                    </p>
-                  </div>
-                  <div className="space-y-2 pt-1 text-xs text-muted-foreground">
-                    <p className="flex gap-2">
-                      <CircleHelp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                      Data bars are quality minimums, not caps you raise here.
-                    </p>
-                    <p className="flex gap-2">
-                      <Plus className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                      Custom models live in the production registry.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" asChild className="gap-1.5">
-                    <Link href={APP_ROUTES.models}>
-                      <Rocket className="h-3.5 w-3.5" />
-                      Model registry
-                    </Link>
-                  </Button>
-                  <Button size="sm" variant="ghost" asChild>
-                    <Link href={APP_ROUTES.training}>Training</Link>
-                  </Button>
-                </div>
-              </div>
-            )}
+        <div className="flex flex-col border border-divide lg:flex-row">
+          <div className="min-w-0 flex-1 overflow-x-auto" data-review-surface="models-queue">
+            <table className="min-w-full text-sm">
+              <thead className="border-b border-divide text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Model</th>
+                  <th className="px-3 py-2 font-medium">Domain</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Data gate</th>
+                  <th className="px-3 py-2 font-medium">Outcome</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row) => {
+                  const tone = statusTone(row.status)
+                  return (
+                    <tr
+                      key={row.id}
+                      className={cn(
+                        "border-b border-divide last:border-0",
+                        selectedId === row.id && "bg-[color:var(--g-surface-2)]",
+                      )}
+                    >
+                      <td className="px-3 py-2">
+                        <button type="button" className="text-left" onClick={() => setSelectedId(row.id)}>
+                          <div className="flex items-center gap-2">
+                            <span className={cn("h-2 w-2 rounded-full", toneDot(tone))} />
+                            <span className="font-medium text-foreground">{row.guide.label}</span>
+                          </div>
+                          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{row.id}</p>
+                        </button>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{domainLabel(row.guide.domain)}</td>
+                      <td className="px-3 py-2">
+                        <ModelStatusBadge status={row.status} size="sm" showDetail={false} />
+                      </td>
+                      <td className="px-3 py-2 tabular-nums text-muted-foreground">
+                        {row.sufficiency.value == null ? "—" : row.sufficiency.label}
+                      </td>
+                      <td className="px-3 py-2 tabular-nums">{formatScore(row.outcomeScore)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
+          {selected ? (
+            <div className="flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 lg:border-l">
+              <DetailPanel row={selected} />
+            </div>
+          ) : (
+            <p className="sr-only">Select a model — inspector stays closed until then.</p>
+          )}
         </div>
       )}
+
+      <p className={cn(TYPE.meta, "flex items-start gap-2")}>
+        <CircleHelp className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        Data bars are quality minimums, not caps. Custom models live in the production registry.
+      </p>
     </div>
   )
 }

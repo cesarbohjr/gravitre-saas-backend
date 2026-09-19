@@ -1,6 +1,6 @@
 # GRAVITRE UX RESET 2.0
 
-**Status:** Cesar **design selections recorded 2026-09-18**. Phase A–H shipped. Phase I Approvals **queue + one primary CTA** on `/approvals`. Remaining hubs remain later.
+**Status:** Cesar **design selections recorded 2026-09-18**. Phase A–J shipped. Phase K Models/Training workspace polish in source. Remaining hubs: settings, marketplace.
 
 **Do not** reopen one-runtime architecture unless a regression is evidenced.
 
@@ -457,4 +457,4 @@ Artifacts: `e2e/artifacts/ux-reset-2-review/`
 
 ## STOP
 
-Phase J Intelligence learning list + inspector and memory TabsList flatten is in source (`/intelligence/learning`, `/intelligence/memory`). `/intelligence` map + command bar retained. Authenticated gravitre.app click-through remains **NOT PROVEN**. Remaining hubs (models/training, settings, marketplace) remain later.
+Phase K Models/Training workspace polish is in source (`/models`, `/intelligence/model-studio`, `/training`, built-in catalog). Authenticated gravitre.app click-through remains **NOT PROVEN**. Remaining hubs (settings, marketplace) remain later.
