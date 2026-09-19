@@ -1,0 +1,587 @@
+{
+  "probe": "3.0_a_latency_baseline",
+  "generated_at": "2026-09-19T07:35:37.319158+00:00",
+  "window_hours": 168,
+  "window_since": "2026-09-12T07:35:33.413810+00:00",
+  "org_scope": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "health": {
+    "git_sha": "5b335e09bed749354b1f68e14dd48f91d7b4406f",
+    "status": "ok",
+    "timestamp": "2026-09-19T07:35:34.691811+00:00"
+  },
+  "audit_action": "runtime.turn_latency.critical_path",
+  "critical_path_rows_fetched": 13,
+  "cohorts": {
+    "all": {
+      "sample_count": 13,
+      "turn_total_ms": {
+        "sample_count": 13,
+        "p50_ms": 13378,
+        "p95_ms": 22730,
+        "max_ms": 22952
+      },
+      "dominant_delta_ms": {
+        "sample_count": 13,
+        "p50_ms": 8037,
+        "p95_ms": 9927,
+        "max_ms": 11488
+      },
+      "by_dominant_stage": {
+        "CONNECTED_INTEGRATIONS": {
+          "sample_count": 1,
+          "p50_ms": 1223,
+          "p95_ms": 1223,
+          "max_ms": 1223,
+          "win_count": 1
+        },
+        "CONTEXT_BUILD": {
+          "sample_count": 1,
+          "p50_ms": 5954,
+          "p95_ms": 5954,
+          "max_ms": 5954,
+          "win_count": 1
+        },
+        "UNIFIED_LIVE_RESOLVED": {
+          "sample_count": 11,
+          "p50_ms": 8087,
+          "p95_ms": 11488,
+          "max_ms": 11488,
+          "win_count": 11
+        }
+      },
+      "by_stage_delta_ms": {
+        "COMPOSER": {
+          "sample_count": 13,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "CONNECTED_INTEGRATIONS": {
+          "sample_count": 13,
+          "p50_ms": 721,
+          "p95_ms": 1342,
+          "max_ms": 1440
+        },
+        "CONNECTOR_PREVIEW": {
+          "sample_count": 1,
+          "p50_ms": 123,
+          "p95_ms": 123,
+          "max_ms": 123
+        },
+        "CONTEXT_BUILD": {
+          "sample_count": 19,
+          "p50_ms": 240,
+          "p95_ms": 4680,
+          "max_ms": 5954
+        },
+        "CONTEXT_COMPILE_UNIFIED": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "CONVERSATIONAL_EXECUTION": {
+          "sample_count": 4,
+          "p50_ms": 0,
+          "p95_ms": 1,
+          "max_ms": 1
+        },
+        "DIALOGUE_SETTINGS_FULL": {
+          "sample_count": 12,
+          "p50_ms": 27,
+          "p95_ms": 30,
+          "max_ms": 30
+        },
+        "ENGINE_SETTINGS": {
+          "sample_count": 13,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "ENRICH_CLASSIFICATION": {
+          "sample_count": 12,
+          "p50_ms": 111,
+          "p95_ms": 125,
+          "max_ms": 141
+        },
+        "INTENT_GATEWAY": {
+          "sample_count": 11,
+          "p50_ms": 86,
+          "p95_ms": 146,
+          "max_ms": 146
+        },
+        "KERNEL_PRE_ACT": {
+          "sample_count": 11,
+          "p50_ms": 918,
+          "p95_ms": 1436,
+          "max_ms": 1436
+        },
+        "KNOWLEDGE_BASE_EMITTED": {
+          "sample_count": 3,
+          "p50_ms": 146,
+          "p95_ms": 724,
+          "max_ms": 724
+        },
+        "MCP_TOOLS": {
+          "sample_count": 11,
+          "p50_ms": 0,
+          "p95_ms": 1,
+          "max_ms": 1
+        },
+        "MODEL_TTFT": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "NETWORK": {
+          "sample_count": 26,
+          "p50_ms": 2,
+          "p95_ms": 29,
+          "max_ms": 55
+        },
+        "PARAMETER_LEDGER": {
+          "sample_count": 12,
+          "p50_ms": 86,
+          "p95_ms": 108,
+          "max_ms": 115
+        },
+        "PERSONA_RESOLVED": {
+          "sample_count": 12,
+          "p50_ms": 323,
+          "p95_ms": 377,
+          "max_ms": 442
+        },
+        "PLANNING": {
+          "sample_count": 1,
+          "p50_ms": 1365,
+          "p95_ms": 1365,
+          "max_ms": 1365
+        },
+        "PRE_KERNEL_ENTRY": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 17,
+          "max_ms": 30
+        },
+        "PRE_TURN_SHAPE": {
+          "sample_count": 4,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "QUERY_REWRITE": {
+          "sample_count": 4,
+          "p50_ms": 28,
+          "p95_ms": 29,
+          "max_ms": 29
+        },
+        "REACT_ENTRY": {
+          "sample_count": 3,
+          "p50_ms": 312,
+          "p95_ms": 375,
+          "max_ms": 375
+        },
+        "RESOLUTION": {
+          "sample_count": 39,
+          "p50_ms": 0,
+          "p95_ms": 89,
+          "max_ms": 99
+        },
+        "ROUTER_ENRICHMENTS": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 5860,
+          "max_ms": 6221
+        },
+        "ROUTING_CLASSIFIED": {
+          "sample_count": 13,
+          "p50_ms": 0,
+          "p95_ms": 5,
+          "max_ms": 9
+        },
+        "SENTIMENT": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 1
+        },
+        "SPOKEN_LITE_DECIDED": {
+          "sample_count": 12,
+          "p50_ms": 155,
+          "p95_ms": 188,
+          "max_ms": 192
+        },
+        "TASK_CLASSIFIER": {
+          "sample_count": 12,
+          "p50_ms": 118,
+          "p95_ms": 147,
+          "max_ms": 147
+        },
+        "TASK_STATE_INITIAL": {
+          "sample_count": 12,
+          "p50_ms": 24,
+          "p95_ms": 31,
+          "max_ms": 33
+        },
+        "TOOL_DISCOVERY": {
+          "sample_count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "TURN_SHAPE_CLASSIFIED": {
+          "sample_count": 4,
+          "p50_ms": 1,
+          "p95_ms": 1,
+          "max_ms": 1
+        },
+        "UNDERSTANDING": {
+          "sample_count": 12,
+          "p50_ms": 1008,
+          "p95_ms": 2864,
+          "max_ms": 2934
+        },
+        "UNDERSTANDING_AUDIT": {
+          "sample_count": 12,
+          "p50_ms": 71,
+          "p95_ms": 136,
+          "max_ms": 146
+        },
+        "UNIFIED_LIVE_RESOLVED": {
+          "sample_count": 12,
+          "p50_ms": 8087,
+          "p95_ms": 9927,
+          "max_ms": 11488
+        },
+        "UNIFIED_SHADOW_SCHEDULED": {
+          "sample_count": 4,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "VOICE_EXPRESSION_BOUND": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 1,
+          "max_ms": 1
+        }
+      }
+    },
+    "text": {
+      "sample_count": 13,
+      "turn_total_ms": {
+        "sample_count": 13,
+        "p50_ms": 13378,
+        "p95_ms": 22730,
+        "max_ms": 22952
+      },
+      "dominant_delta_ms": {
+        "sample_count": 13,
+        "p50_ms": 8037,
+        "p95_ms": 9927,
+        "max_ms": 11488
+      },
+      "by_dominant_stage": {
+        "CONNECTED_INTEGRATIONS": {
+          "sample_count": 1,
+          "p50_ms": 1223,
+          "p95_ms": 1223,
+          "max_ms": 1223,
+          "win_count": 1
+        },
+        "CONTEXT_BUILD": {
+          "sample_count": 1,
+          "p50_ms": 5954,
+          "p95_ms": 5954,
+          "max_ms": 5954,
+          "win_count": 1
+        },
+        "UNIFIED_LIVE_RESOLVED": {
+          "sample_count": 11,
+          "p50_ms": 8087,
+          "p95_ms": 11488,
+          "max_ms": 11488,
+          "win_count": 11
+        }
+      },
+      "by_stage_delta_ms": {
+        "COMPOSER": {
+          "sample_count": 13,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "CONNECTED_INTEGRATIONS": {
+          "sample_count": 13,
+          "p50_ms": 721,
+          "p95_ms": 1342,
+          "max_ms": 1440
+        },
+        "CONNECTOR_PREVIEW": {
+          "sample_count": 1,
+          "p50_ms": 123,
+          "p95_ms": 123,
+          "max_ms": 123
+        },
+        "CONTEXT_BUILD": {
+          "sample_count": 19,
+          "p50_ms": 240,
+          "p95_ms": 4680,
+          "max_ms": 5954
+        },
+        "CONTEXT_COMPILE_UNIFIED": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "CONVERSATIONAL_EXECUTION": {
+          "sample_count": 4,
+          "p50_ms": 0,
+          "p95_ms": 1,
+          "max_ms": 1
+        },
+        "DIALOGUE_SETTINGS_FULL": {
+          "sample_count": 12,
+          "p50_ms": 27,
+          "p95_ms": 30,
+          "max_ms": 30
+        },
+        "ENGINE_SETTINGS": {
+          "sample_count": 13,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "ENRICH_CLASSIFICATION": {
+          "sample_count": 12,
+          "p50_ms": 111,
+          "p95_ms": 125,
+          "max_ms": 141
+        },
+        "INTENT_GATEWAY": {
+          "sample_count": 11,
+          "p50_ms": 86,
+          "p95_ms": 146,
+          "max_ms": 146
+        },
+        "KERNEL_PRE_ACT": {
+          "sample_count": 11,
+          "p50_ms": 918,
+          "p95_ms": 1436,
+          "max_ms": 1436
+        },
+        "KNOWLEDGE_BASE_EMITTED": {
+          "sample_count": 3,
+          "p50_ms": 146,
+          "p95_ms": 724,
+          "max_ms": 724
+        },
+        "MCP_TOOLS": {
+          "sample_count": 11,
+          "p50_ms": 0,
+          "p95_ms": 1,
+          "max_ms": 1
+        },
+        "MODEL_TTFT": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "NETWORK": {
+          "sample_count": 26,
+          "p50_ms": 2,
+          "p95_ms": 29,
+          "max_ms": 55
+        },
+        "PARAMETER_LEDGER": {
+          "sample_count": 12,
+          "p50_ms": 86,
+          "p95_ms": 108,
+          "max_ms": 115
+        },
+        "PERSONA_RESOLVED": {
+          "sample_count": 12,
+          "p50_ms": 323,
+          "p95_ms": 377,
+          "max_ms": 442
+        },
+        "PLANNING": {
+          "sample_count": 1,
+          "p50_ms": 1365,
+          "p95_ms": 1365,
+          "max_ms": 1365
+        },
+        "PRE_KERNEL_ENTRY": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 17,
+          "max_ms": 30
+        },
+        "PRE_TURN_SHAPE": {
+          "sample_count": 4,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "QUERY_REWRITE": {
+          "sample_count": 4,
+          "p50_ms": 28,
+          "p95_ms": 29,
+          "max_ms": 29
+        },
+        "REACT_ENTRY": {
+          "sample_count": 3,
+          "p50_ms": 312,
+          "p95_ms": 375,
+          "max_ms": 375
+        },
+        "RESOLUTION": {
+          "sample_count": 39,
+          "p50_ms": 0,
+          "p95_ms": 89,
+          "max_ms": 99
+        },
+        "ROUTER_ENRICHMENTS": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 5860,
+          "max_ms": 6221
+        },
+        "ROUTING_CLASSIFIED": {
+          "sample_count": 13,
+          "p50_ms": 0,
+          "p95_ms": 5,
+          "max_ms": 9
+        },
+        "SENTIMENT": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 1
+        },
+        "SPOKEN_LITE_DECIDED": {
+          "sample_count": 12,
+          "p50_ms": 155,
+          "p95_ms": 188,
+          "max_ms": 192
+        },
+        "TASK_CLASSIFIER": {
+          "sample_count": 12,
+          "p50_ms": 118,
+          "p95_ms": 147,
+          "max_ms": 147
+        },
+        "TASK_STATE_INITIAL": {
+          "sample_count": 12,
+          "p50_ms": 24,
+          "p95_ms": 31,
+          "max_ms": 33
+        },
+        "TOOL_DISCOVERY": {
+          "sample_count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "TURN_SHAPE_CLASSIFIED": {
+          "sample_count": 4,
+          "p50_ms": 1,
+          "p95_ms": 1,
+          "max_ms": 1
+        },
+        "UNDERSTANDING": {
+          "sample_count": 12,
+          "p50_ms": 1008,
+          "p95_ms": 2864,
+          "max_ms": 2934
+        },
+        "UNDERSTANDING_AUDIT": {
+          "sample_count": 12,
+          "p50_ms": 71,
+          "p95_ms": 136,
+          "max_ms": 146
+        },
+        "UNIFIED_LIVE_RESOLVED": {
+          "sample_count": 12,
+          "p50_ms": 8087,
+          "p95_ms": 9927,
+          "max_ms": 11488
+        },
+        "UNIFIED_SHADOW_SCHEDULED": {
+          "sample_count": 4,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "max_ms": 0
+        },
+        "VOICE_EXPRESSION_BOUND": {
+          "sample_count": 12,
+          "p50_ms": 0,
+          "p95_ms": 1,
+          "max_ms": 1
+        }
+      }
+    },
+    "voice": {
+      "sample_count": 0,
+      "turn_total_ms": {
+        "sample_count": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": null
+      },
+      "dominant_delta_ms": {
+        "sample_count": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": null
+      },
+      "by_dominant_stage": {},
+      "by_stage_delta_ms": {}
+    }
+  },
+  "voice_slo_reference_targets": {
+    "metric_a": {
+      "p50_ms": 500,
+      "p95_ms": 800
+    },
+    "metric_b": {
+      "p50_ms": 5000,
+      "p95_ms": 8000
+    }
+  },
+  "voice_slo_audit_rows": {
+    "voice.slo.metric_a": 0,
+    "voice.slo.metric_b": 0
+  },
+  "note": "Baselines are measured p50/p95 from runtime.turn_latency.critical_path only. Dominant stage = largest checkpoint delta per turn, not average stage time. No PASS/FAIL claimed until compared to published 3.0 budgets.",
+  "evidence_sample": [
+    {
+      "id": "5855ad3c-bf52-4cbf-82e6-8e320c885f22",
+      "created_at": "2026-09-19T07:33:16.586909+00:00",
+      "resource_id": "e0aade25-5f7e-48e0-9dea-f8501d717e10"
+    },
+    {
+      "id": "078e4e0c-c9ef-4f39-824a-0302c48d40e4",
+      "created_at": "2026-09-19T07:33:09.024041+00:00",
+      "resource_id": "8d396a49-dbc4-4b3a-9e9c-aef667b92c10"
+    },
+    {
+      "id": "e17ead51-dd83-438a-9383-f3f432743250",
+      "created_at": "2026-09-19T07:22:17.493466+00:00",
+      "resource_id": "edd8adc3-6a7d-44cf-959b-6a73a076c07c"
+    },
+    {
+      "id": "4a679f81-1a94-4fe1-8fb9-5bfd189726ca",
+      "created_at": "2026-09-19T07:21:40.65101+00:00",
+      "resource_id": "f5e968b8-9741-43f8-acc5-15c64836e3fd"
+    },
+    {
+      "id": "3fbdaa0f-096a-4f1b-9886-da38f395ed2f",
+      "created_at": "2026-09-19T07:21:23.730619+00:00",
+      "resource_id": "e22f5160-6b9d-411b-8e86-eccc5a7bab6b"
+    }
+  ]
+}
