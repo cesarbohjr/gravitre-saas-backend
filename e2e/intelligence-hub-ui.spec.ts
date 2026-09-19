@@ -85,6 +85,11 @@ test.describe("Intelligence hub UI", () => {
         response.url().includes("/api/intelligence/page-context") && response.status() === 200,
     )
 
+    const insightRow = page.getByTestId("learning-insight-row").first()
+    if (!(await insightRow.isVisible().catch(() => false))) {
+      test.skip(true, "No promoted learnings in fixture org — G8 UI NOT RUN")
+    }
+    await insightRow.click()
     const mapLink = page.getByTestId("learning-insight-map-link").first()
     if (!(await mapLink.isVisible().catch(() => false))) {
       test.skip(true, "No promoted learnings in fixture org — G8 UI NOT RUN")

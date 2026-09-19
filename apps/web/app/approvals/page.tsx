@@ -15,7 +15,7 @@ import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { STATUS } from "@/lib/design-system"
+import { STATUS, TYPE } from "@/lib/design-system"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { approvalsApi, settingsApi } from "@/lib/api"
@@ -25,6 +25,7 @@ import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ApprovalSlaCountdown } from "@/components/approvals/sla-countdown"
 import { PreActionCard } from "@/components/gravitre/pre-action-card"
 import { preActionFromApproval } from "@/lib/pre-action-card"
+import { ESTIMATED_CONFIDENCE_LABEL, CONFIDENCE_ESTIMATE_METHODOLOGY } from "@/lib/outcome-labels"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -46,14 +47,12 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
-  Bot,
   ArrowLeft,
 } from "lucide-react"
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 
@@ -350,16 +349,12 @@ function DecisionCard({
   approval, 
   isSelected,
   onSelect,
-  onApprove, 
-  onReject,
   readOnly = false,
   teamMembers = [],
 }: { 
   approval: Approval
   isSelected: boolean
   onSelect: () => void
-  onApprove: (id: string) => void
-  onReject: (id: string) => void
   readOnly?: boolean
   teamMembers?: ApiUser[]
 }) {
@@ -428,39 +423,6 @@ function DecisionCard({
           />
         </div>
 
-        {/* AI Recommendation - prominent */}
-        {approval.aiRecommendation && (
-          <div className={cn(
-            "rounded-lg p-3 mb-3 border",
-            approval.aiRecommendation.action === "approve" && "bg-success/5 border-success/20",
-            approval.aiRecommendation.action === "reject" && "bg-destructive/5 border-destructive/20",
-            approval.aiRecommendation.action === "review" && "bg-warning/5 border-warning/20"
-          )}>
-            <div className="flex items-center gap-2 mb-1">
-              <NucleoIntelligence className={cn(
-                "h-3.5 w-3.5",
-                approval.aiRecommendation.action === "approve" && "text-success",
-                approval.aiRecommendation.action === "reject" && "text-destructive",
-                approval.aiRecommendation.action === "review" && "text-warning"
-              )} />
-              <span className={cn(
-                "text-xs font-medium",
-                approval.aiRecommendation.action === "approve" && "text-success",
-                approval.aiRecommendation.action === "reject" && "text-destructive",
-                approval.aiRecommendation.action === "review" && "text-warning"
-              )}>
-                AI recommends: {approval.aiRecommendation.action}
-                <span className="text-muted-foreground font-normal ml-1">
-                  ({approval.aiRecommendation.confidence}% confidence)
-                </span>
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {approval.aiRecommendation.reason}
-            </p>
-          </div>
-        )}
-
         {/* Context */}
         <div className="text-xs text-muted-foreground mb-3 space-y-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -514,20 +476,6 @@ function DecisionCard({
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         <ContextMenuItem onSelect={onSelect}>Open detail</ContextMenuItem>
-        {!readOnly && approval.status === "pending" ? (
-          <>
-            <ContextMenuItem onSelect={() => onApprove(approval.id)}>
-              Approve
-            </ContextMenuItem>
-            <ContextMenuItem
-              className="text-destructive focus:text-destructive"
-              onSelect={() => onReject(approval.id)}
-            >
-              Reject
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-          </>
-        ) : null}
         {approval.context.runId ? (
           <ContextMenuItem asChild>
             <Link href={`/runs/${approval.context.runId}`}>View run</Link>
@@ -631,7 +579,7 @@ function DetailPanel({
                 approval.aiRecommendation.action === "reject" && "bg-destructive/20",
                 approval.aiRecommendation.action === "review" && "bg-warning/20"
               )}>
-                <Bot className={cn(
+                <NucleoIntelligence className={cn(
                   "h-5 w-5",
                   approval.aiRecommendation.action === "approve" && "text-success",
                   approval.aiRecommendation.action === "reject" && "text-destructive",
@@ -639,16 +587,13 @@ function DetailPanel({
                 )} />
               </div>
               <div>
-                <p className={cn(
-                  "text-sm font-medium",
-                  approval.aiRecommendation.action === "approve" && "text-success",
-                  approval.aiRecommendation.action === "reject" && "text-destructive",
-                  approval.aiRecommendation.action === "review" && "text-warning"
-                )}>
-                  AI Recommendation: {approval.aiRecommendation.action.charAt(0).toUpperCase() + approval.aiRecommendation.action.slice(1)}
+                <p className={TYPE.eyebrow}>Heuristic suggestion</p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  Suggested next step: {approval.aiRecommendation.action}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {approval.aiRecommendation.confidence}% confidence
+                <p className={cn(TYPE.meta, "mt-0.5")}>
+                  {ESTIMATED_CONFIDENCE_LABEL}: {approval.aiRecommendation.confidence}% ·{" "}
+                  {CONFIDENCE_ESTIMATE_METHODOLOGY}
                 </p>
               </div>
             </div>
@@ -912,8 +857,10 @@ function ApprovalsContent() {
       <div className="flex flex-col lg:flex-row h-full pb-28 lg:pb-0">
         {/* Left: Queue */}
         <div className={cn(
-          "w-full lg:w-[360px] flex-shrink-0 lg:border-r border-divide flex flex-col",
-          selectedApproval ? "hidden lg:flex" : "flex",
+          "flex w-full flex-col border-divide",
+          selectedApproval
+            ? "hidden flex-shrink-0 lg:flex lg:w-[360px] lg:border-r"
+            : "flex min-w-0 flex-1",
         )}>
           {/* Header */}
           <div className="flex-shrink-0 border-b border-divide">
@@ -992,8 +939,6 @@ function ApprovalsContent() {
                   approval={approval}
                   isSelected={selectedId === approval.id}
                   onSelect={() => setSelectedId(approval.id)}
-                  onApprove={handleApprove}
-                  onReject={handleRejectWithPrompt}
                   readOnly={queueTab === "history"}
                   teamMembers={teamMembers}
                 />
@@ -1018,37 +963,39 @@ function ApprovalsContent() {
           </div>
         </div>
 
-        {/* Right: Detail Panel - Hidden on mobile unless item selected */}
-        <div className={`flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 ${!selectedApproval ? "hidden lg:block" : ""}`} data-review-surface="approvals-inspect">
-          <DetailPanel 
-            approval={selectedApproval} 
-            onApprove={handleApprove}
-            onReject={handleRejectWithPrompt}
-            onBack={() => setSelectedId(null)}
-            isSubmitting={isSubmitting}
-            pendingActionId={pendingActionId}
-            teamMembers={teamMembers}
-          />
-        </div>
+        {selectedApproval ? (
+          <div className="flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0" data-review-surface="approvals-inspect">
+            <DetailPanel
+              approval={selectedApproval}
+              onApprove={handleApprove}
+              onReject={handleRejectWithPrompt}
+              onBack={() => setSelectedId(null)}
+              isSubmitting={isSubmitting}
+              pendingActionId={pendingActionId}
+              teamMembers={teamMembers}
+            />
+          </div>
+        ) : null}
       </div>
 
-      {selectedApproval ? (
+      {selectedApproval?.status === "pending" ? (
         <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-divide bg-[color:var(--g-surface-1)]/95 p-3 backdrop-blur lg:hidden">
-          <div className="mx-auto flex max-w-lg gap-2">
+          <div className="mx-auto flex max-w-lg items-center gap-2">
             <Button
-              variant="outline"
-              className="flex-1 h-11"
+              className="h-11 flex-1 cursor-pointer"
+              disabled={isSubmitting}
+              data-review-cta="approve"
+              onClick={() => void handleApprove(selectedApproval.id)}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-11 cursor-pointer text-muted-foreground"
               disabled={isSubmitting}
               onClick={() => handleRejectWithPrompt(selectedApproval.id)}
             >
               Reject
-            </Button>
-            <Button
-              className="flex-1 h-11"
-              disabled={isSubmitting}
-              onClick={() => void handleApprove(selectedApproval.id)}
-            >
-              Approve
             </Button>
           </div>
         </div>

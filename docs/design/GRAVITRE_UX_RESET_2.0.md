@@ -24,6 +24,7 @@
 | Performance | **C Diagnostic Workspace** | Outcome → contributing stages → span → evidence. Pipeline/waterfall subordinate. Real instrumentation only. |
 | Workflows | **C Intent + Orchestration** | Outcome statement, then canvas. Config via inspect, not hidden behind Ask. TRACE overlay. |
 | Runs | **C Outcome/Evidence default**; **B Trace** as drill-down | Result first, then inspect trace. |
+| Approvals | **Queue + one primary CTA** | Select to decide. Inspector only on selection. Approve is the only primary CTA; Reject is secondary. Heuristic suggestion uses estimate labels — not “AI-approved.” |
 | Inspector | Shared principle | No selection → no inspector. |
 | Motion | State vocabulary | EXPAND FOCUS TRACE REVEAL RESOLVE CONNECT EXECUTE. Reduced motion. |
 
@@ -94,6 +95,7 @@ Layers are called out separately: Architecture / Interaction / IA / Visual / Mot
 | Workflow builder | Not tab-first | Canvas primary; intent statement above canvas; config via Inspect sheet; TRACE overlay (path emphasis, no invented timings) | **PARTIAL** (Phase F started) | `workflows/[id]/builder/page.tsx` | builder | Badge density; live **NOT PROVEN** | Workflow 2.0 |
 | Workflow detail | Flatten | ~28 Cards | **NOT STARTED** | `workflows/[id]/page.tsx` | detail | — | 2.0 |
 | Activity list | No KPI wrap | Two-pane; KPI wrap removed; inspector on selection; TRACE via run `?trace=1` | **PARTIAL** (Phase G started) | `activity/page.tsx`; `/runs/[id]` | activity, run detail | Live session **NOT PROVEN** | Runs 2.0 |
+| Approvals queue | Decision-first; one primary CTA | Queue full-width until selection; inspect only when a request is open; Approve primary, Reject ghost; queue has no competing Approve/Reject; suggestion labeled Estimated confidence | **PARTIAL** (Phase I) | `approvals/page.tsx`; harness `s=approvals` | `/approvals` | Authenticated click-through **NOT PROVEN** | Approvals 2.0 |
 | Marketplace tiles | Keep discovery | Intentionally kept PriceBadge/tiles | **COMPLETE** (kept) | marketplace assets | marketplace | Operational vs discovery | Marketplace 2.0 |
 | Training / models text nav | No pill tabs | Phase 6–7 text nav | **COMPLETE** (IA) | training, models, model-studio | those | Expert workspace polish | Models/Training 2.0 |
 | Intelligence hub I11 | 7 text links, no Training | Shots **PASS**; live login **NOT PROVEN** | **COMPLETE** (chrome); **NOT PROVEN** live | `intelligence-hub-tabs.tsx` | intelligence | Visual intelligence | Intelligence 2.0 |
@@ -455,4 +457,4 @@ Artifacts: `e2e/artifacts/ux-reset-2-review/`
 
 ## STOP
 
-Phase I Approvals queue + one primary CTA started. Remaining hubs (intelligence, models/training, settings, marketplace) remain later.
+Phase J Intelligence learning list + inspector and memory TabsList flatten is in source (`/intelligence/learning`, `/intelligence/memory`). `/intelligence` map + command bar retained. Authenticated gravitre.app click-through remains **NOT PROVEN**. Remaining hubs (models/training, settings, marketplace) remain later.

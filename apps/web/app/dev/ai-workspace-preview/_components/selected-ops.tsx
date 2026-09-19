@@ -356,6 +356,65 @@ export function SelectedWorkflows({ scene }: { scene: string }) {
   )
 }
 
+export function SelectedApprovals({ scene }: { scene: string }) {
+  const selected = scene.includes("selected")
+  const empty = scene.includes("empty")
+  const loading = scene.includes("loading")
+  const error = scene.includes("error")
+  return (
+    <div data-review-surface="approvals" data-review-scene={scene} className="max-w-3xl">
+      <p className={TYPE.eyebrow}>Queue</p>
+      <h2 className={cn(TYPE.sectionTitle, "mt-1")}>Decide one request at a time.</h2>
+      {loading && <p className={cn(TYPE.meta, "mt-4")}>Loading pending requests…</p>}
+      {error && <p className="mt-4 text-sm text-[color:var(--g-danger)]">Could not load the queue.</p>}
+      {empty && !loading && (
+        <p className={cn(TYPE.bodyMuted, "mt-4")}>No pending requests. Inspector stays closed until then.</p>
+      )}
+      {!empty && !loading && !error && (
+        <ul className="mt-4 space-y-2">
+          {["Assign HubSpot owner", "Post Slack summary"].map((title, i) => (
+            <li
+              key={title}
+              className={cn(
+                "border px-3 py-2 text-sm",
+                selected && i === 0
+                  ? "border-[color:var(--g-brand)] bg-[color:var(--g-surface-active)]"
+                  : "border-[color:var(--g-border-default)]",
+              )}
+            >
+              <span className="inline-flex items-center gap-2">
+                <NucleoApproval size={16} />
+                {title}
+              </span>
+              <p className={cn(TYPE.meta, "mt-1")}>{selected && i === 0 ? "Open in inspect" : "Select to decide"}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {selected ? (
+        <aside className="mt-6 max-w-sm border border-[color:var(--g-border-active)] p-3 text-sm">
+          <p className={TYPE.eyebrow}>Inspect</p>
+          <p className="mt-2">Assign HubSpot owner for contact 1842. One primary action.</p>
+          <p className={cn(TYPE.meta, "mt-2")}>Estimated confidence: heuristic only — not a loaded model.</p>
+          <div className="mt-4 flex items-center gap-2">
+            <span
+              className="inline-flex h-9 flex-1 items-center justify-center bg-[color:var(--g-brand)] text-sm text-[color:var(--g-background)]"
+              data-review-cta="approve"
+            >
+              Approve
+            </span>
+            <span className="inline-flex h-9 items-center px-3 text-sm text-[color:var(--g-text-secondary)]">Reject</span>
+          </div>
+        </aside>
+      ) : (
+        !empty &&
+        !loading &&
+        !error && <p className={cn(TYPE.meta, "mt-4")}>Select a request — inspector stays closed until then.</p>
+      )}
+    </div>
+  )
+}
+
 export function SelectedRuns({ scene }: { scene: string }) {
   const trace = scene.includes("trace")
   return (

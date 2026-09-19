@@ -9,7 +9,7 @@ import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
-import { LearningInsightCard } from "@/components/intelligence/learning-insight-card"
+import { LearningInsightsList } from "@/components/intelligence/learning-insight-card"
 import { RelationshipsWorkspace } from "@/components/intelligence/relationships/relationships-workspace"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import type { IntelligencePageContextResponse } from "@/lib/api"
@@ -184,11 +184,7 @@ function LearnedRecentlyPanel({
           description="Try widening evidence quality, confidence, source, or time range."
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {filtered.map((insight) => (
-            <LearningInsightCard key={insight.id} insight={insight} />
-          ))}
-        </div>
+        <LearningInsightsList insights={filtered} />
       )}
     </div>
   )
@@ -331,18 +327,15 @@ function ModelsPanel({
           }}
         />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="divide-y divide-divide border border-divide">
           {models.map((model) => {
             const id = readString(model.id, readString(model.technicalLabel, "model"))
             const label = readString(model.businessLabel, id)
             const status = readString(model.status, "unknown")
             return (
-              <li
-                key={id}
-                className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] p-4"
-              >
-                <p className="font-medium text-foreground">{label}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{statusShortLabel(status)}</p>
+              <li key={id} className="flex items-baseline justify-between gap-3 px-3 py-2">
+                <p className="text-sm font-medium text-foreground">{label}</p>
+                <p className="text-xs text-muted-foreground">{statusShortLabel(status)}</p>
               </li>
             )
           })}

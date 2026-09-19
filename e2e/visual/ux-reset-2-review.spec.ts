@@ -47,6 +47,10 @@ const shots: { name: string; path: string; width: number; height: number }[] = [
   { name: "connectors-selected", path: "/dev/ai-workspace-preview?s=connectors&scene=selected", width: 1440, height: 900 },
   { name: "connectors-empty", path: "/dev/ai-workspace-preview?s=connectors&scene=empty", width: 1440, height: 900 },
   { name: "connectors-error", path: "/dev/ai-workspace-preview?s=connectors&scene=error", width: 1440, height: 900 },
+  { name: "approvals-queue", path: "/dev/ai-workspace-preview?s=approvals&scene=default", width: 1440, height: 900 },
+  { name: "approvals-selected", path: "/dev/ai-workspace-preview?s=approvals&scene=selected", width: 1440, height: 900 },
+  { name: "approvals-empty", path: "/dev/ai-workspace-preview?s=approvals&scene=empty", width: 1440, height: 900 },
+  { name: "approvals-error", path: "/dev/ai-workspace-preview?s=approvals&scene=error", width: 1440, height: 900 },
 ]
 
 test.describe("UX Reset 2.0 selected-direction review shots", () => {

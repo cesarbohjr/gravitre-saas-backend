@@ -9,8 +9,8 @@ import { Brain, ArrowCounterClockwise } from "@phosphor-icons/react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi, memoryPromotionApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
@@ -18,8 +18,18 @@ import { plainDecisionReasoning, readString } from "@/lib/intelligence/helpers"
 import { MemoryCategoryChip } from "@/components/intelligence/memory-category-chip"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
+import { TYPE } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 
 const copy = SURFACE_COPY.pages.memory
+
+type MemoryLens = "org" | "auto" | "graph"
+
+const LENSES: { id: MemoryLens; label: string }[] = [
+  { id: "org", label: copy.tabPromoted },
+  { id: "auto", label: copy.tabAuto },
+  { id: "graph", label: copy.tabGraph },
+]
 
 function RelationshipsLens() {
   const { data, isLoading } = useSWR("intelligence/memory/relationships", () => intelligenceApi.relationships())
@@ -34,9 +44,9 @@ function RelationshipsLens() {
     )
   }
   return (
-    <ul className="space-y-2 text-sm">
+    <ul className="divide-y divide-divide border border-divide text-sm">
       {rows.slice(0, 20).map((row, index) => (
-        <li key={String(row.id ?? index)} className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2">
+        <li key={String(row.id ?? index)} className="px-3 py-2">
           <span className="font-medium">{readString(row.source_entity_type, "entity")}</span> →{" "}
           <span className="font-medium">{readString(row.target_entity_type, "entity")}</span>
           <span className="ml-2 text-muted-foreground">{readString(row.relationship_type, "")}</span>
@@ -48,10 +58,10 @@ function RelationshipsLens() {
 
 export default function IntelligenceMemoryPage() {
   const { user } = useAuth()
-  const [tab, setTab] = useState("org")
-  const [reasonMemoryId, setReasonMemoryId] = useState<string | null>(null)
+  const [lens, setLens] = useState<MemoryLens>("org")
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  // Always load KPI feeds when signed in so the metric strip stays honest across tabs.
+  // Always load KPI feeds when signed in so the metric strip stays honest across lenses.
   const { data: candidatesData, error, mutate } = useSWR(
     user ? "intelligence/memory/candidates" : null,
     () => memoryPromotionApi.candidates({ status: "pending", limit: 50 }),
@@ -86,11 +96,18 @@ export default function IntelligenceMemoryPage() {
   const candidates = candidatesData?.items ?? []
   const auditItems = (auditData?.items as Array<Record<string, unknown>> | undefined) ?? []
   const autoItems = autoData?.items ?? []
+  const selectedCandidate = candidates.find((row) => row.id === selectedId) ?? null
+  const selectedAuto =
+    autoItems.find((row, index) => String(row.memory_id ?? index) === selectedId) ?? null
+  const selectedAudit = selectedCandidate
+    ? auditItems.find((row) => row.candidate_id === selectedCandidate.id)
+    : null
 
   async function handleRollback(memoryId: string) {
     try {
       await memoryPromotionApi.rollback(memoryId, "Rollback from Intelligence memory explorer")
       toast.success("Memory rolled back")
+      setSelectedId(null)
       await Promise.all([mutate(), mutateAudit()])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Rollback failed")
@@ -117,7 +134,7 @@ export default function IntelligenceMemoryPage() {
             <GravitreMetric
               label="Pending promotions"
               value={candidates.length}
-              hint="Awaiting review"
+              hint="Select a memory — inspector stays closed until then."
               warning={candidates.length > 0}
             />
             <GravitreMetric
@@ -132,59 +149,90 @@ export default function IntelligenceMemoryPage() {
             />
           </section>
 
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="flex w-full flex-wrap justify-start">
-              <TabsTrigger value="org">{copy.tabPromoted}</TabsTrigger>
-              <TabsTrigger value="auto">{copy.tabAuto}</TabsTrigger>
-              <TabsTrigger value="graph">{copy.tabGraph}</TabsTrigger>
-            </TabsList>
+          <SegmentedControl
+            ariaLabel="Memory view"
+            options={LENSES}
+            value={lens}
+            onChange={(next) => {
+              setLens(next)
+              setSelectedId(null)
+            }}
+          />
 
-            <TabsContent value="org" className="mt-6 space-y-4">
-              {candidates.length === 0 ? (
-                <EmptyState
-                  iconSlot={<Brain className="h-8 w-8 text-primary" weight="duotone" aria-hidden />}
-                  title="No pending promotion candidates"
-                  description="Promoted memories appear here when the engine detects recurring org-wide patterns."
-                />
-              ) : (
-                candidates.map((candidate) => {
-                  const auditMatch = auditItems.find((row) => row.candidate_id === candidate.id)
-                  return (
-                    <article
-                      key={candidate.id}
-                      className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <MemoryCategoryChip category={candidate.memory_category} size="md" />
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => setReasonMemoryId(candidate.id)}>
-                            Why was this remembered?
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="mt-3 text-sm leading-relaxed text-foreground text-pretty">
-                        {candidate.content ?? "—"}
-                      </p>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Source: {candidate.source_table ?? "unknown"} · Freshness:{" "}
-                        {candidate.updated_at
-                          ? formatDistanceToNow(new Date(candidate.updated_at), { addSuffix: true })
-                          : "—"}
-                      </p>
-                      {reasonMemoryId === candidate.id ? (
-                        <p className="mt-3 rounded-lg border border-dashed border-border bg-secondary/40 p-3 text-sm text-foreground">
-                          {plainDecisionReasoning(
-                            auditMatch?.decision_reasoning ?? auditMatch?.decisionReasoning ?? candidate.metadata,
+          {lens === "org" ? (
+            candidates.length === 0 ? (
+              <EmptyState
+                iconSlot={<Brain className="h-8 w-8 text-primary" weight="duotone" aria-hidden />}
+                title="No pending promotion candidates"
+                description="Promoted memories appear here when the engine detects recurring org-wide patterns."
+              />
+            ) : (
+              <div className="flex flex-col border border-divide lg:flex-row">
+                <ul className="min-w-0 flex-1 divide-y divide-divide" data-review-surface="memory-queue">
+                  {candidates.map((candidate) => {
+                    const isSelected = selectedId === candidate.id
+                    return (
+                      <li key={candidate.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(candidate.id)}
+                          className={cn(
+                            "flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left",
+                            isSelected
+                              ? "bg-[color:var(--g-surface-2)]"
+                              : "hover:bg-[color:var(--g-surface-2)]/50",
                           )}
-                        </p>
-                      ) : null}
-                    </article>
-                  )
-                })
-              )}
-            </TabsContent>
+                        >
+                          <span className="min-w-0">
+                            <span className="line-clamp-2 block text-sm font-medium text-foreground">
+                              {candidate.content ?? "—"}
+                            </span>
+                            <span className={cn(TYPE.meta, "mt-0.5 block")}>
+                              {candidate.source_table ?? "unknown"}
+                              {candidate.updated_at
+                                ? ` · ${formatDistanceToNow(new Date(candidate.updated_at), { addSuffix: true })}`
+                                : ""}
+                            </span>
+                          </span>
+                          <MemoryCategoryChip category={candidate.memory_category} size="sm" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+                {selectedCandidate ? (
+                  <div
+                    className="flex-1 space-y-3 border-t border-divide p-4 lg:border-t-0 lg:border-l"
+                    data-review-surface="memory-inspect"
+                  >
+                    <MemoryCategoryChip category={selectedCandidate.memory_category} size="md" />
+                    <p className="text-sm leading-relaxed text-foreground text-pretty">
+                      {selectedCandidate.content ?? "—"}
+                    </p>
+                    <p className={TYPE.meta}>
+                      Source: {selectedCandidate.source_table ?? "unknown"} · Freshness:{" "}
+                      {selectedCandidate.updated_at
+                        ? formatDistanceToNow(new Date(selectedCandidate.updated_at), { addSuffix: true })
+                        : "—"}
+                    </p>
+                    <div>
+                      <p className={TYPE.eyebrow}>Why this was remembered</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {plainDecisionReasoning(
+                          selectedAudit?.decision_reasoning ??
+                            selectedAudit?.decisionReasoning ??
+                            selectedCandidate.metadata,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )
+          ) : null}
 
-            <TabsContent value="auto" className="mt-6 space-y-4">
+          {lens === "auto" ? (
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">{copy.autoHint}</p>
               {autoItems.length === 0 ? (
                 <EmptyState
@@ -192,53 +240,82 @@ export default function IntelligenceMemoryPage() {
                   description="Auto-promotions appear when thresholds are met."
                 />
               ) : (
-                autoItems.map((item, index) => (
-                  <article
-                    key={String(item.memory_id ?? index)}
-                    className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
-                  >
-                    <p className="text-sm text-foreground">
-                      {plainDecisionReasoning(item.decisionReasoning ?? item)}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {item.decided_at
-                        ? formatDistanceToNow(new Date(String(item.decided_at)), { addSuffix: true })
-                        : "Recently"}
-                    </p>
-                    {item.memory_id ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="mt-3"
-                        onClick={() => handleRollback(String(item.memory_id))}
-                      >
-                        <ArrowCounterClockwise className="mr-2 h-4 w-4" aria-hidden />
-                        Rollback
-                      </Button>
-                    ) : null}
-                  </article>
-                ))
+                <div className="flex flex-col border border-divide lg:flex-row">
+                  <ul className="min-w-0 flex-1 divide-y divide-divide" data-review-surface="memory-queue">
+                    {autoItems.map((item, index) => {
+                      const id = String(item.memory_id ?? index)
+                      const isSelected = selectedId === id
+                      return (
+                        <li key={id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(id)}
+                            className={cn(
+                              "w-full px-3 py-2.5 text-left",
+                              isSelected
+                                ? "bg-[color:var(--g-surface-2)]"
+                                : "hover:bg-[color:var(--g-surface-2)]/50",
+                            )}
+                          >
+                            <span className="line-clamp-2 block text-sm text-foreground">
+                              {plainDecisionReasoning(item.decisionReasoning ?? item)}
+                            </span>
+                            <span className={cn(TYPE.meta, "mt-0.5 block")}>
+                              {item.decided_at
+                                ? formatDistanceToNow(new Date(String(item.decided_at)), { addSuffix: true })
+                                : "Recently"}
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {selectedAuto ? (
+                    <div
+                      className="flex-1 space-y-3 border-t border-divide p-4 lg:border-t-0 lg:border-l"
+                      data-review-surface="memory-inspect"
+                    >
+                      <p className="text-sm text-foreground">
+                        {plainDecisionReasoning(selectedAuto.decisionReasoning ?? selectedAuto)}
+                      </p>
+                      <p className={TYPE.meta}>
+                        {selectedAuto.decided_at
+                          ? formatDistanceToNow(new Date(String(selectedAuto.decided_at)), { addSuffix: true })
+                          : "Recently"}
+                      </p>
+                      {selectedAuto.memory_id ? (
+                        <Button
+                          size="sm"
+                          data-review-cta="rollback"
+                          onClick={() => handleRollback(String(selectedAuto.memory_id))}
+                        >
+                          <ArrowCounterClockwise className="mr-2 h-4 w-4" aria-hidden />
+                          Rollback
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               )}
-            </TabsContent>
+            </div>
+          ) : null}
 
-            <TabsContent value="graph" className="mt-6 space-y-4">
+          {lens === "graph" ? (
+            <div className="space-y-4">
               <p className="text-sm text-muted-foreground text-pretty">{copy.graphHint}</p>
               <RelationshipsLens />
               {auditItems.length > 0 ? (
-                <ul className="space-y-2 text-sm">
+                <ul className="divide-y divide-divide border border-divide text-sm">
                   {auditItems.slice(0, 10).map((row, index) => (
-                    <li
-                      key={String(row.id ?? index)}
-                      className="rounded-[var(--np-radius-md)] border border-divide px-3 py-2"
-                    >
+                    <li key={String(row.id ?? index)} className="px-3 py-2">
                       <span className="font-medium">{readString(row.entity_type, "memory")}</span> ·{" "}
                       {plainDecisionReasoning(row.decision_reasoning ?? row.decisionReasoning)}
                     </li>
                   ))}
                 </ul>
               ) : null}
-            </TabsContent>
-          </Tabs>
+            </div>
+          ) : null}
         </div>
       </div>
     </AppShell>

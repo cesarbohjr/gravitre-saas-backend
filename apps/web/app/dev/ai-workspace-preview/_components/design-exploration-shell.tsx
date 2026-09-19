@@ -7,6 +7,7 @@ import { TYPE } from "@/lib/design-system"
 import { SelectedAiCommandOs, type AiScene } from "./selected-ai"
 import {
   SelectedAgents,
+  SelectedApprovals,
   SelectedConnectors,
   SelectedNucleo,
   SelectedPerformance,
@@ -15,7 +16,7 @@ import {
   SelectedWorkflows,
 } from "./selected-ops"
 
-const SURFACES = ["nucleo", "ai", "agents", "relationships", "performance", "workflows", "runs", "connectors"] as const
+const SURFACES = ["nucleo", "ai", "agents", "relationships", "performance", "workflows", "runs", "connectors", "approvals"] as const
 type Surface = (typeof SURFACES)[number]
 
 const AI_SCENES: AiScene[] = [
@@ -81,6 +82,7 @@ export function DesignExplorationShell() {
           <SelectedRuns scene={scene === "selected" ? "trace" : scene} />
         )}
         {surface === "connectors" && <SelectedConnectors scene={scene} />}
+        {surface === "approvals" && <SelectedApprovals scene={scene} />}
       </main>
     </div>
   )

@@ -133,7 +133,44 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/data-review-cta="approve"/)
     expect(src).toMatch(/inspector stays closed until then/)
     expect(src).toMatch(/Select to decide/)
+    expect(src).toMatch(/ESTIMATED_CONFIDENCE_LABEL/)
     expect(src).not.toMatch(/AI-approved/)
+    expect(src).not.toMatch(/hidden lg:block/)
     expect(src).toMatch(/hideActions/)
+    expect(src).toMatch(/selectedApproval \? \(/)
+    const harness = readFileSync(
+      resolve(webRoot, "app/dev/ai-workspace-preview/_components/design-exploration-shell.tsx"),
+      "utf8",
+    )
+    expect(harness).toMatch(/"approvals"/)
+    expect(harness).toMatch(/SelectedApprovals/)
+  })
+
+  it("learning insights are a list with inspector on selection; memory has no TabsList", () => {
+    const stage = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/learning-stage.tsx"),
+      "utf8",
+    )
+    expect(stage).toMatch(/LearningInsightsList/)
+    expect(stage).not.toMatch(/md:grid-cols-2/)
+    expect(stage).not.toMatch(/LearningInsightCard/)
+
+    const list = readFileSync(
+      resolve(webRoot, "components/intelligence/learning-insight-card.tsx"),
+      "utf8",
+    )
+    expect(list).toMatch(/data-review-surface="learning-queue"/)
+    expect(list).toMatch(/data-review-surface="learning-inspect"/)
+    expect(list).toMatch(/inspector stays closed until then/)
+    expect(list).toMatch(/data-review-cta="view-on-map"/)
+    expect(list).not.toMatch(/from \"@\/components\/ui\/card\"/)
+
+    const memory = readFileSync(resolve(webRoot, "app/intelligence/memory/page.tsx"), "utf8")
+    expect(memory).not.toMatch(/TabsList/)
+    expect(memory).not.toMatch(/from \"@\/components\/ui\/tabs\"/)
+    expect(memory).toMatch(/data-review-surface="memory-queue"/)
+    expect(memory).toMatch(/data-review-surface="memory-inspect"/)
+    expect(memory).toMatch(/inspector stays closed until then/)
+    expect(memory).toMatch(/selectedCandidate \?/)
   })
 })
