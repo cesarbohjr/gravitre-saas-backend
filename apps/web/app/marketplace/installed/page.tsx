@@ -3,7 +3,6 @@
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
@@ -21,37 +20,12 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  TrendingUp,
-  Megaphone,
-  Headphones,
-  DollarSign,
-  Briefcase,
-  Bot,
-  Workflow,
-  Database,
   AlertTriangle,
   Loader2,
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import type { MarketplaceInstall } from "@/types/api"
-
-const DEPARTMENT_THEME: Record<string, { icon: typeof Briefcase; ring: string; soft: string }> = {
-  sales: { icon: TrendingUp, ring: "text-primary", soft: "bg-primary/10" },
-  marketing: { icon: Megaphone, ring: "text-warning", soft: "bg-warning/10" },
-  support: { icon: Headphones, ring: "text-success", soft: "bg-success/10" },
-  finance: { icon: DollarSign, ring: "text-primary", soft: "bg-primary/10" },
-}
-
-function themeFor(department: string) {
-  return (
-    DEPARTMENT_THEME[department.toLowerCase()] ?? {
-      icon: Briefcase,
-      ring: "text-primary",
-      soft: "bg-primary/10",
-    }
-  )
-}
 
 function formatInstalledAt(value?: string | null) {
   if (!value) return null
@@ -60,23 +34,53 @@ function formatInstalledAt(value?: string | null) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-function InstalledAssetCard({
+function InstalledAssetRow({
   install,
-  index,
+  isSelected,
+  onSelect,
+}: {
+  install: MarketplaceInstall
+  isSelected: boolean
+  onSelect: () => void
+}) {
+  const asset = install.asset
+  const department = asset?.department ?? "general"
+  const installedAt = formatInstalledAt(install.installedAt)
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left",
+          isSelected ? "bg-[color:var(--g-surface-2)]" : "hover:bg-[color:var(--g-surface-2)]/50",
+        )}
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-foreground">{asset?.title ?? "Installed asset"}</span>
+          <span className="mt-0.5 block text-xs capitalize text-muted-foreground">
+            {department.replace(/-/g, " ")}
+            {installedAt ? ` · ${installedAt}` : ""}
+          </span>
+        </span>
+      </button>
+    </li>
+  )
+}
+
+function InstalledInspector({
+  install,
   busy,
   onUninstall,
 }: {
   install: MarketplaceInstall
-  index: number
   busy: string | null
   onUninstall: (install: MarketplaceInstall) => void
 }) {
-  const reduced = useReducedMotion()
   const asset = install.asset
   const department = asset?.department ?? "general"
-  const theme = themeFor(department)
-  const DeptIcon = theme.icon
   const installedAt = formatInstalledAt(install.installedAt)
+  const slug = asset?.slug
   const agentCount =
     install.metadata?.agentIds?.length ??
     (install.metadata?.agentId || install.metadata?.operatorId ? 1 : 0)
@@ -84,127 +88,81 @@ function InstalledAssetCard({
     install.metadata?.workflowIds?.length ?? (install.metadata?.workflowId ? 1 : 0)
   const sourceCount =
     install.metadata?.ragSourceIds?.length ?? (install.metadata?.ragSourceId ? 1 : 0)
-  const slug = asset?.slug
   const deepLinks = (install.deepLinks ?? []).filter(
     (link) => !(link.label === "Primary" && (install.deepLinks?.length ?? 0) > 1),
   )
 
   return (
-    <motion.div
-      initial={reduced ? false : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: reduced ? 0 : index * 0.05 }}
-    >
-      <GravitreSurface className="flex h-full flex-col">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-[var(--np-radius-md)]", theme.soft)}>
-              <DeptIcon className={cn("h-5 w-5", theme.ring)} aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <h3 className="text-base font-semibold tracking-tight text-foreground">
-                {asset?.title ?? "Installed asset"}
-              </h3>
-              <p className="text-xs capitalize text-muted-foreground">{department.replace(/-/g, " ")}</p>
-            </div>
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-[var(--np-radius-md)] bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
-            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-            Installed
-          </span>
-        </div>
-
-        {deepLinks.length ? (
-          <div className="mt-4 grid gap-2">
-            {deepLinks.slice(0, 4).map((link) => (
+    <div className="space-y-4 p-4" data-review-surface="marketplace-ops-inspect">
+      <div>
+        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Install</p>
+        <h2 className="mt-1 text-base font-medium text-foreground">{asset?.title ?? "Installed asset"}</h2>
+        <p className="mt-1 text-xs capitalize text-muted-foreground">
+          {department.replace(/-/g, " ")}
+          {installedAt ? ` · Installed ${installedAt}` : ""}
+        </p>
+      </div>
+      {deepLinks.length ? (
+        <ul className="divide-y divide-divide border-y border-divide text-sm">
+          {deepLinks.slice(0, 4).map((link) => (
+            <li key={`${link.entityType}:${link.entityId}:${link.path}`}>
               <Link
-                key={`${link.entityType}:${link.entityId}:${link.path}`}
                 href={link.entityType === "workflow" ? `${link.path}/builder` : link.path}
-                className="group flex items-center justify-between rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2.5 text-sm transition-colors hover:border-[color:var(--g-brand-border)]"
+                className="flex items-center justify-between py-2 hover:underline"
               >
-                <span className="font-medium text-foreground">{link.label}</span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                {link.label}
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
               </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <Link
-              href="/agents"
-              className="group rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-2.5 text-center transition-colors hover:border-[color:var(--g-brand-border)]"
-            >
-              <Bot className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
-              <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{agentCount}</p>
-              <p className="text-[11px] text-muted-foreground">Agents</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {agentCount} agents · {workflowCount} workflows · {sourceCount} sources
+        </p>
+      )}
+      <DepartmentPipelineByDepartment department={department} />
+      <div className="flex flex-wrap gap-2">
+        {slug ? (
+          <Button size="sm" asChild data-review-cta="manage-install">
+            <Link href={`/marketplace/assets/${encodeURIComponent(slug)}`}>
+              Manage
+              <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
             </Link>
-            <Link
-              href="/workflows"
-              className="group rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-2.5 text-center transition-colors hover:border-[color:var(--g-brand-border)]"
-            >
-              <Workflow className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
-              <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{workflowCount}</p>
-              <p className="text-[11px] text-muted-foreground">Workflows</p>
-            </Link>
-            <Link
-              href="/sources"
-              className="group rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-2.5 text-center transition-colors hover:border-[color:var(--g-brand-border)]"
-            >
-              <Database className="mx-auto h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden />
-              <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{sourceCount}</p>
-              <p className="text-[11px] text-muted-foreground">Sources</p>
-            </Link>
-          </div>
-        )}
-
-        <div className="mt-4">
-          <DepartmentPipelineByDepartment department={department} />
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-divide pt-3">
-          <span className="text-xs text-muted-foreground">
-            {installedAt ? `Installed ${installedAt}` : "Installed"}
-          </span>
-          <div className="flex items-center gap-1">
-            {slug ? (
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={`/marketplace/assets/${encodeURIComponent(slug)}`}>
-                  Manage
-                  <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
-            ) : null}
-            {slug ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                disabled={Boolean(busy)}
-                onClick={() => onUninstall(install)}
-              >
-                {busy === install.id ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-                ) : (
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                )}
-                Uninstall
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </GravitreSurface>
-    </motion.div>
+          </Button>
+        ) : null}
+        {slug ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            disabled={Boolean(busy)}
+            onClick={() => onUninstall(install)}
+          >
+            {busy === install.id ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            )}
+            Uninstall
+          </Button>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
 function InstalledContent() {
   const { user } = useAuth()
   const [busy, setBusy] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const { data, error, isLoading, mutate } = useSWR(
     user ? "marketplace-installs" : null,
     () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
   )
 
   const installed = data?.installs ?? []
+  const selected = installed.find((row) => row.id === selectedId) ?? null
 
   const handleUninstall = async (install: MarketplaceInstall) => {
     const slug = install.asset?.slug
@@ -216,6 +174,7 @@ function InstalledContent() {
     try {
       await marketplaceApi.uninstallAsset(slug)
       toast.success("Asset uninstalled")
+      setSelectedId(null)
       await mutate()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Uninstall failed")
@@ -247,7 +206,7 @@ function InstalledContent() {
             <GravitreMetric
               label="Active installs"
               value={isLoading && !data ? "—" : installed.length}
-              hint="In this org"
+              hint="Select an install — inspector stays closed until then."
               icon={<Package className="h-4 w-4" />}
             />
           </section>
@@ -272,14 +231,7 @@ function InstalledContent() {
           ) : null}
 
           {isLoading && !data ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-64 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]"
-                />
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">Loading installed assets…</p>
           ) : installed.length === 0 ? (
             <GravitreEmpty
               icon={<Package className="h-5 w-5" />}
@@ -295,16 +247,24 @@ function InstalledContent() {
               }
             />
           ) : (
-            <div className="grid items-start gap-4 sm:grid-cols-2">
-              {installed.map((install, index) => (
-                <InstalledAssetCard
-                  key={install.id}
-                  install={install}
-                  index={index}
-                  busy={busy}
-                  onUninstall={handleUninstall}
-                />
-              ))}
+            <div className="flex flex-col border border-divide lg:flex-row">
+              <ul className="min-w-0 flex-1 divide-y divide-divide" data-review-surface="marketplace-ops">
+                {installed.map((install) => (
+                  <InstalledAssetRow
+                    key={install.id}
+                    install={install}
+                    isSelected={selectedId === install.id}
+                    onSelect={() => setSelectedId(install.id)}
+                  />
+                ))}
+              </ul>
+              {selected ? (
+                <div className="flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 lg:border-l">
+                  <InstalledInspector install={selected} busy={busy} onUninstall={handleUninstall} />
+                </div>
+              ) : (
+                <p className="sr-only">Select an install — inspector stays closed until then.</p>
+              )}
             </div>
           )}
         </div>

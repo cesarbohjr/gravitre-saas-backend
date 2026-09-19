@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse, BookOpen, LineChart } from "lucide-react"
 import { RegionTab } from "@/components/enterprise/region-tab"
 import { BrandingTab } from "@/components/enterprise/branding-tab"
@@ -82,7 +83,7 @@ function EnterprisePageContent() {
         </div>
 
         {!loading && !canAccessEnterprise ? (
-          <div className="mt-8 flex flex-col items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] px-6 py-16 text-center">
+          <div className="mt-8 flex flex-col items-center justify-center border border-divide px-6 py-16 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
               <Lock className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
             </div>
@@ -108,19 +109,26 @@ function EnterprisePageContent() {
                       onClick={() => selectTab(tab.id)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex shrink-0 items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors lg:w-full",
+                        "flex shrink-0 items-center gap-3 px-1 py-2 text-left lg:w-full",
                         active
-                          ? "border-primary/30 bg-primary/10 text-foreground"
-                          : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       <Icon
                         className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted-foreground")}
                         aria-hidden="true"
                       />
-                      <span className="flex flex-col">
-                        <span className="text-sm font-medium leading-tight">{tab.label}</span>
-                        <span className="hidden text-xs text-muted-foreground lg:block">{tab.description}</span>
+                        <span className="flex flex-col">
+                        <span
+                          className={cn(
+                            "text-sm font-medium leading-tight underline-offset-4",
+                            active && "underline",
+                          )}
+                        >
+                          {tab.label}
+                        </span>
+                        <span className={cn(TYPE.meta, "hidden lg:block")}>{tab.description}</span>
                       </span>
                     </button>
                   )

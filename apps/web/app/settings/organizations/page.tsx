@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -17,13 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
@@ -36,6 +28,8 @@ import { EmptyState } from "@/components/gravitre/empty-state"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { Building2 } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 import type { Organization, User } from "@/types/api"
 
 type OrganizationWithRole = Organization & { role?: string }
@@ -71,6 +65,7 @@ export default function ManageOrganizationsPage() {
   const [inviteRole, setInviteRole] = useState("member")
   const [sendInviteEmail, setSendInviteEmail] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
+  const [inspectId, setInspectId] = useState<string | null>(null)
 
   const { data, isLoading, mutate } = useSWR(
     user ? "organizations:list" : null,
@@ -95,6 +90,7 @@ export default function ManageOrganizationsPage() {
   }, [organizations, selectedOrgId])
 
   const membersDialogOrg = organizations.find((org) => org.id === membersDialogOrgId) ?? null
+  const inspectOrg = organizations.find((org) => org.id === inspectId) ?? null
 
   const { data: membersData, isLoading: membersLoading, mutate: mutateMembers } = useSWR(
     user && showMembersDialog && membersDialogOrg?.id ? `organizations:members:${membersDialogOrg.id}` : null,
@@ -226,12 +222,8 @@ export default function ManageOrganizationsPage() {
       <AppShell title="Settings">
         <SettingsShell activeSection="organizations" isAdmin={isAdmin} hideHeader>
           <div className="px-6 py-12">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sign in required</CardTitle>
-                <CardDescription>Sign in to manage organizations and members.</CardDescription>
-              </CardHeader>
-            </Card>
+            <p className={TYPE.sectionTitle}>Sign in required</p>
+            <p className={cn(TYPE.pageLead, "mt-2")}>Sign in to manage organizations and members.</p>
           </div>
         </SettingsShell>
       </AppShell>
@@ -301,154 +293,103 @@ export default function ManageOrganizationsPage() {
         }
       />
 
-      {/* Content */}
-      <div className="px-6 py-8">
-        {isLoading && (
-          <Card className="mb-4">
-            <CardContent className="p-6 text-sm text-muted-foreground">Loading organizations...</CardContent>
-          </Card>
-        )}
-        <div className="space-y-4">
-          {organizations.map((org, index) => (
-            <Card 
-              key={org.id} 
-              className={`relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-2 fill-mode-both ${
-                currentOrgId === org.id ? "ring-2 ring-primary/20 bg-primary/[0.02]" : ""
-              }`}
-              style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
+      <div className="px-4 py-4 sm:px-6" data-review-surface="settings-orgs">
+        {isLoading && <p className={cn(TYPE.meta, "py-4")}>Loading organizations…</p>}
+        <div className="flex flex-col border-t border-divide lg:flex-row lg:border-t-0">
+          <ul
+            className={cn("min-w-0 flex-1 divide-y divide-divide", inspectOrg ? "hidden lg:block" : "block")}
+            data-review-surface="settings-orgs-queue"
+          >
+            {organizations.map((org) => (
+              <li key={org.id}>
+                <button
+                  type="button"
+                  onClick={() => setInspectId(org.id)}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 px-1 py-3 text-left",
+                    inspectId === org.id
+                      ? "bg-[color:var(--g-surface-active)]"
+                      : "hover:bg-[color:var(--g-surface-2)]",
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-foreground">{org.name}</span>
+                    <span className={cn(TYPE.meta, "mt-0.5 block truncate")}>
+                      {org.slug}
+                      {currentOrgId === org.id ? " · current workspace" : ""}
+                      {org.role ? ` · ${org.role}` : ""}
+                    </span>
+                  </span>
+                  <Icon name="more" size="sm" className="shrink-0 text-muted-foreground" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          {inspectOrg ? (
+            <aside
+              className="min-w-0 flex-1 border-t border-divide p-4 lg:max-w-sm lg:border-l lg:border-t-0"
+              data-review-surface="settings-orgs-inspect"
             >
-              {currentOrgId === org.id && (
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-primary to-transparent" />
+              <Button variant="ghost" size="sm" className="mb-3 lg:hidden" onClick={() => setInspectId(null)}>
+                Back to list
+              </Button>
+              <p className={TYPE.eyebrow}>Organization</p>
+              <h2 className={cn(TYPE.sectionTitle, "mt-1")}>{inspectOrg.name}</h2>
+              <p className={cn(TYPE.meta, "mt-1")}>{inspectOrg.slug}</p>
+              {inspectOrg.plan ? (
+                <p className={cn(TYPE.meta, "mt-2")}>Plan on record: {inspectOrg.plan}</p>
+              ) : (
+                <p className={cn(TYPE.meta, "mt-2")}>Plan is shown from billing when the org has one on record.</p>
               )}
-              
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4">
-                    {/* Org Avatar */}
-                    <div className="relative">
-                      <div className={`h-14 w-14 rounded-xl flex items-center justify-center text-lg font-semibold ${
-                        currentOrgId === org.id
-                          ? "bg-primary/10 text-primary" 
-                          : "bg-secondary text-muted-foreground"
-                      }`}>
-                        {org.name.charAt(0)}
-                      </div>
-                      {currentOrgId === org.id && (
-                        <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-success ring-2 ring-background">
-                          <Icon name="check" size="xs" className="text-success-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Org Info */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-foreground">{org.name}</h3>
-                        {currentOrgId === org.id && (
-                          <Badge variant="secondary" className="border-0 bg-success/10 text-xs text-success">
-                            Current
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        gravitre.ai/{org.slug}
-                      </p>
-                      <div className="flex items-center gap-4 pt-2">
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Icon name="users" size="sm" />
-                          <span>{currentOrgId === org.id ? members.length : "-" } members</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Right Side */}
-                  <div className="flex items-start gap-4">
-                    <div className="text-right space-y-1">
-                      <Badge
-                        variant="outline" 
-                        className={`${
-                          String(org.plan ?? "").toLowerCase() === "command" ||
-                          String(org.plan ?? "").toLowerCase() === "enterprise"
-                            ? "bg-primary/10 text-primary border-primary/20" 
-                            : String(org.plan ?? "").toLowerCase() === "control"
-                            ? "bg-info/10 text-info border-info/20"
-                            : "bg-secondary text-muted-foreground"
-                        }`}
-                      >
-                        {org.plan ?? "Free"}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">{org.role ?? "member"}</p>
-                    </div>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Icon name="more" size="sm" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        {currentOrgId !== org.id && (
-                          <DropdownMenuItem
-                            className="gap-2 cursor-pointer"
-                            disabled={isMutating}
-                            onClick={() => void handleSwitchOrganization(org.id)}
-                          >
-                            <Icon name="check" size="sm" />
-                            Switch to this org
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem className="gap-2 cursor-pointer" asChild>
-                          <Link href={`/settings?org=${org.id}`}>
-                            <Icon name="settings" size="sm" />
-                            Organization settings
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-2 cursor-pointer"
-                          onClick={() => {
-                            setMembersDialogOrgId(org.id)
-                            setShowMembersDialog(true)
-                          }}
-                        >
-                          <Icon name="users" size="sm" />
-                          Manage members
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 cursor-pointer">
-                          <Icon name="billing" size="sm" />
-                          Billing & plan
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {(org.role ?? "").toLowerCase() === "admin" && (
-                          <>
-                            <DropdownMenuItem className="gap-2 cursor-pointer" disabled>
-                              <Icon name="share" size="sm" />
-                              Transfer ownership
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                              onClick={() => void handleDeleteOrganization(org.id)}
-                              disabled={isMutating}
-                            >
-                              <Icon name="trash" size="sm" />
-                              Delete organization
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        {(org.role ?? "").toLowerCase() !== "admin" && (
-                          <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" disabled>
-                            <Icon name="signOut" size="sm" />
-                            Leave organization
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+              {inspectOrg.role ? <p className={cn(TYPE.meta, "mt-1")}>Your role: {inspectOrg.role}</p> : null}
+              <div className="mt-4 flex flex-col gap-2">
+                {currentOrgId !== inspectOrg.id ? (
+                  <Button
+                    data-review-cta="switch-org"
+                    disabled={isMutating}
+                    onClick={() => void handleSwitchOrganization(inspectOrg.id)}
+                  >
+                    Switch to this org
+                  </Button>
+                ) : (
+                  <Button data-review-cta="open-org-settings" asChild>
+                    <Link href={`/settings?org=${inspectOrg.id}`}>Organization settings</Link>
+                  </Button>
+                )}
+                {currentOrgId !== inspectOrg.id ? (
+                  <Button variant="ghost" asChild>
+                    <Link href={`/settings?org=${inspectOrg.id}`}>Organization settings</Link>
+                  </Button>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setMembersDialogOrgId(inspectOrg.id)
+                    setShowMembersDialog(true)
+                  }}
+                >
+                  Manage members
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link href="/settings/billing">Billing</Link>
+                </Button>
+                {(inspectOrg.role ?? "").toLowerCase() === "admin" ? (
+                  <Button
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={isMutating}
+                    onClick={() => void handleDeleteOrganization(inspectOrg.id)}
+                  >
+                    Delete organization
+                  </Button>
+                ) : null}
+              </div>
+            </aside>
+          ) : null}
         </div>
+        {!inspectOrg && !isLoading && organizations.length > 0 ? (
+          <p className={cn(TYPE.meta, "pt-3")}>Select an organization — inspector stays closed until then.</p>
+        ) : null}
         {!isLoading && organizations.length === 0 && (
           <EmptyState
             icon={Building2}
@@ -458,35 +399,13 @@ export default function ManageOrganizationsPage() {
             className="mt-4"
           />
         )}
-
-        {/* Help Section */}
-        <div className="mt-12 p-6 rounded-[var(--np-radius-lg)] bg-[color:var(--g-surface-2)] border border-divide shadow-[var(--np-shadow)]">
-          <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Icon name="help" size="sm" className="text-primary" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-medium text-foreground">Need help with organizations?</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Organizations help you separate different teams, clients, or projects. Each organization 
-                has its own agents, workflows, and billing. You can be a member of multiple organizations 
-                and switch between them anytime.
-              </p>
-              <div className="flex flex-wrap items-center gap-4 mt-4">
-                <Button variant="outline" size="sm" className="gap-2" asChild>
-                  <Link href="/docs/organizations">
-                    <Icon name="file" size="sm" />
-                    Documentation
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
-                  <Icon name="chat" size="sm" />
-                  Contact support
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <p className={cn(TYPE.meta, "mt-8")}>
+          Each organization has its own agents, workflows, and billing. Switch workspaces from this list after you
+          select one.
+        </p>
+        <Link href="/docs/organizations" className="mt-2 inline-block text-sm text-[color:var(--g-brand)] hover:underline">
+          Documentation
+        </Link>
       </div>
 
       <Dialog open={showMembersDialog} onOpenChange={setShowMembersDialog}>

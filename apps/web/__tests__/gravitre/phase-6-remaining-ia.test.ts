@@ -25,6 +25,8 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
     expect(src).toMatch(/Catalog/)
     expect(src).not.toMatch(/FilterChip/)
     expect(src).toMatch(/TYPE_FILTERS\.map/)
+    expect(src).toMatch(/data-review-surface="marketplace-discovery"/)
+    expect(src).toMatch(/data-review-surface="marketplace-ops"/)
   })
 
   it("agent profile uses text sections, not a pill tab strip", () => {

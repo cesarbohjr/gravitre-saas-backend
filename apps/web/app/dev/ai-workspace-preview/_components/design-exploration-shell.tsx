@@ -13,10 +13,12 @@ import {
   SelectedPerformance,
   SelectedRelationships,
   SelectedRuns,
+  SelectedSettings,
+  SelectedMarketplace,
   SelectedWorkflows,
 } from "./selected-ops"
 
-const SURFACES = ["nucleo", "ai", "agents", "relationships", "performance", "workflows", "runs", "connectors", "approvals"] as const
+const SURFACES = ["nucleo", "ai", "agents", "relationships", "performance", "workflows", "runs", "connectors", "approvals", "settings", "marketplace"] as const
 type Surface = (typeof SURFACES)[number]
 
 const AI_SCENES: AiScene[] = [
@@ -83,6 +85,8 @@ export function DesignExplorationShell() {
         )}
         {surface === "connectors" && <SelectedConnectors scene={scene} />}
         {surface === "approvals" && <SelectedApprovals scene={scene} />}
+        {surface === "settings" && <SelectedSettings scene={scene} />}
+        {surface === "marketplace" && <SelectedMarketplace scene={scene} />}
       </main>
     </div>
   )

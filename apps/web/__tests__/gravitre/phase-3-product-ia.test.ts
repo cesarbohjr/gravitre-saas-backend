@@ -104,6 +104,30 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/Enable/)
   })
 
+  it("settings organizations are a list with inspector on selection", () => {
+    const src = readFileSync(resolve(webRoot, "app/settings/organizations/page.tsx"), "utf8")
+    expect(src).toMatch(/data-review-surface="settings-orgs-queue"/)
+    expect(src).toMatch(/data-review-surface="settings-orgs-inspect"/)
+    expect(src).toMatch(/inspector stays closed until then/)
+    expect(src).toMatch(/data-review-cta="switch-org"/)
+    expect(src).not.toMatch(/from \"@\/components\/ui\/card\"/)
+    expect(src).not.toMatch(/org\.plan \?\? \"Free\"/)
+    const prefs = readFileSync(resolve(webRoot, "app/settings/page.tsx"), "utf8")
+    expect(prefs).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
+    const harness = readFileSync(
+      resolve(webRoot, "app/dev/ai-workspace-preview/_components/design-exploration-shell.tsx"),
+      "utf8",
+    )
+    expect(harness).toMatch(/\"settings\"/)
+    expect(harness).toMatch(/SelectedSettings/)
+    const enterprise = readFileSync(resolve(webRoot, "app/settings/enterprise/page.tsx"), "utf8")
+    expect(enterprise).toMatch(/aria-label="Enterprise settings"/)
+    expect(enterprise).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
+    const federation = readFileSync(resolve(webRoot, "app/settings/federation/page.tsx"), "utf8")
+    expect(federation).not.toMatch(/TabsList/)
+    expect(federation).toMatch(/aria-label="Federation activity"/)
+  })
+
   it("workflow builder states intent then canvas and inspects config on the node", () => {
     const src = readFileSync(resolve(webRoot, "app/workflows/[id]/builder/page.tsx"), "utf8")
     expect(src).toMatch(/data-review-surface="workflow-intent"/)
@@ -212,5 +236,28 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
 
     const training = readFileSync(resolve(webRoot, "app/training/page.tsx"), "utf8")
     expect(training).not.toMatch(/from-emerald-500 to-teal-500/)
+  })
+
+  it("marketplace keeps authorized discovery tiles and treats installed as ops", () => {
+    const catalog = readFileSync(resolve(webRoot, "app/marketplace/assets/page.tsx"), "utf8")
+    expect(catalog).toMatch(/data-review-surface="marketplace-discovery"/)
+    expect(catalog).toMatch(/data-review-surface="marketplace-ops"/)
+    expect(catalog).toMatch(/PriceBadge/)
+    expect(catalog).toMatch(/discoveryAssets/)
+    expect(catalog).not.toMatch(/FilterChip/)
+
+    const installed = readFileSync(resolve(webRoot, "app/marketplace/installed/page.tsx"), "utf8")
+    expect(installed).toMatch(/data-review-surface="marketplace-ops"/)
+    expect(installed).toMatch(/data-review-surface="marketplace-ops-inspect"/)
+    expect(installed).toMatch(/inspector stays closed until then/)
+    expect(installed).toMatch(/data-review-cta="manage-install"/)
+    expect(installed).not.toMatch(/sm:grid-cols-2/)
+
+    const harness = readFileSync(
+      resolve(webRoot, "app/dev/ai-workspace-preview/_components/design-exploration-shell.tsx"),
+      "utf8",
+    )
+    expect(harness).toMatch(/"marketplace"/)
+    expect(harness).toMatch(/SelectedMarketplace/)
   })
 })

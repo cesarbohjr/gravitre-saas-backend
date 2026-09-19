@@ -506,6 +506,14 @@ function MarketplaceAssetsContent() {
     if (priceFilter === "all") return assets
     return assets.filter((asset) => (priceFilter === "free" ? isFreeAsset(asset) : !isFreeAsset(asset)))
   }, [assets, priceFilter])
+  const discoveryAssets = useMemo(
+    () => visibleAssets.filter((asset) => !asset.installed),
+    [visibleAssets],
+  )
+  const installedInView = useMemo(
+    () => visibleAssets.filter((asset) => asset.installed),
+    [visibleAssets],
+  )
 
   const openInstall = useCallback((asset: MarketplaceAssetSummary) => {
     setInstallTarget(asset)
@@ -700,7 +708,7 @@ function MarketplaceAssetsContent() {
           </div>
 
           {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" data-review-surface="marketplace-discovery">
               {Array.from({ length: 8 }).map((_, index) => (
                 <AssetCardSkeleton key={index} />
               ))}
@@ -717,20 +725,55 @@ function MarketplaceAssetsContent() {
           ) : visibleAssets.length === 0 ? (
             <GravitreEmpty title={emptyMessage} hint="Adjust filters or clear search to see more packs." />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-              {visibleAssets.map((asset, index) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  index={index}
-                  isAdmin={isAdmin}
-                  busy={busy}
-                  reduceMotion={reduceMotion}
-                  onOpenDetail={openDetail}
-                  onInstall={openInstall}
-                  onClone={handleClone}
-                />
-              ))}
+            <div className="space-y-8">
+              <section data-review-surface="marketplace-discovery">
+                <p className={TYPE.eyebrow}>Discovery</p>
+                <p className={cn(TYPE.meta, "mt-0.5")}>
+                  Catalog prices are authorized commerce. Install from a tile; manage installs on the ops list.
+                </p>
+                {discoveryAssets.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No uninstalled packs match these filters. Installed packs are listed under ops below.
+                  </p>
+                ) : (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                    {discoveryAssets.map((asset, index) => (
+                      <AssetCard
+                        key={asset.id}
+                        asset={asset}
+                        index={index}
+                        isAdmin={isAdmin}
+                        busy={busy}
+                        reduceMotion={reduceMotion}
+                        onOpenDetail={openDetail}
+                        onInstall={openInstall}
+                        onClone={handleClone}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+              {installedInView.length > 0 ? (
+                <section data-review-surface="marketplace-ops">
+                  <p className={TYPE.eyebrow}>Installed (ops)</p>
+                  <p className={cn(TYPE.meta, "mt-0.5")}>
+                    Already in this workspace — not a second shop. Open the installed list to manage.
+                  </p>
+                  <ul className="mt-3 divide-y divide-divide border-y border-divide">
+                    {installedInView.map((asset) => (
+                      <li key={asset.id} className="flex items-center justify-between gap-3 py-2.5">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{asset.title}</p>
+                          <p className={cn(TYPE.meta, "mt-0.5")}>Installed</p>
+                        </div>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href="/marketplace/installed">Manage</Link>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
             </div>
           )}
         </div>

@@ -605,7 +605,7 @@ function ApiKeysSettings({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="space-y-6">
       {apiKeys.map((apiKey) => (
-        <div key={apiKey.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+        <div key={apiKey.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-sm font-medium text-foreground">{apiKey.name}</p>
@@ -869,7 +869,7 @@ function TeamSettings({
 
   return (
     <div className="space-y-6">
-      <AdaptiveDataView className="rounded-[var(--np-radius-lg)] border border-divide overflow-hidden shadow-[var(--np-shadow)]">
+      <AdaptiveDataView className="rounded-[var(--np-radius-lg)] border border-divide overflow-hidden">
         <table className="w-full min-w-[480px]">
           <thead>
             <tr className="border-b border-divide bg-secondary/30">
@@ -1125,7 +1125,7 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
           Loading webhooks…
         </div>
       ) : error ? (
-        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-6 text-sm text-muted-foreground shadow-[var(--np-shadow)]">
+        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-6 text-sm text-muted-foreground">
           Could not load webhooks. Refresh and try again.
         </div>
       ) : webhooks.length === 0 ? (
@@ -1138,7 +1138,7 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
       ) : (
         webhooks.map((webhook) => (
-          <div key={webhook.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+          <div key={webhook.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
             <div className="flex items-start justify-between mb-2">
               <code className="text-xs font-mono text-foreground break-all">{webhook.url}</code>
               <div className="flex items-center gap-2 shrink-0">
@@ -1536,7 +1536,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
 
       <div className="space-y-3">
         {departments.map((department) => (
-          <div key={department.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+          <div key={department.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-foreground">{department.name}</p>
@@ -1753,7 +1753,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-foreground">Internal voice (staff chat)</p>
@@ -1789,7 +1789,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
           <div className="space-y-3">
             {addons.map((addon) => (
-              <div key={addon.code} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+              <div key={addon.code} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">{addon.name}</p>
@@ -1810,7 +1810,7 @@ function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
         </>
       ) : (
-        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
           <p className="text-sm font-medium text-foreground">No billable Meson addons</p>
           <p className="mt-1 text-xs text-muted-foreground">
             There are no Stripe-wired Meson addons available for purchase. Voice is plan-included above.

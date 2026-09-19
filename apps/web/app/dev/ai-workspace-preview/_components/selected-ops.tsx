@@ -356,6 +356,105 @@ export function SelectedWorkflows({ scene }: { scene: string }) {
   )
 }
 
+export function SelectedSettings({ scene }: { scene: string }) {
+  const selected = scene.includes("selected")
+  const empty = scene.includes("empty")
+  const loading = scene.includes("loading")
+  const error = scene.includes("error")
+  return (
+    <div data-review-surface="settings" data-review-scene={scene} className="max-w-3xl">
+      <p className={TYPE.eyebrow}>Document</p>
+      <h2 className={cn(TYPE.sectionTitle, "mt-1")}>Preferences as rows. Organizations as a list.</h2>
+      {loading && <p className={cn(TYPE.meta, "mt-4")}>Loading settings…</p>}
+      {error && <p className="mt-4 text-sm text-[color:var(--g-danger)]">Could not load settings.</p>}
+      {empty && !loading && (
+        <p className={cn(TYPE.bodyMuted, "mt-4")}>No organizations yet. Inspector stays closed until then.</p>
+      )}
+      {!empty && !loading && !error && (
+        <ul className="mt-4 divide-y divide-[color:var(--g-border-default)] border-y border-[color:var(--g-border-default)]">
+          {["Acme workspace", "Sandbox"].map((name, i) => (
+            <li
+              key={name}
+              className={cn("px-1 py-3 text-sm", selected && i === 0 && "bg-[color:var(--g-surface-active)]")}
+            >
+              {name}
+              <p className={cn(TYPE.meta, "mt-0.5")}>{selected && i === 0 ? "Open in inspect" : "Select to inspect"}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {selected ? (
+        <aside className="mt-6 max-w-sm border border-[color:var(--g-border-active)] p-3 text-sm">
+          <p className={TYPE.eyebrow}>Inspect</p>
+          <p className="mt-2">Acme workspace. Switch or open organization settings.</p>
+          <p className={cn(TYPE.meta, "mt-2")}>Plan appears only when billing has one on record.</p>
+          <span
+            className="mt-4 inline-flex h-9 items-center bg-[color:var(--g-brand)] px-3 text-sm text-[color:var(--g-background)]"
+            data-review-cta="switch-org"
+          >
+            Switch to this org
+          </span>
+        </aside>
+      ) : (
+        !empty &&
+        !loading &&
+        !error && <p className={cn(TYPE.meta, "mt-4")}>Select an organization — inspector stays closed until then.</p>
+      )}
+    </div>
+  )
+}
+
+export function SelectedMarketplace({ scene }: { scene: string }) {
+  const selected = scene.includes("selected")
+  const empty = scene.includes("empty")
+  const loading = scene.includes("loading")
+  const error = scene.includes("error")
+  const ops = scene.includes("ops") || scene.includes("installed")
+  return (
+    <div data-review-surface="marketplace" data-review-scene={scene} className="max-w-3xl">
+      <p className={TYPE.eyebrow}>{ops ? "Ops" : "Discovery"}</p>
+      <h2 className={cn(TYPE.sectionTitle, "mt-1")}>
+        {ops ? "Manage installs as a list." : "Browse catalog tiles. Prices are authorized."}
+      </h2>
+      {loading && <p className={cn(TYPE.meta, "mt-4")}>Loading marketplace…</p>}
+      {error && <p className="mt-4 text-sm text-[color:var(--g-danger)]">Could not load the catalog.</p>}
+      {empty && !loading && (
+        <p className={cn(TYPE.bodyMuted, "mt-4")}>
+          {ops ? "Nothing installed yet. Inspector stays closed until then." : "No packs in this filter."}
+        </p>
+      )}
+      {!empty && !loading && !error && ops && (
+        <ul className="mt-4 divide-y divide-[color:var(--g-border-default)] border-y border-[color:var(--g-border-default)]">
+          {["Sales pack", "Support pack"].map((name, i) => (
+            <li
+              key={name}
+              className={cn("px-1 py-3 text-sm", selected && i === 0 && "bg-[color:var(--g-surface-active)]")}
+            >
+              {name}
+              <p className={cn(TYPE.meta, "mt-0.5")}>{selected && i === 0 ? "Open in inspect" : "Select to inspect"}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!empty && !loading && !error && !ops && (
+        <p className={cn(TYPE.meta, "mt-4")}>Discovery tiles plus authorized PriceBadge. Installed packs move to ops.</p>
+      )}
+      {ops && selected ? (
+        <aside className="mt-6 max-w-sm border border-[color:var(--g-border-active)] p-3 text-sm">
+          <p className={TYPE.eyebrow}>Inspect</p>
+          <p className="mt-2">Sales pack is installed. Manage is the primary action.</p>
+          <span
+            className="mt-4 inline-flex h-9 items-center bg-[color:var(--g-brand)] px-3 text-sm text-[color:var(--g-background)]"
+            data-review-cta="manage-install"
+          >
+            Manage
+          </span>
+        </aside>
+      ) : null}
+    </div>
+  )
+}
+
 export function SelectedApprovals({ scene }: { scene: string }) {
   const selected = scene.includes("selected")
   const empty = scene.includes("empty")

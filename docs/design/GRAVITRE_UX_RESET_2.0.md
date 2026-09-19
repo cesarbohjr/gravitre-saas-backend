@@ -1,6 +1,6 @@
 # GRAVITRE UX RESET 2.0
 
-**Status:** Cesar **design selections recorded 2026-09-18**. Phase A–J shipped. Phase K Models/Training workspace polish in source. Remaining hubs: settings, marketplace.
+**Status:** Cesar **design selections recorded 2026-09-18**. Phase A–M shipped. Settings document + marketplace discovery≠ops in source. Authenticated live remains **NOT PROVEN**.
 
 **Do not** reopen one-runtime architecture unless a regression is evidenced.
 
@@ -30,7 +30,7 @@
 
 **Harness:** `/dev/ai-workspace-preview?s=&scene=` · **Canvas:** `gravitre-ux-reset-2.canvas.tsx` · **Shots:** `e2e/artifacts/ux-reset-2-review/`
 
-**Production UI changed this slice:** Phase I queue + inspect on `/approvals` (select to decide; Approve is the primary CTA; Reject is secondary). No invented prices or Enable toggles.
+**Production UI changed this slice:** Phase L/M Settings leftovers (enterprise text nav, federation no TabsList) and Marketplace discovery tiles vs installed ops list. PriceBadge remains authorized commerce. No invented prices or Enable toggles.
 
 ---
 
@@ -88,7 +88,7 @@ Layers are called out separately: Architecture / Interaction / IA / Visual / Mot
 | Agent profile | Text sections | Text nav + totals disclosure | **COMPLETE** (IA) | `agents/[id]/page.tsx` | detail | Surface vs card residual | Polish |
 | Relationships graph-first | Graph hero | Graph default; evidence inspector only on selection; Focus/Pin/Neighborhood | **PARTIAL** (Phase D started) | `relationships-workspace.tsx`; graph default in `use-relationships-workspace.ts` | learning relationships | Live session **NOT PROVEN** | Evidence graph |
 | Performance pipeline | Metrics → pipeline → trace | Diagnostic: Outcome headline, contributing stages, inspector on selection, metrics disclosure, contribution rows; waterfall omitted without span telemetry | **PARTIAL** (Phase E started) | `performance-stage.tsx`; `outcome-attribution-flow.tsx` | `/intelligence/performance` | Live session **NOT PROVEN**; no instrumented duration bars yet | Performance 2.0 |
-| Settings rows | Not card-per-field | Many preference rows flattened; orgs page still cards; residual bordered groups | **PARTIAL** | `settings/page.tsx`, `settings/organizations/page.tsx` | settings | Document model | Settings 2.0 |
+| Settings rows | Not card-per-field | Preference rows; organizations list + inspector; enterprise text sections; federation activity text nav | **PARTIAL** (Phase L) | `settings/page.tsx`; `settings/organizations/page.tsx`; `settings/enterprise/page.tsx`; `settings/federation/page.tsx` | settings | Live **NOT PROVEN**; billing still leftover density | Settings 2.0 |
 | Connectors compact | List default; topology opt-in | Discovery compact logos then management dense list; topology opt-in; inspector on selection. `viewMode` key still `"grid"` for the list branch. | **PARTIAL** (Phase H started) | `connectors/page.tsx`; `available-connectors-strip.tsx` | `/connectors` | Live **NOT PROVEN**; detail page still card-heavy | Connectors 2.0 |
 | Connector detail | Flatten | ~26 shadcn Cards | **NOT STARTED** (1.0 leftover) | `connectors/[id]/page.tsx` | detail | Document/split | 2.0 |
 | Workflows table-first | Find/run | Table default all widths (Phase 7) | **COMPLETE** (IA) | `workflows/page.tsx` | `/workflows` | Builder Badge density | Workflows 2.0 = canvas |
@@ -96,7 +96,7 @@ Layers are called out separately: Architecture / Interaction / IA / Visual / Mot
 | Workflow detail | Flatten | ~28 Cards | **NOT STARTED** | `workflows/[id]/page.tsx` | detail | — | 2.0 |
 | Activity list | No KPI wrap | Two-pane; KPI wrap removed; inspector on selection; TRACE via run `?trace=1` | **PARTIAL** (Phase G started) | `activity/page.tsx`; `/runs/[id]` | activity, run detail | Live session **NOT PROVEN** | Runs 2.0 |
 | Approvals queue | Decision-first; one primary CTA | Queue full-width until selection; inspect only when a request is open; Approve primary, Reject ghost; queue has no competing Approve/Reject; suggestion labeled Estimated confidence | **PARTIAL** (Phase I) | `approvals/page.tsx`; harness `s=approvals` | `/approvals` | Authenticated click-through **NOT PROVEN** | Approvals 2.0 |
-| Marketplace tiles | Keep discovery | Intentionally kept PriceBadge/tiles | **COMPLETE** (kept) | marketplace assets | marketplace | Operational vs discovery | Marketplace 2.0 |
+| Marketplace tiles | Keep discovery | Catalog tiles + authorized PriceBadge; installed packs are ops list + inspector | **PARTIAL** (Phase M) | `marketplace/assets/page.tsx`; `marketplace/installed/page.tsx`; harness `s=marketplace` | marketplace | Live **NOT PROVEN** | Marketplace 2.0 |
 | Training / models text nav | No pill tabs | Phase 6–7 text nav | **COMPLETE** (IA) | training, models, model-studio | those | Expert workspace polish | Models/Training 2.0 |
 | Intelligence hub I11 | 7 text links, no Training | Shots **PASS**; live login **NOT PROVEN** | **COMPLETE** (chrome); **NOT PROVEN** live | `intelligence-hub-tabs.tsx` | intelligence | Visual intelligence | Intelligence 2.0 |
 | Home widgets | Keep modular | Kept | **COMPLETE** (kept) | `home-dashboard.tsx` | `/home` | Visual upgrade, no card-in-card | Dashboard 2.0 |
@@ -457,4 +457,4 @@ Artifacts: `e2e/artifacts/ux-reset-2-review/`
 
 ## STOP
 
-Phase K Models/Training workspace polish is in source (`/models`, `/intelligence/model-studio`, `/training`, built-in catalog). Authenticated gravitre.app click-through remains **NOT PROVEN**. Remaining hubs (settings, marketplace) remain later.
+Phase L Settings leftovers (enterprise text nav, federation no TabsList) and Phase M Marketplace discovery≠ops are in source (`/settings/enterprise`, `/settings/federation`, `/marketplace/assets`, `/marketplace/installed`, harness `s=marketplace`). Authenticated gravitre.app click-through remains **NOT PROVEN**. Program hub sequence for UX Reset 2.0 is complete at the named remaining hubs.

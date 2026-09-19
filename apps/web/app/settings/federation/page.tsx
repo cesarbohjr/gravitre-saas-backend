@@ -40,8 +40,8 @@ import { CreateDelegatedTaskDialog } from "@/components/federation/create-delega
 import { FederationEmptyState } from "@/components/federation/federation-empty-state"
 import { TrustBoundaryVisual } from "@/components/federation/trust-boundary-visual"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -70,6 +70,7 @@ function FederationContent() {
   const [handoffOpen, setHandoffOpen] = useState(false)
   const [grantOpen, setGrantOpen] = useState(false)
   const [taskOpen, setTaskOpen] = useState(false)
+  const [activity, setActivity] = useState<"handoffs" | "grants" | "tasks">("handoffs")
 
   const {
     data: partnershipsData,
@@ -309,15 +310,34 @@ function FederationContent() {
         </section>
 
         {/* B2B activity tabs */}
-        <section className="lg:col-span-2">
-          <Tabs defaultValue="handoffs" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="handoffs">Handoffs</TabsTrigger>
-              <TabsTrigger value="grants">Connector grants</TabsTrigger>
-              <TabsTrigger value="tasks">Delegated tasks</TabsTrigger>
-            </TabsList>
+        <section className="lg:col-span-2 space-y-4">
+          <nav aria-label="Federation activity" className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            {(
+              [
+                { id: "handoffs" as const, label: "Handoffs" },
+                { id: "grants" as const, label: "Connector grants" },
+                { id: "tasks" as const, label: "Delegated tasks" },
+              ]
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActivity(item.id)}
+                className={cn(
+                  TYPE.meta,
+                  "underline-offset-4",
+                  activity === item.id
+                    ? "text-[color:var(--g-text-primary)] underline"
+                    : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
 
-            <TabsContent value="handoffs" className="space-y-4">
+          {activity === "handoffs" ? (
+            <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Send className="h-4 w-4 text-muted-foreground" />
@@ -363,9 +383,11 @@ function FederationContent() {
                   onAction={handleHandoffAction}
                 />
               </PageHeaderlessSection>
-            </TabsContent>
+            </div>
+          ) : null}
 
-            <TabsContent value="grants" className="space-y-4">
+          {activity === "grants" ? (
+            <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
@@ -397,9 +419,11 @@ function FederationContent() {
                   canPropose={isAdmin && activePartnerships.length > 0}
                 />
               )}
-            </TabsContent>
+            </div>
+          ) : null}
 
-            <TabsContent value="tasks" className="space-y-4">
+          {activity === "tasks" ? (
+            <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Inbox className="h-4 w-4 text-muted-foreground" />
@@ -431,8 +455,8 @@ function FederationContent() {
                   canCreate={isAdmin && activePartnerships.length > 0}
                 />
               )}
-            </TabsContent>
-          </Tabs>
+            </div>
+          ) : null}
         </section>
       </div>
 
