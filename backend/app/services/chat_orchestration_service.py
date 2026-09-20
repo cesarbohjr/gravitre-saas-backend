@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -853,6 +854,15 @@ class ChatOrchestrationService:
         user_id: str,
         classification: dict[str, Any],
     ) -> list[OrchestrationStep]:
+        from app.services.cognitive_loop_controller import is_plan_without_execute_turn
+
+        # Spoken Metric B safety net: never fan out plan_action when caller asked
+        # for plan-without-execute (ultra-early voice path should win first).
+        if is_plan_without_execute_turn(message) and bool(
+            (classification or {}).get("spoken_plan_hold_fast")
+        ):
+            return self._spoken_plan_hold_steps(message, connected_integrations)
+
         # Google Ads multi-campaign structure must stay one executable action
         # (structure.create). Fragmenting into "set up campaigns / keywords / …"
         # steps yields no_executable_action skips + a misleading plan confirm.
@@ -1246,40 +1256,77 @@ class ChatOrchestrationService:
         )
 
     @staticmethod
+    def _plan_hold_read_label(integration: str, message: str) -> str:
+        """Single-shot READ step labels for plan-hold — no connector plan_action."""
+        lowered = (message or "").lower()
+        vendor = integration.replace("_", " ").title()
+        if integration == "google_ads":
+            if "connector health" in lowered or "actually connected" in lowered:
+                return f"Read {vendor} connection status (held — not executed)"
+            if "campaign" in lowered and ("exist" in lowered or "list" in lowered):
+                return f"List {vendor} campaigns (held — not executed)"
+            if "structure" in lowered or "paused" in lowered:
+                return f"Review {vendor} account structure (held — not executed)"
+            if "campaign by campaign" in lowered or "create anything" in lowered:
+                return f"Review {vendor} campaigns before create (held — not executed)"
+        if integration == "hubspot" and "contact" in lowered:
+            return f"List {vendor} contacts at high level (held — not executed)"
+        return f"{vendor} read review (held — not executed)"
+
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def _spoken_plan_hold_steps_cached(
+        message: str,
+        integrations_key: tuple[str, ...],
+    ) -> tuple[tuple[str, str, str, str, bool, bool], ...]:
+        """Heuristic READ plan cache — avoids multi-segment plan_action on voice Metric B."""
+        connected = list(integrations_key)
+        mentioned = ChatOrchestrationService._mentioned_integrations(message, connected)
+        vendors = list(mentioned or [])
+        if not vendors:
+            vendors = ["workspace"]
+        rows: list[tuple[str, str, str, str, bool, bool]] = []
+        for idx, integ in enumerate(vendors[:3], start=1):
+            rows.append(
+                (
+                    f"step_{idx}",
+                    message,
+                    ChatOrchestrationService._plan_hold_read_label(integ, message),
+                    "read",
+                    True,
+                    True,
+                )
+            )
+        rows.append(
+            (
+                f"step_{len(rows) + 1}",
+                message,
+                "Wait for your yes before any write",
+                "write",
+                True,
+                True,
+            )
+        )
+        return tuple(rows)
+
+    @staticmethod
     def _spoken_plan_hold_steps(
         message: str,
         connected_integrations: list[str],
     ) -> list[OrchestrationStep]:
-        mentioned = ChatOrchestrationService._mentioned_integrations(
-            message, connected_integrations
-        )
-        vendors = list(mentioned or [])
-        if not vendors:
-            vendors = ["workspace"]
-        steps: list[OrchestrationStep] = []
-        for idx, integ in enumerate(vendors[:3], start=1):
-            label = integ.replace("_", " ").title()
-            steps.append(
-                OrchestrationStep(
-                    step_id=f"step_{idx}",
-                    segment=message,
-                    label=f"{label} review (held — not executed)",
-                    kind="read",
-                    supported=True,
-                    requires_approval=True,
-                )
-            )
-        steps.append(
+        key = tuple(sorted({c.lower() for c in (connected_integrations or [])}))
+        cached = ChatOrchestrationService._spoken_plan_hold_steps_cached(message.strip(), key)
+        return [
             OrchestrationStep(
-                step_id=f"step_{len(steps) + 1}",
-                segment=message,
-                label="Wait for your yes before any write",
-                kind="write",
-                supported=True,
-                requires_approval=True,
+                step_id=step_id,
+                segment=segment,
+                label=label,
+                kind=kind,
+                supported=supported,
+                requires_approval=requires_approval,
             )
-        )
-        return steps
+            for step_id, segment, label, kind, supported, requires_approval in cached
+        ]
 
     async def _start_execution(
         self,

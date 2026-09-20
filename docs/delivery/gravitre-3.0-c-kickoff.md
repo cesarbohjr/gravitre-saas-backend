@@ -75,11 +75,21 @@ Probe: `scripts/verify-voice-barge-in-write-live.py` → `docs/delivery/voice-ba
 
 See also [gravitre-3.0-c-eval-lanes.md](./gravitre-3.0-c-eval-lanes.md).
 
+## Metric B plan-hold fast path (post-gate)
+
+| Fix | Path | Effect |
+|-----|------|--------|
+| Ultra-early plan-hold (before gateway/PERCEIVE) | `agent_intelligence.execute_task_streaming` | Skips kernel, unified LIVE, `_build_plan` |
+| Heuristic READ plan cache | `ChatOrchestrationService._spoken_plan_hold_steps_cached` | No multi-segment `plan_action` |
+| Composer skip for staged plan | `response_composer` kind=`plan_hold` | Removes 3–15 s LLM re-pass |
+| Skip voice early PERCEIVE on plan-hold | `voice_session_service` | Avoid duplicate operator narration |
+| Late fallback → `stage_spoken_plan_hold` | `agent_intelligence` unified LIVE arm | Belt-and-suspenders vs `process_turn` |
+
+Re-probe after deploy required before claiming Metric B SLO PASS.
+
 ## Remaining (post-gate, honest)
 
-1. **Metric B** — plan-hold operator completion still 18–42 s; needs kernel short-circuit or faster plan path (not a 3.0-C gate item per platform table).
-2. **Deploy** source fixes above for tail hardening.
-3. **Lane B shadow eval** — when product authorizes; never swap production transport.
+1. **Lane B shadow eval** — when product authorizes; never swap production transport.
 
 **NOT RUN:** native realtime (lane B) production audio, WebRTC media in prod, browser-mic barge-in human verify.
 

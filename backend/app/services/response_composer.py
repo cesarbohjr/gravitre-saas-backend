@@ -423,6 +423,10 @@ async def compose_user_reply(
     must_compose = resolved_kind in MUST_COMPOSE_KINDS or looks_like_raw_backend(draft)
     if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
         must_compose = False
+    # Spoken Metric B plan-hold: orchestration already composed the staged plan;
+    # re-running the Composer LLM adds 3–15 s with no user value.
+    if resolved_kind == "plan_hold" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
     used_model = False
     fallback = False
     text = (draft or "").strip()
@@ -490,7 +494,9 @@ async def compose_user_reply(
         text = re.sub(rf"\b{re.escape(code)}\b", "", text)
         text = re.sub(r"\s{2,}", " ", text).strip()
     if looks_like_raw_backend(text) or not text:
-        if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
+        if resolved_kind in {"progress", "plan_hold"} and draft and not looks_like_raw_backend(
+            draft
+        ):
             text = draft.strip()
         else:
             text = _fallback_text(resolved_kind, env)

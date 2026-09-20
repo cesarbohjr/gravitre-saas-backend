@@ -1642,6 +1642,92 @@ class AgentIntelligence:
 
         _plan_hold_spoken_early = bool(spoken_mode and is_plan_without_execute_turn(task_text))
 
+        if _plan_hold_spoken_early and conversation_id:
+            import asyncio
+
+            from app.services.chat_orchestration_service import get_chat_orchestration_service
+            from app.services.cognitive_loop_controller import get_cognitive_loop_controller
+            from app.services.response_composer import compose_reply_events
+
+            loop_controller = get_cognitive_loop_controller(active_settings)
+            loop_trace = loop_controller.begin(message=task_text, spoken_mode=True)
+
+            orch_turn = await get_chat_orchestration_service(
+                active_settings
+            ).stage_spoken_plan_hold(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message=task_text,
+                client=client,
+                connected_integrations=[],
+            )
+            if orch_turn and orch_turn.get("stop_pipeline"):
+                message_id = str(uuid.uuid4())
+                response_text = str(orch_turn.get("message") or "")
+                dialogue_mode = str(orch_turn.get("dialogue_mode") or "confirm")
+                pending_live = (
+                    orch_turn.get("pending_task")
+                    if isinstance(orch_turn.get("pending_task"), dict)
+                    else None
+                )
+                task_state = orch_turn.get("task_state")
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": True},
+                    answer_explanation="Plan-hold orchestration (spoken ultra-early)",
+                    dialogue_mode=dialogue_mode,
+                    task_state=task_state,
+                    pending_task=pending_live,
+                    routing={
+                        "planHoldShortCircuit": True,
+                        "spokenMode": True,
+                        "blendedWithMetricA": True,
+                        "planHoldUltraEarly": True,
+                        **loop_trace.to_sse(),
+                    },
+                )
+                if str(response_text or "").strip():
+                    spoken_hold = (
+                        "I have the plan and I have not executed anything. "
+                        "I will wait for your yes before any write."
+                    )
+                    packed = await compose_reply_events(
+                        {
+                            "success": True,
+                            "data": {"text": spoken_hold},
+                            "action": "plan_hold_orchestration",
+                        },
+                        kind="plan_hold",
+                        draft=spoken_hold,
+                        spoken=True,
+                        history=conversation_history
+                        if isinstance(conversation_history, list)
+                        else None,
+                        user_message=task_text,
+                        settings=active_settings,
+                        org_id=org_id,
+                        client=client,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                    )
+                    for ev in packed.events:
+                        yield ev
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=[],
+                    react_result=None,
+                    model="plan_hold_orchestration",
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": True},
+                    answer_explanation="Plan-hold orchestration (spoken ultra-early)",
+                    dialogue_mode=dialogue_mode,
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    pending_task=pending_live,
+                )
+                return
+
         resolved_workspace_focus: dict[str, Any] | None = None
         if not _plan_hold_spoken_early:
             try:
@@ -1668,7 +1754,7 @@ class AgentIntelligence:
                     "duration_ms": 0.0,
                 }
         _mark("workspace_focus_resolved")
-        from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
+        from app.services.intent_gateway import GatewayContext, GatewayDecision, evaluate_intent_gateway
         from app.services.conversation_state_service import get_conversation_state_service
 
         gateway_state: dict[str, Any] = {}
@@ -1683,24 +1769,25 @@ class AgentIntelligence:
         _canonical_task_state: dict[str, Any] = (
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
-        # Phase D compose reads task_state from closure; gateway shortcuts run before
-        # the full task_state reload below — seed from gateway_state to avoid UnboundLocalError.
         task_state: dict[str, Any] | None = (
             dict(gateway_state) if isinstance(gateway_state, dict) else None
         )
-        gateway = await evaluate_intent_gateway(
-            GatewayContext(
-                message=task_text,
-                spoken_mode=bool(spoken_mode),
-                conversation_history=conversation_history,
-                task_state=gateway_state if isinstance(gateway_state, dict) else {},
-                org_id=org_id,
-                conversation_id=conversation_id,
-                user_id=user_id,
-                client=client,
-                settings=active_settings,
+        if _plan_hold_spoken_early:
+            gateway = GatewayDecision(action="fallthrough", reason="spoken_plan_hold")
+        else:
+            gateway = await evaluate_intent_gateway(
+                GatewayContext(
+                    message=task_text,
+                    spoken_mode=bool(spoken_mode),
+                    conversation_history=conversation_history,
+                    task_state=gateway_state if isinstance(gateway_state, dict) else {},
+                    org_id=org_id,
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    client=client,
+                    settings=active_settings,
+                )
             )
-        )
         _mark("intent_gateway")
         from app.services.chat_turn_cancel_service import is_stop_requested as _chat_stop_requested
         from app.services.cognitive_loop_controller import get_cognitive_loop_controller
@@ -2051,67 +2138,9 @@ class AgentIntelligence:
 
         _plan_hold = is_plan_without_execute_turn(task_text)
         _plan_hold_spoken = bool(spoken_mode and _plan_hold)
-        if spoken_mode and not loop_trace.fast_path:
+        if spoken_mode and not loop_trace.fast_path and not _plan_hold_spoken:
             for ev in await _loop_stage_speech("PERCEIVE"):
                 yield ev
-
-        if _plan_hold_spoken and conversation_id:
-            from app.services.chat_orchestration_service import get_chat_orchestration_service
-
-            orch_turn = await get_chat_orchestration_service(active_settings).stage_spoken_plan_hold(
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                message=task_text,
-                client=client,
-            )
-            if orch_turn and orch_turn.get("stop_pipeline"):
-                message_id = str(uuid.uuid4())
-                response_text = str(orch_turn.get("message") or "")
-                dialogue_mode = str(orch_turn.get("dialogue_mode") or "confirm")
-                pending_live = (
-                    orch_turn.get("pending_task")
-                    if isinstance(orch_turn.get("pending_task"), dict)
-                    else None
-                )
-                task_state = orch_turn.get("task_state") or task_state
-                yield sse_intelligence_metadata(
-                    message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": True},
-                    answer_explanation="Plan-hold orchestration (spoken same-turn as Metric A)",
-                    dialogue_mode=dialogue_mode,
-                    task_state=task_state,
-                    pending_task=pending_live,
-                    routing={
-                        "planHoldShortCircuit": True,
-                        "spokenMode": True,
-                        "blendedWithMetricA": True,
-                        **loop_trace.to_sse(),
-                    },
-                )
-                if str(response_text or "").strip():
-                    packed = await _composed_reply(
-                        response_text,
-                        kind="canned",
-                        existing_text_id=spoken_progress_text_id,
-                    )
-                    response_text = packed.text
-                    for ev in packed.events:
-                        yield ev
-                yield AssistantStreamComplete(
-                    full_content=response_text,
-                    tool_results=[],
-                    react_result=None,
-                    model="plan_hold_orchestration",
-                    message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": True},
-                    answer_explanation="Plan-hold orchestration (spoken same-turn as Metric A)",
-                    dialogue_mode=dialogue_mode,
-                    proactive_suggestions=[],
-                    task_state=task_state,
-                    pending_task=pending_live,
-                )
-                return
 
         from app.services.first_token_honesty import (
             STAGE_COMPOSE,
@@ -3373,16 +3402,15 @@ class AgentIntelligence:
             if _plan_hold_spoken and conversation_id:
                 from app.services.chat_orchestration_service import get_chat_orchestration_service
 
-                orch_turn = await get_chat_orchestration_service(active_settings).process_turn(
+                orch_turn = await get_chat_orchestration_service(
+                    active_settings
+                ).stage_spoken_plan_hold(
                     org_id=org_id,
                     user_id=user_id,
                     conversation_id=conversation_id,
                     message=task_text,
-                    classification=pipeline_classification,
-                    task_state=task_state if isinstance(task_state, dict) else {},
-                    connected_integrations=list(connected_early or []),
                     client=client,
-                    environment_name=environment_name,
+                    connected_integrations=list(connected_early or []),
                 )
                 _mark("plan_hold_orchestration")
                 if orch_turn and orch_turn.get("stop_pipeline"):
@@ -3412,18 +3440,21 @@ class AgentIntelligence:
                             **loop_trace.to_sse(),
                         },
                     )
-                    if spoken_mode and str(response_text or "").strip():
-                        # Orchestration already composed the plan — do not re-run Composer LLM.
+                    plan_hold_full = response_text
+                    if spoken_mode and str(plan_hold_full or "").strip():
+                        spoken_hold = (
+                            "I have the plan and I have not executed anything. "
+                            "I will wait for your yes before any write."
+                        )
                         packed = await _composed_reply(
-                            response_text,
-                            kind="canned",
+                            spoken_hold,
+                            kind="plan_hold",
                             existing_text_id=spoken_progress_text_id,
                         )
-                        response_text = packed.text
                         for ev in packed.events:
                             yield ev
                     yield AssistantStreamComplete(
-                        full_content=response_text,
+                        full_content=plan_hold_full,
                         tool_results=[],
                         react_result=None,
                         model="plan_hold_orchestration",

@@ -453,7 +453,9 @@ async def stream_voice_turn_events(
             return
 
     early_perceive_draft: str | None = None
-    if looks_like_operator_task(text):
+    from app.services.cognitive_loop_controller import is_plan_without_execute_turn
+
+    if looks_like_operator_task(text) and not is_plan_without_execute_turn(text):
         from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
 
         early_perceive_draft = EARLY_PERCEIVE_DRAFT
