@@ -1,19 +1,19 @@
 {
   "probe": "smoke_post_deploy_chat_live",
-  "started_at": "2026-09-20T07:57:06.610542+00:00",
+  "started_at": "2026-09-20T18:22:51.439072+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "message": "Reply with exactly: smoke-ok",
-  "expect_sha": null,
+  "expect_sha": "53a374c13376be865ecad5338003bd821bc45d48",
   "health": {
-    "git_sha": "42fadd6179485971a36b5179834e3601514557b2",
+    "git_sha": "53a374c13376be865ecad5338003bd821bc45d48",
     "unified_turn_live_enabled": true
   },
-  "conversation_id": "e0ba3650-8144-444e-8c31-9197930b28af",
+  "conversation_id": "f9dd81e8-faf8-400a-ac64-dc2692ab9987",
   "http_status": 200,
   "assistant": "smoke-ok",
   "stream_errors": [],
-  "raw_bytes": 12294,
-  "verdict": "PASS \u2014 post-deploy chat ok @ 42fadd61",
-  "finished_at": "2026-09-20T07:57:25.609210+00:00"
+  "raw_bytes": 12118,
+  "verdict": "PASS \u2014 post-deploy chat ok @ 53a374c1",
+  "finished_at": "2026-09-20T18:23:21.254520+00:00"
 }

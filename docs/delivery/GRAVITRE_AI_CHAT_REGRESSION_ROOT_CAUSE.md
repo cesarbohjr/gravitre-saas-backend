@@ -6,20 +6,22 @@
 
 ## 1. First failing stage
 
-**`AgentIntelligence.execute_task_streaming`** (`backend/app/operators/agent_intelligence.py`) after Intent Gateway, **before** assistant `text-delta`.
+`AgentIntelligence.execute_task_streaming` (`backend/app/operators/agent_intelligence.py`) after Intent Gateway, **before** assistant `text-delta`.
 
 Lifecycle for screenshot “hello”:
 
-| Stage | Ran? | Evidence |
-|-------|------|----------|
-| User submit / `useChat` | Yes | User bubbles persisted; workspace `Error` |
-| Auth + `POST /api/assistant/chat` | Yes | HTTP 200 SSE |
-| Turn init + Intent Gateway | Yes | SSE `data-intelligence` `intent_gateway:phrase_bank`, `fastPath: true` |
-| E1 / E4 / F1 / ReAct | **No** | Greeting is gateway shortcut; must not require connectors |
-| Response Composer `_composed_reply` | **Failed to enter** | `NameError: compose_reply_events` |
-| SSE `text-delta` | No | Isolated dump 2026-09-20T07:45Z |
-| Composer toast path | Yes | `emit_stream_error("request_failed")` |
-| UI | Yes | Toast + presence Error |
+
+| Stage                               | Ran?                | Evidence                                                               |
+| ----------------------------------- | ------------------- | ---------------------------------------------------------------------- |
+| User submit / `useChat`             | Yes                 | User bubbles persisted; workspace `Error`                              |
+| Auth + `POST /api/assistant/chat`   | Yes                 | HTTP 200 SSE                                                           |
+| Turn init + Intent Gateway          | Yes                 | SSE `data-intelligence` `intent_gateway:phrase_bank`, `fastPath: true` |
+| E1 / E4 / F1 / ReAct                | **No**              | Greeting is gateway shortcut; must not require connectors              |
+| Response Composer `_composed_reply` | **Failed to enter** | `NameError: compose_reply_events`                                      |
+| SSE `text-delta`                    | No                  | Isolated dump 2026-09-20T07:45Z                                        |
+| Composer toast path                 | Yes                 | `emit_stream_error("request_failed")`                                  |
+| UI                                  | Yes                 | Toast + presence Error                                                 |
+
 
 Operator “send an email” failed **earlier in the same function** on `asyncio.gather` (`UnboundLocalError: asyncio`) — same defect class, different first use of the shadowed name.
 
@@ -52,13 +54,15 @@ Toast copy is Composer `request_failed` (`response_composer.py` `_FALLBACK_BY_KI
 
 ## 3. Triggering commit / deployment
 
-| Item | Value |
-|------|--------|
-| Introduced | `303df92f` plan-hold ultra-early; still present in `43570699` (skip gateway/composer LLM on spoken plan-hold) |
-| Broken prod tip | `43570699e5f5d8e693a618c1abe4f66e3fe97705` (`/health` during outage) |
-| Not UX Reset | Frontend `useChat` received a real SSE `error` event |
-| Not 2.0-A cohesion | 2.0-A did not add those inner imports |
-| Interaction | 3.0-C **voice Metric B** change on the **shared** `execute_task_streaming` kernel used by typed `/ai` |
+
+| Item               | Value                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Introduced         | `303df92f` plan-hold ultra-early; still present in `43570699` (skip gateway/composer LLM on spoken plan-hold) |
+| Broken prod tip    | `43570699e5f5d8e693a618c1abe4f66e3fe97705` (`/health` during outage)                                          |
+| Not UX Reset       | Frontend `useChat` received a real SSE `error` event                                                          |
+| Not 2.0-A cohesion | 2.0-A did not add those inner imports                                                                         |
+| Interaction        | 3.0-C **voice Metric B** change on the **shared** `execute_task_streaming` kernel used by typed `/ai`         |
+
 
 Last known-working general typed chat on this kernel: tips **before** the inner imports (`12aa048d` / earlier). F2/voice probes on `43570699` could still succeed because they used spoken/plan-hold or other entrypoints.
 
@@ -76,7 +80,7 @@ HTTP 200. Frontend parsed `errorText` correctly. Assistant deltas were not disca
 
 Remove nested `import asyncio` and `from app.services.response_composer import compose_reply_events`. Use module-level imports already present.
 
-Commit: **`42fadd61`** `fix(chat): stop spoken plan-hold inner imports from breaking typed /ai.`
+Commit: `42fadd61` `fix(chat): stop spoken plan-hold inner imports from breaking typed /ai.`
 
 Did **not**: replace E1–E5, weaken WRITE/HMAC, bypass Composer, hard-code hello, add a second workspace, or raise timeouts.
 
@@ -88,11 +92,15 @@ Did **not**: replace E1–E5, weaken WRITE/HMAC, bypass Composer, hard-code hell
 - `scripts/verify-ai-chat-regression-live.py`
 - this report + 2.0 final audit + requirement ledger
 
+
+
 ## 7. Tests added
 
 - `test_execute_task_streaming_does_not_rebind_module_imports` (co_varnames)
 - `test_execute_task_streaming_does_not_shadow_asyncio_or_composer` (2.0-A invariants)
 - Existing `test_gateway_shortcut_composes_before_task_state_reload` (hello / phrase_bank)
+
+
 
 ## 8. Local test results
 
@@ -102,14 +110,18 @@ CI on `42fadd61`: **Backend pytest FAIL**, **Web lint/typecheck/build FAIL** (ru
 
 ## 9. Production evidence
 
-| Check | Result |
-|-------|--------|
-| `/health` SHA | `42fadd6179485971a36b5179834e3601514557b2` |
-| Isolated smoke | **PASS** conv `e0ba3650-8144-444e-8c31-9197930b28af` assistant `smoke-ok` @ `2026-09-20T07:57:25Z` |
-| Isolated hello+follow-up+READ+email | **PASS** conv `fd7ef9a1-b081-45f5-b23e-6eb4b0a0d97c` @ `42fadd61`; hello 10897ms; follow-up 5667ms; traffic clarify 4010ms; email clarify 12967ms; persisted 8 messages |
-| Vercel production deploy | `dpl_6kRCG18GGgsVk1EUgcRaTEBUj3Cd` meta SHA `42fadd61` |
-| Operator-org browser `/ai` after fix | **LIVE NOT RUN** this pass (screenshot was pre-fix) |
-| Voice greeting audio | **LIVE NOT RUN** (no PCM capture) |
+
+| Check                                | Result                                                                                                                                                                  |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/health` SHA                        | `42fadd6179485971a36b5179834e3601514557b2`                                                                                                                              |
+| Isolated smoke                       | **PASS** conv `e0ba3650-8144-444e-8c31-9197930b28af` assistant `smoke-ok` @ `2026-09-20T07:57:25Z`                                                                      |
+| Isolated hello+follow-up+READ+email  | **PASS** conv `fd7ef9a1-b081-45f5-b23e-6eb4b0a0d97c` @ `42fadd61`; hello 10897ms; follow-up 5667ms; traffic clarify 4010ms; email clarify 12967ms; persisted 8 messages |
+| Vercel production deploy             | `dpl_6kRCG18GGgsVk1EUgcRaTEBUj3Cd` meta SHA `42fadd61`                                                                                                                  |
+| Operator-org browser `/ai` after fix | **LIVE NOT RUN** this pass (screenshot was pre-fix)                                                                                                                     |
+| Voice greeting audio                 | **LIVE NOT RUN** (no PCM capture)                                                                                                                                       |
+
+
+
 
 ## 10. Remaining limitations
 
@@ -118,25 +130,33 @@ CI on `42fadd61`: **Backend pytest FAIL**, **Web lint/typecheck/build FAIL** (ru
 - CI main is red independently of this fix.
 - Isolated-org traffic READ / email WRITE-shape: see `gravitre-ai-chat-regression-live.json` (filled by live probe).
 
+
+
 ## 11. Rollback
 
 `git revert 42fadd61` **re-breaks** typed chat. To roll back **voice plan-hold** work instead, revert `303df92f`/`43570699` only after replacing the inner imports with module imports (already done). HMAC/WRITE flags unchanged.
 
 ## Scenario matrix (prompt Part 3)
 
-| ID | Prompt | Result |
-|----|--------|--------|
-| A | hello (new conv) | Isolated API **PASS** — “Hey — I’m here…” `fd7ef9a1-…`; pre-fix **FAIL** |
-| B | hello follow-up | **PASS** same conv, second assistant reply persisted |
-| C | website traffic last month | **PASS** honest clarify (no analytics source); not empty/toast |
-| D | Send an email | **PASS** clarification for recipient/subject/body; no send |
-| E | Voice greeting | **LIVE NOT RUN** (no audio) |
+
+| ID  | Prompt                     | Result                                                                   |
+| --- | -------------------------- | ------------------------------------------------------------------------ |
+| A   | hello (new conv)           | Isolated API **PASS** — “Hey — I’m here…” `fd7ef9a1-…`; pre-fix **FAIL** |
+| B   | hello follow-up            | **PASS** same conv, second assistant reply persisted                     |
+| C   | website traffic last month | **PASS** honest clarify (no analytics source); not empty/toast           |
+| D   | Send an email              | **PASS** clarification for recipient/subject/body; no send               |
+| E   | Voice greeting             | **LIVE NOT RUN** (no audio)                                              |
+
+
+
 
 ## 13. Latency before/after (typed)
 
-| Turn | Before (`43570699`) | After (`42fadd61`) |
-|------|---------------------|--------------------|
-| hello | ~2856ms then **error** (no text-delta) | 10897ms wall; SSE includes `text-delta` |
-| smoke-ok | ~5s **error** | ~19s PASS `smoke-ok` |
+
+| Turn     | Before (`43570699`)                    | After (`42fadd61`)                      |
+| -------- | -------------------------------------- | --------------------------------------- |
+| hello    | ~2856ms then **error** (no text-delta) | 10897ms wall; SSE includes `text-delta` |
+| smoke-ok | ~5s **error**                          | ~19s PASS `smoke-ok`                    |
+
 
 Failure class was **exception**, not timeout. Do not add another model call to fix greetings.

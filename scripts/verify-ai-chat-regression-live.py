@@ -56,12 +56,11 @@ def load_env() -> dict[str, str]:
     return merged
 
 
-def parse_sse(raw: str) -> dict[str, Any]:
+def parse_sse(raw: str, *, t0: float | None = None) -> dict[str, Any]:
     texts: list[str] = []
     types: list[str] = []
     errors: list[str] = []
     first_delta_ms: int | None = None
-    t0 = None
     for block in re.split(r"\n\n+", raw):
         data_lines = [ln[5:].lstrip() for ln in block.splitlines() if ln.startswith("data:")]
         if not data_lines:
@@ -81,6 +80,8 @@ def parse_sse(raw: str) -> dict[str, Any]:
             delta = str(o.get("delta") or "")
             if delta:
                 texts.append(delta)
+                if first_delta_ms is None and t0 is not None:
+                    first_delta_ms = int((time.perf_counter() - t0) * 1000)
         if et in {"error", "data-error"}:
             errors.append(str(o.get("errorText") or o.get("message") or et))
     return {
@@ -89,6 +90,7 @@ def parse_sse(raw: str) -> dict[str, Any]:
         "errors": errors,
         "has_text_delta": "text-delta" in types,
         "has_error": bool(errors),
+        "first_delta_ms": first_delta_ms,
     }
 
 
@@ -130,8 +132,9 @@ def main() -> int:
     prompts = [
         ("A_hello", "hello"),
         ("B_followup_hello", "hello"),
-        ("C_traffic", "Tell me what my website traffic was last month."),
-        ("D_send_email", "Send an email."),
+        ("C_faq", "What can you help me with?"),
+        ("D_traffic", "Tell me what my website traffic was last month."),
+        ("E_send_email", "Send an email."),
     ]
     with httpx.Client(timeout=CHAT_TIMEOUT) as client:
         health = client.get(f"{BASE}/health", timeout=30).json()
@@ -153,7 +156,11 @@ def main() -> int:
         for tid, prompt in prompts:
             history.append({"role": "user", "parts": [{"type": "text", "text": prompt}]})
             t0 = time.perf_counter()
-            r = client.post(
+            chunks: list[str] = []
+            first_delta_ms: int | None = None
+            buf = ""
+            with client.stream(
+                "POST",
                 f"{BASE}/api/assistant/chat",
                 headers=headers,
                 json={
@@ -162,10 +169,17 @@ def main() -> int:
                     "mode": "fast",
                     "conversation_id": conv_id,
                 },
-                timeout=CHAT_TIMEOUT,
-            )
+            ) as stream_resp:
+                http_status = stream_resp.status_code
+                for piece in stream_resp.iter_text():
+                    chunks.append(piece)
+                    buf += piece
+                    if first_delta_ms is None and '"type":"text-delta"' in buf:
+                        first_delta_ms = int((time.perf_counter() - t0) * 1000)
             wall_ms = int((time.perf_counter() - t0) * 1000)
-            parsed = parse_sse(r.text)
+            parsed = parse_sse("".join(chunks), t0=None)
+            parsed["first_delta_ms"] = first_delta_ms
+            r_status = http_status
             if parsed.get("assistant"):
                 history.append(
                     {
@@ -175,7 +189,7 @@ def main() -> int:
                 )
             toast = "I couldn't complete that just now. Try again in a moment."
             ok = (
-                r.status_code == 200
+                r_status == 200
                 and parsed.get("has_text_delta")
                 and not parsed.get("has_error")
                 and toast not in (parsed.get("assistant") or "")
@@ -185,8 +199,9 @@ def main() -> int:
                 {
                     "id": tid,
                     "prompt": prompt,
-                    "http_status": r.status_code,
+                    "http_status": r_status,
                     "wall_ms": wall_ms,
+                    "first_delta_ms": parsed.get("first_delta_ms"),
                     "ok": ok,
                     "assistant": parsed.get("assistant"),
                     "event_types": parsed.get("event_types"),
@@ -213,11 +228,12 @@ def main() -> int:
         report["persist_http"] = msgs.status_code
 
     hello_ok = all(t["ok"] for t in report["turns"] if t["id"].startswith(("A_", "B_")))
-    traffic = next(t for t in report["turns"] if t["id"] == "C_traffic")
-    email = next(t for t in report["turns"] if t["id"] == "D_send_email")
+    faq = next(t for t in report["turns"] if t["id"] == "C_faq")
+    traffic = next(t for t in report["turns"] if t["id"] == "D_traffic")
+    email = next(t for t in report["turns"] if t["id"] == "E_send_email")
     persist_ok = report.get("persist_http") == 200 and len(report.get("persisted_messages") or []) >= 2
-    if hello_ok and traffic["ok"] and email["ok"] and persist_ok:
-        report["verdict"] = f"PASS — hello/follow-up/READ/WRITE-shape @ {report['health']['git_sha'][:8]}"
+    if hello_ok and faq["ok"] and traffic["ok"] and email["ok"] and persist_ok:
+        report["verdict"] = f"PASS — hello/follow-up/FAQ/READ/WRITE-shape @ {report['health']['git_sha'][:8]}"
     elif hello_ok and persist_ok:
         report["verdict"] = (
             f"PARTIAL — greeting restored @ {report['health']['git_sha'][:8]}; "

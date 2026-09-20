@@ -1,6 +1,6 @@
 {
   "probe": "ai_chat_regression_live",
-  "started_at": "2026-09-20T08:19:51.946203+00:00",
+  "started_at": "2026-09-20T18:29:05.871191+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "turns": [
@@ -8,9 +8,10 @@
       "id": "A_hello",
       "prompt": "hello",
       "http_status": 200,
-      "wall_ms": 10897,
+      "wall_ms": 9760,
+      "first_delta_ms": 7231,
       "ok": true,
-      "assistant": "Hey \u2014 I\u2019m here. What are we working on?",
+      "assistant": "Hey \u2014 I\u2019m here. What\u2019s on your mind?",
       "event_types": [
         "start",
         "start-step",
@@ -30,9 +31,10 @@
       "id": "B_followup_hello",
       "prompt": "hello",
       "http_status": 200,
-      "wall_ms": 5667,
+      "wall_ms": 8941,
+      "first_delta_ms": 6865,
       "ok": true,
-      "assistant": "Hey \u2014 I\u2019m here. What are we working on?",
+      "assistant": "I\u2019m here. What do you want to get done?",
       "event_types": [
         "start",
         "start-step",
@@ -49,20 +51,55 @@
       "errors": []
     },
     {
-      "id": "C_traffic",
+      "id": "C_faq",
+      "prompt": "What can you help me with?",
+      "http_status": 200,
+      "wall_ms": 10927,
+      "first_delta_ms": 8829,
+      "ok": true,
+      "assistant": "I can help with work across your connected tools: Apollo, Google Ads, and HubSpot. That includes things like: - Finding or enriching leads in Apollo\n- Checking campaign/account data in Google Ads\n- Looking up contacts, companies, or deals in HubSpot\n- Drafting multi-step plans and next actions\n- Preparing writes or updates for your approval before anything changes If you want, give me a task like \u201cfind recent HubSpot deals\u201d or \u201cpull Google Ads performance,\u201d and I\u2019ll take it from there.",
+      "event_types": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "errors": []
+    },
+    {
+      "id": "D_traffic",
       "prompt": "Tell me what my website traffic was last month.",
       "http_status": 200,
-      "wall_ms": 4010,
+      "wall_ms": 27081,
+      "first_delta_ms": 22249,
       "ok": true,
-      "assistant": "I don\u2019t have enough information yet. Tell me which analytics source to use for your website traffic, and I\u2019ll continue.",
+      "assistant": "I don\u2019t have enough information yet. Tell me which analytics source to use for website traffic, and I\u2019ll continue.",
       "event_types": [
         "start",
         "start-step",
         "data-intelligence",
         "data-intelligence",
         "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "tool-input-available",
+        "tool-output-available",
         "text-start",
         "text-delta",
+        "text-delta",
+        "text-delta",
+        "text-delta",
+        "text-delta",
+        "data-intelligence",
         "text-end",
         "data-intelligence",
         "finish-step",
@@ -73,12 +110,13 @@
       "errors": []
     },
     {
-      "id": "D_send_email",
+      "id": "E_send_email",
       "prompt": "Send an email.",
       "http_status": 200,
-      "wall_ms": 12967,
+      "wall_ms": 34317,
+      "first_delta_ms": 25185,
       "ok": true,
-      "assistant": "I can send it, but I need the recipient, subject, and body.",
+      "assistant": "Send it through Gmail, or draft it first?",
       "event_types": [
         "start",
         "start-step",
@@ -92,18 +130,17 @@
         "text-end",
         "finish-step",
         "finish",
-        "data-suggestions",
         "[DONE]"
       ],
       "errors": []
     }
   ],
   "health": {
-    "git_sha": "42fadd6179485971a36b5179834e3601514557b2",
+    "git_sha": "53a374c13376be865ecad5338003bd821bc45d48",
     "unified_turn_live_enabled": true,
     "ai_disabled": false
   },
-  "conversation_id": "fd7ef9a1-b081-45f5-b23e-6eb4b0a0d97c",
+  "conversation_id": "22020a9e-e486-41e0-ab09-28c4e42af2ce",
   "persisted_messages": [
     {
       "role": "user",
@@ -111,7 +148,7 @@
     },
     {
       "role": "assistant",
-      "content": "Hey \u2014 I\u2019m here. What are we working on?"
+      "content": "Hey \u2014 I\u2019m here. What\u2019s on your mind?"
     },
     {
       "role": "user",
@@ -119,7 +156,15 @@
     },
     {
       "role": "assistant",
-      "content": "Hey \u2014 I\u2019m here. What are we working on?"
+      "content": "I\u2019m here. What do you want to get done?"
+    },
+    {
+      "role": "user",
+      "content": "What can you help me with?"
+    },
+    {
+      "role": "assistant",
+      "content": "I can help with work across your connected tools: Apollo, Google Ads, and HubSpot. That includes things like: - Finding or enriching leads in Apollo\n- Checking campaign/account data in Google Ads\n- Looking up contacts, companies, or deals i"
     },
     {
       "role": "user",
@@ -127,7 +172,7 @@
     },
     {
       "role": "assistant",
-      "content": "I don\u2019t have enough information yet. Tell me which analytics source to use for your website traffic, and I\u2019ll continue."
+      "content": "I don\u2019t have enough information yet. Tell me which analytics source to use for website traffic, and I\u2019ll continue."
     },
     {
       "role": "user",
@@ -135,10 +180,10 @@
     },
     {
       "role": "assistant",
-      "content": "I can send it, but I need the recipient, subject, and body."
+      "content": "Send it through Gmail, or draft it first?"
     }
   ],
   "persist_http": 200,
-  "verdict": "PASS \u2014 hello/follow-up/READ/WRITE-shape @ 42fadd61",
-  "finished_at": "2026-09-20T08:20:27.525594+00:00"
+  "verdict": "PASS \u2014 hello/follow-up/FAQ/READ/WRITE-shape @ 53a374c1",
+  "finished_at": "2026-09-20T18:30:41.265697+00:00"
 }

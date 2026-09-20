@@ -1,64 +1,60 @@
 # Shared runtime release gate
 
 **Date:** 2026-09-20  
-**Production kernel SHA (Railway `/health` 2026-09-20T08:46:13Z):** `42fadd6179485971a36b5179834e3601514557b2`  
-**Frontend Vercel production:** `e2ca5441` (`dpl_Ah8SPrV3v79eRjyxKAw2csQzHKz9`)  
-**origin/main:** `e2ca5441`
+**Production kernel SHA (Railway `/health` 2026-09-20T18:28:33Z):** `53a374c13376be865ecad5338003bd821bc45d48`  
+**Frontend Vercel production:** `53a374c1` (`dpl_8JPmpwnf2UoSZNZvU8pUzEquHdLh`)  
+**origin/main:** `53a374c1`
 
-No further **shared-kernel 3.0** deploy until every row is PASS. This file is the enforceable checklist. Full `CI` workflow remaining red **does not** get relabeled green.
+No further **shared-kernel 3.0** deploy until Cesar approves. Full `CI` on this SHA is green; the **product** gate still requires browser + post-fix PCM.
 
 ## Gate matrix
 
 | # | Check | Status | Evidence |
 |---|--------|--------|----------|
-| 1 | Authenticated browser chat | **FAIL / BLOCKED** | AUTHENTICATED_BROWSER_BLOCKED — gravitre.app/login SSO |
-| 2 | Backend chat | **PASS** | Isolated `fd7ef9a1-…` / `e0ba3650-…` @ Railway `42fadd61` |
-| 3 | Text **and** voice regression suite | **PARTIAL** | Unit contract expanded; live text PASS; voice PCM @ 42fadd61 **VOICE_AUDIO_BLOCKED** |
-| 4 | Composer / SSE invariant | **PASS** (unit) | no `Stopped.` raw SSE; `compose_reply_events`; cognitive suite typed-path PASS locally |
-| 5 | WRITE governance | **PASS** (not weakened) | email turn clarified; no send |
-| 6 | E4 ContextCompiler invariant | **PASS** (unit AST) | compile before ReAct; greeting does not require E4 |
+| 1 | Authenticated browser chat | **BLOCKED** | gravitre.app/login SSO; agent must not complete Cesar’s session |
+| 2 | Backend chat | **PASS** | Isolated `22020a9e-…` + smoke `f9dd81e8-…` @ Railway `53a374c1` |
+| 3 | Text **and** voice regression suite | **PARTIAL** | CI shared-runtime job PASS; live text PASS; PCM **VOICE_AUDIO_BLOCKED** |
+| 4 | Composer / SSE invariant | **PASS** | Live `[DONE]` no toast; unit Composer + no `Stopped.` |
+| 5 | WRITE governance | **PASS** (this SHA isolated) | “Send an email.” → Gmail vs draft; no send |
+| 6 | E4 ContextCompiler invariant | **PASS** (unit) | compile before ReAct; greeting does not require E4 |
 | 7 | E5 plan lineage | **PASS** (unit) | 2.0-A invariants |
-| 8 | F1 preflight | **PARTIAL** | unit + HubSpot live older SHA; greeting does not use F1 |
-| 9 | No new P0/P1 | **PASS** for import-shadow | latency P2 for 10.9s greeting |
-| 10 | Required CI workflow | **FAIL** | origin `e2ca5441` `35500286861` pytest red. Local 15 retested this pass. Kernel gate job PASS `106050747907`. Do not relabel full CI green. |
-| 11 | Current production SHA verified | **PASS** (split) | Railway kernel `42fadd61`; Vercel frontend `e2ca5441` |
+| 8 | F1 preflight | **PARTIAL** | unit PASS on this SHA; HubSpot live older SHA; greeting does not use F1 |
+| 9 | No new P0/P1 | **PASS** for import-shadow | greeting first-delta ~7s is P2 |
+| 10 | Required CI workflow | **PASS** | `35528295674` all required jobs success |
+| 11 | Current production SHA verified | **PASS** | Railway + Vercel **`53a374c1`** |
 
 ## Cross-modality matrix (permanent)
 
-Run on every shared `execute_task_streaming` change:
-
 | Modality | Case | This pass |
 |----------|------|-----------|
-| TEXT | greeting | Isolated PASS |
+| TEXT | greeting | Isolated PASS @ `53a374c1` |
 | TEXT | follow-up | Isolated PASS |
-| TEXT | FAQ / what can you help | **NOT RUN** (browser) |
+| TEXT | FAQ | Isolated PASS |
 | TEXT | READ | Isolated honest clarify PASS |
-| TEXT | clarification | PASS (email slots) |
-| TEXT | approval | **NOT RUN** |
+| TEXT | clarification | Isolated email slots PASS |
+| TEXT | approval | **NOT RUN** (no PendingAction execute) |
 | TEXT | cancellation | **NOT RUN** |
 | TEXT | provider error | **NOT RUN** |
-| VOICE | greeting | **NOT RUN** (no PCM @ 42fadd61) |
+| VOICE | greeting | **NOT RUN** (no PCM @ `53a374c1`) |
 | VOICE | follow-up | **NOT RUN** |
 | VOICE | safe READ | **NOT RUN** |
-| VOICE | interruption | Prior HTTP barge-in @ `2c0a85b5` / `43570699` — not re-proven |
+| VOICE | interruption | Prior HTTP barge-in @ `43570699` — not re-proven |
 | VOICE | correction | **NOT RUN** |
 | VOICE | plan-hold | Unit PASS; live SLO @ `43570699` only |
 | VOICE | approval interruption | Prior write_gate live; not re-proven |
 
-Mandatory CI: job **Shared runtime text/voice gate** (`test_shared_kernel_typed_and_spoken_plan_hold_both_complete` + import-shadow tests).
+Mandatory CI: job **Shared runtime text/voice gate** — **PASS** on `53a374c1`.
 
-## 3.0 vs 2.0 naming (do not obscure production)
+## 3.0 vs 2.0 naming
 
 | Layer | Fact |
 |-------|------|
-| 3.0 **specification** | `docs/ai/GRAVITRE_PLATFORM_EXECUTION_3.0.md` exists |
-| 3.0 **code already on main** | 3.0-C plan-hold / voice SLO / F2 listing repair **are in the shared kernel** |
-| 3.0 **deployed** | Railway `42fadd61` includes that kernel + shadow fix |
-| 3.0 **live-proven** | Voice A/B and F2 sibling on `43570699`; typed chat isolated on `42fadd61`; **not** a completed 3.0 program |
+| 3.0 specification | exists |
+| 3.0 code already on main | 3.0-C plan-hold / voice SLO / F2 listing repair in shared kernel |
+| 3.0 deployed | Railway `53a374c1` includes that kernel + shadow fix + CI alignments |
+| 3.0 live-proven | Voice A/B on `43570699`; typed isolated chat on `53a374c1`; browser NOT RUN |
 
-Previous “3.0 implementation was not started” referred to **not opening new 3.0 product work in the audit turn**. It did **not** mean 3.0-C was absent from production. That distinction is now explicit.
-
-## 2.0 program (unchanged conclusions)
+## 2.0 program
 
 - STRUCTURAL COMPLETE = **NO**
 - TEST PROVEN = **PARTIAL**
@@ -66,6 +62,6 @@ Previous “3.0 implementation was not started” referred to **not opening new 
 
 ## Resume 3.0?
 
-**NO** until this gate is PASS (browser + post-fix voice PCM + documented CI).
+**NO** — Cesar’s release approval. Browser + post-fix PCM remain open. See `GRAVITRE_3_0_RELEASE_BASELINE.md`.
 
-**SHARED RUNTIME RELEASE GATE: FAIL**
+**SHARED RUNTIME RELEASE GATE: FAIL** (required CI job PASS; product PCM/browser open)

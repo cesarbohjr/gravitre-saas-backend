@@ -1,9 +1,9 @@
 # Platform Execution 2.0 — final audit
 
 **Audit date:** 2026-09-20  
-**Local HEAD / origin/main:** `42fadd6179485971a36b5179834e3601514557b2`  
-**Backend `/health`:** `42fadd6179485971a36b5179834e3601514557b2` (`status=ok`, `ai_disabled=false`, `unified_turn_live_enabled=true`)  
-**Frontend production (Vercel `gravitre-saas-backend`):** deploy `dpl_6kRCG18GGgsVk1EUgcRaTEBUj3Cd`, git SHA `42fadd61`  
+**Local HEAD / origin/main:** `53a374c13376be865ecad5338003bd821bc45d48`  
+**Backend `/health`:** `53a374c13376be865ecad5338003bd821bc45d48` (`status=ok`, `ai_disabled=false`, `unified_turn_live_enabled=true`)  
+**Frontend production (Vercel `gravitre-saas-backend`):** deploy `dpl_8JPmpwnf2UoSZNZvU8pUzEquHdLh`, git SHA `53a374c1`  
 **This is not a 2.0 COMPLETE declaration.**
 
 Spec source: `docs/ai/GRAVITRE_PLATFORM_EXECUTION_2.0.md` (header still “SPEC ONLY / A0”; later `main` implemented A–H in source). Ledger: `docs/delivery/gravitre-2.0-requirement-ledger.json`. Chat RCA: `docs/delivery/GRAVITRE_AI_CHAT_REGRESSION_ROOT_CAUSE.md`.
@@ -15,6 +15,7 @@ Spec source: `docs/ai/GRAVITRE_PLATFORM_EXECUTION_2.0.md` (header still “SPEC 
 | `12aa048d` and earlier shared kernel | Typed chat expected working (not re-probed this audit) |
 | `43570699` (2026-09-20 ~07:16–07:51Z) | **REGRESSED** — typed `/ai` hello and operator turns threw before `text-delta` |
 | `42fadd61` (deployed ~07:51Z Railway + Vercel) | Isolated typed chat **PASS** (`e0ba3650-…` smoke-ok) |
+| `53a374c1` (Railway + Vercel 2026-09-20T18:28Z) | Isolated typed chat **PASS** (`22020a9e-…` matrix; `f9dd81e8-…` smoke-ok). Authenticated `/ai` **BLOCKED**. |
 
 The regression originated in **3.0-C spoken plan-hold** edits on **shared** `execute_task_streaming`, not in UX Reset streaming contracts and not in 2.0-A cohesion HMAC/compile work.
 
@@ -61,7 +62,7 @@ Highlights:
 - **A2–A14, A23, A25, A28–A30:** TEST PROVEN in unit/AST invariants.
 - **A26–A27, A36–A37:** LIVE traffic golden **BLOCKED** / **NOT RUN** on current tip.
 - **A24:** Voice out of 2.0-A; kernel shared; 3.0-C plan-hold **REGRESSED typed chat** then fixed `42fadd61`.
-- **A31:** CI on `42fadd61` still **FAIL** (pytest + web). Cannot claim A31 green.
+- **A31:** Required CI on `53a374c1` **PASS** (`35528295674`). Do not relabel the earlier `42fadd61` pytest-red run as green.
 - **A35:** Later phases B–H **were** implemented after A (source exists). That is program progress, not a 2.0-A violation of “don’t start B in the A commit,” but it means A35 “no expansion in A” is done-as-A-scope only.
 - **A38 completion criteria (program §5):** operational one-contract **not** live-proven; priority READ live **partial**; WRITE compile+approval live **not** on this tip; text/voice IDs **partial**; goldens A–G live JSON **missing**; no cert chrome **held**.
 
@@ -81,7 +82,18 @@ Highlights:
 2. Unique entity bind live; recipes live; WRITE compile live; multi-source live; continuity live.  
 3. Voice text/voice ID parity + first-audio PCM if still required by original 2.0-J wording.  
 4. Memory outcome loop; certification scorecard; proactive 2.0-M.  
-5. Standing CI red.  
-6. Operator-browser `/ai` re-check after `42fadd61` (isolated API already PASS).
+5. Standing CI red — **closed on `53a374c1` (`35528295674`)**.  
+6. Operator-browser `/ai` — still **BLOCKED** (SSO). Isolated API PASS on `53a374c1`.  
+7. Post-fix voice PCM on `53a374c1` — **BLOCKED**.
 
-**Do not implement 3.0 in this audit.**
+## Release-gate reconciliation (2026-09-20 evening)
+
+Statuses changed by CI green, SHA pair alignment, and isolated chat matrix only:
+
+- A31 / required CI: **PASS** (`35528295674`).
+- Isolated typed chat live: **PASS** @ `53a374c1` (`22020a9e-…`).
+- Authenticated browser, voice PCM, A0 traffic golden, B–H live, I parity, K–M: **unchanged**.
+
+STRUCTURAL COMPLETE = **NO**. TEST PROVEN = **PARTIAL**. LIVE PROVEN = **PARTIAL**. 2.0 COMPLETE = **NO**.
+
+**Do not implement 3.0 in this audit. Cesar’s approval required.**
