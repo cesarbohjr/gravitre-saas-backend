@@ -21,3 +21,4 @@ export { ConnectorFabricField } from "./scenes/connector-fabric/connector-fabric
 export { GovernedExecutionField } from "./scenes/governed-execution/governed-execution-field"
 export { GibeLearningField } from "./scenes/gibe-learning/gibe-learning-field"
 export { VoiceIntentField } from "./scenes/voice-intent/voice-intent-field"
+export { OutcomesPositioningField } from "./scenes/outcomes-positioning/outcomes-positioning-field"

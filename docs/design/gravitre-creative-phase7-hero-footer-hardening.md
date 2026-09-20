@@ -50,4 +50,4 @@ Phase 7 remaining experiences **complete** for creative marketing program:
 - ✅ Footer continuity  
 - ✅ Hardening (boundary + pointers + retire leftovers)  
 
-Further creative work: Outcomes storyboard — Cesar reopen. Phase 8 GIBE + Phase 9 Voice are separate.
+Further creative work: Creative Experience System 1.0 storyboards closed through Phase 10 Outcomes. New work needs Cesar reopen.

@@ -229,7 +229,9 @@ Playwright widths 390–1728; reduced-motion; optional `?creativeState=` for det
    - ✅ SVG ACTION → OBSERVE → EVALUATE → RECOMMEND → APPROVE → RETAIN on `/features/technology`  
 9. **Voice Intent Field — SHIPPING** ([`gravitre-creative-voice-intent.md`](gravitre-creative-voice-intent.md))  
    - ✅ SVG Waveform → structure → intent → context → action → response on `/features` (no Siri orb)  
-   - Remaining storyboard: Outcomes — Cesar reopen.
+10. **Outcomes Positioning — SHIPPING** ([`gravitre-creative-outcomes-positioning.md`](gravitre-creative-outcomes-positioning.md))  
+   - ✅ SVG traces → categories (revenue / retention / efficiency) on `/pricing` — no invented metrics  
+   - Creative Experience System 1.0 storyboards complete.
 
 **First production pilot = Departments Converge on `/about`.** No Three.js until Pilot 2/3 justification.
 

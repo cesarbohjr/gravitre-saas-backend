@@ -303,3 +303,28 @@ describe("phase 9 voice intent storyboard", () => {
     expect(parseVoiceStateParam("action", { hostname: "gravitre.app" })).toBeNull()
   })
 })
+
+describe("phase 10 outcomes positioning storyboard", () => {
+  it("collapses traces into revenue / retention / efficiency without metrics", async () => {
+    const {
+      PHASE_ORDER,
+      OUTCOME_CATEGORIES,
+      nextPhase,
+      showCategories,
+      OUTCOMES_COLLAPSE_PATH_ID,
+    } = await import("@/components/marketing/creative/scenes/outcomes-positioning/storyboard")
+    expect(OUTCOME_CATEGORIES.map((c) => c.id)).toEqual(["revenue", "retention", "efficiency"])
+    expect(PHASE_ORDER).toEqual(["quiet", "traces", "cluster", "categories", "evidence", "honest"])
+    expect(showCategories("categories")).toBe(true)
+    expect(nextPhase("categories")).toBe("evidence")
+    expect(OUTCOMES_COLLAPSE_PATH_ID).toBe("path-outcomes-collapse")
+  })
+
+  it("parses outcomesState only on local hosts", async () => {
+    const { parseOutcomesStateParam } = await import(
+      "@/components/marketing/creative/scenes/outcomes-positioning/storyboard"
+    )
+    expect(parseOutcomesStateParam("categories", { hostname: "localhost" })).toBe("categories")
+    expect(parseOutcomesStateParam("categories", { hostname: "gravitre.app" })).toBeNull()
+  })
+})

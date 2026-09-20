@@ -28,6 +28,7 @@ import {
   PRICING_TRACE_STAGES,
   StageTraceVisual,
 } from "@/components/marketing/system"
+import { OutcomesPositioningField } from "@/components/marketing/creative"
 
 /**
  * /pricing — Nodus theme chrome + authorized Gravitre plans only.
@@ -56,6 +57,21 @@ export default function PricingPage() {
               ariaLabel="Pricing path from plan through role to outcome"
               caption="Seats and plans map to governed outcomes — no new dollar claims beyond the catalog above."
             />
+          </GravitreTrace>
+        </GravitreSection>
+
+        <DivideX />
+
+        <GravitreSection>
+          <GravitreSectionHeader
+            align="center"
+            badge="Outcomes path"
+            title="Traces collapse into categories"
+            description="An illustrative Outcomes Positioning field — revenue, retention, efficiency as labels only. No invented metrics."
+            className="mb-6"
+          />
+          <GravitreTrace>
+            <OutcomesPositioningField />
           </GravitreTrace>
         </GravitreSection>
 
