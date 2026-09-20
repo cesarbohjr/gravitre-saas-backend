@@ -1,9 +1,10 @@
 {
   "ledger": "gravitre-2.0-requirement-ledger",
   "audited_at": "2026-09-20T08:45:00Z",
-  "head_sha": "d7edb73d7c406e6e3819987cde2f7f4da18893b5",
+  "head_sha": "e2ca544135ed8fd7210f2408845862e9b6ce8182",
   "health_sha": "42fadd6179485971a36b5179834e3601514557b2",
-  "frontend_vercel_deployment": "dpl_6kRCG18GGgsVk1EUgcRaTEBUj3Cd",
+  "frontend_vercel_deployment": "dpl_Ah8SPrV3v79eRjyxKAw2csQzHKz9",
+  "frontend_vercel_sha": "e2ca544135ed8fd7210f2408845862e9b6ce8182",
   "program_complete": false,
   "structural_complete": false,
   "test_proven": "PARTIAL",

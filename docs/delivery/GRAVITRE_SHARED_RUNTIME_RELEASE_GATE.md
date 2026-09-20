@@ -1,8 +1,9 @@
 # Shared runtime release gate
 
 **Date:** 2026-09-20  
-**Production kernel SHA:** `42fadd6179485971a36b5179834e3601514557b2`  
-**Local/docs HEAD at write:** `d7edb73d` (ledger) plus this gate commit.
+**Production kernel SHA (Railway `/health` 2026-09-20T08:46:13Z):** `42fadd6179485971a36b5179834e3601514557b2`  
+**Frontend Vercel production:** `e2ca5441` (`dpl_Ah8SPrV3v79eRjyxKAw2csQzHKz9`)  
+**origin/main:** `e2ca5441`
 
 No further **shared-kernel 3.0** deploy until every row is PASS. This file is the enforceable checklist. Full `CI` workflow remaining red **does not** get relabeled green.
 
@@ -19,8 +20,8 @@ No further **shared-kernel 3.0** deploy until every row is PASS. This file is th
 | 7 | E5 plan lineage | **PASS** (unit) | 2.0-A invariants |
 | 8 | F1 preflight | **PARTIAL** | unit + HubSpot live older SHA; greeting does not use F1 |
 | 9 | No new P0/P1 | **PASS** for import-shadow | latency P2 for 10.9s greeting |
-| 10 | Required CI workflow | **FAIL** | `CI` 15 pytest + (pre-fix) web suite; new job `Shared runtime text/voice gate` added |
-| 11 | Current production SHA verified | **PASS** | `/health` `42fadd61` matches Vercel meta |
+| 10 | Required CI workflow | **FAIL** | Full `CI` `35497980128` FAIL on `42fadd61` (15 pytest). **Kernel gate job PASS** `35500286861` / `106050747907` on `e2ca5441`. Do not relabel full CI green. |
+| 11 | Current production SHA verified | **PASS** (split) | Railway kernel `42fadd61`; Vercel frontend `e2ca5441` |
 
 ## Cross-modality matrix (permanent)
 

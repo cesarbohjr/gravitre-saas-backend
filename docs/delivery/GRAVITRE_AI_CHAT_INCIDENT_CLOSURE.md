@@ -7,11 +7,10 @@
 
 | Surface | Value |
 |---------|--------|
-| Local HEAD | `d7edb73d7c406e6e3819987cde2f7f4da18893b5` (docs audit) |
-| origin/main | `d7edb73d` at check time |
-| Railway `/health` | **`42fadd6179485971a36b5179834e3601514557b2`** (`ai_disabled=false`, `unified_turn_live_enabled=true`, shadow+QA hooks on) |
-| Vercel production | `dpl_6kRCG18GGgsVk1EUgcRaTEBUj3Cd` meta SHA **`42fadd61`** |
-| Docs-only commits after fix | did **not** move Railway SHA (expected) |
+| Local / origin/main | **`e2ca544135ed8fd7210f2408845862e9b6ce8182`** (2026-09-20T08:46Z re-check; harness/docs after kernel fix) |
+| Railway `/health` | **`42fadd6179485971a36b5179834e3601514557b2`** @ `2026-09-20T08:46:13Z` (`ai_disabled=false`, `unified_turn_live_enabled=true`, shadow+QA hooks on) |
+| Vercel production | **`dpl_Ah8SPrV3v79eRjyxKAw2csQzHKz9`** meta SHA **`e2ca5441`** (frontend). Prior alias `dpl_6kRCG18GGgsVk1EUgcRaTEBUj3Cd` was `42fadd61`. |
+| Kernel vs frontend | Docs/harness commits after `42fadd61` **did not** move Railway SHA. Chat kernel in prod API remains `42fadd61`. |
 
 Shared-runtime changes since last independently verified **typed** chat (pre-`303df92f`): 3.0-C plan-hold ultra-early + composer skip on spoken path (`303df92f`, `9f98393a`, `43570699`) then import-shadow fix `42fadd61`.
 
@@ -52,7 +51,7 @@ A voice-only prior probe **cannot** certify post-fix typed runtime; a text-only 
 | Marketing Lighthouse | FAIL on docs commit | unrelated | marketing | No | Creative | Non-blocking for kernel |
 | Railway backend production | **PASS** `35497980123` | n/a | deploy+isolated smokes | Yes | Ops | Required for prod SHA |
 
-**Required GitHub workflow `CI` remains red** until the 15 pytest failures are owned. New job `Shared runtime text/voice gate` is the **mandatory kernel gate** (does not hide full CI).
+**Required GitHub workflow `CI` remains red** until the 15 pytest failures are owned. Job **Shared runtime text/voice gate** is the **mandatory kernel gate** (does not hide full CI). Evidence: **PASS** on `e2ca5441` run `35500286861` job `106050747907` (typed greeting + spoken plan-hold + import-shadow tests). Full `CI` on `42fadd61` is still **FAIL** `35497980128`.
 
 ## 6. Greeting latency
 
