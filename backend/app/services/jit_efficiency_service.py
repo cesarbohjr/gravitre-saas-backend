@@ -2,10 +2,14 @@
 
 Best-effort ``audit_events`` writes for eligible-tool namespace and context
 include/exclude profiles. Never raises — must not block turns.
+Writes are dispatched off-thread so Supabase I/O cannot inflate TOOL_DISCOVERY
+or unified-live stage marks.
 """
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+import threading
+from typing import Any, Callable
 
 from app.core.logging import get_logger
 
@@ -13,6 +17,18 @@ logger = get_logger(__name__)
 
 TOOL_NAMESPACE_ACTION = "runtime.jit.tool_namespace"
 CONTEXT_PROFILE_ACTION = "runtime.jit.context_profile"
+
+
+def _dispatch_background(work: Callable[[], None], name: str) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+
+        async def _ago() -> None:
+            await asyncio.to_thread(work)
+
+        loop.create_task(_ago())
+    except RuntimeError:
+        threading.Thread(target=work, name=name, daemon=True).start()
 
 
 def _write(
@@ -103,13 +119,16 @@ def record_jit_tool_namespace(
     ):
         if key in stats and stats[key] is not None:
             payload[key] = stats[key]
-    _write(
-        settings,
-        org_id=org_id,
-        user_id=user_id,
-        conversation_id=conversation_id,
-        action=TOOL_NAMESPACE_ACTION,
-        payload=payload,
+    _dispatch_background(
+        lambda: _write(
+            settings,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            action=TOOL_NAMESPACE_ACTION,
+            payload=payload,
+        ),
+        "jit-tool-namespace-audit",
     )
 
 
@@ -148,11 +167,14 @@ def record_jit_context_profile(
         "managedSupplementalSections": ranking.get("managedSupplementalSections"),
         "spokenMode": bool(spoken_mode),
     }
-    _write(
-        settings,
-        org_id=org_id,
-        user_id=user_id,
-        conversation_id=conversation_id,
-        action=CONTEXT_PROFILE_ACTION,
-        payload=payload,
+    _dispatch_background(
+        lambda: _write(
+            settings,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            action=CONTEXT_PROFILE_ACTION,
+            payload=payload,
+        ),
+        "jit-context-profile-audit",
     )

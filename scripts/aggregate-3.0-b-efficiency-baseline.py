@@ -32,6 +32,7 @@ from app.services.jit_efficiency_baseline import (  # noqa: E402
     aggregate_context_profile_rows,
     aggregate_tool_namespace_rows,
     compare_stage_regression,
+    filter_critical_path_jit_cohort,
     load_baseline_snapshot,
 )
 from app.services.turn_latency_baseline import aggregate_critical_path_rows  # noqa: E402
@@ -136,13 +137,17 @@ def build_report(
     )
 
     critical_stats = aggregate_critical_path_rows(critical_rows)
+    jit_cohort_rows = filter_critical_path_jit_cohort(critical_rows, tool_rows)
+    jit_cohort_stats = aggregate_critical_path_rows(jit_cohort_rows)
     regression: dict[str, Any] | None = None
+    regression_jit_cohort: dict[str, Any] | None = None
     baseline_a_sha: str | None = None
     if baseline_a_path and baseline_a_path.is_file():
         baseline_a = load_baseline_snapshot(str(baseline_a_path))
         baseline_a_sha = (baseline_a.get("health") or {}).get("git_sha")
         before = ((baseline_a.get("cohorts") or {}).get("all") or {})
         regression = compare_stage_regression(before=before, after=critical_stats)
+        regression_jit_cohort = compare_stage_regression(before=before, after=jit_cohort_stats)
 
     return {
         "probe": "3.0_b_efficiency_baseline",
@@ -172,11 +177,22 @@ def build_report(
         "tool_namespace": aggregate_tool_namespace_rows(tool_rows),
         "context_profile": aggregate_context_profile_rows(context_rows),
         "critical_path_after_3_0_b": critical_stats,
+        "critical_path_jit_cohort": {
+            "sample_count": len(jit_cohort_rows),
+            **jit_cohort_stats,
+        },
         "stage_regression_vs_3_0_a": regression,
+        "stage_regression_jit_cohort_vs_3_0_a": regression_jit_cohort,
+        "gate": {
+            "jit_rows_pass": len(tool_rows) >= 10 and len(context_rows) >= 10,
+            "any_regression_all_window": (regression or {}).get("any_regression"),
+            "any_regression_jit_cohort": (regression_jit_cohort or {}).get("any_regression"),
+        },
         "note": (
             "Efficiency samples from runtime.jit.* only. Stage regression compares "
-            "critical-path p50/p95 to frozen 3.0-A snapshot — any_regression=true "
-            "requires named trade before claiming 3.0-B gate PASS."
+            "critical-path p50/p95 to frozen 3.0-A snapshot. Prefer "
+            "stage_regression_jit_cohort_vs_3_0_a (same conversations as JIT audits) "
+            "over the all-window mix when claiming 3.0-B gate PASS."
         ),
         "evidence_sample": {
             "tool_namespace": [
@@ -222,6 +238,10 @@ def main() -> int:
                 "any_regression": (report.get("stage_regression_vs_3_0_a") or {}).get(
                     "any_regression"
                 ),
+                "any_regression_jit_cohort": (
+                    report.get("stage_regression_jit_cohort_vs_3_0_a") or {}
+                ).get("any_regression"),
+                "gate": report.get("gate"),
             },
             indent=2,
         )

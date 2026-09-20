@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any
 
 from app.services.turn_latency_baseline import (
@@ -102,6 +103,52 @@ def aggregate_context_profile_rows(rows: list[dict[str, Any]]) -> dict[str, Any]
         "ranked_prompt_chars": stats_ms(ranked_chars),
         "char_savings_vs_legacy": stats_ms(char_savings),
     }
+
+
+def _parse_ts(raw: str | None) -> datetime | None:
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def filter_critical_path_jit_cohort(
+    critical_rows: list[dict[str, Any]],
+    jit_tool_rows: list[dict[str, Any]],
+    *,
+    max_delta_seconds: int = 180,
+) -> list[dict[str, Any]]:
+    """Keep critical-path rows paired with a JIT tool_namespace audit on same conversation."""
+    jit_times_by_conv: dict[str, list[datetime]] = {}
+    for row in jit_tool_rows:
+        conv = str(row.get("resource_id") or "").strip()
+        ts = _parse_ts(str(row.get("created_at") or ""))
+        if conv and ts is not None:
+            jit_times_by_conv.setdefault(conv, []).append(ts)
+
+    if not jit_times_by_conv:
+        return []
+
+    matched: list[dict[str, Any]] = []
+    window = max(30, int(max_delta_seconds))
+    for row in critical_rows:
+        conv = str(row.get("resource_id") or "").strip()
+        ts = _parse_ts(str(row.get("created_at") or ""))
+        if not conv or ts is None or conv not in jit_times_by_conv:
+            continue
+        for jit_ts in jit_times_by_conv[conv]:
+            if abs((ts - jit_ts).total_seconds()) <= window:
+                matched.append(row)
+                break
+    return matched
 
 
 def compare_stage_regression(

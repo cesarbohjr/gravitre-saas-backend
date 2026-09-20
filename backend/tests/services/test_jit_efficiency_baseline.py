@@ -5,6 +5,7 @@ from app.services.jit_efficiency_baseline import (
     aggregate_context_profile_rows,
     aggregate_tool_namespace_rows,
     compare_stage_regression,
+    filter_critical_path_jit_cohort,
 )
 from app.services.jit_efficiency_service import (
     CONTEXT_PROFILE_ACTION,
@@ -85,12 +86,40 @@ def test_compare_stage_regression_flags_worse_p95() -> None:
     assert out["stages"]["TOOL_DISCOVERY"]["p95_regressed"] is False
 
 
+def test_filter_critical_path_jit_cohort_pairs_by_conversation() -> None:
+    jit_rows = [
+        {
+            "resource_id": "conv-a",
+            "created_at": "2026-09-19T10:00:00+00:00",
+        }
+    ]
+    critical_rows = [
+        {
+            "resource_id": "conv-a",
+            "created_at": "2026-09-19T10:00:30+00:00",
+            "metadata": {"total_ms": 1000},
+        },
+        {
+            "resource_id": "conv-b",
+            "created_at": "2026-09-19T10:00:30+00:00",
+            "metadata": {"total_ms": 900},
+        },
+    ]
+    matched = filter_critical_path_jit_cohort(critical_rows, jit_rows)
+    assert len(matched) == 1
+    assert matched[0]["resource_id"] == "conv-a"
+
+
 def test_record_jit_audits_best_effort_no_raise(monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
 
     def _fake_write(_client, _org, _user, action, _rtype, _rid, payload):
         calls.append((action, payload))
 
+    monkeypatch.setattr(
+        "app.services.jit_efficiency_service._dispatch_background",
+        lambda work, _name: work(),
+    )
     monkeypatch.setattr(
         "app.workflows.audit.write_audit_event",
         _fake_write,
