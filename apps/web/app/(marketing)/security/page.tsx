@@ -7,6 +7,7 @@ import {
   NucleoActivity,
   NucleoArrowRight,
 } from "@/components/icons/nucleo/semantic"
+import { GovernedExecutionField } from "@/components/marketing/creative"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import {
   MarketingPageHero,
@@ -20,8 +21,6 @@ import {
   GravitreSection,
   GravitreSectionHeader,
   GravitreTrace,
-  StageTraceVisual,
-  SECURITY_TRACE_STAGES,
 } from "@/components/marketing/system"
 
 const controls = [
@@ -109,18 +108,13 @@ export default function SecurityPage() {
       <GravitreSection>
         <GravitreSectionHeader
           align="center"
-          badge="Governance path"
-          title="Identity → Encrypt → Approve → Audit"
-          description="One signature TRACE — how access and writes move through Gravitre before anything lands in your systems."
+          badge="Governed execution"
+          title="Policy → Risk → Approval → Execute → Evidence"
+          description="An illustrative governance path — the gate opens for a write, then the audit trail remains. Not a live compliance claim."
           className="mb-6"
         />
         <GravitreTrace>
-          <StageTraceVisual
-            stages={SECURITY_TRACE_STAGES}
-            gradientId="security-trace"
-            ariaLabel="Security path from identity through encrypt and approve to audit"
-            caption="Identity → encrypt → approve → audit — plan-specific controls; ask us for the details that match your contract."
-          />
+          <GovernedExecutionField />
         </GravitreTrace>
       </GravitreSection>
 

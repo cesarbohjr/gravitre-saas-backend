@@ -1,7 +1,8 @@
 # Creative Experience System — Pilot 2 Agent Orchestration
 
 **Status:** APPROVED AND SHIPPED (SVG Task Decomposition Field on `/features/technology`)  
-**Progress:** W.1–W.8 done · Pilot 2 production plan complete · Pilot 3 Knowledge Fabric shipped (see pilot3 doc)  
+**Progress:** W.1–W.8 done · Pilot 2 complete · Pilot 3 shipped · Phase 7: Connector Fabric shipped · **Governed Execution on `/security` (current)** · then hero eval → footer continuity → hardening  
+**Next (program):** [`gravitre-creative-governed-execution.md`](gravitre-creative-governed-execution.md) — not a Pilot 2 W.* step (all closed).  
 **Upstream:** Pilot 1 shipped (Relational Topology + Departments Converge). **Do not reopen Pilot 1.**  
 **Bible:** [`docs/design/gravitre-creative-experience-system.md`](gravitre-creative-experience-system.md)  
 **Foundation:** `apps/web/components/marketing/creative/`  
@@ -413,7 +414,8 @@ Unit: storyboard beat order; Evidence present at VERIFY; approval continues same
 
 **R3F path:** closed unless Cesar rejects SVG verdict.
 
-**Pilot 2 complete.** Next program step: bible **Pilot 3 Knowledge Fabric** (do not reopen Pilot 1/2 production unless Cesar reopens).
+**Pilot 2 complete.** Program continues in the creative bible §AD–AE phase 7 (remaining experiences).  
+Pilot 3 Knowledge Fabric: shipped. Connector Fabric: shipped. **Current:** Governed Execution on `/security`.
 
 ---
 

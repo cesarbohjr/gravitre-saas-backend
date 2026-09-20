@@ -198,3 +198,30 @@ describe("phase 7 connector fabric storyboard", () => {
     expect(parseCfStateParam("write_waiting", { hostname: "gravitre.app" })).toBeNull()
   })
 })
+
+describe("phase 7 governed execution storyboard", () => {
+  it("follows POLICY → RISK → APPROVAL → EXECUTE → EVIDENCE and keeps path id", async () => {
+    const {
+      PHASE_ORDER,
+      GATE_STAGES,
+      nextPhase,
+      isWaiting,
+      GOVERNED_WRITE_PATH_ID,
+      activeStageIds,
+    } = await import("@/components/marketing/creative/scenes/governed-execution/storyboard")
+    expect(GATE_STAGES.map((s) => s.id)).toEqual(["policy", "risk", "approval", "execute", "evidence"])
+    expect(PHASE_ORDER).toContain("approval")
+    expect(isWaiting("approval")).toBe(true)
+    expect(nextPhase("approval")).toBe("execute")
+    expect(activeStageIds("execute")).toContain("approval")
+    expect(GOVERNED_WRITE_PATH_ID).toBe("path-gov-write")
+  })
+
+  it("parses govState only on local hosts", async () => {
+    const { parseGovStateParam } = await import(
+      "@/components/marketing/creative/scenes/governed-execution/storyboard"
+    )
+    expect(parseGovStateParam("approval", { hostname: "localhost" })).toBe("approval")
+    expect(parseGovStateParam("approval", { hostname: "gravitre.app" })).toBeNull()
+  })
+})

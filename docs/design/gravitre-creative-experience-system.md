@@ -221,8 +221,9 @@ Playwright widths 390–1728; reduced-motion; optional `?creativeState=` for det
 5. Pilot 2 Agent Orchestration bake-off  
 6. Pilot 3 Knowledge Fabric — **SHIPPED**  
 7. **Remaining experiences (in progress)** → hero eval → footer continuity → hardening  
-   - Connector Fabric — implementing on `/docs/integrations` ([`gravitre-creative-connector-fabric.md`](gravitre-creative-connector-fabric.md))  
-   - Next: Governance on `/security`, then hero eval / footer continuity 
+   - ✅ Connector Fabric on `/docs/integrations`  
+   - ✅ Governed Execution on `/security` ([`gravitre-creative-governed-execution.md`](gravitre-creative-governed-execution.md))  
+   - Next: hero eval → footer continuity → hardening 
 
 **First production pilot = Departments Converge on `/about`.** No Three.js until Pilot 2/3 justification.
 
