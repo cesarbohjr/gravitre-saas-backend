@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 from uuid import uuid4
 
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.conversational_execution_service import CONFIRM_PATTERN
 
 StepKind = Literal[
@@ -163,7 +164,7 @@ class ExecutionPlan:
                     capability_id=row.get("capability_id"),
                     action_key=row.get("action_key"),
                     status=row.get("status") or "pending",
-                    meta=dict(row.get("meta") or {}),
+                    meta=safe_normalize_stored_dict(row.get("meta")),
                 )
             )
         return cls(

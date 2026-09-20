@@ -253,15 +253,18 @@ def test_invoke_tool_resolves_capability_before_executor_lookup():
         actor_id="user-1",
         settings=MagicMock(),
     )
-    with patch("app.services.tool_service._resolve_tool_executor") as mock_exec:
-        mock_exec.return_value = None
-        with pytest.raises(Exception) as exc:
-            invoke_tool(
-                ctx,
-                "crm.contact.create",
-                {"_connected_integrations": ["hubspot"]},
+    with patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda _c, _a, p: p):
+        with patch("app.services.tool_service._resolve_tool_executor") as mock_exec:
+            mock_exec.return_value = None
+            with pytest.raises(Exception) as exc:
+                invoke_tool(
+                    ctx,
+                    "crm.contact.create",
+                    {"_connected_integrations": ["hubspot"]},
+                )
+            assert "hubspot.contacts.create" in str(exc.value) or (
+                mock_exec.call_args is not None and mock_exec.call_args[0][0] == "hubspot.contacts.create"
             )
-        assert "hubspot.contacts.create" in str(exc.value) or mock_exec.call_args[0][0] == "hubspot.contacts.create"
-        mock_exec.assert_called_once()
-        called_action = mock_exec.call_args[0][0]
-        assert called_action == "hubspot.contacts.create"
+            mock_exec.assert_called_once()
+            called_action = mock_exec.call_args[0][0]
+            assert called_action == "hubspot.contacts.create"

@@ -161,7 +161,13 @@ class TestAnthropicAdapter:
         assert (r.prompt_tokens, r.completion_tokens) == (7, 3)
         assert r.provider_used == "anthropic"
         _args, kwargs = fake_client.messages.create.call_args
-        assert kwargs["system"] == "SYS"
+        system = kwargs["system"]
+        if isinstance(system, str):
+            assert system == "SYS"
+        else:
+            assert isinstance(system, list)
+            assert system[0]["text"] == "SYS"
+            assert system[0]["cache_control"]["type"] == "ephemeral"
         assert all(m["role"] != "system" for m in kwargs["messages"])
 
     def test_embed_requires_voyage_key(self):

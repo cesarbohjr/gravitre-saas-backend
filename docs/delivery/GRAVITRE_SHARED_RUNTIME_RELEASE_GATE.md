@@ -11,16 +11,16 @@ No further **shared-kernel 3.0** deploy until every row is PASS. This file is th
 
 | # | Check | Status | Evidence |
 |---|--------|--------|----------|
-| 1 | Authenticated browser chat | **FAIL** | gravitre.app/login only; no SSO/password in agent env |
-| 2 | Backend chat | **PASS** | `fd7ef9a1-…` / `e0ba3650-…` @ `42fadd61` |
-| 3 | Text **and** voice regression suite | **PARTIAL** | Unit dual-path PASS; live text PASS; voice PCM post-fix **NOT RUN** |
+| 1 | Authenticated browser chat | **FAIL / BLOCKED** | AUTHENTICATED_BROWSER_BLOCKED — gravitre.app/login SSO |
+| 2 | Backend chat | **PASS** | Isolated `fd7ef9a1-…` / `e0ba3650-…` @ Railway `42fadd61` |
+| 3 | Text **and** voice regression suite | **PARTIAL** | Unit contract expanded; live text PASS; voice PCM @ 42fadd61 **VOICE_AUDIO_BLOCKED** |
 | 4 | Composer / SSE invariant | **PASS** (unit) | no `Stopped.` raw SSE; `compose_reply_events`; cognitive suite typed-path PASS locally |
 | 5 | WRITE governance | **PASS** (not weakened) | email turn clarified; no send |
 | 6 | E4 ContextCompiler invariant | **PASS** (unit AST) | compile before ReAct; greeting does not require E4 |
 | 7 | E5 plan lineage | **PASS** (unit) | 2.0-A invariants |
 | 8 | F1 preflight | **PARTIAL** | unit + HubSpot live older SHA; greeting does not use F1 |
 | 9 | No new P0/P1 | **PASS** for import-shadow | latency P2 for 10.9s greeting |
-| 10 | Required CI workflow | **FAIL** | Full `CI` `35497980128` FAIL on `42fadd61` (15 pytest). **Kernel gate job PASS** `35500286861` / `106050747907` on `e2ca5441`. Do not relabel full CI green. |
+| 10 | Required CI workflow | **FAIL** | origin `e2ca5441` `35500286861` pytest red. Local 15 retested this pass. Kernel gate job PASS `106050747907`. Do not relabel full CI green. |
 | 11 | Current production SHA verified | **PASS** (split) | Railway kernel `42fadd61`; Vercel frontend `e2ca5441` |
 
 ## Cross-modality matrix (permanent)

@@ -13,6 +13,7 @@ from app.connectors.action_catalog.action_retrieval_enrichment import enrichment
 from app.connectors.action_catalog.f1_read_slice import F1_CATALOG_ACTIONS, is_f1_read_action
 from app.connectors.action_catalog.models import ActionSpec
 from app.connectors.action_catalog.registry import all_catalog_action_specs
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.connectors.action_catalog.tool_aliases import REGISTRY_VENDOR_PREFIX_ALIASES
 from app.services.agent_platform_optimizer import _capability_eligible_prefixes
 
@@ -195,7 +196,7 @@ def attach_examples_to_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]
         if not isinstance(tool, dict):
             continue
         cloned = dict(tool)
-        fn = dict(cloned.get("function") or {}) if isinstance(cloned.get("function"), dict) else {}
+        fn = safe_normalize_stored_dict(cloned.get("function")) if isinstance(cloned.get("function"), dict) else {}
         invoke = str(cloned.get("invoke_action") or "").strip()
         name = str(fn.get("name") or cloned.get("name") or "")
         if not invoke and name:

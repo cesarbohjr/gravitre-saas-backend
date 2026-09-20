@@ -253,7 +253,7 @@ def bridge_pending_task_with_plan(
                     connector_id=str(pending.get("connector_id") or "") or None,
                     action_key=action,
                     status="pending",
-                    meta={"pending_status": pending.get("status"), "args": dict(pending.get("params") or {})},
+                    meta={"pending_status": pending.get("status"), "args": safe_normalize_stored_dict(pending.get("params"))},
                 )
             ],
             source="pending_task_bridge",

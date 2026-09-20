@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 from uuid import uuid4
 
+from app.core.safe_dict import safe_normalize_stored_dict
+
 PendingActionKind = Literal[
     "confirmation",
     "clarification",
@@ -65,7 +67,7 @@ class PendingAction:
             revision=int(raw["revision"]) if raw.get("revision") is not None else None,
             message=raw.get("message"),
             source=str(raw.get("source") or "task_state"),
-            meta=dict(raw.get("meta") or {}),
+            meta=safe_normalize_stored_dict(raw.get("meta")),
         )
 
 

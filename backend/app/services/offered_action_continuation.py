@@ -17,6 +17,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.conversational_execution_service import CONFIRM_PATTERN, DECLINE_PATTERN
 
 logger = get_logger(__name__)
@@ -610,7 +611,7 @@ def _execution_plan_patch_for_offered(
                 connector_id=str(o.get("connector_id") or o.get("name") or ""),
                 success=bool(o.get("success", True)),
                 summary=str(o.get("summary") or ""),
-                structured=dict(o.get("structured") or o.get("output") or {}),
+                structured=safe_normalize_stored_dict(o.get("structured") or o.get("output")),
                 error=o.get("error"),
             )
             for o in observations

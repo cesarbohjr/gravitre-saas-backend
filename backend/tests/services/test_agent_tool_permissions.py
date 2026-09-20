@@ -121,7 +121,8 @@ def test_invoke_denies_agent_without_permission(tool_ctx: ToolContext):
     tool_ctx.client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = (
         MagicMock(data=[])
     )
-    with patch("app.services.tool_service.write_audit_event"):
-        result = invoke_tool(tool_ctx, "slack.post_message", {"channel": "#x", "message": "hi"})
+    with patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda _c, _a, p: p):
+        with patch("app.services.tool_service.write_audit_event"):
+            result = invoke_tool(tool_ctx, "slack.post_message", {"channel": "#x", "message": "hi"})
     assert result.success is False
     assert result.error_code == "permission_denied"

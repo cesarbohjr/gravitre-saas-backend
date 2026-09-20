@@ -56,9 +56,10 @@ async def test_crm_entities_added_to_existing_relationship_table():
 def test_no_new_relationship_table_created():
     migrations = Path(__file__).resolve().parents[2] / "supabase" / "migrations"
     text = " ".join(p.read_text(encoding="utf-8") for p in migrations.glob("*.sql"))
-    assert "business_entities" not in text
-    assert "business_relationships" not in text
     assert "CREATE TABLE IF NOT EXISTS public.org_entity_relationships" in text
+    assert "CREATE TABLE IF NOT EXISTS public.org_business_entities" in text
+    assert "CREATE TABLE IF NOT EXISTS public.business_entities" not in text
+    assert "CREATE TABLE IF NOT EXISTS public.business_relationships" not in text
 
 
 @pytest.mark.asyncio

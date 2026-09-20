@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.chat_connector_models import ConnectorActionPlan
 from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
 
@@ -120,7 +121,7 @@ def connector_plan_from_execution_step(step: ExecutionStep) -> ConnectorActionPl
         approval_reason=meta.get("approval_reason"),
         destructive=bool(meta.get("destructive")),
         inferred_fields=tuple(str(x) for x in (meta.get("inferred_fields") or ())),
-        inference_sources=dict(meta.get("inference_sources") or {}),
+        inference_sources=safe_normalize_stored_dict(meta.get("inference_sources")),
     )
 
 
@@ -225,7 +226,7 @@ def dispatch_execution_step(
         "kind": step.kind,
         "connector_id": step.connector_id,
         "action_key": step.action_key,
-        "arguments": dict((step.meta or {}).get("args") or {}),
+        "arguments": safe_normalize_stored_dict((step.meta or {}).get("args")),
         "capability_id": step.capability_id,
         "attribution": {"plan_id": plan_id, "step_id": step_id},
     }

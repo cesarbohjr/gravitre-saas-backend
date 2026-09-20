@@ -172,6 +172,12 @@ jobs:
           python -m pytest -q
           tests/operators/test_agent_intelligence.py::test_shared_kernel_typed_and_spoken_plan_hold_both_complete
           tests/operators/test_agent_intelligence.py::test_execute_task_streaming_does_not_rebind_module_imports
+          tests/operators/test_agent_intelligence.py::test_shared_runtime_typed_normal_turn_emits_composer_and_complete
+          tests/operators/test_agent_intelligence.py::test_shared_runtime_typed_read_clarify_emits_composer
+          tests/operators/test_agent_intelligence.py::test_shared_runtime_shortcut_complete_carries_task_state
+          tests/operators/test_agent_intelligence.py::test_shared_runtime_write_approval_does_not_invoke_provider
+          tests/services/test_voice_session_service.py::test_operator_turn_speaks_perceive_before_kernel
+          tests/services/test_voice_session_service.py::test_voice_cancel_near_approval_emits_cancelled
           tests/services/test_platform_execution_2_0_a_invariants.py::test_execute_task_streaming_does_not_shadow_asyncio_or_composer
           tests/services/test_platform_execution_2_0_a_invariants.py::test_execute_task_streaming_has_no_branch_local_asyncio_import
         env:

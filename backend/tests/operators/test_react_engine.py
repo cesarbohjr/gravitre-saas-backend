@@ -139,11 +139,15 @@ async def test_execute_tool_call_delegates_to_registry(engine: ReActEngine, tool
         "app.services.react_write_gate.tool_requires_user_write_approval",
         return_value=(False, "hubspot.contacts.search", "hubspot", "Search"),
     ):
-        result = await engine._execute_tool_call(
-            tool_ctx,
-            "hubspot_search_contacts",
-            {"query": "acme"},
-        )
+        with patch(
+            "app.connectors.action_catalog.f1_read_slice.is_f1_read_action",
+            return_value=False,
+        ):
+            result = await engine._execute_tool_call(
+                tool_ctx,
+                "hubspot_search_contacts",
+                {"query": "acme"},
+            )
     assert result["success"] is True
     engine.registry.execute_tool.assert_awaited_once_with(
         ctx=tool_ctx,

@@ -163,15 +163,21 @@ async def test_execute_plan_uses_bound_invoke_action():
     plan = plan_from_approved_params(approved, registry=get_tool_registry())
     assert plan is not None
 
-    result = await service.execute_plan(
-        org_id="org-1",
-        user_id="user-1",
-        conversation_id="conv-1",
-        plan=plan,
-        client=MagicMock(),
-        classification={},
-        approved_params=approved,
-    )
+    proof = MagicMock()
+    proof.ok = True
+    proof.compiled_parameters = dict(plan.args)
+    proof.user_message = MagicMock(return_value="")
+
+    with patch("app.services.write_preflight.compile_write_for_context", return_value=proof):
+        result = await service.execute_plan(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            plan=plan,
+            client=MagicMock(),
+            classification={},
+            approved_params=approved,
+        )
     assert result.success is True
     service._registry.execute_invoke_action.assert_awaited_once()
     call = service._registry.execute_invoke_action.await_args.kwargs

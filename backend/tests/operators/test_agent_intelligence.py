@@ -36,7 +36,13 @@ def agent_row() -> dict:
 
 @pytest.fixture
 def intelligence() -> AgentIntelligence:
-    settings = SimpleNamespace(disable_ai=False, rag_top_k=5)
+    settings = SimpleNamespace(
+        disable_ai=False,
+        rag_top_k=5,
+        supabase_url="https://test.supabase.co",
+        supabase_anon_key="anon-test",
+        supabase_service_role_key="service-role-test",
+    )
     react = MagicMock()
     react.run = AsyncMock(
         return_value=ReActResult(
@@ -708,6 +714,183 @@ async def test_shared_kernel_typed_and_spoken_plan_hold_both_complete(intelligen
     assert "text-delta" in typed_types
     assert "text-delta" in spoken_types
     assert orch.stage_spoken_plan_hold.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_shared_runtime_typed_normal_turn_emits_composer_and_complete(
+    intelligence: AgentIntelligence,
+):
+    from app.services.intent_gateway import GatewayDecision
+
+    client = MagicMock()
+    events: list[object] = []
+
+    async def fake_streaming(**kwargs):
+        yield SimpleNamespace(
+            kind="done",
+            react_result=ReActResult(status=ReActStatus.COMPLETED, answer="Pricing is in the knowledge base."),
+        )
+
+    intelligence.react_engine.run_streaming = fake_streaming
+    with patch(
+        "app.services.intent_gateway.evaluate_intent_gateway",
+        AsyncMock(
+            return_value=GatewayDecision(
+                action="fallthrough",
+                reason="operator",
+                candidate_id="kernel",
+                confidence=0.4,
+            )
+        ),
+    ):
+        with patch(
+            "app.operators.agent_intelligence.compose_reply_events",
+            AsyncMock(return_value=_packed_reply("Pricing is in the knowledge base.", "txt-n", "success")),
+        ):
+            with patch("app.services.mcp_client_service.get_mcp_client_service") as mcp_svc:
+                mcp_svc.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+                with patch_agent_streaming_dialogue_pipeline():
+                    async for event in intelligence.execute_task_streaming(
+                        org_id="org-1",
+                        user_id="user-1",
+                        query="What is our pricing FAQ?",
+                        mode="fast",
+                        conversation_id="conv-normal",
+                        client=client,
+                        spoken_mode=False,
+                    ):
+                        events.append(event)
+    complete = next(e for e in events if isinstance(e, AssistantStreamComplete))
+    assert complete.full_content
+    assert "text-delta" in [e.sse_type for e in events if isinstance(e, AssistantStreamEvent)]
+
+
+@pytest.mark.asyncio
+async def test_shared_runtime_typed_read_clarify_emits_composer(
+    intelligence: AgentIntelligence,
+):
+    from app.services.intent_gateway import GatewayDecision
+
+    client = MagicMock()
+    events: list[object] = []
+
+    async def fake_streaming(**kwargs):
+        yield SimpleNamespace(
+            kind="done",
+            react_result=ReActResult(
+                status=ReActStatus.COMPLETED,
+                answer="I don't have enough information yet. Tell me which analytics source to use.",
+            ),
+        )
+
+    intelligence.react_engine.run_streaming = fake_streaming
+    with patch(
+        "app.services.intent_gateway.evaluate_intent_gateway",
+        AsyncMock(
+            return_value=GatewayDecision(
+                action="fallthrough",
+                reason="read",
+                candidate_id="kernel",
+                confidence=0.5,
+            )
+        ),
+    ):
+        with patch(
+            "app.operators.agent_intelligence.compose_reply_events",
+            AsyncMock(
+                return_value=_packed_reply(
+                    "I don't have enough information yet. Tell me which analytics source to use.",
+                    "txt-read",
+                    "clarify",
+                )
+            ),
+        ):
+            with patch(
+                "app.services.unified_turn_reasoning_service.apply_unified_turn_live",
+                AsyncMock(return_value=None),
+            ):
+                with patch("app.services.mcp_client_service.get_mcp_client_service") as mcp_svc:
+                    mcp_svc.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+                    with patch_agent_streaming_dialogue_pipeline():
+                        async for event in intelligence.execute_task_streaming(
+                            org_id="org-1",
+                            user_id="user-1",
+                            query="Tell me what my website traffic was last month.",
+                            mode="fast",
+                            conversation_id="conv-read",
+                            client=client,
+                            spoken_mode=False,
+                        ):
+                            events.append(event)
+    complete = next(e for e in events if isinstance(e, AssistantStreamComplete))
+    assert "enough information" in complete.full_content.lower() or complete.full_content
+    assert "text-delta" in [e.sse_type for e in events if isinstance(e, AssistantStreamEvent)]
+
+
+@pytest.mark.asyncio
+async def test_shared_runtime_shortcut_complete_carries_task_state(
+    intelligence: AgentIntelligence,
+):
+    from app.services.intent_gateway import GatewayDecision
+
+    client = MagicMock()
+    state_svc = MagicMock()
+    state_svc.get_task_state = AsyncMock(return_value={"turn": 1})
+    events: list[object] = []
+    with patch(
+        "app.services.intent_gateway.evaluate_intent_gateway",
+        AsyncMock(
+            return_value=GatewayDecision(
+                action="shortcut",
+                reason="phrase",
+                candidate_id="phrase_bank",
+                confidence=0.93,
+                answer="Hello! How can I help you today?",
+            )
+        ),
+    ):
+        with patch(
+            "app.services.conversation_state_service.get_conversation_state_service",
+            return_value=state_svc,
+        ):
+            with patch(
+                "app.operators.agent_intelligence.compose_reply_events",
+                AsyncMock(return_value=_packed_reply("Hello! How can I help you today?", "txt-p", "shortcut")),
+            ):
+                async for event in intelligence.execute_task_streaming(
+                    org_id="org-1",
+                    user_id="user-1",
+                    query="hello",
+                    mode="fast",
+                    conversation_id="conv-persist",
+                    client=client,
+                    spoken_mode=False,
+                ):
+                    events.append(event)
+    complete = next(e for e in events if isinstance(e, AssistantStreamComplete))
+    assert isinstance(complete.task_state, dict)
+    assert complete.task_state.get("shortcut_latency_ms") is not None
+
+
+@pytest.mark.asyncio
+async def test_shared_runtime_write_approval_does_not_invoke_provider():
+    from app.services.react_write_gate import block_react_write_execution
+    from app.services.tool_registry import get_tool_registry
+
+    invoke = MagicMock()
+    blocked = block_react_write_execution(
+        "email_send",
+        {"to": "model@example.com", "subject": "x", "body": "y"},
+        registry=get_tool_registry(),
+        client=MagicMock(),
+        org_id="org-1",
+        user_id="user-1",
+        user_message="Email ada@example.com subject line, Hi and body of the email say: Hello",
+        connected_integrations=["email"],
+    )
+    assert blocked is not None
+    assert blocked.get("pending_approval") is True
+    invoke.assert_not_called()
 
 
 @pytest.mark.asyncio

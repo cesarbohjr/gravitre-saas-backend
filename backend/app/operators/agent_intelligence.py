@@ -2107,12 +2107,31 @@ class AgentIntelligence:
                 routing=loop_trace.to_sse(),
                 progress_steps=loop_trace.progress_steps(),
             )
+            _mark("shortcut_composer_start")
             packed = await _composed_reply(response_text, kind="shortcut")
+            _mark("shortcut_composer_end")
             response_text = packed.text
             for ev in packed.events:
+                if getattr(ev, "sse_type", "") == "text-delta" and not _pre_kernel_checkpoints.get(
+                    "shortcut_first_text_delta"
+                ):
+                    _mark("shortcut_first_text_delta")
                 yield ev
             shortcut_state = _merge_trace_into_state(
                 gateway_task_state if isinstance(gateway_task_state, dict) else gateway_state
+            )
+            if isinstance(shortcut_state, dict):
+                shortcut_state = {
+                    **shortcut_state,
+                    "shortcut_latency_ms": dict(_pre_kernel_checkpoints),
+                    "shortcut_composer_used_model": bool(getattr(packed, "used_model", False)),
+                }
+            logger.info(
+                "shortcut_latency org_id=%s candidate=%s checkpoints=%s used_model=%s",
+                org_id,
+                gateway.candidate_id,
+                _pre_kernel_checkpoints,
+                getattr(packed, "used_model", None),
             )
             yield AssistantStreamComplete(
                 full_content=response_text,

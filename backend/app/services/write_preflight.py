@@ -29,7 +29,7 @@ from app.services.read_preflight import (
 from app.services.canonical_time_resolver import TimeWindow, resolve_time_window, time_window_from_mapping
 from app.services.connector_resource_resolver import resolve_resource
 from app.services.parameter_ledger import get_ledger, ingest_message_slots
-from app.services.tool_types import ToolContext
+from app.services.tool_types import ToolContext, ToolValidationError
 
 logger = get_logger(__name__)
 
@@ -296,7 +296,15 @@ def enforce_invoke_write_preflight(ctx: ToolContext, action: str, params: dict[s
     params = strip_untrusted_preflight_markers(params)
     if not is_f1_write_action(action):
         return params
-    proof = verify_bound_preflight(ctx, action, params)
+    try:
+        proof = verify_bound_preflight(ctx, action, params)
+    except ToolValidationError as exc:
+        if getattr(exc, "code", "") == "PREFLIGHT_REQUIRED":
+            raise ToolValidationError(
+                "That write wasn't compiled before execution.",
+                code="PREFLIGHT_REQUIRED",
+            ) from exc
+        raise
     return apply_preflight_to_params(params, proof)
 
 

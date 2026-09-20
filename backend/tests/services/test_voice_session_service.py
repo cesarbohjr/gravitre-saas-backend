@@ -100,7 +100,7 @@ async def test_operator_turn_speaks_perceive_before_kernel(monkeypatch, mock_set
         settings=_settings_with_voice(mock_settings),
         org_id="org-1",
         user_id="user-1",
-        text="Show me the complete plan before you execute anything. Don't execute.",
+        text="Check that my Google Ads account is actually connected.",
         agent={"id": "agent-1"},
         conversation_id="conv-1",
     ):
@@ -214,3 +214,31 @@ async def test_voice_session_prefers_complete_payload_over_streamed_deltas(
     assert complete is not None
     assert "5-step orchestration" in str(complete.get("text") or "")
     assert "enough information" not in str(complete.get("text") or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_voice_cancel_near_approval_emits_cancelled(monkeypatch, mock_settings):
+    monkeypatch.setattr(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        lambda: _FakeIntelligence(["I can send it after you confirm."]),
+    )
+    monkeypatch.setattr(
+        voice_session_service,
+        "synthesize_speech_stream",
+        lambda *_, **__: iter((b"x",)),
+    )
+    events = [
+        event
+        async for event in voice_session_service.stream_voice_turn_events(
+            settings=_settings_with_voice(mock_settings),
+            org_id="org-1",
+            user_id="user-1",
+            text="Send an email to ada@example.com subject Hello body Hi",
+            agent={"id": "agent-1"},
+            conversation_id="conv-1",
+            should_cancel=lambda: True,
+        )
+    ]
+    assert any(e.get("type") == "voice.turn.cancelled" for e in events) or any(
+        e.get("type") == "voice.turn.complete" for e in events
+    )

@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.execution_plan_service import ExecutionObservation, ExecutionPlan, ExecutionStep
 
 logger = get_logger(__name__)
@@ -70,7 +71,7 @@ def normalize_observations(raw: list[Any]) -> list[ExecutionObservation]:
                 connector_id=str(item.get("connector_id") or ""),
                 success=bool(item.get("success")),
                 summary=str(item.get("summary") or ""),
-                structured=dict(item.get("structured") or {}),
+                structured=safe_normalize_stored_dict(item.get("structured")),
                 error=item.get("error"),
             )
         )

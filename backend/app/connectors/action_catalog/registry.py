@@ -175,5 +175,6 @@ def get_action_spec(action_key: str) -> ActionSpec | None:
         return None
     for action in spec.all_actions():
         if action.id.lower() == key:
-            return _get_action_spec_cached(key, action.spec_revision)
+            # Same object as all_catalog_action_specs() — F1 single materialized owner.
+            return action
     return None

@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from app.core.safe_dict import safe_normalize_stored_dict
+
 BlockType = Literal["metrics", "trend", "prose", "callout"]
 
 
@@ -131,7 +133,7 @@ def blocks_from_dicts(raw: list[Any] | None) -> list[ResponseBlock]:
                 title=str(row.get("title") or ""),
                 lines=tuple(str(x) for x in (row.get("lines") or [])),
                 metrics=metrics,
-                meta=dict(row.get("meta") or {}),
+                meta=safe_normalize_stored_dict(row.get("meta")),
             )
         )
     return out

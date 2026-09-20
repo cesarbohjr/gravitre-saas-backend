@@ -79,9 +79,10 @@ class TestAdoptionIsQueryChecked:
 
     def test_mismatch_cancels_and_reassembles(self) -> None:
         idx = _SRC.index("_context_task_query == refined_query")
-        window = _SRC[idx : idx + 400]
+        window = _SRC[idx : idx + 900]
         assert "_context_task.cancel()" in window
-        assert "_prepare_turn_context(refined_query)" in window
+        assert "compile_assistant_turn_context" in window
+        assert "_prepare_with_classification" in window
 
     def test_discarded_prefetch_cannot_warn(self) -> None:
         # Early-return paths (LIVE served, preflight, connector turn) drop the
@@ -427,32 +428,34 @@ class TestFlagOnPathActuallyRuns:
         )
 
 
-class TestFlagOffPathIsStillSerial:
-    """Control for the tests above: proves they can tell overlap from serial.
+class TestLivePrefetchWithoutVoiceOverlapFlag:
+    """LIVE still overlaps prepare_assistant_turn to avoid a second 8.5s compile.
 
-    Without this, a bug that silently skipped the prefetch would leave
-    TestFlagOnPathActuallyRuns green on the inline path.
+    voice_context_overlap_v1 only gates the earlier spoken-fast prefetch. With
+    unified LIVE on, a second prefetch starts even when that flag is off.
     """
 
     @pytest.mark.asyncio
-    async def test_context_assembly_waits_for_live(self) -> None:
+    async def test_context_assembly_overlaps_live_when_flag_off(self) -> None:
         result = await _run_overlap_turn(overlap=False)
 
         complete = next(e for e in result["events"] if isinstance(e, AssistantStreamComplete))
         assert complete.full_content == _ANSWER
         assert result["ctx_start"] is not None
         assert result["delta_times"]
-        assert result["ctx_start"] > result["delta_times"][-1], (
-            "flag off should assemble context only after LIVE resolves"
+        assert result["ctx_start"] < result["delta_times"][-1], (
+            "LIVE-on turns should overlap context assembly even when "
+            "voice_context_overlap_v1 is off"
         )
 
 
 class TestSingleSourceOfTruth:
-    def test_context_assembly_has_one_call_site(self) -> None:
-        # Both the prefetch and the inline path must go through the same closure,
-        # or the two paths can drift in the arguments they pass.
-        assert _SRC.count("prepare_assistant_turn(") == 1
+    def test_context_assembly_has_two_canonical_call_sites(self) -> None:
+        # Prefetch closure plus classification-enriched reassembly after E4 compile.
+        # Both must go through orchestrator.prepare_assistant_turn.
+        assert _SRC.count("prepare_assistant_turn(") == 2
         assert "async def _prepare_turn_context(" in _SRC
+        assert "async def _prepare_with_classification(" in _SRC
 
     def test_closure_forwards_the_reused_connector_list(self) -> None:
         start = _SRC.index("async def _prepare_turn_context(")

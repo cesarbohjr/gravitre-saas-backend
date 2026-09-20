@@ -14,6 +14,7 @@ from typing import Any
 
 from app.connectors.action_catalog.models import ActionSpec, ActionWorkflowSchema, WorkflowFieldSpec
 from app.connectors.action_catalog.schema_generator import normalize_schema
+from app.core.safe_dict import safe_normalize_stored_dict
 
 # Sources that compile without asking the user — not JSON/workflow required.
 _COMPILE_SOURCES = frozenset(
@@ -118,8 +119,8 @@ def json_schema_for_spec(spec: ActionSpec) -> dict[str, Any]:
         or _lookup_parameter_override(spec.id)
         or infer_action_schema(spec.id, kind=spec.kind, description=spec.description or spec.id)
     )
-    schema = normalize_schema(dict(base))
-    properties = dict(schema.get("properties") or {})
+    schema = normalize_schema(safe_normalize_stored_dict(base))
+    properties = safe_normalize_stored_dict(schema.get("properties"))
     for name in advertised_property_names(spec):
         if name not in properties:
             properties[name] = {"type": "string", "description": name.replace("_", " ")}
