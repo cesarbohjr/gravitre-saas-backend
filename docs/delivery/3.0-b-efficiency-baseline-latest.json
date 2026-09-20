@@ -1,13 +1,13 @@
 {
   "probe": "3.0_b_efficiency_baseline",
-  "generated_at": "2026-09-20T05:06:52.377023+00:00",
-  "window_hours": 3,
-  "window_since": "2026-09-20T02:06:49.745396+00:00",
+  "generated_at": "2026-09-20T05:24:49.619842+00:00",
+  "window_hours": 1,
+  "window_since": "2026-09-20T04:24:47.250377+00:00",
   "org_scope": "f07e57c0-1501-4000-8000-c04e57a00001",
   "health": {
-    "git_sha": "616de047f8bb4be073c3601ecccbb7ac89681b81",
+    "git_sha": "f50ea3f1fe6f756e87a44a490392c5114d5ef2b3",
     "status": "ok",
-    "timestamp": "2026-09-20T05:06:50.190017+00:00"
+    "timestamp": "2026-09-20T05:24:47.566838+00:00"
   },
   "baseline_a_reference": {
     "path": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\3.0-a-latency-baseline-latest.json",
@@ -23,44 +23,44 @@
     "critical_path": "runtime.turn_latency.critical_path"
   },
   "rows_fetched": {
-    "runtime.jit.tool_namespace": 19,
-    "runtime.jit.context_profile": 19,
-    "runtime.turn_latency.critical_path": 24
+    "runtime.jit.tool_namespace": 26,
+    "runtime.jit.context_profile": 26,
+    "runtime.turn_latency.critical_path": 37
   },
   "tool_namespace": {
-    "sample_count": 19,
+    "sample_count": 26,
     "retrieval_methods": {
-      "embedding_narrow_tools_for_turn": 19
+      "embedding_narrow_tools_for_turn": 26
     },
-    "embedding_turns": 19,
+    "embedding_turns": 26,
     "eligible_prefix_turns": 1,
     "spoken_chat_no_tools_turns": 0,
     "total_tools": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 86,
       "p95_ms": 86,
       "max_ms": 86
     },
     "visible_tools": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 20,
       "p95_ms": 20,
       "max_ms": 20
     },
     "payload_bytes": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 5259,
       "p95_ms": 5306,
-      "max_ms": 5306
+      "max_ms": 5321
     },
     "narrow_ms": {
-      "sample_count": 19,
-      "p50_ms": 36,
-      "p95_ms": 86,
-      "max_ms": 104
+      "sample_count": 26,
+      "p50_ms": 50,
+      "p95_ms": 123,
+      "max_ms": 138
     },
     "visible_pct_of_total": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 23,
       "p95_ms": 23,
       "max_ms": 23,
@@ -68,272 +68,272 @@
     }
   },
   "context_profile": {
-    "sample_count": 19,
+    "sample_count": 26,
     "shadow_turns": 0,
-    "active_turns": 19,
+    "active_turns": 26,
     "tokens_used": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 859,
       "p95_ms": 1949,
       "max_ms": 1954
     },
     "token_budget": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 12000,
       "p95_ms": 12000,
       "max_ms": 12000
     },
     "candidate_count": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 2,
       "p95_ms": 9,
       "max_ms": 9
     },
     "selected_count": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 2,
       "p95_ms": 9,
       "max_ms": 9
     },
     "legacy_prompt_chars": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 310,
       "p95_ms": 4292,
       "max_ms": 4293
     },
     "ranked_prompt_chars": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 3291,
       "p95_ms": 7642,
       "max_ms": 7669
     },
     "char_savings_vs_legacy": {
-      "sample_count": 19,
+      "sample_count": 26,
       "p50_ms": 0,
       "p95_ms": 0,
       "max_ms": 0
     }
   },
   "critical_path_after_3_0_b": {
-    "sample_count": 24,
+    "sample_count": 37,
     "turn_total_ms": {
-      "sample_count": 24,
-      "p50_ms": 8736,
-      "p95_ms": 21151,
+      "sample_count": 37,
+      "p50_ms": 8180,
+      "p95_ms": 19813,
       "max_ms": 22264
     },
     "dominant_delta_ms": {
-      "sample_count": 24,
-      "p50_ms": 5850,
-      "p95_ms": 13624,
+      "sample_count": 37,
+      "p50_ms": 5672,
+      "p95_ms": 13271,
       "max_ms": 13867
     },
     "by_dominant_stage": {
       "CONNECTED_INTEGRATIONS": {
-        "sample_count": 3,
-        "p50_ms": 581,
-        "p95_ms": 844,
-        "max_ms": 844,
-        "win_count": 3
+        "sample_count": 8,
+        "p50_ms": 591,
+        "p95_ms": 1103,
+        "max_ms": 1103,
+        "win_count": 8
       },
       "RESOLUTION": {
-        "sample_count": 4,
-        "p50_ms": 88,
+        "sample_count": 6,
+        "p50_ms": 71,
         "p95_ms": 375,
         "max_ms": 375,
-        "win_count": 4
+        "win_count": 6
       },
       "UNIFIED_LIVE_RESOLVED": {
-        "sample_count": 17,
-        "p50_ms": 6437,
+        "sample_count": 23,
+        "p50_ms": 6640,
         "p95_ms": 13624,
         "max_ms": 13867,
-        "win_count": 17
+        "win_count": 23
       }
     },
     "by_stage_delta_ms": {
       "COMPOSER": {
-        "sample_count": 24,
+        "sample_count": 37,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "CONNECTED_INTEGRATIONS": {
-        "sample_count": 20,
-        "p50_ms": 647,
+        "sample_count": 31,
+        "p50_ms": 630,
         "p95_ms": 1228,
-        "max_ms": 1295
+        "max_ms": 1977
       },
       "CONTEXT_BUILD": {
-        "sample_count": 10,
-        "p50_ms": 56,
-        "p95_ms": 8562,
+        "sample_count": 15,
+        "p50_ms": 126,
+        "p95_ms": 1693,
         "max_ms": 8562
       },
       "CONTEXT_COMPILE_UNIFIED": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "CONVERSATIONAL_EXECUTION": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
-        "p95_ms": 0,
-        "max_ms": 0
+        "p95_ms": 7,
+        "max_ms": 7
       },
       "DIALOGUE_SETTINGS_FULL": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 21,
-        "p95_ms": 30,
+        "p95_ms": 32,
         "max_ms": 32
       },
       "ENGINE_SETTINGS": {
-        "sample_count": 20,
+        "sample_count": 31,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "ENRICH_CLASSIFICATION": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 68,
-        "p95_ms": 95,
+        "p95_ms": 116,
         "max_ms": 166
       },
       "KNOWLEDGE_BASE_EMITTED": {
-        "sample_count": 2,
-        "p50_ms": 67,
-        "p95_ms": 78,
-        "max_ms": 78
+        "sample_count": 3,
+        "p50_ms": 78,
+        "p95_ms": 89,
+        "max_ms": 89
       },
       "MODEL_TTFT": {
-        "sample_count": 19,
+        "sample_count": 26,
         "p50_ms": 0,
         "p95_ms": 59,
         "max_ms": 75
       },
       "NETWORK": {
-        "sample_count": 48,
-        "p50_ms": 14,
+        "sample_count": 74,
+        "p50_ms": 12,
         "p95_ms": 21,
         "max_ms": 36
       },
       "PARAMETER_LEDGER": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 70,
         "p95_ms": 86,
         "max_ms": 94
       },
       "PERSONA_RESOLVED": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 198,
-        "p95_ms": 229,
+        "p95_ms": 233,
         "max_ms": 281
       },
       "PLANNING": {
-        "sample_count": 17,
-        "p50_ms": 682,
-        "p95_ms": 952,
-        "max_ms": 1388
+        "sample_count": 23,
+        "p50_ms": 701,
+        "p95_ms": 1388,
+        "max_ms": 1391
       },
       "PRE_KERNEL_ENTRY": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
-        "p95_ms": 1,
-        "max_ms": 12
+        "p95_ms": 12,
+        "max_ms": 14
       },
       "PRE_TURN_SHAPE": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "QUERY_REWRITE": {
-        "sample_count": 2,
-        "p50_ms": 1,
+        "sample_count": 3,
+        "p50_ms": 18,
         "p95_ms": 18,
         "max_ms": 18
       },
       "RESOLUTION": {
-        "sample_count": 82,
+        "sample_count": 120,
         "p50_ms": 0,
         "p95_ms": 83,
         "max_ms": 375
       },
       "ROUTER_ENRICHMENTS": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
-        "p95_ms": 3537,
-        "max_ms": 3737
+        "p95_ms": 3737,
+        "max_ms": 3818
       },
       "ROUTING_CLASSIFIED": {
-        "sample_count": 20,
+        "sample_count": 31,
         "p50_ms": 0,
         "p95_ms": 2,
         "max_ms": 6
       },
       "SENTIMENT": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 1
       },
       "SPOKEN_LITE_DECIDED": {
-        "sample_count": 17,
-        "p50_ms": 110,
-        "p95_ms": 163,
-        "max_ms": 200
+        "sample_count": 23,
+        "p50_ms": 106,
+        "p95_ms": 200,
+        "max_ms": 311
       },
       "TASK_CLASSIFIER": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 71,
         "p95_ms": 88,
         "max_ms": 128
       },
       "TASK_STATE_INITIAL": {
-        "sample_count": 17,
-        "p50_ms": 22,
+        "sample_count": 23,
+        "p50_ms": 21,
         "p95_ms": 42,
         "max_ms": 111
       },
       "TOOL_DISCOVERY": {
-        "sample_count": 22,
+        "sample_count": 34,
         "p50_ms": 0,
         "p95_ms": 159,
         "max_ms": 174
       },
       "TURN_SHAPE_CLASSIFIED": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "UNDERSTANDING": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 809,
-        "p95_ms": 1112,
-        "max_ms": 2600
+        "p95_ms": 2600,
+        "max_ms": 3490
       },
       "UNDERSTANDING_AUDIT": {
-        "sample_count": 17,
-        "p50_ms": 54,
+        "sample_count": 23,
+        "p50_ms": 50,
         "p95_ms": 71,
         "max_ms": 107
       },
       "UNIFIED_LIVE_RESOLVED": {
-        "sample_count": 17,
-        "p50_ms": 6437,
+        "sample_count": 23,
+        "p50_ms": 6640,
         "p95_ms": 13624,
         "max_ms": 13867
       },
       "UNIFIED_SHADOW_SCHEDULED": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "VOICE_EXPRESSION_BOUND": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
@@ -341,225 +341,225 @@
     }
   },
   "critical_path_jit_cohort": {
-    "sample_count": 24,
+    "sample_count": 36,
     "turn_total_ms": {
-      "sample_count": 24,
-      "p50_ms": 8736,
-      "p95_ms": 21151,
+      "sample_count": 36,
+      "p50_ms": 8336,
+      "p95_ms": 19813,
       "max_ms": 22264
     },
     "dominant_delta_ms": {
-      "sample_count": 24,
-      "p50_ms": 5850,
-      "p95_ms": 13624,
+      "sample_count": 36,
+      "p50_ms": 5730,
+      "p95_ms": 13271,
       "max_ms": 13867
     },
     "by_dominant_stage": {
       "CONNECTED_INTEGRATIONS": {
-        "sample_count": 3,
+        "sample_count": 7,
         "p50_ms": 581,
-        "p95_ms": 844,
-        "max_ms": 844,
-        "win_count": 3
+        "p95_ms": 1103,
+        "max_ms": 1103,
+        "win_count": 7
       },
       "RESOLUTION": {
-        "sample_count": 4,
-        "p50_ms": 88,
+        "sample_count": 6,
+        "p50_ms": 71,
         "p95_ms": 375,
         "max_ms": 375,
-        "win_count": 4
+        "win_count": 6
       },
       "UNIFIED_LIVE_RESOLVED": {
-        "sample_count": 17,
-        "p50_ms": 6437,
+        "sample_count": 23,
+        "p50_ms": 6640,
         "p95_ms": 13624,
         "max_ms": 13867,
-        "win_count": 17
+        "win_count": 23
       }
     },
     "by_stage_delta_ms": {
       "COMPOSER": {
-        "sample_count": 24,
+        "sample_count": 36,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "CONNECTED_INTEGRATIONS": {
-        "sample_count": 20,
-        "p50_ms": 647,
-        "p95_ms": 1228,
-        "max_ms": 1295
+        "sample_count": 30,
+        "p50_ms": 614,
+        "p95_ms": 1295,
+        "max_ms": 1977
       },
       "CONTEXT_BUILD": {
-        "sample_count": 10,
-        "p50_ms": 56,
-        "p95_ms": 8562,
+        "sample_count": 15,
+        "p50_ms": 126,
+        "p95_ms": 1693,
         "max_ms": 8562
       },
       "CONTEXT_COMPILE_UNIFIED": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "CONVERSATIONAL_EXECUTION": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
-        "p95_ms": 0,
-        "max_ms": 0
+        "p95_ms": 7,
+        "max_ms": 7
       },
       "DIALOGUE_SETTINGS_FULL": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 21,
-        "p95_ms": 30,
+        "p95_ms": 32,
         "max_ms": 32
       },
       "ENGINE_SETTINGS": {
-        "sample_count": 20,
+        "sample_count": 30,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "ENRICH_CLASSIFICATION": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 68,
-        "p95_ms": 95,
+        "p95_ms": 116,
         "max_ms": 166
       },
       "KNOWLEDGE_BASE_EMITTED": {
-        "sample_count": 2,
-        "p50_ms": 67,
-        "p95_ms": 78,
-        "max_ms": 78
+        "sample_count": 3,
+        "p50_ms": 78,
+        "p95_ms": 89,
+        "max_ms": 89
       },
       "MODEL_TTFT": {
-        "sample_count": 19,
+        "sample_count": 26,
         "p50_ms": 0,
         "p95_ms": 59,
         "max_ms": 75
       },
       "NETWORK": {
-        "sample_count": 48,
+        "sample_count": 72,
         "p50_ms": 14,
         "p95_ms": 21,
         "max_ms": 36
       },
       "PARAMETER_LEDGER": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 70,
         "p95_ms": 86,
         "max_ms": 94
       },
       "PERSONA_RESOLVED": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 198,
-        "p95_ms": 229,
+        "p95_ms": 233,
         "max_ms": 281
       },
       "PLANNING": {
-        "sample_count": 17,
-        "p50_ms": 682,
-        "p95_ms": 952,
-        "max_ms": 1388
+        "sample_count": 23,
+        "p50_ms": 701,
+        "p95_ms": 1388,
+        "max_ms": 1391
       },
       "PRE_KERNEL_ENTRY": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
-        "p95_ms": 1,
-        "max_ms": 12
+        "p95_ms": 12,
+        "max_ms": 14
       },
       "PRE_TURN_SHAPE": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "QUERY_REWRITE": {
-        "sample_count": 2,
-        "p50_ms": 1,
+        "sample_count": 3,
+        "p50_ms": 18,
         "p95_ms": 18,
         "max_ms": 18
       },
       "RESOLUTION": {
-        "sample_count": 82,
+        "sample_count": 118,
         "p50_ms": 0,
         "p95_ms": 83,
         "max_ms": 375
       },
       "ROUTER_ENRICHMENTS": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
-        "p95_ms": 3537,
-        "max_ms": 3737
+        "p95_ms": 3737,
+        "max_ms": 3818
       },
       "ROUTING_CLASSIFIED": {
-        "sample_count": 20,
+        "sample_count": 30,
         "p50_ms": 0,
-        "p95_ms": 2,
+        "p95_ms": 6,
         "max_ms": 6
       },
       "SENTIMENT": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 1
       },
       "SPOKEN_LITE_DECIDED": {
-        "sample_count": 17,
-        "p50_ms": 110,
-        "p95_ms": 163,
-        "max_ms": 200
+        "sample_count": 23,
+        "p50_ms": 106,
+        "p95_ms": 200,
+        "max_ms": 311
       },
       "TASK_CLASSIFIER": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 71,
         "p95_ms": 88,
         "max_ms": 128
       },
       "TASK_STATE_INITIAL": {
-        "sample_count": 17,
-        "p50_ms": 22,
+        "sample_count": 23,
+        "p50_ms": 21,
         "p95_ms": 42,
         "max_ms": 111
       },
       "TOOL_DISCOVERY": {
-        "sample_count": 22,
+        "sample_count": 33,
         "p50_ms": 0,
         "p95_ms": 159,
         "max_ms": 174
       },
       "TURN_SHAPE_CLASSIFIED": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "UNDERSTANDING": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 809,
-        "p95_ms": 1112,
-        "max_ms": 2600
+        "p95_ms": 2600,
+        "max_ms": 3490
       },
       "UNDERSTANDING_AUDIT": {
-        "sample_count": 17,
-        "p50_ms": 54,
+        "sample_count": 23,
+        "p50_ms": 50,
         "p95_ms": 71,
         "max_ms": 107
       },
       "UNIFIED_LIVE_RESOLVED": {
-        "sample_count": 17,
-        "p50_ms": 6437,
+        "sample_count": 23,
+        "p50_ms": 6640,
         "p95_ms": 13624,
         "max_ms": 13867
       },
       "UNIFIED_SHADOW_SCHEDULED": {
-        "sample_count": 2,
+        "sample_count": 3,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
       },
       "VOICE_EXPRESSION_BOUND": {
-        "sample_count": 17,
+        "sample_count": 23,
         "p50_ms": 0,
         "p95_ms": 0,
         "max_ms": 0
@@ -571,12 +571,12 @@
       "CONTEXT_BUILD": {
         "before_p50_ms": 244,
         "before_p95_ms": 8543,
-        "after_p50_ms": 56,
-        "after_p95_ms": 8562,
+        "after_p50_ms": 126,
+        "after_p95_ms": 1693,
         "p50_regressed": false,
-        "p95_regressed": true,
+        "p95_regressed": false,
         "before_sample_count": 29,
-        "after_sample_count": 10
+        "after_sample_count": 15
       },
       "TOOL_DISCOVERY": {
         "before_p50_ms": 0,
@@ -586,7 +586,7 @@
         "p50_regressed": false,
         "p95_regressed": true,
         "before_sample_count": 20,
-        "after_sample_count": 22
+        "after_sample_count": 34
       }
     },
     "any_regression": true
@@ -596,12 +596,12 @@
       "CONTEXT_BUILD": {
         "before_p50_ms": 244,
         "before_p95_ms": 8543,
-        "after_p50_ms": 56,
-        "after_p95_ms": 8562,
+        "after_p50_ms": 126,
+        "after_p95_ms": 1693,
         "p50_regressed": false,
-        "p95_regressed": true,
+        "p95_regressed": false,
         "before_sample_count": 29,
-        "after_sample_count": 10
+        "after_sample_count": 15
       },
       "TOOL_DISCOVERY": {
         "before_p50_ms": 0,
@@ -611,7 +611,7 @@
         "p50_regressed": false,
         "p95_regressed": true,
         "before_sample_count": 20,
-        "after_sample_count": 22
+        "after_sample_count": 33
       }
     },
     "any_regression": true
@@ -621,12 +621,12 @@
       "CONTEXT_BUILD": {
         "before_p50_ms": 67,
         "before_p95_ms": 1915,
-        "after_p50_ms": 56,
-        "after_p95_ms": 8562,
-        "p50_regressed": false,
-        "p95_regressed": true,
+        "after_p50_ms": 126,
+        "after_p95_ms": 1693,
+        "p50_regressed": true,
+        "p95_regressed": false,
         "before_sample_count": 15,
-        "after_sample_count": 10
+        "after_sample_count": 15
       },
       "TOOL_DISCOVERY": {
         "before_p50_ms": 0,
@@ -636,7 +636,7 @@
         "p50_regressed": false,
         "p95_regressed": true,
         "before_sample_count": 36,
-        "after_sample_count": 22
+        "after_sample_count": 33
       }
     },
     "any_regression": true
@@ -652,30 +652,30 @@
   "evidence_sample": {
     "tool_namespace": [
       {
-        "id": "b9accfd2-d30e-4b47-ab12-5de666e73104",
-        "created_at": "2026-09-20T05:06:26.3577+00:00"
+        "id": "a2912d6e-7229-4ecf-808c-3e2678d6da25",
+        "created_at": "2026-09-20T05:24:27.435011+00:00"
       },
       {
-        "id": "b5243c56-2709-4dd9-917b-abfc0e1046e1",
-        "created_at": "2026-09-20T05:06:10.645641+00:00"
+        "id": "bebd3687-bac4-4fa7-a118-15ba24b591f3",
+        "created_at": "2026-09-20T05:24:07.72469+00:00"
       },
       {
-        "id": "00bd4692-0239-4d58-aac6-9ab7c78bf393",
-        "created_at": "2026-09-20T05:05:59.26839+00:00"
+        "id": "24b613a0-a84b-4ace-bf67-8bf0a9cb4a28",
+        "created_at": "2026-09-20T05:23:54.948666+00:00"
       }
     ],
     "context_profile": [
       {
-        "id": "f4f2bfb9-01de-4f61-a6b2-880493b15f91",
-        "created_at": "2026-09-20T05:06:26.373145+00:00"
+        "id": "f15e115c-f125-47bc-8cc6-740d31ebbe7d",
+        "created_at": "2026-09-20T05:24:27.439138+00:00"
       },
       {
-        "id": "5421dc01-232a-45bd-b9a9-08cfe637fbe5",
-        "created_at": "2026-09-20T05:06:10.688944+00:00"
+        "id": "b8548fed-2777-4796-b8ab-702e0915a239",
+        "created_at": "2026-09-20T05:24:07.730228+00:00"
       },
       {
-        "id": "dee2adfc-3358-4e0c-b4fa-221bdcc135f0",
-        "created_at": "2026-09-20T05:05:59.261013+00:00"
+        "id": "d70e60fc-f2cc-4a53-8ab5-dda3d04acf87",
+        "created_at": "2026-09-20T05:23:54.938295+00:00"
       }
     ]
   }

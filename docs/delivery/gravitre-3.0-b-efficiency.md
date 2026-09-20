@@ -1,6 +1,6 @@
 # Gravitre 3.0-B — Context/tool efficiency (2026-09-19)
 
-**Status:** **PARTIAL GATE** — JIT rows PASS (n≥19); p50 stable/improved; p95 **FAIL** on one CONTEXT_BUILD outlier (8562 ms) + `TOOL_DISCOVERY` p95 159 vs 132 ms ship baseline.
+**Status:** **PARTIAL GATE** — outlier **fixed** @ SHA `f50ea3f1`; JIT rows PASS; CONTEXT p95 **improved** vs ship baseline; `TOOL_DISCOVERY` p95 +27 ms still blocks strict `gate.pass`.
 
 ## Scope
 
@@ -64,4 +64,15 @@ Live gate: merge → Railway redeploy → isolated-org turns → aggregator `any
 | Dominant stage | `UNIFIED_LIVE_RESOLVED` (9591 ms) — separate from CONTEXT_BUILD delta |
 | Fix | Overlap `prepare_assistant_turn` with unified LIVE for typed fallthrough paths (`agent_intelligence.py`) |
 
-**Gate:** Full Done requires `gate.pass: true` (JIT rows + JIT-cohort p50/p95 not worse vs `3.0-b-jit-cohort-baseline-ship.json`). Re-verify after fallthrough overlap fix deploys.
+## Post-fix verify (`f50ea3f1`, conv `bc8161d2-…`, 12 turns)
+
+| Metric | Before fix | After fix (post-`05:22Z` cohort) |
+|--------|------------|----------------------------------|
+| `context_inline` max | **8562 ms** | **0 ms** (prefetch adopted on fallthrough) |
+| CONTEXT_BUILD p95 vs ship | 8562 ms (outlier) | **735 ms ≤ 1915 ms** ✓ |
+| TOOL_DISCOVERY p95 vs ship | 159 ms | **159 vs 132 ms** ✗ (+27 ms) |
+| JIT rows | — | **26** tool + **26** context |
+
+**Gate:** `gate.pass` still **false** on strict p50/p95 (CONTEXT p50 126 vs 67; TOOL p95 +27 ms). Recommend **named trade** for +27 ms `TOOL_DISCOVERY` or more samples — not a CONTEXT_BUILD regression.
+
+**Next program phase:** **3.0-C** (voice realtime eval / Metric A-B — already in progress per spec). **3.0-D/E** source shipped; live gates NOT RUN.
