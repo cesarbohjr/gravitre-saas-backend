@@ -11,8 +11,11 @@ import { FeaturesLegacyContent } from "@/components/marketing/features/legacy-pa
 import { Button } from "@/components/marketing/nodus/button"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
-import { GibeTraceVisual } from "@/components/marketing/system/gibe-trace-visual"
-import { AgentOrchestrationField, EntityConvergenceField } from "@/components/marketing/creative"
+import {
+  AgentOrchestrationField,
+  EntityConvergenceField,
+  GibeLearningField,
+} from "@/components/marketing/creative"
 import { GravitreReveal, GravitreTrace } from "@/components/marketing/system/motion"
 import { GravitreSection, GravitreSectionHeader } from "@/components/marketing/system/section"
 
@@ -24,8 +27,8 @@ const specPills = [
 ] as const
 
 /**
- * Technology / GIBE pilot page — Marketing System 4.0.
- * Signature visual: TRACE path (not generic Lucide orbit carnival).
+ * Technology / GIBE page — Creative Experience System signatures.
+ * GIBE Learning Loop + Orchestration + Knowledge Fabric (not generic Lucide orbit carnival).
  */
 export function TechnologyPage() {
   return (
@@ -69,12 +72,12 @@ export function TechnologyPage() {
         <GravitreSectionHeader
           align="center"
           badge="GIBE path"
-          title="From knowledge to governed outcomes"
-          description="One signature TRACE — how organizational intelligence moves through relationships and evidence before anything executes."
+          title="Observe, recommend, then human approve"
+          description="An illustrative GIBE learning loop — action, observe, evaluate, advisory recommend, approve, retain. Not auto policy rewrite."
           className="mb-6"
         />
         <GravitreTrace>
-          <GibeTraceVisual />
+          <GibeLearningField />
         </GravitreTrace>
       </GravitreSection>
 

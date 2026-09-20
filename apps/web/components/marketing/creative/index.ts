@@ -19,3 +19,5 @@ export { AgentOrchestrationField } from "./scenes/agent-orchestration/orchestrat
 export { EntityConvergenceField } from "./scenes/knowledge-fabric/entity-convergence-field"
 export { ConnectorFabricField } from "./scenes/connector-fabric/connector-fabric-field"
 export { GovernedExecutionField } from "./scenes/governed-execution/governed-execution-field"
+export { GibeLearningField } from "./scenes/gibe-learning/gibe-learning-field"
+export { VoiceIntentField } from "./scenes/voice-intent/voice-intent-field"

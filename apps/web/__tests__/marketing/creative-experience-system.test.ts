@@ -233,3 +233,73 @@ describe("phase 7 hardening", () => {
     expect(CreativeSceneFallback).toBeTypeOf("function")
   })
 })
+
+describe("phase 8 GIBE learning loop storyboard", () => {
+  it("follows ACTION → OBSERVE → EVALUATE → RECOMMEND → APPROVE → RETAIN", async () => {
+    const {
+      PHASE_ORDER,
+      LOOP_STAGES,
+      nextPhase,
+      isWaiting,
+      isAdvisory,
+      GIBE_PREFERENCE_PATH_ID,
+      activeStageIds,
+    } = await import("@/components/marketing/creative/scenes/gibe-learning/storyboard")
+    expect(LOOP_STAGES.map((s) => s.id)).toEqual([
+      "action",
+      "observe",
+      "evaluate",
+      "recommend",
+      "approve",
+      "retain",
+    ])
+    expect(PHASE_ORDER).toContain("recommend")
+    expect(isAdvisory("recommend")).toBe(true)
+    expect(isWaiting("approve")).toBe(true)
+    expect(nextPhase("approve")).toBe("retain")
+    expect(activeStageIds("retain")).toContain("approve")
+    expect(GIBE_PREFERENCE_PATH_ID).toBe("path-gibe-prefer")
+  })
+
+  it("parses gibeState only on local hosts", async () => {
+    const { parseGibeStateParam } = await import(
+      "@/components/marketing/creative/scenes/gibe-learning/storyboard"
+    )
+    expect(parseGibeStateParam("approve", { hostname: "localhost" })).toBe("approve")
+    expect(parseGibeStateParam("approve", { hostname: "gravitre.app" })).toBeNull()
+  })
+})
+
+describe("phase 9 voice intent storyboard", () => {
+  it("follows Waveform → structure → intent → context → action → response", async () => {
+    const {
+      PHASE_ORDER,
+      VOICE_STAGES,
+      nextPhase,
+      showStructure,
+      VOICE_TURN_PATH_ID,
+      activeStageIds,
+    } = await import("@/components/marketing/creative/scenes/voice-intent/storyboard")
+    expect(VOICE_STAGES.map((s) => s.id)).toEqual([
+      "waveform",
+      "structure",
+      "intent",
+      "context",
+      "action",
+      "response",
+    ])
+    expect(PHASE_ORDER).toContain("waveform")
+    expect(showStructure("structure")).toBe(true)
+    expect(nextPhase("action")).toBe("response")
+    expect(activeStageIds("response")).toContain("action")
+    expect(VOICE_TURN_PATH_ID).toBe("path-voice-turn")
+  })
+
+  it("parses voiceState only on local hosts", async () => {
+    const { parseVoiceStateParam } = await import(
+      "@/components/marketing/creative/scenes/voice-intent/storyboard"
+    )
+    expect(parseVoiceStateParam("action", { hostname: "localhost" })).toBe("action")
+    expect(parseVoiceStateParam("action", { hostname: "gravitre.app" })).toBeNull()
+  })
+})

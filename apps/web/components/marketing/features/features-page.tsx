@@ -36,6 +36,7 @@ import {
   GravitreTrace,
   StageTraceVisual,
 } from "@/components/marketing/system"
+import { VoiceIntentField } from "@/components/marketing/creative"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 const surfaceIcons = [
@@ -104,6 +105,21 @@ export function FeaturesPage() {
             ariaLabel="Features path from coordinate through act and approve to resolve"
             caption="Agents coordinate, act, clear approvals, then resolve — same gates as chat and workflows."
           />
+        </GravitreTrace>
+      </GravitreSection>
+
+      <DivideX />
+
+      <GravitreSection>
+        <GravitreSectionHeader
+          align="center"
+          badge="Voice path"
+          title="Waveform to response — same brain as chat"
+          description="An illustrative Voice Intent Field — structure, intent, context, action, response. No listening orb. Not proven duplex parity."
+          className="mb-6"
+        />
+        <GravitreTrace>
+          <VoiceIntentField />
         </GravitreTrace>
       </GravitreSection>
 
