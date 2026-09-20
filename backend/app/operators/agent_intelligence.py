@@ -3274,6 +3274,19 @@ class AgentIntelligence:
                 )
                 _cognitive_trace_builder.mark("model_reasoning_started", path="unified_live")
 
+        # Typed + spoken unified LIVE fallthrough (~48% of turns) otherwise pays
+        # prepare_assistant_turn twice: once inside compile_unified_reasoning_context
+        # and again at context_inline (~8.5s measured on HubSpot read_tool_classical).
+        # Overlap prepare with LIVE when the query cannot change (non-mixed shape).
+        if _unified_live_ok and _context_task is None:
+            from app.services.conversational_turn_gate import heuristic_turn_shape
+
+            _live_prefetch_shape = heuristic_turn_shape(task_text)
+            if _live_prefetch_shape is None or getattr(_live_prefetch_shape, "shape", "") != "mixed":
+                _context_task_query = task_text
+                _context_task = asyncio.create_task(_prepare_turn_context(task_text))
+                _context_task.add_done_callback(lambda t: t.cancelled() or t.exception())
+
         if _unified_live_ok:
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
             from app.operators.react_engine import resolve_permitted_tools

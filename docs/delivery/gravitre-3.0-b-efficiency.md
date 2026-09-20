@@ -53,4 +53,15 @@ Live gate: merge → Railway redeploy → isolated-org turns → aggregator `any
 | p95 vs 3.0-B ship baseline | **FAIL** | `CONTEXT_BUILD` p95 **8562** (outlier conv `05023328-…` @ `2026-09-20T05:01:34Z`); `TOOL_DISCOVERY` p95 **159 vs 132** |
 | Gate `pass` (JIT rows + no p95 regression vs ship) | **FAIL** | `docs/delivery/3.0-b-efficiency-baseline-latest.json` → `gate.pass: false` |
 
-**Gate:** Full Done requires `gate.pass: true` (JIT rows + JIT-cohort p50/p95 not worse vs `3.0-b-jit-cohort-baseline-ship.json`). p50 passes; p95 blocked by one 22 s turn outlier — investigate before named trade or baseline refresh.
+## Outlier root cause (conv `05023328-…` @ `2026-09-20T05:01:34Z`)
+
+| Finding | Detail |
+|---------|--------|
+| User prompt | "Find HubSpot contacts added in the last 7 days." |
+| Path | Unified LIVE (9591 ms) → **fallthrough** `read_tool_classical` → classical ReAct |
+| p95 blocker | `context_inline` **8562 ms** — **not** JIT audit overhead |
+| Mechanism | Fallthrough re-ran full `prepare_assistant_turn` after unified compile already paid knowledge/RAG |
+| Dominant stage | `UNIFIED_LIVE_RESOLVED` (9591 ms) — separate from CONTEXT_BUILD delta |
+| Fix | Overlap `prepare_assistant_turn` with unified LIVE for typed fallthrough paths (`agent_intelligence.py`) |
+
+**Gate:** Full Done requires `gate.pass: true` (JIT rows + JIT-cohort p50/p95 not worse vs `3.0-b-jit-cohort-baseline-ship.json`). Re-verify after fallthrough overlap fix deploys.
