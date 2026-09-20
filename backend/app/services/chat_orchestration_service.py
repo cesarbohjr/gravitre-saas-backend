@@ -971,7 +971,15 @@ class ChatOrchestrationService:
                 ),
             )
 
-        risk = await self._connector._evaluate_risk(org_id, user_id, plan, classification)  # noqa: SLF001
+        from app.services.cognitive_loop_controller import is_plan_without_execute_turn
+
+        if is_plan_without_execute_turn(goal or segment):
+            risk = {
+                "requires_approval": plan.kind == "write" or bool(plan.destructive),
+                "approval_reason": None,
+            }
+        else:
+            risk = await self._connector._evaluate_risk(org_id, user_id, plan, classification)  # noqa: SLF001
         plan = ConnectorActionPlan(
             tool_name=plan.tool_name,
             invoke_action=plan.invoke_action,

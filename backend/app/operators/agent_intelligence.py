@@ -3307,6 +3307,78 @@ class AgentIntelligence:
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
             from app.operators.react_engine import resolve_permitted_tools
 
+            # Spoken plan-hold: orchestration owns staging — skip unified LIVE guards/shadow.
+            if _plan_hold_spoken and conversation_id:
+                from app.services.chat_orchestration_service import get_chat_orchestration_service
+
+                orch_turn = await get_chat_orchestration_service(active_settings).process_turn(
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message=task_text,
+                    classification=pipeline_classification,
+                    task_state=task_state if isinstance(task_state, dict) else {},
+                    connected_integrations=list(connected_early or []),
+                    client=client,
+                    environment_name=environment_name,
+                )
+                _mark("plan_hold_orchestration")
+                if orch_turn and orch_turn.get("stop_pipeline"):
+                    task_state = orch_turn.get("task_state") or task_state
+                    response_text = str(orch_turn.get("message") or "")
+                    dialogue_mode = str(orch_turn.get("dialogue_mode") or "confirm")
+                    pending_live = (
+                        orch_turn.get("pending_task")
+                        if isinstance(orch_turn.get("pending_task"), dict)
+                        else None
+                    )
+                    yield sse_intelligence_metadata(
+                        message_id=message_id,
+                        confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                        answer_explanation="Plan-hold orchestration (spoken short-circuit)",
+                        dialogue_mode=dialogue_mode,
+                        persona_key=str(persona.get("persona_key") or ""),
+                        task_state=task_state,
+                        pending_task=pending_live,
+                        effective_mode=mode_key,
+                        pipeline_tier=pipeline_tier,
+                        routing_tier=routing_control.tier,
+                        routing={
+                            **(routing_sse if isinstance(routing_sse, dict) else {}),
+                            "planHoldShortCircuit": True,
+                            "spokenMode": True,
+                            **loop_trace.to_sse(),
+                        },
+                    )
+                    if spoken_mode and str(response_text or "").strip():
+                        packed = await _composed_reply(
+                            response_text,
+                            kind="clarify" if dialogue_mode in {"clarify", "confirm"} else "success",
+                            existing_text_id=spoken_progress_text_id,
+                        )
+                        response_text = packed.text
+                        for ev in packed.events:
+                            yield ev
+                    await _complete_cognitive_loop(
+                        pending_task=pending_live,
+                        tool_results=[],
+                    )
+                    yield AssistantStreamComplete(
+                        full_content=response_text,
+                        tool_results=[],
+                        react_result=None,
+                        model="plan_hold_orchestration",
+                        message_id=message_id,
+                        confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                        answer_explanation="Plan-hold orchestration (spoken short-circuit)",
+                        dialogue_mode=dialogue_mode,
+                        persona_key=str(persona.get("persona_key") or ""),
+                        proactive_suggestions=[],
+                        task_state=task_state,
+                        pending_task=pending_live,
+                    )
+                    return
+
             delta_queue: asyncio.Queue[str | None] | None = None
             on_text_delta = None
             from app.services.operator_task_intent import spoken_should_stream_live_deltas
