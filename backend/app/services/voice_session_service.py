@@ -7,6 +7,7 @@ Flow:
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import re
 import time
@@ -50,6 +51,38 @@ _STRAY_ASTERISK = re.compile(r"\*+")
 # Keyed by voice/model/format so Metric A is not charged a cold ElevenLabs hop
 # on every subsequent turn in this worker.
 _PERCEIVE_TTS_CACHE: dict[tuple[str, str, str], list[bytes]] = {}
+
+
+def warm_perceive_tts_cache(settings: Settings, *, voice_key: str | None = None) -> bool:
+    """Pre-synthesize standing PERCEIVE draft for default voice (worker startup)."""
+    from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+    perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
+    if not perceive_text:
+        return False
+    resolved_voice = voice_key or "sarah"
+    model = "eleven_flash_v2_5"
+    fmt = "mp3_44100_128"
+    cache_key = (str(resolved_voice), str(model), str(fmt))
+    if cache_key in _PERCEIVE_TTS_CACHE:
+        return True
+    try:
+        chunks = list(
+            synthesize_speech_stream(
+                settings,
+                text=perceive_text,
+                voice_key=resolved_voice,
+                model_id=model,
+                output_format=fmt,
+            )
+        )
+        if chunks:
+            _PERCEIVE_TTS_CACHE[cache_key] = chunks
+            return True
+    except Exception:  # noqa: BLE001 — best-effort warm, never fail startup
+        return False
+    return False
+
 
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
 # Prefer Redis so cancel works across Railway replicas; memory is local fallback.
@@ -307,18 +340,25 @@ async def stream_voice_turn_events(
         )
         collected: list[bytes] = []
         try:
-            audio_iter = (
-                iter(cached_pieces)
-                if cached_pieces is not None
-                else synthesize_speech_stream(
-                    settings,
-                    text=spoken_chunk,
-                    voice_key=resolved_voice,
-                    model_id=model,
-                    output_format=tts_output_format,
-                )
-            )
-            for audio in audio_iter:
+            if cached_pieces is not None:
+                audio_chunks = cached_pieces
+            else:
+
+                def _fetch_chunks() -> list[bytes]:
+                    return list(
+                        synthesize_speech_stream(
+                            settings,
+                            text=spoken_chunk,
+                            voice_key=resolved_voice,
+                            model_id=model,
+                            output_format=tts_output_format,
+                        )
+                    )
+
+                audio_chunks = await asyncio.to_thread(_fetch_chunks)
+                if cached_pieces is None and spoken_chunk == perceive_text and audio_chunks:
+                    _PERCEIVE_TTS_CACHE[cache_key] = audio_chunks
+            for audio in audio_chunks:
                 if _cancelled():
                     cancelled = True
                     return
@@ -366,7 +406,12 @@ async def stream_voice_turn_events(
                 first_piece = False
                 if cached_pieces is None and spoken_chunk == perceive_text:
                     collected.append(audio)
-            if cached_pieces is None and spoken_chunk == perceive_text and collected:
+            if (
+                cached_pieces is None
+                and spoken_chunk == perceive_text
+                and collected
+                and cache_key not in _PERCEIVE_TTS_CACHE
+            ):
                 _PERCEIVE_TTS_CACHE[cache_key] = collected
         except VoiceProviderError as exc:
             tts_failed = True

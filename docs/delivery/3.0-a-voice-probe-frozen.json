@@ -1,0 +1,23 @@
+{
+  "probe": "voice_slo_two_metric",
+  "frozen_at": "2026-09-19",
+  "note": "Frozen 3.0-A measurement gate HTTP Talk probe (isolated org, n=5). Do not overwrite — compare 3.0-C probes against this file.",
+  "git_sha": "401554cc7bfb13791cfa08a6d7bfddc10f6c252d",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "sample_n": 5,
+  "metric_a": {
+    "p50_ms": 377,
+    "p95_ms": 1215,
+    "hard_target_p50_ms": 500,
+    "hard_target_p95_ms": 800,
+    "pass": false
+  },
+  "metric_b": {
+    "p50_ms": 24815,
+    "p95_ms": 49257,
+    "target_p50_ms": 5000,
+    "target_p95_ms": 8000,
+    "pass": false
+  },
+  "source": "docs/delivery/gravitre-3.0-a-baseline.md @ 2026-09-19 gate close"
+}

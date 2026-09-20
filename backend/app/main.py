@@ -357,6 +357,21 @@ async def lifespan(app: FastAPI):
         await _warm_unified_tool_embeds()
     await _warm_pipecat_imports()
 
+    async def _warm_voice_perceive_tts() -> None:
+        from app.config import get_settings
+        from app.services.voice_session_service import warm_perceive_tts_cache
+
+        settings = get_settings()
+        if not (settings.elevenlabs_api_key or "").strip():
+            return
+        ok = await asyncio.to_thread(warm_perceive_tts_cache, settings)
+        if ok:
+            logger.info("voice_perceive_tts_warmup_ok")
+        else:
+            logger.debug("voice_perceive_tts_warmup_skipped")
+
+    await _warm_voice_perceive_tts()
+
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
     _log_billing_startup_config()

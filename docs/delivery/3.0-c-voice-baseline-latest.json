@@ -1,0 +1,275 @@
+{
+  "probe": "3.0_c_voice_baseline",
+  "generated_at": "2026-09-20T05:52:16.872307+00:00",
+  "health": {
+    "git_sha": "f50ea3f1fe6f756e87a44a490392c5114d5ef2b3",
+    "status": "ok",
+    "timestamp": "2026-09-20T05:52:16.267346+00:00"
+  },
+  "probe_source": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\voice-slo-two-metric-live.json",
+  "slo_targets": {
+    "metric_a": {
+      "p50_ms": 500,
+      "p95_ms": 800
+    },
+    "metric_b": {
+      "p50_ms": 5000,
+      "p95_ms": 8000
+    }
+  },
+  "metric_a_measured": {
+    "id": "time_to_first_honest_response",
+    "samples_ms": [
+      521,
+      360,
+      425,
+      365,
+      472
+    ],
+    "p50_ms": 425,
+    "p95_ms": 521,
+    "hard_target_p50_ms": 500,
+    "hard_target_p95_ms": 800,
+    "pass": true
+  },
+  "metric_b_measured": {
+    "id": "operator_task_completion_latency",
+    "samples_ms": [
+      26500,
+      41933,
+      22286,
+      22729,
+      18467
+    ],
+    "p50_ms": 22729,
+    "p95_ms": 41933,
+    "target_p50_ms": 5000,
+    "target_p95_ms": 8000,
+    "pass": false
+  },
+  "slo_pass": {
+    "metric_a": true,
+    "metric_b": false
+  },
+  "lane_comparison": {
+    "production_voice_lane": "A_CASCADE",
+    "production_recommendation": "A_CASCADE",
+    "eval_hypothesis_if_b_fails_governance": "C_HYBRID",
+    "blended_voice_latency": null,
+    "lanes": {
+      "A_CASCADE": {
+        "path": "Deepgram STT \u2192 execute_task_streaming \u2192 ElevenLabs",
+        "production_allowed": true,
+        "native_provider_tools": false,
+        "tools": "execute_task_streaming only",
+        "speculative_write": false,
+        "media_transport": "websocket_pcm16_json",
+        "measured": true,
+        "scores": {
+          "latency_metric_a": {
+            "p50_ms": 425,
+            "p95_ms": 521,
+            "samples": null
+          },
+          "latency_metric_b": {
+            "p50_ms": 22729,
+            "p95_ms": 41933,
+            "samples": null
+          },
+          "probe_verdict": "PARTIAL \u2014 Metric A met; Metric B missed P50<5s / P95<8s (not blended; do not treat as a single voice-latency number)",
+          "probe_git_sha": null,
+          "probe_generated_at": null,
+          "conversation_ids": null
+        },
+        "eval_card": {
+          "lane": "A_CASCADE",
+          "production_default": true,
+          "production_allowed": true,
+          "tools_must_use_execute_task_streaming": true,
+          "speculative_write": false,
+          "benchmark_dimensions": [
+            "semantic_accuracy",
+            "interruptions",
+            "tool_correctness",
+            "latency_metric_a",
+            "latency_metric_b",
+            "cost",
+            "voice_naturalness",
+            "traceability",
+            "governance",
+            "context_parity",
+            "webrtc_connection_startup",
+            "webrtc_media_rtt",
+            "webrtc_jitter",
+            "webrtc_packet_loss",
+            "webrtc_reconnect",
+            "webrtc_region"
+          ],
+          "webrtc": {
+            "production_transport": "websocket_pcm16_json",
+            "eval_transport": "webrtc",
+            "production_allows_webrtc": false,
+            "metrics": [
+              "connection_startup_ms",
+              "media_rtt_ms",
+              "jitter_ms",
+              "packet_loss_ratio",
+              "reconnect_ms",
+              "region"
+            ],
+            "not_model_ttft": true,
+            "not_metric_a": true,
+            "not_metric_b": true
+          }
+        }
+      },
+      "B_NATIVE_REALTIME": {
+        "path": "speech/audio model \u2192 execute_task_streaming for tools \u2192 audio",
+        "production_allowed": false,
+        "native_provider_tools": false,
+        "tools": "execute_task_streaming only (provider-native tools forbidden)",
+        "speculative_write": false,
+        "media_transport": "eval",
+        "risk": "ungoverned tools / lost HMAC trace if miswired",
+        "measured": false,
+        "scores": "NOT_RUN",
+        "eval_card": {
+          "lane": "B_NATIVE_REALTIME",
+          "production_default": false,
+          "production_allowed": false,
+          "tools_must_use_execute_task_streaming": true,
+          "speculative_write": false,
+          "benchmark_dimensions": [
+            "semantic_accuracy",
+            "interruptions",
+            "tool_correctness",
+            "latency_metric_a",
+            "latency_metric_b",
+            "cost",
+            "voice_naturalness",
+            "traceability",
+            "governance",
+            "context_parity",
+            "webrtc_connection_startup",
+            "webrtc_media_rtt",
+            "webrtc_jitter",
+            "webrtc_packet_loss",
+            "webrtc_reconnect",
+            "webrtc_region"
+          ],
+          "webrtc": {
+            "production_transport": "websocket_pcm16_json",
+            "eval_transport": "webrtc",
+            "production_allows_webrtc": false,
+            "metrics": [
+              "connection_startup_ms",
+              "media_rtt_ms",
+              "jitter_ms",
+              "packet_loss_ratio",
+              "reconnect_ms",
+              "region"
+            ],
+            "not_model_ttft": true,
+            "not_metric_a": true,
+            "not_metric_b": true
+          }
+        }
+      },
+      "C_HYBRID": {
+        "path": "realtime conversation frontend + Gravitre work backend",
+        "production_allowed": false,
+        "native_provider_tools": false,
+        "tools": "execute_task_streaming only",
+        "speculative_write": false,
+        "media_transport": "eval",
+        "note": "preferred eval successor if B fails governance or traceability",
+        "measured": false,
+        "scores": "NOT_RUN",
+        "eval_card": {
+          "lane": "C_HYBRID",
+          "production_default": false,
+          "production_allowed": false,
+          "tools_must_use_execute_task_streaming": true,
+          "speculative_write": false,
+          "benchmark_dimensions": [
+            "semantic_accuracy",
+            "interruptions",
+            "tool_correctness",
+            "latency_metric_a",
+            "latency_metric_b",
+            "cost",
+            "voice_naturalness",
+            "traceability",
+            "governance",
+            "context_parity",
+            "webrtc_connection_startup",
+            "webrtc_media_rtt",
+            "webrtc_jitter",
+            "webrtc_packet_loss",
+            "webrtc_reconnect",
+            "webrtc_region"
+          ],
+          "webrtc": {
+            "production_transport": "websocket_pcm16_json",
+            "eval_transport": "webrtc",
+            "production_allows_webrtc": false,
+            "metrics": [
+              "connection_startup_ms",
+              "media_rtt_ms",
+              "jitter_ms",
+              "packet_loss_ratio",
+              "reconnect_ms",
+              "region"
+            ],
+            "not_model_ttft": true,
+            "not_metric_a": true,
+            "not_metric_b": true
+          }
+        }
+      }
+    },
+    "benchmark_dimensions": [
+      "semantic_accuracy",
+      "interruptions",
+      "tool_correctness",
+      "latency_metric_a",
+      "latency_metric_b",
+      "cost",
+      "voice_naturalness",
+      "traceability",
+      "governance",
+      "context_parity",
+      "webrtc_connection_startup",
+      "webrtc_media_rtt",
+      "webrtc_jitter",
+      "webrtc_packet_loss",
+      "webrtc_reconnect",
+      "webrtc_region"
+    ]
+  },
+  "compare_vs_3_0_a": {
+    "status": "COMPARED",
+    "frozen_source": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\3.0-a-voice-probe-frozen.json",
+    "frozen_git_sha": "401554cc7bfb13791cfa08a6d7bfddc10f6c252d",
+    "metric_a": {
+      "baseline_p50_ms": 377,
+      "baseline_p95_ms": 1215,
+      "current_p50_ms": 425,
+      "current_p95_ms": 521,
+      "delta_p50_ms": 48,
+      "delta_p95_ms": -694,
+      "not_worse_p50": false,
+      "not_worse_p95": true
+    },
+    "metric_b": {
+      "baseline_p50_ms": 24815,
+      "baseline_p95_ms": 49257,
+      "current_p50_ms": 22729,
+      "current_p95_ms": 41933,
+      "delta_p50_ms": -2086,
+      "delta_p95_ms": -7324
+    },
+    "note": "Delta only; 3.0-C gate uses P95 not-worse vs frozen 3.0-A probe."
+  },
+  "note": "Lane A (cascade) measured from HTTP Talk probe only. Lanes B/C remain NOT_RUN. slo_pass false is expected until Metric A P95 and Metric B meet published bars."
+}

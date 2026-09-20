@@ -1,36 +1,36 @@
 {
   "probe": "voice_slo_two_metric",
-  "captured_at": "2026-09-19T08:16:59.979215+00:00",
-  "git_sha": "401554cc7bfb13791cfa08a6d7bfddc10f6c252d",
-  "health_timestamp": "2026-09-19T08:14:38.307180+00:00",
+  "captured_at": "2026-09-20T05:50:35.899269+00:00",
+  "git_sha": "f50ea3f1fe6f756e87a44a490392c5114d5ef2b3",
+  "health_timestamp": "2026-09-20T05:48:18.855941+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "sample_n": 5,
   "metric_a": {
     "id": "time_to_first_honest_response",
     "samples_ms": [
-      579,
-      1215,
-      377,
-      368,
-      371
+      521,
+      360,
+      425,
+      365,
+      472
     ],
-    "p50_ms": 377,
-    "p95_ms": 1215,
+    "p50_ms": 425,
+    "p95_ms": 521,
     "hard_target_p50_ms": 500,
     "hard_target_p95_ms": 800,
-    "pass": false
+    "pass": true
   },
   "metric_b": {
     "id": "operator_task_completion_latency",
     "samples_ms": [
-      12960,
-      49257,
-      24815,
-      18754,
-      31946
+      26500,
+      41933,
+      22286,
+      22729,
+      18467
     ],
-    "p50_ms": 24815,
-    "p95_ms": 49257,
+    "p50_ms": 22729,
+    "p95_ms": 41933,
     "target_p50_ms": 5000,
     "target_p95_ms": 8000,
     "pass": false
@@ -39,58 +39,58 @@
   "turns": [
     {
       "http_status": 200,
-      "conversation_id": "8b65cd91-6839-49db-8b76-03a8bc1820be",
-      "metric_a_ms": 579,
-      "first_text_ms": 265,
-      "metric_b_ms": 12960,
+      "conversation_id": "28e7cbb7-5cd1-411d-8edd-f886ebd9e4e9",
+      "metric_a_ms": 521,
+      "first_text_ms": 320,
+      "metric_b_ms": 26500,
       "first_tool_sse_ms": null,
       "timeline_head": [
         {
-          "ms": 264,
+          "ms": 319,
           "type": "voice.session.accepted"
         },
         {
-          "ms": 265,
+          "ms": 320,
           "type": "voice.session.started"
         },
         {
-          "ms": 265,
+          "ms": 320,
           "type": "voice.text.delta"
         },
         {
-          "ms": 440,
+          "ms": 320,
           "type": "voice.ttft"
         },
         {
-          "ms": 574,
+          "ms": 517,
           "type": "voice.ttfa"
         },
         {
-          "ms": 574,
+          "ms": 517,
           "type": "voice.agent_speech.start"
         },
         {
-          "ms": 579,
+          "ms": 521,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 581,
+          "ms": 526,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 585,
+          "ms": 529,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 595,
+          "ms": 534,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 595,
+          "ms": 537,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 595,
+          "ms": 539,
           "type": "voice.audio.delta"
         }
       ],
@@ -98,136 +98,18 @@
     },
     {
       "http_status": 200,
-      "conversation_id": "b84263dd-ea4f-476f-a090-5f1f64c08605",
-      "metric_a_ms": 1215,
-      "first_text_ms": 1052,
-      "metric_b_ms": 49257,
-      "first_tool_sse_ms": 17953,
-      "timeline_head": [
-        {
-          "ms": 991,
-          "type": "voice.session.accepted"
-        },
-        {
-          "ms": 992,
-          "type": "voice.session.started"
-        },
-        {
-          "ms": 1052,
-          "type": "voice.text.delta"
-        },
-        {
-          "ms": 1123,
-          "type": "voice.ttft"
-        },
-        {
-          "ms": 1211,
-          "type": "voice.ttfa"
-        },
-        {
-          "ms": 1211,
-          "type": "voice.agent_speech.start"
-        },
-        {
-          "ms": 1215,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 1219,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 1222,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 1226,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 1228,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 1233,
-          "type": "voice.audio.delta"
-        }
-      ],
-      "stream_error": null
-    },
-    {
-      "http_status": 200,
-      "conversation_id": "912381a6-065d-4f55-84b8-f72996a0c451",
-      "metric_a_ms": 377,
-      "first_text_ms": 266,
-      "metric_b_ms": 24815,
-      "first_tool_sse_ms": null,
-      "timeline_head": [
-        {
-          "ms": 266,
-          "type": "voice.session.accepted"
-        },
-        {
-          "ms": 266,
-          "type": "voice.session.started"
-        },
-        {
-          "ms": 266,
-          "type": "voice.text.delta"
-        },
-        {
-          "ms": 270,
-          "type": "voice.ttft"
-        },
-        {
-          "ms": 359,
-          "type": "voice.ttfa"
-        },
-        {
-          "ms": 377,
-          "type": "voice.agent_speech.start"
-        },
-        {
-          "ms": 377,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 390,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 390,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 390,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 390,
-          "type": "voice.audio.delta"
-        },
-        {
-          "ms": 423,
-          "type": "voice.audio.delta"
-        }
-      ],
-      "stream_error": null
-    },
-    {
-      "http_status": 200,
-      "conversation_id": "720ef5c1-37dc-49ec-8afc-23b53b985b60",
-      "metric_a_ms": 368,
+      "conversation_id": "d95d0662-38f0-4716-8753-866d40c8bd30",
+      "metric_a_ms": 360,
       "first_text_ms": 258,
-      "metric_b_ms": 18754,
-      "first_tool_sse_ms": null,
+      "metric_b_ms": 41933,
+      "first_tool_sse_ms": 12843,
       "timeline_head": [
         {
-          "ms": 258,
+          "ms": 252,
           "type": "voice.session.accepted"
         },
         {
-          "ms": 258,
+          "ms": 252,
           "type": "voice.session.started"
         },
         {
@@ -235,23 +117,31 @@
           "type": "voice.text.delta"
         },
         {
-          "ms": 258,
+          "ms": 260,
           "type": "voice.ttft"
         },
         {
-          "ms": 362,
+          "ms": 356,
           "type": "voice.ttfa"
         },
         {
-          "ms": 362,
+          "ms": 356,
           "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 360,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 364,
+          "type": "voice.audio.delta"
         },
         {
           "ms": 368,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 370,
+          "ms": 372,
           "type": "voice.audio.delta"
         },
         {
@@ -261,13 +151,64 @@
         {
           "ms": 378,
           "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "f9ac106a-3d73-402a-9aae-a8aa0cac36b0",
+      "metric_a_ms": 425,
+      "first_text_ms": 300,
+      "metric_b_ms": 22286,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 300,
+          "type": "voice.session.accepted"
         },
         {
-          "ms": 382,
+          "ms": 300,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 300,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 301,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 419,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 419,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 425,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 386,
+          "ms": 429,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 431,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 436,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 439,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 443,
           "type": "voice.audio.delta"
         }
       ],
@@ -275,38 +216,42 @@
     },
     {
       "http_status": 200,
-      "conversation_id": "b51f1608-8a93-4a86-bacd-be9b3afd5adb",
-      "metric_a_ms": 371,
-      "first_text_ms": 292,
-      "metric_b_ms": 31946,
+      "conversation_id": "e55d5e22-0c27-4b83-b2f7-99fe7bb948cf",
+      "metric_a_ms": 365,
+      "first_text_ms": 272,
+      "metric_b_ms": 22729,
       "first_tool_sse_ms": null,
       "timeline_head": [
         {
-          "ms": 292,
+          "ms": 272,
           "type": "voice.session.accepted"
         },
         {
-          "ms": 292,
+          "ms": 272,
           "type": "voice.session.started"
         },
         {
-          "ms": 292,
+          "ms": 272,
           "type": "voice.text.delta"
         },
         {
-          "ms": 292,
+          "ms": 272,
           "type": "voice.ttft"
         },
         {
-          "ms": 365,
+          "ms": 359,
           "type": "voice.ttfa"
         },
         {
-          "ms": 366,
+          "ms": 361,
           "type": "voice.agent_speech.start"
         },
         {
-          "ms": 371,
+          "ms": 365,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 369,
           "type": "voice.audio.delta"
         },
         {
@@ -314,25 +259,80 @@
           "type": "voice.audio.delta"
         },
         {
-          "ms": 377,
+          "ms": 375,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 381,
+          "ms": 379,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 385,
+          "ms": 383,
+          "type": "voice.audio.delta"
+        }
+      ],
+      "stream_error": null
+    },
+    {
+      "http_status": 200,
+      "conversation_id": "4678bb50-bcf5-480a-ae47-403fb621178f",
+      "metric_a_ms": 472,
+      "first_text_ms": 294,
+      "metric_b_ms": 18467,
+      "first_tool_sse_ms": null,
+      "timeline_head": [
+        {
+          "ms": 293,
+          "type": "voice.session.accepted"
+        },
+        {
+          "ms": 293,
+          "type": "voice.session.started"
+        },
+        {
+          "ms": 294,
+          "type": "voice.text.delta"
+        },
+        {
+          "ms": 294,
+          "type": "voice.ttft"
+        },
+        {
+          "ms": 446,
+          "type": "voice.ttfa"
+        },
+        {
+          "ms": 446,
+          "type": "voice.agent_speech.start"
+        },
+        {
+          "ms": 472,
           "type": "voice.audio.delta"
         },
         {
-          "ms": 387,
+          "ms": 476,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 499,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 499,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 516,
+          "type": "voice.audio.delta"
+        },
+        {
+          "ms": 522,
           "type": "voice.audio.delta"
         }
       ],
       "stream_error": null
     }
   ],
-  "verdict": "FAIL \u2014 Metric A did not meet P50<500ms / P95<800ms",
+  "verdict": "PARTIAL \u2014 Metric A met; Metric B missed P50<5s / P95<8s (not blended; do not treat as a single voice-latency number)",
   "note": "STA-343 narration is the Metric A speech mechanism. Metric B is completion of the same plan-without-execute operator turns. A genuine write still blocks on verification; this sample is plan-hold."
 }

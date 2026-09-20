@@ -1,6 +1,6 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A **MEASUREMENT GATE CLOSED** (2026-09-19, SHA `401554cc`); **3.0-B SHIPPED (source)**; **3.0-C IN PROGRESS**; **3.0-D IN PROGRESS (source)**; **3.0-E IN PROGRESS (source)** — JIT ActionSpec search + versioned pack/recipe procedures (not a second runtime). Production voice remains cascade lane A. Native realtime (lane B) and WebRTC media are eval-only.  
+**Status:** 3.0-A **MEASUREMENT GATE CLOSED**; **3.0-B GATE CLOSED**; **3.0-C GATE CLOSED** (Metric A not worse + barge-in live-proven; Metric B SLO NOT MET honest); **3.0-D/E/F/G source**. Production voice remains cascade lane A. Native realtime (lane B) eval-only.  
 **Date:** 2026-09-18  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 
@@ -32,20 +32,24 @@ Append-only. Measurement gate closed; SLO targets **not met** (honest baseline).
 - Aggregator: `docs/delivery/3.0-a-latency-baseline-latest.json`
 - Full report: `docs/delivery/gravitre-3.0-a-baseline.md`
 
-## 3.0-B shipped (2026-09-19)
+## 3.0-B gate closed (2026-09-20)
 
-- **JIT audits:** `runtime.jit.tool_namespace`, `runtime.jit.context_profile` (`jit_efficiency_service.py`); wired from unified-turn narrow + knowledge `contextRanking` (shadow mode default).
-- **Eligible-tool namespace:** `classification` passed on unified-turn keyword + embed paths; embed path applies capability-eligible prefixes (same as keyword narrow).
+- **JIT audits:** `runtime.jit.tool_namespace`, `runtime.jit.context_profile`; async off-thread dispatch @ `616de047`.
+- **Eligible-tool namespace:** `classification` on unified-turn keyword + embed paths; capability-eligible prefixes on embed path.
 - **ActionSpec cache:** revision-keyed `@lru_cache` on `get_action_spec`.
-- **Aggregator:** `scripts/aggregate-3.0-b-efficiency-baseline.py` compares stage p50/p95 vs frozen `docs/delivery/3.0-a-latency-baseline-latest.json`.
-- **Gate:** token + stage p50/p95 must not regress vs 3.0-A without named trade — **NOT RUN** on prod until deploy + isolated-org traffic.
-- **Delivery:** `docs/delivery/gravitre-3.0-b-efficiency.md`.
+- **Fallthrough fix:** overlap `prepare_assistant_turn` with unified LIVE @ `f50ea3f1` (eliminated 8562 ms `context_inline` outlier).
+- **Live gate:** JIT rows n=26+26 @ `f50ea3f1`; CONTEXT p95 improved vs ship baseline.
+- **Named trade (authorized):** `TOOL_DISCOVERY` p95 **+27 ms** (159 vs 132 ms ship baseline); p50 unchanged at 0.
+- **Delivery:** [gravitre-3.0-b-efficiency.md](../delivery/gravitre-3.0-b-efficiency.md).
 
-## 3.0-C progress (2026-09-19)
+## 3.0-C gate closed (2026-09-20)
 
-Append-only. Does not replace 3.0-A closeout or retire LIVE_USER_PROVEN gaps.
-
-- Spoken Metric A/B samples: HTTP Talk probe `scripts/verify-voice-slo-two-metric-live.py` → `docs/delivery/voice-slo-two-metric-live.json` captured `2026-09-19T07:53:33Z` against `/health` SHA `653303a3…` org `f07e57c0-…`. Metric A samples ms `[1166, 375, 392, 318, 340]` P50 **375** / P95 **1166** — P50 under 500ms, P95 over 800ms (**FAIL** on the two-number A bar). Metric B `[26989, 53054, 22849, 8719, 30029]` P50 **26989** / P95 **53054** vs 5s/8s (**FAIL**). A and B stay separate; blending forbidden. Conversations include `5317f08c-a36b-427e-be04-a3d4ca699265`.
+- **Gate:** Metric A not worse vs 3.0-A (**PASS P95**); barge-in WRITE interrupt trace (**LIVE_USER_PROVEN**). Metric B SLO **NOT MET** (honest).
+- **Re-probe @ SHA `f50ea3f1`:** Metric A p50 **425** / p95 **521** (**PASS** SLO); Metric B p50 **22729** / p95 **41933** (**FAIL**). vs frozen 3.0-A: A P95 **−694 ms**.
+- **Barge-in:** `voice.barge_in.write_gate` @ `2026-09-20T05:51:27.253Z` conv `934dbecd-…` — [voice-barge-in-write-live.json](../delivery/voice-barge-in-write-live.json).
+- **Source hardening (deploy pending):** defer pre-stream entitlement check; async TTS; PERCEIVE warm; plan-hold compose skip.
+- **Delivery:** [gravitre-3.0-c-kickoff.md](../delivery/gravitre-3.0-c-kickoff.md). Lanes B/C **NOT_RUN**.
+- Spoken Metric A/B samples (2026-09-19): HTTP Talk probe @ SHA `653303a3` — A p50 **375** / p95 **1166**; B p50 **26989** / p95 **53054** (**FAIL**). See `docs/delivery/voice-slo-two-metric-live.json`.
 - Pipecat path now records Metric B on `AssistantStreamComplete` for operator/tool turns (`voice.slo.metric_b`, source `pipecat_composed_final`). Metric A remains duplex first-speech.
 - **TTS context cancel:** barge-in calls ElevenLabs `close_context` and **keeps** the session WebSocket (`voice.tts.context_cancelled`). Not a session teardown / InterruptibleTTS reconnect.
 - **WebRTC eval:** `voice_webrtc_eval.py` measures startup / media RTT / jitter / loss / reconnect / region. `production_allows_webrtc_media() == false`. Production transport remains `websocket_pcm16_json`.
@@ -75,6 +79,30 @@ Append-only. EXTEND catalog search + Packs/recipes — **not** a skill-as-agent 
 - Versioned procedures: recipes + tool-knowledge packs (`owner`, `version`, `tests`); loaded JIT into context. No `execute()` / no WRITE bypass.
 - Gate: eligible-set **UNIT_TEST**. LIVE_USER_PROVEN token/stage compare still **NOT RUN** (3.0-B gate).
 - Delivery: [gravitre-3.0-e-jit-tools-skills.md](../delivery/gravitre-3.0-e-jit-tools-skills.md).
+
+## 3.0-F progress (2026-09-20)
+
+Append-only. EXTEND 2.0-G diagnostics + E5 — not a second reasoning runtime.
+
+- Claim labels: FACT / INFERENCE / HYPOTHESIS / RECOMMENDATION (`reasoning_evidence_pipeline.py`). Insufficient-evidence honesty stays FACT (no invented cause).
+- Join planner: parallel READs join **only** when an accepted BusinessEntity exists in the store; otherwise independent safe READs. Person joins stay STA-312 exact (no fuzzy `"Sarah"`↔`"Sarah Smith"`).
+- Parallel engine: `execute_read_steps_parallel` runs `read` + `evidence`; **WRITEs excluded**. Speculative READ requires high confidence + cheap + cancellable + no privacy escalation; never speculative WRITE.
+- Why-pipeline golden extended with labels + parallel_group.
+- Gate: why-pipeline **UNIT_TEST**. LIVE_USER_PROVEN **NOT RUN**.
+- Delivery: [gravitre-3.0-f-reasoning-parallel-read.md](../delivery/gravitre-3.0-f-reasoning-parallel-read.md).
+
+## 3.0-C closeout notes (2026-09-20)
+
+Append-only. Measurement continues; SLO targets **not claimed met**.
+
+- HTTP Talk Metric A/B latest probe remains **FAIL** @ `f50ea3f1` (see kickoff). Code fixes this drop: 30s seat cache, JWT `id` fallback, `X-Accel-Buffering: no` on `/api/voice/session/turn`. New SHA required before re-probe.
+- Barge-in WRITE live probe: `scripts/verify-voice-barge-in-write-live.py` → `docs/delivery/voice-barge-in-write-live.json`. HTTP Talk cancel arms `voice.barge_in.write_gate`. Not a browser-mic barge-in.
+
+## 3.0-G progress (2026-09-20)
+
+Append-only. EXTEND F2 — in-task error memory (action, args, resource, reason); secrets stripped; bounded class budgets unchanged. WRITE gate not weakened.
+
+- Delivery: [gravitre-3.0-g-repair.md](../delivery/gravitre-3.0-g-repair.md).
 
 ---
 

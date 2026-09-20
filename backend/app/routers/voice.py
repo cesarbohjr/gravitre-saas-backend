@@ -571,8 +571,6 @@ async def post_session_turn(
 
     org_id = str(org or "")
     user_id = str(user.get("id") or user.get("user_id") or "")
-    client = get_supabase_client(settings)
-    assert_agent_voice_use(client, seat, org_id=org_id, agent_id=body.agent_id)
     qa_force_header = request.headers.get(QA_FORCE_VOICE_ERROR_HEADER)
 
     async def gen() -> AsyncIterator[bytes]:
@@ -602,18 +600,31 @@ async def post_session_turn(
                 + "\n"
             ).encode("utf-8")
 
+            import asyncio
+
+            client = await asyncio.to_thread(get_supabase_client, settings)
+            await asyncio.to_thread(
+                assert_agent_voice_use,
+                client,
+                seat,
+                org_id=org_id,
+                agent_id=body.agent_id,
+            )
+
             agent: dict[str, Any] | None = None
             if body.agent_id:
                 try:
                     rows = (
-                        client.table("agents")
-                        .select("*")
-                        .eq("org_id", org_id)
-                        .eq("id", body.agent_id)
-                        .limit(1)
-                        .execute()
-                        .data
-                        or []
+                        await asyncio.to_thread(
+                            lambda: client.table("agents")
+                            .select("*")
+                            .eq("org_id", org_id)
+                            .eq("id", body.agent_id)
+                            .limit(1)
+                            .execute()
+                            .data
+                            or []
+                        )
                     )
                     agent = rows[0] if rows else {"id": body.agent_id}
                 except Exception:  # noqa: BLE001
@@ -660,6 +671,7 @@ async def post_session_turn(
         media_type="application/x-ndjson",
         headers={
             "Cache-Control": "no-store",
+            "X-Accel-Buffering": "no",
             "X-Voice-Session": "1",
             "X-Write-Confirm-Policy": "nl_yes_same_path_as_text",
             "X-Originating-Modality": "voice",

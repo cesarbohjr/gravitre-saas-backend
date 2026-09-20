@@ -1,11 +1,15 @@
 """Seat type + department scope — orthogonal to plan tier and Meson addons."""
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from fastapi import HTTPException, status
 
 from app.core.errors import error_detail
+
+_SEAT_CACHE_TTL_S = 30.0
+_SEAT_CACHE: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
 
 
 def response_error(resp: Any) -> Any:
@@ -20,6 +24,14 @@ def resolve_seat_context(client, *, org_id: str, user_id: str) -> dict[str, Any]
     - department_members.role=admin = department_manager for that department only.
     - Other department members = Lite seat for that department.
     """
+    oid = str(org_id or "").strip()
+    uid = str(user_id or "").strip()
+    cache_key = (oid, uid)
+    now = time.monotonic()
+    cached = _SEAT_CACHE.get(cache_key)
+    if cached is not None and (now - cached[0]) < _SEAT_CACHE_TTL_S:
+        return dict(cached[1])
+
     org_role = None
     try:
         org_resp = (
@@ -70,7 +82,7 @@ def resolve_seat_context(client, *, org_id: str, user_id: str) -> dict[str, Any]
     # Full seat = not Lite (org admins always full; non-members without dept = full/core).
     is_full_seat = not is_lite
 
-    return {
+    seat = {
         "org_id": org_id,
         "user_id": user_id,
         "org_role": org_role,
@@ -83,6 +95,9 @@ def resolve_seat_context(client, *, org_id: str, user_id: str) -> dict[str, Any]
         "managed_department_ids": managed_department_ids if not is_org_admin else member_department_ids,
         "primary_department": departments[0] if departments else None,
     }
+    if oid and uid:
+        _SEAT_CACHE[cache_key] = (now, dict(seat))
+    return seat
 
 
 def assert_full_seat(seat: dict[str, Any], *, action: str = "build") -> None:

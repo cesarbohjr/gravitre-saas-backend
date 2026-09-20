@@ -877,19 +877,34 @@ class ChatOrchestrationService:
         segments = self._split_segments(message)
         if len(segments) < 2:
             segments = self._expand_single_segment(message, connected_integrations)
-        steps: list[OrchestrationStep] = []
-        for idx, segment in enumerate(segments, start=1):
+        if len(segments) == 1:
             step = await self._plan_segment(
-                step_id=f"step_{idx}",
-                segment=segment,
+                step_id="step_1",
+                segment=segments[0],
                 goal=message,
                 connected_integrations=connected_integrations,
                 org_id=org_id,
                 user_id=user_id,
                 classification=classification,
             )
-            steps.append(step)
-        return steps
+            return [step]
+        import asyncio
+
+        planned = await asyncio.gather(
+            *[
+                self._plan_segment(
+                    step_id=f"step_{idx}",
+                    segment=segment,
+                    goal=message,
+                    connected_integrations=connected_integrations,
+                    org_id=org_id,
+                    user_id=user_id,
+                    classification=classification,
+                )
+                for idx, segment in enumerate(segments, start=1)
+            ]
+        )
+        return list(planned)
 
     async def _plan_segment(
         self,
@@ -1165,15 +1180,22 @@ class ChatOrchestrationService:
         lines = [self._format_step_line(idx, step) for idx, step in enumerate(steps, start=1)]
         campaign_block = self._format_ads_structure_plan_block(steps)
         memory_hint = ""
-        try:
-            from app.services.execution_memory_service import get_execution_memory_service
+        from app.services.cognitive_loop_controller import is_plan_without_execute_turn
 
-            patterns = await get_execution_memory_service(self.settings).find_similar_patterns(
-                org_id, goal, limit=1
-            )
-            memory_hint = get_execution_memory_service(self.settings).format_hint_for_plan(patterns)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("orchestration_execution_memory_skipped org_id=%s error=%s", org_id, exc)
+        if not is_plan_without_execute_turn(goal):
+            try:
+                from app.services.execution_memory_service import get_execution_memory_service
+
+                patterns = await get_execution_memory_service(self.settings).find_similar_patterns(
+                    org_id, goal, limit=1
+                )
+                memory_hint = get_execution_memory_service(self.settings).format_hint_for_plan(
+                    patterns
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug(
+                    "orchestration_execution_memory_skipped org_id=%s error=%s", org_id, exc
+                )
         hint_block = f"\n\n_{memory_hint}_" if memory_hint else ""
         return {
             "stop_pipeline": True,

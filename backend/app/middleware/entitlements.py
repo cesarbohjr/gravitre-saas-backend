@@ -347,7 +347,7 @@ def require_full_seat(*, action: str = "build") -> Callable[..., Any]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
         client = get_supabase_client(settings)
         seat = resolve_seat_context(
-            client, org_id=org_id, user_id=str(current_user.get("user_id") or "")
+            client, org_id=org_id, user_id=str(current_user.get("user_id") or current_user.get("id") or "")
         )
         assert_full_seat(seat, action=action)
         return seat
@@ -369,7 +369,7 @@ def require_voice_configure() -> Callable[..., Any]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
         client = get_supabase_client(settings)
         seat = resolve_seat_context(
-            client, org_id=org_id, user_id=str(current_user.get("user_id") or "")
+            client, org_id=org_id, user_id=str(current_user.get("user_id") or current_user.get("id") or "")
         )
         assert_voice_configure(seat)
         return seat
@@ -389,7 +389,9 @@ def require_seat_context() -> Callable[..., Any]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
         client = get_supabase_client(settings)
         return resolve_seat_context(
-            client, org_id=org_id, user_id=str(current_user.get("user_id") or "")
+            client,
+            org_id=org_id,
+            user_id=str(current_user.get("user_id") or current_user.get("id") or ""),
         )
 
     return dependency

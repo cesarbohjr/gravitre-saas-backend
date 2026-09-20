@@ -2046,6 +2046,7 @@ class AgentIntelligence:
         from app.services.cognitive_loop_controller import is_plan_without_execute_turn
 
         _plan_hold = is_plan_without_execute_turn(task_text)
+        _plan_hold_spoken = bool(spoken_mode and _plan_hold)
         if spoken_mode and not loop_trace.fast_path:
             for ev in await _loop_stage_speech("PERCEIVE"):
                 yield ev
@@ -3045,7 +3046,7 @@ class AgentIntelligence:
                 except Exception:  # noqa: BLE001 — logging must never break the turn.
                     pass
             loop_controller.mark_stage_entered(loop_trace, "RETRIEVE")
-            if spoken_mode and not loop_trace.fast_path:
+            if spoken_mode and not loop_trace.fast_path and not _plan_hold_spoken:
                 for ev in await _loop_stage_speech("RETRIEVE"):
                     yield ev
             cognitive_request = CognitiveTurnRequest(
@@ -3080,11 +3081,24 @@ class AgentIntelligence:
                 reasoning_depth=reasoning_depth,
                 connected_integrations=list(connected_early or []),
             )
-            cognitive_ctx = await get_cognitive_turn_kernel(active_settings).run_pre_act(
-                cognitive_request
-            )
+            if _plan_hold_spoken:
+                from app.services.cognitive_turn_kernel import CognitiveTurnContext
+
+                cognitive_ctx = CognitiveTurnContext(
+                    turn_id=str(uuid.uuid4()),
+                    skipped=True,
+                    plan={
+                        "steps": [],
+                        "summary": "plan_hold_orchestration",
+                        "source": "plan_hold_short_circuit",
+                    },
+                )
+            else:
+                cognitive_ctx = await get_cognitive_turn_kernel(active_settings).run_pre_act(
+                    cognitive_request
+                )
             loop_controller.attach_retrieve_and_plan(loop_trace, cognitive_ctx)
-            if spoken_mode and not loop_trace.fast_path:
+            if spoken_mode and not loop_trace.fast_path and not _plan_hold_spoken:
                 for ev in await _loop_stage_speech(
                     "PLAN", extras={"plan_without_execute": _plan_hold}
                 ):
@@ -3239,8 +3253,10 @@ class AgentIntelligence:
             # the canonical analytics short-circuit at react_entry.
             _unified_live_ok = False
         _compiled_unified_reasoning = None
-        if _unified_live_ok and bool(
-            getattr(active_settings, "context_compiler_unified_live_v1", True)
+        if (
+            _unified_live_ok
+            and bool(getattr(active_settings, "context_compiler_unified_live_v1", True))
+            and not _plan_hold_spoken
         ):
             from app.services.context_compiler import compile_unified_reasoning_context
             from app.services.workspace_focus_resolver import workspace_focus_trace_meta
@@ -3429,12 +3445,18 @@ class AgentIntelligence:
                         else None
                     ),
                 )
-                if spoken_mode and not streamed_voice_text:
-                    pending_live = (
-                        live_turn.get("pending_task")
-                        if isinstance(live_turn.get("pending_task"), dict)
-                        else None
-                    )
+                pending_live = (
+                    live_turn.get("pending_task")
+                    if isinstance(live_turn.get("pending_task"), dict)
+                    else None
+                )
+                plan_staged = bool(
+                    _plan_hold
+                    and isinstance(pending_live, dict)
+                    and str(pending_live.get("status") or "").strip().lower()
+                    == "awaiting_plan_confirm"
+                )
+                if spoken_mode and not streamed_voice_text and not plan_staged:
                     for ev in await _loop_stage_speech(
                         "OBSERVE",
                         extras={
@@ -3443,7 +3465,9 @@ class AgentIntelligence:
                         },
                     ):
                         yield ev
-                if not streamed_voice_text:
+                if not streamed_voice_text and not (
+                    plan_staged and str(response_text or "").strip()
+                ):
                     live_kind = "clarify" if dialogue_mode in {"clarify", "confirm"} else "success"
                     if looks_like_raw_backend(response_text):
                         live_kind = "error"
