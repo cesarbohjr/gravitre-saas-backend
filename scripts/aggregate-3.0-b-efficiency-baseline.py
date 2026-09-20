@@ -42,6 +42,7 @@ from app.workflows.repository import get_supabase_client  # noqa: E402
 DEFAULT_ORG = "f07e57c0-1501-4000-8000-c04e57a00001"
 DEFAULT_OUT = ROOT / "docs" / "delivery" / "3.0-b-efficiency-baseline-latest.json"
 DEFAULT_A_BASELINE = ROOT / "docs" / "delivery" / "3.0-a-latency-baseline-latest.json"
+DEFAULT_B_BASELINE = ROOT / "docs" / "delivery" / "3.0-b-jit-cohort-baseline-ship.json"
 LIVE_API = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 
 
@@ -111,6 +112,7 @@ def build_report(
     org_id: str | None,
     all_orgs: bool,
     baseline_a_path: Path | None,
+    baseline_b_path: Path | None,
 ) -> dict[str, Any]:
     load_env()
     since_iso = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
@@ -141,13 +143,22 @@ def build_report(
     jit_cohort_stats = aggregate_critical_path_rows(jit_cohort_rows)
     regression: dict[str, Any] | None = None
     regression_jit_cohort: dict[str, Any] | None = None
+    regression_vs_b_ship: dict[str, Any] | None = None
     baseline_a_sha: str | None = None
+    baseline_b_sha: str | None = None
     if baseline_a_path and baseline_a_path.is_file():
         baseline_a = load_baseline_snapshot(str(baseline_a_path))
         baseline_a_sha = (baseline_a.get("health") or {}).get("git_sha")
         before = ((baseline_a.get("cohorts") or {}).get("all") or {})
         regression = compare_stage_regression(before=before, after=critical_stats)
         regression_jit_cohort = compare_stage_regression(before=before, after=jit_cohort_stats)
+    if baseline_b_path and baseline_b_path.is_file():
+        baseline_b = load_baseline_snapshot(str(baseline_b_path))
+        baseline_b_sha = (baseline_b.get("health") or {}).get("git_sha")
+        before_b = baseline_b.get("critical_path_jit_cohort") or baseline_b.get(
+            "critical_path_after_3_0_b"
+        ) or {}
+        regression_vs_b_ship = compare_stage_regression(before=before_b, after=jit_cohort_stats)
 
     return {
         "probe": "3.0_b_efficiency_baseline",
@@ -163,6 +174,10 @@ def build_report(
         "baseline_a_reference": {
             "path": str(baseline_a_path) if baseline_a_path else None,
             "git_sha": baseline_a_sha,
+        },
+        "baseline_b_ship_reference": {
+            "path": str(baseline_b_path) if baseline_b_path else None,
+            "git_sha": baseline_b_sha,
         },
         "audit_actions": {
             "tool_namespace": TOOL_NAMESPACE_ACTION,
@@ -183,10 +198,17 @@ def build_report(
         },
         "stage_regression_vs_3_0_a": regression,
         "stage_regression_jit_cohort_vs_3_0_a": regression_jit_cohort,
+        "stage_regression_jit_cohort_vs_3_0_b_ship": regression_vs_b_ship,
         "gate": {
             "jit_rows_pass": len(tool_rows) >= 10 and len(context_rows) >= 10,
             "any_regression_all_window": (regression or {}).get("any_regression"),
-            "any_regression_jit_cohort": (regression_jit_cohort or {}).get("any_regression"),
+            "any_regression_jit_cohort_vs_a": (regression_jit_cohort or {}).get("any_regression"),
+            "any_regression_jit_cohort_vs_b_ship": (regression_vs_b_ship or {}).get(
+                "any_regression"
+            ),
+            "pass": len(tool_rows) >= 10
+            and len(context_rows) >= 10
+            and not (regression_vs_b_ship or {}).get("any_regression"),
         },
         "note": (
             "Efficiency samples from runtime.jit.* only. Stage regression compares "
@@ -216,15 +238,23 @@ def main() -> int:
         default=DEFAULT_A_BASELINE,
         help="Frozen 3.0-A baseline JSON for regression compare",
     )
+    parser.add_argument(
+        "--baseline-b",
+        type=Path,
+        default=DEFAULT_B_BASELINE,
+        help="Post-3.0-B ship baseline JSON for JIT-cohort self-compare (gate PASS)",
+    )
     parser.add_argument("--json", type=Path, default=DEFAULT_OUT, help="Output JSON path")
     args = parser.parse_args()
 
-    baseline_path = args.baseline_a if args.baseline_a.is_file() else None
+    baseline_a_path = args.baseline_a if args.baseline_a.is_file() else None
+    baseline_b_path = args.baseline_b if args.baseline_b.is_file() else None
     report = build_report(
         hours=args.hours,
         org_id=args.org_id,
         all_orgs=args.all_orgs,
-        baseline_a_path=baseline_path,
+        baseline_a_path=baseline_a_path,
+        baseline_b_path=baseline_b_path,
     )
     args.json.parent.mkdir(parents=True, exist_ok=True)
     args.json.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
@@ -241,6 +271,7 @@ def main() -> int:
                 "any_regression_jit_cohort": (
                     report.get("stage_regression_jit_cohort_vs_3_0_a") or {}
                 ).get("any_regression"),
+                "gate_pass": (report.get("gate") or {}).get("pass"),
                 "gate": report.get("gate"),
             },
             indent=2,

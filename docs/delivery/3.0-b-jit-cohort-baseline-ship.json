@@ -1,0 +1,25 @@
+{
+  "probe": "3.0_b_efficiency_baseline_ship_snapshot",
+  "generated_at": "2026-09-19T09:04:05.058960+00:00",
+  "note": "Frozen post-3.0-B ship baseline (pre-async JIT audit fix) for JIT-cohort self-compare gate.",
+  "health": {
+    "git_sha": "622c7afcb11cee4ef26cc3d62616f737ef6d6359"
+  },
+  "critical_path_after_3_0_b": {
+    "sample_count": 39,
+    "by_stage_delta_ms": {
+      "CONTEXT_BUILD": {
+        "sample_count": 15,
+        "p50_ms": 67,
+        "p95_ms": 1915,
+        "max_ms": 7623
+      },
+      "TOOL_DISCOVERY": {
+        "sample_count": 36,
+        "p50_ms": 0,
+        "p95_ms": 132,
+        "max_ms": 168
+      }
+    }
+  }
+}

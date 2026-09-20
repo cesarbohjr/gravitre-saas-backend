@@ -1,6 +1,6 @@
 # Gravitre 3.0-B — Context/tool efficiency (2026-09-19)
 
-**Status:** **PARTIAL GATE** — live JIT rows PASS (n≥10); stage regression **FAIL** on `TOOL_DISCOVERY` p95 (+7 ms vs 3.0-A frozen snapshot).
+**Status:** **PARTIAL GATE** — JIT rows PASS (n≥19); p50 stable/improved; p95 **FAIL** on one CONTEXT_BUILD outlier (8562 ms) + `TOOL_DISCOVERY` p95 159 vs 132 ms ship baseline.
 
 ## Scope
 
@@ -43,4 +43,14 @@ Live gate: merge → Railway redeploy → isolated-org turns → aggregator `any
 | Stage regression vs 3.0-A | **FAIL** | `TOOL_DISCOVERY` p95 **125→132 ms** (+7 ms); `CONTEXT_BUILD` p95 **8543→7623 ms** (improved) |
 | Aggregator | **PASS** | `docs/delivery/3.0-b-efficiency-baseline-latest.json` @ SHA `622c7afc` |
 
-**Gate:** `any_regression=false` **not met** — requires named trade for +7 ms `TOOL_DISCOVERY` p95 or post-3.0-B baseline refresh before claiming Done.
+## Async audit fix + baseline refresh (2026-09-20)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Async JIT audits | **SHIPPED** | SHA `616de047` — audits dispatched off-thread |
+| JIT rows n≥10 | **PASS** | n=**19** tool + **19** context @ SHA `616de047` |
+| p50 vs 3.0-B ship baseline | **PASS** | `CONTEXT_BUILD` p50 **56≤67**; `TOOL_DISCOVERY` p50 **0** |
+| p95 vs 3.0-B ship baseline | **FAIL** | `CONTEXT_BUILD` p95 **8562** (outlier conv `05023328-…` @ `2026-09-20T05:01:34Z`); `TOOL_DISCOVERY` p95 **159 vs 132** |
+| Gate `pass` (JIT rows + no p95 regression vs ship) | **FAIL** | `docs/delivery/3.0-b-efficiency-baseline-latest.json` → `gate.pass: false` |
+
+**Gate:** Full Done requires `gate.pass: true` (JIT rows + JIT-cohort p50/p95 not worse vs `3.0-b-jit-cohort-baseline-ship.json`). p50 passes; p95 blocked by one 22 s turn outlier — investigate before named trade or baseline refresh.
