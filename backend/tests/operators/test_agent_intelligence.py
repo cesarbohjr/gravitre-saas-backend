@@ -522,6 +522,17 @@ async def test_streaming_emits_text_events_when_react_returns_answer_only(intell
     assert complete.full_content == "smoke-ok"
 
 
+def test_execute_task_streaming_does_not_rebind_module_imports():
+    """Typed chat crashed when spoken plan-hold imported asyncio/composer inside the method.
+
+    Production evidence (SHA 43570699): UnboundLocalError asyncio and NameError
+    compose_reply_events on /api/assistant/chat hello / smoke-ok.
+    """
+    names = AgentIntelligence.execute_task_streaming.__code__.co_varnames
+    assert "asyncio" not in names
+    assert "compose_reply_events" not in names
+
+
 @pytest.mark.asyncio
 async def test_gateway_shortcut_composes_before_task_state_reload(intelligence: AgentIntelligence):
     """Phase D: gateway shortcuts call _composed_reply before task_state is reloaded."""

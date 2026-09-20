@@ -1643,11 +1643,8 @@ class AgentIntelligence:
         _plan_hold_spoken_early = bool(spoken_mode and is_plan_without_execute_turn(task_text))
 
         if _plan_hold_spoken_early and conversation_id:
-            import asyncio
-
             from app.services.chat_orchestration_service import get_chat_orchestration_service
             from app.services.cognitive_loop_controller import get_cognitive_loop_controller
-            from app.services.response_composer import compose_reply_events
 
             loop_controller = get_cognitive_loop_controller(active_settings)
             loop_trace = loop_controller.begin(message=task_text, spoken_mode=True)
