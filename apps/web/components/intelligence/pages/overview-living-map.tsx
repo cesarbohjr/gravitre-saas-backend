@@ -1,23 +1,97 @@
 "use client"
 
 /**
- * I3 — Living Intelligence Map product surface for Overview.
- * Composes lens strip + graph engine + contextual inspector on the I2 stack.
+ * UX/UI 3.0 Plus — I1 Field Topology + contextual I2 Change Stream
+ * Production surface for /intelligence OverviewLivingMap.
+ * Uses canonical page-context graph + snapshot events — no fabricated telemetry.
  */
 
-import { motion, useReducedMotion } from "framer-motion"
+import { useMemo, useState } from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import Link from "next/link"
 import type { IntelligencePageContextResponse } from "@/lib/api"
 import type { Agent } from "@/types/api"
 import { IntelligenceMap, type IntelligenceMapSelection } from "@/components/intelligence/map/intelligence-map"
-import { IntelligenceLensBar } from "@/components/intelligence/map/intelligence-lens-bar"
 import { IntelligenceInspectorDrawer } from "@/components/intelligence/map/intelligence-inspector-drawer"
 import type { IntelligenceLensMetrics } from "@/components/intelligence/map/intelligence-map-lens"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
+import { INTELLIGENCE_MAP_LENSES } from "@/components/intelligence/map/intelligence-map-lens"
 import type { AllDepartmentsPayload } from "@/components/intelligence/why-gravitre-panel"
 import type { SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
 import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
+import { EvidenceChip } from "@/components/gravitre/creative-grammar"
+import { Button } from "@/components/ui/button"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+
+type ChangeEvent = {
+  id: string
+  kind: string
+  title: string
+  at: string
+  focusNodeIds: string[]
+  askPrompt: string
+}
+
+const LENS_QUESTIONS: Record<IntelligenceMapLens, string> = {
+  knows: "What does Gravitre know about this business?",
+  learns: "What has Gravitre learned recently?",
+  predicts: "What is Gravitre predicting?",
+  acts: "What is Gravitre doing?",
+  improves: "What has improved?",
+}
+
+function buildChangeEvents(pageContext?: IntelligencePageContextResponse | null): ChangeEvent[] {
+  if (!pageContext?.snapshot) return []
+  const events: ChangeEvent[] = []
+  const snap = pageContext.snapshot
+
+  for (const learning of snap.learnings ?? []) {
+    const id = String(learning.id ?? "")
+    if (!id) continue
+    events.push({
+      id: `learning:${id}`,
+      kind: "learned",
+      title: String(learning.businessStatement ?? "Learning").slice(0, 120),
+      at: String(learning.learnedAt ?? ""),
+      focusNodeIds: [`learning:${id}`],
+      askPrompt: `Explain this learning: ${String(learning.businessStatement ?? "").slice(0, 160)}`,
+    })
+  }
+
+  for (const prediction of snap.predictions ?? []) {
+    const id = String(prediction.id ?? "")
+    if (!id) continue
+    events.push({
+      id: `prediction:${id}`,
+      kind: "prediction",
+      title: String(prediction.businessStatement ?? "Prediction").slice(0, 120),
+      at: "",
+      focusNodeIds: [`prediction:${id}`],
+      askPrompt: `Why is this prediction active: ${String(prediction.businessStatement ?? "").slice(0, 160)}`,
+    })
+  }
+
+  for (const outcome of snap.outcomes ?? []) {
+    const id = String(outcome.id ?? "")
+    const event = String(outcome.event ?? "outcome")
+    if (!id) continue
+    const entityId = outcome.entityId ? String(outcome.entityId) : null
+    const entityType = outcome.entityType ? String(outcome.entityType) : "entity"
+    events.push({
+      id: `outcome:${id}`,
+      kind: "changed",
+      title: event.replace(/_/g, " "),
+      at: String(outcome.createdAt ?? ""),
+      focusNodeIds: entityId ? [`kg:${entityType}:${entityId}`] : [],
+      askPrompt: `What changed around outcome ${event}?`,
+    })
+  }
+
+  return events.slice(0, 24)
+}
 
 export function OverviewLivingMap({
   activeLens,
@@ -60,78 +134,217 @@ export function OverviewLivingMap({
 }) {
   const reducedMotion = useReducedMotion()
   const mapLoading = !isSnapshotMetricsReady(snapshotLoadState) && snapshotLoadState !== "ERROR"
-  const activeLensMeta = {
-    knows: "What Gravitre knows about your business",
-    learns: "What Gravitre has learned recently",
-    predicts: "Forward-looking predictions and risks",
-    acts: "Agents and execution in flight",
-    improves: "Measured outcomes and improvement loops",
-  }[activeLens]
+  const isError = snapshotLoadState === "ERROR"
+  const [streamOpen, setStreamOpen] = useState(true)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const changeEvents = useMemo(() => buildChangeEvents(pageContext), [pageContext])
+
+  const knownEntities = entityCount ?? pageContext?.metrics?.knowledge?.knownEntities ?? null
+  const knownRels = relationshipCount ?? pageContext?.metrics?.knowledge?.knownRelationships ?? null
+  const graphNodes = pageContext?.graph?.nodes?.length ?? 0
+  const instanceNodes =
+    pageContext?.graph?.nodes?.filter(
+      (n) => n && typeof n === "object" && (n as { metadata?: { instance?: boolean } }).metadata?.instance,
+    ).length ?? 0
+
+  const isEmpty =
+    !mapLoading &&
+    !isError &&
+    (knownEntities === 0 || knownEntities == null) &&
+    (knownRels === 0 || knownRels == null) &&
+    graphNodes <= 1
+
+  const isSparse =
+    !mapLoading &&
+    !isError &&
+    !isEmpty &&
+    typeof knownRels === "number" &&
+    knownRels > 0 &&
+    knownEntities === 0
+
+  const streamEvents = useMemo(() => {
+    if (activeLens === "learns") return changeEvents.filter((e) => e.kind === "learned")
+    if (activeLens === "predicts") return changeEvents.filter((e) => e.kind === "prediction")
+    if (activeLens === "improves") return changeEvents.filter((e) => e.kind === "changed" || e.kind === "learned")
+    if (activeLens === "acts") return changeEvents.filter((e) => e.kind === "changed")
+    return changeEvents
+  }, [changeEvents, activeLens])
+
+  const mergedFocus = useMemo(() => {
+    const fromEvent = streamEvents.find((e) => e.id === selectedEventId)?.focusNodeIds ?? []
+    return [...new Set([...(focusNodeIds ?? []), ...fromEvent])]
+  }, [focusNodeIds, selectedEventId, streamEvents])
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-3", className)} data-testid="intelligence-i1-i2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className={TYPE.eyebrow}>Intelligence lenses</p>
-          <p className={cn(TYPE.meta, "mt-0.5 max-w-xl")}>{activeLensMeta}</p>
+        <div className="flex min-w-0 items-start gap-2">
+          <NucleoIntelligence size={22} className="mt-0.5 shrink-0" />
+          <div>
+            <p className={TYPE.eyebrow}>Intelligence · Field topology</p>
+            <p className={cn(TYPE.meta, "mt-0.5 max-w-xl")}>{LENS_QUESTIONS[activeLens]}</p>
+            <p className={cn(TYPE.meta, "mt-1 text-muted-foreground")}>
+              {mapLoading
+                ? "Loading…"
+                : `${knownEntities ?? "—"} entities · ${knownRels ?? "—"} relationships · ${instanceNodes} displayable field nodes`}
+            </p>
+          </div>
         </div>
-        <p className={cn(TYPE.meta, "text-muted-foreground")}>
-          Select a lens to transform the map
-        </p>
+        <Button
+          type="button"
+          size="sm"
+          variant={streamOpen ? "secondary" : "outline"}
+          onClick={() => setStreamOpen((v) => !v)}
+        >
+          {streamOpen ? "Hide changes" : "What changed?"}
+        </Button>
       </div>
 
-      <IntelligenceLensBar
-        activeLens={activeLens}
-        onLensChange={onLensChange}
-        metrics={lensMetrics}
-        className="shadow-sm"
-      />
+      {/* Lens tabs — emphasis on one graph; metrics are secondary, not the sole lens UX */}
+      <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Intelligence lenses">
+        {INTELLIGENCE_MAP_LENSES.map((lens) => {
+          const active = activeLens === lens.id
+          const stat = lensMetrics[lens.id]
+          return (
+            <button
+              key={lens.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              title={lens.description}
+              onClick={() => {
+                onLensChange(lens.id)
+                setSelectedEventId(null)
+              }}
+              className={cn(
+                "shrink-0 rounded-md px-3 py-1.5 text-left transition-colors",
+                active
+                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]"
+                  : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)]",
+              )}
+            >
+              <span className="block text-xs font-semibold uppercase tracking-wide">{lens.label}</span>
+              <span className={cn(TYPE.meta, "block tabular-nums")}>{stat.value}</span>
+            </button>
+          )
+        })}
+      </div>
 
-      <motion.div
-        layout={!reducedMotion}
-        className="relative min-h-[56vh] rounded-[var(--np-radius-lg)]"
-        transition={{ duration: reducedMotion ? 0 : 0.25 }}
-      >
-        {mapLoading ? (
-          <div
-            className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[var(--np-radius-lg)] bg-[color:var(--g-surface-1)]/60 backdrop-blur-[2px]"
-            aria-live="polite"
-            aria-busy="true"
-          >
-            <div className="space-y-2 text-center">
-              <div className="mx-auto h-8 w-8 animate-pulse rounded-full bg-[color:var(--g-intelligence)]/30" />
-              <p className={TYPE.meta}>Loading intelligence map…</p>
+      <div className={cn("relative flex flex-1 gap-0", "min-h-[56vh]")}>
+        <AnimatePresence>
+          {streamOpen && !isEmpty && !isError ? (
+            <motion.aside
+              initial={reducedMotion ? false : { width: 0, opacity: 0 }}
+              animate={{ width: 260, opacity: 1 }}
+              exit={reducedMotion ? undefined : { width: 0, opacity: 0 }}
+              className="hidden w-[260px] shrink-0 overflow-hidden border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] md:block"
+              data-testid="intel-i2-stream"
+            >
+              <p className={cn(TYPE.eyebrow, "px-3 pt-3")}>Change stream · I2</p>
+              <p className={cn(TYPE.meta, "px-3 pb-2")}>Contextual · filtered by {activeLens}</p>
+              <ul className="max-h-[52vh] overflow-y-auto px-2 pb-3">
+                {streamEvents.length === 0 ? (
+                  <li className={cn(TYPE.meta, "px-2 py-3")}>No change events in this lens window.</li>
+                ) : (
+                  streamEvents.map((ev) => (
+                    <li key={ev.id}>
+                      <button
+                        type="button"
+                        className={cn(
+                          "w-full rounded-md px-2 py-2 text-left hover:bg-[color:var(--g-surface-2)]",
+                          selectedEventId === ev.id && "bg-[color:var(--g-surface-2)]",
+                        )}
+                        onClick={() => {
+                          setSelectedEventId(ev.id)
+                          if (ev.focusNodeIds[0] && pageContext?.graph) {
+                            const node = pageContext.graph.nodes.find((n) => n.id === ev.focusNodeIds[0])
+                            if (node) {
+                              onSelectionChange({
+                                kind: "satellite",
+                                node: {
+                                  id: String(node.id),
+                                  kind: "entity-type",
+                                  label: String(node.businessLabel ?? node.id),
+                                  sublabel: String(node.type ?? ""),
+                                  emphasis: 1,
+                                },
+                              })
+                            }
+                          }
+                        }}
+                      >
+                        <EvidenceChip label={ev.kind} tone="evidence" />
+                        <p className="mt-1 text-xs font-semibold text-[color:var(--g-text-primary)]">{ev.title}</p>
+                        {ev.at ? <p className={cn(TYPE.meta, "mt-0.5")}>{ev.at}</p> : null}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </motion.aside>
+          ) : null}
+        </AnimatePresence>
+
+        <div className="relative min-h-[56vh] min-w-0 flex-1">
+          {mapLoading ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[var(--np-radius-lg)] bg-[color:var(--g-surface-1)]/60 backdrop-blur-[2px]"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <p className={TYPE.meta}>Loading intelligence field…</p>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <IntelligenceMap
-          lens={activeLens}
-          signals={signals}
-          agents={mapAgents}
-          entityCount={entityCount}
-          relationshipCount={relationshipCount}
-          canonicalGraph={pageContext?.graph}
-          selection={selection}
-          onSelectionChange={onSelectionChange}
-          highlightNodeIds={highlightNodeIds}
-          dimNodeIds={dimNodeIds}
-          focusNodeIds={focusNodeIds}
-          cacheKey={cacheKey}
-          className="min-h-[56vh]"
-        />
+          {isError ? (
+            <div className="flex min-h-[56vh] flex-col items-center justify-center gap-3 p-6 text-center">
+              <p className={TYPE.sectionTitle}>Unable to load intelligence</p>
+              <p className={cn(TYPE.bodyMuted, "max-w-sm")}>
+                Page-context failed. Retry the same org-scoped contract — no invented graph.
+              </p>
+            </div>
+          ) : null}
 
-        {!selection && !mapLoading ? (
-          <p
-            className={cn(
-              TYPE.meta,
-              "pointer-events-none absolute bottom-14 left-1/2 z-20 max-w-sm -translate-x-1/2 rounded-full border border-divide/80 bg-[color:var(--g-surface-1)]/95 px-3 py-1 text-center shadow-sm backdrop-blur-sm",
-            )}
-          >
-            Explore the map — click a node or edge to inspect evidence
-          </p>
-        ) : null}
-      </motion.div>
+          {isEmpty || isSparse ? (
+            <div
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[color:var(--g-surface-1)]/95 p-6 text-center"
+              data-testid="intel-empty-sparse"
+            >
+              <p className={TYPE.sectionTitle}>
+                {isEmpty ? "No knowledge graph yet" : "No displayable field entities"}
+              </p>
+              <p className={cn(TYPE.bodyMuted, "mt-2 max-w-md")}>
+                {isEmpty
+                  ? "Connect sources and sync CRM so org_entity_relationships can resolve entity ids."
+                  : `${knownRels} relationship rows are counted, but endpoint entity ids are not displayable as field nodes. Do not invent nodes.`}
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button type="button" size="sm" asChild>
+                  <Link href={APP_ROUTES.connectors}>Open connectors</Link>
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {!isError && !isEmpty && !isSparse ? (
+            <IntelligenceMap
+              lens={activeLens}
+              signals={signals}
+              agents={mapAgents}
+              entityCount={entityCount}
+              relationshipCount={relationshipCount}
+              canonicalGraph={pageContext?.graph}
+              selection={selection}
+              onSelectionChange={onSelectionChange}
+              highlightNodeIds={highlightNodeIds}
+              dimNodeIds={dimNodeIds}
+              focusNodeIds={mergedFocus}
+              cacheKey={cacheKey}
+              className="min-h-[56vh]"
+            />
+          ) : null}
+        </div>
+      </div>
 
       <IntelligenceInspectorDrawer
         selection={selection}
@@ -140,6 +353,23 @@ export function OverviewLivingMap({
         whyData={whyEvidence}
         onAskAbout={onAskAbout}
       />
+
+      {selectedEventId && onAskAbout ? (
+        <div className="rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-3 md:hidden">
+          <p className={TYPE.eyebrow}>Ask · canonical workspace</p>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              const ev = streamEvents.find((e) => e.id === selectedEventId)
+              if (ev) onAskAbout(ev.askPrompt)
+            }}
+          >
+            Ask about change
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

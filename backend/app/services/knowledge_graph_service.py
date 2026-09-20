@@ -485,7 +485,10 @@ class KnowledgeGraphService:
         db = self._client(settings, client)
         rel_rows = (
             db.table("org_entity_relationships")
-            .select("confidence, source_entity_type, target_entity_type, relationship_type")
+            .select(
+                "confidence, source_entity_type, target_entity_type, relationship_type, "
+                "source_entity_id, target_entity_id"
+            )
             .eq("org_id", org_id)
             .limit(5000)
             .execute()
@@ -520,6 +523,53 @@ class KnowledgeGraphService:
             "scope_note": MULTI_HOP_SCOPE_NOTE,
             "advisory_only": True,
         }
+
+    async def get_field_sample(
+        self,
+        org_id: str,
+        *,
+        limit: int = 80,
+        settings: Settings | None = None,
+        client: Any | None = None,
+    ) -> list[dict[str, Any]]:
+        """Org-scoped relationship sample for I1 field topology (no fabricated ids).
+
+        Only rows with both endpoint entity ids become displayable field edges.
+        Labels stay type + opaque id suffix — never invent business names.
+        """
+        db = self._client(settings, client)
+        capped = max(1, min(int(limit), 200))
+        rel_rows = (
+            db.table("org_entity_relationships")
+            .select(
+                "confidence, source_entity_type, target_entity_type, relationship_type, "
+                "source_entity_id, target_entity_id, evidence, updated_at, created_at"
+            )
+            .eq("org_id", org_id)
+            .limit(capped)
+            .execute()
+            .data
+            or []
+        )
+        sample: list[dict[str, Any]] = []
+        for row in rel_rows:
+            sid = str(row.get("source_entity_id") or "").strip()
+            tid = str(row.get("target_entity_id") or "").strip()
+            if not sid or not tid:
+                continue
+            sample.append(
+                {
+                    "source_entity_id": sid,
+                    "target_entity_id": tid,
+                    "source_entity_type": str(row.get("source_entity_type") or "entity"),
+                    "target_entity_type": str(row.get("target_entity_type") or "entity"),
+                    "relationship_type": str(row.get("relationship_type") or "related"),
+                    "confidence": row.get("confidence"),
+                    "evidence": row.get("evidence"),
+                    "updated_at": row.get("updated_at") or row.get("created_at"),
+                }
+            )
+        return sample
 
 
 _knowledge_graph_service: KnowledgeGraphService | None = None

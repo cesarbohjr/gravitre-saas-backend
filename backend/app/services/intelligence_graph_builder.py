@@ -1,6 +1,8 @@
 """G1 — Build IntelligenceGraph from canonical IntelligenceSnapshot."""
 from __future__ import annotations
 
+from typing import Any
+
 from app.schemas.intelligence_projection import (
     IntelligenceGraph,
     IntelligenceGraphEdge,
@@ -14,7 +16,23 @@ from app.services.intelligence_semantics import LENS_EDGE_EMPHASIS, LENS_NODE_EM
 CORE_NODE_ID = "core:gravitre"
 
 
-def build_intelligence_graph(snapshot: IntelligenceSnapshot) -> IntelligenceGraph:
+def _opaque_entity_label(entity_type: str, entity_id: str) -> str:
+    """Honest label: type + short opaque suffix — never invent CRM display names."""
+    et = (entity_type or "entity").replace("_", " ").strip() or "entity"
+    suffix = entity_id[-6:] if len(entity_id) > 6 else entity_id
+    return f"{et.title()} · …{suffix}"
+
+
+def _entity_node_id(entity_type: str, entity_id: str) -> str:
+    et = (entity_type or "entity").strip().lower().replace(" ", "_") or "entity"
+    return f"kg:{et}:{entity_id}"
+
+
+def build_intelligence_graph(
+    snapshot: IntelligenceSnapshot,
+    *,
+    field_sample: list[dict[str, Any]] | None = None,
+) -> IntelligenceGraph:
     nodes: list[IntelligenceGraphNode] = []
     edges: list[IntelligenceGraphEdge] = []
     node_ids: set[str] = set()
@@ -40,6 +58,74 @@ def build_intelligence_graph(snapshot: IntelligenceSnapshot) -> IntelligenceGrap
         )
     )
 
+    # I1 field — real org_entity_relationships endpoints (when ids resolve)
+    for row in field_sample or []:
+        sid = str(row.get("source_entity_id") or "").strip()
+        tid = str(row.get("target_entity_id") or "").strip()
+        if not sid or not tid:
+            continue
+        st = str(row.get("source_entity_type") or "entity")
+        tt = str(row.get("target_entity_type") or "entity")
+        rel_type = str(row.get("relationship_type") or "related")
+        src_id = _entity_node_id(st, sid)
+        tgt_id = _entity_node_id(tt, tid)
+        add_node(
+            IntelligenceGraphNode(
+                id=src_id,
+                type="entity",
+                businessLabel=_opaque_entity_label(st, sid),
+                technicalLabel=sid,
+                status="active",
+                source=IntelligenceProvenance(
+                    system="org_entity_relationships",
+                    recordId=sid,
+                    fetchedAt=snapshot.generatedAt,
+                ),
+                freshness=str(row.get("updated_at") or "") or None,
+                metadata={
+                    "entityType": st,
+                    "entityId": sid,
+                    "instance": True,
+                    "confidence": row.get("confidence"),
+                },
+            )
+        )
+        add_node(
+            IntelligenceGraphNode(
+                id=tgt_id,
+                type="entity",
+                businessLabel=_opaque_entity_label(tt, tid),
+                technicalLabel=tid,
+                status="active",
+                source=IntelligenceProvenance(
+                    system="org_entity_relationships",
+                    recordId=tid,
+                    fetchedAt=snapshot.generatedAt,
+                ),
+                freshness=str(row.get("updated_at") or "") or None,
+                metadata={
+                    "entityType": tt,
+                    "entityId": tid,
+                    "instance": True,
+                    "confidence": row.get("confidence"),
+                },
+            )
+        )
+        edges.append(
+            IntelligenceGraphEdge(
+                id=f"edge:kg:{src_id}:{tgt_id}:{rel_type}",
+                type="RELATED_TO",
+                fromId=src_id,
+                toId=tgt_id,
+                metadata={
+                    "relationshipType": rel_type,
+                    "confidence": row.get("confidence"),
+                    "evidence": row.get("evidence"),
+                    "instance": True,
+                },
+            )
+        )
+
     for entity_type in snapshot.knowledgeEntityTypes:
         et = str(entity_type or "").strip()
         if not et:
@@ -57,7 +143,7 @@ def build_intelligence_graph(snapshot: IntelligenceSnapshot) -> IntelligenceGrap
                     recordId=et,
                     fetchedAt=snapshot.generatedAt,
                 ),
-                metadata={"entityType": et},
+                metadata={"entityType": et, "instance": False},
             )
         )
         edges.append(

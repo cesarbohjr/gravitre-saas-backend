@@ -206,15 +206,19 @@ function nodeToMapNode(node: CanonicalGraphNode, agents: Agent[] | null | undefi
         emphasis: node.status === "ready" ? 1 : 0.55,
       }
     case "entity":
-    case "knowledge":
+    case "knowledge": {
+      const isInstance = Boolean(node.metadata?.instance)
       return {
         id: node.id,
         kind: "entity-type",
         label: node.businessLabel,
-        sublabel: node.type,
+        sublabel: isInstance
+          ? String(node.metadata?.entityType ?? node.type)
+          : node.type,
         state: "flow-inward",
-        emphasis: 1,
+        emphasis: isInstance ? 1.15 : 0.85,
       }
+    }
     case "outcome":
       return {
         id: node.id,

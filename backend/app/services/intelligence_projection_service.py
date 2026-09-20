@@ -214,12 +214,14 @@ class IntelligenceProjectionService:
             # Not a contradiction — configured active ≠ currently running; no flag needed.
             pass
 
-        # Knowledge graph summary
+        # Knowledge graph summary + I1 field sample (same org scope)
         entity_count = 0
         relationship_count = 0
         knowledge_entity_types: list[str] = []
+        field_sample: list[dict[str, Any]] = []
         try:
-            kg = await get_knowledge_graph_service().get_admin_summary(org_id, settings=self.settings)
+            kg_service = get_knowledge_graph_service()
+            kg = await kg_service.get_admin_summary(org_id, settings=self.settings)
             entity_count = int(kg.get("entity_count") or 0)
             relationship_count = int(kg.get("relationship_count") or 0)
             knowledge_entity_types = [
@@ -227,6 +229,10 @@ class IntelligenceProjectionService:
                 for et in (kg.get("entity_types") or [])
                 if str(et).strip()
             ][:12]
+            if entity_count > 0:
+                field_sample = await kg_service.get_field_sample(
+                    org_id, limit=80, settings=self.settings
+                )
         except Exception as exc:  # noqa: BLE001
             logger.debug("projection_knowledge_graph_skipped org_id=%s error=%s", org_id, exc)
             quality_flags.append("MISSING_RELATIONSHIP")
@@ -374,7 +380,7 @@ class IntelligenceProjectionService:
             knowledgeEntityTypes=knowledge_entity_types,
         )
 
-        graph = build_intelligence_graph(snapshot)
+        graph = build_intelligence_graph(snapshot, field_sample=field_sample)
         self._cache[cache_key] = _CacheEntry(snapshot, graph, time.time() + _CACHE_TTL_SECONDS)
         return snapshot
 
