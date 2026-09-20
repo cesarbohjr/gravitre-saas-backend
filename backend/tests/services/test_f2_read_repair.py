@@ -56,6 +56,33 @@ def test_wrong_sibling_listing_falls_back_to_hmac_deals_list() -> None:
     assert repaired.budget_remaining["sibling"] == 0
 
 
+def test_in_task_error_memory_strips_secrets() -> None:
+    budget = RepairBudget.fresh()
+    blocked = PreflightResult(
+        status="blocked",
+        action_key="hubspot.deals.search",
+        error_class="WRONG_SIBLING_ACTION",
+        org_id="org-1",
+    )
+    ok = _ready("hubspot.deals.list", {"limit": 10})
+    with patch("app.services.f2_read_repair.preflight_read_action", return_value=ok):
+        repair_blocked_read(
+            blocked=blocked,
+            ctx=_ctx(),
+            invoke_action="hubspot.deals.search",
+            args={"api_key": "secret", "limit": 10},
+            user_message="List my deals.",
+            connected_integrations=["hubspot"],
+            budget=budget,
+        )
+    assert budget.error_memory
+    row = budget.error_memory[0]
+    assert row["action"] == "hubspot.deals.search"
+    assert row["error_class"] == "WRONG_SIBLING_ACTION"
+    assert "api_key" not in row["args"]
+    assert row["args"].get("limit") == 10
+
+
 def test_sibling_without_hmac_preflight_does_not_invoke() -> None:
     blocked = PreflightResult(
         status="blocked",
@@ -175,3 +202,40 @@ def test_ga4_auth_does_not_fallback_without_gsc() -> None:
         connected_integrations=["google_analytics"],
     )
     assert repaired is None
+
+
+def test_emit_f2_repair_audit_writes_without_secrets() -> None:
+    from uuid import uuid4
+
+    from app.services.f2_read_repair import AUDIT_F2_REPAIR, ReadRepair, emit_f2_repair_audit
+
+    ctx = ToolContext(
+        settings=SimpleNamespace(),
+        client=MagicMock(),
+        org_id=str(uuid4()),
+        actor_id=str(uuid4()),
+        environment_name="production",
+        conversation_id=str(uuid4()),
+    )
+    budget = RepairBudget.fresh()
+    budget.error_memory.append({"action": "hubspot.deals.search", "args": {"limit": 10}})
+    repaired = ReadRepair(
+        kind="reinvoke",
+        action="hubspot.deals.list",
+        args={"limit": 10},
+        preflight=None,
+        reason="sibling_list_fallback",
+        repair_class="sibling",
+    )
+    with patch("app.workflows.audit.write_audit_event") as write:
+        emit_f2_repair_audit(
+            ctx, from_action="hubspot.deals.search", repaired=repaired, budget=budget
+        )
+    write.assert_called_once()
+    args = write.call_args.args
+    meta = args[-1]
+    assert args[3] == AUDIT_F2_REPAIR
+    assert meta["from_action"] == "hubspot.deals.search"
+    assert meta["to_action"] == "hubspot.deals.list"
+    assert meta["provider_write"] is False
+    assert "api_key" not in meta

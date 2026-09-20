@@ -1033,6 +1033,17 @@ class ReActEngine:
                 invoke_action = repaired.action
                 execute_args = dict(repaired.args)
                 ctx = dc_replace(ctx, preflight_result=repaired.preflight)
+                try:
+                    from app.services.f2_read_repair import emit_f2_repair_audit
+
+                    emit_f2_repair_audit(
+                        ctx,
+                        from_action=target,
+                        repaired=repaired,
+                        budget=budget,
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
                 from app.services.tool_service import invoke_tool
                 from app.services.tool_types import ToolError
 

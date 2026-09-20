@@ -20,8 +20,10 @@ async def execute_read_steps_parallel(
     handler: ReadStepHandler,
     max_parallel: int = 4,
 ) -> list[ExecutionObservation]:
-    """Run pending READ steps concurrently; normalize to ExecutionObservation[]."""
-    read_steps = [s for s in plan.steps if s.kind == "read" and s.status == "pending"]
+    """Run pending READ/evidence steps concurrently. WRITEs are never included."""
+    from app.services.reasoning_evidence_pipeline import parallel_safe_steps
+
+    read_steps = [s for s in parallel_safe_steps(plan) if s.status == "pending"]
     if not read_steps:
         return []
 

@@ -100,7 +100,7 @@ def build_multi_source_diagnostic_plan(
             meta={"insufficient_if_no_evidence": True},
         ),
     ]
-    return ExecutionPlan(
+    plan = ExecutionPlan(
         plan_id=str(uuid4()),
         summary=label,
         objective=str(message or "")[:240],
@@ -111,6 +111,9 @@ def build_multi_source_diagnostic_plan(
         turn_id=turn_id,
         conversation_id=conversation_id,
     )
+    from app.services.reasoning_evidence_pipeline import apply_join_and_labels_to_plan
+
+    return apply_join_and_labels_to_plan(plan)
 
 
 def conclude_diagnostic(
@@ -133,20 +136,28 @@ def conclude_diagnostic(
             continue
         if step_id in evidence_ids and success:
             live.append(summary.strip() or step_id)
+    from app.services.reasoning_evidence_pipeline import label_claim
+
     if not live:
         return {
             "sufficient": False,
             "status": "insufficient_evidence",
             "message": INSUFFICIENT_EVIDENCE,
             "observed": [],
+            "labels": [
+                {"text": INSUFFICIENT_EVIDENCE, "label": label_claim(insufficient_evidence=True)},
+            ],
         }
     observed = "; ".join(live[:5])
+    fact = f"Live reads returned: {observed}."
+    inference = "That is not a causal explanation of why the metric moved."
     return {
         "sufficient": True,
         "status": "observed_only",
-        "message": (
-            f"Live reads returned: {observed}. "
-            "That is not a causal explanation of why the metric moved."
-        ),
+        "message": f"{fact} {inference}",
         "observed": live,
+        "labels": [
+            {"text": fact, "label": label_claim(live_observation=True)},
+            {"text": inference, "label": label_claim(live_observation=True, causal=True)},
+        ],
     }

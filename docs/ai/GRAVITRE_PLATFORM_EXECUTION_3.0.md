@@ -93,16 +93,21 @@ Append-only. EXTEND 2.0-G diagnostics + E5 — not a second reasoning runtime.
 
 ## 3.0-C closeout notes (2026-09-20)
 
-Append-only. Measurement continues; SLO targets **not claimed met**.
+Append-only. Metric A SLO met on the 05:50Z sample; Metric B SLO **not claimed met**.
 
-- HTTP Talk Metric A/B latest probe remains **FAIL** @ `f50ea3f1` (see kickoff). Code fixes this drop: 30s seat cache, JWT `id` fallback, `X-Accel-Buffering: no` on `/api/voice/session/turn`. New SHA required before re-probe.
-- Barge-in WRITE live probe: `scripts/verify-voice-barge-in-write-live.py` → `docs/delivery/voice-barge-in-write-live.json`. HTTP Talk cancel arms `voice.barge_in.write_gate`. Not a browser-mic barge-in.
+- HTTP Talk Metric A/B @ `f50ea3f1` 05:50Z: A p50 **425** / p95 **521** (**PASS**); B p50 **22729** / p95 **41933** (**FAIL**). Evidence: `docs/delivery/voice-slo-two-metric-live.json`.
+- Barge-in WRITE: **PASS — `voice.barge_in.write_gate` @ `2026-09-20T05:51:27.253306Z`** (audit `8f16c1b2-7918-4d5d-b990-c5765c92b170`, conv `934dbecd-75bb-4d66-9b52-f77d91e31925`). HTTP Talk cancel, not a browser-mic barge-in.
+- Tail-hardening still deploying: 30s seat cache, JWT `id` fallback, deferred voice entitlement after `voice.session.accepted`, `X-Accel-Buffering: no`, async ElevenLabs TTS, PERCEIVE TTS warm. Re-probe after new `/health` SHA.
+- Lane B/C scores **NOT_RUN**. Production serving stays cascade A.
 
 ## 3.0-G progress (2026-09-20)
 
 Append-only. EXTEND F2 — in-task error memory (action, args, resource, reason); secrets stripped; bounded class budgets unchanged. WRITE gate not weakened.
 
+- Audit action `f2.read.repair` on accepted sibling/source-switch repair (no secrets, `provider_write: false`).
+- Live probe: `scripts/verify-f2-repair-live.py` → `docs/delivery/f2-repair-live.json`.
 - Delivery: [gravitre-3.0-g-repair.md](../delivery/gravitre-3.0-g-repair.md).
+- Gate: UNIT_TEST; LIVE_USER_PROVEN **NOT RUN** until post-deploy probe.
 
 ---
 

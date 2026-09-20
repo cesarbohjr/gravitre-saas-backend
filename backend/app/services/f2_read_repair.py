@@ -50,6 +50,7 @@ _ERROR_CLASS_TO_BUDGET: dict[str, str] = {
 class RepairBudget:
     remaining: dict[str, int] = field(default_factory=lambda: dict(REPAIR_BUDGET_BY_CLASS))
     traces: list[dict[str, Any]] = field(default_factory=list)
+    error_memory: list[dict[str, Any]] = field(default_factory=list)
     _fingerprints: set[str] = field(default_factory=set)
 
     @classmethod
@@ -94,6 +95,70 @@ class RepairBudget:
             }
         )
         return True
+
+    def remember_error(
+        self,
+        *,
+        action: str,
+        args: dict[str, Any] | None,
+        resource: str | None,
+        reason: str,
+        error_class: str | None = None,
+    ) -> None:
+        """In-task error memory. No secrets. Not a durable learning store."""
+        from app.services.durable_work_session import strip_secrets
+
+        self.error_memory.append(
+            {
+                "action": str(action or ""),
+                "args": strip_secrets(dict(args or {})),
+                "resource": str(resource or ""),
+                "reason": str(reason or "")[:300],
+                "error_class": str(error_class or ""),
+            }
+        )
+
+
+AUDIT_F2_REPAIR = "f2.read.repair"
+
+
+def emit_f2_repair_audit(
+    ctx: ToolContext,
+    *,
+    from_action: str,
+    repaired: ReadRepair,
+    budget: RepairBudget,
+) -> None:
+    """Evidence row for live repair traces. No secrets. WRITE not involved."""
+    org_id = str(getattr(ctx, "org_id", "") or "")
+    actor_id = str(getattr(ctx, "actor_id", "") or getattr(ctx, "user_id", "") or "")
+    resource_id = str(
+        getattr(ctx, "conversation_id", "") or getattr(ctx, "turn_id", "") or org_id
+    )
+    client = getattr(ctx, "client", None)
+    if not org_id or not actor_id or client is None:
+        return
+    try:
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            client,
+            org_id,
+            actor_id,
+            AUDIT_F2_REPAIR,
+            "conversation",
+            resource_id,
+            {
+                "from_action": catalog_action_key(from_action),
+                "to_action": catalog_action_key(repaired.action),
+                "repair_class": repaired.repair_class,
+                "reason": repaired.reason,
+                "error_memory_n": len(budget.error_memory),
+                "provider_write": False,
+            },
+        )
+    except Exception:  # noqa: BLE001 — audit must not break the READ path
+        return
 
 
 @dataclass(frozen=True)
@@ -187,6 +252,13 @@ def repair_blocked_read(
     catalog = catalog_action_key(invoke_action)
     connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
     purse = budget if budget is not None else RepairBudget.fresh()
+    purse.remember_error(
+        action=invoke_action,
+        args=args,
+        resource=catalog,
+        reason=str(getattr(blocked, "repair_hint", None) or blocked.error_class or "blocked"),
+        error_class=error,
+    )
     repair_class = purse.classify(error)
     if repair_class is None:
         return None
