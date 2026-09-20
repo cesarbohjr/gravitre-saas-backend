@@ -1,21 +1,19 @@
 {
   "probe": "smoke_post_deploy_chat_live",
-  "started_at": "2026-09-20T07:42:33.563042+00:00",
+  "started_at": "2026-09-20T07:57:06.610542+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "message": "Reply with exactly: smoke-ok",
   "expect_sha": null,
   "health": {
-    "git_sha": "43570699e5f5d8e693a618c1abe4f66e3fe97705",
+    "git_sha": "42fadd6179485971a36b5179834e3601514557b2",
     "unified_turn_live_enabled": true
   },
-  "conversation_id": "033b169c-cdbf-4578-ae37-97f01006cde5",
+  "conversation_id": "e0ba3650-8144-444e-8c31-9197930b28af",
   "http_status": 200,
-  "assistant": "",
-  "stream_errors": [
-    "I couldn't complete that just now. Try again in a moment."
-  ],
-  "raw_bytes": 2505,
-  "verdict": "FAIL \u2014 stream error: [\"I couldn't complete that just now. Try again in a moment.\"]",
-  "finished_at": "2026-09-20T07:42:38.649026+00:00"
+  "assistant": "smoke-ok",
+  "stream_errors": [],
+  "raw_bytes": 12294,
+  "verdict": "PASS \u2014 post-deploy chat ok @ 42fadd61",
+  "finished_at": "2026-09-20T07:57:25.609210+00:00"
 }

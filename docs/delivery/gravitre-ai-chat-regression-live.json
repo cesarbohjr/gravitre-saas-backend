@@ -1,0 +1,144 @@
+{
+  "probe": "ai_chat_regression_live",
+  "started_at": "2026-09-20T08:19:51.946203+00:00",
+  "base": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "turns": [
+    {
+      "id": "A_hello",
+      "prompt": "hello",
+      "http_status": 200,
+      "wall_ms": 10897,
+      "ok": true,
+      "assistant": "Hey \u2014 I\u2019m here. What are we working on?",
+      "event_types": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "errors": []
+    },
+    {
+      "id": "B_followup_hello",
+      "prompt": "hello",
+      "http_status": 200,
+      "wall_ms": 5667,
+      "ok": true,
+      "assistant": "Hey \u2014 I\u2019m here. What are we working on?",
+      "event_types": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "errors": []
+    },
+    {
+      "id": "C_traffic",
+      "prompt": "Tell me what my website traffic was last month.",
+      "http_status": 200,
+      "wall_ms": 4010,
+      "ok": true,
+      "assistant": "I don\u2019t have enough information yet. Tell me which analytics source to use for your website traffic, and I\u2019ll continue.",
+      "event_types": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "data-intelligence",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "errors": []
+    },
+    {
+      "id": "D_send_email",
+      "prompt": "Send an email.",
+      "http_status": 200,
+      "wall_ms": 12967,
+      "ok": true,
+      "assistant": "I can send it, but I need the recipient, subject, and body.",
+      "event_types": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "errors": []
+    }
+  ],
+  "health": {
+    "git_sha": "42fadd6179485971a36b5179834e3601514557b2",
+    "unified_turn_live_enabled": true,
+    "ai_disabled": false
+  },
+  "conversation_id": "fd7ef9a1-b081-45f5-b23e-6eb4b0a0d97c",
+  "persisted_messages": [
+    {
+      "role": "user",
+      "content": "hello"
+    },
+    {
+      "role": "assistant",
+      "content": "Hey \u2014 I\u2019m here. What are we working on?"
+    },
+    {
+      "role": "user",
+      "content": "hello"
+    },
+    {
+      "role": "assistant",
+      "content": "Hey \u2014 I\u2019m here. What are we working on?"
+    },
+    {
+      "role": "user",
+      "content": "Tell me what my website traffic was last month."
+    },
+    {
+      "role": "assistant",
+      "content": "I don\u2019t have enough information yet. Tell me which analytics source to use for your website traffic, and I\u2019ll continue."
+    },
+    {
+      "role": "user",
+      "content": "Send an email."
+    },
+    {
+      "role": "assistant",
+      "content": "I can send it, but I need the recipient, subject, and body."
+    }
+  ],
+  "persist_http": 200,
+  "verdict": "PASS \u2014 hello/follow-up/READ/WRITE-shape @ 42fadd61",
+  "finished_at": "2026-09-20T08:20:27.525594+00:00"
+}

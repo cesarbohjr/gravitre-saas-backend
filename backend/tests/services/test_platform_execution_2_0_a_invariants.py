@@ -173,6 +173,15 @@ def test_no_direct_stopped_sse_in_assistant_router() -> None:
     assert "compose_reply_events" in text
 
 
+def test_execute_task_streaming_does_not_shadow_asyncio_or_composer() -> None:
+    """Greeting/operator typed chat must use module asyncio/composer (42fadd61)."""
+    from app.operators.agent_intelligence import AgentIntelligence
+
+    names = AgentIntelligence.execute_task_streaming.__code__.co_varnames
+    assert "asyncio" not in names
+    assert "compose_reply_events" not in names
+
+
 def test_compile_before_react_in_agent_intelligence() -> None:
     text = (APP / "operators" / "agent_intelligence.py").read_text(encoding="utf-8")
     compile_at = text.find("compile_assistant_turn_context")
