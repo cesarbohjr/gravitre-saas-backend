@@ -242,7 +242,19 @@ async def try_compiled_operational_read_turn(
         return analytics
     from app.services.operational_read_execution import try_operational_read_short_circuit_turn
 
-    return await try_operational_read_short_circuit_turn(
+    operational = await try_operational_read_short_circuit_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+    )
+    if operational:
+        return operational
+    from app.services.governed_write_compile import try_governed_write_compile_turn
+
+    return await try_governed_write_compile_turn(
         message=message,
         org_id=org_id,
         client=client,
