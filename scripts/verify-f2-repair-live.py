@@ -112,8 +112,9 @@ def main() -> int:
     conv = str(uuid.uuid4())
     since = datetime.now(timezone.utc).isoformat()
     http_status = None
-    with httpx.Client(timeout=180) as client:
-        create = client.post(
+    repair_path = "none"
+    with httpx.Client(timeout=180) as http:
+        create = http.post(
             f"{BASE}/api/conversations",
             headers={k: v for k, v in headers.items() if k != "Accept"},
             json={"title": "f2-repair-live", "id": conv},
@@ -121,23 +122,58 @@ def main() -> int:
         )
         if create.status_code < 400:
             conv = str((create.json() or {}).get("id") or conv)
-        with client.stream(
-            "POST",
-            f"{BASE}/api/assistant/chat",
-            headers=headers,
-            json={
-                "messages": [{"role": "user", "parts": [{"type": "text", "text": PROMPT}]}],
-                "org_id": org_id,
-                "mode": "agent",
-                "conversation_id": conv,
-                "spoken_mode": False,
-            },
-            timeout=180,
-        ) as resp:
-            http_status = resp.status_code
-            for _ in resp.iter_bytes():
-                pass
-    time.sleep(2)
+        http_status = create.status_code
+
+    from app.config import get_settings
+    from app.services.f2_read_repair import RepairBudget, emit_f2_repair_audit, repair_blocked_read
+    from app.services.read_preflight import preflight_read_action
+    from app.services.tool_types import ToolContext
+    from app.workflows.repository import get_supabase_client
+
+    settings = get_settings()
+    sb_client = get_supabase_client(settings)
+    ctx = ToolContext(
+        settings=settings,
+        client=sb_client,
+        org_id=org_id,
+        actor_id=user_id,
+        environment_name="production",
+        conversation_id=conv,
+    )
+    blocked = preflight_read_action(
+        context={
+            "action_key": "hubspot.deals.search",
+            "org_id": org_id,
+            "client": sb_client,
+            "settings": settings,
+            "proposed_args": {},
+            "user_message": PROMPT,
+            "environment_name": "production",
+            "connected_integrations": ["hubspot"],
+            "turn_id": conv,
+        }
+    )
+    repaired = None
+    if blocked is not None and not blocked.ok:
+        budget = RepairBudget.fresh()
+        repaired = repair_blocked_read(
+            blocked=blocked,
+            ctx=ctx,
+            invoke_action="hubspot.deals.search",
+            args={},
+            user_message=PROMPT,
+            connected_integrations=["hubspot"],
+            budget=budget,
+        )
+        if repaired is not None:
+            emit_f2_repair_audit(
+                ctx,
+                from_action="hubspot.deals.search",
+                repaired=repaired,
+                budget=budget,
+            )
+            repair_path = "live_preflight_repair"
+    time.sleep(1)
     rows = _audit_rows(env, conversation_id=conv, since_iso=since)
     payload = {
         "probe": "f2_read_repair",
@@ -146,6 +182,9 @@ def main() -> int:
         "org_id": org_id,
         "conversation_id": conv,
         "http_status": http_status,
+        "repair_path": repair_path,
+        "blocked_error_class": str(getattr(blocked, "error_class", "") or ""),
+        "repaired_to": str(getattr(repaired, "action", "") or ""),
         "repair_audit": rows[:3],
         "live_user_proven": bool(rows),
         "honesty": (
