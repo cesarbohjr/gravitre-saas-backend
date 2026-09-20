@@ -16,7 +16,6 @@ import {
   PlugZap,
   RefreshCw,
   TerminalSquare,
-  XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
@@ -24,6 +23,7 @@ import { readExecutionModeFields } from "@/lib/execution-mode"
 import { cn } from "@/lib/utils"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { DataStream } from "@/components/gravitre/premium-effects"
+import { EvidenceChip } from "@/components/gravitre/creative-grammar"
 import { useMotionPrefs } from "@/lib/animations"
 import {
   humanizeConnectorAction,
@@ -250,13 +250,9 @@ function InvokeToolDetail({ meta }: { meta: InvokeToolMeta }) {
           <dt className="text-muted-foreground">Result</dt>
           <dd className="mt-0.5">
             {succeeded ? (
-              <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 font-medium text-success">
-                <CheckCircle className="h-3 w-3" /> Success
-              </span>
+              <EvidenceChip label="Success" tone="evidence" />
             ) : failed ? (
-              <span className="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
-                <XCircle className="h-3 w-3" /> Failed
-              </span>
+              <EvidenceChip label="Failed" tone="error" />
             ) : (
               <span className="text-muted-foreground">—</span>
             )}
@@ -393,8 +389,15 @@ function ExecutionStepRow({
           </div>
           {/* connecting spine */}
           {!isLast ? (
-            <div className="relative mt-1 w-px flex-1 overflow-hidden bg-border">
+            <div
+              className={cn(
+                "relative mt-1 w-px flex-1 overflow-hidden",
+                isAwaiting ? "bg-warning/40" : isCompleted ? "bg-[color:var(--color-brand,#16a374)]/25" : "bg-border",
+              )}
+              data-grammar-spine={isAwaiting ? "waiting" : isRunning ? "running" : isCompleted ? "verified" : "idle"}
+            >
               {isRunning ? <DataStream direction="vertical" color="blue" className="opacity-70" /> : null}
+              {isAwaiting ? <DataStream direction="vertical" color="amber" className="opacity-80" /> : null}
             </div>
           ) : null}
         </div>
@@ -411,9 +414,12 @@ function ExecutionStepRow({
                 />
               ) : null}
               <div className="min-w-0">
-                <h3 className={cn("text-sm font-medium text-foreground", step.status === "skipped" && "line-through")}>
-                  {step.name}
-                </h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className={cn("text-sm font-medium text-foreground", step.status === "skipped" && "line-through")}>
+                    {step.name}
+                  </h3>
+                  {isAwaiting ? <EvidenceChip label="Needs approval" tone="waiting" /> : null}
+                </div>
                 {connectorActionLabel ? (
                   <p className="text-[11px] text-muted-foreground">{connectorActionLabel}</p>
                 ) : step.stepType ? (
@@ -681,7 +687,14 @@ export function ExecutionTimeline({
   let renderedIndex = 0
 
   return (
-    <div>
+    <div
+      data-testid="execution-timeline"
+      data-creative-grammar="1"
+      data-path-waiting={activeStepId && steps.some((s) => s.id === activeStepId && s.status === "awaiting_approval") ? "1" : "0"}
+      data-waiting-step-id={
+        steps.find((s) => s.status === "awaiting_approval")?.id ?? undefined
+      }
+    >
       {steps.length > 0 ? (
         <div className="flex items-center justify-end gap-2 border-b border-border px-4 py-2">
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={expandAll}>

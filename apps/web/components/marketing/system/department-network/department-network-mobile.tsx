@@ -166,7 +166,10 @@ export function DepartmentNetworkMobile({ reduced }: { reduced: boolean }) {
           <MobileNode id={beat.to} active={phase === "to"} resolved={phase === "back"} />
         </motion.div>
       </AnimatePresence>
-      <p className="mt-2 max-w-xs text-center text-sm font-medium text-[color:var(--g-text-secondary)]">
+      <p
+        className="mt-2 max-w-xs text-center text-sm font-medium text-[color:var(--g-text-secondary)]"
+        aria-live="polite"
+      >
         {beat.caption}
       </p>
       <p className="max-w-xs text-center text-[11px] text-[color:var(--g-text-muted)]">

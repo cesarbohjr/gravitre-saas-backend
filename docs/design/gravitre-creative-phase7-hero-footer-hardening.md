@@ -37,7 +37,7 @@ Do not reattach Living System / orbs without Cesar reopen.
 4. Decorative SVG layers: `pointer-events-none` on MiniTopology / persist / trail accents  
 5. Phase 7 checklist closed in bible  
 
-Deferred (optional follow-ups): wire `resolveCreativeQuality` MED/LOW into every scene; department-network `aria-live`; full AC width matrix as CI job.
+Deferred (optional follow-ups): ~~wire `resolveCreativeQuality` MED/LOW into every scene; department-network `aria-live`; full AC width matrix as CI job.~~ → **Phase 11** ([`gravitre-creative-phase11-program-close.md`](gravitre-creative-phase11-program-close.md)).
 
 ---
 

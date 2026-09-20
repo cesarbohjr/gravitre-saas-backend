@@ -17,10 +17,12 @@ export type CreativePerformanceSnapshot = {
 export function resolveCreativeQuality(input: {
   reducedMotion?: boolean
   preferLow?: boolean
+  preferMedium?: boolean
   forceFallback?: boolean
 }): CreativeQuality {
   if (input.forceFallback || input.reducedMotion) return "fallback"
   if (input.preferLow) return "low"
+  if (input.preferMedium) return "medium"
   return "high"
 }
 
@@ -51,10 +53,12 @@ export function snapshotCreativePerformance(input: {
   visible: boolean
   documentHidden?: boolean
   preferLow?: boolean
+  preferMedium?: boolean
 }): CreativePerformanceSnapshot {
   const quality = resolveCreativeQuality({
     reducedMotion: input.reducedMotion,
     preferLow: input.preferLow,
+    preferMedium: input.preferMedium,
   })
   const documentHidden = Boolean(input.documentHidden)
   return {

@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useInView, useReducedMotion } from "framer-motion"
 import { NucleoApproval, NucleoConnector, NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
 import { withCreativeScene } from "../../fallbacks/with-creative-scene"
+import { useCreativePerformance } from "../../core/use-creative-performance"
 import {
   CAPABILITY_PORTS,
   ILLUSTRATIVE_CONTEXT,
@@ -40,23 +40,10 @@ function ReducedModel() {
 }
 
 function ConnectorFabricFieldImpl({ className }: { className?: string }) {
-  const reducePreference = useReducedMotion()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const reduced = mounted && !!reducePreference
-
   const rootRef = useRef<HTMLDivElement>(null)
-  const inView = useInView(rootRef, { amount: 0.25, once: false })
-  const [hidden, setHidden] = useState(false)
+  const { reducedMotion: reduced, shouldAnimate, quality } = useCreativePerformance(rootRef)
   const [frozenPhase, setFrozenPhase] = useState<ConnectorPhase | null>(null)
   const [phase, setPhase] = useState<ConnectorPhase>("quiet")
-
-  useEffect(() => {
-    const onVis = () => setHidden(document.hidden)
-    onVis()
-    document.addEventListener("visibilitychange", onVis)
-    return () => document.removeEventListener("visibilitychange", onVis)
-  }, [])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -68,10 +55,10 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
   }, [])
 
   useEffect(() => {
-    if (frozenPhase || reduced || !inView || hidden) return
+    if (frozenPhase || !shouldAnimate) return
     const t = window.setTimeout(() => setPhase((p) => nextPhase(p)), phase === "write_waiting" ? 1600 : 1100)
     return () => window.clearTimeout(t)
-  }, [phase, reduced, inView, hidden, frozenPhase])
+  }, [phase, shouldAnimate, frozenPhase])
 
   const ports = showPorts(phase)
   const auth = showAuth(phase)
@@ -86,6 +73,7 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
       data-testid="connector-fabric-field"
       data-creative-phase={phase}
       data-creative-frozen={frozenPhase ? "1" : "0"}
+      data-creative-quality={quality}
       data-cf-write-waiting={waiting ? "1" : "0"}
       data-cf-logo-wall="0"
     >

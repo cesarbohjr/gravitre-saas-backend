@@ -1,8 +1,8 @@
 # Creative → Product UI grammar (Pilot 2 extraction note)
 
-**Status:** Advisory only — **no wholesale import** of marketing animation into product.  
+**Status:** Phase 12 first slice shipped — see [`gravitre-creative-phase12-product-ui-grammar.md`](gravitre-creative-phase12-product-ui-grammar.md). Still **no wholesale import** of marketing animation into product.  
 **Source pilots:** Departments Converge (Pilot 1), Task Decomposition Field (Pilot 2).  
-**Date:** 2026-09-19
+**Date:** 2026-09-19 · Phase 12: 2026-09-20
 
 ---
 

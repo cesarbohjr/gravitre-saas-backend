@@ -6,6 +6,7 @@ export {
   snapshotCreativePerformance,
   type CreativePerformanceSnapshot,
 } from "./core/performance-manager"
+export { useCreativePerformance } from "./core/use-creative-performance"
 export {
   topologyForCoreState,
   topologyEdgeCount,

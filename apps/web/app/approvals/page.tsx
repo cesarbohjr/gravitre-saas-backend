@@ -11,6 +11,7 @@ import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { GravitrePageHeader, GravitreEmpty } from "@/components/gravitre/nodus-product"
 import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { EvidenceChip } from "@/components/gravitre/creative-grammar"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { Button } from "@/components/ui/button"
@@ -369,6 +370,8 @@ function DecisionCard({
       layout
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
+      data-path-waiting={approval.status === "pending" ? "1" : "0"}
+      data-path-run-id={approval.context.runId ?? undefined}
       className={cn(
         "relative cursor-pointer rounded-[var(--np-radius-md)] border-l-4 transition-all",
         config.color,
@@ -413,6 +416,9 @@ function DecisionCard({
           <StatusChip status={approval.status}>
             {formatStatusLabel(approval.status)}
           </StatusChip>
+          {approval.status === "pending" && approval.context.runId ? (
+            <EvidenceChip label="Same path continues" tone="waiting" />
+          ) : null}
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
             {approval.type}
           </span>

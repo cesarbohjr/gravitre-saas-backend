@@ -328,3 +328,19 @@ describe("phase 10 outcomes positioning storyboard", () => {
     expect(parseOutcomesStateParam("categories", { hostname: "gravitre.app" })).toBeNull()
   })
 })
+
+describe("phase 11 creative performance", () => {
+  it("resolves quality tiers including medium and fallback", async () => {
+    const { resolveCreativeQuality, creativeDprCap, shouldRunCreativeAnimation } = await import(
+      "@/components/marketing/creative/core/performance-manager"
+    )
+    expect(resolveCreativeQuality({ reducedMotion: true })).toBe("fallback")
+    expect(resolveCreativeQuality({ preferLow: true })).toBe("low")
+    expect(resolveCreativeQuality({ preferMedium: true })).toBe("medium")
+    expect(resolveCreativeQuality({})).toBe("high")
+    expect(creativeDprCap("medium")).toBe(1.5)
+    expect(shouldRunCreativeAnimation({ reducedMotion: false, visible: true, documentHidden: true })).toBe(
+      false,
+    )
+  })
+})

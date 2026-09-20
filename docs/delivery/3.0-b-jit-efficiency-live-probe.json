@@ -1,74 +1,102 @@
 {
   "probe": "3.0_b_jit_efficiency_live",
-  "started_at": "2026-09-19T09:18:00.997876+00:00",
+  "started_at": "2026-09-20T05:22:07.663074+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "turns_requested": 8,
-  "expect_sha": null,
+  "turns_requested": 12,
+  "expect_sha": "f50ea3f1",
   "health": {
-    "git_sha": "622c7afcb11cee4ef26cc3d62616f737ef6d6359",
+    "git_sha": "f50ea3f1fe6f756e87a44a490392c5114d5ef2b3",
     "status": "ok"
   },
-  "conversation_id": "3940c536-3415-4aba-8c5c-6f6601e43573",
+  "conversation_id": "bc8161d2-522a-43d6-b9fe-591b300c2483",
   "turn_results": [
     {
       "prompt": "Tell me what my website traffic was last month.",
       "http_status": 200,
-      "elapsed_ms": 6502,
-      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me which analytics source to use for \u201cwebsite traffic\u201d \u2014 for example, GA4, HubSpot, or another connected reporting system \u2014 and I\u2019ll continue.",
+      "elapsed_ms": 6113,
+      "assistant_excerpt": "I don\u2019t have enough information yet. I can\u2019t see your website analytics from what you provided. If you want, send the analytics source you use, such as:\n- Google Analytics\n- HubSpot\n- a dashboard link",
       "errors": []
     },
     {
       "prompt": "How are HubSpot deals performing this quarter?",
       "http_status": 200,
-      "elapsed_ms": 3343,
-      "assistant_excerpt": "I don\u2019t have enough information yet to summarize the quarter cleanly. What I can verify from the connected data:\n- HubSpot list access is Connected.\n- The search action for this workspace is not Conne",
+      "elapsed_ms": 5185,
+      "assistant_excerpt": "I don\u2019t have enough information yet to judge this quarter\u2019s performance from the data returned. What I can verify from the HubSpot list is:\n- 10 recent deals were returned from the default pipeline.\n-",
       "errors": []
     },
     {
       "prompt": "Summarize open Zendesk tickets for billing issues.",
       "http_status": 200,
-      "elapsed_ms": 25355,
-      "assistant_excerpt": "I don\u2019t have the Zendesk ticket data here. Send the ticket export or connect Zendesk, and I\u2019ll summarize the open billing issues.",
+      "elapsed_ms": 24516,
+      "assistant_excerpt": "I can\u2019t substantiate Zendesk here. HubSpot is the only connected CRM, and the Zendesk sources I have conflict on ticket summarization. What they say:\n- one source describes AI summaries of Zendesk tic",
       "errors": []
     },
     {
       "prompt": "What did Google Search Console show for clicks last week?",
       "http_status": 200,
-      "elapsed_ms": 17089,
-      "assistant_excerpt": "I don\u2019t have that yet \u2014 Google Search Console data wasn\u2019t retrieved here.",
+      "elapsed_ms": 17678,
+      "assistant_excerpt": "I don\u2019t have enough information yet. I need the Google Search Console data source connected, or a report/export for last week\u2019s clicks, and I\u2019ll continue.Google Search Console is connected, but its au",
       "errors": []
     },
     {
       "prompt": "Hello \u2014 quick check that you can hear me.",
       "http_status": 200,
-      "elapsed_ms": 5675,
-      "assistant_excerpt": "Yep, I can hear you. What do you want to tackle?",
+      "elapsed_ms": 5158,
+      "assistant_excerpt": "I can hear you. What do you want to get done?",
       "errors": []
     },
     {
       "prompt": "Show QuickBooks invoice totals for March.",
       "http_status": 200,
-      "elapsed_ms": 12414,
-      "assistant_excerpt": "I don\u2019t have QuickBooks connected here, so I can\u2019t pull invoice totals.",
+      "elapsed_ms": 12502,
+      "assistant_excerpt": "I don\u2019t have QuickBooks connected or any invoice data for March here.",
       "errors": []
     },
     {
       "prompt": "Which connectors are connected right now?",
       "http_status": 200,
-      "elapsed_ms": 5621,
+      "elapsed_ms": 5289,
       "assistant_excerpt": "Connected right now: Apollo, Google Ads, Google Search Console, and HubSpot.",
       "errors": []
     },
     {
       "prompt": "Compare traffic from organic search vs paid last month.",
       "http_status": 200,
-      "elapsed_ms": 3478,
-      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me which data source to use for traffic, and I\u2019ll compare organic search vs paid for last month.",
+      "elapsed_ms": 4202,
+      "assistant_excerpt": "I don\u2019t have enough information yet to compare organic search vs paid traffic last month. Tell me which analytics source to use, or connect the report data, and I\u2019ll compare the two.",
+      "errors": []
+    },
+    {
+      "prompt": "Find HubSpot contacts added in the last 7 days.",
+      "http_status": 200,
+      "elapsed_ms": 3774,
+      "assistant_excerpt": "I found recent HubSpot contacts, but the list result was truncated before I could safely filter the full last-7-days set. What I can confirm from the data returned:\n- Contacts were added on dates span",
+      "errors": []
+    },
+    {
+      "prompt": "What analytics property should I use for gravitre.app?",
+      "http_status": 200,
+      "elapsed_ms": 23734,
+      "assistant_excerpt": "Use the GA4 property for `gravitre.app` if it exists. If you want, I can check which connected analytics source is actually available here.",
+      "errors": []
+    },
+    {
+      "prompt": "Give me a one-sentence summary of yesterday's site sessions.",
+      "http_status": 200,
+      "elapsed_ms": 15739,
+      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.",
+      "errors": []
+    },
+    {
+      "prompt": "List any overdue support tickets in Zendesk.",
+      "http_status": 200,
+      "elapsed_ms": 18651,
+      "assistant_excerpt": "Zendesk isn\u2019t connected here, so I can\u2019t list those tickets. If you want, I can check HubSpot tickets instead.",
       "errors": []
     }
   ],
-  "turns_ok": 8,
-  "finished_at": "2026-09-19T09:19:25.288190+00:00",
-  "verdict": "PASS \u2014 8/8 turns HTTP 200 @ 622c7afcb11c"
+  "turns_ok": 12,
+  "finished_at": "2026-09-20T05:24:33.644616+00:00",
+  "verdict": "PASS \u2014 12/12 turns HTTP 200 @ f50ea3f1fe6f"
 }

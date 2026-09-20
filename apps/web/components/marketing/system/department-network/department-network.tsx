@@ -205,6 +205,7 @@ export function GravitreDepartmentNetwork({
               animate={{ opacity: 1, y: 0 }}
               exit={reduced ? undefined : { opacity: 0 }}
               className="mt-3 text-center text-sm font-medium text-[color:var(--g-text-secondary)]"
+              aria-live="polite"
             >
               {state.caption}
             </motion.p>

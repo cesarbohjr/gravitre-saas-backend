@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useInView, useReducedMotion } from "framer-motion"
 import { NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
 import { withCreativeScene } from "../../fallbacks/with-creative-scene"
+import { useCreativePerformance } from "../../core/use-creative-performance"
 import {
   ILLUSTRATIVE_CONTEXT,
   OUTCOME_CATEGORIES,
@@ -62,23 +62,10 @@ function TraceThreads({ clustered }: { clustered: boolean }) {
 }
 
 function OutcomesPositioningFieldImpl({ className }: { className?: string }) {
-  const reducePreference = useReducedMotion()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const reduced = mounted && !!reducePreference
-
   const rootRef = useRef<HTMLDivElement>(null)
-  const inView = useInView(rootRef, { amount: 0.25, once: false })
-  const [hidden, setHidden] = useState(false)
+  const { reducedMotion: reduced, shouldAnimate, quality } = useCreativePerformance(rootRef)
   const [frozenPhase, setFrozenPhase] = useState<OutcomesPhase | null>(null)
   const [phase, setPhase] = useState<OutcomesPhase>("quiet")
-
-  useEffect(() => {
-    const onVis = () => setHidden(document.hidden)
-    onVis()
-    document.addEventListener("visibilitychange", onVis)
-    return () => document.removeEventListener("visibilitychange", onVis)
-  }, [])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -91,10 +78,10 @@ function OutcomesPositioningFieldImpl({ className }: { className?: string }) {
   }, [])
 
   useEffect(() => {
-    if (frozenPhase || reduced || !inView || hidden) return
+    if (frozenPhase || !shouldAnimate) return
     const t = window.setTimeout(() => setPhase((p) => nextPhase(p)), 1100)
     return () => window.clearTimeout(t)
-  }, [phase, reduced, inView, hidden, frozenPhase])
+  }, [phase, shouldAnimate, frozenPhase])
 
   const traces = showTraces(phase)
   const cluster = showCluster(phase)
@@ -108,6 +95,7 @@ function OutcomesPositioningFieldImpl({ className }: { className?: string }) {
       data-testid="outcomes-positioning-field"
       data-creative-phase={phase}
       data-creative-frozen={frozenPhase ? "1" : "0"}
+      data-creative-quality={quality}
       data-outcomes-path-id={
         ["categories", "evidence", "honest"].includes(phase) ? OUTCOMES_COLLAPSE_PATH_ID : undefined
       }
@@ -120,7 +108,11 @@ function OutcomesPositioningFieldImpl({ className }: { className?: string }) {
         <div className="rounded-2xl border border-divide bg-white p-4 md:p-6" data-testid="outcomes-desktop">
           <p className="text-center text-sm text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_CONTEXT}</p>
 
-          {traces ? <div className="mt-4"><TraceThreads clustered={cluster} /></div> : null}
+          {traces ? (
+            <div className="mt-4">
+              <TraceThreads clustered={cluster} />
+            </div>
+          ) : null}
 
           {categories ? (
             <div
