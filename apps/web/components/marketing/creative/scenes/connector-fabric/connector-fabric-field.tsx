@@ -5,6 +5,7 @@ import { useInView, useReducedMotion } from "framer-motion"
 import { NucleoApproval, NucleoConnector, NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
+import { withCreativeScene } from "../../fallbacks/with-creative-scene"
 import {
   CAPABILITY_PORTS,
   ILLUSTRATIVE_CONTEXT,
@@ -38,7 +39,7 @@ function ReducedModel() {
   )
 }
 
-export function ConnectorFabricField({ className }: { className?: string }) {
+function ConnectorFabricFieldImpl({ className }: { className?: string }) {
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -171,3 +172,5 @@ export function ConnectorFabricField({ className }: { className?: string }) {
     </div>
   )
 }
+
+export const ConnectorFabricField = withCreativeScene(ConnectorFabricFieldImpl, "connector-fabric")

@@ -5,6 +5,7 @@ import { useInView, useReducedMotion } from "framer-motion"
 import { NucleoIntelligence, NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
+import { withCreativeScene } from "../../fallbacks/with-creative-scene"
 import {
   ILLUSTRATIVE_CONTEXT,
   MENTIONS,
@@ -75,7 +76,7 @@ function ReducedModel() {
   )
 }
 
-export function EntityConvergenceField({ className }: { className?: string }) {
+function EntityConvergenceFieldImpl({ className }: { className?: string }) {
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -257,3 +258,5 @@ export function EntityConvergenceField({ className }: { className?: string }) {
     </div>
   )
 }
+
+export const EntityConvergenceField = withCreativeScene(EntityConvergenceFieldImpl, "knowledge-fabric")

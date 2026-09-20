@@ -5,6 +5,7 @@ import { useInView, useReducedMotion } from "framer-motion"
 import { NucleoApproval, NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
+import { withCreativeScene } from "../../fallbacks/with-creative-scene"
 import {
   GATE_STAGES,
   GOVERNED_WRITE_PATH_ID,
@@ -33,7 +34,7 @@ function ReducedModel() {
   )
 }
 
-export function GovernedExecutionField({ className }: { className?: string }) {
+function GovernedExecutionFieldImpl({ className }: { className?: string }) {
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -167,3 +168,5 @@ export function GovernedExecutionField({ className }: { className?: string }) {
     </div>
   )
 }
+
+export const GovernedExecutionField = withCreativeScene(GovernedExecutionFieldImpl, "governed-execution")

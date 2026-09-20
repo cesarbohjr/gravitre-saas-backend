@@ -15,6 +15,7 @@ import { GravitreAgentNode } from "../../primitives/agent-node"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
 import { topologyForCoreState } from "../../primitives/relational-topology"
 import type { CoreState } from "@/components/marketing/system/department-network/types"
+import { withCreativeScene } from "../../fallbacks/with-creative-scene"
 import {
   AGENT_ROLES,
   ILLUSTRATIVE_REQUEST,
@@ -108,7 +109,7 @@ function ReducedModel() {
   )
 }
 
-export function AgentOrchestrationField({ className }: { className?: string }) {
+function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -312,3 +313,5 @@ export function AgentOrchestrationField({ className }: { className?: string }) {
     </div>
   )
 }
+
+export const AgentOrchestrationField = withCreativeScene(AgentOrchestrationFieldImpl, "orchestration")
