@@ -1,10 +1,10 @@
 {
   "probe": "3.0_c_voice_baseline",
-  "generated_at": "2026-09-20T06:54:42.910190+00:00",
+  "generated_at": "2026-09-20T07:24:02.178915+00:00",
   "health": {
-    "git_sha": "12aa048d1dd0587bca090185bb0fb16fe1bb234e",
+    "git_sha": "43570699e5f5d8e693a618c1abe4f66e3fe97705",
     "status": "ok",
-    "timestamp": "2026-09-20T06:54:42.279092+00:00"
+    "timestamp": "2026-09-20T07:24:01.555067+00:00"
   },
   "probe_source": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\voice-slo-two-metric-live.json",
   "slo_targets": {
@@ -20,14 +20,14 @@
   "metric_a_measured": {
     "id": "time_to_first_honest_response",
     "samples_ms": [
-      161,
-      144,
-      169,
-      159,
-      174
+      412,
+      242,
+      224,
+      162,
+      163
     ],
-    "p50_ms": 161,
-    "p95_ms": 174,
+    "p50_ms": 224,
+    "p95_ms": 412,
     "hard_target_p50_ms": 500,
     "hard_target_p95_ms": 800,
     "pass": true
@@ -35,21 +35,21 @@
   "metric_b_measured": {
     "id": "operator_task_completion_latency",
     "samples_ms": [
-      9311,
-      47497,
-      31675,
-      12382,
-      29683
+      1326,
+      1253,
+      1030,
+      858,
+      904
     ],
-    "p50_ms": 29683,
-    "p95_ms": 47497,
+    "p50_ms": 1030,
+    "p95_ms": 1326,
     "target_p50_ms": 5000,
     "target_p95_ms": 8000,
-    "pass": false
+    "pass": true
   },
   "slo_pass": {
     "metric_a": true,
-    "metric_b": false
+    "metric_b": true
   },
   "lane_comparison": {
     "production_voice_lane": "A_CASCADE",
@@ -67,16 +67,16 @@
         "measured": true,
         "scores": {
           "latency_metric_a": {
-            "p50_ms": 161,
-            "p95_ms": 174,
+            "p50_ms": 224,
+            "p95_ms": 412,
             "samples": null
           },
           "latency_metric_b": {
-            "p50_ms": 29683,
-            "p95_ms": 47497,
+            "p50_ms": 1030,
+            "p95_ms": 1326,
             "samples": null
           },
-          "probe_verdict": "PARTIAL \u2014 Metric A met; Metric B missed P50<5s / P95<8s on the same plan-hold turns",
+          "probe_verdict": "PASS \u2014 Metric A and Metric B both met on the same plan-hold turns (blended same-turn, not mixed percentiles)",
           "probe_git_sha": null,
           "probe_generated_at": null,
           "conversation_ids": null
@@ -254,20 +254,20 @@
     "metric_a": {
       "baseline_p50_ms": 377,
       "baseline_p95_ms": 1215,
-      "current_p50_ms": 161,
-      "current_p95_ms": 174,
-      "delta_p50_ms": -216,
-      "delta_p95_ms": -1041,
+      "current_p50_ms": 224,
+      "current_p95_ms": 412,
+      "delta_p50_ms": -153,
+      "delta_p95_ms": -803,
       "not_worse_p50": true,
       "not_worse_p95": true
     },
     "metric_b": {
       "baseline_p50_ms": 24815,
       "baseline_p95_ms": 49257,
-      "current_p50_ms": 29683,
-      "current_p95_ms": 47497,
-      "delta_p50_ms": 4868,
-      "delta_p95_ms": -1760
+      "current_p50_ms": 1030,
+      "current_p95_ms": 1326,
+      "delta_p50_ms": -23785,
+      "delta_p95_ms": -47931
     },
     "note": "Delta only; 3.0-C gate uses P95 not-worse vs frozen 3.0-A probe."
   },

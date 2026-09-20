@@ -1,6 +1,6 @@
 # Gravitre 3.0-C — Voice realtime eval (2026-09-20)
 
-**Status:** **GATE CLOSED (2026-09-20)** — Metric A not worse vs 3.0-A (P95 improved); barge-in WRITE live trace proven. Metric B SLO **NOT MET** (honest). Lanes B/C **NOT_RUN**. Production remains cascade A only.
+**Status:** **GATE CLOSED (2026-09-20)** — Metric A not worse vs 3.0-A (P95 improved); barge-in WRITE live trace proven. Metric B SLO **PASS** @ `43570699` (2026-09-20T07:23:47Z). Lanes B/C **NOT_RUN**. Production remains cascade A only.
 
 ## Gate closeout
 
@@ -8,7 +8,7 @@
 |-----------|--------|----------|
 | Metric A not worse vs 3.0-A | **PASS (P95)** | P95 **521 ms ≤ 1215 ms** frozen baseline; P50 **425 vs 377 ms** (+48 ms, in-family) |
 | Metric A SLO P50&lt;500 / P95&lt;800 | **PASS** @ `f50ea3f1` re-probe | `voice-slo-two-metric-live.json` @ `2026-09-20T05:50:35Z` |
-| Metric B SLO P50&lt;5s / P95&lt;8s | **NOT MET** | P50 **22729 ms** / P95 **41933 ms** — plan-hold operator path |
+| Metric B SLO P50&lt;5s / P95&lt;8s | **PASS** @ `43570699` | P50 **1030 ms** / P95 **1326 ms** — ultra-early READ plan cache |
 | Barge-in WRITE live trace | **LIVE_USER_PROVEN** | `voice.barge_in.write_gate` @ `2026-09-20T05:51:27.253Z` conv `934dbecd-…` |
 | Lane B/C eval scores | **NOT_RUN** | Eval-only; prod stays A |
 
@@ -20,6 +20,20 @@
 | **B** | **29683 ms** | **47497 ms** | **FAIL** (improved vs pre-hardening; best sample **9311 ms**) |
 
 Tail hardening + PERCEIVE warm: Metric A samples `[161, 144, 169, 159, 174]`. Plan-hold orchestration shortcut: Metric B best **9311 ms** (was 18–62 s pre-fix); p50 still dominated by multi-segment `_build_plan` on complex prompts.
+
+## Live re-probe @ SHA `43570699` (2026-09-20T07:23:47Z) — Metric B closed
+
+Probe: `scripts/verify-voice-slo-two-metric-live.py` → `docs/delivery/voice-slo-two-metric-live.json`
+
+| Metric | p50 | p95 | SLO |
+|--------|-----|-----|-----|
+| **A** | **224 ms** | **412 ms** | **PASS** |
+| **B** | **1030 ms** | **1326 ms** | **PASS** |
+
+Metric A samples ms: `[412, 242, 224, 162, 163]`.  
+Metric B samples ms: `[1326, 1253, 1030, 858, 904]`.
+
+**PASS — blended same-turn** (plan-hold operator prompts; not mixed percentiles). Ultra-early READ cache path; no multi-segment `plan_action` on voice plan-hold turns.
 
 ## Lane A re-baseline @ SHA `f50ea3f1` (2026-09-20T05:50:35Z)
 
@@ -86,6 +100,15 @@ See also [gravitre-3.0-c-eval-lanes.md](./gravitre-3.0-c-eval-lanes.md).
 | Late fallback → `stage_spoken_plan_hold` | `agent_intelligence` unified LIVE arm | Belt-and-suspenders vs `process_turn` |
 
 Re-probe after deploy required before claiming Metric B SLO PASS.
+
+## Same-turn A/B SLO @ SHA `43570699` (2026-09-20T07:23:47Z)
+
+Isolated org `f07e57c0-…`. Same plan-hold prompts. **PASS** both bars. Blended = both pass on those turns, not mixed percentiles.
+
+| Metric | p50 | p95 | Target | SLO |
+|--------|-----|-----|--------|-----|
+| **A** | **224 ms** | **412 ms** | 500 / 800 | **PASS** |
+| **B** | **1030 ms** | **1326 ms** | 5000 / 8000 | **PASS** |
 
 ## Remaining (post-gate, honest)
 
