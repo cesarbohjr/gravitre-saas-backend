@@ -12,6 +12,15 @@
 | Barge-in WRITE live trace | **LIVE_USER_PROVEN** | `voice.barge_in.write_gate` @ `2026-09-20T05:51:27.253Z` conv `934dbecd-…` |
 | Lane B/C eval scores | **NOT_RUN** | Eval-only; prod stays A |
 
+## Post-deploy re-probe @ SHA `12aa048d` (2026-09-20T06:54:41Z)
+
+| Metric | p50 | p95 | SLO |
+|--------|-----|-----|-----|
+| **A** | **161 ms** | **174 ms** | **PASS** |
+| **B** | **29683 ms** | **47497 ms** | **FAIL** (improved vs pre-hardening; best sample **9311 ms**) |
+
+Tail hardening + PERCEIVE warm: Metric A samples `[161, 144, 169, 159, 174]`. Plan-hold orchestration shortcut: Metric B best **9311 ms** (was 18–62 s pre-fix); p50 still dominated by multi-segment `_build_plan` on complex prompts.
+
 ## Lane A re-baseline @ SHA `f50ea3f1` (2026-09-20T05:50:35Z)
 
 Probe: `scripts/verify-voice-slo-two-metric-live.py` → `docs/delivery/voice-slo-two-metric-live.json`  
