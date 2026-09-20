@@ -15,7 +15,8 @@
 | **BLOCKED** | Missing auth, data, or feature flag |
 | **NOT PROVEN** | Not yet executed |
 
-Results log: `docs/design/GRAVITRE_3.0_JOURNEY_RESULTS.md` (create on first run)
+Results log: `docs/design/GRAVITRE_3.0_JOURNEY_RESULTS.md`  
+Playwright spec: `e2e/ux30-journey-audit.spec.ts` (priority J1, J6, J7, J11)
 
 ---
 
@@ -23,7 +24,7 @@ Results log: `docs/design/GRAVITRE_3.0_JOURNEY_RESULTS.md` (create on first run)
 
 | Blocker | Status |
 |---------|--------|
-| Authorized staging session in agent environment | **BLOCKED** — requires human or CI session |
+| Authorized staging session in agent environment | **BLOCKED** — spec exists; run with staging `PLAYWRIGHT_BASE_URL` + Supabase secrets |
 | Staging representative permissions + flags | Confirm with Cesar |
 | Prod smoke after staging | **NOT PROVEN** |
 

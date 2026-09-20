@@ -84,7 +84,25 @@ Shapes match production contracts (`IntelligencePageContextResponse` graph, `Bus
 - Production route changes
 - Global top bar redesign (shown coupled in nav prototype only)
 - Connectors, Sources, Marketplace
-- Authenticated journey results (separate doc when staging session available)
+- Authenticated journey results → `GRAVITRE_3.0_JOURNEY_RESULTS.md`
+
+---
+
+## Automated smoke (harness-only)
+
+**Spec:** `e2e/visual/ux30-plus-harness.spec.ts`  
+**Gate status:** `GRAVITRE_3.0_HARNESS_GATE_STATUS.md`
+
+Re-run against production harness (no auth):
+
+```bash
+PLAYWRIGHT_BASE_URL=https://gravitre.app \
+PLAYWRIGHT_SKIP_BACKEND=1 \
+PLAYWRIGHT_REUSE_SERVER=1 \
+npx playwright test e2e/visual/ux30-plus-harness.spec.ts
+```
+
+Captures 27 PNGs under `e2e/artifacts/ux30-plus-harness/`. Each scene asserts `[data-review-surface]` for `foundation`, `intelligence`, `activity`, or `navigation`.
 
 ---
 
