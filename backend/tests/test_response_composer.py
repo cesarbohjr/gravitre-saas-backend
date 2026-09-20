@@ -208,7 +208,21 @@ async def test_progress_kind_falls_back_to_honest_draft_when_llm_fails():
 
 
 @pytest.mark.asyncio
-async def test_empty_success_without_verified_write_is_not_done():
+async def test_shortcut_english_draft_skips_llm_rewrite():
+    async def boom(**kwargs):
+        raise AssertionError("shortcut English draft must not call the compose model")
+
+    draft = "Hey — I'm here. What's on your mind?"
+    text = await compose_user_reply(
+        {"success": True, "data": {"text": draft}},
+        kind="shortcut",
+        draft=draft,
+        user_message="hello",
+        org_id="org",
+        compose_fn=boom,
+    )
+    assert "here" in text.lower()
+    assert "traceback" not in text.lower()
     async def empty(**kwargs):
         return ""
 

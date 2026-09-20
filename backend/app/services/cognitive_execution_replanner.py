@@ -20,7 +20,7 @@ def build_cross_source_analytics_plan(
     capability_id: str | None,
     connected_integrations: list[str] | None,
 ) -> ExecutionPlan | None:
-    """GA4 + Search Console when the traffic recipe resolves both reads."""
+    """GA4 + Search Console, or Search Console alone when Analytics is missing."""
     text = (message or "").strip()
     if not text:
         return None
@@ -34,7 +34,11 @@ def build_cross_source_analytics_plan(
         return None
 
     connected = [str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()]
-    if "google_analytics" not in connected or "google_search_console" not in connected:
+    has_ga = "google_analytics" in connected
+    has_gsc = "google_search_console" in connected
+    # GA-only stays on the HMAC traffic handler (richer PoP copy). This planner
+    # runs when Search Console can contribute — alone or with GA.
+    if not has_gsc:
         return None
 
     resolved = resolve_recipe(
@@ -47,38 +51,49 @@ def build_cross_source_analytics_plan(
     by_id = {step.step_id: step for step in resolved.steps}
     ga4 = by_id.get("read_ga4")
     gsc = by_id.get("read_gsc")
-    if not ga4 or not ga4.resolved_action or not gsc or not gsc.resolved_action:
+    steps: list[ExecutionStep] = []
+    if has_ga and ga4 and ga4.resolved_action:
+        steps.append(
+            ExecutionStep(
+                step_id="read_ga4_traffic",
+                title=ga4.name,
+                kind="read",
+                connector_id=ga4.resolved_vendor,
+                capability_id=ga4.capability_id,
+                action_key=ga4.resolved_action,
+            )
+        )
+    if has_gsc and gsc and gsc.resolved_action:
+        steps.append(
+            ExecutionStep(
+                step_id="read_gsc_performance",
+                title=gsc.name,
+                kind="read",
+                connector_id=gsc.resolved_vendor,
+                capability_id=gsc.capability_id,
+                action_key=gsc.resolved_action,
+                meta={"dimensions": ["page"], "safe_aggregate": True},
+            )
+        )
+    if not steps:
         return None
-
-    steps: list[ExecutionStep] = [
-        ExecutionStep(
-            step_id="read_ga4_traffic",
-            title=ga4.name,
-            kind="read",
-            connector_id=ga4.resolved_vendor,
-            capability_id=ga4.capability_id,
-            action_key=ga4.resolved_action,
-        ),
-        ExecutionStep(
-            step_id="read_gsc_performance",
-            title=gsc.name,
-            kind="read",
-            connector_id=gsc.resolved_vendor,
-            capability_id=gsc.capability_id,
-            action_key=gsc.resolved_action,
-            meta={"dimensions": ["page"], "safe_aggregate": True},
-        ),
+    steps.append(
         ExecutionStep(
             step_id="compose_cross_source",
             title="Compose website performance summary",
             kind="compose",
             capability_id=cap or "analytics.traffic_overview",
             status="pending",
-        ),
-    ]
+        )
+    )
+    summary = (
+        "Website traffic overview (Analytics + Search)"
+        if has_ga
+        else "Website search performance (Analytics not connected)"
+    )
     return ExecutionPlan(
         plan_id=str(uuid4()),
-        summary="Website traffic overview (GA4 + Search Console)",
+        summary=summary,
         steps=steps,
         source="cross_source_analytics_replanner",
         capability_id=cap or "analytics.traffic_overview",

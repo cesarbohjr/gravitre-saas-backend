@@ -427,6 +427,10 @@ async def compose_user_reply(
     # re-running the Composer LLM adds 3–15 s with no user value.
     if resolved_kind == "plan_hold" and draft and not looks_like_raw_backend(draft):
         must_compose = False
+    # Phrase-bank greetings are already user-facing English. Composer still owns
+    # leak filtering via looks_like_raw_backend / finalize; skip a second LLM rewrite.
+    if resolved_kind == "shortcut" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
     used_model = False
     fallback = False
     text = (draft or "").strip()

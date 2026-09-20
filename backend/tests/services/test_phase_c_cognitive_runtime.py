@@ -71,6 +71,18 @@ def test_cross_source_plan_skips_when_gsc_absent() -> None:
     assert plan is None
 
 
+def test_remaining_source_plan_when_only_gsc_connected() -> None:
+    plan = build_cross_source_analytics_plan(
+        "How is my website doing?",
+        capability_id="analytics.traffic_overview",
+        connected_integrations=["google_search_console"],
+    )
+    assert plan is not None
+    reads = {s.connector_id for s in plan.steps if s.kind == "read"}
+    assert reads == {"google_search_console"}
+    assert "google_analytics" not in reads
+
+
 def test_replan_budget_and_should_replan() -> None:
     plan = ExecutionPlan(
         plan_id="p1",
@@ -180,4 +192,4 @@ async def test_cross_source_analytics_turn_mocked() -> None:
         )
     assert turn is not None
     assert turn.get("stop_pipeline") is True
-    assert "cross-source" in str(turn.get("message") or "").lower()
+    assert "connected sources" in str(turn.get("message") or "").lower()

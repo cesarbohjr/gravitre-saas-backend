@@ -218,6 +218,40 @@ async def try_analytics_short_circuit_turn(
     )
 
 
+async def try_compiled_operational_read_turn(
+    *,
+    message: str,
+    resolution: CognitiveResolutionResult | None,
+    org_id: str,
+    client: Any,
+    settings: Settings | None,
+    connected_integrations: list[str] | None,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Analytics first, then other F1 department READs, before ReAct."""
+    analytics = await try_analytics_short_circuit_turn(
+        message=message,
+        resolution=resolution,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+    )
+    if analytics:
+        return analytics
+    from app.services.operational_read_execution import try_operational_read_short_circuit_turn
+
+    return await try_operational_read_short_circuit_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+    )
+
+
 def resolution_already_applied(task_state: dict[str, Any] | None, message: str) -> bool:
     """True when canonical ingress already ran resolution for this message."""
     state = task_state if isinstance(task_state, dict) else {}

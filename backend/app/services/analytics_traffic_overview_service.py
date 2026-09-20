@@ -504,13 +504,23 @@ def _compose_cross_source_message(observations: list[Any]) -> str:
         (o for o in observations if isinstance(o, ExecutionObservation) and o.connector_id == "google_search_console"),
         None,
     )
-    lines = ["Here's a cross-source view of how your website is doing:", ""]
+    lines = ["Here's how your website is doing from connected sources:", ""]
     if ga4 and ga4.success:
         summary = ga4.summary.replace("GA4: ", "").replace("Analytics: ", "")
         lines.append(f"- **Analytics:** {summary}")
+    elif gsc and gsc.success:
+        lines.append(
+            "- **Analytics:** isn't connected yet, so this is search performance only. "
+            "Connect it at /connectors to include visits and sessions."
+        )
     if gsc and gsc.success:
         summary = gsc.summary.replace("Search Console: ", "").replace("Search: ", "")
         lines.append(f"- **Search:** {summary}")
+    elif ga4 and ga4.success:
+        lines.append(
+            "- **Search:** isn't connected yet. Connect Search Console at /connectors "
+            "to include queries and landing pages."
+        )
     lines.append("")
     lines.append("Want a deeper breakdown by channel, landing page, or conversion event?")
     return "\n".join(lines)
@@ -564,21 +574,33 @@ async def try_analytics_traffic_overview_turn(
         }
 
     reference = resolve_reference(message, task_state)
-    if reference.matched and reference.kind == "referent" and reference.referent:
-        # Follow-up like "compare that to last month" — referent resolved; caller may extend.
+    time_refine = bool(
+        re.search(
+            r"(?is)\b(last\s+(?:week|month)|this\s+week|yesterday|instead|"
+            r"what about last)\b",
+            message or "",
+        )
+    )
+    if (
+        reference.matched
+        and reference.kind == "referent"
+        and reference.referent
+        and not time_refine
+    ):
         merged = store_active_analysis(task_state or {}, reference.referent)
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": (
-                "I'll use your previous analysis as the baseline. "
-                "Comparison reporting across periods is rolling out — "
-                "ask again for a fresh traffic overview if you need updated numbers."
+                "I'll keep using that same website. "
+                "Say a timeframe like last week or last month and I'll pull a fresh read."
             ),
             "task_state": merged,
             "workflow_status": "partial",
             "reference_resolution": reference.reason,
         }
+    if reference.matched and reference.kind == "referent" and reference.referent:
+        task_state = store_active_analysis(task_state or {}, reference.referent)
 
     e1_resource = ResourceResolution.from_mapping(
         (task_state or {}).get("e1_resource") if isinstance(task_state, dict) else None

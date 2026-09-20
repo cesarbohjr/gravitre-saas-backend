@@ -4889,12 +4889,12 @@ class AgentIntelligence:
         generation_started = time.monotonic()
 
         _mark("react_entry")
-        from app.services.canonical_cognitive_resolution import try_analytics_short_circuit_turn
+        from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn
 
         _analytics_task_state = task_state if isinstance(task_state, dict) else _canonical_task_state
         if isinstance(_analytics_task_state, dict) and isinstance(_canonical_task_state, dict):
             _analytics_task_state = {**_canonical_task_state, **_analytics_task_state}
-        _analytics_turn = await try_analytics_short_circuit_turn(
+        _analytics_turn = await try_compiled_operational_read_turn(
             message=task_text,
             resolution=_cognitive_resolution,
             org_id=org_id,
