@@ -3351,18 +3351,15 @@ class AgentIntelligence:
                         },
                     )
                     if spoken_mode and str(response_text or "").strip():
+                        # Orchestration already composed the plan — do not re-run Composer LLM.
                         packed = await _composed_reply(
                             response_text,
-                            kind="clarify" if dialogue_mode in {"clarify", "confirm"} else "success",
+                            kind="canned",
                             existing_text_id=spoken_progress_text_id,
                         )
                         response_text = packed.text
                         for ev in packed.events:
                             yield ev
-                    await _complete_cognitive_loop(
-                        pending_task=pending_live,
-                        tool_results=[],
-                    )
                     yield AssistantStreamComplete(
                         full_content=response_text,
                         tool_results=[],
