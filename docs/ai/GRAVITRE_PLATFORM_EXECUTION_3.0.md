@@ -1,6 +1,6 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A **MEASUREMENT GATE CLOSED** (2026-09-19, SHA `401554cc`); **3.0-B SHIPPED (source)** — JIT audits + eligible-tool namespace + ActionSpec cache; live gate compare **NOT RUN** until deploy + traffic. Production voice remains cascade lane A (JSON PCM16 WebSocket). Native realtime (lane B) and WebRTC media are eval-only.  
+**Status:** 3.0-A **MEASUREMENT GATE CLOSED** (2026-09-19, SHA `401554cc`); **3.0-B SHIPPED (source)**; **3.0-C IN PROGRESS**; **3.0-D IN PROGRESS (source)**; **3.0-E IN PROGRESS (source)** — JIT ActionSpec search + versioned pack/recipe procedures (not a second runtime). Production voice remains cascade lane A. Native realtime (lane B) and WebRTC media are eval-only.  
 **Date:** 2026-09-18  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 
@@ -53,6 +53,28 @@ Append-only. Does not replace 3.0-A closeout or retire LIVE_USER_PROVEN gaps.
 - **Barge-in WRITE safety (3.0-C):** TRUE_INTERRUPT / `/api/voice/session/cancel` / HTTP Talk turn cancel arms conversation stop (`voice.barge_in.write_gate`). ReAct refreshes the interrupt at WRITE execute time so an uncommitted write is `write_commit_interrupted` (`provider_invoked=false`). READs are not speculative-cancelled by this gate. Gaps closed: canvas write path, `invoke_tool` last-line check, `execute_plan` ToolContext now carries `conversation_id`, speculative generation cancelled on barge-in.
 - **ASR catalog lexicon:** Deepgram keyterms add a bounded set of connected-vendor **READ** ActionSpec names (no employee personal names).
 - **Eval lanes A/B/C:** `lane_comparison()` + [gravitre-3.0-c-eval-lanes.md](../delivery/gravitre-3.0-c-eval-lanes.md). Production serving is always cascade A (`production_voice_lane` ignores `VOICE_REALTIME_EVAL_LANE=B`). Scores **NOT_RUN**. TTS idle-expiry policy: refresh warm socket after 45s idle, never while speaking.
+
+## 3.0-D progress (2026-09-19)
+
+Append-only. EXTEND E5 — not a second worker product / Cowork runtime.
+
+- Session phase projection: `CREATED`…`WAITING_*`…`COMPLETED|PARTIAL|FAILED|CANCELLED` over `ExecutionPlan.terminal_status` + `pending_task` (`durable_work_session.py`).
+- WRITE checkpoint before approval: intent, approval id, inputs, expected result; **secrets stripped**. Stamped on `react_write_gate` pending-approval and persisted with `pending_task`.
+- Resume golden: crash/interrupt loads checkpoint → **same `plan_id`** (`continuation_of_plan_id` preserved). Confirm + empty plan body still resumes from checkpoint.
+- Deliverable contract + `verify_before_complete` (evidence, write verification, blockers) before COMPLETE.
+- Stop conditions: success, failure, iteration/time/tool budgets, escalation.
+- Gate: resume golden **UNIT_TEST**; LIVE_USER_PROVEN long-task **NOT RUN**.
+- Delivery: [gravitre-3.0-d-durable-sessions.md](../delivery/gravitre-3.0-d-durable-sessions.md).
+
+## 3.0-E progress (2026-09-19)
+
+Append-only. EXTEND catalog search + Packs/recipes — **not** a skill-as-agent runtime.
+
+- Eligible ActionSpec search: capability + connected vendors + availability; hard cap 32 (`jit_tool_discovery.py`). F1 READ keys stay in the set when the vendor is connected.
+- Examples: catalog enrichment attached onto narrowed tool descriptions; `search_catalog_tools` query ranking uses token ranker.
+- Versioned procedures: recipes + tool-knowledge packs (`owner`, `version`, `tests`); loaded JIT into context. No `execute()` / no WRITE bypass.
+- Gate: eligible-set **UNIT_TEST**. LIVE_USER_PROVEN token/stage compare still **NOT RUN** (3.0-B gate).
+- Delivery: [gravitre-3.0-e-jit-tools-skills.md](../delivery/gravitre-3.0-e-jit-tools-skills.md).
 
 ---
 

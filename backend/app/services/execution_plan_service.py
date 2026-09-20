@@ -313,7 +313,18 @@ def reconcile_execution_plan(
     text = (message or "").strip()
 
     existing = ExecutionPlan.from_dict(state.get("execution_plan"))
+    from app.services.durable_work_session import load_checkpoint, resume_from_checkpoint
     from app.services.task_continuity import decide_task_continuity, is_restart_utterance
+
+    checkpoint = load_checkpoint(state)
+    if existing is None and checkpoint is not None:
+        resumed = resume_from_checkpoint(state, continue_work=_is_confirm_utterance(text))
+        if resumed is not None:
+            if turn_id:
+                resumed.turn_id = turn_id
+            if conversation_id:
+                resumed.conversation_id = conversation_id
+            return resumed
 
     if existing is not None and existing.steps:
         restart = is_restart_utterance(text, state)
@@ -497,6 +508,7 @@ def detect_stalled_plan(
     has_active_workflow: bool = False,
     has_active_agent_child: bool = False,
     has_react_execution: bool = False,
+    task_state: dict[str, Any] | None = None,
 ) -> str | None:
     """Return STALLED / INVALID_RUNTIME_STATE when RUNNING with no live work."""
     if plan.terminal_status not in {"running", "pending"}:
@@ -514,6 +526,11 @@ def detect_stalled_plan(
         return None
     if plan.terminal_status == "waiting_for_approval":
         return None
+    if isinstance(task_state, dict):
+        session = task_state.get("durable_session")
+        phase = str(session.get("phase") or "") if isinstance(session, dict) else ""
+        if phase in {"WAITING_USER", "WAITING_APPROVAL", "WAITING_EXTERNAL"}:
+            return None
     if plan.terminal_status == "running":
         return "STALLED"
     return None

@@ -185,12 +185,16 @@ def execute_search_catalog_tools(
         names = [str(x).strip() for x in raw if str(x).strip()]
     query = str(payload.get("query") or "").strip().lower()
     if not names and query:
-        for name, tool in full_by_name.items():
-            blob = f"{name} {json.dumps(tool).lower()}"
-            if query in blob:
-                names.append(name)
-            if len(names) >= max_load:
-                break
+        from app.services.jit_tool_discovery import rank_tool_names
+
+        names = rank_tool_names(query, list(full_by_name.keys()), max_load=max_load)
+        if not names:
+            for name, tool in full_by_name.items():
+                blob = f"{name} {json.dumps(tool).lower()}"
+                if query in blob:
+                    names.append(name)
+                if len(names) >= max_load:
+                    break
     if not names:
         # Default: load top max_load by name order (deterministic).
         names = sorted(full_by_name.keys())[:max_load]

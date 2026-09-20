@@ -704,6 +704,9 @@ async def run_unified_turn_shadow(
         # before that branch can see it, leaving the branch dead. Third instance of
         # the same mistake, found by scripts/scan_narrowed_tools_strips.py.
         visible = _stable_tool_list(visible or [])
+        from app.services.jit_tool_discovery import attach_examples_to_tools
+
+        visible = attach_examples_to_tools(list(visible or []))
         t_after_narrow = time.perf_counter()
 
     # G.5.2 progressive disclosure — stubs + search_catalog_tools (A1/A2).

@@ -245,6 +245,22 @@ class IntelligenceOrchestrator:
         knowledge_section = self._knowledge.build_prompt_section(knowledge_assignments)
         knowledge_gap_message = self._knowledge.assigned_knowledge_gap_message(knowledge_assignments, query)
 
+        try:
+            from app.services.jit_skill_procedure import format_jit_skill_section
+
+            skill_section = format_jit_skill_section(
+                query=query,
+                capability_id=str(classification.get("capability_id") or "") or None,
+                connected=list(connected or []),
+                department=str(classification.get("department") or "") or None,
+            )
+            if skill_section:
+                knowledge_section = "\n".join(
+                    part for part in (knowledge_section, skill_section) if str(part).strip()
+                ).strip()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("orchestrator jit skills skipped error=%s", exc)
+
         fabric_pack_ids = [
             str(row.get("source_id") or "")
             for row in knowledge_assignments

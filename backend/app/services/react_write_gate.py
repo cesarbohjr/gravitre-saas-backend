@@ -451,7 +451,7 @@ def block_react_write_execution(
             resolution=cap_resolution,
             action_verb="create that after you confirm",
         )
-    return {
+    blocked = {
         "success": False,
         "tool": tool_name,
         "action": invoke_action,
@@ -466,6 +466,17 @@ def block_react_write_execution(
         "user_message": capability_user_message,
         "args": raw_args,
     }
+    if isinstance(task_state, dict):
+        from app.services.durable_work_session import attach_write_checkpoint
+
+        checkpoint = attach_write_checkpoint(
+            task_state,
+            tool_name=tool_name,
+            action=invoke_action,
+            args=raw_args,
+        )
+        blocked["durable_checkpoint"] = checkpoint.as_dict()
+    return blocked
 
 
 def pending_write_from_react(react_result: Any | None) -> dict[str, Any] | None:
@@ -944,16 +955,36 @@ async def materialize_react_write_approval_turn(
         "status": "awaiting_confirm",
         "source": "react_write_gate",
     }
+    pending_task = {
+        "type": "connector_action",
+        "status": "awaiting_confirm",
+        "params": pending_params,
+    }
+    durable_patch: dict[str, Any] = {"pending_task": pending_task}
+    live_state = dict(task_state or {})
+    live_state["pending_task"] = pending_task
+    from app.services.durable_work_session import (
+        CHECKPOINT_KEY,
+        SESSION_KEY,
+        attach_write_checkpoint,
+    )
+
+    attach_write_checkpoint(
+        live_state,
+        tool_name=tool,
+        action=pending_invoke,
+        args=pending_args,
+    )
+    if live_state.get(CHECKPOINT_KEY):
+        durable_patch[CHECKPOINT_KEY] = live_state[CHECKPOINT_KEY]
+    if live_state.get(SESSION_KEY):
+        durable_patch[SESSION_KEY] = live_state[SESSION_KEY]
+    if live_state.get("execution_plan"):
+        durable_patch["execution_plan"] = live_state["execution_plan"]
     await state.update_task_state(
         conversation_id,
         org_id,
-        {
-            "pending_task": {
-                "type": "connector_action",
-                "status": "awaiting_confirm",
-                "params": pending_params,
-            }
-        },
+        durable_patch,
         client=client,
     )
     refreshed = await state.get_task_state(conversation_id, org_id, client=client)
