@@ -562,7 +562,6 @@ async def post_session_turn(
     body: SessionTurnRequest,
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
-    org: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
     """Streaming voice turn: unified-turn reasoning + progressive TTS (SSE JSON lines)."""
@@ -571,7 +570,7 @@ async def post_session_turn(
         stream_voice_turn_events,
     )
 
-    org_id = str(org or "")
+    org_id = str(request.headers.get("x-org-id") or "").strip()
     user_id = str(user.get("id") or user.get("user_id") or "")
     qa_force_header = request.headers.get(QA_FORCE_VOICE_ERROR_HEADER)
 

@@ -265,13 +265,19 @@ def repair_blocked_read(
 
     fingerprint = f"{repair_class}:{catalog}:{error}"
 
-    if error == "WRONG_SIBLING_ACTION" and catalog == "hubspot.deals.search" and _listing_without_criteria(
-        user_message
-    ):
+    listing_search = catalog.endswith(".search") and _listing_without_criteria(user_message)
+    listing_errors = {
+        "WRONG_SIBLING_ACTION",
+        "SCHEMA_INVALID",
+        "PARAMETER_UNRESOLVED",
+        "PROVIDER_CONSTRAINT_INVALID",
+    }
+    if listing_search and error in listing_errors:
+        list_action = catalog[: -len("search")] + "list"
         if not purse.consume(repair_class, fingerprint=fingerprint, reason="sibling_list_fallback"):
             return None
-        repaired = _hmac_ready_repair(
-            action="hubspot.deals.list",
+        return _hmac_ready_repair(
+            action=list_action,
             ctx=ctx,
             args={"limit": int((args or {}).get("limit") or 10)},
             user_message=user_message,
@@ -280,7 +286,6 @@ def repair_blocked_read(
             repair_class=repair_class,
             budget=purse,
         )
-        return repaired
 
     if (
         catalog == "google_analytics.reports.run"

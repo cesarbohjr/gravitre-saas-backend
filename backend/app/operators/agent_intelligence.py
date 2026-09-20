@@ -1637,38 +1637,42 @@ class AgentIntelligence:
             client = get_supabase_client(active_settings)
         _mark("client_ready")
 
-        resolved_workspace_focus: dict[str, Any] | None = None
-        try:
-            from app.schemas.workspace_focus import WorkspaceFocus
-            from app.services.workspace_focus_resolver import resolve_workspace_focus
-
-            parsed_focus = None
-            if workspace_focus:
-                parsed_focus = WorkspaceFocus.model_validate(workspace_focus)
-            resolved_workspace_focus = resolve_workspace_focus(
-                org_id=org_id,
-                client=client,
-                focus=parsed_focus,
-                environment_name=environment_name,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("workspace_focus_parse_or_resolve_failed org_id=%s error=%s", org_id, exc)
-            resolved_workspace_focus = {
-                "resolution": "unresolved",
-                "surface": None,
-                "route": None,
-                "selection": None,
-                "canonical": None,
-                "duration_ms": 0.0,
-            }
-        _mark("workspace_focus_resolved")
-
         task_text = query.strip()
+        from app.services.cognitive_loop_controller import is_plan_without_execute_turn
+
+        _plan_hold_spoken_early = bool(spoken_mode and is_plan_without_execute_turn(task_text))
+
+        resolved_workspace_focus: dict[str, Any] | None = None
+        if not _plan_hold_spoken_early:
+            try:
+                from app.schemas.workspace_focus import WorkspaceFocus
+                from app.services.workspace_focus_resolver import resolve_workspace_focus
+
+                parsed_focus = None
+                if workspace_focus:
+                    parsed_focus = WorkspaceFocus.model_validate(workspace_focus)
+                resolved_workspace_focus = resolve_workspace_focus(
+                    org_id=org_id,
+                    client=client,
+                    focus=parsed_focus,
+                    environment_name=environment_name,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("workspace_focus_parse_or_resolve_failed org_id=%s error=%s", org_id, exc)
+                resolved_workspace_focus = {
+                    "resolution": "unresolved",
+                    "surface": None,
+                    "route": None,
+                    "selection": None,
+                    "canonical": None,
+                    "duration_ms": 0.0,
+                }
+        _mark("workspace_focus_resolved")
         from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
         from app.services.conversation_state_service import get_conversation_state_service
 
         gateway_state: dict[str, Any] = {}
-        if conversation_id:
+        if conversation_id and not _plan_hold_spoken_early:
             try:
                 gateway_state = await get_conversation_state_service(
                     active_settings
@@ -2050,6 +2054,64 @@ class AgentIntelligence:
         if spoken_mode and not loop_trace.fast_path:
             for ev in await _loop_stage_speech("PERCEIVE"):
                 yield ev
+
+        if _plan_hold_spoken and conversation_id:
+            from app.services.chat_orchestration_service import get_chat_orchestration_service
+
+            orch_turn = await get_chat_orchestration_service(active_settings).stage_spoken_plan_hold(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message=task_text,
+                client=client,
+            )
+            if orch_turn and orch_turn.get("stop_pipeline"):
+                message_id = str(uuid.uuid4())
+                response_text = str(orch_turn.get("message") or "")
+                dialogue_mode = str(orch_turn.get("dialogue_mode") or "confirm")
+                pending_live = (
+                    orch_turn.get("pending_task")
+                    if isinstance(orch_turn.get("pending_task"), dict)
+                    else None
+                )
+                task_state = orch_turn.get("task_state") or task_state
+                yield sse_intelligence_metadata(
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": True},
+                    answer_explanation="Plan-hold orchestration (spoken same-turn as Metric A)",
+                    dialogue_mode=dialogue_mode,
+                    task_state=task_state,
+                    pending_task=pending_live,
+                    routing={
+                        "planHoldShortCircuit": True,
+                        "spokenMode": True,
+                        "blendedWithMetricA": True,
+                        **loop_trace.to_sse(),
+                    },
+                )
+                if str(response_text or "").strip():
+                    packed = await _composed_reply(
+                        response_text,
+                        kind="canned",
+                        existing_text_id=spoken_progress_text_id,
+                    )
+                    response_text = packed.text
+                    for ev in packed.events:
+                        yield ev
+                yield AssistantStreamComplete(
+                    full_content=response_text,
+                    tool_results=[],
+                    react_result=None,
+                    model="plan_hold_orchestration",
+                    message_id=message_id,
+                    confidence={"score": 0.9, "needs_clarification": True},
+                    answer_explanation="Plan-hold orchestration (spoken same-turn as Metric A)",
+                    dialogue_mode=dialogue_mode,
+                    proactive_suggestions=[],
+                    task_state=task_state,
+                    pending_task=pending_live,
+                )
+                return
 
         from app.services.first_token_honesty import (
             STAGE_COMPOSE,

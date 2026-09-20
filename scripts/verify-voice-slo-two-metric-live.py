@@ -191,14 +191,16 @@ def main() -> int:
         and b_p95 < 8000
     )
     if a_pass and b_pass:
-        verdict = "PASS — Metric A and Metric B both met on this spoken sample"
+        verdict = "PASS — Metric A and Metric B both met on the same plan-hold turns (blended same-turn, not mixed percentiles)"
     elif a_pass:
         verdict = (
             "PARTIAL — Metric A met; Metric B missed P50<5s / P95<8s "
-            "(not blended; do not treat as a single voice-latency number)"
+            "on the same plan-hold turns"
         )
     else:
         verdict = "FAIL — Metric A did not meet P50<500ms / P95<800ms"
+    from app.services.voice_slo import blended_same_turn_slo
+
     out = {
         "probe": "voice_slo_two_metric",
         "captured_at": datetime.now(timezone.utc).isoformat(),
@@ -224,7 +226,9 @@ def main() -> int:
             "target_p95_ms": 8000,
             "pass": b_pass,
         },
-        "blended_voice_latency": None,
+        "blended_voice_latency": blended_same_turn_slo(
+            metric_a_pass=a_pass, metric_b_pass=b_pass
+        ),
         "turns": turns,
         "verdict": verdict,
         "note": (
@@ -235,7 +239,7 @@ def main() -> int:
     }
     OUT.write_text(json.dumps(out, indent=2, default=str) + "\n", encoding="utf-8")
     print(json.dumps({k: out[k] for k in out if k != "turns"}, indent=2))
-    return 0 if a_pass else 1
+    return 0 if a_pass and b_pass else 1
 
 
 if __name__ == "__main__":

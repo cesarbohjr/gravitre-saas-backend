@@ -166,6 +166,20 @@ def is_metric_a_source(first_text: str | None, *, loop_stage: str | None = None)
     return "composed_answer"
 
 
+def blended_same_turn_slo(*, metric_a_pass: bool, metric_b_pass: bool) -> dict[str, Any]:
+    """Same-turn A+B (plan-hold). PASS only if both bars hold. Not a mixed percentile."""
+    return {
+        "definition": "same_plan_hold_turns",
+        "metric_a_pass": bool(metric_a_pass),
+        "metric_b_pass": bool(metric_b_pass),
+        "pass": bool(metric_a_pass and metric_b_pass),
+        "note": (
+            "Metric A and Metric B are measured on the same plan-hold turns. "
+            "This is not a mixed first-audio/completion percentile."
+        ),
+    }
+
+
 def operator_task_for_metric_b(
     *,
     operator_task: bool = False,

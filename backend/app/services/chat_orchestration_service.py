@@ -1220,6 +1220,67 @@ class ChatOrchestrationService:
             "pending_task": self._pending_task_payload(refreshed),
         }
 
+    async def stage_spoken_plan_hold(
+        self,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        message: str,
+        client: Any,
+        connected_integrations: list[str] | None = None,
+    ) -> dict[str, Any] | None:
+        """Plan-hold for spoken Metric A/B same-turn: stage confirm, do not execute."""
+        from app.services.cognitive_loop_controller import is_plan_without_execute_turn
+
+        if not is_plan_without_execute_turn(message):
+            return None
+        steps = self._spoken_plan_hold_steps(message, connected_integrations or [])
+        return await self._present_plan_confirm(
+            conversation_id,
+            org_id,
+            user_id,
+            message,
+            steps,
+            client,
+        )
+
+    @staticmethod
+    def _spoken_plan_hold_steps(
+        message: str,
+        connected_integrations: list[str],
+    ) -> list[OrchestrationStep]:
+        mentioned = ChatOrchestrationService._mentioned_integrations(
+            message, connected_integrations
+        )
+        vendors = list(mentioned or [])
+        if not vendors:
+            vendors = ["workspace"]
+        steps: list[OrchestrationStep] = []
+        for idx, integ in enumerate(vendors[:3], start=1):
+            label = integ.replace("_", " ").title()
+            steps.append(
+                OrchestrationStep(
+                    step_id=f"step_{idx}",
+                    segment=message,
+                    label=f"{label} review (held — not executed)",
+                    kind="read",
+                    supported=True,
+                    requires_approval=True,
+                )
+            )
+        steps.append(
+            OrchestrationStep(
+                step_id=f"step_{len(steps) + 1}",
+                segment=message,
+                label="Wait for your yes before any write",
+                kind="write",
+                supported=True,
+                requires_approval=True,
+            )
+        )
+        return steps
+
     async def _start_execution(
         self,
         *,

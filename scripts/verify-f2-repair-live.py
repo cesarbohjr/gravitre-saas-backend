@@ -30,7 +30,10 @@ from isolated_conversation_org import resolve_isolated_conversation_actor, smoke
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "f2-repair-live.json"
-PROMPT = "List my HubSpot deals. Do not create, update, or delete anything."
+PROMPT = (
+    "Search HubSpot deals with no filters and list all of them. "
+    "Do not create, update, or delete anything."
+)
 
 
 def load_env() -> dict[str, str]:
