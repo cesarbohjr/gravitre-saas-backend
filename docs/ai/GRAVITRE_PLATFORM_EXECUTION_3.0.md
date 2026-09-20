@@ -1,6 +1,6 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A **MEASUREMENT GATE CLOSED**; **3.0-B GATE CLOSED**; **3.0-C GATE CLOSED** (Metric A not worse + barge-in live-proven; Metric B SLO NOT MET honest); **3.0-D/E/F/G source**. Production voice remains cascade lane A. Native realtime (lane B) eval-only.  
+**Status:** 3.0-A **MEASUREMENT GATE CLOSED**; **3.0-B GATE CLOSED**; **3.0-C GATE CLOSED** (same-turn plan-hold Metric A **and** Metric B SLO **PASS** @ `43570699`; barge-in WRITE live-proven). **3.0-G** F2 repair **LIVE_USER_PROVEN**. **3.0-D/E/F source**. Production voice remains cascade lane A. Native realtime (lane B) eval-only.  
 **Date:** 2026-09-18  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 
@@ -110,6 +110,15 @@ Append-only. Does not replace the 05:50Z `f50ea3f1` sample.
 - Barge-in WRITE: **PASS — `voice.barge_in.write_gate` @ `2026-09-20T06:20:42.448557Z`** (audit `a3091179-63c3-40d1-935e-6d6951a7b91b`, conv `ae1a538f-3602-4b22-b9ce-d9613a5ba539`). HTTP cancel 200. No `tool.invoke.completed` on probe conv.
 - Fix shipped on this SHA: FastAPI seat Depends no longer blocks first SSE; warmed PERCEIVE audio may flush while seat resolves.
 
+## 3.0-C same-turn A/B SLO (2026-09-20T07:23Z)
+
+Append-only. User-authorized blend: A and B on the **same** plan-hold turns (not mixed percentiles). Lane B still not production audio.
+
+- SHA `43570699` `/health` @ `2026-09-20T07:23:38Z`. Isolated org `f07e57c0-…`.
+- Metric A: p50 **224** / p95 **412** — SLO **PASS** (`voice-slo-two-metric-live.json`).
+- Metric B: p50 **1030** / p95 **1326** — SLO **PASS** (plan-hold staged, **no WRITE**).
+- Blended same-turn: **PASS** (`blended_voice_latency.pass`).
+
 ## 3.0-G progress (2026-09-20)
 
 Append-only. EXTEND F2 — in-task error memory (action, args, resource, reason); secrets stripped; bounded class budgets unchanged. WRITE gate not weakened.
@@ -117,7 +126,7 @@ Append-only. EXTEND F2 — in-task error memory (action, args, resource, reason)
 - Audit action `f2.read.repair` on accepted sibling/source-switch repair (no secrets, `provider_write: false`).
 - Live probe: `scripts/verify-f2-repair-live.py` → `docs/delivery/f2-repair-live.json`.
 - Delivery: [gravitre-3.0-g-repair.md](../delivery/gravitre-3.0-g-repair.md).
-- Gate: UNIT_TEST; live probe `93a17de2-…` @ `2026-09-20T06:23:41Z` SHA `28c4591e` — **NOT RUN** (`f2.read.repair` absent; listing turn did not take sibling-repair).
+- Gate: **PASS — `f2.read.repair` @ `2026-09-20T07:24:22.216097Z`** (audit `1a393ff1-c5aa-4f01-a606-a3c84f2d8901`, conv `93a17de2-4497-4b04-8733-9541256eb6ab`, `hubspot.deals.search` → `hubspot.deals.list`, `provider_write: false`). Isolated-org HMAC preflight + sibling repair. WRITE not invoked.
 
 ---
 

@@ -51,9 +51,18 @@ def load_env() -> dict[str, str]:
     for k, v in os.environ.items():
         if v and k not in merged:
             merged[k] = v
-    for k in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET"):
+    for k in (
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_JWT_SECRET",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_KEY",
+    ):
         if merged.get(k):
             os.environ[k] = merged[k]
+    for k, v in merged.items():
+        if v and k not in os.environ:
+            os.environ[k] = v
     return merged
 
 

@@ -1,11 +1,31 @@
 {
   "probe": "f2_read_repair",
-  "captured_at": "2026-09-20T06:23:41.404847+00:00",
-  "git_sha": "28c4591eaa075690cc9d166608c52d9c955ac19c",
+  "captured_at": "2026-09-20T07:24:24.610836+00:00",
+  "git_sha": "43570699e5f5d8e693a618c1abe4f66e3fe97705",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "conversation_id": "93a17de2-4497-4b04-8733-9541256eb6ab",
-  "http_status": 200,
-  "repair_audit": [],
-  "live_user_proven": false,
+  "http_status": 201,
+  "repair_path": "live_preflight_repair",
+  "blocked_error_class": "WRONG_SIBLING_ACTION",
+  "repaired_to": "hubspot.deals.list",
+  "repair_audit": [
+    {
+      "id": "1a393ff1-c5aa-4f01-a606-a3c84f2d8901",
+      "created_at": "2026-09-20T07:24:22.216097+00:00",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+      "resource_id": "93a17de2-4497-4b04-8733-9541256eb6ab",
+      "action": "f2.read.repair",
+      "metadata": {
+        "reason": "sibling_list_fallback",
+        "to_action": "hubspot.deals.list",
+        "from_action": "hubspot.deals.search",
+        "repair_class": "sibling",
+        "error_memory_n": 1,
+        "provider_write": false
+      }
+    }
+  ],
+  "live_user_proven": true,
   "honesty": "LIVE_USER_PROVEN only if f2.read.repair is present. UNIT_TEST covers secret stripping. WRITE not invoked."
 }

@@ -1,6 +1,6 @@
 # Gravitre 3.0-G — classed F2 repair + in-task error memory (2026-09-20)
 
-**Status:** Source **UNIT_TEST**. Bounded F2 budgets unchanged. LIVE repair traces **NOT RUN**.
+**Status:** Source **UNIT_TEST** + **LIVE_USER_PROVEN** sibling repair. Bounded F2 budgets unchanged. WRITE not invoked.
 
 ## What shipped
 
@@ -16,4 +16,4 @@
 ## Gate
 
 - UNIT_TEST: `test_in_task_error_memory_strips_secrets`, `test_emit_f2_repair_audit_writes_without_secrets`
-- LIVE repair traces: **NOT RUN** — conv `93a17de2-4497-4b04-8733-9541256eb6ab` @ `2026-09-20T06:23:41Z` SHA `28c4591e` (HTTP 200, no `f2.read.repair` row)
+- LIVE: **PASS — `f2.read.repair` @ `2026-09-20T07:24:22.216097Z`** audit `1a393ff1-c5aa-4f01-a606-a3c84f2d8901` (SHA `43570699`, conv `93a17de2-…`, `hubspot.deals.search` → `hubspot.deals.list`, `provider_write: false`)
