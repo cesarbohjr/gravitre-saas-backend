@@ -598,6 +598,118 @@ async def test_gateway_shortcut_composes_before_task_state_reload(intelligence: 
     assert "text-delta" in sse_types
 
 
+def _packed_reply(text: str, text_id: str, kind: str) -> object:
+    from app.services.response_composer import ComposerPacked
+
+    return ComposerPacked(
+        text=text,
+        text_id=text_id,
+        events=[
+            AssistantStreamEvent(sse_type="text-start", payload={"id": text_id}),
+            AssistantStreamEvent(sse_type="text-delta", payload={"id": text_id, "delta": text}),
+            AssistantStreamEvent(sse_type="text-end", payload={"id": text_id}),
+        ],
+        kind=kind,
+        used_model=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_shared_kernel_typed_and_spoken_plan_hold_both_complete(intelligence: AgentIntelligence):
+    """Same execute_task_streaming: typed greeting and spoken plan-hold both emit Composer text."""
+    from app.services.intent_gateway import GatewayDecision
+
+    client = MagicMock()
+    state_svc = MagicMock()
+    state_svc.get_task_state = AsyncMock(return_value={})
+    orch = MagicMock()
+    orch.stage_spoken_plan_hold = AsyncMock(
+        return_value={
+            "stop_pipeline": True,
+            "message": "I have the plan and I have not executed anything.",
+            "dialogue_mode": "confirm",
+            "pending_task": {"status": "awaiting_plan_confirm", "kind": "plan_hold"},
+            "task_state": {"pending_task": {"status": "awaiting_plan_confirm"}},
+        }
+    )
+
+    typed_events: list[object] = []
+    spoken_events: list[object] = []
+    gateway_decision = GatewayDecision(
+        action="shortcut",
+        reason="phrase",
+        candidate_id="phrase_bank",
+        confidence=0.93,
+        answer="Hello! How can I help you today?",
+    )
+    with patch(
+        "app.services.intent_gateway.evaluate_intent_gateway",
+        AsyncMock(return_value=gateway_decision),
+    ):
+        with patch(
+            "app.services.conversation_state_service.get_conversation_state_service",
+            return_value=state_svc,
+        ):
+            with patch(
+                "app.operators.agent_intelligence.compose_reply_events",
+                AsyncMock(
+                    return_value=_packed_reply(
+                        "Hello! How can I help you today?", "txt-typed", "shortcut"
+                    )
+                ),
+            ):
+                async for event in intelligence.execute_task_streaming(
+                    org_id="org-1",
+                    user_id="user-1",
+                    query="hello",
+                    mode="fast",
+                    conversation_id="conv-typed",
+                    client=client,
+                    spoken_mode=False,
+                ):
+                    typed_events.append(event)
+
+    with patch(
+        "app.services.chat_orchestration_service.get_chat_orchestration_service",
+        return_value=orch,
+    ):
+        with patch(
+            "app.operators.agent_intelligence.compose_reply_events",
+            AsyncMock(
+                return_value=_packed_reply(
+                    "I have the plan and I have not executed anything. "
+                    "I will wait for your yes before any write.",
+                    "txt-spoken",
+                    "plan_hold",
+                )
+            ),
+        ):
+            async for event in intelligence.execute_task_streaming(
+                org_id="org-1",
+                user_id="user-1",
+                query=(
+                    "Check that my Google Ads account is actually connected, and show me "
+                    "the complete plan before you execute anything. Don't execute without "
+                    "my approval."
+                ),
+                mode="fast",
+                conversation_id="conv-spoken",
+                client=client,
+                spoken_mode=True,
+            ):
+                spoken_events.append(event)
+
+    typed_complete = next(e for e in typed_events if isinstance(e, AssistantStreamComplete))
+    spoken_complete = next(e for e in spoken_events if isinstance(e, AssistantStreamComplete))
+    assert typed_complete.model == "intent_gateway:phrase_bank"
+    assert spoken_complete.model == "plan_hold_orchestration"
+    typed_types = [e.sse_type for e in typed_events if isinstance(e, AssistantStreamEvent)]
+    spoken_types = [e.sse_type for e in spoken_events if isinstance(e, AssistantStreamEvent)]
+    assert "text-delta" in typed_types
+    assert "text-delta" in spoken_types
+    assert orch.stage_spoken_plan_hold.await_count == 1
+
+
 @pytest.mark.asyncio
 async def test_spoken_mode_skips_tier0_cache(intelligence: AgentIntelligence):
     client = MagicMock()

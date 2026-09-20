@@ -182,6 +182,16 @@ def test_execute_task_streaming_does_not_shadow_asyncio_or_composer() -> None:
     assert "compose_reply_events" not in names
 
 
+def test_execute_task_streaming_has_no_branch_local_asyncio_import() -> None:
+    src = (APP / "operators" / "agent_intelligence.py").read_text(encoding="utf-8")
+    start = src.index("async def execute_task_streaming")
+    rest = src[start + 1 :]
+    nxt = rest.find("\n    async def ")
+    region = rest[: nxt if nxt > 0 else len(rest)]
+    assert "import asyncio" not in region
+    assert "from app.services.response_composer import compose_reply_events" not in region
+
+
 def test_compile_before_react_in_agent_intelligence() -> None:
     text = (APP / "operators" / "agent_intelligence.py").read_text(encoding="utf-8")
     compile_at = text.find("compile_assistant_turn_context")

@@ -1,7 +1,7 @@
 # Gravitre Platform Execution 3.0 — specification
 
-**Status:** 3.0-A **MEASUREMENT GATE CLOSED**; **3.0-B GATE CLOSED**; **3.0-C GATE CLOSED** (same-turn plan-hold Metric A **and** Metric B SLO **PASS** @ `43570699`; barge-in WRITE live-proven). **3.0-G** F2 repair **LIVE_USER_PROVEN**. **3.0-D/E/F source**. Production voice remains cascade lane A. Native realtime (lane B) eval-only.  
-**Date:** 2026-09-18  
+**Status:** 3.0-A **MEASUREMENT GATE CLOSED**; **3.0-B GATE CLOSED**; **3.0-C** voice SLO/plan-hold **PASS** @ `43570699` **and simultaneously REGRESSED typed `/ai`** (import-shadow; restored `42fadd61`). Do **not** treat 3.0-C as a healthy shared-runtime close. **3.0-G** F2 repair live on that same broken-chat tip. Native realtime (lane B) eval-only. Shared-kernel resume blocked: `docs/delivery/GRAVITRE_SHARED_RUNTIME_RELEASE_GATE.md`.  
+**Date:** 2026-09-18 (status line updated 2026-09-20)  
 **Product target:** one Intelligence Core that can take natural intent (text or voice), classify work vs chat, acknowledge quickly, compile only needed context, execute safely, recover, deliver finished business output, and learn from outcomes — without cloning Manus, Claude Cowork, or ChatGPT private runtimes, and without a second Gravitre brain.
 
 No customer-facing prices, Certified/TRAINED badges, or Enable toggles. Certification remains process Track A/B/C unless product separately authorizes UX.

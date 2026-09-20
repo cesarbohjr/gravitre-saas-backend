@@ -1,13 +1,22 @@
 {
   "ledger": "gravitre-2.0-requirement-ledger",
-  "audited_at": "2026-09-20T08:20:00Z",
-  "head_sha": "42fadd6179485971a36b5179834e3601514557b2",
+  "audited_at": "2026-09-20T08:45:00Z",
+  "head_sha": "d7edb73d7c406e6e3819987cde2f7f4da18893b5",
   "health_sha": "42fadd6179485971a36b5179834e3601514557b2",
   "frontend_vercel_deployment": "dpl_6kRCG18GGgsVk1EUgcRaTEBUj3Cd",
   "program_complete": false,
   "structural_complete": false,
   "test_proven": "PARTIAL",
   "live_proven": "PARTIAL",
+  "incident_closure": "NO",
+  "shared_runtime_release_gate": "FAIL",
+  "ready_to_resume_3_0": false,
+  "three_oh": {
+    "spec": true,
+    "code_on_main": "partial 3.0-C kernel + F2 listing",
+    "deployed": "42fadd61",
+    "live_proven": "voice A/B and F2 on 43570699; typed isolated chat on 42fadd61; browser NOT RUN"
+  },
   "chat_regression": {
     "class": "BACKEND_EXCEPTION",
     "tip_broken": "43570699e5f5d8e693a618c1abe4f66e3fe97705",

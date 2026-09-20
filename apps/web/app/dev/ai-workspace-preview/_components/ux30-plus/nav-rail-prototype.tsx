@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { ADMIN_SIDEBAR_NAV } from "@/components/gravitre/sidebar-nav-config"
 import { resolveSidebarNavIcon } from "@/components/gravitre/nodus-product/sidebar-nucleo"
+import { Icon } from "@/lib/icons"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -123,7 +124,7 @@ export function NavRailPrototype({ scene }: { scene: string }) {
                 {group.items
                   .filter((item) => item.name !== "Getting Started")
                   .map((item) => {
-                    const Icon = resolveSidebarNavIcon(item.icon)
+                    const NavIcon = resolveSidebarNavIcon(item.icon)
                     const idx = flatItems.findIndex((f) => f.href === item.href)
                     const active = focusIndex === idx || item.name === "Activity"
                     return (
@@ -141,7 +142,7 @@ export function NavRailPrototype({ scene }: { scene: string }) {
                         )}
                         title={!expanded && !pinned ? item.name : undefined}
                       >
-                        <Icon size={18} />
+                        {NavIcon ? <NavIcon size={18} /> : <Icon name={item.icon} className="h-[18px] w-[18px]" />}
                         {expanded || pinned ? (
                           <span className="truncate font-medium">{item.name}</span>
                         ) : null}

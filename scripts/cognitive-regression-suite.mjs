@@ -97,46 +97,57 @@ if (read("backend/app/routers/assistant.py").includes("match_frontend_ia_nav_faq
     fail(`${rel}: expected run_pre_act (CognitiveTurnKernel pre-ACT)`)
   }
 
-  const streamingMarker = "async def execute_task_streaming"
-  const streamIdx = src.indexOf(streamingMarker)
-  if (streamIdx < 0) {
-    fail(`${rel}: execute_task_streaming not found`)
-  } else {
-    // Region: from streaming def to next top-level-ish async def at same indent, or EOF.
-    const after = src.slice(streamIdx)
-    const nextDef = after.search(/\n    async def |\n    def /)
-    const region = nextDef > 0 ? after.slice(0, nextDef) : after
+    const streamingMarker = "async def execute_task_streaming"
+    const streamIdx = src.indexOf(streamingMarker)
+    if (streamIdx < 0) {
+      fail(`${rel}: execute_task_streaming not found`)
+    } else {
+      // Region: from streaming def to next top-level-ish async def at same indent, or EOF.
+      const after = src.slice(streamIdx)
+      const nextDef = after.search(/\n    async def |\n    def /)
+      const region = nextDef > 0 ? after.slice(0, nextDef) : after
 
-    const gatewayIdx = region.indexOf("evaluate_intent_gateway")
-    const loopIdx = region.indexOf("get_cognitive_loop_controller")
-    const kernelIdx = region.indexOf("run_pre_act")
-    const liveIdx = region.indexOf("apply_unified_turn_live")
-    if (gatewayIdx < 0) {
-      fail(`${rel}: execute_task_streaming must call evaluate_intent_gateway`)
-    } else if (loopIdx < 0) {
-      fail(`${rel}: execute_task_streaming must call get_cognitive_loop_controller`)
-    } else if (kernelIdx < 0) {
-      fail(`${rel}: execute_task_streaming must call run_pre_act`)
-    } else if (gatewayIdx >= loopIdx) {
-      fail(
-        `${rel}: Intent Gateway must appear BEFORE CognitiveLoopController (got gateway@${gatewayIdx} loop@${loopIdx})`,
-      )
-    } else if (loopIdx >= kernelIdx) {
-      fail(
-        `${rel}: CognitiveLoopController must appear BEFORE run_pre_act (got loop@${loopIdx} kernel@${kernelIdx})`,
-      )
-    } else if (gatewayIdx >= kernelIdx) {
-      fail(
-        `${rel}: Intent Gateway evaluate_intent_gateway must appear BEFORE run_pre_act (got gateway@${gatewayIdx} kernel@${kernelIdx})`,
-      )
-    } else if (liveIdx < 0) {
-      fail(`${rel}: execute_task_streaming must reference apply_unified_turn_live`)
-    } else if (kernelIdx >= liveIdx) {
-      fail(
-        `${rel}: CognitiveTurnKernel run_pre_act must appear BEFORE apply_unified_turn_live in execute_task_streaming (got kernel@${kernelIdx} live@${liveIdx})`,
-      )
+      // Spoken plan-hold may call the loop controller before the gateway and return.
+      // Order invariants below apply to the typed/shared path after that branch.
+      const earlyMarker = "if _plan_hold_spoken_early and conversation_id:"
+      const earlyIdx = region.indexOf(earlyMarker)
+      const typedStart = region.indexOf("resolved_workspace_focus")
+      const typedRegion =
+        earlyIdx >= 0 && typedStart > earlyIdx ? region.slice(typedStart) : region
+
+      const gatewayIdx = typedRegion.indexOf("evaluate_intent_gateway")
+      const loopIdx = typedRegion.indexOf("get_cognitive_loop_controller")
+      const kernelIdx = typedRegion.indexOf("run_pre_act")
+      const liveIdx = typedRegion.indexOf("apply_unified_turn_live")
+      if (earlyIdx >= 0 && !region.slice(earlyIdx, typedStart > 0 ? typedStart : undefined).includes("get_cognitive_loop_controller")) {
+        fail(`${rel}: spoken plan-hold branch must still own CognitiveLoopController`)
+      }
+      if (gatewayIdx < 0) {
+        fail(`${rel}: execute_task_streaming typed path must call evaluate_intent_gateway`)
+      } else if (loopIdx < 0) {
+        fail(`${rel}: execute_task_streaming typed path must call get_cognitive_loop_controller`)
+      } else if (kernelIdx < 0) {
+        fail(`${rel}: execute_task_streaming must call run_pre_act`)
+      } else if (gatewayIdx >= loopIdx) {
+        fail(
+          `${rel}: Intent Gateway must appear BEFORE CognitiveLoopController on the typed path (got gateway@${gatewayIdx} loop@${loopIdx})`,
+        )
+      } else if (loopIdx >= kernelIdx) {
+        fail(
+          `${rel}: CognitiveLoopController must appear BEFORE run_pre_act (got loop@${loopIdx} kernel@${kernelIdx})`,
+        )
+      } else if (gatewayIdx >= kernelIdx) {
+        fail(
+          `${rel}: Intent Gateway evaluate_intent_gateway must appear BEFORE run_pre_act (got gateway@${gatewayIdx} kernel@${kernelIdx})`,
+        )
+      } else if (liveIdx < 0) {
+        fail(`${rel}: execute_task_streaming must reference apply_unified_turn_live`)
+      } else if (kernelIdx >= liveIdx) {
+        fail(
+          `${rel}: CognitiveTurnKernel run_pre_act must appear BEFORE apply_unified_turn_live in execute_task_streaming (got kernel@${kernelIdx} live@${liveIdx})`,
+        )
+      }
     }
-  }
 }
 
 // --- 3) unified_turn_reasoning_service accepts cognitive_context ---
