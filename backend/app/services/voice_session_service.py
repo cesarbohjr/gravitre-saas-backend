@@ -84,6 +84,17 @@ def warm_perceive_tts_cache(settings: Settings, *, voice_key: str | None = None)
     return False
 
 
+def peek_cached_perceive_chunks(
+    *,
+    voice_key: str | None = None,
+    model: str = "eleven_flash_v2_5",
+    output_format: str = "mp3_44100_128",
+) -> list[bytes]:
+    """In-process PERCEIVE TTS warmup (same worker). Empty on cache miss."""
+    resolved = (voice_key or "sarah").strip() or "sarah"
+    return list(_PERCEIVE_TTS_CACHE.get((str(resolved), str(model), str(output_format))) or [])
+
+
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
 # Prefer Redis so cancel works across Railway replicas; memory is local fallback.
 _CANCELLED_TURNS: dict[str, float] = {}
@@ -231,6 +242,7 @@ async def stream_voice_turn_events(
     turn_id: str | None = None,
     should_cancel: Callable[[], bool] | None = None,
     tts_output_format: str = "mp3_44100_128",
+    skip_early_perceive: bool = False,
 ) -> AsyncIterator[dict[str, Any]]:
     """Run unified-turn streaming + progressive TTS. Yields typed events."""
     t_start = time.perf_counter()
@@ -448,18 +460,21 @@ async def stream_voice_turn_events(
         if early_perceive_draft:
             operator_task = True
             loop_stage_spoken = True
-            yield {
-                "type": "voice.text.delta",
-                "delta": early_perceive_draft,
-                "turn_id": resolved_turn_id,
-            }
-            if first_text_ms is None:
-                first_text_ms = int((time.perf_counter() - t_start) * 1000)
-                first_text_preview = early_perceive_draft[:200]
-                yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
-            full_text.append(early_perceive_draft)
-            async for audio_ev in _emit_tts(early_perceive_draft):
-                yield audio_ev
+            if skip_early_perceive:
+                full_text.append(early_perceive_draft)
+            else:
+                yield {
+                    "type": "voice.text.delta",
+                    "delta": early_perceive_draft,
+                    "turn_id": resolved_turn_id,
+                }
+                if first_text_ms is None:
+                    first_text_ms = int((time.perf_counter() - t_start) * 1000)
+                    first_text_preview = early_perceive_draft[:200]
+                    yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
+                full_text.append(early_perceive_draft)
+                async for audio_ev in _emit_tts(early_perceive_draft):
+                    yield audio_ev
 
     from app.operators.agent_intelligence import get_agent_intelligence
 

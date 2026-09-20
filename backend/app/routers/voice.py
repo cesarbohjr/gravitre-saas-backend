@@ -11,7 +11,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_org_context
-from app.billing.seat_context import assert_agent_voice_use
+from app.billing.seat_context import assert_agent_voice_use, resolve_seat_context
 from app.billing.service import get_supabase_client
 from app.billing.voice_access import assert_voice_org_enabled
 from app.config import Settings, get_settings
@@ -563,11 +563,13 @@ async def post_session_turn(
     request: Request,
     user: Annotated[dict, Depends(get_current_user)],
     org: Annotated[str | None, Depends(get_org_context)],
-    seat: Annotated[dict, Depends(require_seat_context())],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> StreamingResponse:
     """Streaming voice turn: unified-turn reasoning + progressive TTS (SSE JSON lines)."""
-    from app.services.voice_session_service import stream_voice_turn_events
+    from app.services.voice_session_service import (
+        peek_cached_perceive_chunks,
+        stream_voice_turn_events,
+    )
 
     org_id = str(org or "")
     user_id = str(user.get("id") or user.get("user_id") or "")
@@ -580,6 +582,7 @@ async def post_session_turn(
             return bool(disconnected["v"])
 
         try:
+            skipped_perceive = False
             forced = resolve_qa_force_voice_error(settings, header_value=qa_force_header)
             if forced:
                 raise forced_voice_provider_error(forced)
@@ -601,15 +604,90 @@ async def post_session_turn(
             ).encode("utf-8")
 
             import asyncio
+            import base64
 
-            client = await asyncio.to_thread(get_supabase_client, settings)
-            await asyncio.to_thread(
-                assert_agent_voice_use,
-                client,
-                seat,
-                org_id=org_id,
-                agent_id=body.agent_id,
-            )
+            from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+            client_task = asyncio.create_task(asyncio.to_thread(get_supabase_client, settings))
+            voice_key = (body.voice or "sarah").strip() or "sarah"
+            cached_audio = peek_cached_perceive_chunks(voice_key=voice_key)
+            skipped_perceive = False
+            if cached_audio:
+                perceive_text = EARLY_PERCEIVE_DRAFT
+                yield (
+                    json.dumps(
+                        {
+                            "type": "voice.text.delta",
+                            "delta": perceive_text,
+                            "turn_id": body.turn_id,
+                        }
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                yield (json.dumps({"type": "voice.ttft", "ms": 0, "turn_id": body.turn_id}) + "\n").encode("utf-8")
+                yield (json.dumps({"type": "voice.ttfa", "ms": 0, "metric": "A", "turn_id": body.turn_id}) + "\n").encode("utf-8")
+                yield (json.dumps({"type": "voice.agent_speech.start", "turn_id": body.turn_id}) + "\n").encode("utf-8")
+                first = True
+                for piece in cached_audio:
+                    if not piece:
+                        continue
+                    yield (
+                        json.dumps(
+                            {
+                                "type": "voice.audio.delta",
+                                "content_type": "audio/mpeg",
+                                "audio_base64": base64.b64encode(piece).decode("ascii"),
+                                "text_chunk": perceive_text if first else "",
+                                "turn_id": body.turn_id,
+                            }
+                        )
+                        + "\n"
+                    ).encode("utf-8")
+                    first = False
+                skipped_perceive = True
+
+            client = await client_task
+            if not org_id:
+                yield (
+                    json.dumps(
+                        {
+                            "type": "voice.error",
+                            "detail": "Organization context required",
+                            "error_class": "unauthorized",
+                            "billing_issue": False,
+                        }
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                return
+            try:
+                seat = await asyncio.to_thread(
+                    resolve_seat_context,
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                )
+                await asyncio.to_thread(
+                    assert_agent_voice_use,
+                    client,
+                    seat,
+                    org_id=org_id,
+                    agent_id=body.agent_id,
+                )
+            except HTTPException as exc:
+                detail = exc.detail if isinstance(exc.detail, str) else json.dumps(exc.detail)
+                yield (
+                    json.dumps(
+                        {
+                            "type": "voice.error",
+                            "detail": str(detail)[:800],
+                            "error_class": "unauthorized",
+                            "billing_issue": False,
+                        }
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                return
 
             agent: dict[str, Any] | None = None
             if body.agent_id:
@@ -642,6 +720,7 @@ async def post_session_turn(
                 tts_model=body.model,
                 turn_id=body.turn_id,
                 should_cancel=_should_cancel,
+                skip_early_perceive=skipped_perceive,
             ):
                 try:
                     if await request.is_disconnected():
