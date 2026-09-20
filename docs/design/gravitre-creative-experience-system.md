@@ -220,10 +220,11 @@ Playwright widths 390–1728; reduced-motion; optional `?creativeState=` for det
 4. **Pilot 1: `/about` Departments Converge**  
 5. Pilot 2 Agent Orchestration bake-off  
 6. Pilot 3 Knowledge Fabric — **SHIPPED**  
-7. **Remaining experiences (in progress)** → hero eval → footer continuity → hardening  
+7. **Remaining experiences — CLOSED**  
    - ✅ Connector Fabric on `/docs/integrations`  
-   - ✅ Governed Execution on `/security` ([`gravitre-creative-governed-execution.md`](gravitre-creative-governed-execution.md))  
-   - Next: hero eval → footer continuity → hardening 
+   - ✅ Governed Execution on `/security`  
+   - ✅ Hero eval → footer continuity → hardening ([`gravitre-creative-phase7-hero-footer-hardening.md`](gravitre-creative-phase7-hero-footer-hardening.md))  
+   - Home: Quiet Nodus only (no Living System). Further creative needs Cesar reopen. 
 
 **First production pilot = Departments Converge on `/about`.** No Three.js until Pilot 2/3 justification.
 

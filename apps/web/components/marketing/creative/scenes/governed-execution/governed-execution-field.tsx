@@ -147,7 +147,7 @@ export function GovernedExecutionField({ className }: { className?: string }) {
           {trail ? (
             <svg
               viewBox="0 0 200 8"
-              className="mx-auto mt-4 h-2 w-48"
+              className="pointer-events-none mx-auto mt-4 h-2 w-48"
               aria-hidden
               data-testid="gov-trail"
             >

@@ -3,10 +3,12 @@
 /**
  * Calm footer closing field — slow TRACE motif, Nodus mineral restraint.
  * Decorative only; reduced-motion freezes to static final state.
+ * Brand green pinned to CREATIVE_BRAND (#16a374) for footer continuity.
  */
 
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { CREATIVE_BRAND } from "@/components/marketing/creative/core/tokens"
 
 export function FooterClosingField({ className }: { className?: string }) {
   const reduce = useReducedMotion()
@@ -22,12 +24,11 @@ export function FooterClosingField({ className }: { className?: string }) {
       <div
         className="absolute inset-0"
         style={{
-          background:
-            "radial-gradient(ellipse 70% 55% at 50% 120%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 70%)",
+          background: `radial-gradient(ellipse 70% 55% at 50% 120%, color-mix(in srgb, ${CREATIVE_BRAND} 10%, transparent), transparent 70%)`,
         }}
       />
       <svg
-        className="absolute inset-x-0 bottom-0 mx-auto h-40 w-full max-w-5xl opacity-[var(--g-graphic-opacity)]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 mx-auto h-40 w-full max-w-5xl opacity-[var(--g-graphic-opacity)]"
         viewBox="0 0 960 160"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -40,7 +41,7 @@ export function FooterClosingField({ className }: { className?: string }) {
         />
         <path
           d="M80 130 C200 70, 320 140, 440 100 S680 60, 840 120"
-          stroke="color-mix(in srgb, var(--primary) 35%, var(--divide))"
+          stroke={`color-mix(in srgb, ${CREATIVE_BRAND} 35%, var(--divide))`}
           strokeWidth="var(--g-graphic-line)"
           strokeLinecap="round"
           strokeDasharray="4 10"
@@ -60,7 +61,7 @@ export function FooterClosingField({ className }: { className?: string }) {
             cx={cx}
             cy={cy}
             r={5}
-            fill="color-mix(in srgb, var(--primary) 55%, white)"
+            fill={`color-mix(in srgb, ${CREATIVE_BRAND} 55%, white)`}
             initial={false}
             animate={
               reduce

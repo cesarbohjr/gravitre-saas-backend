@@ -225,3 +225,11 @@ describe("phase 7 governed execution storyboard", () => {
     expect(parseGovStateParam("approval", { hostname: "gravitre.app" })).toBeNull()
   })
 })
+
+describe("phase 7 hardening", () => {
+  it("exports creative scene fallback and brand token", async () => {
+    const { CREATIVE_BRAND, CreativeSceneFallback } = await import("@/components/marketing/creative")
+    expect(CREATIVE_BRAND).toBe("#16a374")
+    expect(CreativeSceneFallback).toBeTypeOf("function")
+  })
+})

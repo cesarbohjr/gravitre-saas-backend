@@ -1,8 +1,9 @@
 # Creative Experience System — Pilot 2 Agent Orchestration
 
 **Status:** APPROVED AND SHIPPED (SVG Task Decomposition Field on `/features/technology`)  
-**Progress:** W.1–W.8 done · Pilot 2 complete · Pilot 3 shipped · Phase 7: Connector Fabric shipped · **Governed Execution on `/security` (current)** · then hero eval → footer continuity → hardening  
-**Next (program):** [`gravitre-creative-governed-execution.md`](gravitre-creative-governed-execution.md) — not a Pilot 2 W.* step (all closed).  
+**Progress:** W.1–W.8 done · Pilot 2–3 + phase 7 closed (Connector, Governance, hero/footer/hardening)  
+**Next (program):** None automatic — Cesar reopen for Voice/Outcomes or other storyboards.  
+**Phase 7 close:** [`gravitre-creative-phase7-hero-footer-hardening.md`](gravitre-creative-phase7-hero-footer-hardening.md)  
 **Upstream:** Pilot 1 shipped (Relational Topology + Departments Converge). **Do not reopen Pilot 1.**  
 **Bible:** [`docs/design/gravitre-creative-experience-system.md`](gravitre-creative-experience-system.md)  
 **Foundation:** `apps/web/components/marketing/creative/`  

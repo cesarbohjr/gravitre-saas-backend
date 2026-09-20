@@ -60,7 +60,7 @@ function coreStateFor(phase: OrchestrationPhase): CoreState {
 function MiniTopology({ phase }: { phase: OrchestrationPhase }) {
   const layout = topologyForCoreState(coreStateFor(phase))
   return (
-    <svg viewBox="0 0 80 72" className="h-24 w-28" aria-hidden>
+    <svg viewBox="0 0 80 72" className="pointer-events-none h-24 w-28" aria-hidden>
       {layout.edges.map(([a, b], i) => {
         const pa = layout.nodes[a]
         const pb = layout.nodes[b]

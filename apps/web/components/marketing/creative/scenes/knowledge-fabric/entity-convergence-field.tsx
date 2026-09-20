@@ -167,7 +167,7 @@ export function EntityConvergenceField({ className }: { className?: string }) {
                       : "Exact after normalize"}
                 </p>
                 {persist ? (
-                  <svg viewBox="0 0 80 12" className="mt-3 w-24" aria-hidden data-testid="kf-persist-edge">
+                  <svg viewBox="0 0 80 12" className="pointer-events-none mt-3 w-24" aria-hidden data-testid="kf-persist-edge">
                     <line
                       x1="4"
                       y1="6"
