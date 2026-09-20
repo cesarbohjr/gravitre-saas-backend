@@ -82,16 +82,27 @@ def assess_cognitive_resolution_needs(
     connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
     analytics_caps = resolve_analytics_capabilities_for_message(text, connected_integrations=list(connected))
     connector_id = resolve_connector_from_text(text)
+    traffic_ask = mentions_analytics_traffic_language(text) or mentions_website_performance_language(text)
+    analytics_vendors = connected.intersection(
+        {"google_analytics", "google_search_console", "google_ads"}
+    )
 
     if analytics_caps and connected.intersection(analytics_caps):
         return CognitiveResolutionNeeds(
             run_semantic=True,
             run_resource=True,
-            analytics_short_circuit="google_analytics" in analytics_caps and "google_analytics" in connected,
+            analytics_short_circuit=traffic_ask or "google_analytics" in analytics_caps,
             reason="analytics_capabilities",
         )
 
     if connector_id:
+        if traffic_ask:
+            return CognitiveResolutionNeeds(
+                run_semantic=True,
+                run_resource=bool(analytics_vendors),
+                analytics_short_circuit=True,
+                reason="analytics_language_named_connector",
+            )
         if connector_id in connected:
             return CognitiveResolutionNeeds(
                 run_semantic=True,
@@ -104,11 +115,11 @@ def assess_cognitive_resolution_needs(
             reason=f"named_disconnected_connector:{connector_id}",
         )
 
-    if mentions_analytics_traffic_language(text) or mentions_website_performance_language(text):
+    if traffic_ask:
         return CognitiveResolutionNeeds(
             run_semantic=True,
-            run_resource=bool(connected),
-            analytics_short_circuit="google_analytics" in connected,
+            run_resource=bool(analytics_vendors),
+            analytics_short_circuit=True,
             reason="analytics_language",
         )
 
@@ -193,13 +204,7 @@ async def try_analytics_short_circuit_turn(
     needs = (task_state or {}).get("cognitive_resolution_needs") or {}
     if not isinstance(needs, dict) or not needs.get("analytics_short_circuit"):
         return None
-    if resolution is not None and not resolution.analytics_capabilities:
-        caps = resolve_analytics_capabilities_for_message(
-            message,
-            connected_integrations=connected_integrations,
-        )
-        if not caps or "google_analytics" not in caps:
-            return None
+    del resolution  # call-site compatibility; handler uses connected_integrations + message
 
     from app.services.analytics_traffic_overview_service import try_analytics_traffic_overview_turn
 

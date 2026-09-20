@@ -145,6 +145,76 @@ def test_website_doing_requests_analytics_short_circuit() -> None:
     assert needs.analytics_short_circuit is True
 
 
+def test_website_traffic_short_circuits_when_ga_is_disconnected() -> None:
+    """Do not send last-month traffic to ReAct to ask which analytics source."""
+    needs = assess_cognitive_resolution_needs(
+        "Tell me what my website traffic was last month.",
+        {},
+        connected_integrations=["hubspot", "apollo"],
+    )
+    assert needs.analytics_short_circuit is True
+    assert needs.run_resource is False
+    assert needs.reason == "analytics_language"
+
+
+def test_website_traffic_short_circuits_with_no_connectors() -> None:
+    needs = assess_cognitive_resolution_needs(
+        "Tell me what my website traffic was last month.",
+        {},
+        connected_integrations=[],
+    )
+    assert needs.analytics_short_circuit is True
+    assert needs.run_resource is False
+
+
+@pytest.mark.asyncio
+async def test_analytics_short_circuit_invokes_handler_when_ga_disconnected() -> None:
+    expected = {
+        "stop_pipeline": True,
+        "message": "Google Analytics isn't connected yet.",
+        "dialogue_mode": "answer",
+        "workflow_status": "connector_not_connected",
+    }
+    with patch(
+        "app.services.analytics_traffic_overview_service.try_analytics_traffic_overview_turn",
+        new_callable=AsyncMock,
+        return_value=expected,
+    ) as mock_turn:
+        turn = await try_analytics_short_circuit_turn(
+            message="Tell me what my website traffic was last month.",
+            resolution=None,
+            org_id="org-1",
+            client=object(),
+            settings=None,
+            connected_integrations=["hubspot"],
+            task_state={
+                "cognitive_resolution_needs": {"analytics_short_circuit": True},
+            },
+        )
+    assert turn == expected
+    mock_turn.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_disconnected_traffic_short_circuit_returns_connect_guidance() -> None:
+    turn = await try_analytics_short_circuit_turn(
+        message="Tell me what my website traffic was last month.",
+        resolution=None,
+        org_id="org-1",
+        client=object(),
+        settings=None,
+        connected_integrations=["hubspot"],
+        task_state={"cognitive_resolution_needs": {"analytics_short_circuit": True}},
+    )
+    assert turn is not None
+    assert turn.get("stop_pipeline") is True
+    assert turn.get("workflow_status") == "connector_not_connected"
+    msg = str(turn.get("message") or "").lower()
+    assert "connect" in msg
+    assert "analytics source" not in msg
+    assert "property_id" not in msg
+
+
 def test_analytics_short_circuit_disables_unified_live_before_apply() -> None:
     from pathlib import Path
 
