@@ -1,0 +1,11 @@
+{
+  "probe": "f2_read_repair",
+  "captured_at": "2026-09-20T06:23:41.404847+00:00",
+  "git_sha": "28c4591eaa075690cc9d166608c52d9c955ac19c",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "93a17de2-4497-4b04-8733-9541256eb6ab",
+  "http_status": 200,
+  "repair_audit": [],
+  "live_user_proven": false,
+  "honesty": "LIVE_USER_PROVEN only if f2.read.repair is present. UNIT_TEST covers secret stripping. WRITE not invoked."
+}

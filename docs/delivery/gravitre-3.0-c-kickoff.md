@@ -73,3 +73,16 @@ See also [gravitre-3.0-c-eval-lanes.md](./gravitre-3.0-c-eval-lanes.md).
 3. **Lane B shadow eval** — when product authorizes; never swap production transport.
 
 **NOT RUN:** native realtime (lane B) production audio, WebRTC media in prod, browser-mic barge-in human verify.
+
+## Live re-probe @ SHA `2c0a85b5` (2026-09-20T06:22:45Z)
+
+Does not replace the 05:50Z `f50ea3f1` table.
+
+| Metric | p50 | p95 | Target | SLO |
+|--------|-----|-----|--------|-----|
+| **A** | **234 ms** | **1121 ms** | 500 / 800 | **FAIL** (P95; samples 273, **1121**, 234, 163, 147) |
+| **B** | **27039 ms** | **58654 ms** | 5000 / 8000 | **FAIL** |
+
+Not worse vs 3.0-A A P95 1215: **yes**. Barge-in: **PASS — `voice.barge_in.write_gate` @ `2026-09-20T06:20:42.448557Z`** audit `a3091179-…` conv `ae1a538f-…`.
+
+Seat lookup no longer blocks first SSE; warmed PERCEIVE can flush during seat check. One remaining ~1.1 s accepted+audio stall on a cold worker.

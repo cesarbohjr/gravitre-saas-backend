@@ -100,6 +100,16 @@ Append-only. Metric A SLO met on the 05:50Z sample; Metric B SLO **not claimed m
 - Tail-hardening still deploying: 30s seat cache, JWT `id` fallback, deferred voice entitlement after `voice.session.accepted`, `X-Accel-Buffering: no`, async ElevenLabs TTS, PERCEIVE TTS warm. Re-probe after new `/health` SHA.
 - Lane B/C scores **NOT_RUN**. Production serving stays cascade A.
 
+## 3.0-C live re-probe (2026-09-20T06:22Z)
+
+Append-only. Does not replace the 05:50Z `f50ea3f1` sample.
+
+- SHA `2c0a85b5` `/health` @ `2026-09-20T06:20:37Z`. Isolated org `f07e57c0-…`.
+- Metric A: samples `[273, 1121, 234, 163, 147]` p50 **234** / p95 **1121** — SLO **FAIL** (P95; one cold-worker outlier with accepted+audio at 1118–1121 ms). vs 3.0-A P95 1215: **not worse**.
+- Metric B: p50 **27039** / p95 **58654** — SLO **FAIL** (plan-hold). Fourth turn completed in 3965 ms; n=4 for B (one turn had no `voice.turn.complete` in the sample window).
+- Barge-in WRITE: **PASS — `voice.barge_in.write_gate` @ `2026-09-20T06:20:42.448557Z`** (audit `a3091179-63c3-40d1-935e-6d6951a7b91b`, conv `ae1a538f-3602-4b22-b9ce-d9613a5ba539`). HTTP cancel 200. No `tool.invoke.completed` on probe conv.
+- Fix shipped on this SHA: FastAPI seat Depends no longer blocks first SSE; warmed PERCEIVE audio may flush while seat resolves.
+
 ## 3.0-G progress (2026-09-20)
 
 Append-only. EXTEND F2 — in-task error memory (action, args, resource, reason); secrets stripped; bounded class budgets unchanged. WRITE gate not weakened.
@@ -107,7 +117,7 @@ Append-only. EXTEND F2 — in-task error memory (action, args, resource, reason)
 - Audit action `f2.read.repair` on accepted sibling/source-switch repair (no secrets, `provider_write: false`).
 - Live probe: `scripts/verify-f2-repair-live.py` → `docs/delivery/f2-repair-live.json`.
 - Delivery: [gravitre-3.0-g-repair.md](../delivery/gravitre-3.0-g-repair.md).
-- Gate: UNIT_TEST; LIVE_USER_PROVEN **NOT RUN** until post-deploy probe.
+- Gate: UNIT_TEST; live probe `93a17de2-…` @ `2026-09-20T06:23:41Z` SHA `28c4591e` — **NOT RUN** (`f2.read.repair` absent; listing turn did not take sibling-repair).
 
 ---
 
