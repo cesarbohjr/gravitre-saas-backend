@@ -230,9 +230,17 @@ class IntelligenceProjectionService:
                 if str(et).strip()
             ][:12]
             if entity_count > 0:
-                field_sample = await kg_service.get_field_sample(
-                    org_id, limit=80, settings=self.settings
-                )
+                try:
+                    field_sample = await kg_service.get_field_sample(
+                        org_id, limit=80, settings=self.settings
+                    )
+                except Exception as field_exc:  # noqa: BLE001
+                    logger.warning(
+                        "projection_kg_field_sample_failed org_id=%s error=%s",
+                        org_id,
+                        field_exc,
+                    )
+                    field_sample = []
         except Exception as exc:  # noqa: BLE001
             logger.debug("projection_knowledge_graph_skipped org_id=%s error=%s", org_id, exc)
             quality_flags.append("MISSING_RELATIONSHIP")
