@@ -1,6 +1,6 @@
 /**
- * UX Reset 2.0 design exploration — isolated, unlinked, mock-data only.
- * One harness. Not a second product runtime.
+ * UX/UI 3.0 Plus design harness — isolated, unlinked, fixture-data only.
+ * One harness. Not a second product runtime. Not authorized for production rollout.
  */
 
 import { Suspense } from "react"
@@ -8,7 +8,7 @@ import type { Metadata } from "next"
 import { DesignExplorationShell } from "./_components/design-exploration-shell"
 
 export const metadata: Metadata = {
-  title: "UX Reset 2.0 design exploration (internal)",
+  title: "UX/UI 3.0 Plus design harness (internal)",
   robots: { index: false, follow: false },
 }
 
