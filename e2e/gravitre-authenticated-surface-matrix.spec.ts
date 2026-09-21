@@ -54,7 +54,10 @@ test.describe("Authenticated product surface matrix", () => {
     await expect(page).not.toHaveURL(/\/login/)
     const map = page.getByTestId("intelligence-map-canvas")
     await expect(map).toBeVisible({ timeout: 90_000 })
-    const lensBar = page.getByRole("tablist", { name: "Intelligence map lenses" })
+    // Prod OverviewLivingMap uses "Intelligence lenses"; harness uses "Intelligence map lenses".
+    const lensBar = page
+      .getByRole("tablist", { name: /Intelligence (map )?lenses/i })
+      .first()
     await expect(lensBar).toBeVisible({ timeout: 30_000 })
     for (const label of ["Learns", "Predicts"] as const) {
       await lensBar.getByRole("tab", { name: label }).click()
@@ -74,20 +77,11 @@ test.describe("Authenticated product surface matrix", () => {
     await expect(page).not.toHaveURL(/\/login/)
     const aside = page.locator("aside nav").first()
     await expect(aside).toBeVisible({ timeout: 60_000 })
-    const expand = page.locator("[data-nav-expand], [aria-label*='Expand' i], button").filter({
-      hasText: /expand|menu/i,
-    }).first()
-    const hamburger = page.getByRole("button", { name: /menu|navigation|expand/i }).first()
-    if (await hamburger.isVisible().catch(() => false)) {
-      await hamburger.click()
-    } else if (await expand.isVisible().catch(() => false)) {
-      await expand.click()
-    }
+    // Prefer explicit pin control — avoid matching AI chat / other "navigation" buttons.
+    const pin = page.getByTestId("nav-pin-labels")
+    await expect(pin).toBeVisible({ timeout: 30_000 })
+    await pin.click({ force: true })
     await expect(aside).toBeVisible()
-    const pin = page.getByRole("button", { name: /pin labels|pin/i }).first()
-    if (await pin.isVisible().catch(() => false)) {
-      await pin.click()
-    }
     await expect(page).not.toHaveURL(/\/login/)
   })
 
@@ -142,9 +136,13 @@ test.describe("Authenticated product surface matrix", () => {
   })
 
   test("Settings — /settings shell", async ({ page }) => {
-    await assertAuthenticatedRoute(page, "/settings", () =>
-      page.getByRole("heading", { name: /setting/i }).first(),
-    )
+    await page.goto("/settings")
+    await expect(page).not.toHaveURL(/\/login/)
+    // AppShell title may not be an h1; prove settings section nav mounted.
+    await expect(page.locator("aside nav").first()).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByRole("navigation", { name: "Settings sections" })).toBeVisible({
+      timeout: 60_000,
+    })
   })
 
   test("AI Workspace — /ai stays authenticated", async ({ page }) => {
