@@ -60,7 +60,27 @@ Human steps:
 1. Open `https://gravitre.app/login`.
 2. Sign in with the operator SSO used for Cesar’s production account (Google, GitHub, or Microsoft). Use email/password only if that account is email-based.
 3. Open `/ai`.
-4. Run Tests A–F (hello, follow-up hello, “What can you help me with?”, last-month traffic, “Send an email.”, compact/expanded/fullscreen/minimize/restore/navigate/refresh).
+4. Run Tests A–F plus **Test D-1** (hello, follow-up hello, “What can you help me with?”, last-month traffic, **D-1 GA4 auto-resolution**, “Send an email.”, compact/expanded/fullscreen/minimize/restore/navigate/refresh).
+
+### Test D — website traffic (existing)
+
+Prompt: last-month / website traffic. Isolated JWT may return honest source-clarify when GA is `pending_auth`. Not a substitute for D-1.
+
+### Test D-1 — GA4 connector auto-resolution (required regression fixture)
+
+Confirmed live incident: asking about GA4 website traffic cited an unrelated third-party product (“Gravite,” in-app ad monetization) via live web search instead of the connected GA4 property.
+
+**User:** `Tell me about my GA4 website traffic.`  
+**Then:** the real, connected GA4 property name or URL, **only if asked**.
+
+**Expected (exactly one real, connected GA4 property):**
+
+- Gravitre auto-resolves that property. The user must not re-state already-known connector information.
+- Does **not** trigger live external web search.
+- Does **not** cite unrelated third-party sources (including “Gravite”).
+- This verifies the exact confirmed failure is closed, not merely that some answer is produced.
+
+Structural CI fixture: `test_golden_d1_*` in `backend/tests/services/test_golden_benchmark_traffic.py`. Live authenticated `/ai` D-1 remains **EXTERNAL_PROVIDER_AUTH_PENDING** until isolated GA4 OAuth completes.
 
 Isolated JWT API is **not** a substitute for those steps.
 
@@ -123,10 +143,20 @@ Checkpoints exist on `task_state.shortcut_latency_ms` (`client_ready`, `workspac
 | Full GitHub Backend pytest | PASS (CI job) |
 | HubSpot / QuickBooks / Zendesk live HMAC | **NOT RE-RUN** this closure (prior HubSpot @ `67944d59`) |
 | Analytics traffic LIVE_USER_PROVEN | **BLOCKED** (GA `pending_auth` historically) |
+| R3 Test D-1 unique GA4 auto-resolve / no Gravite web search | **UNIT/INTEGRATION** `test_golden_d1_*`; live `/ai` pending GA OAuth |
+| F6 verified-completion (live vendor read-back, not HTTP 200) | **REQUIRED** re-prove on this release: `test_f6_http_success_without_entity_is_not_verified` + at least one real governed WRITE whose catalog mode is `follow_up_entity_get` / `follow_up_field_assert` confirmed against the vendor record. Prior HubSpot contact/deal artifacts (`docs/delivery/f6-entity-get-verify-live.json`, `f6-field-assert-verify-live.json`) are historical until re-run on the current SHA. |
 
 ## R9 — Observability
 
-Reconstructable on this path: `conversation_id`, org, `/health` SHA, SSE event types, HTTP status, first_delta/wall, Composer `request_failed` toast (generic). Backend exception logs include `org_id` + error type. Shortcut logs include `shortcut_latency` checkpoints. `turn_id` / plan ID are present when `data-intelligence` carries `task_state`; this probe did not persist those IDs into the JSON. Secrets were not logged. Correlation gap for operators: generic UI error still lacks a copied request id — **nonblocking**, not a new runtime.
+Reuse the **existing** golden-signals dashboard and correlation-ID infrastructure. Do **not** stand up a new or parallel logging/tracing scheme for this release.
+
+| Surface | Reuse |
+|---------|--------|
+| Admin golden signals | `golden_signals_service.load_golden_signals_dashboard` → `GET /api/admin/intelligence/golden-signals` → `GoldenSignalsPanel` |
+| Correlation | `conversation_id`, org, `/health` `git_sha`, SSE event types, HTTP status, first_delta/wall, `audit_events` |
+| Isolated org default | `GRAVITRE_PLATFORM_SIGNALS_ORG_ID` defaults to the E2E tenant `f07e57c0-1501-4000-8000-c04e57a00001` |
+
+Reconstructable on this path: `conversation_id`, org, `/health` SHA, SSE event types, HTTP status, first_delta/wall, Composer `request_failed` toast (generic). Backend exception logs include `org_id` + error type. Shortcut logs include `shortcut_latency` checkpoints. `turn_id` / plan ID are present when `data-intelligence` carries `task_state`. Secrets were not logged. Correlation gap for operators: generic UI error still lacks a copied request id — **nonblocking**, not a new runtime.
 
 ## R11 — Decision
 

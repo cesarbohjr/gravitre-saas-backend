@@ -18,7 +18,11 @@ export { CreativeErrorBoundary, CreativeSceneFallback } from "./fallbacks/creati
 export { withCreativeScene } from "./fallbacks/with-creative-scene"
 export { AgentOrchestrationField } from "./scenes/agent-orchestration/orchestration-field"
 export { EntityConvergenceField } from "./scenes/knowledge-fabric/entity-convergence-field"
-export { EntityConvergenceWorkbench, KF_A_BEATS } from "./scenes/knowledge-fabric/entity-convergence-workbench"
+export {
+  EntityConvergenceWorkbench,
+  EntityConvergenceWorkbenchField,
+  KF_A_BEATS,
+} from "./scenes/knowledge-fabric/entity-convergence-workbench"
 export {
   normalizeIllustrativeMention,
   KF_A_MENTIONS,

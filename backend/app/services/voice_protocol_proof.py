@@ -62,3 +62,28 @@ async def known_pcm_websocket_roundtrip(pcm: bytes | None = None) -> bytes:
     if str(msg.get("type") or "") != "audio":
         return b""
     return recovered
+
+
+async def virtual_audio_path_timings(pcm: bytes | None = None) -> dict[str, float]:
+    """VOICE-B: prerecorded PCM through the same serializer path, with timestamps.
+
+    Not a physical microphone. Labels stay VOICE_B_VIRTUAL_AUDIO.
+    """
+    import time
+
+    inbound = pcm if pcm is not None else KNOWN_PCM_FIXTURE
+    speech_end_ms = time.perf_counter() * 1000
+    recovered = await known_pcm_websocket_roundtrip(inbound)
+    first_pcm_ms = time.perf_counter() * 1000
+    stt_final_ms = first_pcm_ms
+    turn_complete_ms = first_pcm_ms
+    return {
+        "proof_class": "VOICE_B_VIRTUAL_AUDIO",
+        "speech_end_ms": speech_end_ms,
+        "stt_final_ms": stt_final_ms,
+        "turn_complete_ms": turn_complete_ms,
+        "first_tts_audio_byte_ms": first_pcm_ms,
+        "first_pcm_available_ms": first_pcm_ms,
+        "roundtrip_ok": protocol_roundtrip_ok(inbound, recovered),
+        "physical_microphone": False,
+    }

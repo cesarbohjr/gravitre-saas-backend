@@ -1,9 +1,9 @@
 "use client"
 
 /**
- * CES 2.0 KF-A — Entity Convergence Workbench (harness only).
- * Cesar visual approval 2026-09-20: single structured field + KF-B lenses.
- * Does NOT replace production EntityConvergenceField.
+ * CES 2.0 KF-A — Entity Convergence Workbench.
+ * Production Technology scene. Exact/normalized only; Sarah stays apart.
+ * The autoplay EntityConvergenceField remains available for comparison in the dev harness.
  */
 
 import { useEffect, useMemo, useState } from "react"
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { CREATIVE_TOKENS } from "../../core/tokens"
 import { useSceneController } from "../../core/use-scene-controller"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
+import { withCreativeScene } from "../../fallbacks/with-creative-scene"
 import {
   KF_A_MENTIONS,
   mentionWithNormalized,
@@ -238,7 +239,7 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">
-            KF-A · single field · harness only
+            Illustrative exact match
           </p>
           <p className="mt-0.5 text-sm font-medium text-[color:var(--g-text-secondary)]" aria-live="polite">
             {BEAT_CAPTION[beat]}
@@ -605,3 +606,8 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
     </div>
   )
 }
+
+export const EntityConvergenceWorkbenchField = withCreativeScene(
+  EntityConvergenceWorkbench,
+  "knowledge-fabric-workbench",
+)

@@ -326,6 +326,13 @@ def test_j_voice_a_protocol_is_not_human_device() -> None:
 async def test_j_voice_a_known_pcm_serializer_roundtrip() -> None:
     recovered = await known_pcm_websocket_roundtrip(KNOWN_PCM_FIXTURE)
     assert recovered == KNOWN_PCM_FIXTURE
+    from app.services.voice_protocol_proof import virtual_audio_path_timings
+
+    timings = await virtual_audio_path_timings(KNOWN_PCM_FIXTURE)
+    assert timings["proof_class"] == "VOICE_B_VIRTUAL_AUDIO"
+    assert timings["roundtrip_ok"] is True
+    assert timings["physical_microphone"] is False
+    assert timings["first_pcm_available_ms"] >= timings["speech_end_ms"]
 
 
 def test_isolated_reconnect_may_force_consent_default_does_not() -> None:

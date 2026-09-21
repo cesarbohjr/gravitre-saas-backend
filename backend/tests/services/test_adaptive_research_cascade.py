@@ -142,6 +142,12 @@ def test_should_run_internet_research_when_governance_allows():
         ResearchScope.INTERNET_RESEARCH.value,
         settings=_settings(),
     )
+    assert not should_run_internet_research(
+        ResearchScope.INTERNET_RESEARCH.value,
+        settings=_settings(internet_enabled=True, tavily="tvly-test"),
+        internal_thin=True,
+        query="Tell me about my GA4 website traffic.",
+    )
 
 
 def test_should_run_intelligence_packs_stage():

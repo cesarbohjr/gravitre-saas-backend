@@ -156,6 +156,7 @@ def build_cascade_plan(
     knowledge_assignments: list[dict[str, Any]] | None,
     confidence_sufficient: bool,
     stopped_at: str | None = None,
+    query: str | None = None,
 ) -> CascadePlan:
     """Decide which cascade stages to execute (external gated by scope + confidence)."""
     scope = str(research_scope or ResearchScope.INTERNAL_ONLY.value).strip().lower()
@@ -204,6 +205,7 @@ def build_cascade_plan(
             research_scope,
             settings=settings,
             internal_thin=not confidence_sufficient,
+            query=query,
         ):
             if CascadeStage.INTERNET_RESEARCH.value not in stages:
                 if CascadeStage.REASONING.value in stages:

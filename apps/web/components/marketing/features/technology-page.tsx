@@ -7,13 +7,12 @@ import {
   NucleoIntelligence,
   NucleoWorkflow,
 } from "@/components/icons/nucleo/semantic"
-import { FeaturesLegacyContent } from "@/components/marketing/features/legacy-page"
 import { Button } from "@/components/marketing/nodus/button"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
 import {
   AgentOrchestrationField,
-  EntityConvergenceField,
+  EntityConvergenceWorkbenchField,
   GibeLearningField,
 } from "@/components/marketing/creative"
 import { GravitreReveal, GravitreTrace } from "@/components/marketing/system/motion"
@@ -32,7 +31,7 @@ const specPills = [
  */
 export function TechnologyPage() {
   return (
-    <div className="bg-[color:var(--g-marketing-canvas)]">
+    <div className="bg-[color:var(--g-marketing-canvas)]" data-technology-legacy="0" data-kf-production="workbench">
       <MarketingPageHero
         badge="Platform technology"
         title={
@@ -79,6 +78,11 @@ export function TechnologyPage() {
         <GravitreTrace>
           <GibeLearningField />
         </GravitreTrace>
+        <p className="mt-4 text-center text-[11px] text-[color:var(--g-text-muted)]">
+          <Link className="underline underline-offset-2" href="/docs/guides/how-to/org-learning">
+            How org learning works
+          </Link>
+        </p>
       </GravitreSection>
 
       <DivideX />
@@ -107,15 +111,14 @@ export function TechnologyPage() {
           className="mb-6"
         />
         <GravitreTrace>
-          <EntityConvergenceField />
+          <EntityConvergenceWorkbenchField />
         </GravitreTrace>
+        <p className="mt-4 text-center text-[11px] text-[color:var(--g-text-muted)]">
+          <Link className="underline underline-offset-2" href="/docs/guides/how-to/sources">
+            How sources feed the fabric
+          </Link>
+        </p>
       </GravitreSection>
-
-      <DivideX />
-
-      {/* Existing authorized GIBE/governance content — hero/tail suppressed */}
-      <FeaturesLegacyContent section="intelligence" showHero={false} showTail={false} />
-      <FeaturesLegacyContent section="governance" showHero={false} showTail={false} />
 
       <MarketingPageEndCta />
     </div>

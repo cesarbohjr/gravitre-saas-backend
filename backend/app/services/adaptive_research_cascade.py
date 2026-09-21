@@ -187,8 +187,20 @@ def should_run_internet_research(
     *,
     settings: Settings,
     internal_thin: bool = False,
+    query: str | None = None,
 ) -> bool:
-    """True when governance allows and scope or thin-internal auto-escalation applies."""
+    """True when governance allows and scope or thin-internal auto-escalation applies.
+
+    Connected GA4 / website-traffic operator asks must never detour to live web
+    search (confirmed incident: unrelated third-party "Gravite" cited as a source).
+    """
+    if query:
+        from app.services.analytics_traffic_overview_service import (
+            is_analytics_traffic_overview_intent,
+        )
+
+        if is_analytics_traffic_overview_intent(query):
+            return False
     if not _internet_research_allowed(settings):
         return False
     if internal_thin:
@@ -572,6 +584,7 @@ def evaluate_research_cascade(
     graph_context: dict[str, Any] | None = None,
     research_scope: str | None = None,
     settings: Settings,
+    query: str | None = None,
 ) -> dict[str, Any]:
     internal_thin = assess_internal_retrieval_thinness(
         retrieval_effectiveness=retrieval_effectiveness,
@@ -579,23 +592,31 @@ def evaluate_research_cascade(
         memory_context=memory_context,
         graph_context=graph_context,
     )
-    internet_enabled = _internet_research_allowed(settings)
-    active_stages = resolve_active_stages_with_auto_internet(
+    allowed = _internet_research_allowed(settings)
+    run_internet = should_run_internet_research(
         research_scope,
         settings=settings,
         internal_thin=internal_thin,
+        query=query,
     )
+    active_stages = resolve_active_stages_with_auto_internet(
+        research_scope,
+        settings=settings,
+        internal_thin=internal_thin and run_internet,
+    )
+    if not run_internet:
+        active_stages = [stage for stage in active_stages if stage != "internet_research"]
 
     return {
         "internal_thin": internal_thin,
         "suggest_broaden": False,
         "prompt_message": None,
         "options": [],
-        "auto_internet_when_thin": internal_thin and internet_enabled,
+        "auto_internet_when_thin": internal_thin and run_internet,
         "research_scope": research_scope or ResearchScope.INTERNAL_ONLY.value,
         "active_stages": active_stages,
         "stage_order": list(CASCADE_STAGE_ORDER),
-        "internet_research_enabled": internet_enabled,
+        "internet_research_enabled": allowed,
         "retrieval_score": (retrieval_effectiveness or {}).get("retrieval_score"),
         "source_count": (retrieval_effectiveness or {}).get("source_count"),
     }

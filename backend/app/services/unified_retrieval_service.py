@@ -288,6 +288,7 @@ class UnifiedRetrievalService:
             knowledge_assignments=assignments if isinstance(assignments, list) else [],
             confidence_sufficient=confidence_sufficient,
             stopped_at="internal_rag" if confidence_sufficient else None,
+            query=query,
         )
 
         graph_context: dict[str, Any] = {}
@@ -326,6 +327,7 @@ class UnifiedRetrievalService:
                             knowledge_assignments=assignments if isinstance(assignments, list) else [],
                             confidence_sufficient=True,
                             stopped_at="knowledge_graph",
+                            query=query,
                         )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("unified_retrieval_graph_skipped org_id=%s error=%s", org_id, exc)
@@ -439,6 +441,7 @@ class UnifiedRetrievalService:
                 research_scope,
                 settings=self.settings,
                 internal_thin=internal_thin,
+                query=query,
             ):
                 try:
                     from app.services.internet_research_query import prepare_internet_research_query
@@ -502,6 +505,7 @@ class UnifiedRetrievalService:
             graph_context=graph_context,
             research_scope=research_scope,
             settings=self.settings,
+            query=query,
         )
         if internet_payload is not None:
             research_cascade = attach_internet_research_to_cascade(

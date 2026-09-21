@@ -476,3 +476,22 @@ describe("CES 2.0 product doc links", () => {
     )
   })
 })
+
+describe("CES 2.0 technology production", () => {
+  it("thins the technology page and mounts the KF-A workbench", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const src = readFileSync(
+      resolve(process.cwd(), "components/marketing/features/technology-page.tsx"),
+      "utf8",
+    )
+    expect(src).toMatch(/data-technology-legacy="0"/)
+    expect(src).toMatch(/data-kf-production="workbench"/)
+    expect(src).toMatch(/EntityConvergenceWorkbenchField/)
+    expect(src).not.toMatch(/FeaturesLegacyContent/)
+    expect(src).not.toMatch(/EntityConvergenceField/)
+    expect(src).toMatch(/\/docs\/guides\/how-to\/org-learning/)
+    expect(src).toMatch(/\/docs\/guides\/how-to\/sources/)
+    expect(src).not.toMatch(/TRAINED/)
+  })
+})

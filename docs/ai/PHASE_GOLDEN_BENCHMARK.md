@@ -15,6 +15,7 @@
 | C | Three unlabeled sites → one clarify with display names |
 | D | AUTH_EXPIRED copy; no property ask |
 | E | No analytics → connect guidance; no web-search detour |
+| D-1 | Unique connected GA4 property auto-resolves `"Tell me about my GA4 website traffic."`; no live web search; never cite unrelated “Gravite” |
 | F | Model-guessed `property_id` overwritten by resolver |
 | G | Dual-source plan; user copy uses Analytics/Search, not vendor names |
 

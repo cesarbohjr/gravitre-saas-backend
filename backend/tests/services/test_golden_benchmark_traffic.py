@@ -176,6 +176,134 @@ async def test_golden_e_no_analytics_connects_without_web_search() -> None:
     assert "internet" not in msg
 
 
+D1_PROMPT = "Tell me about my GA4 website traffic."
+
+
+def test_golden_d1_unique_ga4_property_auto_resolves_without_web_search() -> None:
+    """R3 Test D-1 — exact confirmed incident: unique GA4 property, no Gravite web detour."""
+    from app.services.adaptive_research_cascade import should_run_internet_research
+    from app.services.analytics_traffic_overview_service import (
+        is_analytics_traffic_overview_intent,
+        should_suppress_knowledge_base_for_turn,
+    )
+    from app.services.clarification_policy import decide_from_resource_resolution
+    from app.services.connector_resource_resolver import resolve_ga4_property
+
+    assert is_analytics_traffic_overview_intent(D1_PROMPT) is True
+    assert should_suppress_knowledge_base_for_turn(
+        D1_PROMPT, connected_integrations=["google_analytics"]
+    ) is True
+    settings = SimpleNamespace(
+        internet_research_enabled=True,
+        tavily_api_key="tvly-test",
+        serper_api_key="serper-test",
+    )
+    assert should_run_internet_research(
+        "internet_research",
+        settings=settings,
+        internal_thin=True,
+        query=D1_PROMPT,
+    ) is False
+
+    unique = ResourceResolution(
+        status="resolved",
+        connector_id="google_analytics",
+        connection_id="conn-ga4",
+        resource_type="property",
+        resource_id="properties/123456789",
+        display_name="Gravitre Isolated Test Site",
+        candidate_count=1,
+        resolution_reason="single_discovered_property",
+    )
+    decision = decide_from_resource_resolution(unique, resource_label="Google Analytics property")
+    assert decision.should_ask is False
+    assert "Gravitre Isolated Test Site" not in (decision.message or "")
+
+    with patch(
+        "app.services.connector_resource_resolver._connector_row",
+        return_value={"id": "conn-ga4", "config": {}, "environment": "production"},
+    ), patch(
+        "app.connectors.google_analytics_oauth.ensure_google_analytics_session",
+        return_value=("token", None),
+    ), patch(
+        "app.connectors.google_analytics.list_ga4_properties",
+        return_value=[
+            {
+                "property_id": "properties/123456789",
+                "display_name": "Gravitre Isolated Test Site",
+                "default_uri": "https://alpha.test.gravitre.app",
+            }
+        ],
+    ):
+        resolution = resolve_ga4_property(
+            client=MagicMock(),
+            org_id="org-1",
+            settings=SimpleNamespace(),
+            environment_name="production",
+        )
+    assert resolution.status == "resolved"
+    assert resolution.resource_id == "properties/123456789"
+    assert resolution.resolution_reason == "single_discovered_property"
+    assert resolution.candidate_count == 1
+
+
+@pytest.mark.asyncio
+async def test_golden_d1_overview_turn_does_not_ask_property_or_cite_gravite() -> None:
+    unique = ResourceResolution(
+        status="resolved",
+        connector_id="google_analytics",
+        connection_id="conn-ga4",
+        resource_type="property",
+        resource_id="properties/123456789",
+        display_name="Gravitre Isolated Test Site",
+        candidate_count=1,
+        resolution_reason="single_discovered_property",
+    )
+    proof = SimpleNamespace(
+        ok=True,
+        error_class=None,
+        user_message=lambda: "",
+        compiled_parameters={
+            "property_id": "properties/123456789",
+            "start_date": "2026-08-01",
+            "end_date": "2026-08-31",
+        },
+        resource={"name": "Gravitre Isolated Test Site"},
+        time_window=None,
+        status="ok",
+    )
+    invoked = SimpleNamespace(
+        success=True,
+        data={"metricHeaders": [], "rows": [], "totals": []},
+        error_message=None,
+    )
+    with patch(
+        "app.services.analytics_traffic_overview_service.resolve_resource",
+        return_value=unique,
+    ), patch(
+        "app.services.analytics_traffic_overview_service.invoke_sealed_f1_read",
+        return_value=(invoked, proof, None),
+    ):
+        turn = await try_analytics_traffic_overview_turn(
+            message=D1_PROMPT,
+            org_id="org-1",
+            client=object(),
+            settings=SimpleNamespace(),
+            connected_integrations=["google_analytics"],
+            task_state={},
+        )
+    assert turn is not None
+    assert turn.get("stop_pipeline") is True
+    assert turn.get("dialogue_mode") != "clarifying"
+    msg = str(turn.get("message") or "")
+    lowered = msg.lower()
+    assert "which property" not in lowered
+    assert "gravite" not in lowered
+    assert "search the web" not in lowered
+    assert "tavily" not in lowered
+    assert "serper" not in lowered
+
+
 def test_golden_f_recoverable_param_error_compiles_over_model_guess() -> None:
     with patch("app.services.read_preflight.resolve_resource", return_value=_resolved("123456")):
         result = preflight_read_action(

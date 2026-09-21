@@ -121,6 +121,15 @@ def test_verified_when_read_returns_the_written_id():
     assert out.entity_id == "42"
 
 
+def test_f6_http_success_without_entity_is_not_verified():
+    """R8 — vendor 200 / success=True is not verified completion without a live read-back of the written id."""
+    invoke = MagicMock(return_value=_result(True, {"ok": True, "status": 200}))
+    out = _run(invoke, result_data={"id": "42"})
+    assert out.verified is False
+    assert out.detail == "follow_up_read_returned_no_entity"
+    invoke.assert_called()
+
+
 def test_not_verified_when_read_returns_a_different_id():
     invoke = MagicMock(return_value=_result(True, {"id": "99"}))
     out = _run(invoke, result_data={"id": "42"})
