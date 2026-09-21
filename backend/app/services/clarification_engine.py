@@ -279,6 +279,16 @@ class ClarificationEngine:
         from app.services.conversational_planning_engine import is_advisory_plan_first
 
         advisory_plan = is_advisory_plan_first(request)
+        # Wave 67 claim 2 — explicit Slack/email send must chip when the connector
+        # is missing, even if understanding omitted connector_dependencies (that
+        # miss previously fell through to catalog-write clarify with no tool SSE).
+        if not advisory_plan:
+            if self.SLACK_SEND_PATTERN.search(request) and "slack" not in connected:
+                if "slack" not in {str(c).lower() for c in connectors_needed}:
+                    connectors_needed = [*connectors_needed, "slack"]
+            if self.EMAIL_SEND_PATTERN.search(request) and "gmail" not in connected:
+                if "gmail" not in {str(c).lower() for c in connectors_needed}:
+                    connectors_needed = [*connectors_needed, "gmail"]
         # STA-307 — multi-connector asks belong to orchestration (correct labels +
         # zero-runnable blocked), not a single-connector unavailable clarify.
         if not advisory_plan and len(connectors_needed) < 2:

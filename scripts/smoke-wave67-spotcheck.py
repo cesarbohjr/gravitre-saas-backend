@@ -106,6 +106,7 @@ def _summarize_stream(events: list[dict[str, Any]], wall_start: str) -> dict[str
     tool_completes: list[dict[str, Any]] = []
     execution_results: list[dict[str, Any]] = []
     pending_tasks: list[dict[str, Any]] = []
+    last_tool_name: str | None = None
 
     for idx, ev in enumerate(events):
         et = _event_type(ev)
@@ -162,6 +163,7 @@ def _summarize_stream(events: list[dict[str, Any]], wall_start: str) -> dict[str
         elif "tool-input" in et or et.endswith("tool-input-start") or "tool-call" in et:
             # Flat SSE: {type, toolCallId, toolName, input} — not nested under data.
             tool_name = data.get("toolName") or ev.get("toolName")
+            last_tool_name = str(tool_name) if tool_name else last_tool_name
             if first_tool_start is None:
                 first_tool_start = {"i": idx, "type": et, "toolName": tool_name}
             entry["toolName"] = tool_name
@@ -174,10 +176,11 @@ def _summarize_stream(events: list[dict[str, Any]], wall_start: str) -> dict[str
                 "errorCode" in data or "error_code" in data or "success" in data
             ):
                 output = data
+            tool_name = data.get("toolName") or ev.get("toolName") or last_tool_name
             shaped = {
                 "i": idx,
                 "type": et,
-                "toolName": data.get("toolName") or ev.get("toolName"),
+                "toolName": tool_name,
                 "errorCode": (output or {}).get("errorCode") or (output or {}).get("error_code")
                 if isinstance(output, dict)
                 else None,
@@ -186,11 +189,18 @@ def _summarize_stream(events: list[dict[str, Any]], wall_start: str) -> dict[str
                 if isinstance(output, dict)
                 else None,
             }
-            # Knowledge-base chips historically omit success; treat a completed
-            # tool-output without error as success so claim 2 can score the read half.
-            if shaped["success"] is None and not shaped["errorCode"] and not shaped["error"]:
+            # Knowledge-base chips historically omit success; promote only KB completes.
+            if (
+                shaped["success"] is None
+                and not shaped["errorCode"]
+                and not shaped["error"]
+                and "knowledge" in str(tool_name or "").lower()
+            ):
                 shaped["success"] = True
             tool_completes.append(shaped)
+            if first_tool_complete is None:
+                first_tool_complete = shaped
+            entry.update(shaped)
             if first_tool_complete is None:
                 first_tool_complete = shaped
             entry.update(shaped)

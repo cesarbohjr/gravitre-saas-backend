@@ -110,7 +110,30 @@ def test_connector_unavailable_trigger_uses_global_policy_copy():
     assert trigger["template_vars"]["connector"] == "Slack"
 
 
-def test_clarification_skips_connector_unavailable_for_multi_connector():
+def test_slack_send_chips_when_understanding_omits_connector_deps():
+    """Wave 67 claim 2 — Slack send must still emit connector_unavailable without deps."""
+    from app.services.clarification_engine import ClarificationEngine
+
+    engine = ClarificationEngine(settings=None)
+    message = (
+        "Post a Slack message to the default channel saying "
+        "'gravitre-wave67-spotcheck failure probe — ignore'. Use the Slack connector."
+    )
+    result = engine._rule_based_trigger(
+        classification={
+            "requires_action": True,
+            "request": message,
+            "intent": "connector_action",
+        },
+        context={"connected_integrations": ["apollo", "hubspot"]},
+        understanding={},  # deps intentionally empty — production miss class
+        clarified={},
+        confidence=0.9,
+    )
+    assert result is not None
+    assert result["trigger_type"] == "connector_unavailable"
+    assert result["template_vars"]["connector"] == "Slack"
+
     """STA-307 — HubSpot+Slack must not collapse to single-connector clarify."""
     from app.services.clarification_engine import ClarificationEngine
 
