@@ -1,6 +1,8 @@
 """STA-304 — disconnected-connector clarify must emit ToolChip SSE."""
 from __future__ import annotations
 
+import pytest
+
 from app.operators.assistant_sse import (
     format_react_tool_output,
     sse_react_tool_complete,
@@ -134,6 +136,8 @@ def test_slack_send_chips_when_understanding_omits_connector_deps():
     assert result["trigger_type"] == "connector_unavailable"
     assert result["template_vars"]["connector"] == "Slack"
 
+
+def test_sta307_multi_connector_skips_single_unavailable_clarify():
     """STA-307 — HubSpot+Slack must not collapse to single-connector clarify."""
     from app.services.clarification_engine import ClarificationEngine
 
@@ -149,3 +153,94 @@ def test_slack_send_chips_when_understanding_omits_connector_deps():
         confidence=0.9,
     )
     assert result is None or result.get("trigger_type") != "connector_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_should_clarify_not_short_circuited_by_resolution_trace_for_unconnected_slack(
+    monkeypatch,
+):
+    """Live gap: canonical resolution_trace (connector=slack, ask=False) must not
+    skip connector_unavailable when slack is not executable — that path is what
+    the isolated _rule_based_trigger fixture never exercised.
+    """
+    from app.services.clarification_engine import ClarificationEngine
+
+    message = (
+        "Post a Slack message to the default channel saying "
+        "'gravitre-wave67-spotcheck failure probe — ignore'. Use the Slack connector."
+    )
+    engine = ClarificationEngine(settings=None)
+
+    async def _fake_task_state(_conversation_id: str, _org_id: str, **_kwargs):
+        return {
+            "clarified_params": {},
+            "pending_task": None,
+            "resolution_trace": {
+                "resolved_connector_id": "slack",
+                "resource_id": None,
+                "clarification_required": False,
+                "resolution_reason": "no_clarification_needed",
+            },
+        }
+
+    monkeypatch.setattr(engine._state, "get_task_state", _fake_task_state)
+
+    async def _passthrough_question(trigger_type, *_args, **_kwargs):
+        return f"clarify:{trigger_type}"
+
+    monkeypatch.setattr(engine, "generate_clarification_question", _passthrough_question)
+
+    out = await engine.should_clarify(
+        {
+            "requires_action": True,
+            "request": message,
+            "intent": "connector_action",
+            "classification_confidence": 0.9,
+        },
+        {"connected_integrations": ["apollo", "hubspot", "browser"]},
+        [],
+        conversation_id="00000000-0000-4000-8000-0000000000aa",
+        org_id="00000000-0000-4000-8000-0000000000bb",
+        understanding={"connector_dependencies": ["slack"]},
+    )
+    assert out.get("should_clarify") is True
+    assert out.get("trigger_type") == "connector_unavailable"
+    assert out.get("template_vars", {}).get("connector") == "Slack"
+
+
+@pytest.mark.asyncio
+async def test_should_clarify_still_honors_resolution_trace_when_connector_executable(
+    monkeypatch,
+):
+    """When resolved connector is executable, resolution_trace may skip re-asking."""
+    from app.services.clarification_engine import ClarificationEngine
+
+    engine = ClarificationEngine(settings=None)
+
+    async def _fake_task_state(_conversation_id: str, _org_id: str, **_kwargs):
+        return {
+            "clarified_params": {},
+            "pending_task": None,
+            "resolution_trace": {
+                "resolved_connector_id": "apollo",
+                "clarification_required": False,
+            },
+        }
+
+    monkeypatch.setattr(engine._state, "get_task_state", _fake_task_state)
+
+    out = await engine.should_clarify(
+        {
+            "requires_action": True,
+            "request": "List my Apollo contact lists",
+            "intent": "connector_action",
+            "classification_confidence": 0.9,
+        },
+        {"connected_integrations": ["apollo", "hubspot"]},
+        [],
+        conversation_id="00000000-0000-4000-8000-0000000000aa",
+        org_id="00000000-0000-4000-8000-0000000000bb",
+        understanding={"connector_dependencies": ["apollo"]},
+    )
+    assert out.get("should_clarify") is False
+    assert "global clarification policy" in str(out.get("reason") or "").lower()

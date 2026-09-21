@@ -144,12 +144,28 @@ class ClarificationEngine:
         trace = task_state.get("resolution_trace")
         if isinstance(trace, dict) and trace.get("clarification_required") is False:
             if trace.get("resolved_connector_id") or trace.get("resource_id"):
-                return {
-                    "should_clarify": False,
-                    "trigger_type": None,
-                    "question": None,
-                    "reason": "Resource resolved by global clarification policy (auto-select).",
+                # Wave67 claim 2 — canonical resolution marks connector_id=slack with
+                # clarification_required=False for param/ambiguity purposes. That must
+                # NOT skip connector_unavailable when the vendor is not executable
+                # (auth_expired / never connected). Unit fixtures called
+                # _rule_based_trigger in isolation and never hit this short-circuit;
+                # live Slack turns persist resolution_trace before should_clarify.
+                resolved_connector = str(trace.get("resolved_connector_id") or "").strip().lower()
+                connected = {
+                    str(c).lower()
+                    for c in (
+                        context.get("connected_integrations")
+                        or context.get("connectedIntegrations")
+                        or []
+                    )
                 }
+                if not resolved_connector or resolved_connector in connected:
+                    return {
+                        "should_clarify": False,
+                        "trigger_type": None,
+                        "question": None,
+                        "reason": "Resource resolved by global clarification policy (auto-select).",
+                    }
 
         rule_result = self._rule_based_trigger(
             classification,
