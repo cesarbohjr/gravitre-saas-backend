@@ -151,9 +151,17 @@ Marketplace discovery is a scan list with price and install on the row; pack met
 | Marketing Lighthouse | **success** [35569135078](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35569135078) |
 | Vercel | **success** — “Deployment has completed” on `d198f372`: https://vercel.com/gravitre-ai/gravitre-saas-backend/5mVjWW5VR6DwA3CKxTgKECe5uCdU |
 | Railway | Not redeployed for this frontend commit (“No deployment needed - watched paths not modified.”). `/health` `git_sha=6cd43ae3` `status=ok` at `2026-09-21T06:55:04Z`. Backend remains the last watched-path deploy; not a live connected-system business-path PASS. |
-| Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
+| Authenticated browser | **SESSION UNBLOCKED** — `token_hash` callback mint + consume landed `/ai` with `hasCookieSession=true` / `hasSession=true` (2026-09-21). Playwright: 2/3 pass on production (`typed hello` + window controls stay on `/ai`); landing marker `[data-gravitre-ai-landing]` not always mounted (selector drift, not session). |
 
-No further safe implementation remains for Technology thinning or the KF-A production scene; both are verified on `720a0650`. Authenticated browser, OAuth, authenticated `/ai`, connected-system execution, and voice PCM stay NOT PROVEN. A smoke-user magic link reached `https://gravitre.app/login` without a session (`hasSession=false`). Google consent and a physical microphone are still required for the live 2.0 proofs. Milestone 1 live reverify [35615787164](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35615787164) on `720a0650` failed `wave67_spotcheck`, `routing_wave_abcd`, and `retrieval_ab` (retrieval A answered the connector list without `getConnectorStatus`). `research_cascade` passed.
+No further safe implementation remains for Technology thinning or the KF-A production scene; both are verified on `720a0650`. Google consent (GA4/GSC) and a physical microphone remain required for those live 2.0 proofs. Milestone 1 live reverify [35615787164](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35615787164) on `720a0650` failed `wave67_spotcheck`, `routing_wave_abcd`, and `retrieval_ab`.
+
+### Auth session blocker (fixed 2026-09-21)
+
+| Check | Result |
+|-------|--------|
+| Root cause | Admin `generate_link` with `redirect_to=/ai` put hash tokens on an auth-gated route. `proxy.ts` 302 to `/login` discarded the fragment (`hasSession=false`). Server `/auth/callback` also 302'd to `/complete`, dropping `location.hash`. |
+| Fix | Mint via `/auth/callback?token_hash=…&type=magiclink&next=/ai` (`scripts/e2e-mint-smoke-session.py` + `e2e/consume-smoke-session.mjs`). HTML hash handoff on `/auth/callback` when neither `code` nor `token_hash` is present (`cbe0a1d0`). |
+| Live proof | Consume JSON: `path=/ai`, `hasCookieSession=true`, `hasSession=true`. Storage at gitignored `e2e/.fixtures/gravitre-e2e-storage.json`. |
 
 ### Retrieval A — confident connector list without live check (release-blocking)
 
@@ -164,7 +172,15 @@ No further safe implementation remains for Technology thinning or the KF-A produ
 | Named fixtures | `test_retrieval_ab_a_slug_list_is_not_a_connector_status_claim`, `test_retrieval_ab_a_list_names_only_getconnectorstatus_executable_rows`, `test_retrieval_ab_a_format_ignores_routing_slugs`, `test_retrieval_ab_a_shortcut_emits_getconnectorstatus_tool_name`, `test_retrieval_ab_a_fast_route_is_simple`, `test_retrieval_ab_a_20260921_live_false_claim_blocked_without_getconnectorstatus`. Smoke forbids the exact false claim string. |
 | CI | Clay retarget tip **success** [35625685819](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35625685819) on `5c9d8735`. |
 | Live re-run | `scripts/smoke-retrieval-ab-live.py --min-sha 0b5d2567` **pass** at `2026-09-21T16:48:54Z` against health `git_sha=6d563e3d` (ancestor of the fix). Query A: `tool_names=["getConnectorStatus"]`, `routing_tiers=["simple"]`, `effective_modes=["fast"]`. Text named executable live rows only; the four-slug routing sentence did not recur. Artifact `e2e/.fixtures/m1/retrieval-ab-live-post-fix.json`. |
-| Still open from M1 | `wave67_spotcheck` and `routing_wave_abcd` remain failed on the prior M1 run; deferred until after this fix. |
+
+### Milestone 1 deferred probes (re-run 2026-09-21)
+
+| Probe | Result |
+|-------|--------|
+| `routing_wave_abcd` | **PASS** on health `8ee2ae00` — A `fast`+`simple`, B `multi_step`+pending, C `research`. Artifact `docs/delivery/routing-wave-prod-live.json`. |
+| `wave67_spotcheck` | Claims 1/3/4 **PASS** on `8ee2ae00` after isolating conversations + scoring sanitized “Running connected tools”. Claim 2 **PARTIAL** (Slack chip missing when understanding omitted deps). Fix `19b3e014` forces Slack/email send → `connector_unavailable` chip; live re-prove pending deploy of that SHA. |
+| HubSpot continuity (H) | **PASS** on health `4f98e744`, conv `8600c818…`, `hubspot.deals.list`. |
+| K/L/M + 3.0-J + golden traffic units | **34 passed** (`test_platform_execution_2_0_klm_invariants`, `test_platform_execution_3_0_j_attention`, `test_golden_benchmark_traffic`). |
 
 ---
 
