@@ -112,7 +112,7 @@ Extract shared primitives from harness to product package (if not already):
 - [x] Activity A1 J7 PASS with evidence
 - [x] Cesar authorizes Intelligence production slice separately (2026-09-21 — Phase 1 overview only)
 - [x] No invented nodes when entity ids missing (`overview-field-state.ts` sparse honesty)
-- [ ] J6 PASS after I1 deploy (pending post-merge smoke)
+- [x] J6 PASS after I1 deploy @ `gravitre.app` 2026-09-21 · deploy `9ab9c205`
 - [x] I2 stream default **closed** (field primary)
 - [ ] Accessibility: keyboard node select, reduced motion, non-color state (partial — reduced motion on stream rail)
 

@@ -16,7 +16,7 @@
 | J3 | Home → Agent → detail → chat | **NOT PROVEN** | — |
 | J4 | Home → Workflow → create → run | **NOT PROVEN** | — |
 | J5 | Home → Connector → connect → verify | **NOT PROVEN** | — |
-| J6 | Intelligence lens switch | **NOT PROVEN** | — |
+| J6 | Intelligence I1 field + lens switch | **PASS** | Playwright @ `https://gravitre.app` 2026-09-21 · `intelligence-i1-i2` + map canvas + lens Learns→Predicts · deploy `9ab9c205`+ |
 | J7 | Activity inspect + trace | **PASS** | Playwright @ `https://gravitre.app` 2026-09-21 · org `f07e57c0-1501-4000-8000-c04e57a00001` · `activity-trace-a1` + `activity-trace-rail` + `activity-trace-story` visible · deploy `b4f0e32d` |
 | J8 | Approval → approve | **NOT PROVEN** | — |
 | J9 | Source → add | **NOT PROVEN** | — |
@@ -29,7 +29,27 @@
 | J16 | Back navigation | **NOT PROVEN** | — |
 | J17 | Lite seat | **NOT PROVEN** | — |
 
-**Prod smoke (Activity pilot):** **PARTIAL PASS** — J7 PASS on `gravitre.app` after deploy `b4f0e32d` (Vercel `dpl_4M5Z68PpNTsgNUXZzgJwp9qsi34H` READY)
+**Prod smoke (Activity + Intelligence pilots):** **PARTIAL PASS** — J7 PASS deploy `b4f0e32d` · J6 PASS deploy `9ab9c205`+ on `gravitre.app`
+
+---
+
+## J6 detail (2026-09-21)
+
+**Command:**
+```bash
+PLAYWRIGHT_BASE_URL=https://gravitre.app \
+PLAYWRIGHT_SKIP_BACKEND=1 \
+PLAYWRIGHT_REUSE_SERVER=1 \
+npx playwright test e2e/ux30-journey-audit.spec.ts -g "J6"
+```
+
+**Result:** PASS (42s)
+
+**Observed:**
+- Authenticated session via storage state (isolated smoke org `f07e57c0-…`)
+- `/intelligence` I1 surface: `data-testid="intelligence-i1-i2"`
+- Map canvas visible; lens switch Knows → Learns → Predicts
+- I2 stream closed by default after deploy `9ab9c205` (`intel-i2-toggle` present, stream hidden)
 
 ---
 

@@ -54,7 +54,7 @@
 | Collapsible I2 stream (default closed) | I3 matrix as default |
 | Inspector + contextual Ask on selection | Invented graph nodes |
 
-**Pilot PASS criteria:** J6 journey PASS after deploy — pending smoke run.
+**Pilot PASS criteria:** J6 journey PASS — **PASS** @ `https://gravitre.app` 2026-09-21 · deploy `9ab9c205` · see `GRAVITRE_3.0_JOURNEY_RESULTS.md`
 
 ---
 
