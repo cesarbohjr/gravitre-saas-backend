@@ -71,21 +71,21 @@ def test_customer_alpha_bindings() -> tuple[EntityBinding, ...]:
             system="hubspot",
             resource_type="company",
             resource_id="hs-alpha-test",
-            confidence=0.92,
+            confidence=0.92,  # confidence-honesty-ok: synthetic E2E fixture prior, not user-facing
             evidence=(host, email, name_hs),
         ),
         EntityBinding(
             system="quickbooks",
             resource_type="customer",
             resource_id="qbo-alpha-test",
-            confidence=0.91,
+            confidence=0.91,  # confidence-honesty-ok: synthetic E2E fixture prior, not user-facing
             evidence=(host, email, name_qbo),
         ),
         EntityBinding(
             system="zendesk",
             resource_type="organization",
             resource_id="zd-alpha-test",
-            confidence=0.9,
+            confidence=0.9,  # confidence-honesty-ok: synthetic E2E fixture prior, not user-facing
             evidence=(host, email, name_zd),
         ),
     )
