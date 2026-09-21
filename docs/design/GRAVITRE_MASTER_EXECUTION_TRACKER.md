@@ -55,10 +55,51 @@
 
 ---
 
-## Phase 4–6
+## Authenticated browser verification
 
-| PHASE | STATUS |
-|-------|--------|
-| 4 Navigation B | NOT STARTED |
-| 5 Remaining surfaces | NOT STARTED |
-| 6 CES KF-A promote | BLOCKED — separate gate |
+**AUTHENTICATED BROWSER VERIFICATION — BLOCKED: NO AUTHORIZED SESSION.**
+
+Recorded once. Does not block implementation of independent phases. Do not mark browser matrices PASS. Resume when a session exists. Do not request credentials.
+
+Applies to: Intelligence, Activity, Navigation, and later surfaces until a session is available.
+
+---
+
+## Phase 4 — Navigation B (expandable labeled rail)
+
+| REQUIREMENT | STATUS | EVIDENCE |
+|-------------|--------|----------|
+| Click expand (not hover-only) | IMPLEMENTED — NOT PROVEN | `app-shell.tsx` hamburger + persisted `gravitre-nav-expanded` |
+| Pin labels | IMPLEMENTED — NOT PROVEN | Sidebar `nav-pin-labels` → same persisted toggle |
+| Keyboard arrows | IMPLEMENTED — NOT PROVEN | `cycleNavFocus` + sidebar keydown · vitest 3/3 `nav-rail-focus.test.ts` |
+| Mobile drawer | IMPLEMENTED — NOT PROVEN | Existing overlay; hamburger opens drawer <768 |
+| Destinations / org / admin-lite / notifications / AI / palette | PRESERVED | No second nav architecture; top bar unchanged |
+| Authenticated browser | BLOCKED | No authorized session |
+
+---
+
+## Phase 5 — Remaining surfaces
+
+| SURFACE | STATUS | NEXT |
+|---------|--------|------|
+| Agents | NOT STARTED | Inherit foundation on existing roster — do not replace fleet |
+| Relationships | NOT STARTED | After Agents |
+| Workflows | NOT STARTED | |
+| Connectors | NOT STARTED | |
+| Sources | NOT STARTED | |
+| Approvals | NOT STARTED | |
+| Marketplace | NOT STARTED | |
+| Models | NOT STARTED | |
+| Settings | NOT STARTED | |
+| AI Workspace refinements | NOT STARTED | No second runtime |
+
+---
+
+## Phase 6 — CES 2.0
+
+| REQUIREMENT | STATUS |
+|-------------|--------|
+| KF-A harness (locked concept) | IMPLEMENTED — NOT PROVEN (harness) |
+| Production Pilot 3 promote | BLOCKED — separate promote gate |
+| Pilot 1 / 2 reopen | NOT STARTED (locked — do not reopen) |
+

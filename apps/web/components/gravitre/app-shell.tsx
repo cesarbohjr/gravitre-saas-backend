@@ -364,6 +364,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           navExpanded={navExpanded}
+          onToggleExpanded={handleMenuClick}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar title={title} onMenuClick={handleMenuClick} compact={useCompactTopBar} />

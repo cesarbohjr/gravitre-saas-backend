@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Icon } from "@/lib/icons"
 import { useViewMode } from "@/lib/view-mode-context"
 import useSWR from "swr"
@@ -28,17 +28,19 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { resolveSidebarNavIcon } from "@/components/gravitre/nodus-product/sidebar-nucleo"
+import { cycleNavFocus } from "@/lib/nav-rail-focus"
 
 const sectionColors = SIDEBAR_SECTION_COLORS
 
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
-  /** Desktop/tablet: show icon rail (false) vs full labels (true). */
+  /** Desktop/tablet: show icon rail (false) vs full labels (true). Click/pin only — never hover. */
   navExpanded?: boolean
+  onToggleExpanded?: () => void
 }
 
-export function Sidebar({ isOpen, onClose, navExpanded = false }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded }: SidebarProps) {
   const pathname = usePathname()
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
   const isMobile = useIsMobile()
@@ -97,6 +99,20 @@ export function Sidebar({ isOpen, onClose, navExpanded = false }: SidebarProps) 
       }
     })
   }, [isLite, onboardingComplete, progress, pendingApprovals, hasMesonBuilder])
+
+  const navRef = useRef<HTMLElement>(null)
+
+  const onNavKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return
+    const root = navRef.current
+    if (!root) return
+    const links = Array.from(root.querySelectorAll<HTMLAnchorElement>("a[data-testid^='sidebar-link-']"))
+    if (links.length === 0) return
+    event.preventDefault()
+    const current = links.findIndex((link) => link === document.activeElement)
+    const next = cycleNavFocus(current, event.key === "ArrowDown" ? 1 : -1, links.length)
+    links[next]?.focus()
+  }
 
   const toggleSection = (group: string) => {
     setCollapsedSections(prev =>
@@ -214,7 +230,12 @@ export function Sidebar({ isOpen, onClose, navExpanded = false }: SidebarProps) 
         {/* `min-h-0` is required: without it a `flex-1` child refuses to shrink
             below its content height, so the nav overflows its track and squeezes
             the footer instead of scrolling internally. */}
-        <nav className="min-h-0 flex-1 overflow-y-auto scrollbar-on-hover px-1.5 py-3 md:px-2 xl:px-2">
+        <nav
+          ref={navRef}
+          onKeyDown={onNavKeyDown}
+          aria-label="Primary"
+          className="min-h-0 flex-1 overflow-y-auto scrollbar-on-hover px-1.5 py-3 md:px-2 xl:px-2"
+        >
           {navigation.map((group, groupIndex) => {
             const colors = sectionColors[group.group]
             const isCollapsed = collapsedSections.includes(group.group)
@@ -399,15 +420,19 @@ export function Sidebar({ isOpen, onClose, navExpanded = false }: SidebarProps) 
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "flex h-2 w-2 cursor-help rounded-full bg-success",
-                    navExpanded ? "md:flex" : "md:hidden",
-                  )}
-                />
+                <button
+                  type="button"
+                  className="hidden h-7 items-center rounded-md px-2 text-[11px] font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground md:inline-flex"
+                  aria-pressed={navExpanded}
+                  aria-label={navExpanded ? "Unpin navigation labels" : "Pin navigation labels"}
+                  data-testid="nav-pin-labels"
+                  onClick={onToggleExpanded}
+                >
+                  {navExpanded ? "Unpin" : "Pin"}
+                </button>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
-                All systems operational
+                {navExpanded ? "Collapse labels" : "Pin labels"}
               </TooltipContent>
             </Tooltip>
           </div>
