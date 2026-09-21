@@ -315,6 +315,7 @@ async def _propose_connector_status(ctx: GatewayContext) -> CandidateVerdict | N
             "vendor_slug": result.vendor_slug,
             "state": result.state.value if result.state else None,
             "question_kind": result.kind.value,
+            "status_tool_invoked": True,
             "verified_tool": result.source if result.source == "getConnectorStatus" else None,
         },
     )

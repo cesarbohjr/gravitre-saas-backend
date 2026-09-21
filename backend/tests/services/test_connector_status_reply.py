@@ -331,6 +331,14 @@ def test_retrieval_ab_a_format_ignores_routing_slugs():
     assert "Apollo" not in text
 
 
+def test_retrieval_ab_a_fast_route_is_simple():
+    """The live probe requires routing tier simple. Fast mode classifies this question that way."""
+    from app.services.assistant_routing_tier import classify_routing_tier
+
+    decision = classify_routing_tier(RETRIEVAL_AB_A_MESSAGE, mode="fast")
+    assert decision.tier == "simple"
+
+
 def test_retrieval_ab_a_shortcut_emits_getconnectorstatus_tool_name():
     from app.operators.assistant_sse import sse_react_tool_start
 

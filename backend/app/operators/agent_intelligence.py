@@ -2098,16 +2098,36 @@ class AgentIntelligence:
                 "score": gateway.confidence,
                 "needs_clarification": False,
             }
+            shortcut_routing = loop_trace.to_sse()
+            shortcut_routing_tier: str | None = None
+            if gateway.candidate_id == "connector_status":
+                from app.services.assistant_routing_tier import classify_routing_tier
+
+                routing_decision = classify_routing_tier(
+                    task_text,
+                    mode=str(mode or "fast"),
+                    parameters={"mode": str(mode or "fast")},
+                )
+                shortcut_routing_tier = routing_decision.tier
+                shortcut_routing = {
+                    **shortcut_routing,
+                    **routing_decision.to_sse(),
+                    "routingTier": routing_decision.tier,
+                }
             yield sse_intelligence_metadata(
                 message_id=message_id,
                 confidence=gateway_confidence,
                 answer_explanation=f"intent_gateway:{gateway.candidate_id}",
                 dialogue_mode="answer",
                 effective_mode=str(mode or "fast"),
-                routing=loop_trace.to_sse(),
+                routing_tier=shortcut_routing_tier,
+                routing=shortcut_routing,
                 progress_steps=loop_trace.progress_steps(),
             )
-            if str((gateway.extras or {}).get("verified_tool") or "") == "getConnectorStatus":
+            status_invoked = bool((gateway.extras or {}).get("status_tool_invoked")) or (
+                str((gateway.extras or {}).get("verified_tool") or "") == "getConnectorStatus"
+            )
+            if status_invoked:
                 from app.operators.assistant_sse import sse_react_tool_start
 
                 yield sse_react_tool_start(
