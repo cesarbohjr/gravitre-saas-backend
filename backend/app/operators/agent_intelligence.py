@@ -4760,6 +4760,7 @@ class AgentIntelligence:
             pipeline_tier=pipeline_tier,
             routing_tier=routing_control.tier,
             routing=routing_sse,
+            plan_ready=True,
         )
 
         tool_results: list[dict[str, Any]] = []

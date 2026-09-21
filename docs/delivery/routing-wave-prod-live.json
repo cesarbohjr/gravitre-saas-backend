@@ -1,0 +1,1021 @@
+{
+  "probe": "routing_wave_prod_live",
+  "pr": 97,
+  "expected_sha_prefix": "65998eb7",
+  "started_at": "2026-09-21T17:29:53.886811+00:00",
+  "base_url": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "traces": {
+    "A_fast_honesty": {
+      "pass": true,
+      "criteria": "effectiveMode=fast AND routingTier=simple; must NOT upgrade to agent",
+      "conversation_id": "dbe9c18e-a30e-4907-b9ad-ebbaeffd790b",
+      "result": {
+        "http": 200,
+        "conversation_id": "dbe9c18e-a30e-4907-b9ad-ebbaeffd790b",
+        "mode_requested": "fast",
+        "message": "What connectors are connected? (routing-wave A 3339cc58)",
+        "text": "You have Apollo, Google Ads, and Hubspot connected.",
+        "tools_seen": [
+          {
+            "type": "tool-input-available",
+            "toolName": "getConnectorStatus",
+            "toolCallId": "fde58554-b3c1-456d-9c4a-934d1943663c"
+          }
+        ],
+        "intel_count": 2,
+        "sse_pending": null,
+        "db_pending": null,
+        "task_state_keys": [
+          "clarified_params",
+          "rejected_options",
+          "approved_actions",
+          "current_plan",
+          "completed_steps",
+          "pending_steps",
+          "persona_override",
+          "preferred_tone",
+          "unresolved_tasks",
+          "suppressed_suggestions",
+          "pending_task",
+          "connector_session",
+          "resolved_entities",
+          "recent_user_messages",
+          "recent_connector_invocations",
+          "parameter_ledger",
+          "voice_expression_last",
+          "offered_action",
+          "previous_option_set",
+          "previous_result",
+          "active_analysis",
+          "resolution_trace",
+          "compiled_task",
+          "execution_plan",
+          "execution_observations",
+          "pending_action",
+          "cognitive_turn_trace",
+          "provider_result_evidence",
+          "proactive_operator",
+          "business_entity",
+          "last_read_preflight",
+          "capability_id",
+          "capability_route_reason",
+          "cognitive_resolution_message",
+          "cognitive_resolution_needs"
+        ],
+        "routing_tiers_seen": [
+          "simple"
+        ],
+        "effective_modes_seen": [
+          "fast"
+        ],
+        "pipeline_tiers_seen": [],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "final_pipelineTier": null,
+        "last_intel": {
+          "effectiveMode": "fast",
+          "pipelineTier": null,
+          "routingTier": "simple",
+          "routing": {
+            "cognitiveLoop": true,
+            "loopId": "99aa3d7e-92a7-4639-9098-a5c41ed772b9",
+            "operatorTask": false,
+            "fastPath": true,
+            "spokenMode": false,
+            "turnId": null,
+            "stages": [
+              {
+                "stage": "PERCEIVE",
+                "ok": true,
+                "ms": 755.0,
+                "skipped": false,
+                "skip_reason": null,
+                "evidence": {
+                  "action": "shortcut",
+                  "reason": "candidate_accepted",
+                  "candidate_id": "connector_status",
+                  "confidence": 0.95
+                }
+              },
+              {
+                "stage": "RETRIEVE",
+                "ok": true,
+                "ms": 0.0,
+                "skipped": true,
+                "skip_reason": "intent_gateway_fast_path",
+                "evidence": {
+                  "reason": "intent_gateway_fast_path"
+                }
+              },
+              {
+                "stage": "PLAN",
+                "ok": true,
+                "ms": 0.0,
+                "skipped": true,
+                "skip_reason": "intent_gateway_fast_path",
+                "evidence": {
+                  "reason": "intent_gateway_fast_path"
+                }
+              },
+              {
+                "stage": "ACT",
+                "ok": true,
+                "ms": 0.0,
+                "skipped": true,
+                "skip_reason": "intent_gateway_fast_path",
+                "evidence": {
+                  "reason": "intent_gateway_fast_path"
+                }
+              },
+              {
+                "stage": "OBSERVE",
+                "ok": true,
+                "ms": 0.0,
+                "skipped": true,
+                "skip_reason": "intent_gateway_fast_path",
+                "evidence": {
+                  "reason": "intent_gateway_fast_path"
+                }
+              },
+              {
+                "stage": "LEARN",
+                "ok": true,
+                "ms": 0.0,
+                "skipped": true,
+                "skip_reason": "intent_gateway_fast_path",
+                "evidence": {
+                  "reason": "intent_gateway_fast_path"
+                }
+              }
+            ],
+            "fullLoop": false,
+            "routingTier": "simple",
+            "modelTier": "low",
+            "latencyBudgetMs": {
+              "ttft": 800,
+              "total": 8000
+            },
+            "maxToolRounds": 2,
+            "pinnedFast": true,
+            "reasons": [
+              "fast_or_explicit_simple"
+            ]
+          },
+          "expl": "intent_gateway:connector_status",
+          "pending": null
+        },
+        "attempt": 1
+      },
+      "upgraded_away_from_fast": false
+    },
+    "B_write_intent": {
+      "pass": true,
+      "criteria": "routingTier multi_step OR research (not simple); pending approval OK (not confirmed)",
+      "conversation_id": "cc4e8519-e145-4667-8a85-d027468c2149",
+      "result": {
+        "http": 200,
+        "conversation_id": "cc4e8519-e145-4667-8a85-d027468c2149",
+        "mode_requested": "standard",
+        "message": "In Apollo, create a contact list named Routing Wave Live.",
+        "text": "I can create the Apollo contact list named **Routing Wave Live**. Reply **yes** to approve, or send the changes you want.",
+        "tools_seen": [],
+        "intel_count": 5,
+        "sse_pending": {
+          "type": "connector_action",
+          "action": "Compose answer",
+          "params": {
+            "args": {
+              "name": "Routing Wave Live",
+              "modality": "contacts"
+            },
+            "kind": "write",
+            "label": "Create contact list",
+            "source": "retrieve_plan_gate_list_create",
+            "status": "awaiting_confirm",
+            "tool_name": "apollo_lists_create",
+            "destructive": true,
+            "integration": "apollo",
+            "invoke_action": "apollo.lists.create",
+            "approval_reason": null,
+            "bound_tool_name": "apollo_lists_create",
+            "inferred_fields": [],
+            "bound_args_digest": "5191a4ea4934c9042188360e111aee30130496f01be662695b1fec021fa5e9db",
+            "bound_integration": "apollo",
+            "inference_sources": {},
+            "requires_approval": true,
+            "approval_action_id": "c3589aea-f593-46d8-bf51-985bf7c14818",
+            "bound_invoke_action": "apollo.lists.create"
+          },
+          "status": "awaiting_confirm",
+          "plan_steps": [
+            {
+              "kind": "compose",
+              "label": "Compose answer",
+              "status": "pending",
+              "rationale": null,
+              "action_key": null,
+              "connector_id": null
+            }
+          ],
+          "_projection": true,
+          "connector_id": null,
+          "plan_summary": "In Apollo, create a contact list named Routing Wave Live.",
+          "plan_rationale": "In Apollo, create a contact list named Routing Wave Live.",
+          "execution_plan_id": "8a082cd6-14b2-437b-a157-9cb7fd3f2d94",
+          "_projection_source": "execution_plan"
+        },
+        "db_pending": {
+          "type": "connector_action",
+          "action": "Compose answer",
+          "params": {
+            "args": {
+              "name": "Routing Wave Live",
+              "modality": "contacts"
+            },
+            "kind": "write",
+            "label": "Create contact list",
+            "source": "retrieve_plan_gate_list_create",
+            "status": "awaiting_confirm",
+            "tool_name": "apollo_lists_create",
+            "destructive": true,
+            "integration": "apollo",
+            "invoke_action": "apollo.lists.create",
+            "approval_reason": null,
+            "bound_tool_name": "apollo_lists_create",
+            "inferred_fields": [],
+            "bound_args_digest": "5191a4ea4934c9042188360e111aee30130496f01be662695b1fec021fa5e9db",
+            "bound_integration": "apollo",
+            "inference_sources": {},
+            "requires_approval": true,
+            "approval_action_id": "c3589aea-f593-46d8-bf51-985bf7c14818",
+            "bound_invoke_action": "apollo.lists.create"
+          },
+          "status": "awaiting_confirm",
+          "plan_steps": [
+            {
+              "kind": "compose",
+              "label": "Compose answer",
+              "status": "pending",
+              "rationale": null,
+              "action_key": null,
+              "connector_id": null
+            }
+          ],
+          "_projection": true,
+          "connector_id": null,
+          "plan_summary": "In Apollo, create a contact list named Routing Wave Live.",
+          "plan_rationale": "In Apollo, create a contact list named Routing Wave Live.",
+          "execution_plan_id": "8a082cd6-14b2-437b-a157-9cb7fd3f2d94",
+          "_projection_source": "execution_plan"
+        },
+        "task_state_keys": [
+          "clarified_params",
+          "rejected_options",
+          "approved_actions",
+          "current_plan",
+          "completed_steps",
+          "pending_steps",
+          "persona_override",
+          "preferred_tone",
+          "unresolved_tasks",
+          "suppressed_suggestions",
+          "pending_task",
+          "connector_session",
+          "resolved_entities",
+          "recent_user_messages",
+          "recent_connector_invocations",
+          "parameter_ledger",
+          "voice_expression_last",
+          "offered_action",
+          "previous_option_set",
+          "previous_result",
+          "active_analysis",
+          "resolution_trace",
+          "compiled_task",
+          "execution_plan",
+          "execution_observations",
+          "pending_action",
+          "cognitive_turn_trace",
+          "provider_result_evidence",
+          "proactive_operator",
+          "business_entity",
+          "last_read_preflight",
+          "capability_id",
+          "capability_route_reason",
+          "cognitive_resolution_message",
+          "cognitive_resolution_needs"
+        ],
+        "routing_tiers_seen": [
+          "multi_step",
+          "multi_step",
+          "multi_step"
+        ],
+        "effective_modes_seen": [
+          "standard",
+          "agent",
+          "agent",
+          "agent"
+        ],
+        "pipeline_tiers_seen": [
+          "tier_3",
+          "tier_3",
+          "tier_3"
+        ],
+        "final_routingTier": "multi_step",
+        "final_effectiveMode": "agent",
+        "final_pipelineTier": "tier_3",
+        "last_intel": {
+          "effectiveMode": "agent",
+          "pipelineTier": "tier_3",
+          "routingTier": "multi_step",
+          "routing": {
+            "routingTier": "multi_step",
+            "modelTier": "medium",
+            "latencyBudgetMs": {
+              "ttft": 1500,
+              "total": 20000
+            },
+            "maxToolRounds": 15,
+            "pinnedFast": false,
+            "reasons": [
+              "write_intent_with_connector"
+            ],
+            "unifiedTurnLive": true,
+            "contextCompiler": {
+              "context_compiler_invoked": true,
+              "context_compile_skipped_reason": null,
+              "context_sources_considered": [
+                "pending_action",
+                "connector_context",
+                "write_intent",
+                "standing_corrections",
+                "prior_recommendations",
+                "cognitive_kernel",
+                "knowledge_fabric",
+                "kernel_memory",
+                "kernel_knowledge",
+                "outcome_bias",
+                "surface_context",
+                "workspace_focus",
+                "compiled_task",
+                "user_message"
+              ],
+              "context_sources_included": [
+                "connector_context",
+                "cognitive_kernel",
+                "knowledge_fabric",
+                "compiled_task",
+                "user_message"
+              ],
+              "context_sources_excluded": [
+                "pending_action",
+                "write_intent",
+                "standing_corrections",
+                "prior_recommendations",
+                "surface_context",
+                "workspace_focus"
+              ],
+              "context_sources_deferred": [
+                "kernel_memory",
+                "kernel_knowledge",
+                "outcome_bias"
+              ],
+              "retrievals_performed": [
+                "knowledge_fabric"
+              ],
+              "token_estimate": 1458,
+              "compile_duration_ms": 37055.43,
+              "compiled_task_included": true,
+              "registry_plan": {
+                "enabledSlices": [
+                  "connector",
+                  "department",
+                  "graph",
+                  "rag",
+                  "user"
+                ],
+                "tokenBudget": 12000,
+                "ragTopK": 6,
+                "connectorNames": [
+                  "apollo"
+                ],
+                "routingTier": "multi_step",
+                "reasons": [
+                  "standard_budget",
+                  "connector_relevant",
+                  "department_set",
+                  "graph_intent",
+                  "action_with_connectors"
+                ]
+              }
+            },
+            "unifiedOutcomeKind": "connector_tool_proposal",
+            "reasoningDepth": "full",
+            "spokenStreamed": false,
+            "cachedPromptTokens": null,
+            "cachedPromptRatio": null,
+            "modelTtftMs": null,
+            "preModelMs": null,
+            "wallToFirstTokenMs": null,
+            "unifiedLatencyMs": null,
+            "contextPromptMs": null,
+            "registryToolsMs": null,
+            "narrowToolsMs": null,
+            "latencyBreakdown": {},
+            "offeredActionExecuted": false,
+            "turnTerminalState": null
+          },
+          "expl": "Looking up a matching plan",
+          "pending": {
+            "type": "connector_action",
+            "action": "Compose answer",
+            "params": {
+              "args": {
+                "name": "Routing Wave Live",
+                "modality": "contacts"
+              },
+              "kind": "write",
+              "label": "Create contact list",
+              "source": "retrieve_plan_gate_list_create",
+              "status": "awaiting_confirm",
+              "tool_name": "apollo_lists_create",
+              "destructive": true,
+              "integration": "apollo",
+              "invoke_action": "apollo.lists.create",
+              "approval_reason": null,
+              "bound_tool_name": "apollo_lists_create",
+              "inferred_fields": [],
+              "bound_args_digest": "5191a4ea4934c9042188360e111aee30130496f01be662695b1fec021fa5e9db",
+              "bound_integration": "apollo",
+              "inference_sources": {},
+              "requires_approval": true,
+              "approval_action_id": "c3589aea-f593-46d8-bf51-985bf7c14818",
+              "bound_invoke_action": "apollo.lists.create"
+            },
+            "status": "awaiting_confirm",
+            "plan_steps": [
+              {
+                "kind": "compose",
+                "label": "Compose answer",
+                "status": "pending",
+                "rationale": null,
+                "action_key": null,
+                "connector_id": null
+              }
+            ],
+            "_projection": true,
+            "connector_id": null,
+            "plan_summary": "In Apollo, create a contact list named Routing Wave Live.",
+            "plan_rationale": "In Apollo, create a contact list named Routing Wave Live.",
+            "execution_plan_id": "8a082cd6-14b2-437b-a157-9cb7fd3f2d94",
+            "_projection_source": "execution_plan"
+          }
+        }
+      },
+      "pending_gate": {
+        "type": "connector_action",
+        "action": "Compose answer",
+        "params": {
+          "args": {
+            "name": "Routing Wave Live",
+            "modality": "contacts"
+          },
+          "kind": "write",
+          "label": "Create contact list",
+          "source": "retrieve_plan_gate_list_create",
+          "status": "awaiting_confirm",
+          "tool_name": "apollo_lists_create",
+          "destructive": true,
+          "integration": "apollo",
+          "invoke_action": "apollo.lists.create",
+          "approval_reason": null,
+          "bound_tool_name": "apollo_lists_create",
+          "inferred_fields": [],
+          "bound_args_digest": "5191a4ea4934c9042188360e111aee30130496f01be662695b1fec021fa5e9db",
+          "bound_integration": "apollo",
+          "inference_sources": {},
+          "requires_approval": true,
+          "approval_action_id": "c3589aea-f593-46d8-bf51-985bf7c14818",
+          "bound_invoke_action": "apollo.lists.create"
+        },
+        "status": "awaiting_confirm",
+        "plan_steps": [
+          {
+            "kind": "compose",
+            "label": "Compose answer",
+            "status": "pending",
+            "rationale": null,
+            "action_key": null,
+            "connector_id": null
+          }
+        ],
+        "_projection": true,
+        "connector_id": null,
+        "plan_summary": "In Apollo, create a contact list named Routing Wave Live.",
+        "plan_rationale": "In Apollo, create a contact list named Routing Wave Live.",
+        "execution_plan_id": "8a082cd6-14b2-437b-a157-9cb7fd3f2d94",
+        "_projection_source": "execution_plan"
+      },
+      "stopped_at_pending": true,
+      "note": "Did not confirm write \u2014 prefer stop at pending approval"
+    },
+    "C_deepen_research": {
+      "pass": true,
+      "criteria": "routingTier=research OR escalation to research",
+      "conversation_id": "ef074f4b-aa13-4e0e-8519-585e405f7931",
+      "attempts": [
+        {
+          "attempt": 1,
+          "mode": "standard",
+          "conversation_id": "ef074f4b-aa13-4e0e-8519-585e405f7931",
+          "final_routingTier": "research",
+          "tiers_seen": [
+            "research",
+            "research",
+            "research",
+            "research"
+          ],
+          "effectiveMode": "agent",
+          "http": 200,
+          "text_head": "Apollo can be checked, but the Pipedrive side is blocked because Pipedrive isn\u2019t connected. Connect Pipedrive at `/connectors` if you want the full Apollo vs. Pipedrive pipeline health analysis. Other",
+          "expl": "Coordinating connected tools"
+        }
+      ],
+      "result": {
+        "http": 200,
+        "conversation_id": "ef074f4b-aa13-4e0e-8519-585e405f7931",
+        "mode_requested": "standard",
+        "message": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c0f5cf12]",
+        "text": "Apollo can be checked, but the Pipedrive side is blocked because Pipedrive isn\u2019t connected. Connect Pipedrive at `/connectors` if you want the full Apollo vs. Pipedrive pipeline health analysis. Otherwise, reply **yes** and I\u2019ll proceed with the Apollo-only read.",
+        "tools_seen": [],
+        "intel_count": 6,
+        "sse_pending": {
+          "type": "connector_orchestration",
+          "params": {
+            "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c0f5cf12]",
+            "steps": [
+              {
+                "kind": "read",
+                "plan": {
+                  "args": {
+                    "limit": 10,
+                    "query": "go deeper with a full analysis comparing our Apollo"
+                  },
+                  "kind": "read",
+                  "label": "Search people",
+                  "tool_name": "apollo_people_search",
+                  "destructive": false,
+                  "integration": "apollo",
+                  "invoke_action": "apollo.people.search",
+                  "approval_reason": null,
+                  "bound_tool_name": "apollo_people_search",
+                  "inferred_fields": [],
+                  "bound_args_digest": "de7864f583281969463e425d89d6fc71a500fbbb155c5d0411daaaeee0c61b33",
+                  "bound_integration": "apollo",
+                  "inference_sources": {},
+                  "requires_approval": false,
+                  "approval_action_id": "41e655c4-b2a1-43ba-aafb-618ae4dacd00",
+                  "bound_invoke_action": "apollo.people.search"
+                },
+                "label": "Search people",
+                "segment": "go deeper with a full analysis comparing our Apollo",
+                "step_id": "step_1",
+                "supported": true,
+                "skip_reason": null,
+                "requires_approval": false
+              },
+              {
+                "kind": "write",
+                "label": "Pipedrive (not connected)",
+                "segment": "Pipedrive pipeline health [routing-wave C c0f5cf12]",
+                "step_id": "step_2",
+                "supported": false,
+                "skip_reason": "Connect Pipedrive at /connectors to run this action.",
+                "requires_approval": false
+              }
+            ],
+            "total_steps": 2,
+            "step_results": [],
+            "current_step_index": 0
+          },
+          "status": "awaiting_plan_confirm"
+        },
+        "db_pending": {
+          "type": "connector_orchestration",
+          "action": "Compose answer",
+          "params": {
+            "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c0f5cf12]",
+            "steps": [
+              {
+                "kind": "read",
+                "plan": {
+                  "args": {
+                    "limit": 10,
+                    "query": "go deeper with a full analysis comparing our Apollo"
+                  },
+                  "kind": "read",
+                  "label": "Search people",
+                  "tool_name": "apollo_people_search",
+                  "destructive": false,
+                  "integration": "apollo",
+                  "invoke_action": "apollo.people.search",
+                  "approval_reason": null,
+                  "bound_tool_name": "apollo_people_search",
+                  "inferred_fields": [],
+                  "bound_args_digest": "de7864f583281969463e425d89d6fc71a500fbbb155c5d0411daaaeee0c61b33",
+                  "bound_integration": "apollo",
+                  "inference_sources": {},
+                  "requires_approval": false,
+                  "approval_action_id": "41e655c4-b2a1-43ba-aafb-618ae4dacd00",
+                  "bound_invoke_action": "apollo.people.search"
+                },
+                "label": "Search people",
+                "segment": "go deeper with a full analysis comparing our Apollo",
+                "step_id": "step_1",
+                "supported": true,
+                "skip_reason": null,
+                "requires_approval": false
+              },
+              {
+                "kind": "write",
+                "label": "Pipedrive (not connected)",
+                "segment": "Pipedrive pipeline health [routing-wave C c0f5cf12]",
+                "step_id": "step_2",
+                "supported": false,
+                "skip_reason": "Connect Pipedrive at /connectors to run this action.",
+                "requires_approval": false
+              }
+            ],
+            "total_steps": 2,
+            "step_results": [],
+            "current_step_index": 0
+          },
+          "status": "awaiting_plan_confirm",
+          "plan_steps": [
+            {
+              "kind": "compose",
+              "label": "Compose answer",
+              "status": "pending",
+              "rationale": null,
+              "action_key": null,
+              "connector_id": null
+            }
+          ],
+          "_projection": true,
+          "connector_id": null,
+          "plan_summary": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c0f5cf12]",
+          "plan_rationale": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c0f5cf12]",
+          "execution_plan_id": "7850505e-0ceb-4c67-952e-c702e3146e8f",
+          "_projection_source": "execution_plan"
+        },
+        "task_state_keys": [
+          "clarified_params",
+          "rejected_options",
+          "approved_actions",
+          "current_plan",
+          "completed_steps",
+          "pending_steps",
+          "persona_override",
+          "preferred_tone",
+          "unresolved_tasks",
+          "suppressed_suggestions",
+          "pending_task",
+          "connector_session",
+          "resolved_entities",
+          "recent_user_messages",
+          "recent_connector_invocations",
+          "parameter_ledger",
+          "voice_expression_last",
+          "offered_action",
+          "previous_option_set",
+          "previous_result",
+          "active_analysis",
+          "resolution_trace",
+          "compiled_task",
+          "execution_plan",
+          "execution_observations",
+          "pending_action",
+          "cognitive_turn_trace",
+          "provider_result_evidence",
+          "proactive_operator",
+          "business_entity",
+          "last_read_preflight",
+          "capability_id",
+          "capability_route_reason",
+          "cognitive_resolution_message",
+          "cognitive_resolution_needs"
+        ],
+        "routing_tiers_seen": [
+          "research",
+          "research",
+          "research",
+          "research"
+        ],
+        "effective_modes_seen": [
+          "standard",
+          "agent",
+          "agent",
+          "agent",
+          "agent"
+        ],
+        "pipeline_tiers_seen": [
+          "tier_3",
+          "tier_3",
+          "tier_3",
+          "tier_3"
+        ],
+        "final_routingTier": "research",
+        "final_effectiveMode": "agent",
+        "final_pipelineTier": "tier_3",
+        "last_intel": {
+          "effectiveMode": "agent",
+          "pipelineTier": "tier_3",
+          "routingTier": "research",
+          "routing": {
+            "routingTier": "research",
+            "modelTier": "high",
+            "latencyBudgetMs": {
+              "ttft": 2500,
+              "total": 60000
+            },
+            "maxToolRounds": 15,
+            "pinnedFast": false,
+            "reasons": [
+              "research_signal"
+            ],
+            "cognitiveLoop": true,
+            "loopId": "88ef35f8-9875-4fbe-929f-74fc0d0d4c5c",
+            "operatorTask": false,
+            "fastPath": false,
+            "spokenMode": false,
+            "turnId": "6d8d5c78-28e6-4ad6-bd08-8a0ad5323a30",
+            "stages": [
+              {
+                "stage": "PERCEIVE",
+                "ok": true,
+                "ms": 119.0,
+                "skipped": false,
+                "skip_reason": null,
+                "evidence": {
+                  "action": "fallthrough",
+                  "reason": "below_threshold",
+                  "candidate_id": null,
+                  "confidence": null
+                }
+              },
+              {
+                "stage": "RETRIEVE",
+                "ok": true,
+                "ms": 978.5,
+                "skipped": false,
+                "skip_reason": null,
+                "evidence": {
+                  "kernel_stages": [
+                    {
+                      "stage": "RETRIEVE",
+                      "ok": true,
+                      "ms": 0.0,
+                      "meta": {
+                        "surface": "ai_chat",
+                        "entry_point": "execute_task_streaming"
+                      }
+                    },
+                    {
+                      "stage": "RECALL",
+                      "ok": true,
+                      "ms": 476.94,
+                      "meta": {
+                        "keys": [
+                          "working",
+                          "episodic",
+                          "preference",
+                          "decision",
+                          "outcome",
+                          "relationship",
+                          "procedural"
+                        ],
+                        "recall": {
+                          "ran": true,
+                          "total": 20,
+                          "bySource": {
+                            "hybrid": 8,
+                            "agent": 0,
+                            "department": 0,
+                            "ledger": 0,
+                            "workspace": 12
+                          },
+                          "attempted": [
+                            "hybrid",
+                            "ledger",
+                            "workspace"
+                          ],
+                          "degraded": false,
+                          "failedSources": []
+                        }
+                      }
+                    },
+                    {
+                      "stage": "KNOWLEDGE",
+                      "ok": true,
+                      "ms": 501.59,
+                      "meta": {
+                        "fabric_count": 6
+                      }
+                    }
+                  ],
+                  "fabric_count": 6,
+                  "signal_scoring": false,
+                  "sufficiency": {
+                    "skipped": "not_operator_or_priority"
+                  }
+                }
+              },
+              {
+                "stage": "PLAN",
+                "ok": true,
+                "ms": 0.3,
+                "skipped": false,
+                "skip_reason": null,
+                "evidence": {
+                  "step_count": 5,
+                  "source": "cognitive_planner+recipe",
+                  "has_signal_priorities": false
+                }
+              },
+              {
+                "stage": "ACT",
+                "ok": true,
+                "ms": 0.0,
+                "skipped": false,
+                "skip_reason": null,
+                "evidence": {
+                  "tool_result_count": 0,
+                  "pending_approval": true,
+                  "execution_verified": false,
+                  "react_status": null
+                }
+              },
+              {
+                "stage": "OBSERVE",
+                "ok": true,
+                "ms": 1.2,
+                "skipped": false,
+                "skip_reason": null,
+                "evidence": {
+                  "coverage_pct": 100.0,
+                  "mutating_action_count": 362,
+                  "full_coverage": true,
+                  "this_turn_mutating": [],
+                  "verifications": [],
+                  "pending_approval": true,
+                  "observe_mode": "awaiting_plan_confirm"
+                }
+              },
+              {
+                "stage": "LEARN",
+                "ok": true,
+                "ms": 521.1,
+                "skipped": false,
+                "skip_reason": null,
+                "evidence": {
+                  "ok": true,
+                  "outcome_event": "plan_awaiting_approval",
+                  "recommendation_id": "6d8d5c78-28e6-4ad6-bd08-8a0ad5323a30",
+                  "outcome_ids": []
+                }
+              }
+            ],
+            "fullLoop": true
+          },
+          "expl": "Coordinating connected tools",
+          "pending": {
+            "type": "connector_orchestration",
+            "params": {
+              "goal": "go deeper with a full analysis comparing our Apollo and Pipedrive pipeline health [routing-wave C c0f5cf12]",
+              "steps": [
+                {
+                  "kind": "read",
+                  "plan": {
+                    "args": {
+                      "limit": 10,
+                      "query": "go deeper with a full analysis comparing our Apollo"
+                    },
+                    "kind": "read",
+                    "label": "Search people",
+                    "tool_name": "apollo_people_search",
+                    "destructive": false,
+                    "integration": "apollo",
+                    "invoke_action": "apollo.people.search",
+                    "approval_reason": null,
+                    "bound_tool_name": "apollo_people_search",
+                    "inferred_fields": [],
+                    "bound_args_digest": "de7864f583281969463e425d89d6fc71a500fbbb155c5d0411daaaeee0c61b33",
+                    "bound_integration": "apollo",
+                    "inference_sources": {},
+                    "requires_approval": false,
+                    "approval_action_id": "41e655c4-b2a1-43ba-aafb-618ae4dacd00",
+                    "bound_invoke_action": "apollo.people.search"
+                  },
+                  "label": "Search people",
+                  "segment": "go deeper with a full analysis comparing our Apollo",
+                  "step_id": "step_1",
+                  "supported": true,
+                  "skip_reason": null,
+                  "requires_approval": false
+                },
+                {
+                  "kind": "write",
+                  "label": "Pipedrive (not connected)",
+                  "segment": "Pipedrive pipeline health [routing-wave C c0f5cf12]",
+                  "step_id": "step_2",
+                  "supported": false,
+                  "skip_reason": "Connect Pipedrive at /connectors to run this action.",
+                  "requires_approval": false
+                }
+              ],
+              "total_steps": 2,
+              "step_results": [],
+              "current_step_index": 0
+            },
+            "status": "awaiting_plan_confirm"
+          }
+        },
+        "attempt": 1
+      }
+    }
+  },
+  "trace_d": {
+    "informational": true,
+    "pass": true,
+    "criteria": "count assistant.routing.escalated since script start (>=0 always; ideal >=1 if B/C escalated)",
+    "count": 0,
+    "events": [],
+    "note": "zero assistant.routing.escalated rows since script start (may classify at research/multi_step without mid-turn escalate)"
+  },
+  "prod_health": {
+    "status": "ok",
+    "timestamp": "2026-09-21T17:29:54.086475+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "8ee2ae008b2f9038919d0ce022f7433c0b700e88",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "prod_sha": "8ee2ae008b2f9038919d0ce022f7433c0b700e88",
+  "prod_sha_ok": true,
+  "accept_sha_prefixes": [
+    "65998eb7",
+    "3aff41ad",
+    "b8c13fa0",
+    "9c5368e3",
+    "91f785db"
+  ],
+  "allow_any_prod_sha": true,
+  "contains_pr97_note": "3aff41ad merges main after 65998eb7 (#97); follow-up clarify-SSE fix may supersede",
+  "finished_at": "2026-09-21T17:32:20.104443+00:00",
+  "verdict": "PASS",
+  "summary": {
+    "A": true,
+    "B": true,
+    "C": true,
+    "D_escalation_count": 0,
+    "prod_sha": "8ee2ae008b2f9038919d0ce022f7433c0b700e88",
+    "verdict": "PASS",
+    "evidence": {
+      "A_effectiveMode": "fast",
+      "A_routingTier": "simple",
+      "A_conversation_id": "dbe9c18e-a30e-4907-b9ad-ebbaeffd790b",
+      "B_routingTier": "multi_step",
+      "B_tiers_seen": [
+        "multi_step",
+        "multi_step",
+        "multi_step"
+      ],
+      "B_pending": true,
+      "B_conversation_id": "cc4e8519-e145-4667-8a85-d027468c2149",
+      "C_routingTier": "research",
+      "C_tiers_seen": [
+        "research",
+        "research",
+        "research",
+        "research"
+      ],
+      "C_conversation_id": "ef074f4b-aa13-4e0e-8519-585e405f7931"
+    }
+  }
+}

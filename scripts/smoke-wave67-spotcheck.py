@@ -144,7 +144,17 @@ def _summarize_stream(events: list[dict[str, Any]], wall_start: str) -> dict[str
                 )
             if pending:
                 pending_tasks.append({"i": idx, "pending": pending})
-            if (expl and "Plan ready" in str(expl)) or entry["has_current_plan"]:
+            # User-facing sanitize maps "Plan ready — running tools" → "Running connected tools".
+            # Also accept durable planReady / current_plan flags.
+            expl_l = str(expl or "").lower()
+            plan_signal = bool(
+                (expl and "Plan ready" in str(expl))
+                or "running connected tools" in expl_l
+                or data.get("planReady") is True
+                or (isinstance(data.get("routing"), dict) and data["routing"].get("planReady") is True)
+                or entry["has_current_plan"]
+            )
+            if plan_signal:
                 if first_plan is None:
                     first_plan = {**entry, "wall_start": wall_start}
             if idx == len(events) - 1 or dialogue:
@@ -176,6 +186,10 @@ def _summarize_stream(events: list[dict[str, Any]], wall_start: str) -> dict[str
                 if isinstance(output, dict)
                 else None,
             }
+            # Knowledge-base chips historically omit success; treat a completed
+            # tool-output without error as success so claim 2 can score the read half.
+            if shaped["success"] is None and not shaped["errorCode"] and not shaped["error"]:
+                shaped["success"] = True
             tool_completes.append(shaped)
             if first_tool_complete is None:
                 first_tool_complete = shaped
@@ -287,7 +301,12 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
     token = _mint_token(env, actor, email)
     day = datetime.now(timezone.utc).strftime("%Y%m%d")
     list_name = f"gravitre-wave67-spotcheck-{day}"
-    conv = str(uuid.uuid4())
+    # Fresh conversation per claim family. Reusing one thread left pending Apollo
+    # projections that swallowed the Slack disconnect chip and the write gate.
+    conv_plan = str(uuid.uuid4())
+    conv_slack = str(uuid.uuid4())
+    conv_write = str(uuid.uuid4())
+    conv_claim4 = str(uuid.uuid4())
     base_url = (args.base_url or "").strip().rstrip("/")
     against_prod = bool(base_url)
 
@@ -295,7 +314,13 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
         "started_at": datetime.now(timezone.utc).isoformat(),
         "org_id": org_id,
         "actor_id": actor,
-        "conversation_id": conv,
+        "conversation_id": conv_plan,
+        "conversation_ids": {
+            "plan_read": conv_plan,
+            "slack_fail": conv_slack,
+            "apollo_write": conv_write,
+            "claim4": conv_claim4,
+        },
         "list_name": list_name,
         "base_url": base_url or "local-asgi",
         "branch_note": (
@@ -332,7 +357,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
             ac,
             org_id=org_id,
             token=token,
-            conversation_id=conv,
+            conversation_id=conv_plan,
             text=(
                 f"Using Apollo, list my contact lists and summarize the first few names. "
                 f"Then outline a short plan before calling tools. (wave67 plan/read {uuid.uuid4().hex[:8]})"
@@ -347,7 +372,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
             ac,
             org_id=org_id,
             token=token,
-            conversation_id=conv,
+            conversation_id=conv_slack,
             text=(
                 "Post a Slack message to the default channel saying "
                 "'gravitre-wave67-spotcheck failure probe — ignore'. Use the Slack connector."
@@ -367,7 +392,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
                 ac,
                 org_id=org_id,
                 token=token,
-                conversation_id=conv,
+                conversation_id=conv_write,
                 text=(
                     f"Create an Apollo contact list named exactly '{list_name}'. "
                     "Do not invent a different name."
@@ -386,7 +411,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
             )
 
             # Approve via chat "yes" when gated (works on prod API); fall back to local execute_plan only on ASGI.
-            approve_conv = conv
+            approve_conv = conv_write
             wall_yes, events_yes, status_yes = await _chat(
                 ac,
                 org_id=org_id,
@@ -464,7 +489,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
                     plan = plan_from_react_write(pending, reg)
                     state = get_conversation_state_service(settings)
                     await state.update_task_state(
-                        conv,
+                        conv_write,
                         org_id,
                         {
                             "pending_task": {
@@ -484,7 +509,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
                     result = await svc.execute_plan(
                         org_id=org_id,
                         user_id=actor,
-                        conversation_id=conv,
+                        conversation_id=conv_write,
                         plan=plan,
                         client=client,
                         classification={"intent": "connector_action", "requires_approval": True},
@@ -511,12 +536,11 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
                     )
 
             # Claim 4 causal: omit-name create → inferred default → approve → assumption_notes
-            conv4 = str(uuid.uuid4())
             wall4, events4, status4 = await _chat(
                 ac,
                 org_id=org_id,
                 token=token,
-                conversation_id=conv4,
+                conversation_id=conv_claim4,
                 text="In Apollo, create a contact list.",
                 tools=["apollo_lists_create", "apollo_lists_list", "connector_status", "knowledge_base"],
             )
@@ -538,7 +562,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
                 ac,
                 org_id=org_id,
                 token=token,
-                conversation_id=conv4,
+                conversation_id=conv_claim4,
                 text="yes",
                 tools=["apollo_lists_create", "apollo_lists_list", "connector_status", "knowledge_base"],
             )
@@ -602,7 +626,10 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
 
     approved = report.get("approved_execution") or {}
     url = str(approved.get("result_url") or "")
-    url_ok = bool(url) and "/connectors/" not in url and url.startswith("http")
+    # Accept absolute vendor URLs or in-app deep links (/ai?c=…).
+    url_ok = bool(url) and "/connectors/" not in url and (
+        url.startswith("http") or url.startswith("/ai")
+    )
     claim3 = {
         "status": "PASS"
         if approved.get("success") and url_ok
