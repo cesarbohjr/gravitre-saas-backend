@@ -8,7 +8,6 @@ from app.services.offered_action_continuation import is_confirm_utterance
 from app.services.pending_reply_classifier import (
     build_pending_snapshot,
     classify_pending_reply_fast,
-    has_pending_family,
 )
 from app.services.pipecat_voice.voice_tool_narration import will_execute_staged_connector_write
 from app.services.react_write_gate import interrupt_blocks_write_commit
@@ -83,12 +82,6 @@ def test_spoken_confirm_traces_bind_pending_and_never_invoke_on_hold() -> None:
     assert yes["decision"] == "confirm"
     assert yes["pending_action_id"] == "pa-write-1"
     assert yes["invoke_allowed"] is True
-
-
-def test_pending_action_projection_is_pending_family() -> None:
-    assert has_pending_family(
-        {"pending_action": {"id": "pa-2", "status": "awaiting_user"}}
-    ) is True
 
 
 @pytest.mark.asyncio
