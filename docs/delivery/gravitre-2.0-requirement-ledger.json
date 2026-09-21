@@ -89,5 +89,16 @@
     {"id": "A37", "title": "Production proof", "status": "PARTIAL", "note": "typed chat isolated PASS 22020a9e; traffic LIVE_USER_PROVEN still open; browser BLOCKED"},
     {"id": "A38", "title": "Completion criteria", "status": "NOT STARTED", "note": "program 2.0 not complete"},
     {"id": "A39", "title": "Final report", "status": "TEST PROVEN", "note": "GRAVITRE_PLATFORM_EXECUTION_2.0_FINAL_AUDIT.md plus GRAVITRE_FINAL_RELEASE_EVIDENCE.md"}
-  ]
+  ],
+  "p0_hubspot_live_read_2026_09_21": {
+    "health_sha_at_discovery": "909474febb44c058044a414ed8e614a1903a6735",
+    "conversation_id": "c0980fbc-a36b-4ccf-9c3e-9c5101e31532",
+    "proposed_action": "hubspot.deals.list",
+    "live_invocation": "NO",
+    "result_grounded": "NO",
+    "status": "FAIL_PRE_FIX",
+    "rca": "docs/delivery/gravitre-hubspot-live-fallthrough-rca.md",
+    "program_complete": false,
+    "ready_to_resume_3_0": false
+  }
 }

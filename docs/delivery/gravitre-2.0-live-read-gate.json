@@ -1,0 +1,351 @@
+{
+  "probe": "gravitre_2_0_live_read_gate",
+  "p0_fix_local": {
+    "at": "2026-09-21T00:20:00Z",
+    "note": "Source fix for LIVE skip, provider-result grounding, UUID audit actor, website frame. Live HubSpot READ not proven until this SHA is on Railway.",
+    "hubspot_live_read": "NOT PROVEN",
+    "unsupported_answer_prevented_unit": "YES",
+    "canonical_lineage_unit": "YES"
+  },
+  "started_at": "2026-09-20T20:33:05.983744+00:00",
+  "health_sha": "22c59faea9e0712c04502acc09c1fc15cd7ef1f4",
+  "kernel_org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "operator_org_inventory_only": true,
+  "isolated_connectors": [
+    {
+      "type": "google_ads",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "google_search_console",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "google_analytics",
+      "status": "pending_auth",
+      "healthy": false,
+      "pending_auth": true,
+      "invalid_grant": false
+    },
+    {
+      "type": "stripe",
+      "status": "active",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "greenhouse",
+      "status": "active",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "linkedin",
+      "status": "active",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "clay",
+      "status": "active",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "slack",
+      "status": "error",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "hubspot",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "apollo",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    }
+  ],
+  "operator_connectors": [
+    {
+      "type": "google_analytics",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "google_analytics",
+      "status": "pending_auth",
+      "healthy": false,
+      "pending_auth": true,
+      "invalid_grant": false
+    },
+    {
+      "type": "clay",
+      "status": "syncing",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "linkedin_sales_navigator",
+      "status": "needs_connection",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "zoominfo",
+      "status": "needs_connection",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "google_ads",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "gmail",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "ai_visibility_ui",
+      "status": "active",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "finseo",
+      "status": "needs_connection",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "gusto",
+      "status": "needs_connection",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "greenhouse",
+      "status": "needs_connection",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "bamboohr",
+      "status": "needs_connection",
+      "healthy": false,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "google_search_console",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "zendesk",
+      "status": "pending_auth",
+      "healthy": false,
+      "pending_auth": true,
+      "invalid_grant": false
+    },
+    {
+      "type": "microsoft365",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "apollo",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "pipedrive",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    },
+    {
+      "type": "hubspot",
+      "status": "healthy",
+      "healthy": true,
+      "pending_auth": false,
+      "invalid_grant": false
+    }
+  ],
+  "local_goldens": {
+    "status": "PASS",
+    "pytest": "tests/services/test_operational_read_execution.py tests/services/test_phase_c_cognitive_runtime.py tests/services/test_golden_benchmark_traffic.py tests/services/test_canonical_cognitive_ingress.py",
+    "count": "42 passed",
+    "note": "Compile/plan goldens only. Not authenticated production execution."
+  },
+  "executable_isolated": {
+    "google_analytics": {"execution_available": false, "auth_status": "pending_auth", "blocking_reason": "pending_auth"},
+    "google_search_console": {"execution_available": false, "auth_status": "auth_expired", "blocking_reason": "token_expired"},
+    "hubspot": {"execution_available": true, "auth_status": "connected"}
+  },
+  "executable_operator_inventory_only": {
+    "google_analytics": {"execution_available": true, "auth_status": "connected", "kernel_chat": "NOT RUN — conversation write guard"},
+    "google_search_console": {"execution_available": true, "auth_status": "connected", "kernel_chat": "NOT RUN — conversation write guard"},
+    "hubspot": {"execution_available": true, "auth_status": "connected", "kernel_chat": "NOT RUN — conversation write guard"}
+  },
+  "matrix": [
+    {
+      "scenario": "analytics_last_month",
+      "connected_source": "google_analytics:pending_auth (not executable)",
+      "compiled_capability": "analytics.traffic_overview (GA connect-guidance)",
+      "live_invocation": "NO",
+      "result_grounded": "NO",
+      "tenant_permission": "isolated kernel org JWT; GA pending_auth",
+      "status": "BLOCKED",
+      "dependency": "isolated kernel org GA pending_auth / not executable — not used as live analytics proof. Operator org has executable GA but kernel conversation writes are forbidden.",
+      "leaks": [],
+      "assistant_excerpt": "Google Analytics isn\u2019t connected yet. Connect it at `/connectors`, and I can pull last month\u2019s website traffic from your account.",
+      "tools": [
+        "searchKnowledgeBase"
+      ],
+      "audit_ids": [
+        "af15f873-d42",
+        "bffef685-9bd",
+        "6e5f220c-097",
+        "dde0744e-881",
+        "bc218e72-fe4",
+        "4cd60f97-30d",
+        "8400bf4a-cc9"
+      ],
+      "http_status": 200,
+      "wall_ms": 17846
+    },
+    {
+      "scenario": "crm_show_deals",
+      "connected_source": "hubspot:executable",
+      "compiled_capability": "hubspot.deals.list (unified proposal + plan step read_sales_pipeline_health)",
+      "live_invocation": "NO",
+      "result_grounded": "NO",
+      "tenant_permission": "isolated kernel org; HubSpot execution_available=true",
+      "status": "FAIL",
+      "dependency": "HubSpot connected. unified_turn.live.fallthrough read_tool_classical proposed hubspot.deals.list (2391a524-acc) then Composer canned 'Found 25 deals' with kind=canned. No tool.invoke.* rows. Plan step left pending. recent_connector_invocations empty. Plausible count is not provider proof. Sealed F1 actor_id is non-UUID so audit_events would skip even if invoke ran.",
+      "leaks": [],
+      "assistant_excerpt": "Found **25 deals** in your CRM.",
+      "tools": [],
+      "audit_ids": [
+        "90305c7d-9d2",
+        "5dc47f8d-c95",
+        "b00adf91-d6d",
+        "e905026d-e27",
+        "9ffeb609-a69",
+        "2391a524-acc",
+        "9086b565-bb2",
+        "32507ab1-a1c"
+      ],
+      "http_status": 200,
+      "wall_ms": 27332
+    },
+    {
+      "scenario": "remaining_source_website",
+      "connected_source": "google_search_console:auth_expired (row status healthy, not executable)",
+      "compiled_capability": "analytics.traffic_overview (GA connect-guidance; GSC remaining-source did not execute)",
+      "live_invocation": "NO",
+      "result_grounded": "NO",
+      "tenant_permission": "isolated kernel org; GSC token_expired",
+      "status": "BLOCKED",
+      "dependency": "GSC execution_available=false auth_status=auth_expired blocking_reason=token_expired. Not FAIL for missing connector. Remaining-source GSC READ cannot run until re-auth.",
+      "leaks": [],
+      "assistant_excerpt": "Google Analytics still isn\u2019t connected. Connect it at `/connectors`, and I can pull the website performance data from your account.",
+      "tools": [
+        "searchKnowledgeBase"
+      ],
+      "audit_ids": [
+        "53bd48c6-f11",
+        "1704c48c-ae3",
+        "cee4e0e3-5ce",
+        "dc92f278-182",
+        "fffe7f87-15e",
+        "b7166dd2-f3d",
+        "90305c7d-9d2"
+      ],
+      "http_status": 200,
+      "wall_ms": 17182,
+      "notes": "GA=pending_auth; GSC=healthy"
+    },
+    {
+      "scenario": "followup_last_week",
+      "connected_source": "google_analytics:pending_auth; GSC:token_expired",
+      "compiled_capability": "analytics.traffic_overview follow-up (time refine recognized; offered CRM instead)",
+      "live_invocation": "NO",
+      "result_grounded": "NO",
+      "tenant_permission": "isolated kernel org; no executable website source",
+      "status": "BLOCKED",
+      "dependency": "No executable GA or GSC on kernel org to retain for last-week re-READ.",
+      "leaks": [],
+      "assistant_excerpt": "Google Analytics still isn\u2019t connected, so I can\u2019t show last week\u2019s website performance yet. If you meant last week\u2019s CRM deals instead, say that and I\u2019ll use the CRM data.",
+      "tools": [],
+      "audit_ids": [
+        "6d440649-93e",
+        "27132c8b-482",
+        "18d43fd8-d7f",
+        "0fc2180b-295",
+        "27628bab-b99",
+        "67e0d585-e4c",
+        "1ca23251-271",
+        "4677528c-dc3"
+      ],
+      "http_status": 200,
+      "wall_ms": 24321
+    }
+  ],
+  "conversations": [],
+  "conversation_id": "c0980fbc-a36b-4ccf-9c3e-9c5101e31532",
+  "operator_ga": {
+    "status": "connected (plus a separate pending_auth row)",
+    "execution_available": true,
+    "kernel_chat": "NOT RUN (conversation write guard forbids operator org)"
+  },
+  "not_claimed": [
+    "2.0 complete",
+    "voice PCM",
+    "authenticated /ai complete",
+    "K/L/M complete",
+    "email delivery"
+  ],
+  "next_unblocked_live_read": "Re-authorize isolated GSC or run kernel CRM after sealed F1 invoke actually completes with tool.invoke.completed (UUID actor). Do not treat operator invoke_tool as kernel proof.",
+  "finished_at": "2026-09-20T20:34:34.285452+00:00"
+}

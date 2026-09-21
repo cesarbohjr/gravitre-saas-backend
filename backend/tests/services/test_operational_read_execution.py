@@ -50,3 +50,30 @@ async def test_pipeline_health_uses_deals_list_not_search() -> None:
     assert turn["workflow_status"] == "completed"
     assert "2 deal" in str(turn["message"])
     assert mock_invoke.call_args.kwargs["action_key"] == "hubspot.deals.list"
+
+
+@pytest.mark.asyncio
+async def test_provider_error_is_failed_not_completed() -> None:
+    invoked = NormalizedResult(
+        success=False,
+        action="hubspot.deals.list",
+        connector_id="hubspot",
+        error_code="provider_error",
+        error_message="HubSpot timed out",
+    )
+    proof = MagicMock(ok=True, error_class=None)
+    obs = MagicMock(success=False, step_id="read_sales_pipeline_health", connector_id="hubspot", summary="err")
+    with patch(
+        "app.services.operational_read_execution.invoke_sealed_f1_read",
+        return_value=(invoked, proof, obs),
+    ):
+        turn = await try_operational_read_short_circuit_turn(
+            message="Show my deals",
+            org_id="org-1",
+            client=object(),
+            settings=MagicMock(),
+            connected_integrations=["hubspot"],
+            task_state={},
+        )
+    assert turn["workflow_status"] == "failed"
+    assert "timed out" in str(turn["message"]).lower() or "couldn't complete" in str(turn["message"]).lower()

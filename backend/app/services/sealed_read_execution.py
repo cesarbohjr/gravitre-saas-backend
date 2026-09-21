@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.connectors.action_catalog.f1_read_slice import catalog_action_key, is_f1_read_action, registry_action_key
 from app.core.logging import get_logger
@@ -45,6 +45,21 @@ COGNITIVE_BYPASS_MODULES = (
     "app/operators/agent_intelligence.py",
     "app/operators/react_engine.py",
 )
+
+
+def attributable_read_actor_id(user_id: str | None) -> str | None:
+    """Return the requesting user's UUID, or None if none is attributable.
+
+    audit_events.actor_id FKs auth.users. Do not mint a random UUID, do not
+    impersonate the operator org, and do not use a non-UUID service label.
+    """
+    raw = str(user_id or "").strip()
+    if not raw:
+        return None
+    try:
+        return str(UUID(raw))
+    except (TypeError, ValueError):
+        return None
 
 
 def unwrap_report_payload(data: Any) -> dict[str, Any]:

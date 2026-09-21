@@ -303,6 +303,13 @@ def _audit_metadata(ctx: ToolContext, action: str, connector_id: str | None, ext
         meta["run_id"] = ctx.run_id
     if getattr(ctx, "plan_id", None):
         meta["plan_id"] = ctx.plan_id
+    try:
+        from uuid import UUID
+
+        UUID(str(ctx.actor_id))
+        meta["execution_actor_source"] = "authenticated_user"
+    except (TypeError, ValueError):
+        meta["execution_actor_source"] = "unattributable_label"
     proof = getattr(ctx, "preflight_result", None)
     if proof is not None:
         meta["preflight_status"] = getattr(proof, "status", None)

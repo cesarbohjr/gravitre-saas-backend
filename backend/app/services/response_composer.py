@@ -298,6 +298,9 @@ def _system_prompt(*, spoken: bool) -> str:
         "If the outcome is ambiguous, ask ONE specific clarifying question and stop.\n"
         "If the outcome is success, be concise. Same voice as a success message — "
         "never switch into a scripted-assistant or error-template register.\n"
+        "Never invent record counts, revenue, tickets, deals, invoices, traffic, "
+        "or workflow outcomes. Only state those facts when the envelope includes "
+        "provider_result_evidence from a completed provider observation.\n"
     )
 
 
@@ -531,6 +534,9 @@ async def compose_user_reply(
             env,
             fallback=_fallback_text("success", env),
         )
+    from app.services.provider_result_grounding import apply_provider_result_grounding
+
+    text = apply_provider_result_grounding(text, env)
     return text
 
 

@@ -3346,18 +3346,17 @@ class AgentIntelligence:
         # Spoken: stream unified text deltas into SSE as they arrive so TTS can start
         # before the full answer completes (Phase 5). Same LIVE path — not a fork.
         _unified_live_ok = bool(getattr(active_settings, "unified_turn_live_enabled", False))
-        _resolution_needs = (
-            (_canonical_task_state or {}).get("cognitive_resolution_needs")
-            if isinstance(_canonical_task_state, dict)
-            else None
-        )
-        if (
-            _unified_live_ok
-            and isinstance(_resolution_needs, dict)
-            and _resolution_needs.get("analytics_short_circuit")
+        from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+        if _unified_live_ok and should_skip_unified_live_for_compiled_read(
+            task_text,
+            _canonical_task_state if isinstance(_canonical_task_state, dict) else task_state,
+            list(connected_early or []),
         ):
             # Dual-path: LIVE otherwise swallows GA4/website-traffic turns before
-            # the canonical analytics short-circuit at react_entry.
+            # the canonical analytics short-circuit at react_entry, and also
+            # swallows compiled department READs (pipeline) so Composer can speak
+            # from a proposal without a provider Observation.
             _unified_live_ok = False
         _compiled_unified_reasoning = None
         if (
@@ -4902,6 +4901,7 @@ class AgentIntelligence:
             settings=active_settings,
             connected_integrations=list(connected_early or []),
             task_state=_analytics_task_state,
+            user_id=user_id,
         )
         if _analytics_turn and _analytics_turn.get("stop_pipeline"):
             task_state = _analytics_turn.get("task_state") or task_state
@@ -4952,7 +4952,14 @@ class AgentIntelligence:
             compose_extra: dict[str, Any] = {
                 "success": ws == "completed",
                 "data": {"text": response_text},
+                "workflow_status": ws,
             }
+            _evidence = _analytics_turn.get("provider_result_evidence")
+            if not isinstance(_evidence, dict) and isinstance(task_state, dict):
+                _evidence = task_state.get("provider_result_evidence")
+            if isinstance(_evidence, dict):
+                compose_extra["provider_result_evidence"] = _evidence
+                compose_extra["data"]["provider_result_evidence"] = _evidence
             _blocks = _analytics_turn.get("response_blocks")
             if isinstance(_blocks, list) and _blocks:
                 compose_extra["response_blocks"] = _blocks

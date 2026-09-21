@@ -286,6 +286,7 @@ async def _try_cross_source_website_overview_turn(
     settings: Settings,
     connected_integrations: list[str] | None,
     task_state: dict[str, Any] | None,
+    user_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Phase C — parallel GA4 + GSC reads when both connectors are connected."""
     from app.services.cognitive_execution_engine import (
@@ -329,6 +330,7 @@ async def _try_cross_source_website_overview_turn(
         "message": message,
         "plan": plan,
         "connected_integrations": list(connected_integrations or []),
+        "user_id": user_id,
     }
     observations = await execute_read_steps_parallel(plan, context=ctx, handler=_handler)
     plan = apply_observations_to_plan(plan, observations)
@@ -387,11 +389,14 @@ async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
             source="sealed_read",
             capability_id="analytics.traffic_overview",
         )
+    from app.services.sealed_read_execution import attributable_read_actor_id
+
+    actor_id = attributable_read_actor_id(str(ctx.get("user_id") or "") or None) or "analytics-traffic-overview"
     tool_ctx = ToolContext(
         settings=ctx.get("settings"),
         client=ctx.get("client"),
         org_id=org_id,
-        actor_id="analytics-traffic-overview",
+        actor_id=actor_id,
         environment_name="production",
         cognitive_invoke=True,
         plan_id=plan.plan_id,
@@ -441,11 +446,14 @@ async def _gsc_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
             source="sealed_read",
             capability_id="analytics.traffic_overview",
         )
+    from app.services.sealed_read_execution import attributable_read_actor_id
+
+    actor_id = attributable_read_actor_id(str(ctx.get("user_id") or "") or None) or "analytics-traffic-overview"
     tool_ctx = ToolContext(
         settings=ctx.get("settings"),
         client=ctx.get("client"),
         org_id=org_id,
-        actor_id="analytics-traffic-overview",
+        actor_id=actor_id,
         environment_name="production",
         cognitive_invoke=True,
         plan_id=plan.plan_id,
@@ -534,6 +542,7 @@ async def try_analytics_traffic_overview_turn(
     settings: Settings | None = None,
     connected_integrations: list[str] | None = None,
     task_state: dict[str, Any] | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Execute a READ-only traffic overview or return an honest clarify/connect message."""
     active_settings = settings or get_settings()
@@ -544,6 +553,7 @@ async def try_analytics_traffic_overview_turn(
         settings=active_settings,
         connected_integrations=connected_integrations,
         task_state=task_state,
+        user_id=user_id,
     )
     if cross is not None:
         return cross
@@ -562,6 +572,26 @@ async def try_analytics_traffic_overview_turn(
 
     connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
     if intent.connector_id not in connected:
+        from app.services.website_source_status import (
+            any_website_source_executable,
+            website_frame_patch,
+            website_limitation_message,
+            website_source_readiness,
+        )
+
+        readiness = website_source_readiness(client, org_id, active_settings)
+        if not any_website_source_executable(readiness):
+            merged = {**(task_state or {}), **website_frame_patch(objective=message, readiness=readiness)}
+            ga_present = bool((readiness.get("google_analytics") or {}).get("present"))
+            gsc_present = bool((readiness.get("google_search_console") or {}).get("present"))
+            status = "blocked" if (ga_present or gsc_present) else "connector_not_connected"
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": website_limitation_message(readiness),
+                "task_state": merged,
+                "workflow_status": status,
+            }
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
@@ -569,7 +599,10 @@ async def try_analytics_traffic_overview_turn(
                 intent.connector_id,
                 display_name=connector_display_name(intent.connector_id),
             ),
-            "task_state": task_state or {},
+            "task_state": {
+                **(task_state or {}),
+                **website_frame_patch(objective=message, readiness=readiness),
+            },
             "workflow_status": "connector_not_connected",
         }
 
@@ -686,11 +719,14 @@ async def try_analytics_traffic_overview_turn(
         title="Traffic sources",
     )
 
+    from app.services.sealed_read_execution import attributable_read_actor_id
+
+    actor_id = attributable_read_actor_id(user_id) or "analytics-traffic-overview"
     tool_ctx = ToolContext(
         settings=active_settings,
         client=client,
         org_id=org_id,
-        actor_id="analytics-traffic-overview",
+        actor_id=actor_id,
         environment_name="production",
         cognitive_invoke=True,
         plan_id=plan.plan_id,

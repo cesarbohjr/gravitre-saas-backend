@@ -139,6 +139,31 @@ def assess_cognitive_resolution_needs(
     return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="default_semantic_only")
 
 
+def should_skip_unified_live_for_compiled_read(
+    message: str,
+    task_state: dict[str, Any] | None,
+    connected_integrations: list[str] | None,
+) -> bool:
+    """LIVE must not swallow compiled operational/analytics READs before react_entry."""
+    needs = assess_cognitive_resolution_needs(
+        message,
+        task_state,
+        connected_integrations=connected_integrations,
+    )
+    if needs.analytics_short_circuit:
+        return True
+    from app.capability_ontology.cognitive_recipe_planner import match_recipe_for_query
+    from app.services.operational_read_execution import OPERATIONAL_READ_RECIPES
+    from app.services.task_continuity import frame_is_analytics
+
+    recipe = match_recipe_for_query(message)
+    if recipe is not None and recipe.recipe_id in OPERATIONAL_READ_RECIPES:
+        return True
+    if frame_is_analytics(task_state):
+        return True
+    return False
+
+
 async def apply_canonical_cognitive_resolution(
     *,
     message: str,
@@ -199,6 +224,7 @@ async def try_analytics_short_circuit_turn(
     settings: Settings | None,
     connected_integrations: list[str] | None,
     task_state: dict[str, Any] | None,
+    user_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Execute analytics traffic overview before ReAct when resolution says so."""
     needs = (task_state or {}).get("cognitive_resolution_needs") or {}
@@ -215,6 +241,7 @@ async def try_analytics_short_circuit_turn(
         settings=settings or get_settings(),
         connected_integrations=connected_integrations,
         task_state=task_state,
+        user_id=user_id,
     )
 
 
@@ -227,6 +254,7 @@ async def try_compiled_operational_read_turn(
     settings: Settings | None,
     connected_integrations: list[str] | None,
     task_state: dict[str, Any] | None,
+    user_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Analytics first, then other F1 department READs, before ReAct."""
     analytics = await try_analytics_short_circuit_turn(
@@ -237,6 +265,7 @@ async def try_compiled_operational_read_turn(
         settings=settings,
         connected_integrations=connected_integrations,
         task_state=task_state,
+        user_id=user_id,
     )
     if analytics:
         return analytics
@@ -249,6 +278,7 @@ async def try_compiled_operational_read_turn(
         settings=settings,
         connected_integrations=connected_integrations,
         task_state=task_state,
+        user_id=user_id,
     )
     if operational:
         return operational

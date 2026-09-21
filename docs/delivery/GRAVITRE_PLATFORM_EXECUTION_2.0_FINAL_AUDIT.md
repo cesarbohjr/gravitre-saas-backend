@@ -97,3 +97,12 @@ Statuses changed by CI green, SHA pair alignment, and isolated chat matrix only:
 STRUCTURAL COMPLETE = **NO**. TEST PROVEN = **PARTIAL**. LIVE PROVEN = **PARTIAL**. 2.0 COMPLETE = **NO**.
 
 **Do not implement 3.0 in this audit. Cesar’s approval required.**
+
+## P0 HubSpot READ grounding (2026-09-21)
+
+Production `/health` at investigation: `909474fe` (`unified_turn_live_enabled=true`). Origin/main at edit: `61f75c4f`. Isolated “Show my deals.” conv `c0980fbc-…` proposed `hubspot.deals.list`, LIVE fallthrough `read_tool_classical`, canned “Found 25 deals”, no `tool.invoke.*`, plan step pending. RCA: `docs/delivery/gravitre-hubspot-live-fallthrough-rca.md`.
+
+Corrective source on this tip: skip Unified LIVE for compiled operational/analytics READs; persist Observation + `provider_result_evidence`; Composer rejects ungrounded business counts; sealed F1 actor is the requesting user UUID when present; website objective retained when GA/GSC are not executable.
+
+**2.0 READ GATE remains open until a post-deploy isolated HubSpot invoke produces Observation-backed copy. 2.0 COMPLETE = NO. READY TO RESUME 3.0 = NO.**
+
