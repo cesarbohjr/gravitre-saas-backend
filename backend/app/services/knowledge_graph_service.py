@@ -543,7 +543,7 @@ class KnowledgeGraphService:
             db.table("org_entity_relationships")
             .select(
                 "confidence, source_entity_type, target_entity_type, relationship_type, "
-                "source_entity_id, target_entity_id, updated_at, created_at"
+                "source_entity_id, target_entity_id"
             )
             .eq("org_id", org_id)
             .limit(capped)
@@ -566,7 +566,7 @@ class KnowledgeGraphService:
                     "relationship_type": str(row.get("relationship_type") or "related"),
                     "confidence": row.get("confidence"),
                     "evidence": None,
-                    "updated_at": row.get("updated_at") or row.get("created_at"),
+                    "updated_at": None,
                 }
             )
         return sample
