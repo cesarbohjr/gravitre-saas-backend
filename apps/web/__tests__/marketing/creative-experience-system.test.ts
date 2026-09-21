@@ -344,3 +344,97 @@ describe("phase 11 creative performance", () => {
     )
   })
 })
+
+describe("CES 2.0 scene controller", () => {
+  it("keeps selection independent of narrative progression", async () => {
+    const {
+      createSceneControllerState,
+      reduceSceneController,
+    } = await import("@/components/marketing/creative/core/scene-controller")
+    const beats = ["sources", "normalize", "match"] as const
+    let state = createSceneControllerState(beats, { mode: "stepped" })
+    state = reduceSceneController(state, { type: "stepForward" })
+    expect(state.beat).toBe("normalize")
+    state = reduceSceneController(state, { type: "selectObject", id: "m1" })
+    expect(state.selectedObjectId).toBe("m1")
+    expect(state.beat).toBe("normalize")
+    state = reduceSceneController(state, { type: "stepForward" })
+    expect(state.beat).toBe("match")
+    expect(state.selectedObjectId).toBe("m1")
+    state = reduceSceneController(state, { type: "replay" })
+    expect(state.beatIndex).toBe(0)
+    expect(state.selectedObjectId).toBe("m1")
+    state = reduceSceneController(state, { type: "reset" })
+    expect(state.selectedObjectId).toBeNull()
+  })
+})
+
+describe("CES 2.0 KF-A normalize (decision A)", () => {
+  it("shares deterministic normalize across fixtures and display", async () => {
+    const {
+      normalizeIllustrativeMention,
+      KF_A_MENTIONS,
+      mentionWithNormalized,
+    } = await import("@/components/marketing/creative/scenes/knowledge-fabric/normalize")
+    expect(normalizeIllustrativeMention("Acme Corp")).toBe("acme corp")
+    expect(normalizeIllustrativeMention("acme corp.")).toBe("acme corp")
+    expect(normalizeIllustrativeMention("Sarah")).toBe("sarah")
+    expect(normalizeIllustrativeMention("Sarah Smith")).toBe("sarah smith")
+    const views = KF_A_MENTIONS.map(mentionWithNormalized)
+    const acme = views.filter((m) => m.entityKey === "acme-corp")
+    expect(acme).toHaveLength(2)
+    expect(acme[0]?.normalized).toBe(acme[1]?.normalized)
+    const people = views.filter((m) => m.fuzzyPersonDemo)
+    expect(people[0]?.normalized).not.toBe(people[1]?.normalized)
+  })
+
+  it("exposes KF-A beat order for stepped mode", async () => {
+    const { KF_A_BEATS } = await import(
+      "@/components/marketing/creative/scenes/knowledge-fabric/entity-convergence-workbench"
+    )
+    expect([...KF_A_BEATS]).toEqual([
+      "sources",
+      "normalize",
+      "match",
+      "resolve",
+      "evidence",
+      "reject",
+      "compare",
+    ])
+  })
+})
+
+describe("CES 2.0 Pilot 1 mobile topology", () => {
+  it("does not use ring-spin in mobile core", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const src = readFileSync(
+      resolve(
+        process.cwd(),
+        "components/marketing/system/department-network/department-network-mobile.tsx",
+      ),
+      "utf8",
+    )
+    expect(src).toMatch(/topologyForCoreState/)
+    expect(src).toMatch(/mobile-topology-svg/)
+    expect(src).not.toMatch(/animate-spin/)
+  })
+})
+
+describe("CES 2.0 KF-A single field (visual approval)", () => {
+  it("is a single structured field without chip-column layout", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const src = readFileSync(
+      resolve(
+        process.cwd(),
+        "components/marketing/creative/scenes/knowledge-fabric/entity-convergence-workbench.tsx",
+      ),
+      "utf8",
+    )
+    expect(src).toMatch(/data-single-field="1"/)
+    expect(src).toMatch(/data-testid="kf-a-field"/)
+    expect(src).toMatch(/kf-a-compare-lens/)
+    expect(src).not.toMatch(/permanent instructional sidebar/i)
+  })
+})

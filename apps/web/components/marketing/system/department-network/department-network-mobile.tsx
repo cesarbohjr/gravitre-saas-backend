@@ -2,6 +2,7 @@
 
 /**
  * Mobile converge story — one relationship at a time (not a shrunk radial).
+ * Core uses Relational Topology (CES 1.0) — no ring-spin.
  */
 
 import { useEffect, useState } from "react"
@@ -9,8 +10,10 @@ import { AnimatePresence, motion } from "framer-motion"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { PhoneIcon, RocketIcon, WalletIcon } from "@/components/marketing/nodus-icons/card-icons"
 import { LogoSVG } from "@/components/marketing/nodus/logo"
+import { topologyForCoreState } from "@/components/marketing/creative/primitives/relational-topology"
+import { CREATIVE_TOKENS } from "@/components/marketing/creative/core/tokens"
 import { cn } from "@/lib/utils"
-import type { DepartmentId } from "./types"
+import type { CoreState, DepartmentId } from "./types"
 
 type MobileBeat = {
   from: DepartmentId
@@ -50,6 +53,19 @@ const ICONS = {
   finance: WalletIcon,
 }
 
+function phaseToCoreState(phase: "from" | "core" | "to" | "back"): CoreState {
+  switch (phase) {
+    case "from":
+      return "receiving"
+    case "core":
+      return "connecting"
+    case "to":
+      return "coordinating"
+    case "back":
+      return "learned"
+  }
+}
+
 function MobileNode({
   id,
   active,
@@ -86,13 +102,69 @@ function MobileNode({
   )
 }
 
-function MobileCore({ label }: { label: string }) {
+function MobileCore({ label, coreState, reduced }: { label: string; coreState: CoreState; reduced: boolean }) {
+  const layout = topologyForCoreState(coreState)
+  const learned = coreState === "learned"
+
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--color-line,#eaedf1)] bg-white shadow-sm">
-        <div className="absolute inset-0 animate-spin rounded-full opacity-70 [animation-duration:3s] [background-image:conic-gradient(at_center,transparent,color-mix(in_oklch,var(--color-brand,#16a374)_35%,transparent)_18%,transparent_32%)]" />
+    <div className="flex flex-col items-center gap-2" data-testid="mobile-topology-core" data-core-state={coreState}>
+      <div
+        className={cn(
+          "relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border bg-white shadow-sm",
+          learned
+            ? "border-[color:var(--color-brand,#16a374)]"
+            : "border-[color:var(--color-line,#eaedf1)]",
+        )}
+      >
+        <svg viewBox="0 0 80 72" className="absolute inset-0 h-full w-full" aria-hidden data-testid="mobile-topology-svg">
+          {layout.edges.map(([a, b], i) => {
+            const pa = layout.nodes[a]
+            const pb = layout.nodes[b]
+            if (!pa || !pb) return null
+            const isInbound = layout.inboundIndex === a || layout.inboundIndex === b
+            const isOutbound =
+              layout.outboundIndices.includes(a) || layout.outboundIndices.includes(b)
+            return (
+              <line
+                key={`me-${coreState}-${i}`}
+                x1={pa.x}
+                y1={pa.y}
+                x2={pb.x}
+                y2={pb.y}
+                stroke={
+                  isInbound
+                    ? CREATIVE_TOKENS.signal
+                    : isOutbound || learned
+                      ? CREATIVE_TOKENS.action
+                      : "color-mix(in srgb, var(--g-intelligence) 45%, #c5c9d0)"
+                }
+                strokeWidth={isOutbound || isInbound ? 1.5 : 1.1}
+                strokeLinecap="round"
+                opacity={reduced ? 0.85 : 1}
+              />
+            )
+          })}
+          {layout.nodes.map((p, i) => {
+            const isCenter = i === 0
+            return (
+              <circle
+                key={`mn-${coreState}-${i}`}
+                cx={p.x}
+                cy={p.y}
+                r={isCenter ? 4.5 : 2.2}
+                fill={
+                  isCenter
+                    ? CREATIVE_TOKENS.brand
+                    : learned
+                      ? CREATIVE_TOKENS.action
+                      : "color-mix(in srgb, var(--g-intelligence) 55%, #9aa0a8)"
+                }
+              />
+            )
+          })}
+        </svg>
         <div className="relative z-10 text-[color:var(--color-brand,#16a374)]">
-          <LogoSVG className="size-6" />
+          <LogoSVG className="size-5 opacity-90" />
         </div>
       </div>
       <span className="rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2 py-0.5 text-[10px] font-semibold text-[color:var(--color-brand,#16a374)]">
@@ -124,6 +196,7 @@ export function DepartmentNetworkMobile({ reduced }: { reduced: boolean }) {
   }, [reduced])
 
   const beat = MOBILE_BEATS[idx] ?? MOBILE_BEATS[0]!
+  const coreState = reduced ? "idle" : phaseToCoreState(phase)
   const coreLabel =
     phase === "from"
       ? "Receiving"
@@ -153,7 +226,7 @@ export function DepartmentNetworkMobile({ reduced }: { reduced: boolean }) {
             )}
             aria-hidden
           />
-          <MobileCore label={reduced ? "Gravitre" : coreLabel} />
+          <MobileCore label={reduced ? "Gravitre" : coreLabel} coreState={coreState} reduced={reduced} />
           <div
             className={cn(
               "h-8 w-px",

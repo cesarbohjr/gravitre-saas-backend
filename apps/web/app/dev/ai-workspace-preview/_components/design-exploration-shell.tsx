@@ -21,8 +21,9 @@ import { FoundationPrototype } from "./ux30-plus/foundation-prototype"
 import { IntelligenceFieldPrototype } from "./ux30-plus/intelligence-field-prototype"
 import { ActivityTracePrototype } from "./ux30-plus/activity-trace-prototype"
 import { NavRailPrototype } from "./ux30-plus/nav-rail-prototype"
+import { CreativeKfPrototype } from "./creative-kf-prototype"
 
-const UX30_SURFACES = ["foundation", "intelligence", "activity", "navigation"] as const
+const UX30_SURFACES = ["foundation", "intelligence", "activity", "navigation", "creative"] as const
 type Ux30Surface = (typeof UX30_SURFACES)[number]
 
 const LEGACY_SURFACES = [
@@ -59,6 +60,7 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
     "fail",
   ],
   navigation: ["compact", "expanded", "pinned", "keyboard", "mobile"],
+  creative: ["compare", "workbench", "pilot3"],
 }
 
 const AI_SCENES: AiScene[] = [
@@ -133,6 +135,7 @@ export function DesignExplorationShell() {
         {surface === "intelligence" && <IntelligenceFieldPrototype scene={scene} />}
         {surface === "activity" && <ActivityTracePrototype scene={scene} />}
         {surface === "navigation" && <NavRailPrototype scene={scene} />}
+        {surface === "creative" && <CreativeKfPrototype scene={scene} />}
         {surface === "nucleo" && <SelectedNucleo scene={scene} />}
         {surface === "ai" && <SelectedAiCommandOs scene={normalizeAi(scene)} />}
         {surface === "agents" && <SelectedAgents scene={scene} />}
@@ -154,6 +157,7 @@ function defaultScene(surface: Surface): string {
   if (surface === "intelligence") return "default"
   if (surface === "activity") return "default"
   if (surface === "navigation") return "compact"
+  if (surface === "creative") return "compare"
   if (surface === "ai") return "compact-conversation"
   if (surface === "agents") return "default"
   return "default"

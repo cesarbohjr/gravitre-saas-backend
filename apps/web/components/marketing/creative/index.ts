@@ -18,6 +18,19 @@ export { CreativeErrorBoundary, CreativeSceneFallback } from "./fallbacks/creati
 export { withCreativeScene } from "./fallbacks/with-creative-scene"
 export { AgentOrchestrationField } from "./scenes/agent-orchestration/orchestration-field"
 export { EntityConvergenceField } from "./scenes/knowledge-fabric/entity-convergence-field"
+export { EntityConvergenceWorkbench, KF_A_BEATS } from "./scenes/knowledge-fabric/entity-convergence-workbench"
+export {
+  normalizeIllustrativeMention,
+  KF_A_MENTIONS,
+  mentionWithNormalized,
+} from "./scenes/knowledge-fabric/normalize"
+export {
+  createSceneControllerState,
+  reduceSceneController,
+  type SceneControllerSnapshot,
+  type PlaybackMode,
+} from "./core/scene-controller"
+export { useSceneController } from "./core/use-scene-controller"
 export { ConnectorFabricField } from "./scenes/connector-fabric/connector-fabric-field"
 export { GovernedExecutionField } from "./scenes/governed-execution/governed-execution-field"
 export { GibeLearningField } from "./scenes/gibe-learning/gibe-learning-field"
