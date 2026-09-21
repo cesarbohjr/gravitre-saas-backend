@@ -104,6 +104,14 @@ def project_compiled_task(
     trace = state.get("resolution_trace") if isinstance(state.get("resolution_trace"), dict) else {}
     analysis = state.get("active_analysis") if isinstance(state.get("active_analysis"), dict) else {}
 
+    action_keys_preview: list[str] = []
+    for key in (
+        proof.get("action_key"),
+        *(str(s.get("action_key") or "") for s in (plan.get("steps") or []) if isinstance(s, dict)),
+    ):
+        text_key = str(key or "").strip()
+        if text_key and text_key not in action_keys_preview:
+            action_keys_preview.append(text_key)
     cap = (
         capability_id
         or proof.get("capability_id")
@@ -112,6 +120,15 @@ def project_compiled_task(
         or None
     )
     cap = str(cap).strip() or None
+    if not cap:
+        from app.services.operational_read_execution import infer_operational_recipe_id
+
+        cap = infer_operational_recipe_id(
+            {
+                "execution_plan": plan,
+                "compiled_task": {"action_keys": action_keys_preview},
+            }
+        )
 
     identity = merge_business_identity(
         org_id=str(org_id or trace.get("tenant_id") or ""),

@@ -55,6 +55,15 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "pending_action": None,
     # Phase D — unified turn trace (gateway → compose).
     "cognitive_turn_trace": None,
+    # 2.0-H — grounded READ proof must survive get_task_state normalize.
+    "provider_result_evidence": None,
+    "proactive_operator": [],
+    "business_entity": None,
+    "last_read_preflight": None,
+    "capability_id": None,
+    "capability_route_reason": None,
+    "cognitive_resolution_message": None,
+    "cognitive_resolution_needs": None,
 }
 
 

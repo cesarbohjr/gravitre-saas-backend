@@ -161,10 +161,11 @@ def should_skip_unified_live_for_compiled_read(
         return True
     if frame_is_analytics(task_state):
         return True
-    from app.services.task_continuity import active_task_frame, decide_task_continuity
+    from app.services.operational_read_execution import infer_operational_recipe_id
+    from app.services.task_continuity import decide_task_continuity
 
     if decide_task_continuity(message, task_state) == "continue":
-        cap = str((active_task_frame(task_state) or {}).get("capability_id") or "")
+        cap = infer_operational_recipe_id(task_state)
         if cap in OPERATIONAL_READ_RECIPES:
             return True
     return False

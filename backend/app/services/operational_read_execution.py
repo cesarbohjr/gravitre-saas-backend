@@ -50,6 +50,81 @@ _SEARCH_TO_LIST = {
     "hubspot.companies.search": "hubspot.companies.list",
 }
 
+_ACTION_TO_OPERATIONAL_RECIPE = {
+    "hubspot.deals.list": "sales.pipeline.health",
+    "hubspot.deals.search": "sales.pipeline.health",
+    "quickbooks.invoices.list": "finance.receivables.overdue",
+    "quickbooks.invoices.query": "finance.receivables.overdue",
+    "zendesk.tickets.list": "support.issue_trends",
+    "zendesk.tickets.search": "support.issue_trends",
+}
+
+
+def infer_operational_recipe_id(task_state: dict[str, Any] | None) -> str | None:
+    """Recover department recipe when persisted plans omitted capability_id."""
+    state = task_state if isinstance(task_state, dict) else {}
+    plan = state.get("execution_plan") if isinstance(state.get("execution_plan"), dict) else {}
+    compiled = state.get("compiled_task") if isinstance(state.get("compiled_task"), dict) else {}
+    evidence = state.get("provider_result_evidence") if isinstance(state.get("provider_result_evidence"), dict) else {}
+    candidates = [
+        plan.get("capability_id"),
+        compiled.get("capability_id"),
+        state.get("capability_id"),
+    ]
+    action_keys: list[str] = []
+    if evidence.get("action_key"):
+        action_keys.append(str(evidence.get("action_key")))
+    for step in plan.get("steps") or []:
+        if isinstance(step, dict) and step.get("action_key"):
+            action_keys.append(str(step.get("action_key")))
+        elif not isinstance(step, dict):
+            action_key = getattr(step, "action_key", None)
+            if action_key:
+                action_keys.append(str(action_key))
+    for key in compiled.get("action_keys") or []:
+        action_keys.append(str(key))
+    for obs in state.get("execution_observations") or []:
+        if not isinstance(obs, dict):
+            continue
+        structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+        if structured.get("action_key"):
+            action_keys.append(str(structured.get("action_key")))
+    for action in action_keys:
+        mapped = _ACTION_TO_OPERATIONAL_RECIPE.get(action.strip())
+        if mapped:
+            candidates.append(mapped)
+    for cap in candidates:
+        text = str(cap or "").strip()
+        if text in OPERATIONAL_READ_RECIPES:
+            return text
+    return None
+
+
+def evidence_from_task_state(task_state: dict[str, Any] | None) -> dict[str, Any] | None:
+    state = task_state if isinstance(task_state, dict) else {}
+    evidence = state.get("provider_result_evidence")
+    if isinstance(evidence, dict) and evidence.get("provider_invoked"):
+        return evidence
+    for obs in state.get("execution_observations") or []:
+        if not isinstance(obs, dict):
+            continue
+        structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+        if not structured.get("provider_invoked"):
+            continue
+        action_key = str(structured.get("action_key") or "")
+        if not action_key:
+            continue
+        return evidence_from_observation(
+            action_key=action_key,
+            result_count=int(structured.get("result_count") or 0),
+            observation_id=obs.get("observation_id"),
+            plan_id=obs.get("plan_id"),
+            step_id=obs.get("step_id"),
+            success=bool(obs.get("success")),
+            provider_invoked=True,
+        )
+    return None
+
 
 def _open_ended_read(message: str) -> bool:
     text = (message or "").lower()
@@ -121,21 +196,17 @@ async def try_operational_read_short_circuit_turn(
 ) -> dict[str, Any] | None:
     recipe = match_recipe_for_query(message)
     if recipe is None or recipe.recipe_id not in OPERATIONAL_READ_RECIPES:
-        from app.services.task_continuity import active_task_frame, decide_task_continuity
+        from app.services.task_continuity import decide_task_continuity
 
         if decide_task_continuity(message, task_state) == "continue":
-            cap = str((active_task_frame(task_state) or {}).get("capability_id") or "")
+            cap = infer_operational_recipe_id(task_state)
             if cap in OPERATIONAL_READ_RECIPES:
                 recipe = get_recipe(cap)
         if recipe is None or recipe.recipe_id not in OPERATIONAL_READ_RECIPES:
             return None
     connected = [str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()]
     expected_vendor = _RECIPE_VENDOR[recipe.recipe_id]
-    evidence = (
-        (task_state or {}).get("provider_result_evidence")
-        if isinstance(task_state, dict)
-        else None
-    )
+    evidence = evidence_from_task_state(task_state)
     from app.services.task_continuity import decide_task_continuity
 
     if (
@@ -153,6 +224,7 @@ async def try_operational_read_short_circuit_turn(
             capability_id=recipe.recipe_id,
             connected_integrations=connected,
         )
+        plan.capability_id = plan.capability_id or recipe.recipe_id
         plan = mark_plan_terminal(plan, "completed")
         return {
             "stop_pipeline": True,
@@ -211,6 +283,7 @@ async def try_operational_read_short_circuit_turn(
         capability_id=invoke.capability_id or recipe.recipe_id,
         connected_integrations=connected,
     )
+    plan.capability_id = plan.capability_id or recipe.recipe_id
     plan.execution_strategy = "FAST_PATH"
     step = ensure_plan_read_step(
         plan,

@@ -111,7 +111,17 @@ def attach_internal_readiness(row: dict[str, Any], *, action_key: str | None = N
     if not key:
         return row
     try:
-        row["internal_readiness"] = classify_connector_action(action_key=key, availability=row)
+        row["internal_readiness"] = classify_connector_action(
+            action_key=key,
+            availability=row,
+            production_verified=_truthy(
+                row.get("production_verified")
+                or row.get("last_success_at")
+                or row.get("last_verified_at")
+                or row.get("live_ok")
+            ),
+            test_verified=_truthy(row["test_verified"]) if "test_verified" in row else None,
+        )
     except Exception:
         row.setdefault("internal_readiness", None)
     return row

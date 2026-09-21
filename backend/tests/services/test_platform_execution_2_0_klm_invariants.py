@@ -196,10 +196,14 @@ def test_availability_row_carries_internal_scorecard() -> None:
             "token_valid": True,
             "scopes_valid": True,
             "execution_available": True,
+            "last_success_at": "2026-09-21T05:00:00Z",
+            "test_verified": True,
         }
     )
     assert row["internal_readiness"]["customer_badge"] is None
     assert row["internal_readiness"]["layers"]["registered"] is True
+    assert row["internal_readiness"]["layers"]["production_verified"] is True
+    assert row["internal_readiness"]["layers"]["test_verified"] is True
 
 
 def test_website_readiness_feeds_proactive_operator() -> None:
@@ -235,7 +239,7 @@ async def test_large_deals_followup_keeps_provider_evidence() -> None:
     from app.services.operational_read_execution import try_operational_read_short_circuit_turn
 
     evidence = {
-        "kind": "provider_result",
+        "kind": "provider_observation",
         "action_key": "hubspot.deals.list",
         "result_count": 25,
         "provider_invoked": True,

@@ -3350,7 +3350,7 @@ class AgentIntelligence:
 
         if _unified_live_ok and should_skip_unified_live_for_compiled_read(
             task_text,
-            _canonical_task_state if isinstance(_canonical_task_state, dict) else task_state,
+            task_state if isinstance(task_state, dict) else _canonical_task_state,
             list(connected_early or []),
         ):
             # Dual-path: LIVE otherwise swallows GA4/website-traffic turns before

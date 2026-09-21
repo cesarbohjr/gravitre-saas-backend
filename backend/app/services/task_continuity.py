@@ -59,10 +59,17 @@ def active_task_frame(task_state: dict[str, Any] | None) -> dict[str, Any] | Non
     analysis = state.get("active_analysis") if isinstance(state.get("active_analysis"), dict) else {}
     if plan is None and not compiled and not analysis and not pending_family(state):
         return None
+    inferred = None
+    if not (plan.capability_id if plan else None) and not compiled.get("capability_id"):
+        from app.services.operational_read_execution import infer_operational_recipe_id
+
+        inferred = infer_operational_recipe_id(state)
     capability = (
         (plan.capability_id if plan else None)
         or compiled.get("capability_id")
+        or inferred
         or analysis.get("kind")
+        or state.get("capability_id")
         or None
     )
     return {

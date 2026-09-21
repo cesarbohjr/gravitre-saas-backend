@@ -116,6 +116,27 @@ def test_extracts_invoke_action_from_pending_task():
     assert rows[0]["action"] == "hubspot.lists.create"
 
 
+def test_normalize_state_keeps_provider_result_evidence():
+    from app.services.conversation_state_service import ConversationStateService
+
+    normalized = ConversationStateService._normalize_state(
+        {
+            "provider_result_evidence": {
+                "kind": "provider_observation",
+                "action_key": "hubspot.deals.list",
+                "result_count": 25,
+                "provider_invoked": True,
+            },
+            "execution_plan": {
+                "plan_id": "plan-deals-1",
+                "steps": [{"step_id": "s1", "action_key": "hubspot.deals.list"}],
+            },
+        }
+    )
+    assert normalized["provider_result_evidence"]["result_count"] == 25
+    assert normalized["execution_plan"]["plan_id"] == "plan-deals-1"
+
+
 def test_normalize_state_keeps_recent_connector_invocations():
     normalized = ConversationStateService._normalize_state(
         {

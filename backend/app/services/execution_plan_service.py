@@ -167,12 +167,27 @@ class ExecutionPlan:
                     meta=safe_normalize_stored_dict(row.get("meta")),
                 )
             )
+        capability_id = raw.get("capability_id")
+        if not capability_id:
+            _action_recipes = {
+                "hubspot.deals.list": "sales.pipeline.health",
+                "hubspot.deals.search": "sales.pipeline.health",
+                "quickbooks.invoices.list": "finance.receivables.overdue",
+                "quickbooks.invoices.query": "finance.receivables.overdue",
+                "zendesk.tickets.list": "support.issue_trends",
+                "zendesk.tickets.search": "support.issue_trends",
+            }
+            for step in steps:
+                mapped = _action_recipes.get(str(step.action_key or "").strip())
+                if mapped:
+                    capability_id = mapped
+                    break
         return cls(
             plan_id=str(raw.get("plan_id") or uuid4()),
             summary=str(raw.get("summary") or raw.get("objective") or ""),
             steps=steps,
             source=str(raw.get("source") or "task_state"),
-            capability_id=raw.get("capability_id"),
+            capability_id=capability_id,
             terminal_status=raw.get("terminal_status") or "pending",
             replan_budget=int(raw.get("replan_budget") or 1),
             replans_used=int(raw.get("replans_used") or 0),
@@ -328,6 +343,8 @@ def reconcile_execution_plan(
             return resumed
 
     if existing is not None and existing.steps:
+        if capability_id and not existing.capability_id:
+            existing.capability_id = capability_id
         restart = is_restart_utterance(text, state)
         if existing.terminal_status in {"pending", "running", "waiting_for_approval"} and not restart:
             if turn_id:

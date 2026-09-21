@@ -53,6 +53,88 @@ def test_deals_followup_skips_live_so_compiled_read_owns_turn() -> None:
     assert should_skip_unified_live_for_compiled_read("Only the large ones.", state, ["hubspot"])
 
 
+def test_deals_followup_skips_live_when_capability_id_was_dropped() -> None:
+    state = {
+        "execution_plan": {
+            "plan_id": "plan-deals-1",
+            "capability_id": None,
+            "objective": "Show my deals.",
+            "terminal_status": "completed",
+            "steps": [
+                {
+                    "step_id": "s1",
+                    "kind": "read",
+                    "action_key": "hubspot.deals.list",
+                    "status": "completed",
+                }
+            ],
+        },
+        "execution_observations": [
+            {
+                "step_id": "s1",
+                "success": True,
+                "observation_id": "obs-1",
+                "plan_id": "plan-deals-1",
+                "structured": {
+                    "action_key": "hubspot.deals.list",
+                    "result_count": 25,
+                    "provider_invoked": True,
+                },
+            }
+        ],
+    }
+    assert should_skip_unified_live_for_compiled_read("Only the large ones.", state, ["hubspot"])
+
+
+@pytest.mark.asyncio
+async def test_large_ones_followup_recovers_observation_without_persisted_evidence() -> None:
+    state = {
+        "execution_plan": {
+            "plan_id": "plan-deals-1",
+            "capability_id": None,
+            "objective": "Show my deals.",
+            "terminal_status": "completed",
+            "source": "task_state",
+            "steps": [
+                {
+                    "step_id": "s1",
+                    "title": "deals",
+                    "kind": "read",
+                    "action_key": "hubspot.deals.list",
+                    "status": "completed",
+                }
+            ],
+        },
+        "execution_observations": [
+            {
+                "step_id": "s1",
+                "success": True,
+                "observation_id": "obs-1",
+                "plan_id": "plan-deals-1",
+                "structured": {
+                    "action_key": "hubspot.deals.list",
+                    "result_count": 25,
+                    "provider_invoked": True,
+                },
+            }
+        ],
+    }
+    turn = await try_operational_read_short_circuit_turn(
+        message="Only the large ones.",
+        org_id="org-1",
+        client=object(),
+        settings=MagicMock(),
+        connected_integrations=["hubspot"],
+        task_state=state,
+        user_id="a9f1240f-910a-42ca-aebf-38caeac288c3",
+    )
+    assert turn is not None
+    assert turn["workflow_status"] == "needs clarification"
+    assert "25" in turn["message"]
+    assert "won't guess" in turn["message"].lower()
+    assert turn["task_state"]["execution_plan"]["capability_id"] == "sales.pipeline.health"
+
+
 def test_ungrounded_deal_count_is_stripped() -> None:
     text = apply_provider_result_grounding("Found 25 deals in your CRM.", {"success": True})
     assert "25" not in text
