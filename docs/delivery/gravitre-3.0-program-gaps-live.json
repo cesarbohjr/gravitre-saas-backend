@@ -1,0 +1,110 @@
+{
+  "probe": "3.0_program_gaps_live",
+  "generated_at": "2026-09-21T22:06:07.009642+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "health": {
+    "git_sha": "7a2eaaabecd99d969f1b43478687b7599c13e747",
+    "timestamp": "2026-09-21T22:05:19.400432+00:00"
+  },
+  "local_settings_oauth_configured": {
+    "google_oauth_configured": false,
+    "quickbooks_oauth_configured": false,
+    "zendesk_client_id_present": false,
+    "google_oauth_client_id_present": false
+  },
+  "local_settings_availability": {
+    "google_analytics": [
+      {
+        "connector_id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
+        "present": true,
+        "configured": true,
+        "authenticated": false,
+        "execution_available": false,
+        "auth_status": "misconfigured",
+        "blocking_reason": "misconfigured",
+        "display_status": "error",
+        "raw_status": "pending_auth"
+      }
+    ],
+    "google_search_console": [
+      {
+        "connector_id": "4d7fcc34-83a4-40c4-af31-97f5b1576163",
+        "present": true,
+        "configured": true,
+        "authenticated": false,
+        "execution_available": false,
+        "auth_status": "misconfigured",
+        "blocking_reason": "misconfigured",
+        "display_status": "error",
+        "raw_status": "healthy"
+      }
+    ],
+    "gmail": [],
+    "quickbooks": [],
+    "zendesk": []
+  },
+  "production_connectors_http": {
+    "http": 200,
+    "body_head": "{\"connectors\":[{\"id\":\"4d7fcc34-83a4-40c4-af31-97f5b1576163\",\"name\":\"\",\"vendor\":\"google_search_console\",\"type\":\"google_search_console\",\"description\":null,\"status\":\"error\",\"authStatus\":\"auth_expired\",\"displayStatus\":\"error\",\"environment\":\"production\",\"lastSync\":null,\"recordsSynced\":0,\"syncFrequency\":\"1h\",\"availability\":{\"configured\":true,\"authenticated\":false,\"tokenValid\":false,\"scopesValid\":true,\"healthy\":false,\"executable\":false,\"blockingReason\":\"token_expired\",\"recoveryAction\":\"Google_Search_Console is configured, but authentication has expired. Reconnect Google_Search_Console.\",\"lastCheckedAt\":\"2026-09-21T22:05:24.770096+00:00\",\"sourceOfTruth\":\"connector_availability_service\"},\"config\":{\"apiKey\":null,\"webhookUrl\":null,\"authType\":null},\"docsUrl\":null,\"phiCapable\":false},{\"id\":\"41175658-a1"
+  },
+  "production_oauth_start": {
+    "google_analytics": {
+      "http": 200,
+      "has_authorization_url": true,
+      "detail": "{\"authorizationUrl\":\"https://accounts.google.com/o/oauth2/v2/auth?client_id=1058144333767-ndsmnr5vqu6vkscfrdj3bua55434e0ns.apps.googleusercontent.com&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fanalytics.readonly+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fanalytics.edit&redirect_uri=https%3A%2F%2Fgravitre.app%2Fapi%2Fconnectors%2Foauth%2Fgoogle%2Fcallback&state=eyJvcmdfaWQiOi"
+    },
+    "google_search_console": {
+      "http": 200,
+      "has_authorization_url": true,
+      "detail": "{\"authorizationUrl\":\"https://accounts.google.com/o/oauth2/v2/auth?client_id=1058144333767-ndsmnr5vqu6vkscfrdj3bua55434e0ns.apps.googleusercontent.com&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fwebmasters.readonly&redirect_uri=https%3A%2F%2Fgravitre.app%2Fapi%2Fconnectors%2Foauth%2Fgoogle%2Fcallback&state=eyJvcmdfaWQiOiJmMDdlNTdjMC0xNTAxLTQwMDAtODAwMC1jMDRlNTdhMDAwMDEiLCJ1c2"
+    },
+    "gmail": {
+      "http": 200,
+      "has_authorization_url": true,
+      "detail": "{\"authorizationUrl\":\"https://accounts.google.com/o/oauth2/v2/auth?client_id=1058144333767-ndsmnr5vqu6vkscfrdj3bua55434e0ns.apps.googleusercontent.com&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fgmail.modify&redirect_uri=https%3A%2F%2Fgravitre.app%2Fapi%2Fconnectors%2Foauth%2Fgoogle%2Fcallback&state=eyJvcmdfaWQiOiJmMDdlNTdjMC0xNTAxLTQwMDAtODAwMC1jMDRlNTdhMDAwMDEiLCJ1c2VyX2lkI"
+    },
+    "quickbooks": {
+      "http": 200,
+      "has_authorization_url": true,
+      "detail": "{\"authorizationUrl\":\"https://appcenter.intuit.com/connect/oauth2?client_id=ABNYuHuQD0ydVHc8u8T1ZoJswWg0Yt80haqGO9USN2uhgnJTCF&response_type=code&scope=com.intuit.quickbooks.accounting&redirect_uri=https%3A%2F%2Fgravitre.app%2Fapi%2Fconnectors%2Foauth%2Fquickbooks%2Fcallback&state=eyJvcmdfaWQiOiJmMDdlNTdjMC0xNTAxLTQwMDAtODAwMC1jMDRlNTdhMDAwMDEiLCJ1c2VyX2lkIjoiYTlmMTI0MGYtOTEwYS00MmNhLWFlYmYtMzhjYWV"
+    },
+    "zendesk": {
+      "http": 400,
+      "has_authorization_url": false,
+      "detail": "{\"success\":false,\"error\":\"zendesk requires subdomain before OAuth\",\"code\":\"VALIDATION_ERROR\",\"details\":{},\"detail\":\"zendesk requires subdomain before OAuth\"}"
+    }
+  },
+  "oauth_token_row_present": {
+    "google_analytics": false,
+    "google_search_console": false
+  },
+  "website_source_readiness": {
+    "google_analytics": {
+      "present": true,
+      "executable": false,
+      "auth_status": "misconfigured",
+      "blocking_reason": "misconfigured"
+    },
+    "google_search_console": {
+      "present": true,
+      "executable": false,
+      "auth_status": "misconfigured",
+      "blocking_reason": "misconfigured"
+    }
+  },
+  "pcm_voice": {
+    "attempted": true,
+    "ok": false,
+    "proof_class": "SYNTHESIZED_PCM_INTO_PIPECAT_WS",
+    "pcm_source": "windows_sapi",
+    "pcm_bytes": 138684,
+    "first_delta_ms": null,
+    "first_answer_ms": null,
+    "physical_mic": false,
+    "lane_b_webrtc": false
+  },
+  "lane_b": {
+    "production_allows_webrtc": false,
+    "reason": "voice_webrtc_eval.production_allows_webrtc_media is false; spec forbids serving production audio on lane B"
+  }
+}

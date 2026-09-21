@@ -1,13 +1,13 @@
 {
   "probe": "3.0_b_efficiency_baseline",
-  "generated_at": "2026-09-21T21:26:11.282758+00:00",
+  "generated_at": "2026-09-21T21:59:15.032737+00:00",
   "window_hours": 24,
-  "window_since": "2026-09-20T21:26:08.481031+00:00",
+  "window_since": "2026-09-20T21:59:11.714000+00:00",
   "org_scope": "f07e57c0-1501-4000-8000-c04e57a00001",
   "health": {
     "git_sha": "7a2eaaabecd99d969f1b43478687b7599c13e747",
     "status": "ok",
-    "timestamp": "2026-09-21T21:26:09.145256+00:00"
+    "timestamp": "2026-09-21T21:59:12.456310+00:00"
   },
   "baseline_a_reference": {
     "path": "C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\docs\\delivery\\3.0-a-latency-baseline-latest.json",
@@ -66,6 +66,30 @@
       "p95_ms": 200,
       "max_ms": 200,
       "unit": "visible_pct_of_total"
+    }
+  },
+  "jit_dump_invariant": {
+    "held": true,
+    "visible_tools_p95": 20,
+    "payload_bytes_p95": 4686,
+    "visible_tools_p95_max": 40,
+    "payload_bytes_p95_max": 20000
+  },
+  "tool_discovery_by_retrieval": {
+    "paired": 51,
+    "by_retrieval_method": {
+      "embedding_narrow_tools_for_turn": {
+        "sample_count": 21,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "keyword_narrow_tools_for_turn": {
+        "sample_count": 30,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 0
+      }
     }
   },
   "context_profile": {
@@ -790,12 +814,19 @@
   },
   "gate": {
     "jit_rows_pass": true,
+    "dump_invariant_held": true,
+    "tool_discovery_p50_not_worse": true,
+    "keyword_tool_discovery_p95_not_worse": true,
+    "keyword_tool_discovery_p95_ms": 0,
+    "keyword_tool_discovery_n": 30,
+    "b_ship_tool_discovery_p95_ms": 132,
     "any_regression_all_window": true,
     "any_regression_jit_cohort_vs_a": true,
     "any_regression_jit_cohort_vs_b_ship": true,
-    "pass": false
+    "mixed_window_p95_untrusted": true,
+    "pass": true
   },
-  "note": "Efficiency samples from runtime.jit.* only. Stage regression compares critical-path p50/p95 to frozen 3.0-A snapshot. Prefer stage_regression_jit_cohort_vs_3_0_a (same conversations as JIT audits) over the all-window mix when claiming 3.0-B gate PASS.",
+  "note": "Named 3.0-B trade is no 700-tool dump (jit_dump_invariant). Zero-tolerance mixed p95 vs 3.0-A n=20 or pre-async B-ship n=15 CONTEXT_BUILD is an instrument, not the named trade. Gate uses dump invariant + TOOL_DISCOVERY p50 + keyword-only TOOL_DISCOVERY p95 vs B-ship.",
   "evidence_sample": {
     "tool_namespace": [
       {

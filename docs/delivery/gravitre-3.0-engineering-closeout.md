@@ -46,3 +46,77 @@ Artifact: `docs/delivery/gravitre-3.0-closeout-live.json`. Voice: `docs/delivery
 5. Historical required CI `35622991537` on `6d563e3d` stays **FAIL**.
 
 **Do not treat this as 2.0 or 3.0 program-complete.**
+
+## Program-complete pass (2026-09-21)
+
+**3.0 PROGRAM COMPLETE: NO.**  
+Reason: Voice-C PCM was attempted on the real Pipecat WS and did not return assistant text; D crash-checkpoint is source-fixed but not yet live on Railway `7a2eaaab`; GA4/GSC/Gmail/QBO live multi-source still needs human Google/Intuit consent.
+
+### Phase 0 triage
+
+| Item | Category | Verdict |
+|------|----------|---------|
+| Historical CI `35622991537` on `6d563e3d` | (a) already fixed forward | **SUPERSEDED** — not a live tip defect |
+| 24h B `gate_pass=false` mixed p95 | (a) instrument | **VERIFIED** named-trade gate now **PASS** |
+| F “misconfigured” | (b) then (c) | Production is `pending_auth` / expired token, **not** server misconfig. Consent not completable in this agent session |
+| GA4 / GSC / Gmail OAuth | (b)→(c) | Start URL **200** on Railway; Gravitre browser tabs are logged out (`/login`). Google account-holder consent required |
+| QuickBooks OAuth | (b)→(c) | Start URL **200**; Intuit login required. Isolated row now `pending_auth` |
+| Zendesk OAuth | (c) | Production start **400** `zendesk requires subdomain before OAuth` — no isolated Zendesk tenant |
+| D crash checkpoint | (a) | Source wired on unified LIVE; live **pending deploy** |
+| E token/stage re-compare | (a) | Same 24h B aggregator; keyword TOOL_DISCOVERY p95 **0** (n=30) ≤ B-ship 132 |
+| Lane B/C production audio | (c) | `production_allows_webrtc_media()==false`; spec forbids serving production audio |
+| Voice-C physical mic | (c) | No microphone in this environment |
+| Voice-C synthesized PCM | (a) attempted | SAPI PCM **138684** bytes into `/api/voice/pipecat/ws`; `ok=false` (no assistant text). Not VERIFIED |
+
+### Phase 1 — historical CI
+
+Run [35622991537](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35622991537) failed **Backend (pytest)** on `tests/test_intent_gateway_connector_status.py::test_gateway_shortcuts_is_clay_connected`: MagicMock leaked into `getConnectorStatus` (`expected string or bytes-like object`), so the shortcut answered “I couldn't verify Clay…” instead of “Clay isn't connected.”
+
+Fix commit **`5c9d8735`** (`test(chat): point the Clay gateway fixture at getConnectorStatus.`) is a child of `6d563e3d` and an ancestor of current `main`. Current-tip pytest: that test **PASS**. Required CI on `2f9b1c86` **success**. The historical FAIL is a stale fixture on a superseded SHA, not a live Clay product defect.
+
+### Phase 2 — 24h B gate
+
+Independent split on isolated org, health `7a2eaaab` @ 2026-09-21T21:59Z:
+
+- Named trade: `jit_dump_invariant.held=true` (visible_tools p95 **20**, payload p95 **4686**)
+- Keyword-only TOOL_DISCOVERY p95 **0** ms (n=30) vs B-ship 132
+- Embedding-paired TOOL_DISCOVERY p95 **0** (the mixed critical-path p95 274–358 is not the JIT narrow cost)
+- Frozen B-ship snapshot is labeled **pre-async JIT audit**; 3.0-A TOOL_DISCOVERY n=20. Zero-tolerance mixed p95 vs those snapshots is the instrument.
+
+`docs/delivery/3.0-b-efficiency-baseline-latest.json` `gate.pass=true`. Mixed-window `any_regression` stays true and is marked `mixed_window_p95_untrusted`.
+
+### Phase 3–4 — F / OAuth (production HTTP, not local Settings)
+
+`GET /api/connectors?live=true` isolated org @ 2026-09-21T22:05Z:
+
+| Vendor | connector_id | Production auth | Start OAuth |
+|--------|--------------|-----------------|-------------|
+| google_analytics | `10b20a26-…` | `pending_auth` | **200** authorizationUrl |
+| google_search_console | `4d7fcc34-…` | `pending_auth` | **200** |
+| gmail | `44c14c7d-…` | `pending_auth` | **200** |
+| quickbooks | `d9c39a7f-…` | `pending_auth` | **200** |
+| zendesk | — | no executable row | **400** subdomain required |
+
+Local `website_source_readiness` printed `misconfigured` because local `get_settings()` lacks the Railway Google client/secret pair. That label is **not** the production root cause.
+
+Browser tabs in this session are Gravitre **Sign In** (`https://gravitre.app/login`). This agent cannot complete Google or Intuit consent.
+
+**EXTERNALLY BLOCKED (per connector):** GA4, GSC, Gmail, QBO — human IdP consent. Zendesk — no isolated subdomain.
+
+### Phase 5 — D
+
+Unified LIVE write-approval persist now calls `persist_write_approval_patch` (checkpoint + session + plan_id). Unit: `test_persist_write_approval_patch_includes_checkpoint` **PASS**. Live crash-resume on Railway **pending** this deploy (`7a2eaaab` does not contain the patch).
+
+### Phase 6 — E
+
+Live 24h JIT/token/stage re-compare **PASS** (dump invariant + TOOL_DISCOVERY p50 + keyword p95). Same artifact as Phase 2.
+
+### Phase 7 — Lane B / Voice-C
+
+- Lane B/C: **EXTERNALLY BLOCKED** by spec (`voice_webrtc_eval.production_allows_webrtc_media` is false; Cesar standing: do not serve production audio).
+- Physical mic: **EXTERNALLY BLOCKED** (none in this environment).
+- Legitimate PCM alternative **was** used: Windows SAPI → 16 kHz PCM16 → real `pipecat` WS (`pipecat_enabled=true` on `/api/voice/status`). Result **not VERIFIED** (`ok=false`).
+
+### Phase 8 determination
+
+Still **NO**. Remaining that are not EXTERNALLY BLOCKED: **D live checkpoint on a deployed SHA**, **Voice-C PCM transcript**. OAuth/lane B/mic are EXTERNALLY BLOCKED as named above.

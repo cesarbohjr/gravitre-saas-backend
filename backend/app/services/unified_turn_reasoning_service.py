@@ -2266,17 +2266,24 @@ async def apply_unified_turn_live(
                 "status": "awaiting_confirm",
                 "source": "pack_common_list_create",
             }
+            pending_task = {
+                "type": "connector_action",
+                "status": "awaiting_confirm",
+                "params": pending_params,
+            }
+            from app.services.durable_work_session import persist_write_approval_patch
+
             await state.update_task_state(
                 conversation_id,
                 org_id,
-                {
-                    "pending_task": {
-                        "type": "connector_action",
-                        "status": "awaiting_confirm",
-                        "params": pending_params,
-                    },
-                    "recent_user_messages": [message or ""],
-                },
+                persist_write_approval_patch(
+                    task_state,
+                    pending_task=pending_task,
+                    tool_name=pack_plan.tool_name,
+                    action=pack_plan.invoke_action,
+                    args=dict(pack_plan.args or {}),
+                    extra={"recent_user_messages": [message or ""]},
+                ),
                 client=client,
             )
             refreshed = await state.get_task_state(
@@ -2801,18 +2808,27 @@ async def apply_unified_turn_live(
                 "status": "awaiting_confirm",
                 "source": "unified_turn_live",
             }
+            pending_task = {
+                "type": "connector_action",
+                "status": "awaiting_confirm",
+                "params": pending_params,
+            }
+            from app.services.durable_work_session import persist_write_approval_patch
+
             await state.update_task_state(
                 conversation_id,
                 org_id,
-                {
-                    **ledger_patch(sealed_ledger),
-                    "pending_task": {
-                        "type": "connector_action",
-                        "status": "awaiting_confirm",
-                        "params": pending_params,
+                persist_write_approval_patch(
+                    task_state,
+                    pending_task=pending_task,
+                    tool_name=plan.tool_name,
+                    action=plan.invoke_action,
+                    args=dict(plan.args or {}),
+                    extra={
+                        **ledger_patch(sealed_ledger),
+                        "recent_user_messages": [message or ""],
                     },
-                    "recent_user_messages": [message or ""],
-                },
+                ),
                 client=client,
             )
             refreshed = await state.get_task_state(conversation_id, org_id, client=client)

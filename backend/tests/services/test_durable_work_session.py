@@ -9,6 +9,7 @@ from app.services.durable_work_session import (
     attach_write_checkpoint,
     checkpoint_before_write,
     load_checkpoint,
+    persist_write_approval_patch,
     resume_from_checkpoint,
     session_phase_from_task_state,
     stop_reason,
@@ -108,6 +109,38 @@ def test_reconcile_resumes_checkpoint_without_minting_plan():
         task_state={CHECKPOINT_KEY: ck.as_dict()},
     )
     assert continued.plan_id == "plan-rec"
+
+
+def test_persist_write_approval_patch_includes_checkpoint():
+    plan = ExecutionPlan(
+        plan_id="plan-unified",
+        summary="Create list",
+        steps=[ExecutionStep(step_id="w1", title="write", kind="write")],
+        source="unified_turn_live",
+        terminal_status="running",
+    )
+    pending = {
+        "type": "connector_action",
+        "status": "awaiting_confirm",
+        "params": {"invoke_action": "apollo.lists.create", "args": {"name": "MSP"}},
+    }
+    patch = persist_write_approval_patch(
+        {"execution_plan": plan.as_dict()},
+        pending_task=pending,
+        tool_name="apollo_lists_create",
+        action="apollo.lists.create",
+        args={"name": "MSP"},
+        extra={"recent_user_messages": ["create list"]},
+    )
+    assert patch["pending_task"]["status"] == "awaiting_confirm"
+    ck = load_checkpoint(patch)
+    assert ck is not None
+    assert ck.plan_id == "plan-unified"
+    assert ck.inputs.get("name") == "MSP"
+    crashed = {CHECKPOINT_KEY: patch[CHECKPOINT_KEY], "execution_plan": None, "pending_task": pending}
+    resumed = resume_from_checkpoint(crashed, continue_work=True)
+    assert resumed is not None
+    assert resumed.plan_id == "plan-unified"
 
 
 def test_pending_task_maps_to_waiting_approval():

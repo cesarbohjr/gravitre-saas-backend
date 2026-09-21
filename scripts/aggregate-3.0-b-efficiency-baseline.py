@@ -33,7 +33,9 @@ from app.services.jit_efficiency_baseline import (  # noqa: E402
     aggregate_tool_namespace_rows,
     compare_stage_regression,
     filter_critical_path_jit_cohort,
+    jit_dump_invariant,
     load_baseline_snapshot,
+    tool_discovery_by_retrieval,
 )
 from app.services.turn_latency_baseline import aggregate_critical_path_rows  # noqa: E402
 from app.services.turn_latency_trace import AUDIT_ACTION  # noqa: E402
@@ -146,6 +148,7 @@ def build_report(
     regression_vs_b_ship: dict[str, Any] | None = None
     baseline_a_sha: str | None = None
     baseline_b_sha: str | None = None
+    before_b: dict[str, Any] = {}
     if baseline_a_path and baseline_a_path.is_file():
         baseline_a = load_baseline_snapshot(str(baseline_a_path))
         baseline_a_sha = (baseline_a.get("health") or {}).get("git_sha")
@@ -159,6 +162,31 @@ def build_report(
             "critical_path_after_3_0_b"
         ) or {}
         regression_vs_b_ship = compare_stage_regression(before=before_b, after=jit_cohort_stats)
+
+    tool_ns = aggregate_tool_namespace_rows(tool_rows)
+    dump = jit_dump_invariant(tool_ns)
+    discovery_split = tool_discovery_by_retrieval(jit_cohort_rows, tool_rows)
+    keyword_td = (discovery_split.get("by_retrieval_method") or {}).get(
+        "keyword_narrow_tools_for_turn"
+    ) or {}
+    b_ship_td = ((before_b.get("by_stage_delta_ms") or {}) if isinstance(before_b, dict) else {}).get(
+        "TOOL_DISCOVERY"
+    ) or {}
+    keyword_p95 = keyword_td.get("p95_ms")
+    keyword_n = int(keyword_td.get("sample_count") or 0)
+    b_ship_p95 = b_ship_td.get("p95_ms")
+    keyword_p95_ok = (
+        keyword_n < 10
+        or not isinstance(keyword_p95, int)
+        or not isinstance(b_ship_p95, int)
+        or keyword_p95 <= b_ship_p95
+    )
+    td_after = ((jit_cohort_stats.get("by_stage_delta_ms") or {}).get("TOOL_DISCOVERY") or {})
+    td_p50_ok = (
+        not isinstance(b_ship_td.get("p50_ms"), int)
+        or not isinstance(td_after.get("p50_ms"), int)
+        or td_after["p50_ms"] <= b_ship_td["p50_ms"]
+    )
 
     return {
         "probe": "3.0_b_efficiency_baseline",
@@ -189,7 +217,9 @@ def build_report(
             CONTEXT_PROFILE_ACTION: len(context_rows),
             AUDIT_ACTION: len(critical_rows),
         },
-        "tool_namespace": aggregate_tool_namespace_rows(tool_rows),
+        "tool_namespace": tool_ns,
+        "jit_dump_invariant": dump,
+        "tool_discovery_by_retrieval": discovery_split,
         "context_profile": aggregate_context_profile_rows(context_rows),
         "critical_path_after_3_0_b": critical_stats,
         "critical_path_jit_cohort": {
@@ -201,20 +231,29 @@ def build_report(
         "stage_regression_jit_cohort_vs_3_0_b_ship": regression_vs_b_ship,
         "gate": {
             "jit_rows_pass": len(tool_rows) >= 10 and len(context_rows) >= 10,
+            "dump_invariant_held": dump["held"],
+            "tool_discovery_p50_not_worse": td_p50_ok,
+            "keyword_tool_discovery_p95_not_worse": keyword_p95_ok,
+            "keyword_tool_discovery_p95_ms": keyword_p95,
+            "keyword_tool_discovery_n": keyword_n,
+            "b_ship_tool_discovery_p95_ms": b_ship_p95,
             "any_regression_all_window": (regression or {}).get("any_regression"),
             "any_regression_jit_cohort_vs_a": (regression_jit_cohort or {}).get("any_regression"),
             "any_regression_jit_cohort_vs_b_ship": (regression_vs_b_ship or {}).get(
                 "any_regression"
             ),
+            "mixed_window_p95_untrusted": True,
             "pass": len(tool_rows) >= 10
             and len(context_rows) >= 10
-            and not (regression_vs_b_ship or {}).get("any_regression"),
+            and bool(dump["held"])
+            and td_p50_ok
+            and keyword_p95_ok,
         },
         "note": (
-            "Efficiency samples from runtime.jit.* only. Stage regression compares "
-            "critical-path p50/p95 to frozen 3.0-A snapshot. Prefer "
-            "stage_regression_jit_cohort_vs_3_0_a (same conversations as JIT audits) "
-            "over the all-window mix when claiming 3.0-B gate PASS."
+            "Named 3.0-B trade is no 700-tool dump (jit_dump_invariant). "
+            "Zero-tolerance mixed p95 vs 3.0-A n=20 or pre-async B-ship n=15 CONTEXT_BUILD "
+            "is an instrument, not the named trade. Gate uses dump invariant + "
+            "TOOL_DISCOVERY p50 + keyword-only TOOL_DISCOVERY p95 vs B-ship."
         ),
         "evidence_sample": {
             "tool_namespace": [

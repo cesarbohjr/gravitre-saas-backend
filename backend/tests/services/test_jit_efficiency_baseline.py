@@ -6,6 +6,8 @@ from app.services.jit_efficiency_baseline import (
     aggregate_tool_namespace_rows,
     compare_stage_regression,
     filter_critical_path_jit_cohort,
+    jit_dump_invariant,
+    tool_discovery_by_retrieval,
 )
 from app.services.jit_efficiency_service import (
     CONTEXT_PROFILE_ACTION,
@@ -84,6 +86,54 @@ def test_compare_stage_regression_flags_worse_p95() -> None:
     assert out["any_regression"] is True
     assert out["stages"]["CONTEXT_BUILD"]["p95_regressed"] is True
     assert out["stages"]["TOOL_DISCOVERY"]["p95_regressed"] is False
+
+
+def test_jit_dump_invariant_rejects_catalog_dump() -> None:
+    held = jit_dump_invariant(
+        {
+            "visible_tools": {"p95_ms": 20, "sample_count": 10},
+            "payload_bytes": {"p95_ms": 4686, "sample_count": 10},
+        }
+    )
+    assert held["held"] is True
+    dumped = jit_dump_invariant(
+        {
+            "visible_tools": {"p95_ms": 700, "sample_count": 10},
+            "payload_bytes": {"p95_ms": 50000, "sample_count": 10},
+        }
+    )
+    assert dumped["held"] is False
+
+
+def test_tool_discovery_by_retrieval_splits_keyword_vs_embedding() -> None:
+    tool_rows = [
+        {
+            "resource_id": "conv-k",
+            "created_at": "2026-09-21T10:00:00+00:00",
+            "metadata": {"retrievalMethod": "keyword_narrow_tools_for_turn", "narrowMs": 4},
+        },
+        {
+            "resource_id": "conv-e",
+            "created_at": "2026-09-21T10:00:00+00:00",
+            "metadata": {"retrievalMethod": "embedding_narrow_tools_for_turn", "narrowMs": 90},
+        },
+    ]
+    critical_rows = [
+        {
+            "resource_id": "conv-k",
+            "created_at": "2026-09-21T10:00:02+00:00",
+            "metadata": {"stages": [{"stage": "TOOL_DISCOVERY", "delta_ms": 5}]},
+        },
+        {
+            "resource_id": "conv-e",
+            "created_at": "2026-09-21T10:00:02+00:00",
+            "metadata": {"stages": [{"stage": "TOOL_DISCOVERY", "delta_ms": 400}]},
+        },
+    ]
+    out = tool_discovery_by_retrieval(critical_rows, tool_rows)
+    assert out["paired"] == 2
+    assert out["by_retrieval_method"]["keyword_narrow_tools_for_turn"]["p95_ms"] == 5
+    assert out["by_retrieval_method"]["embedding_narrow_tools_for_turn"]["p95_ms"] == 400
 
 
 def test_filter_critical_path_jit_cohort_pairs_by_conversation() -> None:

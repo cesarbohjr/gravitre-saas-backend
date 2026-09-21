@@ -194,6 +194,93 @@ def compare_stage_regression(
     return {"stages": comparisons, "any_regression": any_regression}
 
 
+VISIBLE_TOOLS_P95_MAX = 40
+PAYLOAD_BYTES_P95_MAX = 20_000
+
+
+def jit_dump_invariant(tool_namespace: dict[str, Any] | None) -> dict[str, Any]:
+    """Named 3.0-B trade: models must not see a 700-tool dump."""
+    ns = tool_namespace if isinstance(tool_namespace, dict) else {}
+    visible_p95 = (ns.get("visible_tools") or {}).get("p95_ms")
+    payload_p95 = (ns.get("payload_bytes") or {}).get("p95_ms")
+    held = (
+        isinstance(visible_p95, int)
+        and visible_p95 <= VISIBLE_TOOLS_P95_MAX
+        and isinstance(payload_p95, int)
+        and payload_p95 <= PAYLOAD_BYTES_P95_MAX
+    )
+    return {
+        "held": held,
+        "visible_tools_p95": visible_p95,
+        "payload_bytes_p95": payload_p95,
+        "visible_tools_p95_max": VISIBLE_TOOLS_P95_MAX,
+        "payload_bytes_p95_max": PAYLOAD_BYTES_P95_MAX,
+    }
+
+
+def tool_discovery_by_retrieval(
+    critical_rows: list[dict[str, Any]],
+    tool_rows: list[dict[str, Any]],
+    *,
+    max_delta_seconds: int = 45,
+) -> dict[str, Any]:
+    """Pair TOOL_DISCOVERY stage deltas with the JIT retrieval method on the same turn."""
+    jit_by_conv: dict[str, list[tuple[datetime, str, int | None]]] = {}
+    for row in tool_rows:
+        conv = str(row.get("resource_id") or "").strip()
+        ts = _parse_ts(str(row.get("created_at") or ""))
+        if not conv or ts is None:
+            continue
+        meta = parse_audit_metadata(row)
+        method = str(meta.get("retrievalMethod") or "unknown")
+        narrow = meta.get("narrowMs")
+        narrow_ms = int(narrow) if isinstance(narrow, (int, float)) else None
+        jit_by_conv.setdefault(conv, []).append((ts, method, narrow_ms))
+
+    by_method: dict[str, list[int]] = {}
+    paired = 0
+    for row in critical_rows:
+        conv = str(row.get("resource_id") or "").strip()
+        ts = _parse_ts(str(row.get("created_at") or ""))
+        if not conv or ts is None or conv not in jit_by_conv:
+            continue
+        meta = parse_audit_metadata(row)
+        stages = meta.get("stages")
+        td_ms: int | None = None
+        if isinstance(stages, list):
+            for stage_row in stages:
+                if not isinstance(stage_row, dict):
+                    continue
+                if str(stage_row.get("stage") or "") != "TOOL_DISCOVERY":
+                    continue
+                delta = stage_row.get("delta_ms")
+                if isinstance(delta, (int, float)):
+                    td_ms = int(delta)
+                    break
+        if td_ms is None:
+            continue
+        best: tuple[datetime, str, int | None] | None = None
+        best_abs = None
+        for jit_ts, method, _narrow in jit_by_conv[conv]:
+            delta = abs((ts - jit_ts).total_seconds())
+            if delta > max_delta_seconds:
+                continue
+            if best_abs is None or delta < best_abs:
+                best_abs = delta
+                best = (jit_ts, method, _narrow)
+        if best is None:
+            continue
+        paired += 1
+        by_method.setdefault(best[1], []).append(td_ms)
+
+    return {
+        "paired": paired,
+        "by_retrieval_method": {
+            method: stats_ms(values) for method, values in sorted(by_method.items())
+        },
+    }
+
+
 def load_baseline_snapshot(path: str) -> dict[str, Any]:
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)

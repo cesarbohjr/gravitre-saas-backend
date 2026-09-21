@@ -335,11 +335,16 @@ def _probe_d(*, base_url: str, org_id: str, token: str, client) -> dict:
     same = bool(target) and (not hold_ids or target in hold_ids or not hold_ids)
     resumed_ok = resumed is not None and bool(target) and resumed.plan_id == target
     sent = any("i sent" in str(ev).lower() for ev in hold_events)
+    checkpoint = state.get("durable_checkpoint") if isinstance(state.get("durable_checkpoint"), dict) else None
+    checkpoint_plan = str((checkpoint or {}).get("plan_id") or "").strip()
     ok = (
         stage_http == 200
         and hold_http == 200
         and not sent
         and bool(target)
+        and bool(checkpoint)
+        and checkpoint_plan == target
+        and resumed_ok
         and (same or resumed_ok)
     )
     return {
@@ -351,8 +356,10 @@ def _probe_d(*, base_url: str, org_id: str, token: str, client) -> dict:
         "stage_plan_ids": stage_ids,
         "hold_plan_ids": hold_ids,
         "stored_plan_id": stored_id or None,
+        "checkpoint_plan_id": checkpoint_plan or None,
         "resumed_plan_id": None if resumed is None else resumed.plan_id,
         "sent_claim": sent,
+        "durable_checkpoint_present": bool(checkpoint),
     }
 
 

@@ -308,6 +308,37 @@ def attach_write_checkpoint(
     return checkpoint
 
 
+def persist_write_approval_patch(
+    task_state: dict[str, Any] | None,
+    *,
+    pending_task: dict[str, Any],
+    tool_name: str,
+    action: str | None = None,
+    args: dict[str, Any] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Stamp WRITE checkpoint onto a conversation task_state patch (unified + ReAct)."""
+    live = dict(task_state or {})
+    live["pending_task"] = pending_task
+    pending_params = pending_task.get("params") if isinstance(pending_task.get("params"), dict) else {}
+    resolved_args = args if isinstance(args, dict) else safe_normalize_stored_dict(
+        pending_params.get("args")
+    )
+    attach_write_checkpoint(
+        live,
+        tool_name=tool_name,
+        action=action or str(pending_params.get("invoke_action") or "") or None,
+        args=resolved_args if isinstance(resolved_args, dict) else {},
+    )
+    patch: dict[str, Any] = {"pending_task": pending_task}
+    if extra:
+        patch.update(extra)
+    for key in (CHECKPOINT_KEY, SESSION_KEY, "execution_plan"):
+        if live.get(key) is not None:
+            patch[key] = live[key]
+    return patch
+
+
 def load_checkpoint(task_state: dict[str, Any] | None) -> DurableCheckpoint | None:
     state = task_state if isinstance(task_state, dict) else {}
     return DurableCheckpoint.from_dict(safe_normalize_stored_dict(state.get(CHECKPOINT_KEY)))
