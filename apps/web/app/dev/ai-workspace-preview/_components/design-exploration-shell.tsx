@@ -60,7 +60,7 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
     "fail",
   ],
   navigation: ["compact", "expanded", "pinned", "keyboard", "mobile"],
-  creative: ["compare", "workbench", "pilot3"],
+  creative: ["compare", "workbench", "refined", "pilot3"],
 }
 
 const AI_SCENES: AiScene[] = [

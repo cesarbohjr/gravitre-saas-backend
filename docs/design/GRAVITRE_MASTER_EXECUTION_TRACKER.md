@@ -17,30 +17,37 @@
 
 ## Phase 2 — Intelligence I1 + I2
 
+### Reconciliation (2026-09-21 — Workstream C mandatory first step)
+
+| Question | Answer |
+|----------|--------|
+| Is design I1/I2 the same as shipped OverviewLivingMap? | **YES (A)** — `overview-living-map.tsx` is the production I1 Field Topology + collapsible I2 Change Stream on `/intelligence`. |
+| Is `GravitreIntelligenceCoreLive` that surface? | **NO** — orphaned Phase-2 radial; not mounted by `intelligence/page.tsx`. |
+| Rebuild / replace / duplicate? | **NO** — design gate CLOSED; do not reopen. |
+| “0 entities · 32 relationships” | **OUTDATED** as systemic live bug (KG SELECT fix + `i1-i2-live-recount.json` 4/3). Harness `CurrentProductionStub` may still paint 0/32 as a compare stub — not prod truth. |
+
 ### Deployment / API (accepted baseline)
 
 | REQUIREMENT | STATUS | EVIDENCE |
 |-------------|--------|----------|
-| Cesar design approval | VERIFIED | Approval directive |
+| Cesar design approval | VERIFIED | Approval directive · gate CLOSED |
 | KG SELECT + field sample | VERIFIED (API) | tip `61f75c4f` · `docs/delivery/i1-i2-live-recount.json` |
-| Prod OverviewLivingMap I1+I2 | IMPLEMENTED — NOT PROVEN (UI) | commits `22c59fae`…`61f75c4f` · Vercel READY |
+| Prod OverviewLivingMap I1+I2 | VERIFIED (load + lenses) / IMPLEMENTED for deep node/I2 inspect | Auth matrix map + Learns→Predicts PASS 2026-09-21 · commits `22c59fae`…`61f75c4f` |
 | G8 live API | VERIFIED | `docs/delivery/g8-intelligence-hub-live.json` PASS |
 
 ### Authenticated browser matrix (`https://gravitre.app/intelligence`)
 
 | Check | Result | Notes |
 |-------|--------|-------|
-| Session available | **BLOCKED** | 2026-09-20 · agent browser navigated to `/intelligence` → redirected to `https://gravitre.app/login` (Welcome back / SSO+password). No authorized cookie/session in agent browser. |
-| Initial field | NOT PROVEN | Requires session |
-| KNOWS / LEARNS / PREDICTS / ACTS / IMPROVES | NOT PROVEN | Requires session |
-| Node / relationship / I2 / Ask / list-spatial / search | NOT PROVEN | Requires session |
-| Loading / empty / sparse / error / mobile / reduced | NOT PROVEN | Requires session |
-| Old IntelligenceGraphStage not default | NOT PROVEN | Code path uses OverviewLivingMap; browser unconfirmed |
-| KG counts visible in UI (org-specific) | NOT PROVEN | API recount for isolated org only — not claimed for every org |
+| Session available | **VERIFIED** | Mint + surface matrix 2026-09-21 |
+| Initial field / map canvas | **PASS** | `intelligence-map-canvas` visible |
+| KNOWS / LEARNS / PREDICTS lenses | **PASS** | Learns → Predicts switch |
+| Node / relationship / I2 / Ask / list-spatial / search | PARTIAL | Load proven; deep inspect not fully matrix-covered |
+| Loading / empty / sparse / error / mobile / reduced | NOT PROVEN | Remaining depth |
+| Old IntelligenceGraphStage not default | PASS (code) | OverviewLivingMap mounted |
+| KG counts visible in UI (org-specific) | PARTIAL | API recount isolated org; UI shows canonical metrics |
 
-**Intelligence production VERIFIED:** no — browser gate open.
-
-**Limitation (exact):** Cursor IDE browser tabs hold only public login; cannot complete Gravitre SSO/password without exposing credentials. API verification remains separate and PASS for the isolated org recount.
+**Intelligence production:** OverviewLivingMap is the approved I1+I2 — do not rebuild as a second field.
 
 ---
 
@@ -48,10 +55,10 @@
 
 | REQUIREMENT | STATUS | FILES | TEST |
 |-------------|--------|-------|------|
-| A1 TRACE rail + story on `/activity` | IMPLEMENTED — NOT PROVEN | `components/activity/activity-trace-panel.tsx` · wired in `app/activity/page.tsx` | vitest `activity-trace-panel.test.ts` |
-| A2 timeline on demand | IMPLEMENTED — NOT PROVEN | same panel · Story/Timeline toggle | unit |
+| A1 TRACE rail + story on `/activity` | IMPLEMENTED — load VERIFIED | `components/activity/activity-trace-panel.tsx` · wired in `app/activity/page.tsx` | vitest + auth matrix `/activity` PASS |
+| A2 timeline on demand | IMPLEMENTED — NOT PROVEN (deep) | same panel · Story/Timeline toggle | unit |
 | Reuse P-1 grammar | VERIFIED (reuse) | EvidenceChip + grammarToneForStepStatus | — |
-| Prod browser Activity | NOT PROVEN | awaits auth session | — |
+| Prod browser Activity | VERIFIED (heading load) | surface matrix 2026-09-21 | — |
 
 ---
 
@@ -188,15 +195,24 @@ No further safe implementation remains for Technology thinning or the KF-A produ
 
 | REQUIREMENT | STATUS |
 |-------------|--------|
-| KF-A workbench | VERIFIED on `/features/technology` in `720a0650`. Dev harness still compares it with the autoplay field. |
-| Pilot 1 mobile ring-spin removal | IMPLEMENTED in `department-network-mobile.tsx` — Relational Topology, no `animate-spin`. Not authenticated-product verification. |
-| Orchestration / governance Step | IMPLEMENTED in `d198f372` — visitor Step pauses autoplay and advances one beat. Reset returns to the first beat and stays paused. Selecting a capability shows its existing label and, once tools are on screen, the existing systems list. Success/failure retained. Doc links to agents and approvals. Not a production Pilot 3 promote. |
-| Connector fabric select | IMPLEMENTED in `d198f372` — selecting a port shows that port’s existing capabilities. Step and Reset use the same pause-and-advance rule. Not a live connector inventory. |
-| GIBE and voice Step | IMPLEMENTED in `d198f372` — Step and Reset on the existing loops. Recommend stays advisory. Voice stays no-orb and is not duplex or PCM proof. |
-| Outcomes activity link | IMPLEMENTED in `d198f372` — categories only, linked to the existing runs how-to (`/docs/guides/how-to/runs`). No invented metrics. |
-| Technology page thinning | VERIFIED on production `720a0650`. `/features/technology` at 2026-09-21 has `data-technology-legacy="0"`, no “50+ integrations” catalog, no “How Gravitre works” legacy block, no TRAINED string. Scene links: org learning, agents, approvals, sources. |
-| Production Pilot 3 promote | VERIFIED on production `720a0650`. Technology Knowledge Fabric is `data-kf-production="workbench"` (`entity-convergence-workbench`). Page text includes Sarah and Sarah Smith. Caption stays illustrative exact match, not a live org graph. Vercel `CPeWukqMmHrCCJxxuKKhzYgsrpbC`. |
+| KF-A stable workbench on Technology | VERIFIED — `/features/technology` mounts stable `EntityConvergenceWorkbenchField` (`data-kf-production="workbench"`). |
+| KF-A **refined** preview (arrive→…→knowledge) | **IMPLEMENTED — AWAITING PROMOTE** — harness only: `/dev/ai-workspace-preview?s=creative&scene=refined` (also on `compare`). Technology unchanged until Cesar confirms. |
+| Pilot 1 mobile ring-spin removal | **VERIFIED (code)** — `department-network-mobile.tsx` uses Relational Topology; vitest forbids `animate-spin`. Concept locked. |
+| SceneController foundation | **VERIFIED (code)** — `scene-controller.ts` + `useSceneController`; KF-A stable + refined stepped modes. |
+| P-1 TRACE grammar on Activity | **IMPLEMENTED — PARTIAL browser** — `activity-trace-panel.tsx` + `EvidenceChip` / `grammarToneForStepStatus`; auth matrix loads `/activity`. |
+| Orchestration / governance Step | IMPLEMENTED in `d198f372` — visitor Step pauses autoplay and advances one beat. |
+| Connector fabric select | IMPLEMENTED in `d198f372`. |
+| GIBE and voice Step | IMPLEMENTED in `d198f372`. |
+| Outcomes activity link | IMPLEMENTED in `d198f372`. |
+| Technology page thinning | VERIFIED on production `720a0650`. |
+| Production Pilot 3 / stable KF-A promote | VERIFIED — Technology already on stable workbench. **Refined edition not promoted.** |
 | Pilot 1 / 2 concept reopen | Locked — do not reopen |
+
+### KF-A refined — STOP before Technology
+
+Preview URL (post-deploy): `https://gravitre.app/dev/ai-workspace-preview?s=creative&scene=refined`  
+Compare: `…&scene=compare`  
+**Do not swap Technology to refined until Cesar confirms.**
 
 ---
 

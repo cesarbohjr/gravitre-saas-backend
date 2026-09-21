@@ -24,6 +24,11 @@ export {
   KF_A_BEATS,
 } from "./scenes/knowledge-fabric/entity-convergence-workbench"
 export {
+  EntityConvergenceWorkbenchRefined,
+  EntityConvergenceWorkbenchRefinedField,
+  KF_A_REFINED_BEATS,
+} from "./scenes/knowledge-fabric/entity-convergence-workbench-refined"
+export {
   normalizeIllustrativeMention,
   KF_A_MENTIONS,
   mentionWithNormalized,

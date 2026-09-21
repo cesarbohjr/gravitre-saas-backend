@@ -402,6 +402,36 @@ describe("CES 2.0 KF-A normalize (decision A)", () => {
       "compare",
     ])
   })
+
+  it("exposes refined KF-A pipeline beat order (harness preview)", async () => {
+    const { KF_A_REFINED_BEATS } = await import(
+      "@/components/marketing/creative/scenes/knowledge-fabric/entity-convergence-workbench-refined"
+    )
+    expect([...KF_A_REFINED_BEATS]).toEqual([
+      "arrive",
+      "normalize",
+      "match",
+      "resolve",
+      "evidence",
+      "knowledge",
+    ])
+  })
+
+  it("refined KF-A keeps reject concurrent and knowledge persistent markers", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const src = readFileSync(
+      resolve(
+        process.cwd(),
+        "components/marketing/creative/scenes/knowledge-fabric/entity-convergence-workbench-refined.tsx",
+      ),
+      "utf8",
+    )
+    expect(src).toMatch(/data-kf-a-edition="refined"/)
+    expect(src).toMatch(/kf-a-refined-pipeline/)
+    expect(src).toMatch(/data-knowledge-persist/)
+    expect(src).toMatch(/awaiting promote|not promoted to \/features\/technology/i)
+  })
 })
 
 describe("CES 2.0 Pilot 1 mobile topology", () => {
