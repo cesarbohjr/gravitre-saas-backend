@@ -1,9 +1,10 @@
 # Gravitre Intelligence I1 — Harness → Production Plan
 
 **Date:** 2026-09-21  
-**Status:** **AUTHORIZED — Phase 1 shipped on `/intelligence` overview** (Cesar 2026-09-21)  
-**Prerequisite:** Activity A1 pilot J7 PASS — **met** @ `gravitre.app` deploy `b4f0e32d`  
-**Harness reference:** `/dev/ai-workspace-preview?s=intelligence` (I1 + contextual I2)
+**Status:** Phase 1 **SHIPPED** · Phase 7 **AUTHORIZED** (Cesar 2026-09-21)  
+**Prerequisite:** Activity A1 J7 PASS · I1 J6 PASS — **met**  
+**Phase 7 scope:** Sub-routes, I3 default, I2 mobile — `GRAVITRE_3.0_PHASE_7_PRODUCTION_AUTHORIZATION.md`  
+**Harness reference:** `/dev/ai-workspace-preview?s=intelligence` (I1 + I2 + I3)
 
 ---
 

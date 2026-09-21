@@ -552,7 +552,19 @@ Scope: `/intelligence` overview only (`app/intelligence/page.tsx` + `OverviewLiv
 
 ---
 
-## 10. Explicit items that remain unchanged (until later gated slices)
+## 10. Phase 7 production authorization (2026-09-21)
+
+Cesar authorized (controlled waves, not single merge):
+
+- `/intelligence/*` sub-routes
+- Navigation B on production shell
+- I3 Matrix Lens as Intelligence overview default
+- I2 Phase 2 mobile polish
+- Connectors, Sources, Marketplace visual slices
+
+See `GRAVITRE_3.0_PHASE_7_PRODUCTION_AUTHORIZATION.md` for wave order and journey gates.
+
+## 11. Explicit items that remain unchanged
 
 | Area | Reason |
 |------|--------|
@@ -560,8 +572,6 @@ Scope: `/intelligence` overview only (`app/intelligence/page.tsx` + `OverviewLiv
 | **Auth / login / signup** | Stable; out of 3.0 scope |
 | **Lite seat surfaces** (`/lite/*`) | Separate program; inherit shell only |
 | **Workflow builder canvas** | Own signature slice; not bundled with Activity pilot |
-| **Connectors detail + Sources** | Visual debt; post-pilot slices |
-| **Marketplace discovery** | Heavy redesign; own slice |
 | **Marketing pages** (`/about`, creative scenes) | Illustrative; no direct import |
 | **Backend APIs** | UI projects consume existing contracts |
 | **Single `useChat` architecture** | Reset 2.0 complete — preserve |

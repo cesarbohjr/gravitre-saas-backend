@@ -1,8 +1,8 @@
 # Gravitre UX/UI 3.0 Plus — Harness Gate Status
 
 **Date:** 2026-09-21  
-**Status:** **HARNESS APPROVED** · Activity A1 **SHIPPED** · Intelligence I1 Phase 1 **AUTHORIZED**  
-**Production pilot scope:** `/activity` (A1) · `/intelligence` overview (I1 Phase 1)
+**Status:** **Phase 7 AUTHORIZED** (Cesar 2026-09-21) · A1 + I1 Phase 1 **SHIPPED**  
+**Production scope:** Pilots shipped + Phase 7 waves authorized — see `GRAVITRE_3.0_PHASE_7_PRODUCTION_AUTHORIZATION.md`
 
 ---
 
@@ -14,9 +14,12 @@
 | Cesar design selections | **LOCKED** | I1+I2 · A1+A2 · Nav B · `GRAVITRE_3.0_PLUS_CESAR_APPROVAL_PACKAGE.md` |
 | Activity A1 production pilot | **AUTHORIZED** | `apps/web/components/activity/activity-trace-panel.tsx` · `apps/web/app/activity/page.tsx` @ `1e1b7f71`+ |
 | Intelligence I1 Phase 1 (`/intelligence` overview) | **AUTHORIZED / SHIPPING** | Cesar 2026-09-21 · `overview-living-map.tsx` · I2 stream closed by default |
-| Intelligence I2 full rail polish | **NOT AUTHORIZED** | Mobile sheet, event→inspector deep link — phase 2 |
-| Navigation B production | **NOT AUTHORIZED** | Harness only until separate gate |
-| Authenticated journey tests | **NOT PROVEN** | Staging first → `GRAVITRE_3.0_JOURNEY_RESULTS.md` |
+| Intelligence I2 Phase 2 (mobile polish) | **AUTHORIZED** | Cesar 2026-09-21 · Wave 1 |
+| Intelligence I3 Matrix default | **AUTHORIZED** | Cesar 2026-09-21 · Wave 1 |
+| Intelligence sub-routes (`/intelligence/*`) | **AUTHORIZED** | Cesar 2026-09-21 · Wave 2 |
+| Navigation B production | **AUTHORIZED** | Cesar 2026-09-21 · Wave 3 |
+| Connectors / Sources / Marketplace | **AUTHORIZED** | Cesar 2026-09-21 · Wave 4 · J5/J10 |
+| Authenticated journey tests | **PARTIAL** | J6 + J7 PASS · remaining → `GRAVITRE_3.0_JOURNEY_RESULTS.md` |
 
 ---
 
@@ -58,11 +61,15 @@
 
 ---
 
-## What remains NOT authorized
+## Phase 7 authorization (2026-09-21)
 
-- Intelligence sub-routes and I2 phase-2 polish
-- Navigation B on production shell
-- Broad visual rollout across other routes
+Cesar authorized production work on: intelligence sub-routes, Nav B, I3 matrix default, I2 mobile polish, Connectors/Sources/Marketplace.
+
+**Execution:** Controlled waves — not one merge. Full plan: `GRAVITRE_3.0_PHASE_7_PRODUCTION_AUTHORIZATION.md`.
+
+## Still NOT authorized
+
+- Settings / auth / Lite program / workflow canvas signature slice
 - Invented customer surfaces (prices, claims, Enable toggles)
 
 ---
