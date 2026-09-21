@@ -167,3 +167,29 @@ async def test_get_org_context_does_not_fallback_to_existing_org_without_members
                         )
     ensure_mock.assert_not_called()
     assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_get_org_context_membership_lookup_failure_is_503_not_false_403():
+    """Transient membership query failure must not be cached/reported as not-a-member."""
+    from fastapi import HTTPException
+
+    from app.auth.org_context_cache import clear_org_context_cache, get_cached_org_context
+
+    clear_org_context_cache()
+    client = MagicMock()
+    with patch("supabase.create_client", return_value=client):
+        with patch("app.auth.dependencies.is_platform_admin", return_value=False):
+            with patch(
+                "app.services.org_membership.list_member_org_ids",
+                side_effect=RuntimeError("supabase down"),
+            ):
+                with pytest.raises(HTTPException) as exc_info:
+                    await get_org_context(
+                        _request(org_id="org-a"),
+                        {"user_id": "user-1", "email": "u@example.com"},
+                        _settings(),
+                    )
+    assert exc_info.value.status_code == 503
+    assert "temporarily unavailable" in str(exc_info.value.detail).lower()
+    assert get_cached_org_context("user-1", "org-a") is None

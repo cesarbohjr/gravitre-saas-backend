@@ -13,6 +13,7 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { intelligenceApi } from "@/lib/api"
 import { canonicalAgentsToMapAgents } from "@/lib/intelligence/canonical-agents"
 import { ApiError } from "@/lib/fetcher"
+import { ensureSelectedOrg } from "@/lib/org-context"
 import { readNumber } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
@@ -146,19 +147,36 @@ function IntelligenceCenterInner() {
   const [mapDimIds, setMapDimIds] = useState<string[]>([])
   const [mapFocusIds, setMapFocusIds] = useState<string[]>([])
   const [composerPendingQuestion, setComposerPendingQuestion] = useState<string | null>(null)
+  const [orgReady, setOrgReady] = useState(false)
   const askSelected = useMemo(() => selectedEntityFromMapSelection(mapSelection), [mapSelection])
   usePublishGravitreAISelection(askSelected)
 
+  useEffect(() => {
+    if (!user) {
+      setOrgReady(false)
+      return
+    }
+    let cancelled = false
+    void ensureSelectedOrg(true).then((orgId) => {
+      if (!cancelled) setOrgReady(Boolean(orgId))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
   const { data: outcomes, error, mutate } = useSWR(
-    user ? ["intelligence/outcomes", 7] : null,
+    user && orgReady ? ["intelligence/outcomes", 7] : null,
     () => intelligenceApi.outcomes({ periodDays: 7 }),
     { revalidateOnFocus: false },
   )
-  const { data: trust } = useSWR(user ? "intelligence/trust-summary" : null, () =>
-    intelligenceApi.trustSummary({ periodDays: 7 }),
+  const { data: trust } = useSWR(
+    user && orgReady ? "intelligence/trust-summary" : null,
+    () => intelligenceApi.trustSummary({ periodDays: 7 }),
   )
-  const { data: simulations } = useSWR(user ? "intelligence/simulations" : null, () =>
-    intelligenceApi.simulations(),
+  const { data: simulations } = useSWR(
+    user && orgReady ? "intelligence/simulations" : null,
+    () => intelligenceApi.simulations(),
   )
   const {
     data: pageContext,
@@ -167,18 +185,20 @@ function IntelligenceCenterInner() {
     isValidating: snapshotValidating,
     mutate: mutateSnapshot,
   } = useIntelligenceSnapshot({
-    enabled: Boolean(user),
+    enabled: Boolean(user) && orgReady,
     activeLens,
     windowHours: 24,
   })
 
   const { data: businessSignals, isLoading: legacySignalsLoading } = useWhatMattersNow(
-    Boolean(user) && !pageContext,
+    Boolean(user) && orgReady && !pageContext,
   )
   const { coreState, businessImpact } = useIntelligencePillarsData(
-    Boolean(user) && !isSnapshotMetricsReady(snapshotLoadState),
+    Boolean(user) && orgReady && !isSnapshotMetricsReady(snapshotLoadState),
   )
-  const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(Boolean(user))
+  const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(
+    Boolean(user) && orgReady,
+  )
 
   const mapAgents = useMemo(
     () => canonicalAgentsToMapAgents(pageContext?.snapshot.agents),
@@ -321,13 +341,37 @@ function IntelligenceCenterInner() {
     )
   }
 
+  if (!orgReady) {
+    return (
+      <AppShell title={copy.title}>
+        <CenteredLoader label="Resolving workspace…" />
+      </AppShell>
+    )
+  }
+
   if (error) {
+    const isOrgDenied =
+      error instanceof ApiError &&
+      error.status === 403 &&
+      /not a member of the requested organization/i.test(error.message)
     return (
       <AppShell title={copy.title}>
         <ErrorState
           title="Unable to load insights"
-          description={error instanceof ApiError ? error.message : "Try again in a moment."}
-          onRetry={() => mutate()}
+          description={
+            isOrgDenied
+              ? "Your saved workspace no longer matches membership. We cleared it — try again, or pick an organization in Settings."
+              : error instanceof ApiError
+                ? error.message
+                : "Try again in a moment."
+          }
+          onRetry={() => {
+            if (isOrgDenied) {
+              void ensureSelectedOrg(true).then(() => mutate())
+              return
+            }
+            mutate()
+          }}
         />
       </AppShell>
     )

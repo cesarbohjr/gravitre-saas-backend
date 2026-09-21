@@ -10,6 +10,14 @@ import { supabaseClient } from "@/lib/supabaseClient"
 /** Default ceiling for browser API calls — prevents infinite spinners on hung backends. */
 export const DEFAULT_API_TIMEOUT_MS = 60_000
 
+const ORG_MEMBERSHIP_DENIED_RE = /not a member of the requested organization/i
+
+type ApiFetchInit = RequestInit & {
+  timeoutMs?: number
+  /** Internal: already attempted stale-org recovery for this call. */
+  __orgMembershipRecovered?: boolean
+}
+
 function withSelectedOrg(url: string): string {
   if (typeof window === "undefined" || !url.startsWith("/api/")) return url
   const selected = getSelectedOrgFromStorage()
@@ -37,9 +45,52 @@ async function hasLiveSupabaseSession(): Promise<boolean> {
   }
 }
 
+async function maybeRecoverStaleOrgAndRetry(
+  url: string,
+  init: ApiFetchInit | undefined,
+  response: Response,
+): Promise<Response | null> {
+  if (typeof window === "undefined") return null
+  if (response.status !== 403) return null
+  if (init?.__orgMembershipRecovered) return null
+
+  let detail = ""
+  try {
+    const payload = await response.clone().json()
+    detail = extractApiErrorMessage(payload) ?? ""
+  } catch {
+    return null
+  }
+  if (!ORG_MEMBERSHIP_DENIED_RE.test(detail)) return null
+
+  const { recoverSelectedOrgAfterMembershipDenied } = await import("@/lib/org-context")
+  const nextOrgId = await recoverSelectedOrgAfterMembershipDenied()
+  if (!nextOrgId) return null
+
+  const retryHeaders = new Headers(init?.headers)
+  retryHeaders.delete("x-org-id")
+  // Drop stale org_id query so withSelectedOrg injects the recovered id.
+  let retryUrl = url
+  try {
+    if (url.startsWith("/api/")) {
+      const parsed = new URL(url, window.location.origin)
+      parsed.searchParams.delete("org_id")
+      retryUrl = `${parsed.pathname}${parsed.search}`
+    }
+  } catch {
+    retryUrl = url
+  }
+
+  return apiFetch(retryUrl, {
+    ...init,
+    headers: retryHeaders,
+    __orgMembershipRecovered: true,
+  })
+}
+
 export async function apiFetch(
   url: string,
-  init?: RequestInit & { timeoutMs?: number },
+  init?: ApiFetchInit,
 ): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (!headers.has("accept")) {
@@ -66,7 +117,7 @@ export async function apiFetch(
   }
 
   const timeoutMs = init?.timeoutMs ?? DEFAULT_API_TIMEOUT_MS
-  const { timeoutMs: _timeoutMs, ...fetchInit } = init ?? {}
+  const { timeoutMs: _timeoutMs, __orgMembershipRecovered: _recovered, ...fetchInit } = init ?? {}
   const timeoutController = new AbortController()
   const timeoutId = setTimeout(() => {
     timeoutController.abort(new DOMException("Request timed out", "TimeoutError"))
@@ -95,6 +146,9 @@ export async function apiFetch(
   if (response.ok && typeof window !== "undefined") {
     window.sessionStorage.removeItem("gravitre_auth_login_redirect")
   }
+
+  const recovered = await maybeRecoverStaleOrgAndRetry(url, init, response)
+  if (recovered) return recovered
 
   if (response.status === 402 && typeof window !== "undefined") {
     try {

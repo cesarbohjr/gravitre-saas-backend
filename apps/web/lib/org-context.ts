@@ -40,6 +40,24 @@ export function invalidateOrgCache() {
   cachedOrgId = undefined
 }
 
+/** Drop local org selection — used when the API rejects x-org-id as non-member. */
+export function clearSelectedOrgFromStorage(): void {
+  if (typeof window === "undefined") return
+  window.localStorage.removeItem(ORG_STORAGE_KEY)
+  cachedOrgId = undefined
+}
+
+/**
+ * Recover from a 403 "Not a member of the requested organization".
+ * Clears the stale selection and re-resolves from authoritative memberships.
+ * Returns the replacement org id, or null if none.
+ */
+export async function recoverSelectedOrgAfterMembershipDenied(): Promise<string | null> {
+  clearSelectedOrgFromStorage()
+  invalidateOrgCache()
+  return ensureSelectedOrg(true)
+}
+
 /** Synchronous org id from cache or localStorage — avoids blocking first API fetch. */
 export function getQuickOrgId(): string | null {
   if (typeof window === "undefined") return null

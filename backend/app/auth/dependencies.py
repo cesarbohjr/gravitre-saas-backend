@@ -145,6 +145,15 @@ class _OrgContextForbidden(Exception):
     """
 
 
+class _OrgContextUnavailable(Exception):
+    """Membership lookup failed transiently — must not be cached as Forbidden.
+
+    Treating lookup errors as empty membership previously caused false
+    "Not a member of the requested organization" 403s (and a 20s forbidden
+    cache), which blanked /intelligence even when the user was a member.
+    """
+
+
 async def _resolve_org_context_live(
     settings: Settings,
     user_id: str,
@@ -191,6 +200,10 @@ async def _resolve_org_context_live(
         platform_admin = False
     if isinstance(member_org_ids_result, Exception):
         logger.warning("org_lookup_failed user_id=%s error=%s", user_id, str(member_org_ids_result))
+        # Never treat a failed membership query as "not a member" — that false
+        # 403 was cached for TTL and blanked org-scoped product surfaces.
+        if requested_org_id and not platform_admin:
+            raise _OrgContextUnavailable() from member_org_ids_result
         member_org_ids: list[str] = []
     else:
         member_org_ids = member_org_ids_result
@@ -303,6 +316,18 @@ async def get_org_context(
 
     try:
         org_id = await resolve_singleflight(singleflight_key, _factory)
+    except _OrgContextUnavailable:
+        org_id_ctx.set("")
+        logger.warning(
+            "org_context_membership_unavailable user_id=%s org_id=%s elapsed_ms=%s",
+            user_id,
+            requested_org_id,
+            int((time.perf_counter() - started_at) * 1000),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Organization membership temporarily unavailable — retry shortly",
+        )
     except _OrgContextForbidden:
         set_cached_org_context(user_id, requested_org_id, org_id=None, forbidden=True)
         org_id_ctx.set("")

@@ -34,7 +34,11 @@ def _slugify(value: str) -> str:
 
 
 def list_member_org_ids(client: Client, user_id: str) -> list[str]:
-    """Return org ids for which user_id is a member (auth.users id)."""
+    """Return org ids for which user_id is a member (auth.users id).
+
+    Raises on query failure — callers must not treat lookup errors as an empty
+    membership list (that produced false "Not a member" 403s).
+    """
     try:
         resp = (
             client.table("organization_members")
@@ -46,7 +50,7 @@ def list_member_org_ids(client: Client, user_id: str) -> list[str]:
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("list_member_org_ids failed user_id=%s error=%s", user_id, exc)
-        return []
+        raise
     return [str(row["org_id"]) for row in (resp.data or []) if row.get("org_id")]
 
 
@@ -164,7 +168,10 @@ def ensure_user_workspace(
     company_name: str | None = None,
 ) -> str | None:
     """Create a personal workspace when signup trigger did not run (OAuth edge cases)."""
-    existing = list_member_org_ids(client, user_id)
+    try:
+        existing = list_member_org_ids(client, user_id)
+    except Exception:  # noqa: BLE001
+        existing = []
     if existing:
         return pick_default_org_id(existing, primary_org_id=load_user_primary_org_id(client, user_id))
 

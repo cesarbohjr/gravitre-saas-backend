@@ -13,7 +13,10 @@ export function OrgSyncBootstrap() {
   }, [])
 
   useEffect(() => {
-    if (user) void ensureSelectedOrg(true)
+    if (!user) return
+    // Force-resolve on every signed-in session so a stale gravitre:selectedOrg
+    // (left after leave/switch/account change) cannot race first org-scoped fetches.
+    void ensureSelectedOrg(true)
   }, [user])
 
   return null
