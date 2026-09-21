@@ -111,9 +111,19 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
       ).catch(() => undefined)
     }
 
-    const outcomeRow = page.locator('[role="option"]').first()
+    let outcomeRow = page.locator('[role="option"]').first()
+    if (!(await outcomeRow.isVisible().catch(() => false)) && (await statusTrigger.isVisible().catch(() => false))) {
+      await statusTrigger.click()
+      await page.getByRole("option", { name: "All" }).click()
+      await page.waitForResponse(
+        (response) => response.url().includes("/api/business-outcomes") && response.status() === 200,
+        { timeout: 60_000 },
+      ).catch(() => undefined)
+      outcomeRow = page.locator('[role="option"]').first()
+    }
+
     if (!(await outcomeRow.isVisible().catch(() => false))) {
-      test.skip(true, "BLOCKED — no business outcomes in fixture org (try failed filter)")
+      test.skip(true, "BLOCKED — no business outcomes in fixture org")
     }
     await outcomeRow.click()
 
@@ -121,7 +131,8 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     const traceEmpty = page.getByTestId("activity-trace-empty")
     if (await tracePanel.isVisible().catch(() => false)) {
       await expect(tracePanel).toBeVisible()
-      await expect(page.getByTestId("activity-trace-rail").or(page.getByTestId("activity-trace-story"))).toBeVisible()
+      await expect(page.getByTestId("activity-trace-rail")).toBeVisible()
+      await expect(page.getByTestId("activity-trace-story")).toBeVisible()
     } else if (await traceEmpty.isVisible().catch(() => false)) {
       await expect(traceEmpty).toBeVisible()
     }

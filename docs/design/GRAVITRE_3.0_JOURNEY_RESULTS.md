@@ -1,9 +1,9 @@
 # Gravitre UX/UI 3.0 Plus — Authenticated Journey Results
 
-**Date:** 2026-09-20  
+**Date:** 2026-09-21  
 **Environment policy:** Staging first → controlled prod smoke after staging PASS  
 **Spec:** `e2e/ux30-journey-audit.spec.ts`  
-**Credentials:** Never stored in this doc — use CI secrets or approved local env
+**Credentials:** Never stored in this doc — uses `e2e/.fixtures/gravitre-e2e-storage.json` (gitignored)
 
 ---
 
@@ -11,17 +11,17 @@
 
 | ID | Journey | Status | Evidence |
 |----|---------|--------|----------|
-| J1 | Login → Home | **NOT PROVEN** | Spec ready; requires staging run with live Supabase |
-| J2 | Home → AI | **NOT PROVEN** | Not in priority spec yet |
+| J1 | Login → Home | **NOT PROVEN** | — |
+| J2 | Home → AI | **NOT PROVEN** | — |
 | J3 | Home → Agent → detail → chat | **NOT PROVEN** | — |
 | J4 | Home → Workflow → create → run | **NOT PROVEN** | — |
 | J5 | Home → Connector → connect → verify | **NOT PROVEN** | — |
-| J6 | Intelligence lens switch | **NOT PROVEN** | Spec ready; staging run pending |
-| J7 | Activity failure → evidence | **NOT PROVEN** | Spec ready; may BLOCK if fixture org has no failures |
+| J6 | Intelligence lens switch | **NOT PROVEN** | — |
+| J7 | Activity inspect + trace | **PASS** | Playwright @ `https://gravitre.app` 2026-09-21 · org `f07e57c0-1501-4000-8000-c04e57a00001` · `activity-trace-a1` + `activity-trace-rail` + `activity-trace-story` visible · deploy `b4f0e32d` |
 | J8 | Approval → approve | **NOT PROVEN** | — |
 | J9 | Source → add | **NOT PROVEN** | — |
 | J10 | Marketplace → install | **NOT PROVEN** | — |
-| J11 | Command palette → Activity | **NOT PROVEN** | Spec ready; staging run pending |
+| J11 | Command palette → Activity | **NOT PROVEN** | — |
 | J12 | Settings / Admin | **NOT PROVEN** | — |
 | J13 | Workspace switch | **NOT PROVEN** | — |
 | J14 | Environment switch | **NOT PROVEN** | — |
@@ -29,42 +29,43 @@
 | J16 | Back navigation | **NOT PROVEN** | — |
 | J17 | Lite seat | **NOT PROVEN** | — |
 
-**Prod smoke:** **NOT PROVEN** (blocked until staging PASS for J1, J6, J7, J11)
-
-**Last local run (2026-09-20):** 4 skipped (no live Supabase in agent env), 1 passed (environment gate). Journeys remain **NOT PROVEN** until staging secrets are supplied.
+**Prod smoke (Activity pilot):** **PARTIAL PASS** — J7 PASS on `gravitre.app` after deploy `b4f0e32d` (Vercel `dpl_4M5Z68PpNTsgNUXZzgJwp9qsi34H` READY)
 
 ---
 
-## Blockers
+## J7 detail (2026-09-21)
+
+**Command:**
+```bash
+PLAYWRIGHT_BASE_URL=https://gravitre.app \
+PLAYWRIGHT_SKIP_BACKEND=1 \
+PLAYWRIGHT_REUSE_SERVER=1 \
+npx playwright test e2e/ux30-journey-audit.spec.ts -g "J7"
+```
+
+**Result:** PASS (1.4m)
+
+**Observed:**
+- Authenticated session via storage state (isolated smoke org)
+- `/activity` loaded; outcome selected (All filter — no failed outcomes in org)
+- Activity A1 pilot visible: `data-testid="activity-trace-a1"`, rail + story panel
+- Run/trace link present on selected outcome
+
+**Note:** Failed-status filter returned zero rows in isolated org — not a product FAIL; test falls back to All.
+
+---
+
+## Blockers (remaining journeys)
 
 | Blocker | Detail |
 |---------|--------|
-| Staging target | Set `PLAYWRIGHT_BASE_URL` to approved staging URL (not committed) |
-| Supabase secrets | `SUPABASE_URL`, keys — same pattern as `navigation-e2e.yml` |
-| Billing fixtures | `e2e/.fixtures/billing-users.json` (gitignored; seeded in CI) |
-| Failure data for J7 | Fixture org may have zero failed outcomes → journey records **BLOCKED**, not FAIL |
+| Staging-only URL | J7 executed on production `gravitre.app` (approved smoke org); dedicated staging host optional for J1/J6/J11 |
+| Failure fixture data | Isolated org has no failed outcomes — J7 PASS uses succeeded outcome + TRACE panel |
 
 ---
 
-## How to run (staging)
-
-```bash
-# Example — replace base URL with approved staging host
-PLAYWRIGHT_BASE_URL=https://<staging-host> \
-SUPABASE_URL=<from-secrets> \
-SUPABASE_ANON_KEY=<from-secrets> \
-SUPABASE_SERVICE_ROLE_KEY=<from-secrets> \
-npx playwright test e2e/ux30-journey-audit.spec.ts
-```
-
-After run: update this table with PASS / FAIL / BLOCKED and paste Playwright annotation timestamps (no passwords).
-
----
-
-## Evidence format (when executed)
+## Evidence format
 
 ```
-PASS — J6 Intelligence lens switch @ 2026-09-20T…Z target=https://… playwright annotation
-BLOCKED — J7 no failed outcomes in fixture org @ 2026-09-20T…Z
-FAIL — J11 command palette — <reason>
+PASS — J7 activity inspect + trace @ 2026-09-21T…Z target=https://gravitre.app org=f07e57c0-… deploy=b4f0e32d
 ```

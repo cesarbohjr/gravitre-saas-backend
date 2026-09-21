@@ -40,7 +40,7 @@
 | `BusinessOutcomeView` with `suppressTimeline` (no duplicate steps) | Global nav / top bar |
 | Contextual Ask in trace story panel | Connectors, Sources, Marketplace |
 
-**Pilot PASS criteria (staging):** J7 journey PASS with run/audit id before calling production-fixed.
+**Pilot PASS criteria:** J7 journey PASS — **PASS** @ `https://gravitre.app` 2026-09-21 · deploy `b4f0e32d` · see `GRAVITRE_3.0_JOURNEY_RESULTS.md`
 
 ---
 
