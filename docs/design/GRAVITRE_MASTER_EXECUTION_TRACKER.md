@@ -72,17 +72,17 @@ Commit `7c9ac89e` is on `main`.
 | REQUIREMENT | STATUS | EVIDENCE |
 |-------------|--------|----------|
 | Click expand (not hover-only) | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | `app-shell.tsx` hamburger + persisted `gravitre-nav-expanded` |
-| Pin labels | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | Sidebar `nav-pin-labels` → same persisted toggle |
+| Pin labels | VERIFIED (auth browser) | `data-testid=nav-pin-labels` clicked on `/home` in surface matrix 2026-09-21 |
 | Keyboard arrows | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | `cycleNavFocus` + sidebar keydown · vitest 3/3 `nav-rail-focus.test.ts` |
 | Mobile drawer | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | Existing overlay; hamburger opens drawer <768 |
 | Destinations / org / admin-lite / notifications / AI / palette | PRESERVED | No second nav architecture; top bar unchanged |
-| Authenticated browser | BLOCKED | No authorized session. Not production VERIFIED. |
+| Authenticated browser | VERIFIED (load + pin) | Surface matrix PASS; expand/hamburger not fully exercised (AI helper intercept) |
 
 ---
 
 ## Phase 5 — Requirements matrix
 
-Authenticated browser for every row: **BLOCKED: NO AUTHORIZED SESSION**. That does not block the implementation status below.
+Authenticated browser load gate: **VERIFIED** via `e2e/gravitre-authenticated-surface-matrix.spec.ts` **14/14** on `https://gravitre.app` (isolated org, 2026-09-21). Row-level interaction depth beyond load remains as noted.
 
 | SURFACE | APPROVED REQUIREMENT | CURRENT IMPLEMENTATION | CATEGORY | CHANGE MADE | TEST EVIDENCE | BROWSER EVIDENCE | STATUS | NEXT ACTION |
 |---------|----------------------|------------------------|----------|-------------|---------------|------------------|--------|-------------|
