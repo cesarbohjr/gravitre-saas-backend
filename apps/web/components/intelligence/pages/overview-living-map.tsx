@@ -18,22 +18,14 @@ import type { IntelligenceMapLens } from "@/components/intelligence/map/intellig
 import { INTELLIGENCE_MAP_LENSES } from "@/components/intelligence/map/intelligence-map-lens"
 import type { AllDepartmentsPayload } from "@/components/intelligence/why-gravitre-panel"
 import type { SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
-import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
 import { EvidenceChip } from "@/components/gravitre/creative-grammar"
 import { Button } from "@/components/ui/button"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
-
-type ChangeEvent = {
-  id: string
-  kind: string
-  title: string
-  at: string
-  focusNodeIds: string[]
-  askPrompt: string
-}
+import { buildChangeEvents } from "@/lib/intelligence/build-change-events"
+import { resolveOverviewFieldState } from "@/lib/intelligence/overview-field-state"
 
 const LENS_QUESTIONS: Record<IntelligenceMapLens, string> = {
   knows: "What does Gravitre know about this business?",
@@ -41,56 +33,6 @@ const LENS_QUESTIONS: Record<IntelligenceMapLens, string> = {
   predicts: "What is Gravitre predicting?",
   acts: "What is Gravitre doing?",
   improves: "What has improved?",
-}
-
-function buildChangeEvents(pageContext?: IntelligencePageContextResponse | null): ChangeEvent[] {
-  if (!pageContext?.snapshot) return []
-  const events: ChangeEvent[] = []
-  const snap = pageContext.snapshot
-
-  for (const learning of snap.learnings ?? []) {
-    const id = String(learning.id ?? "")
-    if (!id) continue
-    events.push({
-      id: `learning:${id}`,
-      kind: "learned",
-      title: String(learning.businessStatement ?? "Learning").slice(0, 120),
-      at: String(learning.learnedAt ?? ""),
-      focusNodeIds: [`learning:${id}`],
-      askPrompt: `Explain this learning: ${String(learning.businessStatement ?? "").slice(0, 160)}`,
-    })
-  }
-
-  for (const prediction of snap.predictions ?? []) {
-    const id = String(prediction.id ?? "")
-    if (!id) continue
-    events.push({
-      id: `prediction:${id}`,
-      kind: "prediction",
-      title: String(prediction.businessStatement ?? "Prediction").slice(0, 120),
-      at: "",
-      focusNodeIds: [`prediction:${id}`],
-      askPrompt: `Why is this prediction active: ${String(prediction.businessStatement ?? "").slice(0, 160)}`,
-    })
-  }
-
-  for (const outcome of snap.outcomes ?? []) {
-    const id = String(outcome.id ?? "")
-    const event = String(outcome.event ?? "outcome")
-    if (!id) continue
-    const entityId = outcome.entityId ? String(outcome.entityId) : null
-    const entityType = outcome.entityType ? String(outcome.entityType) : "entity"
-    events.push({
-      id: `outcome:${id}`,
-      kind: "changed",
-      title: event.replace(/_/g, " "),
-      at: String(outcome.createdAt ?? ""),
-      focusNodeIds: entityId ? [`kg:${entityType}:${entityId}`] : [],
-      askPrompt: `What changed around outcome ${event}?`,
-    })
-  }
-
-  return events.slice(0, 24)
 }
 
 export function OverviewLivingMap({
@@ -133,9 +75,7 @@ export function OverviewLivingMap({
   className?: string
 }) {
   const reducedMotion = useReducedMotion()
-  const mapLoading = !isSnapshotMetricsReady(snapshotLoadState) && snapshotLoadState !== "ERROR"
-  const isError = snapshotLoadState === "ERROR"
-  const [streamOpen, setStreamOpen] = useState(true)
+  const [streamOpen, setStreamOpen] = useState(false)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const changeEvents = useMemo(() => buildChangeEvents(pageContext), [pageContext])
 
@@ -147,24 +87,13 @@ export function OverviewLivingMap({
       (n) => n && typeof n === "object" && (n as { metadata?: { instance?: boolean } }).metadata?.instance,
     ).length ?? 0
 
-  const isEmpty =
-    !mapLoading &&
-    !isError &&
-    (knownEntities === 0 || knownEntities == null) &&
-    (knownRels === 0 || knownRels == null) &&
-    graphNodes <= 1
-
-  // Sparse KG honesty is for KNOWS only — do not hide predicts/acts/learns field graphs.
-  const isSparse =
-    activeLens === "knows" &&
-    !mapLoading &&
-    !isError &&
-    !isEmpty &&
-    typeof knownRels === "number" &&
-    knownRels > 0 &&
-    knownEntities === 0
-
-  const showMap = !isError && !mapLoading && !isEmpty && !isSparse
+  const { mapLoading, isError, isEmpty, isSparse, showMap } = resolveOverviewFieldState({
+    snapshotLoadState,
+    activeLens,
+    knownEntities,
+    knownRels,
+    graphNodes,
+  })
 
   const streamEvents = useMemo(() => {
     if (activeLens === "learns") return changeEvents.filter((e) => e.kind === "learned")
@@ -198,6 +127,7 @@ export function OverviewLivingMap({
           type="button"
           size="sm"
           variant={streamOpen ? "secondary" : "outline"}
+          data-testid="intel-i2-toggle"
           onClick={() => setStreamOpen((v) => !v)}
         >
           {streamOpen ? "Hide changes" : "What changed?"}
@@ -205,7 +135,7 @@ export function OverviewLivingMap({
       </div>
 
       {/* Lens tabs — emphasis on one graph; metrics are secondary, not the sole lens UX */}
-      <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Intelligence lenses">
+      <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Intelligence map lenses">
         {INTELLIGENCE_MAP_LENSES.map((lens) => {
           const active = activeLens === lens.id
           const stat = lensMetrics[lens.id]

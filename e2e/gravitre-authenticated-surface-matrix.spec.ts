@@ -38,7 +38,7 @@ test.describe("Authenticated product surface matrix", () => {
     await seedOrg(page)
   })
 
-  test("Intelligence — /intelligence map canvas", async ({ page }) => {
+  test("Intelligence — /intelligence I1 field surface", async ({ page }) => {
     const pageContext = page.waitForResponse(
       (r) => r.url().includes("/api/intelligence/page-context") && r.status() === 200,
       { timeout: 90_000 },
@@ -46,7 +46,9 @@ test.describe("Authenticated product surface matrix", () => {
     await page.goto("/intelligence")
     await expect(page).not.toHaveURL(/\/login/)
     await pageContext.catch(() => undefined)
+    await expect(page.getByTestId("intelligence-i1-i2")).toBeVisible({ timeout: 90_000 })
     await expect(page.getByTestId("intelligence-map-canvas")).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByTestId("intel-i2-stream")).toHaveCount(0)
   })
 
   test("Intelligence — lens switch Learns → Predicts", async ({ page }) => {

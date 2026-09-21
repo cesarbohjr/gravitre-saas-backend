@@ -1,8 +1,8 @@
 # Gravitre UX/UI 3.0 Plus — Harness Gate Status
 
 **Date:** 2026-09-21  
-**Status:** **HARNESS APPROVED** · Activity A1 pilot **AUTHORIZED**  
-**Production pilot scope:** `/activity` (All tab outcomes only)
+**Status:** **HARNESS APPROVED** · Activity A1 **SHIPPED** · Intelligence I1 Phase 1 **AUTHORIZED**  
+**Production pilot scope:** `/activity` (A1) · `/intelligence` overview (I1 Phase 1)
 
 ---
 
@@ -13,7 +13,8 @@
 | Harness prototypes | **APPROVED** | Cesar sign-off 2026-09-21 |
 | Cesar design selections | **LOCKED** | I1+I2 · A1+A2 · Nav B · `GRAVITRE_3.0_PLUS_CESAR_APPROVAL_PACKAGE.md` |
 | Activity A1 production pilot | **AUTHORIZED** | `apps/web/components/activity/activity-trace-panel.tsx` · `apps/web/app/activity/page.tsx` @ `1e1b7f71`+ |
-| Intelligence I1/I2 production | **NOT AUTHORIZED** | Harness only until separate gate |
+| Intelligence I1 Phase 1 (`/intelligence` overview) | **AUTHORIZED / SHIPPING** | Cesar 2026-09-21 · `overview-living-map.tsx` · I2 stream closed by default |
+| Intelligence I2 full rail polish | **NOT AUTHORIZED** | Mobile sheet, event→inspector deep link — phase 2 |
 | Navigation B production | **NOT AUTHORIZED** | Harness only until separate gate |
 | Authenticated journey tests | **NOT PROVEN** | Staging first → `GRAVITRE_3.0_JOURNEY_RESULTS.md` |
 
@@ -44,9 +45,22 @@
 
 ---
 
+## Intelligence I1 Phase 1 — production scope
+
+| In scope | Out of scope |
+|----------|--------------|
+| `/intelligence` overview (`OverviewLivingMap`) | Sub-routes (`/learning`, `/predictive`, etc.) |
+| Field topology + lens emphasis on canonical graph | Navigation B shell |
+| Collapsible I2 stream (default closed) | I3 matrix as default |
+| Inspector + contextual Ask on selection | Invented graph nodes |
+
+**Pilot PASS criteria:** J6 journey PASS after deploy — pending smoke run.
+
+---
+
 ## What remains NOT authorized
 
-- Intelligence I1/I2 on `/intelligence`
+- Intelligence sub-routes and I2 phase-2 polish
 - Navigation B on production shell
 - Broad visual rollout across other routes
 - Invented customer surfaces (prices, claims, Enable toggles)

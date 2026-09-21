@@ -1,8 +1,8 @@
 # Gravitre Intelligence I1 — Harness → Production Plan
 
 **Date:** 2026-09-21  
-**Status:** Planning — **NOT authorized for production rollout**  
-**Prerequisite:** Activity A1 pilot J7 PASS on staging/prod  
+**Status:** **AUTHORIZED — Phase 1 shipped on `/intelligence` overview** (Cesar 2026-09-21)  
+**Prerequisite:** Activity A1 pilot J7 PASS — **met** @ `gravitre.app` deploy `b4f0e32d`  
 **Harness reference:** `/dev/ai-workspace-preview?s=intelligence` (I1 + contextual I2)
 
 ---
@@ -108,12 +108,24 @@ Extract shared primitives from harness to product package (if not already):
 
 ## Gate checklist (before prod merge)
 
-- [ ] Harness I1 + I2 approved (done 2026-09-21)
-- [ ] Activity A1 J7 PASS with evidence
-- [ ] Cesar authorizes Intelligence production slice separately
-- [ ] No invented nodes when entity ids missing
-- [ ] J6 PASS after I1 deploy
-- [ ] Accessibility: keyboard node select, reduced motion, non-color state
+- [x] Harness I1 + I2 approved (done 2026-09-21)
+- [x] Activity A1 J7 PASS with evidence
+- [x] Cesar authorizes Intelligence production slice separately (2026-09-21 — Phase 1 overview only)
+- [x] No invented nodes when entity ids missing (`overview-field-state.ts` sparse honesty)
+- [ ] J6 PASS after I1 deploy (pending post-merge smoke)
+- [x] I2 stream default **closed** (field primary)
+- [ ] Accessibility: keyboard node select, reduced motion, non-color state (partial — reduced motion on stream rail)
+
+## Shipped (2026-09-21) — Phase 1
+
+| Item | Path |
+|------|------|
+| I1 field topology surface | `components/intelligence/pages/overview-living-map.tsx` |
+| Change events (API-derived) | `lib/intelligence/build-change-events.ts` |
+| Sparse/empty honesty | `lib/intelligence/overview-field-state.ts` |
+| Map label truncate/dedupe | `lib/intelligence/map-node-labels.ts` |
+| Inspector contextual Ask | `components/intelligence/map/intelligence-inspector-drawer.tsx` |
+| Vitest | `__tests__/intelligence/build-change-events.test.ts`, `overview-field-state.test.ts` |
 
 ---
 

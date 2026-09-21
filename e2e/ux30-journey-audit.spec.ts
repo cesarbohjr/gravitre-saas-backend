@@ -66,7 +66,7 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     })
   })
 
-  test("J6 — Intelligence lens switch (Knows → Learns → Predicts)", async ({ page }) => {
+  test("J6 — Intelligence I1 field + lens switch", async ({ page }) => {
     const pageContext = page.waitForResponse(
       (response) =>
         response.url().includes("/api/intelligence/page-context") && response.status() === 200,
@@ -74,11 +74,17 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     await page.goto("/intelligence")
     await pageContext
 
+    const i1Surface = page.getByTestId("intelligence-i1-i2")
+    await expect(i1Surface).toBeVisible({ timeout: 90_000 })
+
     const map = page.getByTestId("intelligence-map-canvas")
     await expect(map).toBeVisible({ timeout: 90_000 })
 
     const lensBar = page.getByRole("tablist", { name: "Intelligence map lenses" })
     await expect(lensBar).toBeVisible()
+
+    await expect(page.getByTestId("intel-i2-toggle")).toBeVisible()
+    await expect(page.getByTestId("intel-i2-stream")).toHaveCount(0)
 
     for (const label of ["Learns", "Predicts"] as const) {
       await lensBar.getByRole("tab", { name: label }).click()
@@ -88,7 +94,7 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
 
     test.info().annotations.push({
       type: "journey",
-      description: `PASS — J6 lens switch @ ${new Date().toISOString()} target=${appOrigin}`,
+      description: `PASS — J6 I1 field + lens switch @ ${new Date().toISOString()} target=${appOrigin}`,
     })
   })
 
