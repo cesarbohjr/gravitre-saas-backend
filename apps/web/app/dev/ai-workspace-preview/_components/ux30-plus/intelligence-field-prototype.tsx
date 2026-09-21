@@ -88,8 +88,9 @@ export function IntelligenceFieldPrototype({ scene }: { scene: string }) {
   const [lens, setLens] = useState<HarnessLens>(
     scene.includes("lens") ? "predicts" : "knows",
   )
+  /** I2 is contextual — field stays primary; stream opens on demand or via `change` scene. */
   const [streamOpen, setStreamOpen] = useState(
-    scene.includes("change") || scene.includes("compare") || scene.includes("default") || scene.includes("selected"),
+    scene.includes("change") || scene.includes("stream") || scene.includes("compare"),
   )
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
     scene.includes("selected") || scene.includes("ai") || scene.includes("default") || scene.includes("compare")

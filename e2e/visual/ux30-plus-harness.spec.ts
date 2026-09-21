@@ -8,6 +8,8 @@ const shots: { name: string; path: string; width: number; height: number }[] = [
   { name: "foundation-default", path: "/dev/ai-workspace-preview?s=foundation&scene=default", width: 1280, height: 800 },
   { name: "foundation-reduced", path: "/dev/ai-workspace-preview?s=foundation&scene=reduced", width: 1280, height: 800 },
   { name: "intelligence-default", path: "/dev/ai-workspace-preview?s=intelligence&scene=default", width: 1440, height: 900 },
+  { name: "intelligence-change", path: "/dev/ai-workspace-preview?s=intelligence&scene=change", width: 1440, height: 900 },
+  { name: "intelligence-compare", path: "/dev/ai-workspace-preview?s=intelligence&scene=compare", width: 1440, height: 900 },
   { name: "intelligence-selected", path: "/dev/ai-workspace-preview?s=intelligence&scene=selected", width: 1440, height: 900 },
   { name: "intelligence-inspector", path: "/dev/ai-workspace-preview?s=intelligence&scene=inspector", width: 1440, height: 900 },
   { name: "intelligence-ai-context", path: "/dev/ai-workspace-preview?s=intelligence&scene=ai-context", width: 1440, height: 900 },

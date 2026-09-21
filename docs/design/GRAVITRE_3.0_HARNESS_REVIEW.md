@@ -1,6 +1,6 @@
 # Gravitre UX/UI 3.0 Plus — Harness Review Guide
 
-**Date:** 2026-09-20  
+**Date:** 2026-09-21  
 **Status:** STOP FOR CESAR — harness prototypes ready for review  
 **Route:** `/dev/ai-workspace-preview` (local/staging only · `noindex`)
 
@@ -42,12 +42,14 @@
 ### Intelligence (I1 + I2)
 | Scene | Shows |
 |-------|--------|
-| default | Field topology; change stream closed |
+| default | **I1 field primary** — change stream closed; click “What changed?” to open I2 |
+| change | I2 change stream open; selecting event focuses topology + evidence |
+| compare | CURRENT production stub vs PROPOSED I1/I2 side-by-side + data contract |
 | selected | Node selection + focus |
 | inspector | Inspector open |
 | ai-context | Ask-about-this chip |
 | loading | Skeleton |
-| empty | Honest empty |
+| empty | Honest empty (incl. sparse entity ids) |
 | error | Retry |
 | mobile | 390-width layout |
 | reduced | No spring animation |
@@ -55,9 +57,9 @@
 ### Activity (A1 + A2)
 | Scene | Shows |
 |-------|--------|
-| default | List + TRACE rail + story |
-| timeline | A2 temporal bar chart (real fixture durations) |
-| fail | Failed outcome — failure scoped to Tool stage |
+| default | List + TRACE rail + story (A1 default) |
+| timeline | A2 temporal bar chart — **toggle Story/Timeline in header** |
+| fail | Failed outcome — failure scoped to Tool stage only |
 | selected / inspector / ai-context | Selection + contextual AI |
 | loading / empty / error / mobile / reduced | Same pattern as Intelligence |
 
@@ -102,7 +104,18 @@ PLAYWRIGHT_REUSE_SERVER=1 \
 npx playwright test e2e/visual/ux30-plus-harness.spec.ts
 ```
 
-Captures 27 PNGs under `e2e/artifacts/ux30-plus-harness/`. Each scene asserts `[data-review-surface]` for `foundation`, `intelligence`, `activity`, or `navigation`.
+Captures 29 PNGs under `e2e/artifacts/ux30-plus-harness/`. Each scene asserts `[data-review-surface]` for `foundation`, `intelligence`, `activity`, or `navigation`.
+
+---
+
+## Reference alignment (Cesar review images)
+
+| Reference | Harness mapping |
+|-----------|-----------------|
+| Linear expandable labeled rail | Navigation B — `expanded` / `pinned` scenes |
+| Trace waterfall / span inspector | Activity A1 rail + story; A2 timeline for duration analysis |
+| Activity stream side panel | Activity story panel + evidence chips (not a second product) |
+| Knowledge graph field (Oiya-style) | Intelligence I1 entity/relationship field — real KG contract, not dept décor |
 
 ---
 
@@ -111,9 +124,9 @@ Captures 27 PNGs under `e2e/artifacts/ux30-plus-harness/`. Each scene asserts `[
 After review, confirm:
 
 - [ ] Shared grammar sufficient for Intelligence + Activity
-- [ ] I2 change stream interaction (not 50/50 split)
-- [ ] A1 TRACE rail + optional A2 timeline
-- [ ] Navigation B click/pin behavior
+- [ ] I2 change stream contextual (field primary — not permanent 50/50 split)
+- [ ] A1 TRACE rail + optional A2 timeline toggle
+- [ ] Navigation B click/pin behavior (no disruptive hover expand)
 - [ ] Ready to implement Activity A1 pilot on `/activity` (single route scope)
 
 **No production rollout until this checklist is signed.**

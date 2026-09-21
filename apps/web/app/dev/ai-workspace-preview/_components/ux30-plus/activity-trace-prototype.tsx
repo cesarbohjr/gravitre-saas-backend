@@ -39,11 +39,14 @@ export function ActivityTracePrototype({ scene }: { scene: string }) {
   const isLoading = scene.includes("loading")
   const isEmpty = scene.includes("empty")
   const isError = scene.includes("error")
-  const isTimeline = scene.includes("timeline")
   const showInspector = scene.includes("inspector") || scene.includes("selected") || scene.includes("ai")
   const showAi = scene.includes("ai")
 
   const defaultOutcome = scene.includes("fail") ? HARNESS_OUTCOMES[1] : HARNESS_OUTCOMES[0]
+  const [viewMode, setViewMode] = useState<"story" | "timeline">(
+    scene.includes("timeline") ? "timeline" : "story",
+  )
+  const isTimeline = viewMode === "timeline"
   const [selectedId, setSelectedId] = useState(defaultOutcome.id)
   const [activeStageId, setActiveStageId] = useState<string | null>(() => {
     if (scene.includes("fail")) return "tool"
@@ -68,8 +71,23 @@ export function ActivityTracePrototype({ scene }: { scene: string }) {
             <h2 className={TYPE.pageTitle}>Activity</h2>
           </div>
           <div className="flex gap-2">
-            <Button type="button" size="sm" variant={isTimeline ? "secondary" : "outline"} disabled={isEmpty}>
-              {isTimeline ? "Timeline view" : "Story view"}
+            <Button
+              type="button"
+              size="sm"
+              variant={!isTimeline ? "secondary" : "outline"}
+              disabled={isEmpty || isLoading}
+              onClick={() => setViewMode("story")}
+            >
+              Story
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={isTimeline ? "secondary" : "outline"}
+              disabled={isEmpty || isLoading}
+              onClick={() => setViewMode("timeline")}
+            >
+              Timeline
             </Button>
           </div>
         </div>

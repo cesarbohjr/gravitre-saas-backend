@@ -45,7 +45,19 @@ type Surface = Ux30Surface | LegacySurface
 
 const UX30_SCENES: Record<Ux30Surface, string[]> = {
   foundation: ["default", "reduced"],
-  intelligence: ["default", "selected", "inspector", "ai-context", "loading", "empty", "error", "mobile", "reduced"],
+  intelligence: [
+    "default",
+    "change",
+    "compare",
+    "selected",
+    "inspector",
+    "ai-context",
+    "loading",
+    "empty",
+    "error",
+    "mobile",
+    "reduced",
+  ],
   activity: [
     "default",
     "selected",
