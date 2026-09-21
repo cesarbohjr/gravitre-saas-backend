@@ -45,6 +45,8 @@ BASELINE_PATH = REPO / "docs" / "delivery" / "retrieval-ab-baseline.json"
 QUERIES: list[dict[str, Any]] = [
     {
         "id": "A_fast_connectors",
+        # Permanent fixture: test_retrieval_ab_a_slug_list_is_not_a_connector_status_claim
+        # A named list requires getConnectorStatus. Routing slugs are not evidence.
         "message": "What connectors are connected? (retrieval-ab A {tag})",
         "mode": "fast",
         "expect": {

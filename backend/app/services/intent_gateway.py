@@ -102,6 +102,10 @@ def response_cache_eligible(question: str) -> bool:
         return False
     if is_operator_task_shaped(text):
         return False
+    from app.services.connector_status_reply_service import is_connector_status_question
+
+    if is_connector_status_question(text):
+        return False
     return True
 
 
@@ -311,6 +315,7 @@ async def _propose_connector_status(ctx: GatewayContext) -> CandidateVerdict | N
             "vendor_slug": result.vendor_slug,
             "state": result.state.value if result.state else None,
             "question_kind": result.kind.value,
+            "verified_tool": result.source if result.source == "getConnectorStatus" else None,
         },
     )
 

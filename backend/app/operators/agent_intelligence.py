@@ -2107,6 +2107,14 @@ class AgentIntelligence:
                 routing=loop_trace.to_sse(),
                 progress_steps=loop_trace.progress_steps(),
             )
+            if str((gateway.extras or {}).get("verified_tool") or "") == "getConnectorStatus":
+                from app.operators.assistant_sse import sse_react_tool_start
+
+                yield sse_react_tool_start(
+                    call_id=message_id,
+                    registry_tool_name="assistant_connector_status",
+                    tool_args={"org_id": org_id},
+                )
             _mark("shortcut_composer_start")
             packed = await _composed_reply(response_text, kind="shortcut")
             _mark("shortcut_composer_end")

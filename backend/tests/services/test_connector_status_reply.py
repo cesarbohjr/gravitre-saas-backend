@@ -9,6 +9,7 @@ from app.services.connector_status_reply_service import (
     ConnectorConnectionState,
     ConnectorStatusQuestionKind,
     answer_connector_status_question,
+    format_connected_list_answer,
     format_connection_answer,
     is_connector_status_question,
     parse_connector_status_question,
@@ -64,9 +65,10 @@ def test_resolve_ga4_alias():
     assert resolve_connector_slug_from_text("Is GA4 connected?") == "google_analytics"
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_connected_healthy(mock_list):
-    mock_list.return_value = [
+    mock_list.return_value = (
+        [
         _availability_row(
             vendor="hubspot",
             execution_available=True,
@@ -75,7 +77,9 @@ def test_connected_healthy(mock_list):
             health_status="healthy",
             connected=True,
         )
-    ]
+        ],
+        False,
+    )
     result = answer_connector_status_question(
         "Is HubSpot connected?",
         client=MagicMock(),
@@ -88,11 +92,14 @@ def test_connected_healthy(mock_list):
     assert "assistant_" not in result.text.lower()
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_not_connected_but_supported(mock_list):
-    mock_list.return_value = [
-        _availability_row(vendor="hubspot", execution_available=True, auth_status="connected", display_status="connected", connected=True),
-    ]
+    mock_list.return_value = (
+        [
+            _availability_row(vendor="hubspot", execution_available=True, auth_status="connected", display_status="connected", connected=True),
+        ],
+        False,
+    )
     result = answer_connector_status_question(
         "Is Clay connected?",
         client=MagicMock(),
@@ -105,9 +112,9 @@ def test_not_connected_but_supported(mock_list):
     assert "assistant_connector_status" not in result.text
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_unsupported_connector(mock_list):
-    mock_list.return_value = []
+    mock_list.return_value = ([], False)
     result = answer_connector_status_question(
         "Is SomeUnknownPlatform connected?",
         client=MagicMock(),
@@ -119,9 +126,10 @@ def test_unsupported_connector(mock_list):
     assert "doesn't currently support" in result.text
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_degraded_connection(mock_list):
-    mock_list.return_value = [
+    mock_list.return_value = (
+        [
         _availability_row(
             vendor="clay",
             execution_available=False,
@@ -130,7 +138,9 @@ def test_degraded_connection(mock_list):
             health_status="error",
             connected=True,
         )
-    ]
+        ],
+        False,
+    )
     result = answer_connector_status_question(
         "Is Clay connected?",
         client=MagicMock(),
@@ -141,9 +151,10 @@ def test_degraded_connection(mock_list):
     assert result.text == "Clay is connected, but the connection needs attention."
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_auth_expired(mock_list):
-    mock_list.return_value = [
+    mock_list.return_value = (
+        [
         _availability_row(
             vendor="clay",
             execution_available=False,
@@ -152,7 +163,9 @@ def test_auth_expired(mock_list):
             blocking_reason="token_expired",
             connected=False,
         )
-    ]
+        ],
+        False,
+    )
     result = answer_connector_status_question(
         "Is Clay connected?",
         client=MagicMock(),
@@ -163,9 +176,9 @@ def test_auth_expired(mock_list):
     assert result.text == "Clay is configured, but its authentication has expired."
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_service_failure_unknown(mock_list):
-    mock_list.side_effect = RuntimeError("timeout")
+    mock_list.return_value = (None, True)
     result = answer_connector_status_question(
         "Is Clay connected?",
         client=MagicMock(),
@@ -178,9 +191,10 @@ def test_service_failure_unknown(mock_list):
     assert "isn't connected" not in result.text.lower()
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_connected_list_question(mock_list):
-    mock_list.return_value = [
+    mock_list.return_value = (
+        [
         _availability_row(
             vendor="hubspot",
             execution_available=True,
@@ -195,7 +209,9 @@ def test_connected_list_question(mock_list):
             display_status="connected",
             connected=True,
         ),
-    ]
+        ],
+        False,
+    )
     result = answer_connector_status_question(
         "What connectors do I have connected?",
         client=MagicMock(),
@@ -208,11 +224,14 @@ def test_connected_list_question(mock_list):
     assert "schema" not in result.text.lower()
 
 
-@patch("app.connectors.connector_availability_service.list_connector_availability")
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
 def test_support_question(mock_list):
-    mock_list.return_value = [
-        _availability_row(vendor="hubspot", execution_available=True, auth_status="connected", display_status="connected", connected=True),
-    ]
+    mock_list.return_value = (
+        [
+            _availability_row(vendor="hubspot", execution_available=True, auth_status="connected", display_status="connected", connected=True),
+        ],
+        False,
+    )
     result = answer_connector_status_question(
         "Does Gravitre support Clay?",
         client=MagicMock(),
@@ -247,3 +266,78 @@ def test_format_connection_answer_unsupported():
         supported=False,
     )
     assert "doesn't currently support" in text
+
+
+# Confirmed live incident, retrieval A, 2026-09-21T15:25:18Z, org f07e57c0…
+# text_head: "You have Apollo, Google Ads, Google Search Console, and Hubspot connected."
+# tool_names: []  — no getConnectorStatus.
+RETRIEVAL_AB_A_MESSAGE = "What connectors are connected? (retrieval-ab A 202609211525)"
+RETRIEVAL_AB_A_SLUGS = ["apollo", "google_ads", "google_search_console", "hubspot"]
+RETRIEVAL_AB_A_FALSE_CLAIM = (
+    "You have Apollo, Google Ads, Google Search Console, and Hubspot connected."
+)
+
+
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
+def test_retrieval_ab_a_slug_list_is_not_a_connector_status_claim(mock_rows):
+    """Routing slugs must not become an itemized connected list when the live check fails."""
+    mock_rows.return_value = (None, True)
+    result = answer_connector_status_question(
+        RETRIEVAL_AB_A_MESSAGE,
+        client=MagicMock(),
+        org_id="f07e57c0-1501-4000-8000-c04e57a00001",
+        settings=MagicMock(),
+        connected_integrations=RETRIEVAL_AB_A_SLUGS,
+    )
+    assert result is not None
+    assert result.text != RETRIEVAL_AB_A_FALSE_CLAIM
+    assert "Apollo" not in result.text
+    assert "Google Ads" not in result.text
+    assert "Google Search Console" not in result.text
+    assert "Hubspot" not in result.text
+    assert "couldn't verify" in result.text
+    assert result.source == "unverified"
+
+
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
+def test_retrieval_ab_a_list_names_only_getconnectorstatus_executable_rows(mock_rows):
+    """A named list is allowed only from getConnectorStatus rows with execution_available."""
+    mock_rows.return_value = (
+        [
+            _availability_row(vendor="hubspot", execution_available=True, auth_status="connected", display_status="connected", connected=True),
+            _availability_row(vendor="apollo", execution_available=False, auth_status="pending_auth", display_status="disconnected"),
+            _availability_row(vendor="google_ads", execution_available=False, auth_status="pending_auth", display_status="disconnected"),
+            _availability_row(vendor="google_search_console", execution_available=False, auth_status="auth_expired", display_status="error"),
+        ],
+        False,
+    )
+    result = answer_connector_status_question(
+        RETRIEVAL_AB_A_MESSAGE,
+        client=MagicMock(),
+        org_id="f07e57c0-1501-4000-8000-c04e57a00001",
+        settings=MagicMock(),
+        connected_integrations=RETRIEVAL_AB_A_SLUGS,
+    )
+    assert result is not None
+    assert result.source == "getConnectorStatus"
+    assert result.text == "You have Hubspot connected."
+    assert result.text != RETRIEVAL_AB_A_FALSE_CLAIM
+    mock_rows.assert_called_once()
+
+
+def test_retrieval_ab_a_format_ignores_routing_slugs():
+    text = format_connected_list_answer(None, connected_slugs=RETRIEVAL_AB_A_SLUGS)
+    assert text != RETRIEVAL_AB_A_FALSE_CLAIM
+    assert "Apollo" not in text
+
+
+def test_retrieval_ab_a_shortcut_emits_getconnectorstatus_tool_name():
+    from app.operators.assistant_sse import sse_react_tool_start
+
+    event = sse_react_tool_start(
+        call_id="retrieval-ab-a",
+        registry_tool_name="assistant_connector_status",
+        tool_args={"org_id": "f07e57c0-1501-4000-8000-c04e57a00001"},
+    )
+    assert event.sse_type == "tool-input-available"
+    assert event.payload["toolName"] == "getConnectorStatus"

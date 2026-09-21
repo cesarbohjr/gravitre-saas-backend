@@ -226,6 +226,14 @@ def format_connected_list_answer(
     *,
     connected_slugs: list[str] | None = None,
 ) -> str:
+    """Name only connectors the live status check marked executable.
+
+    ``connected_slugs`` is ignored. A routing snapshot is not a status check.
+    Retrieval A on 2026-09-21 answered "You have Apollo, Google Ads, Google
+    Search Console, and Hubspot connected." from that snapshot with no
+    getConnectorStatus call.
+    """
+    del connected_slugs
     labels: list[str] = []
     if connectors:
         for row in connectors:
@@ -234,8 +242,6 @@ def format_connected_list_answer(
             vendor = str(row.get("vendor") or "").strip()
             if vendor:
                 labels.append(vendor_display_label(vendor))
-    elif connected_slugs:
-        labels = [vendor_display_label(slug) for slug in connected_slugs if slug]
     labels = sorted({label for label in labels if label})
     if not labels:
         return "You don't have any connectors connected to this Gravitre account yet."
@@ -243,6 +249,31 @@ def format_connected_list_answer(
         return f"You have {labels[0]} connected."
     joined = ", ".join(labels[:-1]) + f", and {labels[-1]}"
     return f"You have {joined} connected."
+
+
+def _rows_from_get_connector_status(
+    *,
+    org_id: str,
+    settings: Any,
+    environment_name: str,
+) -> tuple[list[dict[str, Any]] | None, bool]:
+    """Same function the getConnectorStatus tool runs (force_live=True inside)."""
+    from app.services.assistant_tools import tool_connector_status
+
+    try:
+        payload = tool_connector_status(
+            org_id,
+            settings,
+            environment_name=environment_name,
+        )
+    except Exception:  # noqa: BLE001
+        return None, True
+    if not isinstance(payload, dict) or payload.get("error"):
+        return None, True
+    rows = payload.get("connectors")
+    if not isinstance(rows, list):
+        return None, True
+    return rows, False
 
 
 def answer_connector_status_question(
@@ -254,38 +285,38 @@ def answer_connector_status_question(
     connected_integrations: list[str] | None = None,
     environment_name: str = "production",
 ) -> ConnectorStatusAnswer | None:
-    """Return a deterministic answer when the message is a connector status question."""
+    """Return a deterministic answer when the message is a connector status question.
+
+    Named connection claims come only from ``tool_connector_status``
+    (getConnectorStatus, force_live=True). ``connected_integrations`` is a
+    routing snapshot and is not evidence.
+    """
+    del connected_integrations
+    del client
     parsed = parse_connector_status_question(message)
     if parsed is None:
         return None
 
-    connectors: list[dict[str, Any]] | None = None
-    service_error = False
-    try:
-        from app.connectors.connector_availability_service import list_connector_availability
-
-        connectors = list_connector_availability(
-            client,
-            org_id,
-            settings,
-            environment_name=environment_name,
-            force_live=False,
-        )
-    except Exception:  # noqa: BLE001
-        service_error = True
-        connectors = None
+    connectors, service_error = _rows_from_get_connector_status(
+        org_id=org_id,
+        settings=settings,
+        environment_name=environment_name,
+    )
 
     if parsed.kind == ConnectorStatusQuestionKind.LIST:
-        if service_error and not connected_integrations:
+        if service_error:
             return ConnectorStatusAnswer(
                 text="I couldn't verify your connected connectors right now.",
                 kind=parsed.kind,
                 state=ConnectorConnectionState.UNKNOWN,
+                source="unverified",
             )
+        executable = [row for row in (connectors or []) if row.get("execution_available")]
         return ConnectorStatusAnswer(
-            text=format_connected_list_answer(connectors, connected_slugs=connected_integrations),
+            text=format_connected_list_answer(connectors),
             kind=parsed.kind,
-            state=ConnectorConnectionState.CONNECTED_HEALTHY if connectors or connected_integrations else None,
+            state=ConnectorConnectionState.CONNECTED_HEALTHY if executable else None,
+            source="getConnectorStatus",
         )
 
     slug = parsed.vendor_slug
@@ -306,21 +337,16 @@ def answer_connector_status_question(
             availability = max(matches, key=lambda row: bool(row.get("execution_available")))
 
     if service_error and availability is None:
-        connected = {_normalize_vendor(c) for c in (connected_integrations or [])}
-        if _normalize_vendor(slug) in connected:
-            state = ConnectorConnectionState.CONNECTED_HEALTHY
-        elif supported:
-            state = ConnectorConnectionState.UNKNOWN
-        else:
-            state = ConnectorConnectionState.UNSUPPORTED
-        if state == ConnectorConnectionState.UNKNOWN:
+        if supported:
             label = vendor_display_label(slug)
             return ConnectorStatusAnswer(
                 text=f"I couldn't verify {label}'s connection status right now.",
                 kind=parsed.kind,
                 vendor_slug=slug,
-                state=state,
+                state=ConnectorConnectionState.UNKNOWN,
+                source="unverified",
             )
+        state = ConnectorConnectionState.UNSUPPORTED
 
     state = _classify_connection_state(availability)
     if not supported and availability is None:
@@ -336,4 +362,5 @@ def answer_connector_status_question(
         kind=parsed.kind,
         vendor_slug=slug,
         state=state,
+        source="getConnectorStatus" if not service_error else "unverified",
     )
