@@ -20,6 +20,7 @@ import {
   BusinessOutcomeView,
   type BusinessOutcomeDto,
 } from "@/components/gravitre/business-outcome/business-outcome-view"
+import { ActivityTracePanel } from "@/components/activity/activity-trace-panel"
 import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-bar"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import {
@@ -986,7 +987,10 @@ function ActivityPageInner() {
                         transition={{ duration: MOTION.base }}
                       >
                         <p className={TYPE.eyebrow}>Outcome</p>
-                        <BusinessOutcomeView outcome={selectedOutcome} density="timeline" />
+                        <div className="mt-3 space-y-4">
+                          <ActivityTracePanel outcome={selectedOutcome} />
+                          <BusinessOutcomeView outcome={selectedOutcome} density="timeline" />
+                        </div>
                       </motion.div>
                     </AnimatePresence>
                   ) : (
