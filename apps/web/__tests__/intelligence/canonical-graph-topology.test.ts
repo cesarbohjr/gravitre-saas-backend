@@ -24,6 +24,45 @@ describe("buildTopologyFromCanonicalGraph", () => {
     expect(predicts.nodes.some((n) => n.label.includes("OAuth"))).toBe(true)
   })
 
+  it("soft-dedupes near-identical prediction satellites on predicts lens", () => {
+    const graph = {
+      nodes: [
+        {
+          id: "prediction:p1",
+          type: "prediction",
+          businessLabel:
+            "OAuth token expiring soon: Connector token expires in 0 hours. HubSpot step refresh_token",
+          status: "active",
+          metadata: { confidence: 0.65 },
+        },
+        {
+          id: "prediction:p2",
+          type: "prediction",
+          businessLabel:
+            "OAuth token expiring soon: Connector token expires in 0 hours. HubSpot step authorize",
+          status: "active",
+          metadata: { confidence: 0.65 },
+        },
+        {
+          id: "prediction:p3",
+          type: "prediction",
+          businessLabel: "Outbound reply rate may drop next week",
+          status: "active",
+          metadata: { confidence: 0.7 },
+        },
+      ],
+      edges: [
+        { id: "e1", type: "PREDICTS", fromId: "core:gravitre", toId: "prediction:p1" },
+        { id: "e2", type: "PREDICTS", fromId: "core:gravitre", toId: "prediction:p2" },
+        { id: "e3", type: "PREDICTS", fromId: "core:gravitre", toId: "prediction:p3" },
+      ],
+    }
+    const predicts = buildTopologyFromCanonicalGraph({ graph, lens: "predicts" })
+    const signals = predicts.nodes.filter((n) => n.kind === "signal")
+    expect(signals).toHaveLength(2)
+    expect(signals.every((n) => n.label.length <= 42)).toBe(true)
+  })
+
   it("remaps core:gravitre to __core__ for edge rendering", () => {
     const graph = {
       nodes: [

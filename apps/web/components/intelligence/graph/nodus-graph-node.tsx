@@ -54,7 +54,7 @@ export function NodusGraphNodeTile({
   const spin = active && !reduced
 
   return (
-    <div className={cn("flex max-w-[7.5rem] flex-col items-center gap-1.5", className)}>
+    <div className={cn("flex max-w-[8.5rem] flex-col items-center gap-1.5", className)}>
       <div
         className={cn(
           "relative shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700",
@@ -74,12 +74,12 @@ export function NodusGraphNodeTile({
         </div>
       </div>
       {showLabel ? (
-        <span className="min-w-0 text-center">
-          <span className="block truncate text-[11px] font-semibold text-[color:var(--g-text-secondary)]">
+        <span className="min-w-0 text-center" title={label}>
+          <span className="line-clamp-2 block text-[11px] font-semibold leading-snug text-[color:var(--g-text-secondary)]">
             {label}
           </span>
           {sublabel ? (
-            <span className="block truncate text-[10px] capitalize text-[color:var(--g-text-muted)]">
+            <span className="mt-0.5 block truncate text-[10px] capitalize text-[color:var(--g-text-muted)]">
               {sublabel}
             </span>
           ) : null}

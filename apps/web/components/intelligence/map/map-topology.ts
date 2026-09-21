@@ -4,6 +4,10 @@ import type { IntelligenceMapLens } from "./intelligence-map-lens"
 import { formatDepartmentLabel, radialLayout } from "@/components/intelligence/core/types"
 import { readString } from "@/lib/intelligence/helpers"
 import { modelBusinessLabel } from "@/lib/intelligence/business-labels"
+import {
+  dedupeMapNodesByLabel,
+  truncateMapLabel,
+} from "@/lib/intelligence/map-node-labels"
 
 export type MapNodeKind = "department" | "agent" | "entity-type" | "model" | "signal" | "learning"
 
@@ -180,21 +184,24 @@ export function buildMapTopology({
     }
 
     case "predicts": {
-      const signalList = (signals ?? []).slice(0, 6)
+      const signalList = (signals ?? []).slice(0, 12)
       const deptNodes = departments.map((d) => {
         const hasWarning = signalList.some((s) => signalDepartmentKey(s) === normalizeDeptKey(d.id))
         return deptNode(d, hasWarning ? 1 : d.confidence != null ? 0.75 : 0.4)
       })
       const orphanSignals = signalList.filter((s) => !signalDepartmentKey(s))
-      const signalNodes: MapNode[] = orphanSignals.map((signal, i) => ({
-        id: `signal:${readString(signal.id, String(i))}`,
-        kind: "signal",
-        label: readString(signal.title, "Signal"),
-        sublabel: "Unscoped prediction",
-        state: "pending-approval",
-        signal,
-        emphasis: 1,
-      }))
+      const signalNodes: MapNode[] = dedupeMapNodesByLabel(
+        orphanSignals.map((signal, i) => ({
+          id: `signal:${readString(signal.id, String(i))}`,
+          kind: "signal" as const,
+          label: truncateMapLabel(readString(signal.title, "Signal")),
+          sublabel: "Unscoped prediction",
+          state: "pending-approval" as const,
+          signal,
+          emphasis: 1,
+        })),
+        6,
+      )
       const nodes = [...deptNodes, ...signalNodes]
       const edges = [
         ...coreEdges(deptNodes, coreState, 0.55),
@@ -348,7 +355,7 @@ const KIND_RING_RADIUS: Partial<Record<MapNodeKind, number>> = {
   "entity-type": 130,
   model: 165,
   learning: 165,
-  signal: 230,
+  signal: 268,
   department: 200,
 }
 

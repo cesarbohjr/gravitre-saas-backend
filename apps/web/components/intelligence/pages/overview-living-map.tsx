@@ -154,13 +154,17 @@ export function OverviewLivingMap({
     (knownRels === 0 || knownRels == null) &&
     graphNodes <= 1
 
+  // Sparse KG honesty is for KNOWS only — do not hide predicts/acts/learns field graphs.
   const isSparse =
+    activeLens === "knows" &&
     !mapLoading &&
     !isError &&
     !isEmpty &&
     typeof knownRels === "number" &&
     knownRels > 0 &&
     knownEntities === 0
+
+  const showMap = !isError && !mapLoading && !isEmpty && !isSparse
 
   const streamEvents = useMemo(() => {
     if (activeLens === "learns") return changeEvents.filter((e) => e.kind === "learned")
@@ -288,9 +292,10 @@ export function OverviewLivingMap({
         <div className="relative min-h-[56vh] min-w-0 flex-1">
           {mapLoading ? (
             <div
-              className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-[var(--np-radius-lg)] bg-[color:var(--g-surface-1)]/60 backdrop-blur-[2px]"
+              className="relative z-30 flex min-h-[56vh] items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]"
               aria-live="polite"
               aria-busy="true"
+              data-testid="intel-field-loading"
             >
               <p className={TYPE.meta}>Loading intelligence field…</p>
             </div>
@@ -326,7 +331,7 @@ export function OverviewLivingMap({
             </div>
           ) : null}
 
-          {!isError && !isEmpty && !isSparse ? (
+          {showMap ? (
             <IntelligenceMap
               lens={activeLens}
               signals={signals}

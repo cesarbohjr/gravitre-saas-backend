@@ -45,7 +45,9 @@ export class IntelligenceGraph {
   }
 
   static buildTopology(input: IntelligenceGraphInput): MapTopology {
-    if (input.canonicalGraph?.nodes?.length) {
+    // Explicit page-context graph wins — including empty — so we never paint
+    // core-state department fallback under a loading/sparse field.
+    if (input.canonicalGraph != null) {
       return buildTopologyFromCanonicalGraph({
         graph: input.canonicalGraph as {
           nodes: CanonicalGraphNode[]

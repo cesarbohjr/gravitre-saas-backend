@@ -7,6 +7,10 @@ import {
   type MapNode,
   type MapTopology,
 } from "@/components/intelligence/map/map-topology"
+import {
+  dedupeMapNodesByLabel,
+  truncateMapLabel,
+} from "@/lib/intelligence/map-node-labels"
 
 export type CanonicalGraphNode = {
   id: string
@@ -176,7 +180,7 @@ function nodeToMapNode(node: CanonicalGraphNode, agents: Agent[] | null | undefi
       return {
         id: node.id,
         kind: "signal",
-        label: node.businessLabel,
+        label: truncateMapLabel(node.businessLabel),
         sublabel: node.metadata?.confidence != null ? `${Math.round(Number(node.metadata.confidence) * 100)}% confidence` : "Prediction",
         state: "pending-approval",
         signal: {
@@ -191,7 +195,7 @@ function nodeToMapNode(node: CanonicalGraphNode, agents: Agent[] | null | undefi
       return {
         id: node.id,
         kind: "learning",
-        label: node.businessLabel,
+        label: truncateMapLabel(node.businessLabel, 48),
         sublabel: "Business learning",
         state: "resolved",
         emphasis: 1,
@@ -254,9 +258,17 @@ export function buildTopologyFromCanonicalGraph({
   lens: IntelligenceMapLens
   agents?: Agent[] | null
 }): MapTopology {
-  const nodes = graph.nodes
+  const projected = graph.nodes
     .map((node) => nodeToMapNode(node, agents))
     .filter((node): node is MapNode => node != null)
+
+  // Soft-dedupe prediction/signal satellites for spatial readability (backend key can still diverge).
+  const signalNodes = projected.filter((n) => n.kind === "signal")
+  const otherNodes = projected.filter((n) => n.kind !== "signal")
+  const nodes =
+    lens === "predicts" && signalNodes.length > 0
+      ? [...otherNodes, ...dedupeMapNodesByLabel(signalNodes, 6)]
+      : projected
 
   const nodeIds = new Set(nodes.map((n) => n.id))
   const edges: MapEdge[] = graph.edges.flatMap((edge) => {

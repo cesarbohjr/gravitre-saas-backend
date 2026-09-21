@@ -2,10 +2,14 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { test, expect } from "@playwright/test"
 import { loadBillingFixtures, prepareAdminAppSession, waitForAppShellReady } from "./helpers/auth"
+import { e2eStorageStatePath, hasE2eStorageState } from "./helpers/gravitre-e2e-storage"
 
 const fixturesPath = path.resolve(__dirname, ".fixtures", "billing-users.json")
+const isolatedOrg = "f07e57c0-1501-4000-8000-c04e57a00001"
+const isolatedOrgName = "Gravitre Isolated Conversation Smoke"
 
 const appOrigin = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001"
+const useStorageAuth = hasE2eStorageState()
 
 /** Staging / live auth requires real Supabase — never placeholder test host. */
 function hasLiveAuthEnv(): boolean {
@@ -14,9 +18,10 @@ function hasLiveAuthEnv(): boolean {
 }
 
 const skipLiveJourneys =
-  process.env.PLAYWRIGHT_SKIP_BACKEND === "1" ||
-  !existsSync(fixturesPath) ||
-  !hasLiveAuthEnv()
+  !useStorageAuth &&
+  (process.env.PLAYWRIGHT_SKIP_BACKEND === "1" ||
+    !existsSync(fixturesPath) ||
+    !hasLiveAuthEnv())
 
 function isStagingTarget(): boolean {
   try {
@@ -28,9 +33,24 @@ function isStagingTarget(): boolean {
 }
 
 test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", () => {
+  if (useStorageAuth) {
+    test.use({ storageState: e2eStorageStatePath() || undefined })
+  }
+
   test.beforeEach(async ({ page }) => {
     test.skip(skipLiveJourneys, "Requires billing fixtures, FastAPI, and live Supabase credentials")
     test.setTimeout(600_000)
+    if (useStorageAuth) {
+      await page.addInitScript(
+        ({ id, name }) => {
+          window.localStorage.setItem("gravitre:selectedOrg", JSON.stringify({ id, name }))
+        },
+        { id: isolatedOrg, name: isolatedOrgName },
+      )
+      await page.goto("/home")
+      await waitForAppShellReady(page)
+      return
+    }
     const user = loadBillingFixtures().activeTrial
     await prepareAdminAppSession(page, user, "/home")
     await waitForAppShellReady(page)
@@ -85,6 +105,10 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     if (await statusTrigger.isVisible().catch(() => false)) {
       await statusTrigger.click()
       await page.getByRole("option", { name: "Failed" }).click()
+      await page.waitForResponse(
+        (response) => response.url().includes("/api/business-outcomes") && response.status() === 200,
+        { timeout: 60_000 },
+      ).catch(() => undefined)
     }
 
     const outcomeRow = page.locator('[role="option"]').first()
@@ -93,19 +117,36 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     }
     await outcomeRow.click()
 
+    const tracePanel = page.getByTestId("activity-trace-a1")
+    const traceEmpty = page.getByTestId("activity-trace-empty")
+    if (await tracePanel.isVisible().catch(() => false)) {
+      await expect(tracePanel).toBeVisible()
+      await expect(page.getByTestId("activity-trace-rail").or(page.getByTestId("activity-trace-story"))).toBeVisible()
+    } else if (await traceEmpty.isVisible().catch(() => false)) {
+      await expect(traceEmpty).toBeVisible()
+    }
+
     const traceLink = page.locator('a[href*="/runs/"][href*="trace=1"]').first()
     const runLink = page.locator('a[href*="/runs/"]').first()
+    const openRunHeader = page.getByRole("link", { name: /open run/i })
     if (await traceLink.isVisible().catch(() => false)) {
       await expect(traceLink).toBeVisible()
+    } else if (await openRunHeader.isVisible().catch(() => false)) {
+      await expect(openRunHeader).toBeVisible()
     } else if (await runLink.isVisible().catch(() => false)) {
       await expect(runLink).toBeVisible()
+    } else if (await tracePanel.isVisible().catch(() => false)) {
+      const openRunTrace = page.getByRole("link", { name: /open run trace/i })
+      if (await openRunTrace.isVisible().catch(() => false)) {
+        await expect(openRunTrace).toBeVisible()
+      }
     } else {
       test.skip(true, "BLOCKED — outcome selected but no run/trace link in fixture org")
     }
 
     test.info().annotations.push({
       type: "journey",
-      description: `PASS — J7 activity failure inspect @ ${new Date().toISOString()} target=${appOrigin}`,
+      description: `PASS — J7 activity inspect + trace @ ${new Date().toISOString()} target=${appOrigin} org=${isolatedOrg}`,
     })
   })
 

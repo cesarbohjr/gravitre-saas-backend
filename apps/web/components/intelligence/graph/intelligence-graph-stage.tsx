@@ -74,13 +74,12 @@ function CoreStats({
   lens,
   entityCount,
   relationshipCount,
-  caption,
 }: {
   data: IntelligenceCoreStateResponse
   lens: IntelligenceMapLens
   entityCount?: number | null
   relationshipCount?: number | null
-  caption: string
+  caption?: string
 }) {
   const lines: string[] = []
   if (lens === "knows") {
@@ -91,14 +90,11 @@ function CoreStats({
       lines.push(`${data.core.activeAgentRuns} agent run${data.core.activeAgentRuns === 1 ? "" : "s"}`)
     }
   }
+  // Never paint a center watermark / repeated caption — caption already lives top-left.
+  if (lines.length === 0) return null
   return (
-    <div className="pointer-events-none absolute left-1/2 top-[calc(50%+4.75rem)] z-20 max-w-md -translate-x-1/2 px-4 text-center">
-      <p className={cn(TYPE.meta, "whitespace-nowrap text-[color:var(--g-text-muted)]")}>
-        Gravitre Intelligence
-      </p>
-      <p className="mt-0.5 text-xs font-medium text-[color:var(--g-text-secondary)]">
-        {lines.length > 0 ? lines.join(" · ") : caption}
-      </p>
+    <div className="pointer-events-none absolute left-1/2 top-[calc(50%+4.75rem)] z-20 max-w-xs -translate-x-1/2 px-4 text-center">
+      <p className="text-xs font-medium text-[color:var(--g-text-secondary)]">{lines.join(" · ")}</p>
     </div>
   )
 }
@@ -548,7 +544,6 @@ export function IntelligenceGraphStage({
                 lens={lens}
                 entityCount={entityCount}
                 relationshipCount={relationshipCount}
-                caption={graph.caption}
               />
             ) : null}
 

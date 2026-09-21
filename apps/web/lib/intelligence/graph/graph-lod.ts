@@ -1,8 +1,8 @@
 import { CLUSTER_THRESHOLD, type GraphPoint } from "./types"
 
 export const LABEL_LOD_MIN_SCALE = 0.72
-export const NODE_COLLISION_PX = 56
-export const LABEL_BOX = { w: 152, h: 40 }
+export const NODE_COLLISION_PX = 72
+export const LABEL_BOX = { w: 168, h: 48 }
 
 export function isDenseGraph(nodeCount: number): boolean {
   return nodeCount >= CLUSTER_THRESHOLD
