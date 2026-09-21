@@ -55,6 +55,9 @@ QUERIES: list[dict[str, Any]] = [
             "effective_modes_contains": ["fast"],
             "tool_names_contains": ["getConnectorStatus"],
             "forbidden_error_codes": ["write_approval_required"],
+            "forbidden_text_substrings": [
+                "You have Apollo, Google Ads, Google Search Console, and Hubspot connected.",
+            ],
         },
     },
     {
@@ -282,6 +285,13 @@ def _evaluate(query: dict[str, Any], fp: dict[str, Any], http: int) -> tuple[boo
             if mode not in (fp.get("effective_modes") or []):
                 ok = False
                 reasons.append(f"missing effectiveMode {mode}")
+
+    if expect.get("forbidden_text_substrings"):
+        text_head = str(fp.get("text_head") or "")
+        for snippet in expect["forbidden_text_substrings"]:
+            if snippet and snippet in text_head:
+                ok = False
+                reasons.append(f"forbidden text_head claim: {snippet}")
 
     if expect.get("tool_names_contains"):
         for tool in expect["tool_names_contains"]:
