@@ -206,6 +206,13 @@ def has_pending_family(task_state: dict[str, Any] | None) -> bool:
         # Exclude terminal statuses that should already be cleared.
         if snap.status not in {"completed", "failed", "cancelled", "executed"}:
             return True
+    from app.services.task_continuity import pending_family
+
+    terminal = {"completed", "failed", "cancelled", "executed"}
+    for row in pending_family(task_state).values():
+        status = str(row.get("status") or "").strip().lower()
+        if status not in terminal:
+            return True
     return False
 
 

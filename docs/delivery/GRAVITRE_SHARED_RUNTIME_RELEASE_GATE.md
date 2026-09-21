@@ -70,4 +70,4 @@ Mandatory CI: job **Shared runtime text/voice gate** — **PASS** on `53a374c1`.
 
 Production kernel for live HubSpot proof: `b95a8735`. 2.0 K/L/M + Gmail F1 are additional source on `main` after that SHA. Gate still **FAIL** for promotion to “chat release complete” until browser + PCM. F1 preflight row: HubSpot LIVE_PROVEN; Gmail list UNIT_PROVEN.
 
-Cesar: bypass remaining human testing until the end; move to 3.0. Implemented 3.0-H entity stamp + 3.0-I spoken yes-wait hold. See `gravitre-3.0-h-entities.md`, `gravitre-3.0-i-spoken-write.md`.
+Cesar: bypass remaining human testing until the end; move to 3.0. Implemented 3.0-H entity stamp + 3.0-I spoken yes-wait hold. See `gravitre-3.0-h-entities.md`, `gravitre-3.0-i-spoken-write.md`. 3.0-H/I **not closed** (CI `35622991537` FAIL on `6d563e3d`; spoken traces NOT RUN).

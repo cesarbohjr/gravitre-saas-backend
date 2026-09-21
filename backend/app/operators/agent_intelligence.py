@@ -2094,6 +2094,27 @@ class AgentIntelligence:
                         ).get_task_state(conversation_id, org_id, client=client)
                     except Exception as exc:  # noqa: BLE001
                         logger.debug("analytics_traffic_gateway_state_persist_skipped: %s", exc)
+            if gateway.candidate_id == "spoken_hold_commit" and conversation_id:
+                extras = gateway.extras or {}
+                try:
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        {
+                            "last_pending_reply_intent": extras.get(
+                                "pending_reply_intent", "hold_commit"
+                            ),
+                            "spoken_write_decision": extras.get(
+                                "spoken_write_decision", "hold_commit"
+                            ),
+                        },
+                        client=client,
+                    )
+                    gateway_task_state = await get_conversation_state_service(
+                        active_settings
+                    ).get_task_state(conversation_id, org_id, client=client)
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("spoken_hold_commit_state_persist_skipped: %s", exc)
             gateway_confidence = {
                 "score": gateway.confidence,
                 "needs_clarification": False,
@@ -2154,6 +2175,14 @@ class AgentIntelligence:
                     "shortcut_latency_ms": dict(_pre_kernel_checkpoints),
                     "shortcut_composer_used_model": bool(getattr(packed, "used_model", False)),
                 }
+                if gateway.candidate_id == "spoken_hold_commit":
+                    extras = gateway.extras or {}
+                    shortcut_state["last_pending_reply_intent"] = extras.get(
+                        "pending_reply_intent", "hold_commit"
+                    )
+                    shortcut_state["spoken_write_decision"] = extras.get(
+                        "spoken_write_decision", "hold_commit"
+                    )
             logger.info(
                 "shortcut_latency org_id=%s candidate=%s checkpoints=%s used_model=%s",
                 org_id,

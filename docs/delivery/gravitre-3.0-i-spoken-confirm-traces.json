@@ -1,0 +1,67 @@
+{
+  "probe": "spoken_confirm_traces",
+  "proof_class": "SPOKEN_HTTP_NOT_VOICE_C",
+  "started_at": "2026-09-21T17:28:56.041542+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "c87141ed-c14e-4b4a-947b-e07222a27509",
+  "list_name": "gravitre-spoken-hold-202609211728",
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-09-21T17:28:03.245477+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "8ee2ae008b2f9038919d0ce022f7433c0b700e88",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "stage": {
+    "http": 200,
+    "text_head": "I can create an empty Apollo contact list named **gravitre-spoken-hold-202609211728**. Reply **yes** to approve, or send a different name.",
+    "pending_seen": true,
+    "event_types": [
+      "data-intelligence",
+      "data-suggestions",
+      "finish",
+      "finish-step",
+      "start",
+      "start-step",
+      "text-delta",
+      "text-end",
+      "text-start"
+    ],
+    "sent_claim": false
+  },
+  "yes_wait": {
+    "http": 200,
+    "text_head": "I've classified this as a real request, so I'm running the full loop.I'm loading memory and knowledge now.I'm putting the plan together.I'm preparing the next actions.I'm checking that against what just happened.Got it. I\u2019m holding. I won\u2019t send or execute anything until you give a clear yes.",
+    "pending_seen": false,
+    "event_types": [
+      "data-intelligence",
+      "data-suggestions",
+      "finish",
+      "finish-step",
+      "start",
+      "start-step",
+      "text-delta",
+      "text-end",
+      "text-start"
+    ],
+    "sent_claim": false,
+    "pass": false
+  },
+  "pass": false,
+  "finished_at": "2026-09-21T17:28:56.041564+00:00"
+}

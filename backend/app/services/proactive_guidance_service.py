@@ -139,7 +139,7 @@ class ProactiveGuidanceService:
                 operator_state = await self._state.get_task_state(conversation_id, org_id)
             except Exception:  # noqa: BLE001
                 operator_state = {}
-        from app.services.proactive_business_operator import evaluate_business_signals
+        from app.services.proactive_business_operator import rank_safe_read_notices
 
         stored = operator_state.get("proactive_operator") if isinstance(operator_state, dict) else []
         for rec in stored or []:
@@ -170,7 +170,7 @@ class ProactiveGuidanceService:
                     "recommendation": signal.get("recommendation") or signal.get("title"),
                 }
             )
-        for rec in evaluate_business_signals(extra_signals, prior_alert_ids=suppressed):
+        for rec in rank_safe_read_notices(extra_signals, prior_alert_ids=suppressed):
             if rec.signal_id in suppressed:
                 continue
             candidates.append(

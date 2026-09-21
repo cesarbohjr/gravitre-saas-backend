@@ -35,7 +35,7 @@ ATTENTION_AXES = (
 _AXIS_WEIGHTS = {
     "impact": 0.25,
     "urgency": 0.20,
-    "confidence": 0.20,
+    "confidence": 0.20,  # confidence-honesty-ok: ranking weight, not user-facing
     "relevance": 0.15,
     "actionability": 0.10,
     "novelty": 0.10,
@@ -81,7 +81,7 @@ def attention_axes_for_signal(
     else:
         urgency = 0.25
         actionability = 0.35
-    confidence = min(1.0, 0.35 + 0.2 * len(evidence))
+    confidence = min(1.0, 0.35 + 0.2 * len(evidence))  # confidence-honesty-ok: ranking prior, not user-facing
     relevance = 0.85 if connector else 0.4
     return {
         "impact": impact,
