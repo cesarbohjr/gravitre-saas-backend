@@ -118,7 +118,7 @@ Phase 5 commit `a550ad18` is on `origin/main` and is contained in tip `69593acc`
 
 `69593acc` is cognitive-runtime 2.0 K/L/M wiring. It is not UX/UI 3.0 Plus proof and not a live business-path PASS. K/L/M stay TEST PROVEN / live NOT_RUN in `docs/delivery/GRAVITRE_PLATFORM_EXECUTION_2.0_COMPLETION.md`.
 
-Marketplace discovery is a scan list with price and install on the row; pack metadata is behind “More about this pack”. Connector and workflow detail pages use sections instead of card stacks. CES orchestration and governance scenes link to existing docs and can Step one beat, which pauses autoplay. Pilot 3 production promotion stays gated.
+Marketplace discovery is a scan list with price and install on the row; pack metadata is behind “More about this pack”. Connector and workflow detail pages use sections instead of card stacks. CES orchestration and governance scenes link to existing docs and can Step one beat, which pauses autoplay. Technology ships the KF-A workbench.
 
 ### Deployed tip after the lint fix
 
@@ -153,7 +153,7 @@ Marketplace discovery is a scan list with price and install on the row; pack met
 | Railway | Not redeployed for this frontend commit (“No deployment needed - watched paths not modified.”). `/health` `git_sha=6cd43ae3` `status=ok` at `2026-09-21T06:55:04Z`. Backend remains the last watched-path deploy; not a live connected-system business-path PASS. |
 | Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
 
-No further safe, approved, unblocked implementation work remains in this tracker. Technology thinning and Pilot 3 production promote stay on their existing CES gates. Authenticated browser, OAuth, authenticated `/ai`, connected-system execution, and voice PCM stay external / NOT PROVEN.
+No further safe implementation remains for Technology thinning or the KF-A production scene; both are verified on `720a0650`. Authenticated browser, OAuth, authenticated `/ai`, connected-system execution, and voice PCM stay NOT PROVEN. A smoke-user magic link reached `https://gravitre.app/login` without a session (`hasSession=false`). Google consent and a physical microphone are still required for the live 2.0 proofs.
 
 ---
 
@@ -161,13 +161,13 @@ No further safe, approved, unblocked implementation work remains in this tracker
 
 | REQUIREMENT | STATUS |
 |-------------|--------|
-| KF-A harness (locked concept, dev preview only) | IMPLEMENTED — NOT PROVEN (harness). Not a production page. |
+| KF-A workbench | VERIFIED on `/features/technology` in `720a0650`. Dev harness still compares it with the autoplay field. |
 | Pilot 1 mobile ring-spin removal | IMPLEMENTED in `department-network-mobile.tsx` — Relational Topology, no `animate-spin`. Not authenticated-product verification. |
 | Orchestration / governance Step | IMPLEMENTED in `d198f372` — visitor Step pauses autoplay and advances one beat. Reset returns to the first beat and stays paused. Selecting a capability shows its existing label and, once tools are on screen, the existing systems list. Success/failure retained. Doc links to agents and approvals. Not a production Pilot 3 promote. |
 | Connector fabric select | IMPLEMENTED in `d198f372` — selecting a port shows that port’s existing capabilities. Step and Reset use the same pause-and-advance rule. Not a live connector inventory. |
 | GIBE and voice Step | IMPLEMENTED in `d198f372` — Step and Reset on the existing loops. Recommend stays advisory. Voice stays no-orb and is not duplex or PCM proof. |
 | Outcomes activity link | IMPLEMENTED in `d198f372` — categories only, linked to the existing runs how-to (`/docs/guides/how-to/runs`). No invented metrics. |
-| Technology page thinning | BLOCKED by the existing CES 2.0 stop for that slice. Not a new gate. |
-| Production Pilot 3 promote | BLOCKED — separate promote gate. Do not ship the harness to marketing production. |
+| Technology page thinning | VERIFIED on production `720a0650`. `/features/technology` at 2026-09-21 has `data-technology-legacy="0"`, no “50+ integrations” catalog, no “How Gravitre works” legacy block, no TRAINED string. Scene links: org learning, agents, approvals, sources. |
+| Production Pilot 3 promote | VERIFIED on production `720a0650`. Technology Knowledge Fabric is `data-kf-production="workbench"` (`entity-convergence-workbench`). Page text includes Sarah and Sarah Smith. Caption stays illustrative exact match, not a live org graph. Vercel `CPeWukqMmHrCCJxxuKKhzYgsrpbC`. |
 | Pilot 1 / 2 concept reopen | Locked — do not reopen |
 
