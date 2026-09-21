@@ -176,7 +176,10 @@ def evaluate_connector_availability(
             action_registered = True
             if action_key:
                 action_registered = action_key in set(list_registered_actions())
-            return {
+            from app.services.connector_certification_scorecard import attach_internal_readiness
+
+            return attach_internal_readiness(
+                {
                 "connector_id": connector_id,
                 "vendor": vendor,
                 "configured": configured,
@@ -199,7 +202,9 @@ def evaluate_connector_availability(
                 "environment": env,
                 "name": str(row.get("name") or vendor or "connector"),
                 "auth_mode": AuthMode.GRAVITRE_MANAGED.value,
-            }
+                },
+                action_key=action_key,
+            )
         else:
             authenticated = False
             token_valid = False
@@ -333,7 +338,9 @@ def evaluate_connector_availability(
         except Exception:  # noqa: BLE001
             pass
 
-    return out
+    from app.services.connector_certification_scorecard import attach_internal_readiness
+
+    return attach_internal_readiness(out, action_key=action_key)
 
 
 def list_connector_availability(
@@ -372,8 +379,11 @@ def list_connector_availability(
                 vendor,
                 str(exc)[:240],
             )
+            from app.services.connector_certification_scorecard import attach_internal_readiness
+
             out.append(
-                {
+                attach_internal_readiness(
+                    {
                     "connector_id": str(row.get("id") or ""),
                     "vendor": vendor,
                     "configured": True,
@@ -395,7 +405,8 @@ def list_connector_availability(
                     "raw_status": str(row.get("status") or "error"),
                     "environment": str(row.get("environment") or environment_name),
                     "name": str(row.get("name") or vendor or "connector"),
-                }
+                    }
+                )
             )
     return out
 

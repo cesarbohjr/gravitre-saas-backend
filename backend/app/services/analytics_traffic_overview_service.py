@@ -585,12 +585,20 @@ async def try_analytics_traffic_overview_turn(
             ga_present = bool((readiness.get("google_analytics") or {}).get("present"))
             gsc_present = bool((readiness.get("google_search_console") or {}).get("present"))
             status = "blocked" if (ga_present or gsc_present) else "connector_not_connected"
+            from app.services.proactive_business_operator import (
+                evaluate_business_signals,
+                patch_task_state_with_recommendations,
+                signals_from_website_readiness,
+            )
+
+            recs = evaluate_business_signals(signals_from_website_readiness(readiness))
             return {
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
                 "message": website_limitation_message(readiness),
-                "task_state": merged,
+                "task_state": patch_task_state_with_recommendations(merged, recs),
                 "workflow_status": status,
+                "execution_path": "analytics_traffic_overview",
             }
         return {
             "stop_pipeline": True,

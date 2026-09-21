@@ -133,6 +133,71 @@ class ProactiveGuidanceService:
                 }
             )
 
+        operator_state = {}
+        if conversation_id:
+            try:
+                operator_state = await self._state.get_task_state(conversation_id, org_id)
+            except Exception:  # noqa: BLE001
+                operator_state = {}
+        from app.services.proactive_business_operator import evaluate_business_signals
+
+        stored = operator_state.get("proactive_operator") if isinstance(operator_state, dict) else []
+        for rec in stored or []:
+            if not isinstance(rec, dict):
+                continue
+            key = str(rec.get("signal_id") or "")
+            if not key or key in suppressed:
+                continue
+            candidates.append(
+                {
+                    "type": "proactive_operator",
+                    "text": str(rec.get("recommendation") or ""),
+                    "suppression_key": key,
+                    **label_confidence(0.7, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC, is_estimate=True),
+                }
+            )
+        extra_signals = []
+        for signal in business_signals or []:
+            if not isinstance(signal, dict):
+                continue
+            evidence = [str(signal.get("title") or signal.get("detail") or "").strip()]
+            extra_signals.append(
+                {
+                    "id": signal.get("id") or signal.get("title"),
+                    "kind": signal.get("kind") or "threshold",
+                    "connector": signal.get("connector"),
+                    "evidence": [item for item in evidence if item],
+                    "recommendation": signal.get("recommendation") or signal.get("title"),
+                }
+            )
+        for rec in evaluate_business_signals(extra_signals, prior_alert_ids=suppressed):
+            if rec.signal_id in suppressed:
+                continue
+            candidates.append(
+                {
+                    "type": "proactive_operator",
+                    "text": rec.recommendation,
+                    "suppression_key": rec.signal_id,
+                    **label_confidence(0.7, source=CONFIDENCE_SOURCE_SIGNAL_HEURISTIC, is_estimate=True),
+                }
+            )
+            if rec.notify and rec.significance == "high" and user_id:
+                try:
+                    from app.services.notification_emitter import create_user_notification
+
+                    create_user_notification(
+                        get_supabase_client(self.settings),
+                        org_id=org_id,
+                        user_id=user_id,
+                        notification_type="system",
+                        title="Source needs attention",
+                        body=rec.recommendation[:500],
+                        url="/connectors",
+                        entity_type="connector",
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("proactive_operator_notify_skipped error=%s", exc)
+
         if candidates:
             from app.services.recommendation_quality_engine import get_recommendation_quality_engine
 

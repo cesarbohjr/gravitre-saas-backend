@@ -26,6 +26,18 @@ INTERNAL_LAYERS = (
 
 FORBIDDEN_CUSTOMER_LABELS = ("certified", "trained", "live", "enable")
 
+DEFAULT_VENDOR_ACTIONS: dict[str, str] = {
+    "hubspot": "hubspot.deals.list",
+    "google_analytics": "google_analytics.reports.run",
+    "google_search_console": "google_search_console.searchAnalytics.query",
+    "gmail": "gmail.messages.list",
+    "quickbooks": "quickbooks.invoices.list",
+    "zendesk": "zendesk.tickets.list",
+    "salesforce": "salesforce.leads.search",
+    "google_calendar": "google_calendar.events.list",
+    "slack": "slack.conversations.list",
+}
+
 
 def _truthy(value: Any) -> bool:
     return bool(value) and str(value).strip().lower() not in {"false", "0", "none", "null"}
@@ -37,6 +49,7 @@ def classify_connector_action(
     availability: dict[str, Any] | None = None,
     production_verified: bool = False,
     test_verified: bool | None = None,
+    implemented: bool | None = None,
 ) -> dict[str, Any]:
     spec = get_action_spec(action_key)
     registered = spec is not None
@@ -47,10 +60,14 @@ def classify_connector_action(
     resource_ready = connected and authorized and (
         not spec or not spec.resource_requirements or _truthy(avail.get("resource_ready", True))
     )
-    implemented = action_key in set(list_registered_actions()) if action_key else False
+    implemented_flag = (
+        bool(implemented)
+        if implemented is not None
+        else (action_key in set(list_registered_actions()) if action_key else False)
+    )
     action_ready = bool(
         registered
-        and implemented
+        and implemented_flag
         and spec
         and spec.execution_adapter
         and spec.parameter_source_rules
@@ -85,6 +102,19 @@ def classify_connector_action(
         "current_internal_state": current,
         "connected_does_not_mean_action_ready": connected and not action_ready,
     }
+
+
+def attach_internal_readiness(row: dict[str, Any], *, action_key: str | None = None) -> dict[str, Any]:
+    """Stamp engineering scorecard onto an availability row. Never a customer badge."""
+    vendor = str(row.get("vendor") or row.get("type") or "").strip().lower()
+    key = str(action_key or "").strip() or DEFAULT_VENDOR_ACTIONS.get(vendor)
+    if not key:
+        return row
+    try:
+        row["internal_readiness"] = classify_connector_action(action_key=key, availability=row)
+    except Exception:
+        row.setdefault("internal_readiness", None)
+    return row
 
 
 def scorecard_from_availability_rows(

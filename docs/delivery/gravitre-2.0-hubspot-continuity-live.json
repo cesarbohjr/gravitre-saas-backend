@@ -1,0 +1,22 @@
+{
+  "probe": "gravitre_2_0_hubspot_continuity",
+  "health_sha": "f32a12f942678dddfe348908595c1077e3f9e187",
+  "conversation_id": "da8821da-6e0c-4d2e-a1a9-43b0001e8718",
+  "plan_id": "3363a61c-7f76-49e7-94c1-2316c80655d7",
+  "plan_terminal": "pending",
+  "action_key": null,
+  "turns": [
+    {
+      "user": "Show my deals.",
+      "http_status": 200,
+      "assistant": "I found **25 deals** in your connected CRM."
+    },
+    {
+      "user": "Only the large ones.",
+      "http_status": 200,
+      "assistant": "I don\u2019t have enough information yet. Tell me what \u201clarge ones\u201d refers to, and I\u2019ll continue."
+    }
+  ],
+  "status": "FAIL",
+  "at": "2026-09-21T05:03:17.370626+00:00"
+}

@@ -1,19 +1,21 @@
 # Platform Execution 2.0 — completion report
 
 **Report date:** 2026-09-21  
-**Local HEAD at this slice:** pending commit after tests  
-**Backend `/health` at report time:** `b95a8735dbf980c28aae52a0ba68f3cc86ac9519` (`status=ok`, `ai_disabled=false`, `unified_turn_live_enabled=true`)  
+**origin/main at HubSpot kernel proof:** `f32a12f942678dddfe348908595c1077e3f9e187`  
+**Required CI on that SHA:** PASS `35562079518`  
+**Railway `/health`:** `f32a12f9` (`status=ok`, `ai_disabled=false`, `unified_turn_live_enabled=true`)  
+**Vercel production:** `dpl_EBqtb1ZMM7MgR55JUBeTdGsL1ZZD` SHA `f32a12f9`  
 **This is not a 2.0 PROGRAM COMPLETE declaration.**
 
-Classification: **IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING**.
+Classification: **IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING** (GA4/GSC OAuth, browser SSO, voice PCM). Continuity follow-up keep-evidence fix is a subsequent commit.
 
 ## Honest program answers
 
 | Question | Answer |
 |----------|--------|
-| Structurally complete (code for A0–M on main)? | **YES** for independently testable owners; unique multi-system bind live still NOT_RUN |
-| Test-proven? | **PARTIAL** — unit/integration PASS; not all live acceptance |
-| Live-proven? | **PARTIAL** — HubSpot deals.list grounded READ PASS; GA4/GSC/browser/PCM blocked |
+| Engineering complete for independently executable A0–M owners? | **YES**, with B unique-bind live still NOT_RUN |
+| Test-proven? | **PARTIAL** |
+| Live-proven? | **PARTIAL** — HubSpot deals.list on `f32a12f9` PASS `1af967ce-…` |
 | 2.0 COMPLETE: YES? | **NO** |
 
 ## P0 provider-result grounding
@@ -24,7 +26,7 @@ LIVE_PROVEN on isolated org `f07e57c0-…`:
 - Action `hubspot.deals.list`
 - Observation `dbdda006-4eae-400d-87f5-62d8725f2a6b` count 25
 - `tool.invoke.completed` `fb6f25c2-…` @ `2026-09-21T00:41:42.651738Z`
-- SHA `b95a8735`
+- SHA `f32a12f9` (also `1af967ce-e5f7-4195-8270-540fa6f89029`)
 
 ## Phase matrix
 

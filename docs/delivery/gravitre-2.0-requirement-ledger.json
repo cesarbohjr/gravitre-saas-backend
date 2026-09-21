@@ -43,12 +43,12 @@
     {"id": "2.0-E", "title": "Self-repair", "status": "LIVE PROVEN", "live": "LIVE PROVEN", "evidence": "f2-repair-live.json 2026-09-20T07:24:22Z"},
     {"id": "2.0-F", "title": "Governed WRITE compilation", "status": "TEST PROVEN", "live": "PARTIAL", "evidence": "write_preflight; isolated Send an email compile/clarify; no send"},
     {"id": "2.0-G", "title": "Multi-source reasoning", "status": "TEST PROVEN", "live": "NOT_RUN", "evidence": "multi_source_diagnostic.py; live causal join needs GA"},
-    {"id": "2.0-H", "title": "Task continuity and references", "status": "TEST PROVEN", "live": "NOT_RUN", "evidence": "task_continuity follow-up phrases unit 2026-09-21"},
+    {"id": "2.0-H", "title": "Task continuity and references", "status": "TEST PROVEN", "live": "PARTIAL", "evidence": "unit keep-evidence; live f32a12f9 follow-up lost evidence until keep-grounding fix"},
     {"id": "2.0-I", "title": "Voice comprehension and parity", "status": "TEST PROVEN", "live": "NOT_RUN", "evidence": "compile path has no spoken_mode; PCM blocked"},
     {"id": "2.0-J", "title": "Voice latency and interruption", "status": "LIVE PROVEN", "live": "EXTERNAL_BLOCKED", "evidence": "historic voice-slo @ 43570699; PCM not on b95a8735"},
-    {"id": "2.0-K", "title": "Memory and outcome learning", "status": "TEST PROVEN", "live": "NOT_RUN", "evidence": "POSITIVE_EVENTS excludes tool/workflow success"},
-    {"id": "2.0-L", "title": "Connector certification", "status": "TEST PROVEN", "live": "N/A_INTERNAL", "evidence": "connector_certification_scorecard.py; no customer badges"},
-    {"id": "2.0-M", "title": "Proactive business operation", "status": "TEST PROVEN", "live": "NOT_RUN", "evidence": "proactive_business_operator.py write_allowed false"}
+    {"id": "2.0-K", "title": "Memory and outcome learning", "status": "TEST PROVEN", "live": "NOT_RUN", "evidence": "bias_from_outcomes ignores tool success; READ records observation without claiming impact"},
+    {"id": "2.0-L", "title": "Connector certification", "status": "TEST PROVEN", "live": "N/A_INTERNAL", "evidence": "availability rows stamp internal_readiness; no customer badges"},
+    {"id": "2.0-M", "title": "Proactive business operation", "status": "TEST PROVEN", "live": "NOT_RUN", "evidence": "website remaining-source → evaluate_business_signals → guidance/notify"}
   ],
   "a1_a39_source": "CURSOR PROMPT GRAVITRE PLATFORM EXECUTION 2.0-A 2026-09-18",
   "a1_a39": [

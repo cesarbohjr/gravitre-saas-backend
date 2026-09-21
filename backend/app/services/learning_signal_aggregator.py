@@ -19,7 +19,6 @@ SIGNAL_WEIGHTS: dict[str, float] = {
     "approval_denied": 0.85,
     "recommendation_approved": 0.8,
     "recommendation_rejected": 0.8,
-    "workflow_executed": 0.6,
     "workflow_failed": 0.7,
     "workflow_abandoned": 0.5,
     "confidence_mismatch": 0.55,
@@ -34,8 +33,9 @@ OUTCOME_EVENT_SIGNAL_MAP: dict[str, tuple[str, str]] = {
     "approval_denied": ("approval_denied", "negative"),
     "user_feedback_positive": ("user_feedback_positive", "positive"),
     "user_feedback_negative": ("user_feedback_negative", "negative"),
-    "workflow_executed": ("workflow_executed", "positive"),
     "workflow_failed": ("workflow_failed", "negative"),
+    "business_metric_improved": ("explicit_helpful", "positive"),
+    "business_metric_declined": ("explicit_not_helpful", "negative"),
     "prediction_validated": ("explicit_helpful", "positive"),
     "prediction_missed": ("explicit_not_helpful", "negative"),
 }

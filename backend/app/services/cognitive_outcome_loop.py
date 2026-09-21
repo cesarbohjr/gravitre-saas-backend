@@ -5,6 +5,12 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.outcome_learning_service import (
+    BUSINESS_IMPACT_EVENTS,
+    POSITIVE_EVENTS,
+    TOOL_SUCCESS_EVENTS,
+    classify_outcome_layer,
+)
 
 logger = get_logger(__name__)
 
@@ -48,23 +54,31 @@ def bias_from_outcomes(
         if not isinstance(row, dict):
             continue
         event = str(row.get("outcome_event") or "")
+        if event in TOOL_SUCCESS_EVENTS:
+            continue
+        layer = classify_outcome_layer(event)
+        if layer not in {"business_outcomes", "decisions"}:
+            continue
         entity = str(row.get("entity_id") or row.get("recommendation_id") or "")
-        note = f"Prior outcome {event}" + (f" on {entity[:48]}" if entity else "")
-        if needle and needle not in note.lower() and needle not in entity.lower():
-            # Still count for aggregate bias; only skip verbose note when unrelated.
-            pass
-        else:
+        note = f"Prior {layer} {event}" + (f" on {entity[:48]}" if entity else "")
+        if not needle or needle in note.lower() or needle in entity.lower():
             bias_notes.append(note)
-        event_l = event.lower()
-        if any(tok in event_l for tok in ("success", "accepted", "positive", "improved", "verified")):
+        if event in POSITIVE_EVENTS or event in {"business_metric_improved"}:
             positive += 1
-        elif any(tok in event_l for tok in ("fail", "reject", "negative", "decline", "error")):
+        elif event in BUSINESS_IMPACT_EVENTS or event in {
+            "recommendation_rejected",
+            "approval_denied",
+            "user_feedback_negative",
+        }:
             negative += 1
 
-    if not bias_notes and rows:
-        # Aggregate note when query didn't match specific rows.
+    if not bias_notes and any(
+        classify_outcome_layer(str(row.get("outcome_event") or "")) in {"business_outcomes", "decisions"}
+        for row in rows
+        if isinstance(row, dict)
+    ):
         bias_notes.append(
-            f"Org has {len(rows)} recent outcome events "
+            f"Org has recent measured outcomes "
             f"({positive} positive-leaning, {negative} negative-leaning)."
         )
 

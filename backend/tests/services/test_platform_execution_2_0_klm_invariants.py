@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
 
 from app.connectors.action_catalog.f1_read_slice import is_f1_read_action
 from app.connectors.action_catalog.registry import get_action_spec
@@ -157,3 +161,101 @@ def test_proactive_requires_evidence_and_forbids_writes() -> None:
 def test_ungrounded_prose_still_blocked() -> None:
     text = apply_provider_result_grounding("Pipeline is healthy with 25 deals.", {"success": True})
     assert "25" not in text
+
+
+def test_outcome_bias_ignores_tool_success() -> None:
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from app.services.cognitive_outcome_loop import bias_from_outcomes
+
+    rows = [
+        {"outcome_event": "connector_action_executed", "entity_id": "hubspot", "recommendation_id": None},
+        {"outcome_event": "business_metric_improved", "entity_id": "pipeline", "recommendation_id": None},
+    ]
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+        data=rows
+    )
+    bias = bias_from_outcomes(client, "org-1", "pipeline", SimpleNamespace())
+    notes = " ".join(bias["bias_notes"])
+    assert "connector_action_executed" not in notes
+    assert "business_metric_improved" in notes
+    assert bias["weight_delta"] > 0
+
+
+def test_availability_row_carries_internal_scorecard() -> None:
+    from app.services.connector_certification_scorecard import attach_internal_readiness
+
+    row = attach_internal_readiness(
+        {
+            "vendor": "hubspot",
+            "configured": True,
+            "connected": True,
+            "authenticated": True,
+            "token_valid": True,
+            "scopes_valid": True,
+            "execution_available": True,
+        }
+    )
+    assert row["internal_readiness"]["customer_badge"] is None
+    assert row["internal_readiness"]["layers"]["registered"] is True
+
+
+def test_website_readiness_feeds_proactive_operator() -> None:
+    from app.services.proactive_business_operator import (
+        evaluate_business_signals,
+        patch_task_state_with_recommendations,
+        signals_from_website_readiness,
+    )
+
+    readiness = {
+        "google_analytics": {
+            "present": True,
+            "executable": False,
+            "blocking_reason": "pending_auth",
+            "auth_status": "pending_auth",
+        },
+        "google_search_console": {
+            "present": True,
+            "executable": False,
+            "blocking_reason": "token_expired",
+            "auth_status": "auth_expired",
+        },
+    }
+    recs = evaluate_business_signals(signals_from_website_readiness(readiness))
+    assert recs
+    assert all(r.write_allowed is False for r in recs)
+    state = patch_task_state_with_recommendations({}, recs)
+    assert state["proactive_operator"][0]["notify"] is True
+
+
+@pytest.mark.asyncio
+async def test_large_deals_followup_keeps_provider_evidence() -> None:
+    from app.services.operational_read_execution import try_operational_read_short_circuit_turn
+
+    evidence = {
+        "kind": "provider_result",
+        "action_key": "hubspot.deals.list",
+        "result_count": 25,
+        "provider_invoked": True,
+        "success": True,
+        "plan_id": "plan-deals-1",
+        "step_id": "s1",
+        "observation_id": "obs-1",
+    }
+    result = await try_operational_read_short_circuit_turn(
+        message="Only the large ones.",
+        org_id="org-1",
+        client=MagicMock(),
+        settings=SimpleNamespace(),
+        connected_integrations=["hubspot"],
+        task_state={
+            **_deals_state(),
+            "provider_result_evidence": evidence,
+        },
+    )
+    assert result is not None
+    assert result["selected_action"] == "hubspot.deals.list"
+    assert result["task_state"]["provider_result_evidence"]["result_count"] == 25
+    assert "guess" in result["message"].lower()

@@ -4,11 +4,13 @@ Uses the same sealed HMAC invoke as traffic. Does not execute WRITE recipes.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from typing import Any
 
 from app.capability_ontology.cognitive_recipe_planner import match_recipe_for_query
 from app.capability_ontology.recipe_resolver import resolve_recipe
+from app.capability_ontology.recipes import get_recipe
 from app.config import Settings, get_settings
 from app.services.clarification_policy import format_not_connected_message
 from app.services.connector_semantic_registry import connector_display_name
@@ -119,9 +121,57 @@ async def try_operational_read_short_circuit_turn(
 ) -> dict[str, Any] | None:
     recipe = match_recipe_for_query(message)
     if recipe is None or recipe.recipe_id not in OPERATIONAL_READ_RECIPES:
-        return None
+        from app.services.task_continuity import active_task_frame, decide_task_continuity
+
+        if decide_task_continuity(message, task_state) == "continue":
+            cap = str((active_task_frame(task_state) or {}).get("capability_id") or "")
+            if cap in OPERATIONAL_READ_RECIPES:
+                recipe = get_recipe(cap)
+        if recipe is None or recipe.recipe_id not in OPERATIONAL_READ_RECIPES:
+            return None
     connected = [str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()]
     expected_vendor = _RECIPE_VENDOR[recipe.recipe_id]
+    evidence = (
+        (task_state or {}).get("provider_result_evidence")
+        if isinstance(task_state, dict)
+        else None
+    )
+    from app.services.task_continuity import decide_task_continuity
+
+    if (
+        decide_task_continuity(message, task_state) == "continue"
+        and isinstance(evidence, dict)
+        and evidence.get("provider_invoked")
+        and re.search(r"\blarge\b", message or "", re.I)
+        and not re.search(r"\d", message or "")
+    ):
+        count = evidence.get("result_count")
+        count_bit = f"those {count} deals" if isinstance(count, int) else "those deals"
+        plan = reconcile_execution_plan(
+            message=message,
+            task_state=task_state,
+            capability_id=recipe.recipe_id,
+            connected_integrations=connected,
+        )
+        plan = mark_plan_terminal(plan, "completed")
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "clarifying",
+            "message": (
+                f"I still have {count_bit} from the connected CRM. "
+                "What amount should count as large so I can filter them? "
+                "I won't guess a cutoff."
+            ),
+            "task_state": {
+                **(task_state or {}),
+                **execution_plan_patch(plan),
+                "provider_result_evidence": evidence,
+            },
+            "workflow_status": "needs clarification",
+            "execution_path": "operational_f1_read",
+            "provider_result_evidence": evidence,
+            "selected_action": evidence.get("action_key"),
+        }
     resolved = resolve_recipe(
         recipe.recipe_id,
         connected_integrations=connected,
@@ -260,6 +310,17 @@ async def try_operational_read_short_circuit_turn(
         success=True,
         provider_invoked=True,
     )
+    try:
+        from app.services.outcome_learning_service import get_outcome_learning_service
+
+        await get_outcome_learning_service(active_settings).record_connector_action_outcome(
+            org_id,
+            str(invoke.resolved_vendor or expected_vendor),
+            action_key,
+            "connector_action_executed",
+        )
+    except Exception:
+        pass
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",

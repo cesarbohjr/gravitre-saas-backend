@@ -71,3 +71,42 @@ def evaluate_business_signals(
             )
         )
     return out
+
+
+def signals_from_website_readiness(readiness: dict[str, dict[str, Any]] | None) -> list[dict[str, Any]]:
+    signals: list[dict[str, Any]] = []
+    for vendor, row in (readiness or {}).items():
+        if not isinstance(row, dict) or row.get("executable"):
+            continue
+        if not row.get("present"):
+            continue
+        reason = str(row.get("blocking_reason") or row.get("auth_status") or "not_executable")
+        kind = "pending_auth" if "pending" in reason else "token_expired"
+        signals.append(
+            {
+                "id": f"{vendor}:{kind}",
+                "kind": kind,
+                "connector": vendor,
+                "evidence": [reason],
+            }
+        )
+    return signals
+
+
+def patch_task_state_with_recommendations(
+    task_state: dict[str, Any] | None,
+    recommendations: list[ProactiveRecommendation],
+) -> dict[str, Any]:
+    state = dict(task_state or {})
+    state["proactive_operator"] = [
+        {
+            "signal_id": rec.signal_id,
+            "significance": rec.significance,
+            "evidence": list(rec.evidence),
+            "recommendation": rec.recommendation,
+            "notify": rec.notify,
+            "write_allowed": False,
+        }
+        for rec in recommendations
+    ]
+    return state
