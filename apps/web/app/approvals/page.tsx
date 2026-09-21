@@ -684,7 +684,13 @@ function DetailPanel({
             </Link>
           </Button>
         ) : null}
-        <div className={cn("flex items-center gap-3", approval.status !== "pending" && "hidden")}>
+        <div
+          className={
+            approval.status === "pending"
+              ? "hidden items-center gap-3 lg:flex"
+              : "hidden"
+          }
+        >
           <Button
             size="lg"
             className="flex-1 gap-2 h-11 cursor-pointer"

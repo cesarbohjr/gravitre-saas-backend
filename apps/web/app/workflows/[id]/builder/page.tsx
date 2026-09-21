@@ -5779,15 +5779,17 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     handleDisconnect()
   }}
   />
-                    {/* Glow effect - wider and softer */}
+                    {/* Glow only while a real run or chosen decision path is active — idle edges stay still. */}
+                    {(isActive || isChosenPath) && !isDimmedPath ? (
                     <path
                       d={pathD}
                       stroke={dotColor}
                       strokeWidth={isDecisionSource && isChosenPath ? "10" : "8"}
                       fill="none"
-                      opacity={isChosenPath ? "0.3" : isActive ? "0.2" : "0.1"}
-                      filter={isChosenPath ? "url(#decisionGlow)" : isActive ? "url(#glow)" : undefined}
+                      opacity={isChosenPath ? "0.3" : "0.2"}
+                      filter={isChosenPath ? "url(#decisionGlow)" : "url(#glow)"}
                     />
+                    ) : null}
                     {/* Main line with gradient */}
                     <path
                       d={pathD}
@@ -5814,8 +5816,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                         />
                       )}
                     </path>
-                    {/* Multiple animated data flow particles - skip for dimmed paths */}
-                    {!isDimmedPath && (
+                    {/* Execution overlay only on a live run — not idle chrome. */}
+                    {isActive && !isDimmedPath && (
                       <>
                         <circle r={isChosenPath ? "5" : "4"} fill={dotColor} filter={isDecisionSource ? "url(#decisionGlow)" : "url(#glow)"}>
                           <animateMotion dur={animationDuration} repeatCount="indefinite" path={pathD} />

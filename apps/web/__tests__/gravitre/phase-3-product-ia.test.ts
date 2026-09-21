@@ -28,6 +28,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(inspector).not.toMatch(/AgentIdentityAvatar/)
     const graph = readFileSync(resolve(webRoot, "components/agents/fleet-v4/graph-view.tsx"), "utf8")
     expect(graph).not.toMatch(/ConnectorsAtmosphere/)
+    expect(graph).toMatch(/sweep=\{active\}/)
     const tabs = readFileSync(resolve(webRoot, "components/agents/agents-hub-tabs.tsx"), "utf8")
     expect(tabs).not.toMatch(/from \"@\/components\/gravitre\/hub-tabs\"/)
     expect(tabs).toMatch(/aria-label="Agents hub"/)
@@ -48,6 +49,15 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(strip).toMatch(/data-review-surface="connectors-discovery"/)
     expect(strip).toMatch(/>Discovery</)
     expect(strip).not.toMatch(/Available\s*</)
+  })
+
+  it("sources list is a table, not a card-first grid", () => {
+    const src = readFileSync(resolve(webRoot, "app/sources/page.tsx"), "utf8")
+    expect(src).toMatch(/<table/)
+    expect(src).not.toMatch(/xl:grid-cols-4/)
+    expect(src).toMatch(/Last sync/)
+    expect(src).toMatch(/data-source-ingest="syncing"/)
+    expect(src).toMatch(/source\.status === "syncing"/)
   })
 
   it("relationships map is not wrapped in a permanent evidence dashboard", () => {
@@ -134,6 +144,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/traceOverlay/)
     expect(src).toMatch(/Inspect ·/)
     expect(src).toMatch(/not behind Ask/)
+    expect(src).toMatch(/isActive && !isDimmedPath/)
   })
 
   it("runs lead with outcome evidence and keep TRACE as a drill-down", () => {
@@ -157,6 +168,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/data-review-cta="approve"/)
     expect(src).toMatch(/inspector stays closed until then/)
     expect(src).toMatch(/Select to decide/)
+    expect(src).toMatch(/hidden items-center gap-3 lg:flex/)
     expect(src).toMatch(/ESTIMATED_CONFIDENCE_LABEL/)
     expect(src).not.toMatch(/AI-approved/)
     expect(src).not.toMatch(/hidden lg:block/)

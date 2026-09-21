@@ -311,7 +311,7 @@ export function GraphView({
                   d={d}
                   active={active}
                   dashed={dashed}
-                  sweep
+                  sweep={active}
                 />
               )
             })}

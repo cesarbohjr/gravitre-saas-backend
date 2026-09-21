@@ -67,31 +67,45 @@ Applies to: Intelligence, Activity, Navigation, and later surfaces until a sessi
 
 ## Phase 4 — Navigation B (expandable labeled rail)
 
+Commit `7c9ac89e` is on `main`.
+
 | REQUIREMENT | STATUS | EVIDENCE |
 |-------------|--------|----------|
-| Click expand (not hover-only) | IMPLEMENTED — NOT PROVEN | `app-shell.tsx` hamburger + persisted `gravitre-nav-expanded` |
-| Pin labels | IMPLEMENTED — NOT PROVEN | Sidebar `nav-pin-labels` → same persisted toggle |
-| Keyboard arrows | IMPLEMENTED — NOT PROVEN | `cycleNavFocus` + sidebar keydown · vitest 3/3 `nav-rail-focus.test.ts` |
-| Mobile drawer | IMPLEMENTED — NOT PROVEN | Existing overlay; hamburger opens drawer <768 |
+| Click expand (not hover-only) | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | `app-shell.tsx` hamburger + persisted `gravitre-nav-expanded` |
+| Pin labels | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | Sidebar `nav-pin-labels` → same persisted toggle |
+| Keyboard arrows | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | `cycleNavFocus` + sidebar keydown · vitest 3/3 `nav-rail-focus.test.ts` |
+| Mobile drawer | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | Existing overlay; hamburger opens drawer <768 |
 | Destinations / org / admin-lite / notifications / AI / palette | PRESERVED | No second nav architecture; top bar unchanged |
-| Authenticated browser | BLOCKED | No authorized session |
+| Authenticated browser | BLOCKED | No authorized session. Not production VERIFIED. |
 
 ---
 
-## Phase 5 — Remaining surfaces
+## Phase 5 — Requirements matrix
 
-| SURFACE | STATUS | NEXT |
-|---------|--------|------|
-| Agents | NOT STARTED | Inherit foundation on existing roster — do not replace fleet |
-| Relationships | NOT STARTED | After Agents |
-| Workflows | NOT STARTED | |
-| Connectors | NOT STARTED | |
-| Sources | NOT STARTED | |
-| Approvals | NOT STARTED | |
-| Marketplace | NOT STARTED | |
-| Models | NOT STARTED | |
-| Settings | NOT STARTED | |
-| AI Workspace refinements | NOT STARTED | No second runtime |
+Authenticated browser for every row: **BLOCKED: NO AUTHORIZED SESSION**. That does not block the implementation status below.
+
+| SURFACE | APPROVED REQUIREMENT | CURRENT IMPLEMENTATION | CATEGORY | CHANGE MADE | TEST EVIDENCE | BROWSER EVIDENCE | STATUS | NEXT ACTION |
+|---------|----------------------|------------------------|----------|-------------|---------------|------------------|--------|-------------|
+| Agents | Operate team; open profile/handoff; animate delegate edge only on a real handoff; remove giant avatar orbs | Team view is default (compact identity, no hub). Graph edges from parent, swarm, connectors. Inspector opens on select. | A implemented. C: no new fleet spatial model. | Graph sweep runs only when `edge.active` (in-flight swarm). Idle edges stay still. | `phase-3-product-ia.test.ts` asserts `sweep={active}` and no hub on team | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None until a session exists |
+| Relationships | Edge + provenance inspect; trace on select; canvas idle | `RelationshipsWorkspace` graph/table + inspector provenance copy and `TracePath`. Mounted from Intelligence learning and admin intelligence. | A already present. C: do not replace the canvas with another spatial model. | None. Working canvas preserved. | Existing IA test: graph mode, selection, no metrics dashboard | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+| Workflows | Author/verify; configure/run; execution overlay only on a real run; remove decorative chrome | Builder canvas, node inspect, `traceOverlay`. Connection particles previously looped on idle edges. | A | Glow and flow particles render only when the source node is running, success, or evaluating (or a chosen decision path). | `phase-3-product-ia.test.ts` asserts `isActive && !isDimmedPath` | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+| Connectors | Discover then manage; connect/repair; animate only real OAuth; no logo-wall default | Default `viewMode` is the compact list. Topology is opt-in. | A already present. | None. | Existing IA test: default `"grid"`, `variant="list"`, discovery strip | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+| Sources | Ingest/verify; remove card-first grids where a table wins; pulse only on a real syncing job | Table of existing source fields. `rag_sources.status` is set to `syncing` by `source_sync_service` during a sync. | A | Category list is a table. Status cell pulses only when `status === "syncing"` (`motion-safe`). Last sync and generic connected/error do not pulse. Selected row still opens the existing tile. | `phase-3-product-ia.test.ts` asserts `<table`, no `xl:grid-cols-4`, and `data-source-ingest="syncing"` | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+| Approvals | One primary Approve; continue the same run; remove multi-CTA clutter | Queue selects; inspector Approve is primary; row says “Select to decide”; same-path chip when `runId` exists. | A | Desktop inspector keeps Approve. Mobile uses only the sticky bar (`lg:flex` footer hidden below `lg`) so Approve is not shown twice. | Existing IA test plus `hidden items-center gap-3 lg:flex` | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+| Marketplace | Discover and install real catalog objects. Visual density is an unselected replacement layout (`GRAVITRE_3.0_PLUS_CESAR_APPROVAL_PACKAGE.md`: “Heavy redesign; own slice”). | Catalog remains the existing featured + card grid (`data-review-surface="marketplace-discovery"`). Prices stay on asset records. | C — open | None. A table or new discovery object would be a new concept. | Not rewritten | NOT RUN — login wall | PRESERVED — open layout decision | Do not redesign until a density layout is selected |
+| Models | Honest readiness; no fake TRAINED; no decorative motion | Catalog/studio are list + inspector. No `TRAINED` string on `/models` or the built-in brain. | A already present. | None. | Existing IA test: list + inspector, not card grids | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+| Settings | Shared shell and Navigation B. No separate settings spatial model in the approved surface table. | Settings routes already use `AppShell`. Org switch stays inspector-on-selection. | B already present. | None. | Existing IA test: settings orgs inspect, no card chrome | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+| AI Workspace | Morph the existing workspace; one `useChat`; voice uses the existing visualizer, not the marketing orb | `useChat({` is called in `ai-workspace.tsx` only. Voice comments keep the orb as presentation, not a second runtime. | A already present. C: no second runtime and no marketing-orb import. | None. | `selected-entity-context.test.ts` reads that `useChat({` transport body | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
+
+### Category C
+
+1. **Marketplace discovery density — still open.** The approval package marks this as a heavy redesign and its own slice. Existing rules also say marketplace objects are premium discovery, not an operations table. No layout was selected, so the catalog is unchanged.
+2. **Sources ingest pulse — closed.** `source_sync_service` writes `rag_sources.status = "syncing"` for a real sync. The table pulses only on that status. Last-sync text does not drive motion.
+3. **Agents and Relationships spatial models — closed by preservation.** Team, list, graph, and the relationships canvas stay. No additional model was added.
+
+Do not reopen Intelligence I1/I2, Activity A1/A2, or Navigation B.
+
+Phase 5 commit, CI, and deployment are recorded after the commit lands. Authenticated browser remains BLOCKED: NO AUTHORIZED SESSION.
 
 ---
 

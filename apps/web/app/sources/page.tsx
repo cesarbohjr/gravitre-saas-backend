@@ -30,7 +30,6 @@ import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
 import type { CreateSourceRequest } from "@/types/api"
 import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
 import { EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
-import { CardSkeleton } from "@/components/gravitre/loading-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { toast } from "sonner"
 
@@ -561,11 +560,7 @@ export default function SourcesPage() {
           </div>
 
           {isLoading && sources.length === 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </div>
+            <div className="h-40 animate-pulse rounded-lg border border-divide bg-[color:var(--g-surface-2)]" />
           ) : null}
 
           {!isLoading && !error && sources.length === 0 ? (
@@ -602,22 +597,70 @@ export default function SourcesPage() {
                       {groupedSources[category].length !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {groupedSources[category].map((source, index) => (
-                      <SourceTile
-                        key={source.id}
-                        source={source}
-                        index={index}
-                        isExpanded={expandedSource === source.id}
-                        onToggle={() =>
-                          setExpandedSource(expandedSource === source.id ? null : source.id)
-                        }
-                        onSync={handleSync}
-                        onDelete={handleDelete}
-                        isMutating={mutatingSourceId === source.id}
-                      />
-                    ))}
+                  <div className="overflow-x-auto rounded-lg border border-divide">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <thead className="border-b border-divide bg-[color:var(--g-surface-2)] text-[11px] uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 font-medium">Source</th>
+                          <th className="px-3 py-2 font-medium">Type</th>
+                          <th className="px-3 py-2 font-medium">Status</th>
+                          <th className="px-3 py-2 font-medium">Tables</th>
+                          <th className="px-3 py-2 font-medium">Records</th>
+                          <th className="px-3 py-2 font-medium">Workflows</th>
+                          <th className="px-3 py-2 font-medium">Last sync</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupedSources[category].map((source) => {
+                          const selected = expandedSource === source.id
+                          return (
+                            <tr
+                              key={source.id}
+                              className={cn(
+                                "cursor-pointer border-b border-divide last:border-0",
+                                selected ? "bg-[color:var(--g-surface-active)]" : "hover:bg-[color:var(--g-surface-2)]",
+                              )}
+                              onClick={() => setExpandedSource(selected ? null : source.id)}
+                            >
+                              <td className="px-3 py-2 font-medium text-foreground">{source.name}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{source.type}</td>
+                              <td className="px-3 py-2 capitalize text-muted-foreground">
+                                <span className="inline-flex items-center gap-2">
+                                  {source.status === "syncing" ? (
+                                    <span
+                                      className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--g-signal)] motion-safe:animate-pulse"
+                                      data-source-ingest="syncing"
+                                      aria-hidden
+                                    />
+                                  ) : null}
+                                  {source.status}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 tabular-nums">{source.tables}</td>
+                              <td className="px-3 py-2 tabular-nums">{source.records}</td>
+                              <td className="px-3 py-2 tabular-nums">{source.workflowsUsing}</td>
+                              <td className="px-3 py-2 text-muted-foreground">{source.lastSync}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
+                  {groupedSources[category]
+                    .filter((source) => source.id === expandedSource)
+                    .map((source) => (
+                      <div key={`${source.id}-inspect`} className="mt-3 max-w-xl">
+                        <SourceTile
+                          source={source}
+                          index={0}
+                          isExpanded
+                          onToggle={() => setExpandedSource(null)}
+                          onSync={handleSync}
+                          onDelete={handleDelete}
+                          isMutating={mutatingSourceId === source.id}
+                        />
+                      </div>
+                    ))}
                 </motion.div>
               ))}
           </AnimatePresence>
