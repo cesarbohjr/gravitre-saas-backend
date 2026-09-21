@@ -178,7 +178,7 @@ No further safe implementation remains for Technology thinning or the KF-A produ
 | Probe | Result |
 |-------|--------|
 | `routing_wave_abcd` | **PASS** on health `8ee2ae00` — A `fast`+`simple`, B `multi_step`+pending, C `research`. Artifact `docs/delivery/routing-wave-prod-live.json`. |
-| `wave67_spotcheck` | Claims 1/3/4 **PASS** on `8ee2ae00` after isolating conversations + scoring sanitized “Running connected tools”. Claim 2 **PARTIAL** (Slack chip missing when understanding omitted deps). Fix `19b3e014` forces Slack/email send → `connector_unavailable` chip; live re-prove pending deploy of that SHA. |
+| `wave67_spotcheck` | Claims 1/3/4 **PASS** on `19b3e014` (isolated conversations + sanitized plan-ready scoring). Claim 2 **PARTIAL** — Slack turn still reaches `searchKnowledgeBase` with `dialogueMode=confirm` and no failure chip after `19b3e014` (unit fixture for empty-deps → `connector_unavailable` passes; live chip path still NOT PROVEN). Artifact `docs/delivery/wave67-spotcheck-latest.json`. |
 | HubSpot continuity (H) | **PASS** on health `4f98e744`, conv `8600c818…`, `hubspot.deals.list`. |
 | K/L/M + 3.0-J + golden traffic units | **34 passed** (`test_platform_execution_2_0_klm_invariants`, `test_platform_execution_3_0_j_attention`, `test_golden_benchmark_traffic`). |
 
@@ -197,4 +197,33 @@ No further safe implementation remains for Technology thinning or the KF-A produ
 | Technology page thinning | VERIFIED on production `720a0650`. `/features/technology` at 2026-09-21 has `data-technology-legacy="0"`, no “50+ integrations” catalog, no “How Gravitre works” legacy block, no TRAINED string. Scene links: org learning, agents, approvals, sources. |
 | Production Pilot 3 promote | VERIFIED on production `720a0650`. Technology Knowledge Fabric is `data-kf-production="workbench"` (`entity-convergence-workbench`). Page text includes Sarah and Sarah Smith. Caption stays illustrative exact match, not a live org graph. Vercel `CPeWukqMmHrCCJxxuKKhzYgsrpbC`. |
 | Pilot 1 / 2 concept reopen | Locked — do not reopen |
+
+---
+
+## Phase 2 — Final 2.0 / 3.0 ledger (2026-09-21 tip `19b3e014` / health same)
+
+Evidence tiers: **VERIFIED** = live API or public production proof with pointer. **IMPLEMENTED — NOT PROVEN** = code + unit/integration, no qualifying live proof. **EXTERNALLY BLOCKED** = needs provider OAuth, device, or human consent outside this program.
+
+| Item | Tier | Evidence / blocker |
+|------|------|--------------------|
+| Auth browser session | VERIFIED (session mint) / IMPLEMENTED — NOT PROVEN (full /ai landing marker) | `hasSession=true` on `/ai` via token_hash callback. Playwright 2/3 on prod; landing attr intermittent. |
+| retrieval_ab A | VERIFIED | Live PASS `6d563e3d` + fixtures; tool `getConnectorStatus`, tier `simple`. |
+| routing_wave_abcd | VERIFIED | Live PASS `8ee2ae00` A/B/C. |
+| wave67 claims 1,3,4 | VERIFIED | Live PASS `19b3e014`. |
+| wave67 claim 2 Slack chip | IMPLEMENTED — NOT PROVEN | Unit PASS empty-deps fixture; live still KB/`confirm` without failure chip. |
+| A0/A traffic golden | EXTERNALLY BLOCKED | GA4 `pending_auth` on isolated org. Units PASS (34 golden+KLM+J). |
+| B identity | IMPLEMENTED — NOT PROVEN (multi-OAuth) | Alpha seed + bindings TEST-PROVEN; QBO/Zendesk OAuth pending. |
+| C recipes live | EXTERNALLY BLOCKED | GSC reconnect-required; GA pending. |
+| D READ | VERIFIED (HubSpot) / EXTERNALLY BLOCKED (Gmail/GA) | HubSpot deals.list continuity PASS `4f98e744` conv `8600c818`. |
+| F WRITE compile | EXTERNALLY BLOCKED | Gmail OAuth absent; Apollo write gate live PASS in wave67 claim 3. |
+| G multi-source | EXTERNALLY BLOCKED | Needs second live provider (Zendesk/GA). |
+| H continuity | VERIFIED | Re-PASS `4f98e744` / `hubspot.deals.list`. |
+| I text/voice parity | IMPLEMENTED — NOT PROVEN (PCM) | Shared-runtime CI + units; live mic PCM blocked. |
+| K outcome learning | IMPLEMENTED — NOT PROVEN (prod KPI loop) | Units PASS; no live business-metric loop claimed. |
+| L scorecard | VERIFIED (isolated) | Automated isolated scorecard; no customer Certified badge. |
+| M / 3.0-J proactive | IMPLEMENTED — NOT PROVEN (live notices) | Units PASS (`test_platform_execution_3_0_j_attention`); live opt-in notices NOT RUN. |
+| OAuth GA4/GSC/Gmail | EXTERNALLY BLOCKED | Interactive Google consent + Gmail connector on isolated org. |
+| Voice PCM / mic | EXTERNALLY BLOCKED | Physical microphone + human VOICE_C. |
+
+**Does Phase 0 unlock prior NOT PROVEN browser items?** Session mint is unblocked. Authenticated `/ai` load without login bounce is LIVE-PROVEN for the smoke user. Full product-surface matrix (Intelligence/Activity/etc. browser PASS) remains NOT PROVEN until those specs are re-run against the new storage state — only the `/ai` harness was executed here (2/3).
 
