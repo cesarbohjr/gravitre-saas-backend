@@ -420,13 +420,14 @@ export function entitiesForLens(lens: HarnessLens) {
 }
 
 export function relationshipsForLens(lens: HarnessLens) {
+  const isLearnsLens = lens === "learns"
   return HARNESS_RELATIONSHIPS.map((r) => {
     const inLens = r.lenses.includes(lens)
-    const hideArchived = lens !== "learns" && r.status === "archived"
+    const hideArchived = !isLearnsLens && r.status === "archived"
     return {
       ...r,
       emphasized: inLens && !hideArchived,
-      visible: !hideArchived || lens === "learns",
+      visible: !hideArchived || isLearnsLens,
     }
   }).filter((r) => r.visible)
 }

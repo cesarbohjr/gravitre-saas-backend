@@ -470,7 +470,7 @@ export function IntelligenceFieldPrototype({ scene }: { scene: string }) {
           { action: "removed", detail: "Cosmetic lens color toggles without content change" },
           { action: "consolidated", detail: "One canonical entity/relationship set; lenses emphasize subsets" },
           { action: "clearer", detail: "I2 events: new/changed/confirmed/learned/contradiction/archived/freshness" },
-          { action: "honest", detail: "Confidence nullability + sparse entity empty state" },
+          { action: "clearer", detail: "Confidence nullability + sparse entity empty state" },
           { action: "visual", detail: "Select entity OR relationship → inspector + Ask context" },
         ]}
       />
