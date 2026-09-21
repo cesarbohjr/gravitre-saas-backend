@@ -1,6 +1,6 @@
 # Gravitre Product Visual System 3.0 Plus
 
-**Status:** Planning document — **NOT authorized for broad production rollout**  
+**Status:** AUTHORIZED to start — Cesar 2026-09-20 · prototype → P-1 grammar on real TRACE; not broad production visual rollout  
 **Date:** 2026-09-20  
 **Builds on:** `GRAVITRE_PRODUCT_VISUAL_SYSTEM_2.0.md`, Nodus inheritance, Reset 2.0 tokens
 

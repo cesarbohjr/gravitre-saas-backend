@@ -52,6 +52,7 @@ import {
   runOutcomeHeadline,
 } from "@/lib/runs/run-outcome-display"
 import { TYPE } from "@/lib/design-system"
+import { EvidenceChip, grammarToneForStepStatus } from "@/components/gravitre/creative-grammar"
 import type { ApprovalBatchView, RunCompensationSummary, RunDetailResponse, RunStatus } from "@/types/api"
 
 type StepStatus = ExecutionStepView["status"]
@@ -999,29 +1000,48 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               {steps.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No steps recorded yet.</p>
               ) : (
-                <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2" data-creative-grammar="1">
                   {steps.map((step, index) => {
                     const StatusIcon = stepStatusIcons[step.status]
+                    const grammarKey = grammarToneForStepStatus(step.status)
                     return (
                       <div key={step.id} className="flex items-center gap-2">
                         <div
                           className={cn(
-                            "flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2",
-                            step.status === "failed" && "border-destructive/50",
-                            step.status === "awaiting_approval" &&
-                              "animate-pulse border-warning/50",
+                            "flex items-center gap-2 rounded-[var(--np-radius-md)] border bg-[color:var(--g-surface-2)] px-3 py-2",
+                            grammarKey === "failed" && "border-destructive/50",
+                            grammarKey === "waiting" && "border-warning/50",
+                            grammarKey === "verified" && "border-[color:color-mix(in_srgb,#16a374_45%,transparent)]",
+                            grammarKey === "running" && "border-info/40",
+                            grammarKey === "pending" && "border-divide",
                           )}
+                          data-grammar-tone={grammarKey}
                         >
                           <StatusIcon className={`h-3.5 w-3.5 ${stepStatusColors[step.status]}`} />
                           <span className="whitespace-nowrap text-xs font-medium text-foreground">
                             {step.name}
                           </span>
-                          <span className="rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            {step.status}
-                          </span>
+                          {grammarKey === "waiting" ? (
+                            <EvidenceChip label="Needs approval" tone="waiting" />
+                          ) : grammarKey === "verified" ? (
+                            <EvidenceChip label="Verified" tone="evidence" />
+                          ) : grammarKey === "failed" ? (
+                            <EvidenceChip label="Failed" tone="error" />
+                          ) : (
+                            <span className="rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {step.status}
+                            </span>
+                          )}
                         </div>
                         {index < steps.length - 1 && (
-                          <div className="h-px w-4 shrink-0 bg-[color:var(--g-border-default)]" />
+                          <div
+                            className={cn(
+                              "h-px w-4 shrink-0",
+                              grammarKey === "verified"
+                                ? "bg-[color:var(--color-brand,#16a374)]"
+                                : "bg-[color:var(--g-border-default)]",
+                            )}
+                          />
                         )}
                       </div>
                     )

@@ -110,6 +110,7 @@ export function TopologyEdge({
   learned = false,
   progress = 1,
   reducedMotion = false,
+  opacity = 1,
 }: {
   x1: number
   y1: number
@@ -121,6 +122,7 @@ export function TopologyEdge({
   learned?: boolean
   progress?: number
   reducedMotion?: boolean
+  opacity?: number
 }) {
   const d = `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`
   const stroke =
@@ -134,7 +136,7 @@ export function TopologyEdge({
   const midY = (y1 + y2) / 2
 
   return (
-    <g>
+    <g opacity={opacity}>
       <path d={d} fill="none" stroke="var(--g-border-subtle)" strokeWidth={1.25} strokeLinecap="round" />
       <motion.path
         d={d}
@@ -161,13 +163,15 @@ export function HarnessSurface({
   children,
   className,
   elevated = true,
+  ...rest
 }: {
   children: React.ReactNode
   className?: string
   elevated?: boolean
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
+      {...rest}
       className={cn(
         "rounded-xl border border-[color:var(--g-border-subtle)]",
         elevated ? "bg-[color:var(--g-surface-1)] shadow-[var(--g-shadow-sm,0_1px_2px_rgba(0,0,0,0.04))]" : "bg-transparent",

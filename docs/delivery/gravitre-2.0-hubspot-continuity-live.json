@@ -1,22 +1,42 @@
 {
   "probe": "gravitre_2_0_hubspot_continuity",
-  "health_sha": "6cd43ae3787a7d639abf2206b743d08948214238",
-  "conversation_id": "b808fc42-7acf-44aa-8c86-b9b9864e96d7",
-  "plan_id": "3db2ba93-75fb-4a74-b8a6-d60b938b04d0",
+  "health_sha": "4f98e7444f1fd8d750b3d2d9199afade622f71d6",
+  "conversation_id": "8600c818-27d2-4498-9c63-e9abb9ccf9a5",
+  "plan_id": "863b48a5-5ed0-486e-ad09-a96ac1bf7cab",
   "plan_terminal": "completed",
   "action_key": "hubspot.deals.list",
   "turns": [
     {
       "user": "Show my deals.",
       "http_status": 200,
-      "assistant": "I found **25 deals** in your CRM. I don\u2019t have the individual deal details in this result, so I can only confirm the count right now."
+      "assistant": "I found **25 deals** in your connected CRM. This result only included the count, not the deal list."
     },
     {
       "user": "Only the large ones.",
       "http_status": 200,
-      "assistant": "What amount should count as large so I can filter the CRM deals? I won\u2019t guess the cutoff."
+      "assistant": "What amount should count as \u201clarge\u201d so I can filter the deals? I won\u2019t guess the cutoff."
+    },
+    {
+      "user": "Last week instead.",
+      "http_status": 200,
+      "assistant": "I found 25 deals in the CRM for last week."
+    },
+    {
+      "user": "Only the top three.",
+      "http_status": 200,
+      "assistant": "I found 25 deals in the connected CRM, but I don\u2019t have the deal details needed to name the top three."
+    },
+    {
+      "user": "Who owns those?",
+      "http_status": 200,
+      "assistant": "I found 25 deals in the connected CRM, but this result doesn\u2019t include owner details. I\u2019d need the deal owner fields to say who owns them."
+    },
+    {
+      "user": "Draft a summary.",
+      "http_status": 200,
+      "assistant": "I found 25 deals in the connected CRM."
     }
   ],
   "status": "PASS",
-  "at": "2026-09-21T06:21:03.348050+00:00"
+  "at": "2026-09-21T18:01:27.548244+00:00"
 }

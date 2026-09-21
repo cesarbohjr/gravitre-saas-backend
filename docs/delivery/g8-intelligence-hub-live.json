@@ -1,9 +1,9 @@
 {
   "probe": "g8_intelligence_hub_live",
-  "started_at": "2026-09-16T19:44:06.648337+00:00",
+  "started_at": "2026-09-20T20:39:11.864467+00:00",
   "base": "https://api.gravitre.app",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "expect_sha": "7e8e0fa8",
+  "expect_sha": "909474fe",
   "cases": [
     {
       "id": "g3-page-context-all-lenses",
@@ -21,8 +21,8 @@
             "active_lens_matches": true,
             "has_snapshot": true
           },
-          "node_count": 5,
-          "edge_count": 4
+          "node_count": 7,
+          "edge_count": 6
         },
         {
           "lens": "learns",
@@ -47,7 +47,7 @@
             "active_lens_matches": true,
             "has_snapshot": true
           },
-          "node_count": 5,
+          "node_count": 7,
           "edge_count": 2
         },
         {
@@ -60,8 +60,8 @@
             "active_lens_matches": true,
             "has_snapshot": true
           },
-          "node_count": 4,
-          "edge_count": 1
+          "node_count": 6,
+          "edge_count": 2
         },
         {
           "lens": "improves",
@@ -73,16 +73,24 @@
             "active_lens_matches": true,
             "has_snapshot": true
           },
-          "node_count": 3,
+          "node_count": 5,
           "edge_count": 0
         }
       ]
     },
     {
       "id": "g3-knows-entity-nodes",
-      "passed": false,
-      "verdict": "FAIL",
-      "error": "page-context unavailable"
+      "phase": "G3",
+      "passed": true,
+      "verdict": "PASS",
+      "checks": {
+        "snapshot_entity_types": true,
+        "graph_has_entity_nodes": true,
+        "entity_ids_prefixed": true,
+        "graph_covers_types": true
+      },
+      "entity_type_count": 2,
+      "entity_node_count": 2
     },
     {
       "id": "g6-metrics-semantics",
@@ -132,7 +140,7 @@
       "active_agent_labels": [
         "Email Campaign Reporting Agent"
       ],
-      "generated_at": "2026-09-16T19:44:37.581237+00:00"
+      "generated_at": "2026-09-20T20:39:32.353617+00:00"
     },
     {
       "id": "g8-trust-org-learning-map",
@@ -140,6 +148,13 @@
       "passed": true,
       "verdict": "NOT RUN",
       "reason": "no promoted learnings in trust org snapshot"
+    },
+    {
+      "id": "g8-promoted-org-learning-map",
+      "phase": "G8",
+      "passed": true,
+      "verdict": "NOT RUN",
+      "reason": "no auto_promoted memory_promotion_candidates in reachable orgs"
     },
     {
       "id": "g1-g4-active-agents",
@@ -160,7 +175,7 @@
         "matched_include": true,
         "highlights_are_agent_ids": true
       },
-      "assistant_excerpt": "Currently active: **Lead Qualification Slack Agent**. That\u2019s **1 active agent** across **1 department**.",
+      "assistant_excerpt": "1 agent is configured active across 1 department: Lead Qualification Slack Agent.",
       "visualization": {
         "lens": "acts",
         "focusNodeIds": [
@@ -174,9 +189,10 @@
         "edgeTypes": [],
         "timeWindowHours": 24
       },
-      "conversation_id": "fac81818-b47b-407b-bb12-10d5949c02dc",
+      "conversation_id": "27795f96-efed-403a-8ed0-2059f928697b",
       "http_status": 200,
       "answer_explanations": [
+        "Understanding your request",
         "intelligence_hub:canonical_agent_roster"
       ]
     },
@@ -199,25 +215,26 @@
         "matched_include": true,
         "highlights_are_agent_ids": true
       },
-      "assistant_excerpt": "Two predictions need attention: - **HubSpot contact creation is failing too often** \u2014 it failed in **2 of the last 5 runs**, a **40% failure rate**.\n- **HubSpot OAuth token is expiring now** \u2014 the connector token expires in **0 hours**, so contact creation may fail until it\u2019s refreshed.",
+      "assistant_excerpt": "2 deduped predictions in canonical state. Top items needing attention: Elevated failure rate on 'HubSpot create contact (write)': Step failed in 2/5 recent runs (40.0%).; OAuth token expiring soon: Connector token expires in 0 hours. Step 'HubSpot create contact (write)' may fail when the token expires..",
       "visualization": {
         "lens": "predicts",
         "focusNodeIds": [
-          "prediction:3a9a23f2-ebcc-4b89-b99c-d60b2e7a34df",
-          "prediction:35cde8d3-0668-4ce2-a9ca-5358b8559c86"
+          "prediction:bd0315de-78a3-436c-8d59-8af11075c0c9",
+          "prediction:0c55a1d5-b0c2-4e61-8643-c23d508ecef3"
         ],
         "highlightNodeIds": [
-          "prediction:3a9a23f2-ebcc-4b89-b99c-d60b2e7a34df",
-          "prediction:35cde8d3-0668-4ce2-a9ca-5358b8559c86"
+          "prediction:bd0315de-78a3-436c-8d59-8af11075c0c9",
+          "prediction:0c55a1d5-b0c2-4e61-8643-c23d508ecef3"
         ],
         "dimNodeIds": [],
         "expandNodeIds": [],
         "edgeTypes": [],
         "timeWindowHours": 24
       },
-      "conversation_id": "2ff1029a-48c7-4de9-b7d0-47ade2a4e812",
+      "conversation_id": "8df5f98c-dbe8-4bf4-9e2a-62d2799674b1",
       "http_status": 200,
       "answer_explanations": [
+        "Understanding your request",
         "intelligence_hub:canonical_agent_roster"
       ]
     },
@@ -240,7 +257,7 @@
         "matched_include": true,
         "highlights_are_agent_ids": true
       },
-      "assistant_excerpt": "Nothing validated yet. Gravitre doesn\u2019t currently have any confirmed business learning insights in canonical intelligence state. Platform telemetry and model readiness don\u2019t count as business learning.",
+      "assistant_excerpt": "No validated business learning insights in canonical intelligence state yet. Platform telemetry and model readiness are not business learning.",
       "visualization": {
         "lens": "learns",
         "focusNodeIds": [],
@@ -250,24 +267,26 @@
         "edgeTypes": [],
         "timeWindowHours": 24
       },
-      "conversation_id": "0757c1c2-ba4e-4815-be0d-f0ee9843781d",
+      "conversation_id": "a7dd7264-0cfe-40d7-82bb-50ea024b9f65",
       "http_status": 200,
       "answer_explanations": [
+        "Understanding your request",
         "intelligence_hub:canonical_agent_roster"
       ]
     }
   ],
-  "git_sha": "7e8e0fa849bce798c096ee7048f0db12db4f68d2",
-  "health_timestamp": "2026-09-16T19:44:07.136335+00:00",
+  "git_sha": "909474febb44c058044a414ed8e614a1903a6735",
+  "health_timestamp": "2026-09-20T20:39:11.892552+00:00",
   "page_context_sample": {
-    "generated_at": "2026-09-16T19:44:07.384538+00:00",
+    "generated_at": "2026-09-20T20:39:12.304321+00:00",
     "active_lens": "acts"
   },
   "trust_org_id": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
-  "finished_at": "2026-09-16T19:45:54.522575+00:00",
+  "finished_at": "2026-09-20T20:39:59.690837+00:00",
   "not_run_cases": [
     "g8-learning-map-focus",
-    "g8-trust-org-learning-map"
+    "g8-trust-org-learning-map",
+    "g8-promoted-org-learning-map"
   ],
-  "verdict": "FAIL"
+  "verdict": "PASS"
 }
