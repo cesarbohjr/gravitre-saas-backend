@@ -152,7 +152,7 @@ function GovernedExecutionFieldImpl({ className }: { className?: string }) {
         {reduced ? "Illustrative governed execution model." : PHASE_CAPTION[phase]}
       </p>
       {!reduced && !frozenPhase ? (
-        <div className="mt-2 flex justify-center">
+        <div className="mt-2 flex justify-center gap-2">
           <button
             type="button"
             className="rounded-md border border-divide px-2 py-1 text-[11px]"
@@ -162,6 +162,16 @@ function GovernedExecutionFieldImpl({ className }: { className?: string }) {
             }}
           >
             Step
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-divide px-2 py-1 text-[11px]"
+            onClick={() => {
+              setManual(true)
+              setPhase("quiet")
+            }}
+          >
+            Reset
           </button>
         </div>
       ) : null}

@@ -457,5 +457,22 @@ describe("CES 2.0 product doc links", () => {
     expect(orchestration).toMatch(/Failure path/)
     expect(orchestration).toMatch(/>\s*Step\s*</)
     expect(governed).toMatch(/>\s*Step\s*</)
+    expect(orchestration).toMatch(/>\s*Reset\s*</)
+    expect(governed).toMatch(/>\s*Reset\s*</)
+    expect(orchestration).toMatch(/data-testid="orchestration-inspect"/)
+  })
+
+  it("steps connector, GIBE, and voice, and links outcomes to runs", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8")
+    expect(read("components/marketing/creative/scenes/connector-fabric/connector-fabric-field.tsx")).toMatch(
+      /data-testid="cf-inspect"/,
+    )
+    expect(read("components/marketing/creative/scenes/gibe-learning/gibe-learning-field.tsx")).toMatch(/>\s*Step\s*</)
+    expect(read("components/marketing/creative/scenes/voice-intent/voice-intent-field.tsx")).toMatch(/>\s*Step\s*</)
+    expect(read("components/marketing/creative/scenes/outcomes-positioning/outcomes-positioning-field.tsx")).toMatch(
+      /\/docs\/guides\/how-to\/runs/,
+    )
   })
 })

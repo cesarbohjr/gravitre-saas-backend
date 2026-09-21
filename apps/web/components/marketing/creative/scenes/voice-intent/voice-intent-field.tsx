@@ -70,6 +70,7 @@ function VoiceIntentFieldImpl({ className }: { className?: string }) {
   const { reducedMotion: reduced, shouldAnimate, quality } = useCreativePerformance(rootRef)
   const [frozenPhase, setFrozenPhase] = useState<VoicePhase | null>(null)
   const [phase, setPhase] = useState<VoicePhase>("quiet")
+  const [manual, setManual] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -81,10 +82,10 @@ function VoiceIntentFieldImpl({ className }: { className?: string }) {
   }, [])
 
   useEffect(() => {
-    if (frozenPhase || !shouldAnimate) return
+    if (manual || frozenPhase || !shouldAnimate) return
     const t = window.setTimeout(() => setPhase((p) => nextPhase(p)), phase === "action" ? 1500 : 1100)
     return () => window.clearTimeout(t)
-  }, [phase, shouldAnimate, frozenPhase])
+  }, [phase, shouldAnimate, frozenPhase, manual])
 
   const lit = new Set(activeStageIds(phase))
   const wave = showWaveform(phase)
@@ -177,6 +178,30 @@ function VoiceIntentFieldImpl({ className }: { className?: string }) {
       <p className="mt-3 text-center text-sm font-medium text-[color:var(--g-text-secondary)]" aria-live="polite">
         {reduced ? "Illustrative voice intent model." : PHASE_CAPTION[phase]}
       </p>
+      {!reduced && !frozenPhase ? (
+        <div className="mt-2 flex justify-center gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-divide px-2 py-1 text-[11px]"
+            onClick={() => {
+              setManual(true)
+              setPhase((current) => nextPhase(current))
+            }}
+          >
+            Step
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-divide px-2 py-1 text-[11px]"
+            onClick={() => {
+              setManual(true)
+              setPhase("quiet")
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      ) : null}
       <p className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] text-[color:var(--g-text-muted)]">
         <NucleoSuccess className="h-3 w-3" aria-hidden />
         Illustrative voice path — structure, intent, context, action, response. Not proven duplex parity.

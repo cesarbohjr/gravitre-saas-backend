@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
@@ -147,6 +148,11 @@ function OutcomesPositioningFieldImpl({ className }: { className?: string }) {
       <p className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] text-[color:var(--g-text-muted)]">
         <NucleoSuccess className="h-3 w-3" aria-hidden />
         Illustrative outcomes positioning — categories only. No invented metrics.
+      </p>
+      <p className="mt-2 text-center text-[11px] text-[color:var(--g-text-muted)]">
+        <Link className="underline underline-offset-2" href="/docs/guides/how-to/runs">
+          How run activity is explained
+        </Link>
       </p>
     </div>
   )

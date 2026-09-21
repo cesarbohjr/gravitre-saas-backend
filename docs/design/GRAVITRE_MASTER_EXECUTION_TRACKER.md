@@ -131,6 +131,17 @@ Marketplace discovery is a scan list with price and install on the row; pack met
 | Railway | Not redeployed. Commit status: “No deployment needed - watched paths not modified.” `/health` `git_sha=eea0b633` `status=ok` at `2026-09-21T06:06:55Z`. That SHA is the last backend commit, not a new 2.0 live proof. |
 | Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
 
+### Deployed tip after orchestration Step
+
+| Check | Result |
+|-------|--------|
+| Commit | `b8aab980` (`feat(creative): let orchestration and governance step one beat.`) |
+| Main CI | **success** [35567453840](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35567453840) — Web, Backend pytest, dependency audit, shared runtime gate, integration smoke. Billing E2E skipped. |
+| Marketing Lighthouse | **success** [35567453851](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35567453851) |
+| Vercel | **success** — “Deployment has completed” on `b8aab980`: https://vercel.com/gravitre-ai/gravitre-saas-backend/91Un3edbuaWKh5ytc1ifa7ejPrFE |
+| Railway | Not redeployed for this frontend commit (“No deployment needed - watched paths not modified.”). Backend commit `6cd43ae3` Railway workflow **success** [35566969691](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35566969691). `/health` `git_sha=6cd43ae3` `status=ok` at `2026-09-21T06:31:13Z`. That SHA is compiled HubSpot READ, not a live connected-system business-path PASS. |
+| Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
+
 ---
 
 ## Phase 6 — CES 2.0
@@ -139,7 +150,10 @@ Marketplace discovery is a scan list with price and install on the row; pack met
 |-------------|--------|
 | KF-A harness (locked concept, dev preview only) | IMPLEMENTED — NOT PROVEN (harness). Not a production page. |
 | Pilot 1 mobile ring-spin removal | IMPLEMENTED in `department-network-mobile.tsx` — Relational Topology, no `animate-spin`. Not authenticated-product verification. |
-| Orchestration / governance Step | IMPLEMENTED — visitor Step pauses autoplay and advances one beat. Success/failure retained. Doc links to agents and approvals. Not a production Pilot 3 promote. |
+| Orchestration / governance Step | IMPLEMENTED — visitor Step pauses autoplay and advances one beat. Reset returns to the first beat and stays paused. Selecting a capability shows its existing label and, once tools are on screen, the existing systems list. Success/failure retained. Doc links to agents and approvals. Not a production Pilot 3 promote. |
+| Connector fabric select | IMPLEMENTED — selecting a port shows that port’s existing capabilities. Step and Reset use the same pause-and-advance rule. Not a live connector inventory. |
+| GIBE and voice Step | IMPLEMENTED — Step and Reset on the existing loops. Recommend stays advisory. Voice stays no-orb and is not duplex or PCM proof. |
+| Outcomes activity link | IMPLEMENTED — categories only, linked to the existing runs how-to (`/docs/guides/how-to/runs`). No invented metrics. |
 | Technology page thinning | BLOCKED by the existing CES 2.0 stop for that slice. Not a new gate. |
 | Production Pilot 3 promote | BLOCKED — separate promote gate. Do not ship the harness to marketing production. |
 | Pilot 1 / 2 concept reopen | Locked — do not reopen |

@@ -123,6 +123,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
   const [phase, setPhase] = useState<OrchestrationPhase>("quiet")
   const [mode, setMode] = useState<"success" | "failure">("success")
   const [manual, setManual] = useState(false)
+  const [inspectedRole, setInspectedRole] = useState<(typeof AGENT_ROLES)[number]["id"] | null>(null)
 
   useEffect(() => {
     const onVis = () => setHidden(document.hidden)
@@ -152,6 +153,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
   const showTools = ["tools", "parallel", "waiting", "verify", "outcome", "learned", "failure"].includes(phase)
   const waiting = phase === "waiting"
   const failed = phase === "failure"
+  const inspected = AGENT_ROLES.find((role) => role.id === inspectedRole) ?? null
   const paths = pathStatesForPhase(phase)
   const pathId = activePathId(phase)
   const sceneError = failed // only the failed branch — never whole-scene flood
@@ -226,16 +228,30 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
             {showAgents ? (
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {AGENT_ROLES.map((role) => (
-                  <GravitreAgentNode
+                  <button
                     key={role.id}
-                    label={role.label}
-                    icon={ROLE_ICONS[role.id]}
-                    active={showAgents && !(failed && role.id === "support")}
-                    waiting={waiting && role.id === "ops"}
-                    failed={failed && role.id === "support"}
-                  />
+                    type="button"
+                    className="rounded-xl"
+                    data-testid={`orchestration-agent-${role.id}`}
+                    aria-pressed={inspectedRole === role.id}
+                    onClick={() => setInspectedRole(role.id)}
+                  >
+                    <GravitreAgentNode
+                      label={role.label}
+                      icon={ROLE_ICONS[role.id]}
+                      active={showAgents && !(failed && role.id === "support")}
+                      waiting={waiting && role.id === "ops"}
+                      failed={failed && role.id === "support"}
+                    />
+                  </button>
                 ))}
               </div>
+            ) : null}
+            {inspected ? (
+              <p className="mt-3 text-center text-[11px] text-[color:var(--g-text-secondary)]" data-testid="orchestration-inspect">
+                {inspected.label}
+                {showTools ? `: ${TOOLS.join(" · ")}` : ""}
+              </p>
             ) : null}
             {showTools ? (
               <p className="mt-3 text-center text-[11px] text-[color:var(--g-text-muted)]">
@@ -263,14 +279,22 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
             {showAgents ? (
               <div className="flex flex-col gap-2">
                 {AGENT_ROLES.map((role) => (
-                  <GravitreAgentNode
+                  <button
                     key={role.id}
-                    label={role.label}
-                    icon={ROLE_ICONS[role.id]}
-                    active={!(failed && role.id === "support")}
-                    waiting={waiting && role.id === "ops"}
-                    failed={failed && role.id === "support"}
-                  />
+                    type="button"
+                    className="rounded-xl text-left"
+                    data-testid={`orchestration-agent-${role.id}`}
+                    aria-pressed={inspectedRole === role.id}
+                    onClick={() => setInspectedRole(role.id)}
+                  >
+                    <GravitreAgentNode
+                      label={role.label}
+                      icon={ROLE_ICONS[role.id]}
+                      active={!(failed && role.id === "support")}
+                      waiting={waiting && role.id === "ops"}
+                      failed={failed && role.id === "support"}
+                    />
+                  </button>
                 ))}
               </div>
             ) : null}
@@ -288,16 +312,29 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
       </p>
       <div className="mt-2 flex justify-center gap-2">
         {!reduced && !frozenPhase ? (
-          <button
-            type="button"
-            className="rounded-md border border-divide px-2 py-1 text-[11px]"
-            onClick={() => {
-              setManual(true)
-              setPhase((current) => nextPhase(current, mode))
-            }}
-          >
-            Step
-          </button>
+          <>
+            <button
+              type="button"
+              className="rounded-md border border-divide px-2 py-1 text-[11px]"
+              onClick={() => {
+                setManual(true)
+                setPhase((current) => nextPhase(current, mode))
+              }}
+            >
+              Step
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-divide px-2 py-1 text-[11px]"
+              onClick={() => {
+                setManual(true)
+                setPhase("quiet")
+                setInspectedRole(null)
+              }}
+            >
+              Reset
+            </button>
+          </>
         ) : null}
         <button
           type="button"

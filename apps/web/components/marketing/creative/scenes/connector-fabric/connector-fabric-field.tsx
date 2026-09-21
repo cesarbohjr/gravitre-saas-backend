@@ -44,6 +44,8 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
   const { reducedMotion: reduced, shouldAnimate, quality } = useCreativePerformance(rootRef)
   const [frozenPhase, setFrozenPhase] = useState<ConnectorPhase | null>(null)
   const [phase, setPhase] = useState<ConnectorPhase>("quiet")
+  const [manual, setManual] = useState(false)
+  const [selectedPort, setSelectedPort] = useState<(typeof CAPABILITY_PORTS)[number]["id"] | null>(null)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -55,16 +57,17 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
   }, [])
 
   useEffect(() => {
-    if (frozenPhase || !shouldAnimate) return
+    if (manual || frozenPhase || !shouldAnimate) return
     const t = window.setTimeout(() => setPhase((p) => nextPhase(p)), phase === "write_waiting" ? 1600 : 1100)
     return () => window.clearTimeout(t)
-  }, [phase, shouldAnimate, frozenPhase])
+  }, [phase, shouldAnimate, frozenPhase, manual])
 
   const ports = showPorts(phase)
   const auth = showAuth(phase)
   const waiting = writeWaiting(phase)
   const done = writeDone(phase)
   const evidence = showEvidence(phase)
+  const inspected = CAPABILITY_PORTS.find((port) => port.id === selectedPort) ?? null
 
   return (
     <div
@@ -87,13 +90,17 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
           {ports ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {CAPABILITY_PORTS.map((port) => (
-                <div
+                <button
                   key={port.id}
+                  type="button"
                   className={cn(
                     "rounded-xl border bg-white px-3 py-3 text-center",
+                    selectedPort === port.id && "ring-2 ring-[color:var(--color-brand,#16a374)]",
                     auth ? "border-[color:var(--color-brand,#16a374)]" : "border-divide",
                   )}
                   data-testid={`cf-port-${port.id}`}
+                  aria-pressed={selectedPort === port.id}
+                  onClick={() => setSelectedPort(port.id)}
                 >
                   <NucleoConnector
                     className={cn(
@@ -123,12 +130,18 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
                       )
                     })}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
             <p className="mt-6 text-center text-sm text-[color:var(--g-text-muted)]">Capability ports dormant.</p>
           )}
+
+          {inspected ? (
+            <p className="mt-3 text-center text-xs text-[color:var(--g-text-secondary)]" data-testid="cf-inspect">
+              {inspected.label}: {inspected.caps.join(" · ")}
+            </p>
+          ) : null}
 
           {waiting ? (
             <div className="mt-4 flex justify-center" data-testid="cf-waiting">
@@ -153,6 +166,31 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
       <p className="mt-3 text-center text-sm font-medium text-[color:var(--g-text-secondary)]" aria-live="polite">
         {reduced ? "Illustrative connector fabric model." : PHASE_CAPTION[phase]}
       </p>
+      {!reduced && !frozenPhase ? (
+        <div className="mt-2 flex justify-center gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-divide px-2 py-1 text-[11px]"
+            onClick={() => {
+              setManual(true)
+              setPhase((current) => nextPhase(current))
+            }}
+          >
+            Step
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-divide px-2 py-1 text-[11px]"
+            onClick={() => {
+              setManual(true)
+              setPhase("quiet")
+              setSelectedPort(null)
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      ) : null}
       <p className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] text-[color:var(--g-text-muted)]">
         <NucleoSuccess className="h-3 w-3" aria-hidden />
         Illustrative connector fabric — capability ports and governed writes. Not a live inventory of your stack.
