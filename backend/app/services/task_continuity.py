@@ -27,7 +27,8 @@ _REFINE_RE = re.compile(
     r"break\s+(?:that|it)\s+down|for\s+that|use\s+that|compare\s+that|"
     r"instead|also\s+show|last\s+(?:week|month)|this\s+week|yesterday|"
     r"the\s+(?:first|second|third|last)\s+one|"
-    r"only\s+the|large\s+ones|just\s+the|overdue|"
+    r"only\s+the|large\s+ones|just\s+the|overdue|top\s+three|"
+    r"who\s+owns|draft\s+a\s+summary|"
     r"draft\s+an\s+email|don'?t\s+send"
     r")\b"
 )

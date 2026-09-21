@@ -1,0 +1,142 @@
+{
+  "at": "2026-09-21T07:10:03.519191+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "isolated": true,
+  "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "email": "conversation-smoke-sa@gravitre.app",
+  "policy": {
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+    "name": "Gravitre Isolated Conversation Smoke",
+    "slug": "gravitre-isolated-conversation-smoke",
+    "purpose": "internal_e2e_2_0_acceptance_never_customer_visible",
+    "never_customer_visible": true,
+    "forbidden_operator_org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+    "identities": [
+      {
+        "user_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+        "email": "conversation-smoke-sa@gravitre.app",
+        "role": "conversation_smoke_sa"
+      }
+    ],
+    "providers_desired": [
+      "hubspot",
+      "google_analytics",
+      "google_search_console",
+      "gmail",
+      "quickbooks",
+      "zendesk"
+    ],
+    "test_data_policy": "synthetic Gravitre Test Customer Alpha only; no customer PII",
+    "cleanup_policy": "conversation rows owned by smoke SA; no operator-org writes"
+  },
+  "alpha_entity_id": "a1fa0000-1501-4000-8000-c04e57a00001",
+  "alpha_bindings": [
+    "hubspot",
+    "quickbooks",
+    "zendesk"
+  ],
+  "alpha_rows_written": 4,
+  "gsc_connector_id_present": true,
+  "gsc_refresh": {
+    "ok": false,
+    "error": "Google access expired. Reconnect this Google connector."
+  },
+  "website_remaining_source": {},
+  "oauth_booleans": [
+    {
+      "vendor": "google_search_console",
+      "status": "healthy",
+      "has_access_token": true,
+      "has_refresh_token": true,
+      "needs_refresh": true
+    },
+    {
+      "vendor": "google_analytics",
+      "status": "pending_auth",
+      "has_access_token": false,
+      "has_refresh_token": false,
+      "needs_refresh": true
+    }
+  ],
+  "proactive": [
+    {
+      "signal_id": "google_search_console-token_expired",
+      "notify": true,
+      "write_allowed": false,
+      "significance": "high"
+    },
+    {
+      "signal_id": "google_analytics-pending_auth",
+      "notify": true,
+      "write_allowed": false,
+      "significance": "high"
+    }
+  ],
+  "scorecard_customer_facing": false,
+  "scorecard_items": [
+    {
+      "action_key": "hubspot.deals.list",
+      "customer_badge": null,
+      "layers": {
+        "registered": true,
+        "configured": true,
+        "connected": true,
+        "authorized": true,
+        "resource_ready": true,
+        "action_ready": true,
+        "capability_ready": true,
+        "governance_ready": true,
+        "test_verified": true,
+        "production_verified": true
+      }
+    },
+    {
+      "action_key": "google_analytics.reports.run",
+      "customer_badge": null,
+      "layers": {
+        "registered": true,
+        "configured": true,
+        "connected": false,
+        "authorized": false,
+        "resource_ready": false,
+        "action_ready": false,
+        "capability_ready": true,
+        "governance_ready": true,
+        "test_verified": false,
+        "production_verified": false
+      }
+    },
+    {
+      "action_key": "google_search_console.searchAnalytics.query",
+      "customer_badge": null,
+      "layers": {
+        "registered": true,
+        "configured": true,
+        "connected": true,
+        "authorized": false,
+        "resource_ready": false,
+        "action_ready": false,
+        "capability_ready": true,
+        "governance_ready": true,
+        "test_verified": false,
+        "production_verified": false
+      }
+    },
+    {
+      "action_key": "slack.conversations.list",
+      "customer_badge": null,
+      "layers": {
+        "registered": true,
+        "configured": true,
+        "connected": true,
+        "authorized": true,
+        "resource_ready": true,
+        "action_ready": true,
+        "capability_ready": true,
+        "governance_ready": true,
+        "test_verified": true,
+        "production_verified": false
+      }
+    }
+  ]
+}

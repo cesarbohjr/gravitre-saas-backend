@@ -38,6 +38,19 @@ def test_google_vendor_authorize_url_does_not_force_consent():
     assert "prompt=select_account" in url
     assert "prompt=consent" not in url
     assert "access_type=offline" in url
+
+
+def test_google_vendor_authorize_url_force_consent_isolated_reconnect_only():
+    from app.connectors.google_vendor_oauth import google_vendor_authorize_url
+
+    url = google_vendor_authorize_url(
+        "google_search_console",
+        "cid",
+        "https://gravitre.app/api/connectors/oauth/google/callback",
+        "state123",
+        force_consent=True,
+    )
+    assert "prompt=consent" in url
     from types import SimpleNamespace
 
     from app.connectors.google_oauth_common import google_oauth_redirect_uri

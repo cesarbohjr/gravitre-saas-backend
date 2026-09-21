@@ -115,7 +115,14 @@ def google_vendor_redirect_uri(settings: Settings, vendor: str) -> str:
     return google_oauth_redirect_uri(settings, vendor)
 
 
-def google_vendor_authorize_url(vendor: str, client_id: str, redirect_uri: str, state: str) -> str:
+def google_vendor_authorize_url(
+    vendor: str,
+    client_id: str,
+    redirect_uri: str,
+    state: str,
+    *,
+    force_consent: bool = False,
+) -> str:
     scope = _VENDOR_SCOPES[vendor]
     query = urlencode(
         {
@@ -127,7 +134,9 @@ def google_vendor_authorize_url(vendor: str, client_id: str, redirect_uri: str, 
             "access_type": "offline",
             # Shared GCP client also powers Gmail login (Supabase). prompt=consent
             # rotates Google refresh tokens and invalidates the app session.
-            "prompt": "select_account",
+            # Isolated-org reconnect may pass force_consent so Google reissues
+            # a refresh token after invalid_grant — never the default.
+            "prompt": "consent" if force_consent else "select_account",
             "include_granted_scopes": "true",
         }
     )

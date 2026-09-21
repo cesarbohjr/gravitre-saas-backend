@@ -9,10 +9,16 @@ from app.capability_ontology.recipe_resolver import resolve_recipe
 from app.services.execution_plan_service import ExecutionPlan, ExecutionObservation, ExecutionStep
 
 _WHY = re.compile(r"\bwhy\b", re.I)
+_CAUSAL = re.compile(
+    r"(?is)\b(what caused|what caused it|causal|because of|driven by|due to)\b"
+)
 _PIPELINE = re.compile(r"\b(pipeline|deals?|crm)\b", re.I)
 _AR = re.compile(r"\b(receivable|invoice|who owes|overdue|AR)\b", re.I)
 _SUPPORT = re.compile(r"\b(tickets?|support queue|zendesk|issue trends?)\b", re.I)
-_CAUSAL = re.compile(r"\b(fall|fell|drop|dropped|down|worse|slow|behind|miss)\b", re.I)
+_CROSS = re.compile(
+    r"(?is)\b(deals?|pipeline|crm).{0,80}\b(tickets?|support|zendesk)\b|"
+    r"\b(tickets?|support|zendesk).{0,80}\b(deals?|pipeline|crm)\b"
+)
 
 _DIAGNOSTICS: tuple[tuple[str, str, str], ...] = (
     ("sales.pipeline.health", "crm.deals.read", "Why the pipeline moved"),
@@ -28,6 +34,8 @@ INSUFFICIENT_EVIDENCE = (
 
 def match_diagnostic_recipe(message: str) -> str | None:
     text = message or ""
+    if _CROSS.search(text):
+        return "sales.pipeline.health"
     if not _WHY.search(text) and not _CAUSAL.search(text):
         return None
     if _PIPELINE.search(text) and (_WHY.search(text) or _CAUSAL.search(text)):
@@ -81,6 +89,19 @@ def build_multi_source_diagnostic_plan(
                 meta={"role": "evidence", "optional": True},
             )
         )
+    if _CROSS.search(message or "") and "zendesk" in connected:
+        if not any(str(s.connector_id or "") == "zendesk" for s in evidence_steps):
+            evidence_steps.append(
+                ExecutionStep(
+                    step_id="evidence_support_tickets",
+                    title="Read support tickets for the same customers",
+                    kind="evidence",
+                    connector_id="zendesk",
+                    capability_id="support.issue_trends",
+                    action_key="zendesk.tickets.list",
+                    meta={"role": "evidence", "recipe_id": "support.issue_trends"},
+                )
+            )
 
     label = next((row[2] for row in _DIAGNOSTICS if row[0] == recipe_id), "Diagnostic")
     steps = [

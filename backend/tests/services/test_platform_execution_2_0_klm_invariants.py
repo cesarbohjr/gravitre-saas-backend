@@ -57,6 +57,9 @@ def test_continuity_followups_keep_deals_frame() -> None:
         "Only the large ones.",
         "Last week instead.",
         "Just the three overdue.",
+        "Only the top three.",
+        "Who owns those?",
+        "Draft a summary.",
         "Draft an email.",
     ):
         assert decide_task_continuity(message, state) == "continue", message

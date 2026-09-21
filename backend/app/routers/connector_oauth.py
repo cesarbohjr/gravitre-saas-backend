@@ -690,7 +690,16 @@ async def start_oauth(
     elif vendor in GOOGLE_OAUTH_VENDORS:
         redirect_uri = google_vendor_redirect_uri(settings, vendor)
         client_id, _secret = google_oauth_credentials(settings, environment_name)
-        auth_url = google_vendor_authorize_url(vendor, client_id, redirect_uri, state)
+        from app.services.conversation_write_guard import isolated_conversation_test_org_id
+
+        force_consent = reconnect and str(org_id) == isolated_conversation_test_org_id()
+        auth_url = google_vendor_authorize_url(
+            vendor,
+            client_id,
+            redirect_uri,
+            state,
+            force_consent=force_consent,
+        )
     elif vendor in GENERIC_OAUTH_VENDORS:
         spec = OAUTH_PROVIDER_REGISTRY[vendor]
         redirect_uri = generic_redirect_uri(settings, vendor)

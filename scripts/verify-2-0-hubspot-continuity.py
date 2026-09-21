@@ -110,7 +110,14 @@ def main() -> int:
         )
         cr.raise_for_status()
         conv_id = str(cr.json()["id"])
-        for text in ("Show my deals.", "Only the large ones."):
+        for text in (
+            "Show my deals.",
+            "Only the large ones.",
+            "Last week instead.",
+            "Only the top three.",
+            "Who owns those?",
+            "Draft a summary.",
+        ):
             with client.stream(
                 "POST",
                 f"{BASE}/api/assistant/chat",
@@ -138,13 +145,12 @@ def main() -> int:
     same_plan = str(plan.get("plan_id") or "")
     evidence = state.get("provider_result_evidence") if isinstance(state.get("provider_result_evidence"), dict) else {}
     first_ok = turns[0].get("http_status") == 200 and "deal" in str(turns[0].get("assistant") or "").lower()
-    second_ok = turns[1].get("http_status") == 200
+    rest_ok = all(t.get("http_status") == 200 for t in turns[1:])
     kept_plan = bool(same_plan)
     kept_evidence = evidence.get("action_key") == "hubspot.deals.list" and bool(evidence.get("provider_invoked"))
-    no_guess = "guess" in str(turns[1].get("assistant") or "").lower() or "amount" in str(
-        turns[1].get("assistant") or ""
-    ).lower()
-    status = "PASS" if first_ok and second_ok and kept_plan and kept_evidence and no_guess else "FAIL"
+    follow = str(turns[1].get("assistant") or "").lower()
+    no_guess = "guess" in follow or "amount" in follow
+    status = "PASS" if first_ok and rest_ok and kept_plan and kept_evidence and no_guess else "FAIL"
     report = {
         "probe": "gravitre_2_0_hubspot_continuity",
         "health_sha": health.get("git_sha"),

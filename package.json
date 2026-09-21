@@ -157,6 +157,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:install": "playwright install --with-deps chromium",
+    "e2e:save-storage": "playwright codegen --save-storage=e2e/.fixtures/gravitre-e2e-storage.json https://gravitre.app/login",
+    "test:e2e:authenticated-2.0": "playwright test e2e/gravitre-2.0-authenticated-ai.spec.ts",
     "test:navigation": "playwright test e2e/marketing-navigation-crawler.spec.ts e2e/execution-result-navigation.spec.ts e2e/app-navigation-crawler.spec.ts",
     "test:marketing-smoke": "playwright test e2e/marketing-system-smoke.spec.ts",
     "test:marketing-visual": "playwright test -c playwright.visual.config.ts e2e/visual/marketing-system-fidelity.spec.ts",
