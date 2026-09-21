@@ -93,6 +93,8 @@ type Props = {
   className?: string
   /** Presentation-only density; does not change business content. */
   density?: "chat" | "timeline" | "export"
+  /** When ActivityTracePanel renders TRACE, hide duplicate timeline steps here. */
+  suppressTimeline?: boolean
 }
 
 /**
@@ -243,7 +245,12 @@ function Section({
   )
 }
 
-export function BusinessOutcomeView({ outcome, className, density = "chat" }: Props) {
+export function BusinessOutcomeView({
+  outcome,
+  className,
+  density = "chat",
+  suppressTimeline = false,
+}: Props) {
   const sections = outcome.sections || {}
   const state = resolveOutcomeState(outcome)
   const style = STATE_STYLES[state]
@@ -425,7 +432,7 @@ export function BusinessOutcomeView({ outcome, className, density = "chat" }: Pr
             )
           })()}
 
-          {sections.timeline?.length ? (
+          {!suppressTimeline && sections.timeline?.length ? (
             <Section
               title="Timeline"
               defaultOpen={false}

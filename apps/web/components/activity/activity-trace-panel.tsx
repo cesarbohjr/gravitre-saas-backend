@@ -10,6 +10,7 @@ import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import type { BusinessOutcomeDto } from "@/components/gravitre/business-outcome/business-outcome-view"
 import { EvidenceChip, grammarToneForStepStatus } from "@/components/gravitre/creative-grammar"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { Button } from "@/components/ui/button"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
@@ -157,7 +158,7 @@ export function ActivityTracePanel({
     <div className={cn("space-y-3", className)} data-testid="activity-trace-a1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className={TYPE.eyebrow}>TRACE · A1</p>
+          <p className={TYPE.eyebrow}>Execution trace</p>
           <p className={cn(TYPE.meta, "mt-0.5")}>
             {stages.length} recorded stage{stages.length === 1 ? "" : "s"} · real outcome data
           </p>
@@ -313,6 +314,22 @@ export function ActivityTracePanel({
                         Open evidence
                       </a>
                     ) : null}
+                  </div>
+                  <div className="mt-4 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-canvas)] p-3">
+                    <p className={TYPE.eyebrow}>Contextual AI</p>
+                    <p className={cn(TYPE.meta, "mt-1")}>
+                      {grammarToneForStepStatus(active.status) === "failed"
+                        ? "Ask why this stage failed with outcome context attached."
+                        : "Summarize this outcome or explain the selected stage."}
+                    </p>
+                    <AskGravitreSummonButton
+                      className="mt-2 h-8 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)] px-3 hover:no-underline"
+                      selected={{
+                        kind: "outcome",
+                        id: outcome.id || outcome.runId || "",
+                        label: outcome.title?.trim() || "Outcome",
+                      }}
+                    />
                   </div>
                 </>
               ) : (

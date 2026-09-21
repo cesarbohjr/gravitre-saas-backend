@@ -1,8 +1,8 @@
 # Gravitre UX/UI 3.0 Plus — Harness Gate Status
 
-**Date:** 2026-09-20  
-**Status:** **READY FOR CESAR REVIEW**  
-**Production pilot:** **NOT AUTHORIZED**
+**Date:** 2026-09-21  
+**Status:** **HARNESS APPROVED** · Activity A1 pilot **AUTHORIZED**  
+**Production pilot scope:** `/activity` (All tab outcomes only)
 
 ---
 
@@ -10,45 +10,50 @@
 
 | Gate | Status | Evidence |
 |------|--------|----------|
-| Harness prototypes deployed | **PASS** | `/dev/ai-workspace-preview` live on production web (Vercel) — harness-only route, `noindex` |
-| Automated harness smoke | **PASS** | `e2e/visual/ux30-plus-harness.spec.ts` @ `https://gravitre.app` — 27 scenes, 1 passed (23.7s) 2026-09-20 · artifacts `e2e/artifacts/ux30-plus-harness/` |
-| Cesar design selections locked | **PASS** | `GRAVITRE_3.0_PLUS_CESAR_APPROVAL_PACKAGE.md` |
-| Harness human review checklist | **PENDING** | `GRAVITRE_3.0_HARNESS_REVIEW.md` — awaiting Cesar sign-off |
-| Activity A1 production pilot | **BLOCKED** | Requires explicit harness approval — do not ship to `/activity` |
-| Backend CI (pytest) | **PASS** | GitHub Actions run [35528295674](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35528295674) @ `53a374c1` — Backend (pytest) success |
-| Authenticated journey tests | **NOT PROVEN** | See `GRAVITRE_3.0_JOURNEY_RESULTS.md` — staging session required |
+| Harness prototypes | **APPROVED** | Cesar sign-off 2026-09-21 |
+| Cesar design selections | **LOCKED** | I1+I2 · A1+A2 · Nav B · `GRAVITRE_3.0_PLUS_CESAR_APPROVAL_PACKAGE.md` |
+| Activity A1 production pilot | **AUTHORIZED** | `apps/web/components/activity/activity-trace-panel.tsx` · `apps/web/app/activity/page.tsx` @ `1e1b7f71`+ |
+| Intelligence I1/I2 production | **NOT AUTHORIZED** | Harness only until separate gate |
+| Navigation B production | **NOT AUTHORIZED** | Harness only until separate gate |
+| Authenticated journey tests | **NOT PROVEN** | Staging first → `GRAVITRE_3.0_JOURNEY_RESULTS.md` |
 
 ---
 
-## What is authorized now
+## Cesar harness sign-off (2026-09-21)
 
-- Internal harness review at `/dev/ai-workspace-preview?s=foundation|intelligence|activity|navigation`
-- Planning doc updates and harness-only prototype changes
-- Automated screenshot matrix (`e2e/visual/ux30-plus-harness.spec.ts`)
+- [x] Shared grammar sufficient for Intelligence + Activity
+- [x] I2 change stream contextual (field primary)
+- [x] A1 TRACE rail + optional A2 timeline
+- [x] Navigation B click/pin behavior
+- [x] Authorize Activity A1 pilot on `/activity`
 
-## What is NOT authorized
-
-- Production rollout of I1 / A1 / Navigation B to customer routes
-- Activity A1 pilot on `/activity` until Cesar completes harness review checklist
-- Any customer-visible price, claim, badge, or entitlement toggle invented for scaffold
+**Signed:** Cesar (harness approved) **Date:** 2026-09-21
 
 ---
 
-## Cesar sign-off (required before pilot)
+## Activity A1 pilot — production scope
 
-Copy from `GRAVITRE_3.0_HARNESS_REVIEW.md`:
+| In scope | Out of scope |
+|----------|--------------|
+| `/activity` All tab outcome inspector | WorkObjects tab layout (unchanged) |
+| `ActivityTracePanel` — TRACE rail + story + A2 toggle | Intelligence routes |
+| `BusinessOutcomeView` with `suppressTimeline` (no duplicate steps) | Global nav / top bar |
+| Contextual Ask in trace story panel | Connectors, Sources, Marketplace |
 
-- [ ] Shared grammar sufficient for Intelligence + Activity
-- [ ] I2 change stream interaction (field primary, not 50/50 split)
-- [ ] A1 TRACE rail + optional A2 timeline
-- [ ] Navigation B click/pin behavior
-- [ ] Ready to implement Activity A1 pilot on `/activity` (single route scope)
-
-**Signed:** _________________ **Date:** _________
+**Pilot PASS criteria (staging):** J7 journey PASS with run/audit id before calling production-fixed.
 
 ---
 
-## Automated harness smoke — how to re-run
+## What remains NOT authorized
+
+- Intelligence I1/I2 on `/intelligence`
+- Navigation B on production shell
+- Broad visual rollout across other routes
+- Invented customer surfaces (prices, claims, Enable toggles)
+
+---
+
+## Harness re-run (internal only)
 
 ```bash
 PLAYWRIGHT_BASE_URL=https://gravitre.app \
@@ -57,4 +62,4 @@ PLAYWRIGHT_REUSE_SERVER=1 \
 npx playwright test e2e/visual/ux30-plus-harness.spec.ts
 ```
 
-Artifacts: `e2e/artifacts/ux30-plus-harness/*.png`
+Artifacts: `e2e/artifacts/ux30-plus-harness/` (29 scenes)

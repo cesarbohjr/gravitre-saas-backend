@@ -1,7 +1,7 @@
 # Gravitre UX/UI 3.0 Plus — Harness Review Guide
 
 **Date:** 2026-09-21  
-**Status:** STOP FOR CESAR — harness prototypes ready for review  
+**Status:** **HARNESS APPROVED** (2026-09-21) — Activity A1 pilot authorized  
 **Route:** `/dev/ai-workspace-preview` (local/staging only · `noindex`)
 
 ---
@@ -119,14 +119,12 @@ Captures 29 PNGs under `e2e/artifacts/ux30-plus-harness/`. Each scene asserts `[
 
 ---
 
-## Approval gate
+## Approval gate — SIGNED 2026-09-21
 
-After review, confirm:
+- [x] Shared grammar sufficient for Intelligence + Activity
+- [x] I2 change stream contextual (field primary — not permanent 50/50 split)
+- [x] A1 TRACE rail + optional A2 timeline toggle
+- [x] Navigation B click/pin behavior (no disruptive hover expand)
+- [x] Activity A1 pilot on `/activity` authorized
 
-- [ ] Shared grammar sufficient for Intelligence + Activity
-- [ ] I2 change stream contextual (field primary — not permanent 50/50 split)
-- [ ] A1 TRACE rail + optional A2 timeline toggle
-- [ ] Navigation B click/pin behavior (no disruptive hover expand)
-- [ ] Ready to implement Activity A1 pilot on `/activity` (single route scope)
-
-**No production rollout until this checklist is signed.**
+**Next gate:** Staging journey J7 PASS before production PASS claim. See `GRAVITRE_3.0_HARNESS_GATE_STATUS.md`.

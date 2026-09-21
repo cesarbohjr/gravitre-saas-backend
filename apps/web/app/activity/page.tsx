@@ -989,7 +989,11 @@ function ActivityPageInner() {
                         <p className={TYPE.eyebrow}>Outcome</p>
                         <div className="mt-3 space-y-4">
                           <ActivityTracePanel outcome={selectedOutcome} />
-                          <BusinessOutcomeView outcome={selectedOutcome} density="timeline" />
+                          <BusinessOutcomeView
+                            outcome={selectedOutcome}
+                            density="timeline"
+                            suppressTimeline
+                          />
                         </div>
                       </motion.div>
                     </AnimatePresence>
