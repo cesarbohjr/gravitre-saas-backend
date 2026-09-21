@@ -128,3 +128,15 @@ Does not replace the 05:50Z `f50ea3f1` table.
 Not worse vs 3.0-A A P95 1215: **yes**. Barge-in: **PASS — `voice.barge_in.write_gate` @ `2026-09-20T06:20:42.448557Z`** audit `a3091179-…` conv `ae1a538f-…`.
 
 Seat lookup no longer blocks first SSE; warmed PERCEIVE can flush during seat check. One remaining ~1.1 s accepted+audio stall on a cold worker.
+
+## HTTP Talk re-probe @ SHA `7a2eaaab` (2026-09-21T21:25:48Z)
+
+Same-turn plan-hold sample n=5, isolated org, **not Voice-C / PCM**. Lanes B/C still **NOT_RUN**.
+
+| Metric | p50 | p95 | Target | SLO |
+|--------|-----|-----|--------|-----|
+| **A** | **254 ms** | **300 ms** | 500 / 800 | **PASS** |
+| **B** | **1832 ms** | **2432 ms** | 5000 / 8000 | **PASS** |
+
+Evidence: `docs/delivery/voice-slo-two-metric-live.json`.
+

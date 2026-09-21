@@ -1,6 +1,6 @@
 # Gravitre 3.0-H — cross-system entities on ExecutionPlan (2026-09-21)
 
-**Status:** Source **UNIT_TEST**. Live unique-entity bind remains **NOT RUN** (human OAuth deferred).
+**Status:** Source **UNIT_TEST** + live unique Alpha bind **PASS** on isolated org (synthetic QBO/Zendesk bindings; HubSpot/QBO/Zendesk OAuth not all live). No fuzzy STA-312 person joins.
 
 Cesar authorized 3.0 after deferring remaining 2.0 human tests to the end. This phase does not start 3.0-C lane B production, a second worker, or fuzzy STA-312 person joins.
 
@@ -16,5 +16,5 @@ Cesar authorized 3.0 after deferring remaining 2.0 human tests to the end. This 
 ## Gate
 
 - UNIT_TEST: `test_platform_execution_3_0_h_entities.py`
-- LIVE unique bind: **NOT RUN** (human deferred)
+- LIVE unique bind: **PASS** — `org_business_entities` `78e5c0d2-…` canonical `a1fa0000-…` isolated org; join `joined`; foreign org `refused_cross_org`; plan `entity_id` stamped. Evidence `gravitre-3.0-closeout-live.json` @ Railway `7a2eaaab` 2026-09-21T21:25Z. Provider OAuth for QBO/Zendesk still not connected (synthetic bindings).
 - WRITE: not invoked

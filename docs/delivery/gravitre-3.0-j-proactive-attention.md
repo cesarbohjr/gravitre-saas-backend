@@ -14,6 +14,6 @@
 ## Gate
 
 - UNIT_TEST: `test_platform_execution_3_0_j_attention.py`
-- Live proactive notices: **NOT RUN**
+- Live proactive notices: **PASS** — 2 ranked `safe_read` notices from live GA/GSC `misconfigured` readiness; `write_allowed=false`; cap 3. Artifact `gravitre-3.0-closeout-live.json` @ `7a2eaaab`.
 
-3.0-H/I remain **partially open**: live unique-entity bind **NOT RUN**; spoken HTTP traces **PASS** on `19b3e014`. Historical required CI `35622991537` on `6d563e3d` stays FAIL.
+3.0-H unique Alpha bind **PASS** (synthetic bindings). Spoken HTTP traces **PASS**. Historical required CI `35622991537` on `6d563e3d` stays FAIL.

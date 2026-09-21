@@ -1,6 +1,6 @@
 # Gravitre 3.0-D — durable work sessions (2026-09-19)
 
-**Status:** Source **UNIT_TEST**. Resume golden on E5 `ExecutionPlan`. **Not** a second Cowork worker runtime. LIVE_USER_PROVEN long-task **NOT RUN**.
+**Status:** Source **UNIT_TEST**. Resume golden on E5 `ExecutionPlan`. **Not** a second Cowork worker runtime. Production crash-resume **UNIT**; live plan-id persist **PASS**.
 
 ## What shipped
 
@@ -17,6 +17,6 @@
 ## Gate
 
 - Resume same `plan_id`: UNIT_TEST (`backend/tests/services/test_durable_work_session.py`)
-- Production long-task resume: **NOT RUN**
+- Production long-task resume: **PARTIAL** — isolated Apollo stage conv `2ec268a2-…` kept plan `752df0d0-…` through yes-wait (`sent_claim=false`). `durable_checkpoint` was not on the stored task_state, so crash-resume golden stays **UNIT_TEST**.
 
 Lane B production and a separate worker process remain forbidden.

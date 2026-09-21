@@ -1,0 +1,74 @@
+{
+  "probe": "3.0_closeout_live",
+  "started_at": "2026-09-21T21:25:07.313302+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "health": {
+    "git_sha": "7a2eaaabecd99d969f1b43478687b7599c13e747",
+    "timestamp": "2026-09-21T21:24:16.575665+00:00"
+  },
+  "h_unique_bind": {
+    "pass": true,
+    "alpha_row": {
+      "id": "78e5c0d2-e8d8-4996-b321-abb75ac96dd9",
+      "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+      "canonical_key": "a1fa0000-1501-4000-8000-c04e57a00001",
+      "display_name": "Gravitre Test Customer Alpha",
+      "kind": "company"
+    },
+    "persist_written": 0,
+    "join_status": "joined",
+    "join_entity_id": "a1fa0000-1501-4000-8000-c04e57a00001",
+    "refused_cross_org": "refused_cross_org",
+    "plan_entity_id": "a1fa0000-1501-4000-8000-c04e57a00001",
+    "host": "alpha.test.gravitre.app",
+    "fuzzy_person": false
+  },
+  "j_notices": {
+    "pass": true,
+    "readiness": {
+      "google_analytics": {
+        "present": true,
+        "executable": false,
+        "auth_status": "misconfigured",
+        "blocking_reason": "misconfigured"
+      },
+      "google_search_console": {
+        "present": true,
+        "executable": false,
+        "auth_status": "misconfigured",
+        "blocking_reason": "misconfigured"
+      }
+    },
+    "notice_count": 2,
+    "write_allowed": [
+      false,
+      false
+    ],
+    "investigations": [
+      "safe_read",
+      "safe_read"
+    ],
+    "signal_ids": [
+      "google_analytics:token_expired",
+      "google_search_console:token_expired"
+    ]
+  },
+  "d_resume": {
+    "pass": true,
+    "conversation_id": "2ec268a2-84af-48ab-99a3-ef95d59c578a",
+    "list_name": "gravitre-3-0-d-resume-20260921212418",
+    "stage_http": 200,
+    "hold_http": 200,
+    "stage_plan_ids": [
+      "752df0d0-34a7-418d-a9d6-4f71f8e1046f"
+    ],
+    "hold_plan_ids": [],
+    "stored_plan_id": "752df0d0-34a7-418d-a9d6-4f71f8e1046f",
+    "resumed_plan_id": null,
+    "sent_claim": false
+  },
+  "pass": true,
+  "finished_at": "2026-09-21T21:25:07.313336+00:00",
+  "lane_b": "NOT_RUN",
+  "voice_c": "NOT_RUN"
+}
