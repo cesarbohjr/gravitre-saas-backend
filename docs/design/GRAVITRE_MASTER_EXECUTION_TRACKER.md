@@ -153,7 +153,18 @@ Marketplace discovery is a scan list with price and install on the row; pack met
 | Railway | Not redeployed for this frontend commit (“No deployment needed - watched paths not modified.”). `/health` `git_sha=6cd43ae3` `status=ok` at `2026-09-21T06:55:04Z`. Backend remains the last watched-path deploy; not a live connected-system business-path PASS. |
 | Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
 
-No further safe implementation remains for Technology thinning or the KF-A production scene; both are verified on `720a0650`. Authenticated browser, OAuth, authenticated `/ai`, connected-system execution, and voice PCM stay NOT PROVEN. A smoke-user magic link reached `https://gravitre.app/login` without a session (`hasSession=false`). Google consent and a physical microphone are still required for the live 2.0 proofs. Milestone 1 live reverify [35615787164](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35615787164) on this SHA failed `wave67_spotcheck`, `routing_wave_abcd`, and `retrieval_ab` (retrieval A answered the connector list without `getConnectorStatus`). `research_cascade` passed.
+No further safe implementation remains for Technology thinning or the KF-A production scene; both are verified on `720a0650`. Authenticated browser, OAuth, authenticated `/ai`, connected-system execution, and voice PCM stay NOT PROVEN. A smoke-user magic link reached `https://gravitre.app/login` without a session (`hasSession=false`). Google consent and a physical microphone are still required for the live 2.0 proofs. Milestone 1 live reverify [35615787164](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35615787164) on `720a0650` failed `wave67_spotcheck`, `routing_wave_abcd`, and `retrieval_ab` (retrieval A answered the connector list without `getConnectorStatus`). `research_cascade` passed.
+
+### Retrieval A — confident connector list without live check (release-blocking)
+
+| Check | Result |
+|-------|--------|
+| Incident | Live probe A on `720a0650` at `2026-09-21T15:25:18Z`, org `f07e57c0…`, text `You have Apollo, Google Ads, Google Search Console, and Hubspot connected.` with `tool_names: []`. Root cause: intent-gateway `connector_status` shortcut used routing `connected_integrations` / non-live availability instead of `tool_connector_status` (`getConnectorStatus`, `force_live=True`). |
+| Fix commits | `6e070c07` (require live status before naming connectors) + `0b5d2567` (emit `getConnectorStatus` fingerprint + real fast-mode `simple` tier on the shortcut) + `5c9d8735` / `166759e7` (named regression fixtures). |
+| Named fixtures | `test_retrieval_ab_a_slug_list_is_not_a_connector_status_claim`, `test_retrieval_ab_a_list_names_only_getconnectorstatus_executable_rows`, `test_retrieval_ab_a_format_ignores_routing_slugs`, `test_retrieval_ab_a_shortcut_emits_getconnectorstatus_tool_name`, `test_retrieval_ab_a_fast_route_is_simple`, `test_retrieval_ab_a_20260921_live_false_claim_blocked_without_getconnectorstatus`. Smoke forbids the exact false claim string. |
+| CI | Clay retarget tip **success** [35625685819](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35625685819) on `5c9d8735`. |
+| Live re-run | `scripts/smoke-retrieval-ab-live.py --min-sha 0b5d2567` **pass** at `2026-09-21T16:48:54Z` against health `git_sha=6d563e3d` (ancestor of the fix). Query A: `tool_names=["getConnectorStatus"]`, `routing_tiers=["simple"]`, `effective_modes=["fast"]`. Text named executable live rows only; the four-slug routing sentence did not recur. Artifact `e2e/.fixtures/m1/retrieval-ab-live-post-fix.json`. |
+| Still open from M1 | `wave67_spotcheck` and `routing_wave_abcd` remain failed on the prior M1 run; deferred until after this fix. |
 
 ---
 
