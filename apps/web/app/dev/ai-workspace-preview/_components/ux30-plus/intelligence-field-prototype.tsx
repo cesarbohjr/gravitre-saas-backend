@@ -7,6 +7,7 @@
  */
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { EvidenceChip } from "@/components/gravitre/creative-grammar"
@@ -245,8 +246,12 @@ export function IntelligenceFieldPrototype({ scene }: { scene: string }) {
                   : `${metrics.knownRelationships} relationship rows exist without resolvable entity ids. Do not invent nodes. After the SELECT fix deploys, recount; only edges with both endpoint ids become usable nodes.`}
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
-                <Button type="button" size="sm" asChild><a href="/connectors">Open connectors</a></Button>
-                <Button type="button" size="sm" variant="outline" asChild><a href="/docs">Docs</a></Button>
+                <Button type="button" size="sm" asChild>
+                  <Link href="/connectors">Open connectors</Link>
+                </Button>
+                <Button type="button" size="sm" variant="outline" asChild>
+                  <Link href="/docs">Docs</Link>
+                </Button>
               </div>
               <p className={cn(TYPE.meta, "mt-4 max-w-sm")}>{metrics.note}</p>
             </div>
