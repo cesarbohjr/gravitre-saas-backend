@@ -1,9 +1,15 @@
 {
   "probe": "gravitre_2_0_live_read_gate",
   "p0_fix_local": {
-    "at": "2026-09-21T00:20:00Z",
-    "note": "Source fix for LIVE skip, provider-result grounding, UUID audit actor, website frame. Live HubSpot READ not proven until this SHA is on Railway.",
-    "hubspot_live_read": "NOT PROVEN",
+    "at": "2026-09-21T00:41:47Z",
+    "head_sha": "b95a8735dbf980c28aae52a0ba68f3cc86ac9519",
+    "health_sha": "b95a8735dbf980c28aae52a0ba68f3cc86ac9519",
+    "required_ci": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35547799031",
+    "hubspot_live_read": "PASS",
+    "hubspot_conversation_id": "191353b4-885e-4f6d-93a8-16327bc775fa",
+    "invoke_completed": "fb6f25c2-beb tool.invoke.completed hubspot.deals.list @ 2026-09-21T00:41:42.651738Z",
+    "observation_id": "dbdda006-4eae-400d-87f5-62d8725f2a6b",
+    "result_count": 25,
     "unsupported_answer_prevented_unit": "YES",
     "canonical_lineage_unit": "YES"
   },

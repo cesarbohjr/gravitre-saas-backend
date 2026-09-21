@@ -1,0 +1,149 @@
+{
+  "probe": "gravitre_2_0_hubspot_live_read",
+  "health_sha": "b95a8735dbf980c28aae52a0ba68f3cc86ac9519",
+  "conversation_id": "191353b4-885e-4f6d-93a8-16327bc775fa",
+  "http_status": 200,
+  "assistant_excerpt": "I found **25 deals** in your CRM.",
+  "selected_action": "hubspot.deals.list",
+  "plan_id": "c4f13d94-165c-4dbb-ba1b-2e1025b69699",
+  "plan_terminal": "completed",
+  "steps": [
+    {
+      "step_id": "compose",
+      "action_key": null,
+      "status": "pending",
+      "connector_id": null
+    },
+    {
+      "step_id": "read_sales_pipeline_health",
+      "action_key": "hubspot.deals.list",
+      "status": "completed",
+      "connector_id": "hubspot"
+    }
+  ],
+  "provider_result_evidence": {
+    "kind": "provider_observation",
+    "action_key": "hubspot.deals.list",
+    "result_count": 25,
+    "observation_id": "dbdda006-4eae-400d-87f5-62d8725f2a6b",
+    "plan_id": "c4f13d94-165c-4dbb-ba1b-2e1025b69699",
+    "step_id": "read_sales_pipeline_health",
+    "success": true,
+    "provider_invoked": true,
+    "empty": false
+  },
+  "observations": [
+    {
+      "observation_id": "dbdda006-4eae-400d-87f5-62d8725f2a6b",
+      "step_id": "read_sales_pipeline_health",
+      "success": true,
+      "result_count": 25,
+      "provider_invoked": true
+    }
+  ],
+  "invoke_audits": [
+    {
+      "id": "8b5e66ff-33d",
+      "action": "tool.invoke.requested",
+      "created_at": "2026-09-21T00:41:42.137373+00:00",
+      "tool": "hubspot.deals.list",
+      "provider_invoked": true,
+      "execution_actor_source": "authenticated_user",
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "fb6f25c2-beb",
+      "action": "tool.invoke.completed",
+      "created_at": "2026-09-21T00:41:42.651738+00:00",
+      "tool": "hubspot.deals.list",
+      "provider_invoked": true,
+      "execution_actor_source": "authenticated_user",
+      "fallthrough_reason": null,
+      "kind": null
+    }
+  ],
+  "audits": [
+    {
+      "id": "06e389fd-ec5",
+      "action": "context.understanding.extracted",
+      "created_at": "2026-09-21T00:41:31.892+00:00",
+      "tool": null,
+      "provider_invoked": null,
+      "execution_actor_source": null,
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "9bae7ac4-e94",
+      "action": "memory.recalled",
+      "created_at": "2026-09-21T00:41:36.845317+00:00",
+      "tool": null,
+      "provider_invoked": null,
+      "execution_actor_source": null,
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "c4dbbdb4-262",
+      "action": "classical.answer_path.reached",
+      "created_at": "2026-09-21T00:41:38.03928+00:00",
+      "tool": null,
+      "provider_invoked": null,
+      "execution_actor_source": null,
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "8b5e66ff-33d",
+      "action": "tool.invoke.requested",
+      "created_at": "2026-09-21T00:41:42.137373+00:00",
+      "tool": "hubspot.deals.list",
+      "provider_invoked": true,
+      "execution_actor_source": "authenticated_user",
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "fb6f25c2-beb",
+      "action": "tool.invoke.completed",
+      "created_at": "2026-09-21T00:41:42.651738+00:00",
+      "tool": "hubspot.deals.list",
+      "provider_invoked": true,
+      "execution_actor_source": "authenticated_user",
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "a3b73240-bca",
+      "action": "runtime.turn_latency.critical_path",
+      "created_at": "2026-09-21T00:41:43.011193+00:00",
+      "tool": null,
+      "provider_invoked": null,
+      "execution_actor_source": null,
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "a64d6e54-78c",
+      "action": "response.composer.completed",
+      "created_at": "2026-09-21T00:41:46.43425+00:00",
+      "tool": null,
+      "provider_invoked": null,
+      "execution_actor_source": null,
+      "fallthrough_reason": null,
+      "kind": "canned"
+    },
+    {
+      "id": "4d9b5bfc-f65",
+      "action": "cognitive.loop.completed",
+      "created_at": "2026-09-21T00:41:47.198994+00:00",
+      "tool": null,
+      "provider_invoked": null,
+      "execution_actor_source": null,
+      "fallthrough_reason": null,
+      "kind": null
+    }
+  ],
+  "status": "PASS"
+}
