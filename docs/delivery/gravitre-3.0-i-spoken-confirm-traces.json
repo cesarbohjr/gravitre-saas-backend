@@ -1,16 +1,16 @@
 {
   "probe": "spoken_confirm_traces",
   "proof_class": "SPOKEN_HTTP_NOT_VOICE_C",
-  "started_at": "2026-09-21T17:28:56.041542+00:00",
+  "started_at": "2026-09-21T18:53:49.454554+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "conversation_id": "c87141ed-c14e-4b4a-947b-e07222a27509",
-  "list_name": "gravitre-spoken-hold-202609211728",
+  "conversation_id": "33c0561c-3025-4615-8c9b-3657e39716c3",
+  "list_name": "gravitre-spoken-hold-202609211852",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-21T17:28:03.245477+00:00",
+    "timestamp": "2026-09-21T18:52:49.965797+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "8ee2ae008b2f9038919d0ce022f7433c0b700e88",
+    "git_sha": "19b3e01443291af7d354b7ed6187a53018c1fb14",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -29,7 +29,7 @@
   },
   "stage": {
     "http": 200,
-    "text_head": "I can create an empty Apollo contact list named **gravitre-spoken-hold-202609211728**. Reply **yes** to approve, or send a different name.",
+    "text_head": "I can create an empty Apollo contact list named **gravitre-spoken-hold-202609211852**. Reply **yes** to approve it, or tell me what to change.",
     "pending_seen": true,
     "event_types": [
       "data-intelligence",
@@ -42,11 +42,12 @@
       "text-end",
       "text-start"
     ],
-    "sent_claim": false
+    "sent_claim": false,
+    "full_loop_spoken": false
   },
   "yes_wait": {
     "http": 200,
-    "text_head": "I've classified this as a real request, so I'm running the full loop.I'm loading memory and knowledge now.I'm putting the plan together.I'm preparing the next actions.I'm checking that against what just happened.Got it. I\u2019m holding. I won\u2019t send or execute anything until you give a clear yes.",
+    "text_head": "Write is on hold. I will not send or execute until you confirm with **yes**.",
     "pending_seen": false,
     "event_types": [
       "data-intelligence",
@@ -60,8 +61,9 @@
       "text-start"
     ],
     "sent_claim": false,
-    "pass": false
+    "full_loop_spoken": false,
+    "pass": true
   },
-  "pass": false,
-  "finished_at": "2026-09-21T17:28:56.041564+00:00"
+  "pass": true,
+  "finished_at": "2026-09-21T18:53:49.454598+00:00"
 }

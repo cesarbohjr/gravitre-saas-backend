@@ -58,4 +58,4 @@ A 3.0 change that breaks typed hello, SSE terminal `[DONE]`, persistence of both
 
 3.0-H/I source implementation authorized. Human 2.0 package (isolated Google reconnect, Playwright after one login, Voice-C) remains deferred — not closed. Production SHA may lag `main` until Railway/Vercel catch up.
 
-3.0-H/I **not closed:** required CI `35622991537` on `6d563e3d` is a historical FAIL; spoken confirm traces remain NOT RUN until the gateway hold SHA is live.
+3.0-H/I **CI + spoken HTTP traces:** historical required CI `35622991537` on `6d563e3d` stays FAIL. Current-tip required CI `35639657057` SUCCESS. Spoken HTTP traces **PASS** on Railway `19b3e014` (not VOICE_C). 3.0-H live unique bind remains **NOT RUN**.

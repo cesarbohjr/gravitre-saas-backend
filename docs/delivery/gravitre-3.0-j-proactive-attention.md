@@ -16,4 +16,4 @@
 - UNIT_TEST: `test_platform_execution_3_0_j_attention.py`
 - Live proactive notices: **NOT RUN**
 
-3.0-H/I remain **not closed** until required CI is green on the current tip and spoken HTTP traces pass without full-loop PERCEIVE. Historical required CI `35622991537` on `6d563e3d` stays FAIL.
+3.0-H/I remain **partially open**: live unique-entity bind **NOT RUN**; spoken HTTP traces **PASS** on `19b3e014`. Historical required CI `35622991537` on `6d563e3d` stays FAIL.
