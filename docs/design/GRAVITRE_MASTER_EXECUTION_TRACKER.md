@@ -92,14 +92,14 @@ Authenticated browser for every row: **BLOCKED: NO AUTHORIZED SESSION**. That do
 | Connectors | Discover then manage; connect/repair; animate only real OAuth; no logo-wall default | Default `viewMode` is the compact list. Topology is opt-in. | A already present. | None. | Existing IA test: default `"grid"`, `variant="list"`, discovery strip | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
 | Sources | Ingest/verify; remove card-first grids where a table wins; pulse only on a real syncing job | Table of existing source fields. `rag_sources.status` is set to `syncing` by `source_sync_service` during a sync. | A | Category list is a table. Status cell pulses only when `status === "syncing"` (`motion-safe`). Last sync and generic connected/error do not pulse. Selected row still opens the existing tile. | `phase-3-product-ia.test.ts` asserts `<table`, no `xl:grid-cols-4`, and `data-source-ingest="syncing"` | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
 | Approvals | One primary Approve; continue the same run; remove multi-CTA clutter | Queue selects; inspector Approve is primary; row says “Select to decide”; same-path chip when `runId` exists. | A | Desktop inspector keeps Approve. Mobile uses only the sticky bar (`lg:flex` footer hidden below `lg`) so Approve is not shown twice. | Existing IA test plus `hidden items-center gap-3 lg:flex` | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
-| Marketplace | Discover and install real catalog objects. Visual density is an unselected replacement layout (`GRAVITRE_3.0_PLUS_CESAR_APPROVAL_PACKAGE.md`: “Heavy redesign; own slice”). | Catalog remains the existing featured + card grid (`data-review-surface="marketplace-discovery"`). Prices stay on asset records. | C — open | None. A table or new discovery object would be a new concept. | Not rewritten | NOT RUN — login wall | PRESERVED — open layout decision | Do not redesign until a density layout is selected |
+| Marketplace | Scan catalog packs without a card wall; keep real prices, filters, install, and detail | Scan list: title, department, connector summary, price, Install, Details, Clone. Extra metadata is behind “More about this pack.” | A — list-first disclosure, not a new product model | `b20ef799` inside deployed `a47e002e` | `phase-3` and `phase-6` assert `More about this pack` and no `2xl:grid-cols-4` | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
 | Models | Honest readiness; no fake TRAINED; no decorative motion | Catalog/studio are list + inspector. No `TRAINED` string on `/models` or the built-in brain. | A already present. | None. | Existing IA test: list + inspector, not card grids | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
 | Settings | Shared shell and Navigation B. No separate settings spatial model in the approved surface table. | Settings routes already use `AppShell`. Org switch stays inspector-on-selection. | B already present. | None. | Existing IA test: settings orgs inspect, no card chrome | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
 | AI Workspace | Morph the existing workspace; one `useChat`; voice uses the existing visualizer, not the marketing orb | `useChat({` is called in `ai-workspace.tsx` only. Voice comments keep the orb as presentation, not a second runtime. | A already present. C: no second runtime and no marketing-orb import. | None. | `selected-entity-context.test.ts` reads that `useChat({` transport body | NOT RUN — login wall | IMPLEMENTED — NOT AUTHENTICATED-BROWSER-PROVEN | None |
 
 ### Category C
 
-1. **Marketplace discovery density — still open.** The approval package marks this as a heavy redesign and its own slice. Existing rules also say marketplace objects are premium discovery, not an operations table. No layout was selected, so the catalog is unchanged.
+1. **Marketplace discovery density — closed as list-first disclosure.** The catalog is a scan list. A different marketplace product model was not introduced.
 2. **Sources ingest pulse — closed.** `source_sync_service` writes `rag_sources.status = "syncing"` for a real sync. The table pulses only on that status. Last-sync text does not drive motion.
 3. **Agents and Relationships spatial models — closed by preservation.** Team, list, graph, and the relationships canvas stay. No additional model was added.
 
@@ -118,7 +118,18 @@ Phase 5 commit `a550ad18` is on `origin/main` and is contained in tip `69593acc`
 
 `69593acc` is cognitive-runtime 2.0 K/L/M wiring. It is not UX/UI 3.0 Plus proof and not a live business-path PASS. K/L/M stay TEST PROVEN / live NOT_RUN in `docs/delivery/GRAVITRE_PLATFORM_EXECUTION_2.0_COMPLETION.md`.
 
-Marketplace discovery is now a scan list with price and install on the row; pack metadata is behind “More about this pack”. Connector and workflow detail pages use sections instead of card stacks. CES orchestration and governance scenes link to existing docs. Pilot 3 production promotion stays gated.
+Marketplace discovery is a scan list with price and install on the row; pack metadata is behind “More about this pack”. Connector and workflow detail pages use sections instead of card stacks. CES orchestration and governance scenes link to existing docs and can Step one beat, which pauses autoplay. Pilot 3 production promotion stays gated.
+
+### Deployed tip after the lint fix
+
+| Check | Result |
+|-------|--------|
+| Commit | `a47e002e` (`fix(creative): use Next links for orchestration and approval docs.`) |
+| Main CI | **success** [35566326468](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35566326468) — Web, Backend pytest, dependency audit, shared runtime gate, integration smoke. Billing E2E skipped. |
+| Marketing Lighthouse | **success** [35566326356](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35566326356) |
+| Vercel | **success** — “Deployment has completed” on `a47e002e`: https://vercel.com/gravitre-ai/gravitre-saas-backend/DwA5z5vF1u4ptYHftHLqoxNKjjr1 |
+| Railway | Not redeployed. Commit status: “No deployment needed - watched paths not modified.” `/health` `git_sha=eea0b633` `status=ok` at `2026-09-21T06:06:55Z`. That SHA is the last backend commit, not a new 2.0 live proof. |
+| Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
 
 ---
 
@@ -128,6 +139,8 @@ Marketplace discovery is now a scan list with price and install on the row; pack
 |-------------|--------|
 | KF-A harness (locked concept, dev preview only) | IMPLEMENTED — NOT PROVEN (harness). Not a production page. |
 | Pilot 1 mobile ring-spin removal | IMPLEMENTED in `department-network-mobile.tsx` — Relational Topology, no `animate-spin`. Not authenticated-product verification. |
+| Orchestration / governance Step | IMPLEMENTED — visitor Step pauses autoplay and advances one beat. Success/failure retained. Doc links to agents and approvals. Not a production Pilot 3 promote. |
+| Technology page thinning | BLOCKED by the existing CES 2.0 stop for that slice. Not a new gate. |
 | Production Pilot 3 promote | BLOCKED — separate promote gate. Do not ship the harness to marketing production. |
 | Pilot 1 / 2 concept reopen | Locked — do not reopen |
 

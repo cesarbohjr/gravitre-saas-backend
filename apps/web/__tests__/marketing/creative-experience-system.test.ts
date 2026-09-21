@@ -455,5 +455,7 @@ describe("CES 2.0 product doc links", () => {
     expect(orchestration).toMatch(/\/docs\/guides\/how-to\/approvals/)
     expect(governed).toMatch(/\/docs\/guides\/how-to\/approvals/)
     expect(orchestration).toMatch(/Failure path/)
+    expect(orchestration).toMatch(/>\s*Step\s*</)
+    expect(governed).toMatch(/>\s*Step\s*</)
   })
 })

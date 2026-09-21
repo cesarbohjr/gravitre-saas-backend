@@ -122,6 +122,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
   const [frozenPhase, setFrozenPhase] = useState<OrchestrationPhase | null>(null)
   const [phase, setPhase] = useState<OrchestrationPhase>("quiet")
   const [mode, setMode] = useState<"success" | "failure">("success")
+  const [manual, setManual] = useState(false)
 
   useEffect(() => {
     const onVis = () => setHidden(document.hidden)
@@ -141,10 +142,10 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
   }, [])
 
   useEffect(() => {
-    if (frozenPhase || reduced || !inView || hidden) return
+    if (manual || frozenPhase || reduced || !inView || hidden) return
     const t = window.setTimeout(() => setPhase((p) => nextPhase(p, mode)), phase === "waiting" ? 1600 : 1100)
     return () => window.clearTimeout(t)
-  }, [phase, reduced, inView, hidden, mode, frozenPhase])
+  }, [phase, reduced, inView, hidden, mode, frozenPhase, manual])
 
   const showPlan = ["plan", "delegate", "tools", "parallel", "waiting", "verify", "outcome", "learned", "failure"].includes(phase)
   const showAgents = ["delegate", "tools", "parallel", "waiting", "verify", "outcome", "learned", "failure"].includes(phase)
@@ -286,6 +287,18 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
         {reduced ? "Illustrative orchestration model." : PHASE_CAPTION[phase]}
       </p>
       <div className="mt-2 flex justify-center gap-2">
+        {!reduced && !frozenPhase ? (
+          <button
+            type="button"
+            className="rounded-md border border-divide px-2 py-1 text-[11px]"
+            onClick={() => {
+              setManual(true)
+              setPhase((current) => nextPhase(current, mode))
+            }}
+          >
+            Step
+          </button>
+        ) : null}
         <button
           type="button"
           className={cn("rounded-md border px-2 py-1 text-[11px]", mode === "success" ? "border-brand text-brand" : "border-divide")}
