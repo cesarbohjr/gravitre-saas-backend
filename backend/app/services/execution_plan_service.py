@@ -109,6 +109,7 @@ class ExecutionPlan:
     pending_action_id: str | None = None
     execution_strategy: str | None = None
     replan_reason: str | None = None
+    entity_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -129,6 +130,7 @@ class ExecutionPlan:
             "pending_action_id": self.pending_action_id,
             "execution_strategy": self.execution_strategy,
             "replan_reason": self.replan_reason,
+            "entity_id": self.entity_id,
             "steps": [
                 {
                     "step_id": s.step_id,
@@ -201,6 +203,7 @@ class ExecutionPlan:
             pending_action_id=raw.get("pending_action_id"),
             execution_strategy=raw.get("execution_strategy"),
             replan_reason=raw.get("replan_reason"),
+            entity_id=raw.get("entity_id"),
         )
 
 

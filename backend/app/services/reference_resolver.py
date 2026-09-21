@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 ReferenceKind = Literal[
     "confirm",
+    "hold_commit",
     "reject",
     "select_all_options",
     "select_option",
@@ -157,6 +158,18 @@ def resolve_reference(message: str, task_state: dict[str, Any] | None) -> Refere
         return ReferenceResolution(kind="none", matched=False, reason="empty_message")
 
     pending_target = _pending_confirmation_target(state)
+
+    from app.services.spoken_write_approval import classify_spoken_write_approval
+
+    spoken = classify_spoken_write_approval(text, task_state=state)
+    if spoken.decision == "hold_commit":
+        return ReferenceResolution(
+            kind="hold_commit",
+            matched=True,
+            reason=spoken.reason,
+            pending_target=spoken.pending_target or pending_target,
+        )
+
     if _CONFIRM_RE.match(text):
         if pending_target:
             return ReferenceResolution(

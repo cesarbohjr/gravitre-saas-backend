@@ -278,9 +278,14 @@ def will_execute_staged_connector_write(task_state: dict[str, Any] | None, messa
         build_pending_snapshot,
         classify_pending_reply_fast,
     )
+    from app.services.spoken_write_approval import classify_spoken_write_approval
 
     snap = build_pending_snapshot(task_state)
     if snap.hold_prompt_active:
+        return False
+
+    spoken = classify_spoken_write_approval(text, task_state=task_state)
+    if spoken.decision == "hold_commit":
         return False
 
     # Mirrors process_turn's own confirmed gate exactly — same pattern, same bare

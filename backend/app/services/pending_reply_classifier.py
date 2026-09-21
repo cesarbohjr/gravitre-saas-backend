@@ -29,6 +29,7 @@ logger = get_logger(__name__)
 PendingReplyIntent = Literal[
     "slot_answer",
     "confirm",
+    "hold_commit",
     "reject",
     "meta_clarify",
     "modify",
@@ -40,6 +41,7 @@ _VALID_INTENTS: frozenset[str] = frozenset(
     {
         "slot_answer",
         "confirm",
+        "hold_commit",
         "reject",
         "meta_clarify",
         "modify",
@@ -289,6 +291,14 @@ def classify_pending_reply_fast(
     if not text:
         return "ambiguous"
 
+    from app.services.spoken_write_approval import classify_spoken_write_approval
+
+    spoken = classify_spoken_write_approval(
+        text, task_state={"pending_task": {"status": snap.status}}
+    )
+    if spoken.decision == "hold_commit":
+        return "hold_commit"
+
     # Active hold/abandon prompt — map confirm-ish to abandon/proceed via reject/confirm.
     if snap.hold_prompt_active:
         lower = text.lower()
@@ -488,6 +498,7 @@ async def _model_pending_reply_intent(
             "Labels (pick exactly one):\n"
             "- slot_answer: supplying a missing field value\n"
             "- confirm: approve / proceed with the pending action\n"
+            "- hold_commit: yes-wait / hold the write without executing\n"
             "- reject: cancel / abandon the pending action\n"
             "- meta_clarify: asking what is needed, why, or what format\n"
             "- modify: changing the pending plan or fields (not a bare yes/no)\n"
@@ -503,7 +514,7 @@ async def _model_pending_reply_intent(
             system_prompt=(
                 "You are classifying user intent against a pending action. "
                 "Regex did not match with confidence — comprehend the conversation. "
-                'Respond as JSON: {"intent":"slot_answer|confirm|reject|meta_clarify|'
+                'Respond as JSON: {"intent":"slot_answer|confirm|hold_commit|reject|meta_clarify|'
                 'modify|unrelated|ambiguous","reason":"..."}'
             ),
             temperature=0.0,
@@ -641,6 +652,7 @@ def map_legacy_plan_intent(intent: PendingReplyIntent) -> str:
     """Bridge for callers still reading PendingPlanIntent."""
     return {
         "confirm": "continue",
+        "hold_commit": "unclear",
         "reject": "cancel",
         "modify": "modify",
         "unrelated": "unclear",

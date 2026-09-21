@@ -366,6 +366,22 @@ async def run_connector_turn(
             snap=snap,
         )
 
+    if intent == "hold_commit":
+        from app.services.spoken_write_approval import format_spoken_hold_commit
+
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "clarifying",
+            "message": format_spoken_hold_commit(),
+            "voice_section": interpretation.voice_section or voice_system_prompt_section(),
+            "task_state": interpretation.task_state,
+            "pending_task": (interpretation.task_state or {}).get("pending_task"),
+            "pending_reply_intent": intent,
+            "spoken_write_decision": "hold_commit",
+            "provider_invoked": False,
+            "workflow_status": "on hold",
+        }
+
     # Shared dispatch — meta / unrelated / ambiguous / reject-with-plan before connector traps.
     if intent == "meta_clarify" and has_pending_family(interpretation.task_state):
         return {

@@ -52,8 +52,8 @@ A 3.0 change that breaks typed hello, SSE terminal `[DONE]`, persistence of both
 - 2.0 LIVE_USER_PROVEN traffic (GA4/GSC OAuth), unique entity bind, recipes live, WRITE execute, multi-source live, continuity live, voice PCM.
 - Customer certification chrome (still unauthorized). Proactive 2.0-M is internal recommend-only.
 
-**READY TO RESUME 3.0 IMPLEMENTATION: NO** until Cesar signs this gate including browser and voice evidence policy.
+**READY TO RESUME 3.0 IMPLEMENTATION: YES** (engineering 3.0-H/I only) — Cesar 2026-09-21 deferred remaining human OAuth/browser/mic to the end. Browser + voice evidence still required before program-complete.
 
 ## 2026-09-21 note
 
-Do not start 3.0 product features. 2.0 remaining code (outcomes honesty, internal scorecard, bounded proactive, Gmail F1) is still 2.0 scope. Production SHA at this writing (`b95a8735`) predates that slice until Railway/Vercel catch `main`.
+3.0-H/I source implementation authorized. Human 2.0 package (isolated Google reconnect, Playwright after one login, Voice-C) remains deferred — not closed. Production SHA may lag `main` until Railway/Vercel catch up.

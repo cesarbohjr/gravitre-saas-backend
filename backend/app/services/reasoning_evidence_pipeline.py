@@ -164,6 +164,44 @@ def apply_join_and_labels_to_plan(
             )
         )
     plan.steps = updated
+    stamped = decision.get("entity_id")
+    plan.entity_id = str(stamped) if stamped else None
     if decision.get("join"):
         plan.execution_strategy = "PARALLEL"
     return plan
+
+
+def stamp_entity_on_execution_plan(
+    plan: ExecutionPlan,
+    *,
+    entity: BusinessEntity | None,
+    expected_org_id: str,
+    store_available: bool = True,
+) -> ExecutionPlan:
+    """3.0-H: BusinessEntity id survives on the E5 plan for this tenant only.
+
+    Cross-org entities are refused (no silent merge). STA-312: person joins
+    stay deferred in ``plan_entity_join_for_reads``.
+    """
+    if entity is not None and str(entity.org_id) != str(expected_org_id):
+        return apply_join_and_labels_to_plan(
+            plan,
+            join={
+                "join": False,
+                "reason": "refused_cross_org",
+                "parallel": True,
+                "entity_id": None,
+                "systems": [],
+            },
+        )
+    vendors = [
+        str(step.connector_id or "").strip().lower()
+        for step in plan.steps
+        if str(step.connector_id or "").strip()
+    ]
+    decision = plan_entity_join_for_reads(
+        entity=entity,
+        store_available=store_available,
+        read_vendors=vendors,
+    )
+    return apply_join_and_labels_to_plan(plan, join=decision)

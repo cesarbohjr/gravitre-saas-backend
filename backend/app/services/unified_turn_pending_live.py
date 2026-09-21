@@ -61,6 +61,16 @@ async def resolve_unified_live_pending_reply(
         snap=snap,
     )
 
+    if intent == "hold_commit":
+        from app.services.spoken_write_approval import format_spoken_hold_commit
+
+        return UnifiedTurnShadowResult(
+            outcome_kind="clarifying_question",
+            user_message=format_spoken_hold_commit(),
+            live_served=True,
+            model="spoken_write_approval",
+        )
+
     if intent in {"confirm", "reject", "modify", "slot_answer"}:
         return None
 

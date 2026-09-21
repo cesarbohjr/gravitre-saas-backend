@@ -1529,6 +1529,26 @@ class ChatConnectorExecutionService:
             }
 
         awaiting = (task_state.get("pending_task") or {}).get("status") == "awaiting_confirm"
+        from app.services.spoken_write_approval import (
+            classify_spoken_write_approval,
+            format_spoken_hold_commit,
+        )
+
+        spoken = classify_spoken_write_approval(message, task_state=task_state)
+        if spoken.decision == "hold_commit":
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarifying",
+                "message": format_spoken_hold_commit(
+                    pending_action_id=spoken.pending_action_id
+                ),
+                "task_state": await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                ),
+                "pending_reply_intent": "hold_commit",
+                "spoken_write_decision": "hold_commit",
+                "provider_invoked": False,
+            }
         confirmed = CONFIRM_PATTERN.match(message.strip()) or (
             awaiting and message.strip().lower() in {"confirm", "run", "execute"}
         )

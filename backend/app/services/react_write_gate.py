@@ -28,7 +28,16 @@ from app.core.safe_dict import safe_normalize_stored_dict
 WRITE_APPROVAL_REQUIRED = "write_approval_required"
 WRITE_COMMIT_INTERRUPTED = "write_commit_interrupted"
 _WRITE_INTERRUPT_SIGNALS = frozenset(
-    {"stop", "cancel", "barge_in", "true_interrupt", "interrupt", "aborted"}
+    {
+        "stop",
+        "cancel",
+        "barge_in",
+        "true_interrupt",
+        "interrupt",
+        "aborted",
+        "hold_commit",
+        "yes_wait",
+    }
 )
 
 
@@ -44,7 +53,14 @@ def interrupt_blocks_write_commit(
     signal = str(
         payload.get("signal") or payload.get("reason") or payload.get("type") or ""
     ).strip().lower()
-    return signal in _WRITE_INTERRUPT_SIGNALS
+    if signal in _WRITE_INTERRUPT_SIGNALS:
+        return True
+    if isinstance(task_state, dict):
+        if str(task_state.get("last_pending_reply_intent") or "") == "hold_commit":
+            return True
+        if str(task_state.get("spoken_write_decision") or "") == "hold_commit":
+            return True
+    return False
 
 
 # Platform writes that must use the same chat approval gate as connector writes.

@@ -133,6 +133,11 @@ def is_confirm_utterance(message: str) -> bool:
     text = (message or "").strip()
     if not text:
         return False
+    from app.services.spoken_write_approval import classify_spoken_write_approval
+
+    spoken = classify_spoken_write_approval(text)
+    if spoken.decision == "hold_commit":
+        return False
     return bool(CONFIRM_PATTERN.match(text) or text.lower() in {"yes", "y", "ok", "okay", "confirm"})
 
 

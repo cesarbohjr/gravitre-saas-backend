@@ -147,10 +147,16 @@ def join_provider_bindings(
     extra_evidence: tuple[EntityEvidence, ...] = (),
     existing_left_entity_id: str | None = None,
     existing_right_entity_id: str | None = None,
+    left_org_id: str | None = None,
+    right_org_id: str | None = None,
 ) -> JoinDecision:
     """Join two provider records into one BusinessEntity or refuse."""
     if not org_id:
         return JoinDecision(status="refused_cross_org", reason="missing_org")
+    if left_org_id and str(left_org_id) != str(org_id):
+        return JoinDecision(status="refused_cross_org", reason="left_org_mismatch")
+    if right_org_id and str(right_org_id) != str(org_id):
+        return JoinDecision(status="refused_cross_org", reason="right_org_mismatch")
     if left.system == right.system and left.resource_id != right.resource_id:
         return JoinDecision(status="refused_ambiguous", reason="same_system_distinct_ids")
     conf = min(float(left.confidence), float(right.confidence))

@@ -62,10 +62,12 @@ Mandatory CI: job **Shared runtime text/voice gate** — **PASS** on `53a374c1`.
 
 ## Resume 3.0?
 
-**NO** — Cesar’s release approval. Browser + post-fix PCM remain open. See `GRAVITRE_3_0_RELEASE_BASELINE.md`.
+**YES (engineering 3.0-H/I)** — Cesar 2026-09-21 deferred remaining human tests. Browser + PCM still open for program-complete / LIVE_USER_PROVEN.
 
-**SHARED RUNTIME RELEASE GATE: FAIL** (required CI job historically PASS on `53a374c1`; product PCM/browser open)
+**SHARED RUNTIME RELEASE GATE: FAIL** for chat-release-complete (browser/PCM). 3.0-H/I source work is authorized.
 
 ## 2026-09-21
 
 Production kernel for live HubSpot proof: `b95a8735`. 2.0 K/L/M + Gmail F1 are additional source on `main` after that SHA. Gate still **FAIL** for promotion to “chat release complete” until browser + PCM. F1 preflight row: HubSpot LIVE_PROVEN; Gmail list UNIT_PROVEN.
+
+Cesar: bypass remaining human testing until the end; move to 3.0. Implemented 3.0-H entity stamp + 3.0-I spoken yes-wait hold. See `gravitre-3.0-h-entities.md`, `gravitre-3.0-i-spoken-write.md`.

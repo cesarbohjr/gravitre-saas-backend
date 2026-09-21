@@ -333,6 +333,20 @@ class ChatOrchestrationService:
                 intent=intent,
                 snap=snap,
             )
+            if intent == "hold_commit":
+                from app.services.spoken_write_approval import format_spoken_hold_commit
+
+                return {
+                    "stop_pipeline": True,
+                    "dialogue_mode": "clarifying",
+                    "message": format_spoken_hold_commit(),
+                    "task_state": task_state,
+                    "pending_task": self._pending_task_payload(task_state),
+                    "pending_reply_intent": intent,
+                    "spoken_write_decision": "hold_commit",
+                    "provider_invoked": False,
+                    "block_fabrication": True,
+                }
             try:
                 await self._state.update_task_state(
                     conversation_id,
@@ -656,6 +670,26 @@ class ChatOrchestrationService:
             )
 
         status = str(pending.get("status") or "")
+        from app.services.spoken_write_approval import (
+            classify_spoken_write_approval,
+            format_spoken_hold_commit,
+        )
+
+        spoken = classify_spoken_write_approval(message, task_state=task_state)
+        if spoken.decision == "hold_commit":
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarifying",
+                "message": format_spoken_hold_commit(
+                    pending_action_id=spoken.pending_action_id
+                ),
+                "task_state": task_state,
+                "pending_task": self._pending_task_payload(task_state),
+                "pending_reply_intent": "hold_commit",
+                "spoken_write_decision": "hold_commit",
+                "provider_invoked": False,
+                "block_fabrication": True,
+            }
         confirmed = CONFIRM_PATTERN.match(message.strip()) or message.strip().lower() in {
             "yes",
             "y",
