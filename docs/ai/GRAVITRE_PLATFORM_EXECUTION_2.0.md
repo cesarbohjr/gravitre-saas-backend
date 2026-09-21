@@ -1,11 +1,13 @@
-# Gravitre Platform-Wide Execution 2.0 — proposed spec
+# Gravitre Platform-Wide Execution 2.0
 
-**Status:** SPEC ONLY — **2.0-A0 validated 2026-09-18**; do not implement 2.0-A until explicit approval  
-**Date:** 2026-09-18  
-**Grounding:** [gravitre-autonomous-execution-reaudit-2.0.md](../delivery/gravitre-autonomous-execution-reaudit-2.0.md) + A0 runtime/CI/`/health` evidence below  
+**Status:** IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING (not 2.0 PROGRAM COMPLETE)  
+**Date:** 2026-09-21  
+**Grounding:** this spec + `docs/delivery/gravitre-2.0-requirement-ledger.json` + live HubSpot READ on Railway `b95a8735`  
 **Product behavior (not a Manus clone):** objective → understand → context → how → right systems → execute safely → recover → synthesize → explain → learn.
 
-No customer-facing prices, Certified/TRAINED badges, or Enable toggles. Certification remains [process Track A/B/C](../delivery/connector-certification-states.md) unless product separately authorizes UX.
+Cesar authorized full 2.0 implementation on main. Remaining LIVE_PROVEN gaps are recorded as EXTERNAL_BLOCKED (GA4/GSC OAuth, authenticated browser SSO, voice first audible PCM). Do not treat those as failures of unimplemented code.
+
+No customer-facing prices, Certified/TRAINED badges, or Enable toggles. Certification remains [internal Track A/B/C scorecard](../delivery/connector-certification-states.md) (`connector_certification_scorecard.py`).
 
 ### A0 corrections (do not treat the original diagram as executable order)
 

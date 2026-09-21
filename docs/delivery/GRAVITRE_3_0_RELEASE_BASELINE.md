@@ -49,6 +49,11 @@ A 3.0 change that breaks typed hello, SSE terminal `[DONE]`, persistence of both
 
 - Operator-authenticated `/ai` UI (SSO still required).
 - Post-fix PCM / barge-in / backchannel on this SHA.
-- 2.0 LIVE_USER_PROVEN traffic, recipes, WRITE compile, multi-source, continuity, certification chrome, proactive 2.0-M.
+- 2.0 LIVE_USER_PROVEN traffic (GA4/GSC OAuth), unique entity bind, recipes live, WRITE execute, multi-source live, continuity live, voice PCM.
+- Customer certification chrome (still unauthorized). Proactive 2.0-M is internal recommend-only.
 
 **READY TO RESUME 3.0 IMPLEMENTATION: NO** until Cesar signs this gate including browser and voice evidence policy.
+
+## 2026-09-21 note
+
+Do not start 3.0 product features. 2.0 remaining code (outcomes honesty, internal scorecard, bounded proactive, Gmail F1) is still 2.0 scope. Production SHA at this writing (`b95a8735`) predates that slice until Railway/Vercel catch `main`.

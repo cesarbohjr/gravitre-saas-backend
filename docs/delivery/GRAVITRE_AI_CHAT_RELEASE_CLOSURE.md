@@ -77,3 +77,10 @@ Do not revert `42fadd61`. Rolling back `53a374c1` only for CI test patches would
 **REQUIRED CI: PASS** (`35528295674` / `53a374c1`)  
 **SHARED RUNTIME RELEASE GATE: FAIL** (CI job PASS; browser + PCM still open)  
 **READY TO RESUME 3.0: NO**
+
+## 2026-09-21 2.0 remainder
+
+HubSpot grounded READ **PASS** @ `b95a8735` (`191353b4-…`). K/L/M internal owners + Gmail F1 READ added in source (not yet this `/health` SHA until deploy). Authenticated browser and PCM **still BLOCKED**. Greeting latency unchanged until measured on the new SHA.
+
+**2.0 PROGRAM COMPLETE: NO**  
+**IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING: YES**

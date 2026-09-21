@@ -95,7 +95,7 @@ async def test_core_state_department_inflow_from_real_outcome_events(member_clie
             "created_at": "2026-09-11T20:00:00+00:00",
         },
         {
-            "outcome_event": "workflow_executed",
+            "outcome_event": "recommendation_approved",
             "department": "finance",
             "confidence_score": 0.3,
             "created_at": "2026-09-11T20:05:00+00:00",
@@ -114,7 +114,7 @@ async def test_core_state_department_inflow_from_real_outcome_events(member_clie
     by_id = {d["id"]: d for d in resp.json()["departments"]}
     assert by_id["sales"]["state"] == "flow-inward"
     assert by_id["sales"]["recentInflow"] == 1
-    # workflow_executed is a POSITIVE_EVENT -> resolved, not inflow, for finance
+    # recommendation_approved is a business decision, not a mere tool success
     assert by_id["finance"]["state"] == "resolved"
     assert by_id["finance"]["recentInflow"] == 0
     assert "marketing" not in by_id  # no marketing events -> no fabricated department entry

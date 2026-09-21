@@ -64,4 +64,8 @@ Mandatory CI: job **Shared runtime text/voice gate** — **PASS** on `53a374c1`.
 
 **NO** — Cesar’s release approval. Browser + post-fix PCM remain open. See `GRAVITRE_3_0_RELEASE_BASELINE.md`.
 
-**SHARED RUNTIME RELEASE GATE: FAIL** (required CI job PASS; product PCM/browser open)
+**SHARED RUNTIME RELEASE GATE: FAIL** (required CI job historically PASS on `53a374c1`; product PCM/browser open)
+
+## 2026-09-21
+
+Production kernel for live HubSpot proof: `b95a8735`. 2.0 K/L/M + Gmail F1 are additional source on `main` after that SHA. Gate still **FAIL** for promotion to “chat release complete” until browser + PCM. F1 preflight row: HubSpot LIVE_PROVEN; Gmail list UNIT_PROVEN.

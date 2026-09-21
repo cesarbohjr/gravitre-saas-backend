@@ -47,9 +47,9 @@ Labels: PLANNED / NOT STARTED / PARTIAL / STRUCTURAL COMPLETE / TEST PROVEN / LI
 | **2.0-H Continuity** | **TEST PROVEN**; live **NOT_PROVEN** | `task_continuity.py` / `09b907ef`. CS-7 live not proven. |
 | **2.0-I Voice parity** | **PARTIAL** | Same kernel STRUCTURAL. Text/voice equivalent IDs **not** live-proven as F1/SC. |
 | **2.0-J Voice latency / barge-in** | **LIVE PROVEN** with honesty caveats | `voice-slo-two-metric-live.json` @ `43570699` Metric A/B PASS (plan-hold Metric B, not first audible PCM as original 2.0 wording). `voice-barge-in-write-live.json` HTTP cancel arm. |
-| **2.0-K Memory / outcomes** | **PARTIAL** | Memory HMAC exact match remains. Closed-loop business-impact learning **DEFER**. |
-| **2.0-L Certification** | **PARTIAL** | Process Track A/B/C docs; **no** customer Certified chrome. Internal scorecard generator **NOT STARTED**. |
-| **2.0-M Proactive** | **NOT STARTED** | Spec DEFER. In-chat suggestions ≠ attention synthesis. |
+| **2.0-K Memory / outcomes** | **TEST PROVEN** | Tool success is not `POSITIVE_EVENTS`; layers split observations vs business outcomes. Live impact loop **NOT_RUN**. |
+| **2.0-L Certification** | **TEST PROVEN** (internal) | `connector_certification_scorecard.py`. **No** customer Certified chrome. |
+| **2.0-M Proactive** | **TEST PROVEN** | `proactive_business_operator.py`. No autonomous writes. Live notify **NOT_RUN**. |
 
 ## A1–A39 (approved 2.0-A cohesion prompt)
 
@@ -81,10 +81,10 @@ Highlights:
 1. LIVE_USER_PROVEN F1/SC traffic turn + golden smoke JSON.  
 2. Unique entity bind live; recipes live; WRITE compile live; multi-source live; continuity live.  
 3. Voice text/voice ID parity + first-audio PCM if still required by original 2.0-J wording.  
-4. Memory outcome loop; certification scorecard; proactive 2.0-M.  
-5. Standing CI red — **closed on `53a374c1` (`35528295674`)**.  
-6. Operator-browser `/ai` — still **BLOCKED** (SSO). Isolated API PASS on `53a374c1`.  
-7. Post-fix voice PCM on `53a374c1` — **BLOCKED**.
+4. Memory/certification/proactive **code** landed 2026-09-21; live business-impact and notify **NOT_RUN**.  
+5. Standing CI red — **closed on `53a374c1` (`35528295674`)**. Later required CI must be re-checked after this slice deploys.  
+6. Operator-browser `/ai` — still **BLOCKED** (SSO). Isolated API PASS historically `53a374c1`; HubSpot READ PASS `b95a8735`.  
+7. Post-fix voice PCM — **BLOCKED** on current production SHA.
 
 ## Release-gate reconciliation (2026-09-20 evening)
 
@@ -104,5 +104,22 @@ Production `/health` at investigation: `909474fe` (`unified_turn_live_enabled=tr
 
 Corrective source on this tip: skip Unified LIVE for compiled operational/analytics READs; persist Observation + `provider_result_evidence`; Composer rejects ungrounded business counts; sealed F1 actor is the requesting user UUID when present; website objective retained when GA/GSC are not executable.
 
-**2.0 READ GATE remains open until a post-deploy isolated HubSpot invoke produces Observation-backed copy. 2.0 COMPLETE = NO. READY TO RESUME 3.0 = NO.**
+**Post-deploy isolated HubSpot READ PASS** on Railway `b95a8735`: conv `191353b4-…`, `hubspot.deals.list`, observation count 25, `tool.invoke.completed` `fb6f25c2-…` @ `2026-09-21T00:41:42.651738Z`. Grounded-answer contract is LIVE_PROVEN for that READ. GA4/GSC remain EXTERNAL_BLOCKED.
+
+**2.0 COMPLETE = NO. READY TO RESUME 3.0 = NO.**
+
+## Autonomous remainder (2026-09-21)
+
+Code owners added/updated without 3.0 product surfaces:
+
+- K: `connector_action_executed` / `workflow_executed` removed from `POSITIVE_EVENTS` (tool success is observation, not business impact).
+- L: `connector_certification_scorecard.py` internal layers only; `customer_badge` always null.
+- M: `proactive_business_operator.py` evidence-gated, `write_allowed=false`, deduped.
+- D: `gmail.messages.list` joined F1 HMAC catalog.
+- H: continuity phrases for large/overdue/draft/don't-send.
+- I: compile path has no `spoken_mode` parameter (unit).
+
+Tests: `test_platform_execution_2_0_klm_invariants.py`. Central report: `GRAVITRE_PLATFORM_EXECUTION_2.0_COMPLETION.md`.
+
+STRUCTURAL COMPLETE = **YES** for independently testable A0–M owners. TEST PROVEN = **PARTIAL**. LIVE PROVEN = **PARTIAL**. 2.0 PROGRAM COMPLETE = **NO**.
 

@@ -23,14 +23,16 @@ CONFIRM_PATTERN = re.compile(
     re.I,
 )
 DECLINE_PATTERN = re.compile(
-    r"^\s*("
+    r"^\s*(?:actually[, ]+)?"
+    r"("
     r"no|nope|cancel(?:\s+(?:it|that|this|for now))?|"
     r"drop(?:\s+(?:it|that|this))?|"
     r"forget(?:\s+(?:it|that|about it))?|"
     r"scratch that|abort(?:\s+(?:it|that|this))?|"
     r"stop(?:\s+(?:it|that|this))?|"
     r"not yet|not now|wait|hold on|never mind|nevermind|"
-    r"don't|dont|do not"
+    r"don't|dont|do not|"
+    r"don'?t\s+send(?:\s+it)?|do\s+not\s+send(?:\s+it)?"
     r")\s*[.!]?\s*$",
     re.I,
 )

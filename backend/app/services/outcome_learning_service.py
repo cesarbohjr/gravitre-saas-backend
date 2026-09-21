@@ -44,12 +44,36 @@ OUTCOME_EVENTS = frozenset(
     ]
 )
 
+# Tool/workflow success is execution evidence, not proof the business improved.
+TOOL_SUCCESS_EVENTS = frozenset(
+    {
+        "connector_action_executed",
+        "workflow_executed",
+        "recommendation_created",
+        "prediction_generated",
+        "approval_required",
+    }
+)
+
+BUSINESS_IMPACT_EVENTS = frozenset(
+    {
+        "business_metric_improved",
+        "business_metric_declined",
+        "prediction_validated",
+        "prediction_missed",
+        "crm_won",
+        "crm_lost",
+        "crm_booked",
+        "crm_replied",
+        "user_feedback_positive",
+        "user_feedback_negative",
+    }
+)
+
 POSITIVE_EVENTS = frozenset(
     {
         "recommendation_approved",
         "prediction_validated",
-        "workflow_executed",
-        "connector_action_executed",
         "business_metric_improved",
         "user_feedback_positive",
         "approval_granted",
@@ -58,6 +82,31 @@ POSITIVE_EVENTS = frozenset(
         "crm_replied",
     }
 )
+
+MEMORY_LAYERS = (
+    "conversation_memory",
+    "task_state",
+    "organization_facts",
+    "entity_facts",
+    "decisions",
+    "observations",
+    "business_outcomes",
+)
+
+
+def classify_outcome_layer(outcome_event: str) -> str:
+    event = str(outcome_event or "").strip()
+    if event in BUSINESS_IMPACT_EVENTS or event in {"crm_contacted"}:
+        return "business_outcomes"
+    if event in TOOL_SUCCESS_EVENTS or event in {"connector_action_failed", "workflow_failed", "workflow_cancelled"}:
+        return "observations"
+    if event in {"approval_granted", "approval_denied", "recommendation_approved", "recommendation_rejected"}:
+        return "decisions"
+    return "observations"
+
+
+def tool_success_is_business_impact(outcome_event: str) -> bool:
+    return False if outcome_event in TOOL_SUCCESS_EVENTS else outcome_event in BUSINESS_IMPACT_EVENTS
 
 
 class OutcomeLearningService:
@@ -309,7 +358,12 @@ class OutcomeLearningService:
             "entity_type": "connector",
             "entity_id": connector_id,
             "connector_id": connector_id,
-            "metadata": {"action_name": action_name, "latency_ms": latency_ms},
+            "metadata": {
+                "action_name": action_name,
+                "latency_ms": latency_ms,
+                "impact_claimed": False,
+                "memory_layer": classify_outcome_layer(outcome_event),
+            },
             "created_at": self._now_iso(),
         }
         await self._insert_event(payload)

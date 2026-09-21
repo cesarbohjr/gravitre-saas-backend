@@ -1,6 +1,6 @@
 # Connector certification states (Section R) — product / process
 
-**Status:** PROCESS ONLY — no schema, no runtime state machine, no customer UI  
+**Status:** PROCESS + INTERNAL GENERATOR — `backend/app/services/connector_certification_scorecard.py` (2026-09-21). Still **no customer UI**.  
 **process-only: no customer certification chrome**  
 **Needle:** no customer-visible certification chrome (TRACK A/B/C process only)  
 **Date:** 2026-09-17  

@@ -13,6 +13,12 @@
     "unsupported_answer_prevented_unit": "YES",
     "canonical_lineage_unit": "YES"
   },
+  "remainder_2026_09_21": {
+    "gmail_f1_list": "UNIT_PROVEN",
+    "ga4_gsc": "EXTERNAL_BLOCKED",
+    "klm": "UNIT_PROVEN",
+    "program_complete": false
+  },
   "started_at": "2026-09-20T20:33:05.983744+00:00",
   "health_sha": "22c59faea9e0712c04502acc09c1fc15cd7ef1f4",
   "kernel_org": "f07e57c0-1501-4000-8000-c04e57a00001",

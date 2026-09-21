@@ -33,6 +33,7 @@ F1_CATALOG_ACTIONS: frozenset[str] = frozenset(
         "salesforce.leads.search",
         "google_calendar.events.list",
         "slack.conversations.list",
+        "gmail.messages.list",
     }
 )
 
@@ -387,6 +388,39 @@ _OVERLAYS: dict[str, dict[str, Any]] = {
         "governance_classification": "read",
         "execution_adapter": "slack.conversations.list",
         "observation_adapter": "slack_conversations_list_observation",
+    },
+    "gmail.messages.list": {
+        "capabilities": ("email.messages.read",),
+        "required_parameters": (),
+        "optional_parameters": ("q", "max_results", "label_ids", "page_token", "connector_id"),
+        "parameter_source_rules": (
+            _rule(
+                "mailbox",
+                "RESOURCE_RESOLVER",
+                "CONNECTOR_METADATA",
+                "ACTION_DEFAULT",
+                aliases=("userId", "user_id"),
+                default="me",
+            ),
+            _rule("q", "USER_EXPLICIT", "TASK_CONTEXT", "MODEL_INFERENCE"),
+            _rule(
+                "max_results",
+                "USER_EXPLICIT",
+                "ACTION_DEFAULT",
+                "MODEL_INFERENCE",
+                aliases=("maxResults", "limit"),
+                default=25,
+            ),
+            _rule("label_ids", "USER_EXPLICIT", "MODEL_INFERENCE", aliases=("labelIds",)),
+            _rule("page_token", "USER_EXPLICIT", aliases=("pageToken",)),
+        ),
+        "resource_requirements": ("mailbox",),
+        "auth_scope_requirements": ("gmail:read", "gmail:*"),
+        "provider_constraints": {"limit_max": 100},
+        "availability_requirements": ("connector_connected", "auth_valid"),
+        "governance_classification": "read",
+        "execution_adapter": "gmail.messages.list",
+        "observation_adapter": "gmail_messages_list_observation",
     },
 }
 
