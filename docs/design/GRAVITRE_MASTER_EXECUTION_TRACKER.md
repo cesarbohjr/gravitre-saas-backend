@@ -105,7 +105,7 @@ Authenticated browser for every row: **BLOCKED: NO AUTHORIZED SESSION**. That do
 
 Do not reopen Intelligence I1/I2, Activity A1/A2, or Navigation B.
 
-Phase 5 commit, CI, and deployment are recorded after the commit lands. Authenticated browser remains BLOCKED: NO AUTHORIZED SESSION.
+Phase 5 commit `a550ad18` is on local `main` (not deployed until a remote deploy is recorded). Vitest `phase-3-product-ia.test.ts` 13/13 passed before that commit. Authenticated browser remains BLOCKED: NO AUTHORIZED SESSION. CI and deployment are recorded only after the push.
 
 ---
 
@@ -113,7 +113,8 @@ Phase 5 commit, CI, and deployment are recorded after the commit lands. Authenti
 
 | REQUIREMENT | STATUS |
 |-------------|--------|
-| KF-A harness (locked concept) | IMPLEMENTED — NOT PROVEN (harness) |
-| Production Pilot 3 promote | BLOCKED — separate promote gate |
-| Pilot 1 / 2 reopen | NOT STARTED (locked — do not reopen) |
+| KF-A harness (locked concept, dev preview only) | IMPLEMENTED — NOT PROVEN (harness). Not a production page. |
+| Pilot 1 mobile ring-spin removal | IMPLEMENTED in `department-network-mobile.tsx` — Relational Topology, no `animate-spin`. Not authenticated-product verification. |
+| Production Pilot 3 promote | BLOCKED — separate promote gate. Do not ship the harness to marketing production. |
+| Pilot 1 / 2 concept reopen | Locked — do not reopen |
 
