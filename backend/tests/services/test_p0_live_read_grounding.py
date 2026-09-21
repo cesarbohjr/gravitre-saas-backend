@@ -35,6 +35,24 @@ def test_open_ended_deals_selects_list_not_search() -> None:
     )
 
 
+def test_deals_followup_skips_live_so_compiled_read_owns_turn() -> None:
+    state = {
+        "execution_plan": {
+            "plan_id": "plan-deals-1",
+            "capability_id": "sales.pipeline.health",
+            "objective": "Show my deals.",
+            "terminal_status": "completed",
+            "steps": [{"step_id": "s1", "kind": "read", "action_key": "hubspot.deals.list", "status": "completed"}],
+        },
+        "compiled_task": {
+            "plan_id": "plan-deals-1",
+            "capability_id": "sales.pipeline.health",
+            "objective_text": "Show my deals.",
+        },
+    }
+    assert should_skip_unified_live_for_compiled_read("Only the large ones.", state, ["hubspot"])
+
+
 def test_ungrounded_deal_count_is_stripped() -> None:
     text = apply_provider_result_grounding("Found 25 deals in your CRM.", {"success": True})
     assert "25" not in text
