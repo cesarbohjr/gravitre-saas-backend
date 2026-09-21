@@ -438,3 +438,22 @@ describe("CES 2.0 KF-A single field (visual approval)", () => {
     expect(src).not.toMatch(/permanent instructional sidebar/i)
   })
 })
+
+describe("CES 2.0 product doc links", () => {
+  it("connects orchestration and governance scenes to existing docs", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const orchestration = readFileSync(
+      resolve(process.cwd(), "components/marketing/creative/scenes/agent-orchestration/orchestration-field.tsx"),
+      "utf8",
+    )
+    const governed = readFileSync(
+      resolve(process.cwd(), "components/marketing/creative/scenes/governed-execution/governed-execution-field.tsx"),
+      "utf8",
+    )
+    expect(orchestration).toMatch(/\/docs\/guides\/how-to\/agents/)
+    expect(orchestration).toMatch(/\/docs\/guides\/how-to\/approvals/)
+    expect(governed).toMatch(/\/docs\/guides\/how-to\/approvals/)
+    expect(orchestration).toMatch(/Failure path/)
+  })
+})

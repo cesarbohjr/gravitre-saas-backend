@@ -13,7 +13,6 @@ import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WorkflowPreRunPanel } from "@/components/workflows/workflow-pre-run-panel"
 import type { IntelligenceDrawerNode } from "@/components/workflows/intelligence-drawer"
 import { workflowsApi, runsApi } from "@/lib/api"
@@ -23,7 +22,6 @@ import {
   ArrowLeft,
   Calendar,
   ChevronRight,
-  ExternalLink,
   Loader2,
   Play,
   Rocket,
@@ -204,28 +202,24 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
             Loading workflow…
           </div>
         ) : error ? (
-          <Card className="border-destructive/30">
-            <CardContent className="pt-6 text-sm text-destructive">
-              Failed to load workflow. It may have been deleted or you may lack access.
-            </CardContent>
-          </Card>
+          <p className="border-b border-destructive/30 py-4 text-sm text-destructive">
+            Failed to load workflow. It may have been deleted or you may lack access.
+          </p>
         ) : (
           <>
             <WorkflowPreRunPanel workflowId={id} nodes={intelligenceNodes} />
 
             {hasActiveRun ? (
-              <Card className="border-blue-500/40 bg-blue-500/[0.06]">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                    Run in progress
-                  </CardTitle>
-                  <CardDescription>
-                    A one-time production run is active. Finished runs leave this state; only schedules
-                    create later reruns.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <section className="border-b border-divide py-4">
+                <h2 className="flex items-center gap-2 text-base font-medium">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  Run in progress
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  A one-time production run is active. Finished runs leave this state; only schedules
+                  create later reruns.
+                </p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground">
                     Run{" "}
                     <Link
@@ -248,22 +242,20 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                       Cancel run
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             ) : null}
 
-            <Card className="border-primary/25 bg-primary/[0.03]">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Rocket className="h-4 w-4 text-primary" />
-                  Run in production
-                </CardTitle>
-                <CardDescription>
-                  Run now starts one execution. Use Schedule runs for daily, weekly, or monthly repeats.
-                  “Workflow is active” means the workflow is enabled — not that a run is in progress.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <section className="border-b border-divide py-4">
+              <h2 className="flex items-center gap-2 text-base font-medium">
+                <Rocket className="h-4 w-4 text-primary" />
+                Run in production
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                Run now starts one execution. Use Schedule runs for daily, weekly, or monthly repeats.
+                “Workflow is active” means the workflow is enabled — not that a run is in progress.
+              </p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground max-w-xl">
                   {hasActiveRun
                     ? "A run is already in progress. Cancel it above, or wait for it to finish, before starting another."
@@ -292,18 +284,16 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                     {isActive ? "Run now" : "Activate & run"}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Latest run</CardTitle>
-                <CardDescription>
-                  Most recent run for this workflow only. Completed one-time runs show as completed — not
-                  running.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <section className="border-b border-divide py-4">
+              <h2 className="text-base font-medium">Latest run</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Most recent run for this workflow only. Completed one-time runs show as completed — not
+                running.
+              </p>
+              <div className="mt-3 space-y-3">
                 {!latestRun ? (
                   <p className="text-sm text-muted-foreground">
                     No runs yet. Use <span className="font-medium text-foreground">Run now</span> or{" "}
@@ -330,14 +320,12 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                     ) : null}
                   </>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Canvas steps</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <section className="border-b border-divide py-4">
+              <h2 className="text-base font-medium">Canvas steps</h2>
+              <div className="mt-3">
                 {intelligenceNodes.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No steps yet.{" "}
@@ -351,7 +339,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                     {intelligenceNodes.map((node, index) => (
                       <li
                         key={node.id}
-                        className="flex items-center justify-between gap-2 rounded-md border border-border/70 px-3 py-2 text-sm"
+                        className="flex items-center justify-between gap-2 border-b border-divide py-2 text-sm"
                       >
                         <span>
                           <span className="text-muted-foreground mr-2">{index + 1}.</span>
@@ -368,25 +356,8 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                     <ChevronRight className="h-4 w-4 ml-0.5" />
                   </Link>
                 </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6">
-                <div>
-                  <p className="text-sm font-medium">Builder intelligence</p>
-                  <p className="text-xs text-muted-foreground">
-                    Timing estimates, risk scan, and dry run are also available while editing the canvas.
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/workflows/${id}/builder`}>
-                    Open builder
-                    <ExternalLink className="h-3.5 w-3.5 ml-1" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </>
         )}
         </div>

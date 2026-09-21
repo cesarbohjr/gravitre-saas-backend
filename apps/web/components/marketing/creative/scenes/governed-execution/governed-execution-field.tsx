@@ -153,6 +153,11 @@ function GovernedExecutionFieldImpl({ className }: { className?: string }) {
         <NucleoSuccess className="h-3 w-3" aria-hidden />
         Illustrative governed execution — policy, risk, approval, execute, evidence. Not a live compliance claim.
       </p>
+      <p className="mt-2 text-center text-[11px] text-[color:var(--g-text-muted)]">
+        <a className="underline underline-offset-2" href="/docs/guides/how-to/approvals">
+          How approvals work
+        </a>
+      </p>
     </div>
   )
 }

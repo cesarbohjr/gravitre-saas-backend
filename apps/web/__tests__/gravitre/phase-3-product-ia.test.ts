@@ -256,6 +256,8 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(catalog).toMatch(/data-review-surface="marketplace-ops"/)
     expect(catalog).toMatch(/PriceBadge/)
     expect(catalog).toMatch(/discoveryAssets/)
+    expect(catalog).toMatch(/More about this pack/)
+    expect(catalog).not.toMatch(/2xl:grid-cols-4/)
     expect(catalog).not.toMatch(/FilterChip/)
 
     const installed = readFileSync(resolve(webRoot, "app/marketplace/installed/page.tsx"), "utf8")

@@ -105,7 +105,20 @@ Authenticated browser for every row: **BLOCKED: NO AUTHORIZED SESSION**. That do
 
 Do not reopen Intelligence I1/I2, Activity A1/A2, or Navigation B.
 
-Phase 5 commit `a550ad18` is on local `main` (not deployed until a remote deploy is recorded). Vitest `phase-3-product-ia.test.ts` 13/13 passed before that commit. Authenticated browser remains BLOCKED: NO AUTHORIZED SESSION. CI and deployment are recorded only after the push.
+Phase 5 commit `a550ad18` is on `origin/main` and is contained in tip `69593acc`.
+
+| Check | Result |
+|-------|--------|
+| Main CI `35563489574` | **success** on `69593acc` (all jobs, not only Web) |
+| Marketing Lighthouse `35563489629` | **success** |
+| Railway workflow `35563489624` | **success** |
+| Railway `/health` | `git_sha=69593acc` `status=ok` at `2026-09-21T05:29:42Z` |
+| Vercel | commit status **success** on `69593acc` |
+| Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
+
+`69593acc` is cognitive-runtime 2.0 K/L/M wiring. It is not UX/UI 3.0 Plus proof and not a live business-path PASS. K/L/M stay TEST PROVEN / live NOT_RUN in `docs/delivery/GRAVITRE_PLATFORM_EXECUTION_2.0_COMPLETION.md`.
+
+Marketplace discovery is now a scan list with price and install on the row; pack metadata is behind “More about this pack”. Connector and workflow detail pages use sections instead of card stacks. CES orchestration and governance scenes link to existing docs. Pilot 3 production promotion stays gated.
 
 ---
 

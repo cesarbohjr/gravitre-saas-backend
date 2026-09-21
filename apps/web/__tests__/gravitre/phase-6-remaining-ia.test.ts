@@ -27,6 +27,18 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
     expect(src).toMatch(/TYPE_FILTERS\.map/)
     expect(src).toMatch(/data-review-surface="marketplace-discovery"/)
     expect(src).toMatch(/data-review-surface="marketplace-ops"/)
+    expect(src).toMatch(/More about this pack/)
+    expect(src).not.toMatch(/2xl:grid-cols-4/)
+  })
+
+  it("connector and workflow detail pages are sections, not card stacks", () => {
+    const connector = readFileSync(resolve(webRoot, "app/connectors/[id]/page.tsx"), "utf8")
+    const workflow = readFileSync(resolve(webRoot, "app/workflows/[id]/page.tsx"), "utf8")
+    expect(connector).not.toMatch(/from \"@\/components\/ui\/card\"/)
+    expect(connector).toMatch(/Usage metrics and activity logs are not recorded/)
+    expect(workflow).not.toMatch(/from \"@\/components\/ui\/card\"/)
+    expect(workflow).toMatch(/Run now/)
+    expect(workflow).toMatch(/Edit in builder/)
   })
 
   it("agent profile uses text sections, not a pill tab strip", () => {

@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
-import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
@@ -34,16 +33,12 @@ import { useOrgAdmin } from "@/lib/use-org-admin"
 import { cn } from "@/lib/utils"
 import {
   Bot,
-  CheckCircle2,
   ChevronRight,
-  Copy,
   Database,
   Loader2,
   Package,
   Plug,
   Search,
-  ShoppingCart,
-  Sparkles,
   Star,
   Workflow,
 } from "lucide-react"
@@ -52,7 +47,6 @@ import type {
   MarketplaceAssetSummary,
   MarketplaceFacetCount,
 } from "@/types/api"
-import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
@@ -66,8 +60,6 @@ import {
   isFreeAsset,
 } from "@/components/marketplace/marketplace-asset-commerce"
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
-import type { AssetCategory } from "@/lib/marketplace-category-icons"
-
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
   { id: "ai_agent", label: "Agents", icon: Bot },
@@ -122,84 +114,29 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
   return debounced
 }
 
-function ReadinessRing({
-  connected,
-  total,
-  ready,
-}: {
-  connected: number
-  total: number
-  ready: boolean
-}) {
-  if (total === 0) {
-    return (
-      <span className="grid h-9 w-9 place-items-center rounded-full bg-success/15 text-success" title="No connectors required">
-        <CheckCircle2 className="h-4 w-4" aria-hidden />
-      </span>
-    )
-  }
-  const pct = Math.min(100, Math.round((connected / total) * 100))
-  const ringClass = ready ? "text-success" : connected > 0 ? "text-warning" : "text-destructive"
-  return (
-    <div className={cn("relative h-9 w-9", ringClass)} title={`${connected}/${total} required connectors ready`}>
-      <svg className="h-9 w-9 -rotate-90 text-muted/30" viewBox="0 0 36 36" aria-hidden>
-        <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="opacity-30" />
-        <circle
-          cx="18"
-          cy="18"
-          r="15"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeDasharray={`${pct} 100`}
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold tabular-nums">
-        {connected}/{total}
-      </span>
-    </div>
-  )
-}
-
 function AssetCardSkeleton() {
   return (
-    <div className="flex h-full flex-col rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-[var(--np-radius-md)]" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-        </div>
-        <Skeleton className="h-9 w-9 rounded-full" />
+    <div className="flex items-center justify-between gap-3 border-b border-divide py-3">
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-56" />
       </div>
-      <Skeleton className="mb-4 h-12 w-full" />
-      <Skeleton className="mb-4 h-16 w-full rounded-[var(--np-radius-md)]" />
-      <div className="mt-auto flex gap-2">
-        <Skeleton className="h-8 w-20" />
-        <Skeleton className="h-8 w-20" />
-      </div>
+      <Skeleton className="h-8 w-24" />
     </div>
   )
 }
 
 function AssetCard({
   asset,
-  index,
   isAdmin,
   busy,
-  reduceMotion,
   onOpenDetail,
   onInstall,
   onClone,
 }: {
   asset: MarketplaceAssetSummary
-  index: number
   isAdmin: boolean
   busy: string | null
-  reduceMotion: boolean | null
   onOpenDetail: (asset: MarketplaceAssetSummary) => void
   onInstall: (asset: MarketplaceAssetSummary) => void
   onClone: (asset: MarketplaceAssetSummary) => void
@@ -210,155 +147,85 @@ function AssetCard({
   const showPrimaryAction = isAdmin && !asset.installed
 
   return (
-    <motion.article
-      layout={!reduceMotion}
-      initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={reduceMotion ? undefined : { y: -3 }}
-      transition={{ duration: 0.35, delay: reduceMotion ? 0 : index * 0.04 }}
-      className={cn(
-        "group relative flex h-full flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-shadow hover:shadow-md",
-        "rounded-[var(--np-radius-lg)]",
-        asset.installed ? "border-success/30" : "hover:border-[color:var(--g-brand-border)]",
-      )}
-    >
-      <div className="relative mb-3 flex items-start justify-between gap-3">
+    <article className="border-b border-divide py-3 last:border-b-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={() => onOpenDetail(asset)}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className="min-w-0 flex-1 text-left"
         >
-          <CategoryIconChip
-            assetType={asset.assetType as AssetCategory}
-            department={asset.department}
-            size="md"
-          />
-          <div className="min-w-0">
-            <h3 className={TYPE.cardTitle}>{asset.title}</h3>
-            <p className="text-xs capitalize text-muted-foreground">
-              {(asset.department ?? asset.assetType).replace(/_/g, " ")}
-            </p>
-          </div>
+          <h3 className="truncate text-sm font-medium text-foreground">{asset.title}</h3>
+          <p className="mt-0.5 truncate text-xs capitalize text-muted-foreground">
+            {(asset.department ?? asset.assetType).replace(/_/g, " ")}
+            <span className="mx-1.5 text-border">·</span>
+            {connectorSummary(asset)}
+          </p>
         </button>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <PriceBadge asset={asset} />
           <AssetSaveButton slug={asset.slug} assetId={asset.id} size="icon" variant="outline" />
-          <ReadinessRing
-            connected={asset.requiredConnectorsConnected ?? 0}
-            total={asset.requiredConnectorsTotal ?? 0}
-            ready={ready}
-          />
-        </div>
-      </div>
-
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <PriceBadge asset={asset} />
-        <EntitlementBadge asset={asset} />
-        {asset.federated || asset.source === "partner_registry" ? (
-          <Badge variant="outline">Partner registry</Badge>
-        ) : null}
-        {asset.visibility === "internal" ? (
-          <Badge variant="outline">Internal</Badge>
-        ) : null}
-        <AssetTrustBadges asset={asset} />
-        {asset.installCount != null && asset.installCount > 0 ? (
-          <span className="text-[11px] text-muted-foreground">{asset.installCount.toLocaleString()} installs</span>
-        ) : null}
-        {asset.averageRating != null ? (
-          <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
-            <Star className="h-3 w-3 fill-warning text-warning" aria-hidden />
-            {asset.averageRating.toFixed(1)}
-            {asset.reviewCount ? (
-              <span className="text-muted-foreground/80"> · {asset.reviewCount} reviews</span>
-            ) : null}
-          </span>
-        ) : null}
-      </div>
-
-      {asset.description ? (
-        <p className="mb-4 line-clamp-3 flex-1 text-sm text-muted-foreground">{asset.description}</p>
-      ) : (
-        <div className="flex-1" />
-      )}
-
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {(asset.tags ?? []).slice(0, 4).map((tag) => (
-          <Badge key={tag} variant="outline" className="text-[10px]">
-            {tag}
-          </Badge>
-        ))}
-      </div>
-
-      <PackContentsPreview items={asset.packItems} compact />
-
-      <div className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Plug className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span className="truncate">{connectorSummary(asset)}</span>
-      </div>
-
-      {!isAdmin && needsPurchase ? <div className="mb-4"><NonAdminPurchaseNotice /></div> : null}
-
-      <div className="mt-auto flex flex-col gap-2">
-        {showPrimaryAction ? (
-          <Button
-            size="sm"
-            className={cn(
-              "h-10 w-full rounded-full font-semibold shadow-sm",
-              !blocked && !needsPurchase && "bg-foreground text-background hover:bg-foreground/90",
-            )}
-            disabled={Boolean(busy)}
-            onClick={() => onInstall(asset)}
-            title={blocked && !needsPurchase ? "Connect required apps first" : undefined}
-          >
-            {busy === asset.id ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-                Installing…
-              </>
-            ) : needsPurchase ? (
-              <>
-                <ShoppingCart className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                {`Buy & install · ${formatAssetPrice(asset)}`}
-              </>
-            ) : blocked ? (
-              "Connect apps to install"
-            ) : (
-              <>
-                <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                Install to workspace
-              </>
-            )}
-          </Button>
-        ) : asset.installed ? (
-          <Button size="sm" className="h-10 w-full rounded-full font-semibold" asChild>
-            <Link href="/marketplace/installed">
-              <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-success" aria-hidden />
-              Open installed
-            </Link>
-          </Button>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1 rounded-full"
-            onClick={() => onOpenDetail(asset)}
-          >
+          {showPrimaryAction ? (
+            <Button
+              size="sm"
+              disabled={Boolean(busy)}
+              onClick={() => onInstall(asset)}
+              title={blocked && !needsPurchase ? "Connect required apps first" : undefined}
+            >
+              {busy === asset.id ? "Installing…" : needsPurchase ? `Buy & install · ${formatAssetPrice(asset)}` : blocked ? "Connect apps" : "Install"}
+            </Button>
+          ) : asset.installed ? (
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/marketplace/installed">Installed</Link>
+            </Button>
+          ) : null}
+          <Button size="sm" variant="outline" onClick={() => onOpenDetail(asset)}>
             Details
-            <ChevronRight className="ml-1 h-3.5 w-3.5" aria-hidden />
           </Button>
           {isAdmin ? (
-            <Button size="sm" variant="ghost" className="rounded-full" disabled={Boolean(busy)} onClick={() => onClone(asset)}>
-              {busy === `clone:${asset.id}` ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-              ) : (
-                <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-              )}
-              Clone
+            <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => onClone(asset)}>
+              {busy === `clone:${asset.id}` ? "Cloning…" : "Clone"}
             </Button>
           ) : null}
         </div>
       </div>
-    </motion.article>
+      <details className="mt-2">
+        <summary className="cursor-pointer text-xs text-muted-foreground">More about this pack</summary>
+        <div className="mt-2 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <EntitlementBadge asset={asset} />
+            {asset.federated || asset.source === "partner_registry" ? (
+              <Badge variant="outline">Partner registry</Badge>
+            ) : null}
+            {asset.visibility === "internal" ? <Badge variant="outline">Internal</Badge> : null}
+            <AssetTrustBadges asset={asset} />
+            {asset.installCount != null && asset.installCount > 0 ? (
+              <span className="text-[11px] text-muted-foreground">{asset.installCount.toLocaleString()} installs</span>
+            ) : null}
+            {asset.averageRating != null ? (
+              <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                <Star className="h-3 w-3 fill-warning text-warning" aria-hidden />
+                {asset.averageRating.toFixed(1)}
+                {asset.reviewCount ? <span> · {asset.reviewCount} reviews</span> : null}
+              </span>
+            ) : null}
+          </div>
+          {asset.description ? (
+            <p className="text-sm text-muted-foreground">{asset.description}</p>
+          ) : null}
+          {(asset.tags ?? []).length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {(asset.tags ?? []).map((tag) => (
+                <Badge key={tag} variant="outline" className="text-[10px]">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+          <PackContentsPreview items={asset.packItems} compact />
+          {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
+        </div>
+      </details>
+    </article>
   )
 }
 
@@ -370,7 +237,6 @@ function MarketplaceAssetsContent() {
   const initialType = searchParams.get("type")
   const initialDepartment = searchParams.get("department")
   const initialPrice = searchParams.get("price")
-  const reduceMotion = useReducedMotion()
   const { isAdmin } = useOrgAdmin()
   const validTypes = useMemo(() => new Set(TYPE_FILTERS.map((filter) => filter.id)), [])
   const [typeFilter, setTypeFilter] = useState<string>(
@@ -708,7 +574,7 @@ function MarketplaceAssetsContent() {
           </div>
 
           {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" data-review-surface="marketplace-discovery">
+            <div data-review-surface="marketplace-discovery">
               {Array.from({ length: 8 }).map((_, index) => (
                 <AssetCardSkeleton key={index} />
               ))}
@@ -729,22 +595,20 @@ function MarketplaceAssetsContent() {
               <section data-review-surface="marketplace-discovery">
                 <p className={TYPE.eyebrow}>Discovery</p>
                 <p className={cn(TYPE.meta, "mt-0.5")}>
-                  Catalog prices are authorized commerce. Install from a tile; manage installs on the ops list.
+                  Catalog prices are authorized commerce. Install from the list. Installed packs stay on the ops list.
                 </p>
                 {discoveryAssets.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">
                     No uninstalled packs match these filters. Installed packs are listed under ops below.
                   </p>
                 ) : (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                    {discoveryAssets.map((asset, index) => (
+                  <div className="mt-2 divide-y divide-divide border-y border-divide">
+                    {discoveryAssets.map((asset) => (
                       <AssetCard
                         key={asset.id}
                         asset={asset}
-                        index={index}
                         isAdmin={isAdmin}
                         busy={busy}
-                        reduceMotion={reduceMotion}
                         onOpenDetail={openDetail}
                         onInstall={openInstall}
                         onClone={handleClone}

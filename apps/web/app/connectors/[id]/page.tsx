@@ -21,19 +21,14 @@ import type { VendorActionCatalog, ConnectorActionCatalogResponse } from "@/lib/
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
   ArrowLeft,
-  CheckCircle2,
   XCircle,
-  Loader2,
-  WifiOff,
   RefreshCw,
   Settings,
   Trash2,
-  Clock,
   Eye,
   EyeOff,
   Copy,
@@ -41,7 +36,6 @@ import {
   MoreVertical,
   Download,
   Key,
-  Globe,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -58,13 +52,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-
-const statusConfig = {
-  connected: { color: "text-[color:var(--status-verified)]", bg: "bg-[color:var(--status-verified)]", icon: CheckCircle2, label: "Connected" },
-  disconnected: { color: "text-muted-foreground", bg: "bg-muted-foreground", icon: WifiOff, label: "Disconnected" },
-  error: { color: "text-[color:var(--status-failed)]", bg: "bg-[color:var(--status-failed)]", icon: XCircle, label: "Error" },
-  syncing: { color: "text-[color:var(--status-running)]", bg: "bg-[color:var(--status-running)]", icon: Loader2, label: "Syncing" },
-}
 
 function formatConfigValue(config: Record<string, unknown> | undefined, key: string): string {
   const value = config?.[key]
@@ -184,9 +171,6 @@ export default function ConnectorDetailPage() {
   const vendorCatalog: VendorActionCatalog | null =
     catalogData?.vendors.find((v) => v.vendor.toLowerCase() === vendorKey) ?? null
   const workflows: Workflow[] = workflowsData?.workflows ?? []
-
-  const config = statusConfig[connector.status as keyof typeof statusConfig] ?? statusConfig.disconnected
-  const StatusIcon = config.icon
 
   const handleSync = async () => {
     setIsSyncing(true)
@@ -312,76 +296,28 @@ export default function ConnectorDetailPage() {
 
         {/* Main Content */}
         <div className="flex-1 p-4 md:p-6 space-y-6 overflow-auto">
-          {/* Stats Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <p className="text-lg font-bold text-foreground capitalize">{connector.status}</p>
-                  </div>
-                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center", config.bg + "/10")}>
-                    <StatusIcon className={cn("h-5 w-5", config.color, connector.status === "syncing" && "animate-spin")} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Last Sync</p>
-                    <p className="text-sm font-semibold text-foreground">{connector.lastSync}</p>
-                  </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-500/10">
-                    <Clock className="h-5 w-5 text-blue-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Sync Interval</p>
-                    <p className="text-sm font-semibold text-foreground">{connector.config.syncInterval}</p>
-                  </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-[color:var(--g-signal-surface)]">
-                    <RefreshCw className="h-5 w-5 text-[color:var(--g-signal)]" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Environment</p>
-                    <p className="text-sm font-semibold text-foreground capitalize">{connector.environment}</p>
-                  </div>
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-warning/10">
-                    <Globe className="h-5 w-5 text-warning" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-divide py-4 md:grid-cols-4">
+            <div>
+              <dt className="text-xs text-muted-foreground">Status</dt>
+              <dd className="text-sm font-medium capitalize text-foreground">{connector.status}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Last sync</dt>
+              <dd className="text-sm font-medium text-foreground">{connector.lastSync}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Sync interval</dt>
+              <dd className="text-sm font-medium text-foreground">{connector.config.syncInterval}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Environment</dt>
+              <dd className="text-sm font-medium capitalize text-foreground">{connector.environment}</dd>
+            </div>
+          </dl>
 
-          {/* Usage metrics — available when observability is wired for this connector */}
-          <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Usage metrics</CardTitle>
-              <CardDescription className="text-xs">
-                Request volume and latency charts will appear here once connector telemetry is enabled for your organization.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
-                No telemetry data yet
-              </div>
-            </CardContent>
-          </Card>
+          <p className="text-sm text-muted-foreground">
+            Usage metrics and activity logs are not recorded for this connector.
+          </p>
 
           {/* G4: live action readiness, workflow linkage, and starter workflows */}
           <ConnectorLinkage
@@ -394,14 +330,11 @@ export default function ConnectorDetailPage() {
           {/* Configuration */}
           <div className="grid gap-6">
             {/* Configuration */}
-            <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Key className="h-4 w-4 text-warning" />
-                  Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+          <section className="space-y-3 border-b border-divide py-4">
+            <h2 className="flex items-center gap-2 text-sm font-medium">
+              <Key className="h-4 w-4 text-warning" />
+              Configuration
+            </h2>
                 <div className="space-y-1.5">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">API Key</label>
                   <div className="flex items-center gap-2">
@@ -454,29 +387,10 @@ export default function ConnectorDetailPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Sync Interval</label>
-                  <p className="text-sm font-medium">Every {connector.config.syncInterval}</p>
-                </div>
-              </CardContent>
-            </Card>
+                <p className="text-sm font-medium">Every {connector.config.syncInterval}</p>
+              </div>
+          </section>
           </div>
-
-          {/* Activity Logs */}
-          <Card className="rounded-[var(--np-radius-lg)] border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Activity Logs</CardTitle>
-                <Button variant="ghost" size="sm" className="text-xs gap-1.5">
-                  <Download className="h-3.5 w-3.5" />
-                  Export
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
-                No activity logs recorded yet
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Delete Dialog */}

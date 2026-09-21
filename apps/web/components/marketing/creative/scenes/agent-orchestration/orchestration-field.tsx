@@ -310,6 +310,15 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
         {failed ? <NucleoError className="h-3 w-3" aria-hidden /> : <NucleoSuccess className="h-3 w-3" aria-hidden />}
         Illustrative orchestration — not a live run. Governance pauses writes; learning is advisory.
       </p>
+      <p className="mt-2 text-center text-[11px] text-[color:var(--g-text-muted)]">
+        <a className="underline underline-offset-2" href="/docs/guides/how-to/agents">
+          How agents work
+        </a>
+        <span aria-hidden> · </span>
+        <a className="underline underline-offset-2" href="/docs/guides/how-to/approvals">
+          How approvals work
+        </a>
+      </p>
     </div>
   )
 }
