@@ -365,17 +365,24 @@ async def stage_retrieved_plan_turn(
             "status": "awaiting_confirm",
             "source": retrieved.source,
         }
+        pending_task = {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": pending_params,
+        }
+        from app.services.durable_work_session import persist_write_approval_patch
+
         await state.update_task_state(
             conversation_id,
             org_id,
-            {
-                "pending_task": {
-                    "type": "connector_action",
-                    "status": "awaiting_confirm",
-                    "params": pending_params,
-                },
-                "recent_user_messages": [message or ""],
-            },
+            persist_write_approval_patch(
+                task_state,
+                pending_task=pending_task,
+                tool_name=plan.tool_name,
+                action=plan.invoke_action,
+                args=dict(plan.args or {}),
+                extra={"recent_user_messages": [message or ""]},
+            ),
             client=client,
         )
         refreshed = await state.get_task_state(conversation_id, org_id, client=client)

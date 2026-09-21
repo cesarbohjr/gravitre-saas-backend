@@ -116,6 +116,23 @@ def test_extracts_invoke_action_from_pending_task():
     assert rows[0]["action"] == "hubspot.lists.create"
 
 
+def test_normalize_state_keeps_durable_checkpoint():
+    from app.services.conversation_state_service import ConversationStateService
+
+    normalized = ConversationStateService._normalize_state(
+        {
+            "durable_checkpoint": {
+                "plan_id": "plan-d-keep",
+                "phase": "WAITING_APPROVAL",
+                "intent": "apollo.lists.create",
+            },
+            "durable_session": {"phase": "WAITING_APPROVAL", "plan_id": "plan-d-keep"},
+        }
+    )
+    assert normalized["durable_checkpoint"]["plan_id"] == "plan-d-keep"
+    assert normalized["durable_session"]["plan_id"] == "plan-d-keep"
+
+
 def test_normalize_state_keeps_provider_result_evidence():
     from app.services.conversation_state_service import ConversationStateService
 

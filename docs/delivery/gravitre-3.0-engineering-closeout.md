@@ -49,8 +49,9 @@ Artifact: `docs/delivery/gravitre-3.0-closeout-live.json`. Voice: `docs/delivery
 
 ## Program-complete pass (2026-09-21)
 
-**3.0 PROGRAM COMPLETE: NO.**  
-Reason: Voice-C PCM was attempted on the real Pipecat WS and did not return assistant text; D crash-checkpoint is source-fixed but not yet live on Railway `7a2eaaab`; GA4/GSC/Gmail/QBO live multi-source still needs human Google/Intuit consent.
+**3.0 PROGRAM COMPLETE: NO** until D live checkpoint is proven on a SHA that keeps `durable_checkpoint` through normalize.
+
+Voice-C synthesized PCM **PASS** on `c7d6b115` @ 2026-09-21T22:56:45Z — session.ready, Deepgram transcript `is Apollo connected.` (`docs/delivery/gravitre-3.0-pcm-live.json`). Physical mic still unused. Assistant compose text was empty on that turn (STT path proven; spoken write still HTTP-only).
 
 ### Phase 0 triage
 

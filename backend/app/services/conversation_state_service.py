@@ -51,6 +51,10 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     # Phase C/E5 — typed execution plan + normalized observations.
     "execution_plan": None,
     "execution_observations": [],
+    # 3.0-D — WRITE checkpoint must survive get_task_state normalize or the
+    # next persist writes a stripped snapshot and crash-resume loses plan_id.
+    "durable_checkpoint": None,
+    "durable_session": None,
     # Phase E5 — governance continuation (confirmation/clarification/approval).
     "pending_action": None,
     # Phase D — unified turn trace (gateway → compose).

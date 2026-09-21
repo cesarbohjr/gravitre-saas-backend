@@ -1,0 +1,36 @@
+{
+  "probe": "3.0_pcm_live",
+  "generated_at": "2026-09-21T22:57:12.352294+00:00",
+  "health": {
+    "git_sha": "c7d6b1155d9cb345f4be17021da24cd997d6b6ae",
+    "timestamp": "2026-09-21T22:56:45.252784+00:00"
+  },
+  "proof_class": "SYNTHESIZED_PCM_INTO_PIPECAT_WS",
+  "pcm_source": "windows_sapi",
+  "phrase": "Is Apollo connected",
+  "physical_mic": false,
+  "lane_b_webrtc": false,
+  "session_ready": true,
+  "types": [
+    "session.ready",
+    "tts.warmed",
+    "metrics",
+    "speech.interrupted",
+    "user-started-speaking",
+    "bot-interrupted",
+    "transcript",
+    "metrics",
+    "user-transcription",
+    "user-llm-text",
+    "user-stopped-speaking",
+    "bot-llm-started",
+    "bot-llm-stopped"
+  ],
+  "transcripts": [
+    "is Apollo connected."
+  ],
+  "assistant_text": "",
+  "spoke": true,
+  "pcm_bytes": 98370,
+  "pass": true
+}
