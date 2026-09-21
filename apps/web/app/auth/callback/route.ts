@@ -95,7 +95,14 @@ export async function GET(request: NextRequest) {
 
     const { error: verifyError } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
-      type: type as "signup" | "invite" | "recovery" | "email" | "email_change",
+      // magiclink is the admin generate_link / email OTP type used by smoke session mint.
+      type: type as
+        | "signup"
+        | "invite"
+        | "recovery"
+        | "email"
+        | "magiclink"
+        | "email_change",
     })
 
     if (!verifyError) {
@@ -110,12 +117,18 @@ export async function GET(request: NextRequest) {
     return loginRedirect(request, "oauth_error")
   }
 
-  // Implicit/hash flow — fragments are not sent to the server.
-  const completeOrigin = getAppOrigin(request) || requestUrl.origin
-  return NextResponse.redirect(
-    new URL(
-      `/auth/callback/complete?next=${encodeURIComponent(next)}`,
-      completeOrigin
-    )
-  )
+  // Implicit/hash flow — fragments are not sent to the server. A 302 to
+  // /auth/callback/complete would drop location.hash and leave the browser on
+  // /login with no session (confirmed 2026-09-21: magic-link → /ai → /login,
+  // hasSession=false). Return a tiny HTML handoff that preserves the hash.
+  const completePath = `/auth/callback/complete?next=${encodeURIComponent(next)}`
+  const safeCompletePath = completePath.replace(/[^a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]/g, "")
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Finishing sign in</title></head><body><p>Finishing sign in…</p><script>location.replace(${JSON.stringify(safeCompletePath)}+location.hash)</script></body></html>`
+  return new NextResponse(html, {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  })
 }
