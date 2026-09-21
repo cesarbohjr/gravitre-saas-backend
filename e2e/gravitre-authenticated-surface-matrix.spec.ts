@@ -47,7 +47,7 @@ test.describe("Authenticated product surface matrix", () => {
     await expect(page).not.toHaveURL(/\/login/)
     await pageContext.catch(() => undefined)
     await expect(page.getByTestId("intelligence-i1-i2")).toBeVisible({ timeout: 90_000 })
-    await expect(page.getByTestId("intelligence-map-canvas")).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByTestId("intel-i3-matrix")).toBeVisible({ timeout: 90_000 })
     await expect(page.getByTestId("intel-i2-stream")).toHaveCount(0)
   })
 

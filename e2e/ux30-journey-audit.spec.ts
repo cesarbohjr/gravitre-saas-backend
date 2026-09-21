@@ -77,28 +77,30 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     const i1Surface = page.getByTestId("intelligence-i1-i2")
     await expect(i1Surface).toBeVisible({ timeout: 90_000 })
 
-    const map = page.getByTestId("intelligence-map-canvas")
-    await expect(map).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByTestId("intel-i3-matrix")).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByTestId("intel-view-mode").getByRole("button", { name: "Matrix" })).toBeVisible()
 
     const lensBar = page
       .getByRole("tablist", { name: /Intelligence (map )?lenses/i })
       .first()
     await expect(lensBar).toBeVisible()
 
-    const i2Toggle = page.getByTestId("intel-i2-toggle")
-    if (await i2Toggle.isVisible().catch(() => false)) {
-      await expect(page.getByTestId("intel-i2-stream")).toHaveCount(0)
-    }
+    await expect(page.getByTestId("intel-i2-toggle")).toBeVisible()
+    await expect(page.getByTestId("intel-i2-stream")).toHaveCount(0)
 
     for (const label of ["Learns", "Predicts"] as const) {
       await lensBar.getByRole("tab", { name: label }).click()
       await expect(lensBar.getByRole("tab", { name: label, selected: true })).toBeVisible()
-      await expect(map).toBeVisible()
+      await expect(page.getByTestId("intel-i3-matrix")).toBeVisible()
     }
+
+    await page.getByTestId("intel-view-mode").getByRole("button", { name: "Field" }).click()
+    const map = page.getByTestId("intelligence-map-canvas")
+    await expect(map).toBeVisible({ timeout: 60_000 })
 
     test.info().annotations.push({
       type: "journey",
-      description: `PASS — J6 I1 field + lens switch @ ${new Date().toISOString()} target=${appOrigin}`,
+      description: `PASS — J6 I3 matrix + I1 field lens switch @ ${new Date().toISOString()} target=${appOrigin}`,
     })
   })
 

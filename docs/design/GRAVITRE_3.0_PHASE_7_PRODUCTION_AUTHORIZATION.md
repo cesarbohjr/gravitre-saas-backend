@@ -31,9 +31,9 @@ The following areas are **explicitly authorized for production implementation**.
 Priority balances dependency, user visibility, and risk (same pattern as A1 → I1).
 
 ```
-Wave 1 — Intelligence completion (overview + mobile)
-  I2 Phase 2 mobile polish
-  I3 Matrix Lens as default on /intelligence overview
+Wave 1 — Intelligence completion (overview + mobile) · SHIPPING 2026-09-21
+  I2 Phase 2 mobile polish · mobile panel tabs + full-width stream
+  I3 Matrix Lens as default on /intelligence overview · Field toggle retained
   ↓
 Wave 2 — Intelligence sub-routes (batch or route-by-route)
   /intelligence/learning · /predictive · /performance · /reports · /memory · /models · /model-studio
