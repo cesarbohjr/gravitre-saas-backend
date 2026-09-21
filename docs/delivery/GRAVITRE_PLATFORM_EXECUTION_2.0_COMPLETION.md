@@ -1,13 +1,14 @@
 # Platform Execution 2.0 — completion report
 
 **Report date:** 2026-09-21  
-**origin/main at HubSpot kernel proof:** `f32a12f942678dddfe348908595c1077e3f9e187`  
-**Required CI on that SHA:** PASS `35562079518`  
-**Railway `/health`:** `f32a12f9` (`status=ok`, `ai_disabled=false`, `unified_turn_live_enabled=true`)  
-**Vercel production:** `dpl_EBqtb1ZMM7MgR55JUBeTdGsL1ZZD` SHA `f32a12f9`  
+**Backend Railway `/health`:** `6cd43ae3787a7d639abf2206b743d08948214238`  
+**Required CI:** PASS [`35566969694`](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35566969694)  
+**Railway deploy:** SUCCESS [`35566969691`](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35566969691)  
+**origin/main at report:** `b8aab980` (frontend creative after the 2.0 kernel SHA)  
+**Vercel production:** `dpl_91Un3edbuaWKh5ytc1ifa7ejPrFE` SHA `b8aab980`  
 **This is not a 2.0 PROGRAM COMPLETE declaration.**
 
-Classification: **IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING** (GA4/GSC OAuth, browser SSO, voice PCM). Continuity follow-up keep-evidence fix is a subsequent commit.
+Classification: **IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING** (GA4/GSC OAuth, isolated Gmail connector, browser SSO, voice PCM).
 
 ## Honest program answers
 
@@ -15,46 +16,48 @@ Classification: **IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING** (GA4/GSC 
 |----------|--------|
 | Engineering complete for independently executable A0–M owners? | **YES**, with B unique-bind live still NOT_RUN |
 | Test-proven? | **PARTIAL** |
-| Live-proven? | **PARTIAL** — HubSpot deals.list on `f32a12f9` PASS `1af967ce-…` |
+| Live-proven? | **PARTIAL** — HubSpot deals.list + continuity on `6cd43ae3` |
 | 2.0 COMPLETE: YES? | **NO** |
 
-## P0 provider-result grounding
+## HubSpot integrity on the deployed kernel
 
-LIVE_PROVEN on isolated org `f07e57c0-…`:
+LIVE_PROVEN on isolated org `f07e57c0-1501-4000-8000-c04e57a00001` against `/health` `6cd43ae3` (not prior-SHA evidence):
 
-- Conversation `191353b4-885e-4f6d-93a8-16327bc775fa`
-- Action `hubspot.deals.list`
-- Observation `dbdda006-4eae-400d-87f5-62d8725f2a6b` count 25
-- `tool.invoke.completed` `fb6f25c2-…` @ `2026-09-21T00:41:42.651738Z`
-- SHA `f32a12f9` (also `1af967ce-e5f7-4195-8270-540fa6f89029`)
+- Single-turn READ conversation `6db30f53-d2c1-471b-8766-126f2275d228` — `hubspot.deals.list`, Observation count 25, terminal `completed`
+- Continuity conversation `b808fc42-7acf-44aa-8c86-b9b9864e96d7` — “Show my deals.” then “Only the large ones.” kept the CRM frame and asked for a cutoff without inventing one
+- Gate re-proof conversation `404bfb06-992d-47f1-9772-7026ad31c459` CRM scenario PASS
+
+Root cause of the previous continuity FAIL: persisted `execution_plan.capability_id` was omitted, and `get_task_state` dropped `provider_result_evidence`. Fix SHA `6cd43ae3`.
 
 ## Phase matrix
 
-| Phase | Status | Live | Notes |
-|-------|--------|------|-------|
-| 2.0-A0 | TEST PROVEN | PARTIAL | Isolated typed chat + HubSpot HMAC; traffic golden EXTERNAL_BLOCKED |
-| 2.0-A | TEST PROVEN | PARTIAL | Invariants; live traffic still GA OAuth |
-| 2.0-B | STRUCTURAL COMPLETE | NOT_RUN | Entity fabric unit; unique cross-system bind needs multi-resource IDs |
-| 2.0-C | TEST PROVEN | EXTERNAL_BLOCKED | Recipes; remaining-source honesty unit; GSC not executable |
-| 2.0-D | TEST PROVEN | PARTIAL | F1 includes HubSpot + Gmail list; HubSpot LIVE_PROVEN; GA blocked |
-| 2.0-E | LIVE PROVEN | LIVE PROVEN | F2 sibling class `2026-09-20T07:24:22Z` |
-| 2.0-F | TEST PROVEN | PARTIAL | Compile-only; no live send |
-| 2.0-G | TEST PROVEN | NOT_RUN | Diagnostic plan unit; live causal join needs GA |
-| 2.0-H | TEST PROVEN | NOT_RUN on post-slice SHA | Continuity phrases unit |
-| 2.0-I | TEST PROVEN structural | NOT_RUN | Compile path has no `spoken_mode`; PCM not re-run |
-| 2.0-J | LIVE PROVEN historic | EXTERNAL_BLOCKED current SHA | Voice SLO on `43570699`; PCM not on `b95a8735` |
-| 2.0-K | TEST PROVEN | NOT_RUN | Tool success ≠ business impact |
-| 2.0-L | TEST PROVEN | N/A internal | Scorecard; no customer badges |
-| 2.0-M | TEST PROVEN | NOT_RUN | Evidence-gated recommendations; `write_allowed=false` |
+| Phase | Engineering | Unit | Integration | Live | External blocked |
+|-------|-------------|------|-------------|------|------------------|
+| A0 | YES | YES | YES | PARTIAL | GA traffic golden |
+| A | YES | YES | YES | PARTIAL | GA/GSC traffic |
+| B | YES | YES | YES | NOT_RUN | unique multi-system IDs |
+| C | YES | YES | YES | EXTERNAL_BLOCKED | GSC execute despite healthy row |
+| D | YES | YES | YES | PARTIAL | Gmail missing on isolated org; GA |
+| E | YES | YES | YES | LIVE PROVEN | — |
+| F | YES | YES | YES | PARTIAL | no live send |
+| G | YES | YES | YES | NOT_RUN | causal join needs GA |
+| H | YES | YES | YES | LIVE PROVEN | `b808fc42` on `6cd43ae3` |
+| I | YES | YES | YES | NOT_RUN | spoken device |
+| J | YES | historic | historic | EXTERNAL_BLOCKED | first audible PCM |
+| K | YES | YES | YES | NOT_RUN | measured business outcomes in prod |
+| L | YES | YES | YES | N/A internal | — |
+| M | YES | YES | YES | NOT_RUN | notify after remaining-source; GA/GSC auth |
 
 ## External blockers (human)
 
-1. Isolated GA4 `pending_auth` — reconnect Google Analytics OAuth (not operator org).
-2. Isolated GSC row healthy but not executable (`token_expired`) — reconnect Search Console.
-3. Authenticated browser `/ai` — Cesar SSO at gravitre.app/login.
-4. Voice first audible PCM — authorized Pipecat probe on current SHA.
-5. Operator org kernel conversation writes remain forbidden.
+1. Isolated org `f07e57c0-1501-4000-8000-c04e57a00001` → Connectors → **Google Analytics** — complete OAuth (`pending_auth`). Cursor will re-run traffic golden + remaining-source + G.
+2. Same org → Connectors → **Google Search Console** — reconnect (row `healthy`, live READ still connect-guidance). Cursor will re-run remaining-source and traffic goldens.
+3. Same org → connect **Gmail** with the normal OAuth flow (no Gmail connector exists today). Cursor will run `gmail.messages.list` F1 READ.
+4. Cesar SSO at `https://gravitre.app/login` for authenticated browser `/ai`.
+5. Authorized microphone / Pipecat session on current SHA for first audible PCM.
 
-## Tests this slice
+Do not use operator org `cbbf993b-…` for kernel chat.
 
-`74 passed` focused 2.0 remaining-phase suite + `30 passed` cohesion/WRITE/F2/decline (local pytest 2026-09-21).
+## Tests this pass
+
+Focused pytest: 55 continuity/KLM/honesty + 89 shared-runtime/A/kernel (local). Required CI `35566969694` PASS including Shared runtime text/voice gate.

@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTATION COMPLETE — EXTERNAL PROOF PENDING (not 2.0 PROGRAM COMPLETE)  
 **Date:** 2026-09-21  
-**Grounding:** this spec + `docs/delivery/gravitre-2.0-requirement-ledger.json` + live HubSpot READ on Railway `b95a8735`  
+**Grounding:** this spec + `docs/delivery/gravitre-2.0-requirement-ledger.json` + live HubSpot READ/continuity on Railway `6cd43ae3`  
 **Product behavior (not a Manus clone):** objective → understand → context → how → right systems → execute safely → recover → synthesize → explain → learn.
 
 Cesar authorized full 2.0 implementation on main. Remaining LIVE_PROVEN gaps are recorded as EXTERNAL_BLOCKED (GA4/GSC OAuth, authenticated browser SSO, voice first audible PCM). Do not treat those as failures of unimplemented code.

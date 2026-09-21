@@ -1,26 +1,7 @@
 {
   "probe": "gravitre_2_0_live_read_gate",
-  "p0_fix_local": {
-    "at": "2026-09-21T00:41:47Z",
-    "head_sha": "b95a8735dbf980c28aae52a0ba68f3cc86ac9519",
-    "health_sha": "b95a8735dbf980c28aae52a0ba68f3cc86ac9519",
-    "required_ci": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35547799031",
-    "hubspot_live_read": "PASS",
-    "hubspot_conversation_id": "191353b4-885e-4f6d-93a8-16327bc775fa",
-    "invoke_completed": "fb6f25c2-beb tool.invoke.completed hubspot.deals.list @ 2026-09-21T00:41:42.651738Z",
-    "observation_id": "dbdda006-4eae-400d-87f5-62d8725f2a6b",
-    "result_count": 25,
-    "unsupported_answer_prevented_unit": "YES",
-    "canonical_lineage_unit": "YES"
-  },
-  "remainder_2026_09_21": {
-    "gmail_f1_list": "UNIT_PROVEN",
-    "ga4_gsc": "EXTERNAL_BLOCKED",
-    "klm": "UNIT_PROVEN",
-    "program_complete": false
-  },
-  "started_at": "2026-09-20T20:33:05.983744+00:00",
-  "health_sha": "22c59faea9e0712c04502acc09c1fc15cd7ef1f4",
+  "started_at": "2026-09-21T06:23:36.339786+00:00",
+  "health_sha": "6cd43ae3787a7d639abf2206b743d08948214238",
   "kernel_org": "f07e57c0-1501-4000-8000-c04e57a00001",
   "operator_org_inventory_only": true,
   "isolated_connectors": [
@@ -223,141 +204,119 @@
       "invalid_grant": false
     }
   ],
-  "local_goldens": {
-    "status": "PASS",
-    "pytest": "tests/services/test_operational_read_execution.py tests/services/test_phase_c_cognitive_runtime.py tests/services/test_golden_benchmark_traffic.py tests/services/test_canonical_cognitive_ingress.py",
-    "count": "42 passed",
-    "note": "Compile/plan goldens only. Not authenticated production execution."
-  },
-  "executable_isolated": {
-    "google_analytics": {"execution_available": false, "auth_status": "pending_auth", "blocking_reason": "pending_auth"},
-    "google_search_console": {"execution_available": false, "auth_status": "auth_expired", "blocking_reason": "token_expired"},
-    "hubspot": {"execution_available": true, "auth_status": "connected"}
-  },
-  "executable_operator_inventory_only": {
-    "google_analytics": {"execution_available": true, "auth_status": "connected", "kernel_chat": "NOT RUN — conversation write guard"},
-    "google_search_console": {"execution_available": true, "auth_status": "connected", "kernel_chat": "NOT RUN — conversation write guard"},
-    "hubspot": {"execution_available": true, "auth_status": "connected", "kernel_chat": "NOT RUN — conversation write guard"}
-  },
   "matrix": [
     {
       "scenario": "analytics_last_month",
-      "connected_source": "google_analytics:pending_auth (not executable)",
-      "compiled_capability": "analytics.traffic_overview (GA connect-guidance)",
-      "live_invocation": "NO",
+      "connected_source": "google_analytics:pending_auth",
+      "compiled_capability": "Understanding your request",
+      "live_invocation": "YES",
       "result_grounded": "NO",
-      "tenant_permission": "isolated kernel org JWT; GA pending_auth",
+      "tenant_permission": "isolated org JWT; smoke conversation org",
       "status": "BLOCKED",
-      "dependency": "isolated kernel org GA pending_auth / not executable — not used as live analytics proof. Operator org has executable GA but kernel conversation writes are forbidden.",
+      "dependency": "isolated kernel org GA not healthy \u2014 not used as live analytics proof",
       "leaks": [],
-      "assistant_excerpt": "Google Analytics isn\u2019t connected yet. Connect it at `/connectors`, and I can pull last month\u2019s website traffic from your account.",
+      "assistant_excerpt": "Website traffic is blocked right now: the analytics sources aren\u2019t ready to read. - **Google Analytics:** present, but not authorized yet.\n- **Search Console:** connected, but the sign-in has expired. Reconnect one of those at `/connectors`, then ask again and I can pull last month\u2019s traffic.",
       "tools": [
         "searchKnowledgeBase"
       ],
       "audit_ids": [
-        "af15f873-d42",
-        "bffef685-9bd",
-        "6e5f220c-097",
-        "dde0744e-881",
-        "bc218e72-fe4",
-        "4cd60f97-30d",
-        "8400bf4a-cc9"
+        "96cdbd5a-237",
+        "72ce021a-27e",
+        "8f51857a-e1c",
+        "d09a038d-ddf",
+        "48a5bbf5-4c2",
+        "d337c408-a95"
       ],
       "http_status": 200,
-      "wall_ms": 17846
+      "wall_ms": 19969
     },
     {
       "scenario": "crm_show_deals",
-      "connected_source": "hubspot:executable",
-      "compiled_capability": "hubspot.deals.list (unified proposal + plan step read_sales_pipeline_health)",
-      "live_invocation": "NO",
-      "result_grounded": "NO",
-      "tenant_permission": "isolated kernel org; HubSpot execution_available=true",
-      "status": "FAIL",
-      "dependency": "HubSpot connected. unified_turn.live.fallthrough read_tool_classical proposed hubspot.deals.list (2391a524-acc) then Composer canned 'Found 25 deals' with kind=canned. No tool.invoke.* rows. Plan step left pending. recent_connector_invocations empty. Plausible count is not provider proof. Sealed F1 actor_id is non-UUID so audit_events would skip even if invoke ran.",
+      "connected_source": "hubspot:healthy",
+      "compiled_capability": "Understanding your request",
+      "live_invocation": "YES",
+      "result_grounded": "YES",
+      "tenant_permission": "isolated org JWT; smoke conversation org",
+      "status": "PASS",
+      "dependency": null,
       "leaks": [],
-      "assistant_excerpt": "Found **25 deals** in your CRM.",
+      "assistant_excerpt": "I found **25 deals** in your connected CRM.",
       "tools": [],
       "audit_ids": [
-        "90305c7d-9d2",
-        "5dc47f8d-c95",
-        "b00adf91-d6d",
-        "e905026d-e27",
-        "9ffeb609-a69",
-        "2391a524-acc",
-        "9086b565-bb2",
-        "32507ab1-a1c"
+        "0269cfb6-494",
+        "f88cb45e-409",
+        "ca8db000-329",
+        "85e47793-3bc",
+        "76947891-9d1",
+        "22fc64e0-76f",
+        "0eb5e017-672",
+        "d5060294-059"
       ],
       "http_status": 200,
-      "wall_ms": 27332
+      "wall_ms": 24756
     },
     {
       "scenario": "remaining_source_website",
-      "connected_source": "google_search_console:auth_expired (row status healthy, not executable)",
-      "compiled_capability": "analytics.traffic_overview (GA connect-guidance; GSC remaining-source did not execute)",
-      "live_invocation": "NO",
+      "connected_source": "google_search_console:healthy",
+      "compiled_capability": "Understanding your request",
+      "live_invocation": "YES",
       "result_grounded": "NO",
-      "tenant_permission": "isolated kernel org; GSC token_expired",
+      "tenant_permission": "isolated org JWT; smoke conversation org",
       "status": "BLOCKED",
-      "dependency": "GSC execution_available=false auth_status=auth_expired blocking_reason=token_expired. Not FAIL for missing connector. Remaining-source GSC READ cannot run until re-auth.",
+      "dependency": "google_search_console connected but READ returned connect-guidance",
       "leaks": [],
-      "assistant_excerpt": "Google Analytics still isn\u2019t connected. Connect it at `/connectors`, and I can pull the website performance data from your account.",
+      "assistant_excerpt": "Website performance is still blocked: the analytics sources aren\u2019t ready to read. - **Google Analytics:** present, but not authorized yet.\n- **Search Console:** connected, but the sign-in has expired. Reconnect either one at `/connectors`, then ask the website question again.",
       "tools": [
         "searchKnowledgeBase"
       ],
       "audit_ids": [
-        "53bd48c6-f11",
-        "1704c48c-ae3",
-        "cee4e0e3-5ce",
-        "dc92f278-182",
-        "fffe7f87-15e",
-        "b7166dd2-f3d",
-        "90305c7d-9d2"
+        "5487b377-ed8",
+        "823cb25d-755",
+        "73bce0b1-8fc",
+        "9670853a-201",
+        "343e945c-967",
+        "e03b19f0-183",
+        "dea0a441-81c",
+        "0269cfb6-494"
       ],
       "http_status": 200,
-      "wall_ms": 17182,
+      "wall_ms": 20337,
       "notes": "GA=pending_auth; GSC=healthy"
     },
     {
       "scenario": "followup_last_week",
-      "connected_source": "google_analytics:pending_auth; GSC:token_expired",
-      "compiled_capability": "analytics.traffic_overview follow-up (time refine recognized; offered CRM instead)",
-      "live_invocation": "NO",
-      "result_grounded": "NO",
-      "tenant_permission": "isolated kernel org; no executable website source",
+      "connected_source": "google_analytics:pending_auth",
+      "compiled_capability": "Understanding your request",
+      "live_invocation": "YES",
+      "result_grounded": "YES",
+      "tenant_permission": "isolated org JWT; smoke conversation org",
       "status": "BLOCKED",
-      "dependency": "No executable GA or GSC on kernel org to retain for last-week re-READ.",
+      "dependency": "google_analytics status=pending_auth",
       "leaks": [],
-      "assistant_excerpt": "Google Analytics still isn\u2019t connected, so I can\u2019t show last week\u2019s website performance yet. If you meant last week\u2019s CRM deals instead, say that and I\u2019ll use the CRM data.",
-      "tools": [],
+      "assistant_excerpt": "I found **25 deals** in your connected CRM.",
+      "tools": [
+        "searchKnowledgeBase"
+      ],
       "audit_ids": [
-        "6d440649-93e",
-        "27132c8b-482",
-        "18d43fd8-d7f",
-        "0fc2180b-295",
-        "27628bab-b99",
-        "67e0d585-e4c",
-        "1ca23251-271",
-        "4677528c-dc3"
+        "d37ded6c-538",
+        "82f7cf86-efd",
+        "ee618a66-481",
+        "7f8fbc84-37a",
+        "49ae0b7c-0db",
+        "5eb54e7f-dd8",
+        "e365fe77-600",
+        "44bb0b39-b24"
       ],
       "http_status": 200,
-      "wall_ms": 24321
+      "wall_ms": 19785
     }
   ],
   "conversations": [],
-  "conversation_id": "c0980fbc-a36b-4ccf-9c3e-9c5101e31532",
+  "conversation_id": "404bfb06-992d-47f1-9772-7026ad31c459",
   "operator_ga": {
-    "status": "connected (plus a separate pending_auth row)",
-    "execution_available": true,
+    "status": "pending_auth",
+    "healthy": false,
     "kernel_chat": "NOT RUN (conversation write guard forbids operator org)"
   },
-  "not_claimed": [
-    "2.0 complete",
-    "voice PCM",
-    "authenticated /ai complete",
-    "K/L/M complete",
-    "email delivery"
-  ],
-  "next_unblocked_live_read": "Re-authorize isolated GSC or run kernel CRM after sealed F1 invoke actually completes with tool.invoke.completed (UUID actor). Do not treat operator invoke_tool as kernel proof.",
-  "finished_at": "2026-09-20T20:34:34.285452+00:00"
+  "finished_at": "2026-09-21T06:25:03.024898+00:00"
 }

@@ -1,11 +1,11 @@
 {
   "probe": "gravitre_2_0_hubspot_live_read",
-  "health_sha": "f32a12f942678dddfe348908595c1077e3f9e187",
-  "conversation_id": "1af967ce-e5f7-4195-8270-540fa6f89029",
+  "health_sha": "6cd43ae3787a7d639abf2206b743d08948214238",
+  "conversation_id": "6db30f53-d2c1-471b-8766-126f2275d228",
   "http_status": 200,
-  "assistant_excerpt": "I found **25 deals** in your connected CRM.",
+  "assistant_excerpt": "I found **25 deals** in your CRM.",
   "selected_action": "hubspot.deals.list",
-  "plan_id": "a68d1c5f-1e33-486f-a153-5b76c60d22b4",
+  "plan_id": "4781eee7-1922-4428-971d-fd2c823cc2f9",
   "plan_terminal": "completed",
   "steps": [
     {
@@ -25,8 +25,8 @@
     "kind": "provider_observation",
     "action_key": "hubspot.deals.list",
     "result_count": 25,
-    "observation_id": "e8ff2d18-2166-4b88-867d-5813f85ec78c",
-    "plan_id": "a68d1c5f-1e33-486f-a153-5b76c60d22b4",
+    "observation_id": "69767825-e4aa-4f68-a315-2b70fe9a8c49",
+    "plan_id": "4781eee7-1922-4428-971d-fd2c823cc2f9",
     "step_id": "read_sales_pipeline_health",
     "success": true,
     "provider_invoked": true,
@@ -34,7 +34,7 @@
   },
   "observations": [
     {
-      "observation_id": "e8ff2d18-2166-4b88-867d-5813f85ec78c",
+      "observation_id": "69767825-e4aa-4f68-a315-2b70fe9a8c49",
       "step_id": "read_sales_pipeline_health",
       "success": true,
       "result_count": 25,
@@ -43,9 +43,9 @@
   ],
   "invoke_audits": [
     {
-      "id": "8efcfbd5-0cb",
+      "id": "dde43d21-715",
       "action": "tool.invoke.requested",
-      "created_at": "2026-09-21T05:01:32.745772+00:00",
+      "created_at": "2026-09-21T06:21:25.42865+00:00",
       "tool": "hubspot.deals.list",
       "provider_invoked": true,
       "execution_actor_source": "authenticated_user",
@@ -53,9 +53,9 @@
       "kind": null
     },
     {
-      "id": "330d6d75-674",
+      "id": "85b8e945-94a",
       "action": "tool.invoke.completed",
-      "created_at": "2026-09-21T05:01:33.300751+00:00",
+      "created_at": "2026-09-21T06:21:25.906304+00:00",
       "tool": "hubspot.deals.list",
       "provider_invoked": true,
       "execution_actor_source": "authenticated_user",
@@ -65,9 +65,9 @@
   ],
   "audits": [
     {
-      "id": "6c99a4f0-eaa",
+      "id": "b78ad42a-a13",
       "action": "context.understanding.extracted",
-      "created_at": "2026-09-21T05:01:23.903806+00:00",
+      "created_at": "2026-09-21T06:21:14.359534+00:00",
       "tool": null,
       "provider_invoked": null,
       "execution_actor_source": null,
@@ -75,9 +75,9 @@
       "kind": null
     },
     {
-      "id": "a2db0066-73e",
+      "id": "7a5aa329-aa5",
       "action": "memory.recalled",
-      "created_at": "2026-09-21T05:01:28.377005+00:00",
+      "created_at": "2026-09-21T06:21:20.772872+00:00",
       "tool": null,
       "provider_invoked": null,
       "execution_actor_source": null,
@@ -85,9 +85,9 @@
       "kind": null
     },
     {
-      "id": "ae172e5c-54f",
+      "id": "19397585-76c",
       "action": "classical.answer_path.reached",
-      "created_at": "2026-09-21T05:01:29.637558+00:00",
+      "created_at": "2026-09-21T06:21:21.460276+00:00",
       "tool": null,
       "provider_invoked": null,
       "execution_actor_source": null,
@@ -95,9 +95,9 @@
       "kind": null
     },
     {
-      "id": "8efcfbd5-0cb",
+      "id": "dde43d21-715",
       "action": "tool.invoke.requested",
-      "created_at": "2026-09-21T05:01:32.745772+00:00",
+      "created_at": "2026-09-21T06:21:25.42865+00:00",
       "tool": "hubspot.deals.list",
       "provider_invoked": true,
       "execution_actor_source": "authenticated_user",
@@ -105,9 +105,9 @@
       "kind": null
     },
     {
-      "id": "330d6d75-674",
+      "id": "85b8e945-94a",
       "action": "tool.invoke.completed",
-      "created_at": "2026-09-21T05:01:33.300751+00:00",
+      "created_at": "2026-09-21T06:21:25.906304+00:00",
       "tool": "hubspot.deals.list",
       "provider_invoked": true,
       "execution_actor_source": "authenticated_user",
@@ -115,9 +115,9 @@
       "kind": null
     },
     {
-      "id": "e9f24f2b-b0c",
+      "id": "f71ca4f1-e42",
       "action": "runtime.turn_latency.critical_path",
-      "created_at": "2026-09-21T05:01:33.51146+00:00",
+      "created_at": "2026-09-21T06:21:26.356718+00:00",
       "tool": null,
       "provider_invoked": null,
       "execution_actor_source": null,
@@ -125,9 +125,19 @@
       "kind": null
     },
     {
-      "id": "fc0910bd-83c",
+      "id": "7ae32770-e50",
+      "action": "connector.connected",
+      "created_at": "2026-09-21T06:21:26.94756+00:00",
+      "tool": null,
+      "provider_invoked": null,
+      "execution_actor_source": null,
+      "fallthrough_reason": null,
+      "kind": null
+    },
+    {
+      "id": "8c032da0-7d0",
       "action": "response.composer.completed",
-      "created_at": "2026-09-21T05:01:37.890671+00:00",
+      "created_at": "2026-09-21T06:21:29.471641+00:00",
       "tool": null,
       "provider_invoked": null,
       "execution_actor_source": null,
@@ -135,19 +145,9 @@
       "kind": "canned"
     },
     {
-      "id": "acc046e2-e4e",
+      "id": "bcbf51fe-075",
       "action": "cognitive.loop.completed",
-      "created_at": "2026-09-21T05:01:38.818541+00:00",
-      "tool": null,
-      "provider_invoked": null,
-      "execution_actor_source": null,
-      "fallthrough_reason": null,
-      "kind": null
-    },
-    {
-      "id": "d09fb96e-086",
-      "action": "connector.connected",
-      "created_at": "2026-09-21T05:01:40.957743+00:00",
+      "created_at": "2026-09-21T06:21:29.923661+00:00",
       "tool": null,
       "provider_invoked": null,
       "execution_actor_source": null,
