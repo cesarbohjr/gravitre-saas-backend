@@ -4,6 +4,7 @@ Never auto-writes. Dedupes identical alerts. Low-evidence signals stay silent.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -18,6 +19,85 @@ class ProactiveRecommendation:
     recommendation: str
     notify: bool
     write_allowed: bool = False
+    investigation: str = "safe_read"
+    rank_score: float = 0.0
+    axes: dict[str, float] | None = None
+
+
+ATTENTION_AXES = (
+    "impact",
+    "urgency",
+    "confidence",
+    "relevance",
+    "actionability",
+    "novelty",
+)
+_AXIS_WEIGHTS = {
+    "impact": 0.25,
+    "urgency": 0.20,
+    "confidence": 0.20,
+    "relevance": 0.15,
+    "actionability": 0.10,
+    "novelty": 0.10,
+}
+HIGH_RISK_WRITE_KINDS = frozenset(
+    {
+        "auto_write",
+        "high_risk_write",
+        "send_email",
+        "create_list",
+        "mutate",
+        "execute_write",
+    }
+)
+MAX_QUIET_NOTICES = 3
+
+
+def _is_high_risk_write_signal(signal: dict[str, Any]) -> bool:
+    kind = str(signal.get("kind") or "").strip().lower()
+    if kind in HIGH_RISK_WRITE_KINDS:
+        return True
+    if signal.get("write_requested") or signal.get("auto_write"):
+        return True
+    return False
+
+
+def attention_axes_for_signal(
+    signal: dict[str, Any],
+    *,
+    significance: Significance,
+    evidence: tuple[str, ...],
+) -> dict[str, float]:
+    """Score a notice for ranking. Confidence is evidence-backed, not a product claim."""
+    kind = str(signal.get("kind") or "").strip().lower()
+    connector = str(signal.get("connector") or "").strip()
+    impact = {"high": 0.9, "medium": 0.55, "low": 0.2, "none": 0.0}[significance]
+    if kind in {"auth_expired", "pending_auth", "token_expired"}:
+        urgency = 0.85
+        actionability = 0.7
+    elif kind in {"metric_moved", "threshold"}:
+        urgency = 0.55
+        actionability = 0.5
+    else:
+        urgency = 0.25
+        actionability = 0.35
+    confidence = min(1.0, 0.35 + 0.2 * len(evidence))
+    relevance = 0.85 if connector else 0.4
+    return {
+        "impact": impact,
+        "urgency": urgency,
+        "confidence": confidence,
+        "relevance": relevance,
+        "actionability": actionability,
+        "novelty": 1.0,
+    }
+
+
+def _rank_score(axes: dict[str, float]) -> float:
+    return round(
+        sum(float(axes.get(axis, 0.0)) * _AXIS_WEIGHTS[axis] for axis in ATTENTION_AXES),
+        4,
+    )
 
 
 def _dedupe_key(signal: dict[str, Any]) -> str:
@@ -38,6 +118,8 @@ def evaluate_business_signals(
     for raw in signals or []:
         if not isinstance(raw, dict):
             continue
+        if _is_high_risk_write_signal(raw):
+            continue
         key = _dedupe_key(raw)
         if key in seen:
             continue
@@ -57,9 +139,12 @@ def evaluate_business_signals(
         else:
             significance = "low"
             rec = str(raw.get("recommendation") or "Investigate the supporting evidence.")
+        if re.search(r"(?i)\b(enable|disable|certified|trained)\b|\$\d", rec):
+            rec = "Review the supporting evidence before acting."
         if significance == "low" and not raw.get("notify_low"):
             continue
         seen.add(key)
+        axes = attention_axes_for_signal(raw, significance=significance, evidence=evidence)
         out.append(
             ProactiveRecommendation(
                 signal_id=key,
@@ -68,9 +153,34 @@ def evaluate_business_signals(
                 recommendation=rec,
                 notify=significance in {"medium", "high"},
                 write_allowed=False,
+                investigation="safe_read",
+                rank_score=_rank_score(axes),
+                axes=axes,
             )
         )
+    out.sort(key=lambda item: item.rank_score, reverse=True)
     return out
+
+
+def rank_safe_read_notices(
+    signals: list[dict[str, Any]] | None,
+    *,
+    prior_alert_ids: set[str] | frozenset[str] | None = None,
+    limit: int = MAX_QUIET_NOTICES,
+) -> list[ProactiveRecommendation]:
+    """3.0-J: ranked safe-READ notices. Never auto high-risk WRITE. Extra signals stay quiet."""
+    recs = evaluate_business_signals(signals, prior_alert_ids=prior_alert_ids)
+    cap = max(0, int(limit))
+    return recs[:cap]
+
+
+def format_ranked_read_notices(recommendations: list[ProactiveRecommendation]) -> str:
+    if not recommendations:
+        return ""
+    lines = ["I noticed a few items worth a safe read — I will not write anything:"]
+    for rec in recommendations:
+        lines.append(f"- {rec.recommendation}")
+    return "\n".join(lines)
 
 
 def signals_from_website_readiness(readiness: dict[str, dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -106,6 +216,8 @@ def patch_task_state_with_recommendations(
             "recommendation": rec.recommendation,
             "notify": rec.notify,
             "write_allowed": False,
+            "investigation": "safe_read",
+            "rank_score": rec.rank_score,
         }
         for rec in recommendations
     ]

@@ -1,0 +1,451 @@
+{
+  "probe": "retrieval_ab_live",
+  "started_at": "2026-09-21T16:50:35.803405+00:00",
+  "base_url": "https://api.gravitre.app",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "actor_id": "a9f1240f-910a-42ca-aebf-38caeac288c3",
+  "min_sha_prefix": "6d563e3d",
+  "queries": {
+    "A_fast_connectors": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [
+          "getConnectorStatus"
+        ],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple"
+        ],
+        "effective_modes": [
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": null,
+        "text_head": "You have Apollo, Google Ads, and Hubspot connected.",
+        "event_types": [
+          "data-intelligence",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start",
+          "tool-input-available"
+        ]
+      },
+      "reasons": [],
+      "message": "What connectors are connected? (retrieval-ab A 202609211650)"
+    },
+    "B_write_intent_gate": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": true,
+        "research_cascade_final": null,
+        "text_head": "I can create an empty Apollo contact list named **gravitre-retrieval-ab-202609211650**. Reply **yes** to approve, or tell me what to change.",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start"
+        ]
+      },
+      "reasons": [],
+      "message": "Create an Apollo contact list named exactly 'gravitre-retrieval-ab-202609211650' with no contacts. Use Apollo only."
+    },
+    "C_org_kb": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [
+          "searchKnowledgeBase"
+        ],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": {
+          "internal_thin": false,
+          "suggest_broaden": false,
+          "prompt_message": null,
+          "options": [],
+          "auto_internet_when_thin": false,
+          "research_scope": "internal_only",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": true,
+          "retrieval_score": 0.35,
+          "source_count": 3,
+          "internet_research": {
+            "ran": true,
+            "skipped_reason": null,
+            "result_count": 5,
+            "error": null,
+            "provider": "serper"
+          },
+          "confidence_band": "low",
+          "top_sources": [
+            {
+              "source_name": "No Refund Policy Samples & Writing Guide",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.35,
+              "match_tier": null,
+              "url": "https://termly.io/resources/articles/no-refund-policy/"
+            },
+            {
+              "source_name": "Return policy meaning: refund rules, timeframes, exclusions",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.35,
+              "match_tier": null,
+              "url": "https://solidgate.com/glossary/return-policy/"
+            },
+            {
+              "source_name": "What is your refund policy?",
+              "source_type": "internet",
+              "assignment_id": null,
+              "score": 0.35,
+              "match_tier": null,
+              "url": "https://help.zoho.com/portal/en/kb/common-faqs/articles/what-is-your-refund-policy"
+            }
+          ],
+          "source_breakdown": {
+            "internet": 3
+          },
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Reading conversation memory",
+            "Searching internal knowledge",
+            "Walking knowledge graph",
+            "Querying connected systems",
+            "Reasoning over findings\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "internet_research",
+            "reasoning"
+          ]
+        },
+        "text_head": "I don\u2019t have enough information yet to answer your refund policy from internal knowledge.\n\nIf you want, point me to the policy source or paste the relevant internal text, and I\u2019ll summarize it.",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start",
+          "tool-input-available",
+          "tool-output-available"
+        ]
+      },
+      "reasons": [],
+      "message": "What is our refund policy? Answer from internal knowledge only. (retrieval-ab C 202609211650)"
+    },
+    "D_thin_broaden": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [
+          "searchKnowledgeBase"
+        ],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": {
+          "internal_thin": true,
+          "suggest_broaden": false,
+          "prompt_message": null,
+          "options": [],
+          "auto_internet_when_thin": true,
+          "research_scope": "internal_only",
+          "active_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "internet_research",
+            "reasoning"
+          ],
+          "stage_order": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "intelligence_packs",
+            "internet_research",
+            "reasoning"
+          ],
+          "internet_research_enabled": true,
+          "retrieval_score": null,
+          "source_count": 0,
+          "internet_research": {
+            "ran": true,
+            "skipped_reason": null,
+            "result_count": 5,
+            "error": null,
+            "provider": "serper"
+          },
+          "confidence_band": "unknown",
+          "top_sources": [],
+          "source_breakdown": {},
+          "stage_progress": [
+            {
+              "stage": "conversation_memory",
+              "label": "Conversation Memory",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internal_rag",
+              "label": "Internal Rag",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "knowledge_graph",
+              "label": "Knowledge Graph",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "connectors",
+              "label": "Connectors",
+              "status": "completed",
+              "detail": null
+            },
+            {
+              "stage": "internet_research",
+              "label": "Internet Research",
+              "status": "completed",
+              "detail": "5 web results"
+            },
+            {
+              "stage": "reasoning",
+              "label": "Reasoning",
+              "status": "pending",
+              "detail": null
+            }
+          ],
+          "progress_steps": [
+            "Reading conversation memory",
+            "Searching internal knowledge",
+            "Walking knowledge graph",
+            "Querying connected systems",
+            "Searching the web (5 web results)",
+            "Reasoning over findings\u2026"
+          ],
+          "research_manager": true,
+          "cascade_stopped_at": null,
+          "confidence_sufficient": false,
+          "skip_graph": false,
+          "skip_external": false,
+          "planned_stages": [
+            "conversation_memory",
+            "internal_rag",
+            "knowledge_graph",
+            "connectors",
+            "internet_research",
+            "reasoning"
+          ]
+        },
+        "text_head": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.\n\nI can\u2019t provide an exact forecast from the data you gave here, and I don\u2019t have any internal org knowledge exposed for Zephyr Dynamics. If you want, I can help you find the relevant source in Intelligence or work from a connected data source.",
+        "event_types": [
+          "data-intelligence",
+          "data-suggestions",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start",
+          "tool-input-available",
+          "tool-output-available"
+        ]
+      },
+      "reasons": [],
+      "message": "What is the exact Q3 2027 revenue forecast for our fictional subsidiary Zephyr Dynamics in Antarctica? Use only internal org knowledge. (retrieval-ab D 202609211650)"
+    },
+    "E_fast_honesty": {
+      "pass": true,
+      "http": 200,
+      "conversation_fingerprint": {
+        "tool_names": [],
+        "error_codes": [],
+        "routing_tiers": [
+          "simple",
+          "simple",
+          "simple"
+        ],
+        "effective_modes": [
+          "fast",
+          "fast",
+          "fast",
+          "fast"
+        ],
+        "final_routingTier": "simple",
+        "final_effectiveMode": "fast",
+        "pending_seen": false,
+        "research_cascade_final": null,
+        "text_head": "Retrieval-blocked: I don\u2019t have enough information to answer that.",
+        "event_types": [
+          "data-intelligence",
+          "finish",
+          "finish-step",
+          "start",
+          "start-step",
+          "text-delta",
+          "text-end",
+          "text-start"
+        ]
+      },
+      "reasons": [],
+      "message": "Reply with one sentence: what mode are you in? (retrieval-ab E 202609211650)"
+    }
+  },
+  "pass": true,
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-09-21T16:50:36.129875+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "6d563e3dbc28034d6b7c9638d8e7679c18c3beb5",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "deploy_sha_ok": true,
+  "finished_at": "2026-09-21T16:53:48.822940+00:00"
+}
