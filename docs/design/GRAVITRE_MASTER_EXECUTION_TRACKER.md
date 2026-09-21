@@ -57,11 +57,11 @@
 
 ## Authenticated browser verification
 
-**AUTHENTICATED BROWSER VERIFICATION — BLOCKED: NO AUTHORIZED SESSION.**
+**AUTHENTICATED BROWSER VERIFICATION — UNBLOCKED (2026-09-21).**
 
-Recorded once. Does not block implementation of independent phases. Do not mark browser matrices PASS. Resume when a session exists. Do not request credentials.
+Session mint via `token_hash` callback + `e2e/.fixtures/gravitre-e2e-storage.json`. Surface matrix `e2e/gravitre-authenticated-surface-matrix.spec.ts` **14/14 PASS** against `https://gravitre.app` (isolated org). Intelligence / Activity / Navigation pin / Agents / Relationships / Workflows / Connectors / Sources / Approvals / Marketplace / Models / Settings / AI Workspace each loaded without login bounce.
 
-Applies to: Intelligence, Activity, Navigation, and later surfaces until a session is available.
+Applies to: Intelligence, Activity, Navigation, and Phase-5 surfaces listed above.
 
 ---
 
@@ -178,7 +178,7 @@ No further safe implementation remains for Technology thinning or the KF-A produ
 | Probe | Result |
 |-------|--------|
 | `routing_wave_abcd` | **PASS** on health `8ee2ae00` — A `fast`+`simple`, B `multi_step`+pending, C `research`. Artifact `docs/delivery/routing-wave-prod-live.json`. |
-| `wave67_spotcheck` | Claims 1/3/4 **PASS** on `19b3e014` (isolated conversations + sanitized plan-ready scoring). Claim 2 **PARTIAL** — Slack turn still reaches `searchKnowledgeBase` with `dialogueMode=confirm` and no failure chip after `19b3e014` (unit fixture for empty-deps → `connector_unavailable` passes; live chip path still NOT PROVEN). Artifact `docs/delivery/wave67-spotcheck-latest.json`. |
+| `wave67_spotcheck` | Claims **1–4 PASS** on health `7a2eaaab` (2026-09-21). Claim 2 failure chip: `slack_post_message` `errorCode=auth_expired` at `2026-09-21T19:58:19Z`. Root cause class: unit fixture tested `_rule_based_trigger` only; live path short-circuited via `resolution_trace` then crashed on `UnboundLocalError` for `sse_react_tool_start`. Fixes `16c74153` + `7a2eaaab`. Artifact `docs/delivery/wave67-spotcheck-latest.json`. |
 | HubSpot continuity (H) | **PASS** on health `4f98e744`, conv `8600c818…`, `hubspot.deals.list`. |
 | K/L/M + 3.0-J + golden traffic units | **34 passed** (`test_platform_execution_2_0_klm_invariants`, `test_platform_execution_3_0_j_attention`, `test_golden_benchmark_traffic`). |
 
@@ -200,17 +200,18 @@ No further safe implementation remains for Technology thinning or the KF-A produ
 
 ---
 
-## Phase 2 — Final 2.0 / 3.0 ledger (2026-09-21 tip `19b3e014` / health same)
+## Phase 2 — Final 2.0 / 3.0 ledger (2026-09-21 tip / health `7a2eaaab`)
 
 Evidence tiers: **VERIFIED** = live API or public production proof with pointer. **IMPLEMENTED — NOT PROVEN** = code + unit/integration, no qualifying live proof. **EXTERNALLY BLOCKED** = needs provider OAuth, device, or human consent outside this program.
 
 | Item | Tier | Evidence / blocker |
 |------|------|--------------------|
-| Auth browser session | VERIFIED (session mint) / IMPLEMENTED — NOT PROVEN (full /ai landing marker) | `hasSession=true` on `/ai` via token_hash callback. Playwright 2/3 on prod; landing attr intermittent. |
+| Auth browser session | VERIFIED | `hasSession=true` mint + consume; storage `e2e/.fixtures/gravitre-e2e-storage.json`. |
+| Authenticated surface matrix | VERIFIED (isolated org) | Playwright `e2e/gravitre-authenticated-surface-matrix.spec.ts` vs `https://gravitre.app` — 14/14 PASS after selector alignment (Intelligence map+lenses, Activity, Navigation pin, Agents, Relationships, Workflows, Connectors, Sources, Approvals, Marketplace, Models, Settings sections, AI Workspace). |
 | retrieval_ab A | VERIFIED | Live PASS `6d563e3d` + fixtures; tool `getConnectorStatus`, tier `simple`. |
 | routing_wave_abcd | VERIFIED | Live PASS `8ee2ae00` A/B/C. |
-| wave67 claims 1,3,4 | VERIFIED | Live PASS `19b3e014`. |
-| wave67 claim 2 Slack chip | IMPLEMENTED — NOT PROVEN | Unit PASS empty-deps fixture; live still KB/`confirm` without failure chip. |
+| wave67 claims 1–4 | VERIFIED | Live PASS `7a2eaaab`; claim 2 `slack_post_message`/`auth_expired` @ `2026-09-21T19:58:19Z`. |
+| wave67 claim 2 Slack chip | VERIFIED | Same as above — no longer NOT PROVEN. |
 | A0/A traffic golden | EXTERNALLY BLOCKED | GA4 `pending_auth` on isolated org. Units PASS (34 golden+KLM+J). |
 | B identity | IMPLEMENTED — NOT PROVEN (multi-OAuth) | Alpha seed + bindings TEST-PROVEN; QBO/Zendesk OAuth pending. |
 | C recipes live | EXTERNALLY BLOCKED | GSC reconnect-required; GA pending. |
@@ -225,5 +226,5 @@ Evidence tiers: **VERIFIED** = live API or public production proof with pointer.
 | OAuth GA4/GSC/Gmail | EXTERNALLY BLOCKED | Interactive Google consent + Gmail connector on isolated org. |
 | Voice PCM / mic | EXTERNALLY BLOCKED | Physical microphone + human VOICE_C. |
 
-**Does Phase 0 unlock prior NOT PROVEN browser items?** Session mint is unblocked. Authenticated `/ai` load without login bounce is LIVE-PROVEN for the smoke user. Full product-surface matrix (Intelligence/Activity/etc. browser PASS) remains NOT PROVEN until those specs are re-run against the new storage state — only the `/ai` harness was executed here (2/3).
+**Does Phase 0 unlock prior NOT PROVEN browser items?** Yes — session mint unblocked. Authenticated surface matrix **14/14 PASS** on production against the smoke storage state (2026-09-21). Wave67 claim 2 also LIVE-PROVEN on `7a2eaaab`.
 
