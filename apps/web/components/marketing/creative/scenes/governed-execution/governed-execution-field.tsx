@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { NucleoApproval, NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
@@ -154,9 +155,9 @@ function GovernedExecutionFieldImpl({ className }: { className?: string }) {
         Illustrative governed execution — policy, risk, approval, execute, evidence. Not a live compliance claim.
       </p>
       <p className="mt-2 text-center text-[11px] text-[color:var(--g-text-muted)]">
-        <a className="underline underline-offset-2" href="/docs/guides/how-to/approvals">
+        <Link className="underline underline-offset-2" href="/docs/guides/how-to/approvals">
           How approvals work
-        </a>
+        </Link>
       </p>
     </div>
   )

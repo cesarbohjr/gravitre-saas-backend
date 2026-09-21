@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { useInView, useReducedMotion } from "framer-motion"
 import {
   NucleoChat,
@@ -311,13 +312,13 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
         Illustrative orchestration — not a live run. Governance pauses writes; learning is advisory.
       </p>
       <p className="mt-2 text-center text-[11px] text-[color:var(--g-text-muted)]">
-        <a className="underline underline-offset-2" href="/docs/guides/how-to/agents">
+        <Link className="underline underline-offset-2" href="/docs/guides/how-to/agents">
           How agents work
-        </a>
+        </Link>
         <span aria-hidden> · </span>
-        <a className="underline underline-offset-2" href="/docs/guides/how-to/approvals">
+        <Link className="underline underline-offset-2" href="/docs/guides/how-to/approvals">
           How approvals work
-        </a>
+        </Link>
       </p>
     </div>
   )
