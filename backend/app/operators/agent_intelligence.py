@@ -2149,8 +2149,6 @@ class AgentIntelligence:
                 str((gateway.extras or {}).get("verified_tool") or "") == "getConnectorStatus"
             )
             if status_invoked:
-                from app.operators.assistant_sse import sse_react_tool_start
-
                 yield sse_react_tool_start(
                     call_id=message_id,
                     registry_tool_name="assistant_connector_status",
