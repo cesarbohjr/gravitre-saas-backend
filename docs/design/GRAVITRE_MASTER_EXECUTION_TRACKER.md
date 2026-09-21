@@ -153,7 +153,7 @@ Marketplace discovery is a scan list with price and install on the row; pack met
 | Railway | Not redeployed for this frontend commit (“No deployment needed - watched paths not modified.”). `/health` `git_sha=6cd43ae3` `status=ok` at `2026-09-21T06:55:04Z`. Backend remains the last watched-path deploy; not a live connected-system business-path PASS. |
 | Authenticated browser | **BLOCKED: NO AUTHORIZED SESSION** |
 
-No further safe implementation remains for Technology thinning or the KF-A production scene; both are verified on `720a0650`. Authenticated browser, OAuth, authenticated `/ai`, connected-system execution, and voice PCM stay NOT PROVEN. A smoke-user magic link reached `https://gravitre.app/login` without a session (`hasSession=false`). Google consent and a physical microphone are still required for the live 2.0 proofs.
+No further safe implementation remains for Technology thinning or the KF-A production scene; both are verified on `720a0650`. Authenticated browser, OAuth, authenticated `/ai`, connected-system execution, and voice PCM stay NOT PROVEN. A smoke-user magic link reached `https://gravitre.app/login` without a session (`hasSession=false`). Google consent and a physical microphone are still required for the live 2.0 proofs. Milestone 1 live reverify [35615787164](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35615787164) on this SHA failed `wave67_spotcheck`, `routing_wave_abcd`, and `retrieval_ab` (retrieval A answered the connector list without `getConnectorStatus`). `research_cascade` passed.
 
 ---
 
