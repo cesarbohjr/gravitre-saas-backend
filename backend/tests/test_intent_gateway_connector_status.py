@@ -9,17 +9,20 @@ from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
 
 
 @pytest.mark.asyncio
-@patch("app.connectors.connector_availability_service.list_connector_availability")
-async def test_gateway_shortcuts_is_clay_connected(mock_list):
-    mock_list.return_value = [
-        {
-            "vendor": "hubspot",
-            "execution_available": True,
-            "auth_status": "connected",
-            "display_status": "connected",
-            "connected": True,
-        }
-    ]
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
+async def test_gateway_shortcuts_is_clay_connected(mock_rows):
+    mock_rows.return_value = (
+        [
+            {
+                "vendor": "hubspot",
+                "execution_available": True,
+                "auth_status": "connected",
+                "display_status": "connected",
+                "connected": True,
+            }
+        ],
+        False,
+    )
     decision = await evaluate_intent_gateway(
         GatewayContext(
             message="Is Clay connected?",
