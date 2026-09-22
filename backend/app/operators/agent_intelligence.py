@@ -4200,7 +4200,22 @@ class AgentIntelligence:
                     routing_tier=routing_control.tier,
                     routing=routing_sse,
                 )
-            packed = await _composed_reply(response_text, kind="canned")
+            exec_res = conv_turn.get("execution_result")
+            failed = isinstance(exec_res, dict) and exec_res.get("success") is False
+            compose_kind = (
+                "error"
+                if failed
+                else ("clarify" if dialogue_mode in {"confirm", "clarifying"} else "canned")
+            )
+            packed = await _composed_reply(
+                response_text,
+                kind=compose_kind,
+                extra={
+                    "success": not failed,
+                    "data": {"text": response_text},
+                    "execution_result": exec_res,
+                },
+            )
             response_text = packed.text
             for ev in packed.events:
                 yield ev

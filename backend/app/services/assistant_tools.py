@@ -883,7 +883,7 @@ def tool_execute_workflow(
             }
         workflow_id = str(match.get("id") or "")
         actor_id = user_id or "system"
-        run_params: dict[str, Any] = {}
+        run_params: dict[str, Any] = {"source": "assistant_chat"}
         if conversation_id:
             run_params["conversation_id"] = conversation_id
         if plan_id:
@@ -898,7 +898,7 @@ def tool_execute_workflow(
                 workflow_id=workflow_id,
                 parameters=run_params,
                 actor_id=actor_id,
-                trigger_type="assistant_chat",
+                trigger_type="api",
                 force_inline=True,
             )
         except HTTPException as exc:

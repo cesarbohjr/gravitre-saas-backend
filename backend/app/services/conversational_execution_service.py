@@ -622,7 +622,11 @@ class ConversationalExecutionService:
             )
         else:
             body_l = str(result.body or "").lower()
-            resumable = "in progress" in body_l or "try again" in body_l
+            resumable = (
+                "in progress" in body_l
+                or "try again" in body_l
+                or "waiting for approval" in body_l
+            )
             await self._state.update_task_state(
                 conversation_id,
                 org_id,

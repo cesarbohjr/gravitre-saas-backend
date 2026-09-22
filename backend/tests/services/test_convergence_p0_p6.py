@@ -245,7 +245,12 @@ def test_p5_drain_skips_pending_approval_and_completed_steps() -> None:
     )
     assert (
         can_inline_drain_unstarted_run(
-            {"status": "running", "trigger_type": "assistant_chat", "steps": []}
+            {
+                "status": "running",
+                "trigger_type": "api",
+                "parameters": {"source": "assistant_chat", "conversation_id": "c1"},
+                "steps": [],
+            }
         )
         is True
     )
@@ -258,6 +263,8 @@ def test_p5_tool_execute_workflow_is_force_inline() -> None:
 
     src = inspect.getsource(assistant_tools.tool_execute_workflow)
     assert "force_inline=True" in src
+    assert 'trigger_type="api"' in src
+    assert '"source": "assistant_chat"' in src or "'source': 'assistant_chat'" in src
 
 
 def test_p6_tool_success_is_not_plan_bias() -> None:

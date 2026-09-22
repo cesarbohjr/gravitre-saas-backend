@@ -127,7 +127,15 @@ def can_inline_drain_unstarted_run(run: dict | None) -> bool:
     if str(run.get("status") or "") != RUN_STATUS_RUNNING:
         return False
     trigger = str(run.get("trigger_type") or run.get("trigger") or "").strip()
-    if trigger and trigger not in {"assistant_chat", "chat"}:
+    params = run.get("parameters") if isinstance(run.get("parameters"), dict) else {}
+    chat_origin = trigger in {"assistant_chat", "chat"} or (
+        trigger == "api"
+        and (
+            str(params.get("source") or "") == "assistant_chat"
+            or bool(str(params.get("conversation_id") or "").strip())
+        )
+    )
+    if trigger and not chat_origin:
         return False
     steps = run.get("steps") or []
     if any(str(s.get("status") or "") in {STEP_STATUS_COMPLETED, STEP_STATUS_FAILED} for s in steps):
@@ -135,19 +143,24 @@ def can_inline_drain_unstarted_run(run: dict | None) -> bool:
     return True
 
 
-def active_run_conflict_detail(active_run_id: str) -> dict[str, str]:
+def active_run_conflict_detail(active_run_id: str, *, status: str | None = None) -> dict[str, str]:
     """Plain-language 409 payload for execute concurrency conflicts."""
     short = active_run_id[:8] if active_run_id else ""
+    if str(status or "").strip() == "pending_approval":
+        message = (
+            f"This workflow already has a run waiting for approval ({short}…). "
+            "Approve or cancel that run, then try again."
+        )
+    else:
+        message = (
+            f"This workflow already has a run in progress ({short}…). "
+            "Open that run to monitor or cancel it, then try again."
+        )
     return {
-        "message": (
-            f"This workflow already has a run in progress ({short}…). "
-            "Open that run to monitor or cancel it, then try again."
-        ),
-        "detail": (
-            f"This workflow already has a run in progress ({short}…). "
-            "Open that run to monitor or cancel it, then try again."
-        ),
+        "message": message,
+        "detail": message,
         "active_run_id": active_run_id,
+        "active_run_status": str(status or ""),
     }
 
 

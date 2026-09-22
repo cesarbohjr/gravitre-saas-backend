@@ -2154,9 +2154,15 @@ def _execute_workflow_with_context(
             )
             if drained is not None:
                 return drained
+        conflict_status = None
+        try:
+            conflict_row = get_run_with_steps(client, org_id, active_run_id, environment_name)
+            conflict_status = str((conflict_row or {}).get("status") or "") or None
+        except Exception:  # noqa: BLE001
+            conflict_status = None
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=active_run_conflict_detail(active_run_id),
+            detail=active_run_conflict_detail(active_run_id, status=conflict_status),
         )
 
     allowed_envs = [e.strip() for e in (settings.policy_allowed_envs or "").split(",") if e.strip()]

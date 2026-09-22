@@ -55,12 +55,44 @@ def main() -> int:
         or []
     )
     out["workflows"] = [{"id": w.get("id"), "name": w.get("name")} for w in wfs]
-    canvas = next(
-        (w for w in wfs if "canvas write" in str(w.get("name") or "").lower()),
-        None,
-    )
-    pick = canvas or (wfs[0] if wfs else {})
+    blocked_ids = {
+        str(r.get("workflow_id") or "")
+        for r in (
+            sb.table("workflow_runs")
+            .select("workflow_id")
+            .eq("org_id", iso_org)
+            .eq("run_type", "execute")
+            .in_("status", ["pending_approval", "running"])
+            .execute()
+            .data
+            or []
+        )
+        if r.get("workflow_id")
+    }
+    zero_approval = {
+        str(p.get("workflow_id") or "")
+        for p in (
+            sb.table("approval_policies")
+            .select("workflow_id,required_approvals,run_types")
+            .eq("org_id", iso_org)
+            .eq("required_approvals", 0)
+            .execute()
+            .data
+            or []
+        )
+        if p.get("workflow_id") and "execute" in (p.get("run_types") or [])
+    }
+    pick = {}
+    for w in wfs:
+        wid = str(w.get("id") or "")
+        if wid and wid in zero_approval and wid not in blocked_ids:
+            pick = w
+            if "competitive" in str(w.get("name") or "").lower() or "f6" in str(w.get("name") or "").lower():
+                break
+    if not pick:
+        pick = next((w for w in wfs if str(w.get("id") or "") not in blocked_ids), {}) or (wfs[0] if wfs else {})
     name = str(pick.get("name") or "").strip()
+    out["picked_workflow"] = {"id": pick.get("id"), "name": name, "blocked_ids": sorted(blocked_ids)}
 
     with httpx.Client(timeout=180) as client:
         cr = client.post(
