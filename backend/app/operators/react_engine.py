@@ -429,6 +429,26 @@ class ReActEngine:
             ),
             max_tools=_react_max_tools,
         )
+        from app.services.live_classical_handoff import peek_handoff
+
+        _queued = peek_handoff()
+        if _queued:
+            from app.services.capability_evidence_plan import (
+                pin_tools_for_evidence,
+                strip_internal_tools,
+            )
+
+            tools = pin_tools_for_evidence(
+                list(tools or []),
+                list(all_tools or []),
+                {
+                    "pin_tools": [
+                        str(_queued.get("tool_name") or ""),
+                        str(_queued.get("tool_invoke_action") or ""),
+                    ]
+                },
+            )
+            tools = strip_internal_tools(list(tools or []), {"kf_may_substitute": False})
         if not tools:
             result = await self._run_reasoning_only(
                 ctx=ctx,
@@ -492,7 +512,7 @@ class ReActEngine:
                 _llm_started = time.perf_counter()
                 from app.services.live_classical_handoff import consume_handoff, fake_tool_choice_response
 
-                _handoff = consume_handoff() if iteration == 1 else None
+                _handoff = consume_handoff()
                 if _handoff:
                     response = fake_tool_choice_response(_handoff)
                     _log_react_llm_round(
@@ -538,7 +558,7 @@ class ReActEngine:
             from app.services.providers.provider_tool_router import resolve_provider_for_model
 
             inference_provider = resolve_provider_for_model(resolved_model)
-            if audit_id:
+            if audit_id and not _handoff:
                 from app.workflows.audit import write_audit_event
 
                 write_audit_event(

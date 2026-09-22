@@ -205,6 +205,33 @@ def execute_workflow_steps(
                             "hmac_bypass": False,
                         },
                     )
+                    conv_id = str(getattr(context, "conversation_id", None) or "").strip()
+                    if conv_id and bool(getattr(settings, "convergence_p5_workflow_child_identity_v1", True)):
+                        from uuid import uuid4 as _uuid4
+
+                        draft = str(obs.summary or "This workflow step finished.")
+                        client.table("conversation_messages").insert(
+                            {
+                                "id": str(_uuid4()),
+                                "conversation_id": conv_id,
+                                "role": "assistant",
+                                "content": draft,
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                            }
+                        ).execute()
+                        write_audit_event(
+                            client, org_id, user_id,
+                            action="response.composer.completed",
+                            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
+                            resource_id=run_id,
+                            metadata={
+                                "kind": "workflow_waiting",
+                                "plan_id": obs.plan_id,
+                                "conversation_id": conv_id,
+                                "observation_id": obs.observation_id,
+                                "composer_kind": "workflow_waiting",
+                            },
+                        )
             except Exception:  # noqa: BLE001
                 pass
             completed_at = datetime.now(timezone.utc).isoformat()

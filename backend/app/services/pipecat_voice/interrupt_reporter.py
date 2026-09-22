@@ -39,6 +39,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         spoken_ledger: Any | None = None,
         tts_service: Any | None = None,
         speculative_coordinator: Any | None = None,
+        voice_session: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -62,6 +63,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._conversation_id = conversation_id
         self._tts_service = tts_service
         self._speculative_coordinator = speculative_coordinator
+        self._voice_session = voice_session
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -73,6 +75,10 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._last_playback_offset_ms = None
             if self._spoken_ledger is not None:
                 self._spoken_ledger.reset()
+            if self._voice_session is not None:
+                from app.services.pipecat_voice.voice_audio_origin import SPEAKING
+
+                self._voice_session.set_turn_state(SPEAKING)
         elif isinstance(frame, LLMTextFrame):
             self._draft_llm += str(getattr(frame, "text", None) or "")
         elif isinstance(frame, OutputTransportMessageUrgentFrame):
@@ -92,10 +98,13 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             )
 
             origin = str(
-                getattr(frame, "gravitre_audio_origin", None) or get_session_origin()
+                getattr(frame, "gravitre_audio_origin", None)
+                or get_session_origin(self._voice_session)
             )
             turn_state = str(
-                getattr(frame, "gravitre_turn_state", None) or get_turn_state() or SPEAKING
+                getattr(frame, "gravitre_turn_state", None)
+                or get_turn_state(self._voice_session)
+                or SPEAKING
             )
             if should_suppress_interrupt(
                 origin=origin,

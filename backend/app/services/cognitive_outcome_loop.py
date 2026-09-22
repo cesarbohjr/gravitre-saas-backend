@@ -80,6 +80,9 @@ def bias_notes_from_event_rows(rows: list[Any], query: str = "") -> dict[str, An
         }:
             negative += 1
 
+    if needle and not bias_notes:
+        return {"bias_notes": [], "weight_delta": 0.0}
+
     if not bias_notes and any(
         classify_outcome_layer(str(row.get("outcome_event") or "")) in {"business_outcomes", "decisions"}
         for row in rows

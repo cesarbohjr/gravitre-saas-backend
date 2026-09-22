@@ -1633,8 +1633,7 @@ class AgentIntelligence:
 
         def _mark(name: str) -> None:
             _pre_kernel_checkpoints[name] = int((time.perf_counter() - _pre_kernel_t0) * 1000)
-            if name in {"understanding", "memory.recalled", "preflight", "provider", "compose_canned", "first_sse"}:
-                record_p2_mark(name)
+            record_p2_mark(name)
 
         if client is None:
             from app.workflows.repository import get_supabase_client
@@ -1774,6 +1773,8 @@ class AgentIntelligence:
         task_state: dict[str, Any] | None = (
             dict(gateway_state) if isinstance(gateway_state, dict) else None
         )
+        conversational_prefix = ""
+        social_ack_emitted = False
         if _plan_hold_spoken_early:
             gateway = GatewayDecision(action="fallthrough", reason="spoken_plan_hold")
         else:
@@ -1881,6 +1882,7 @@ class AgentIntelligence:
             else:
                 env = {"success": True, "data": {"text": draft}}
             _boot_cognitive_trace(state or _canonical_task_state)
+            turn_id = ""
             if _cognitive_trace_builder is not None:
                 if isinstance(state, dict):
                     sync_trace_from_task_state(_cognitive_trace_builder.trace, state)
@@ -1888,27 +1890,31 @@ class AgentIntelligence:
                 trace_dict = _cognitive_trace_builder.trace.as_dict()
                 env["cognitive_turn_trace"] = trace_dict
                 env["data"]["turn_id"] = trace_dict.get("turn_id")
-                try:
-                    from app.services.turn_latency_trace import record_critical_path
+                turn_id = str(trace_dict.get("turn_id") or "")
+            try:
+                from app.services.turn_latency_trace import record_critical_path
 
-                    combined = merge_p2_into(dict(_pre_kernel_checkpoints))
+                combined = merge_p2_into(dict(_pre_kernel_checkpoints))
+                if _cognitive_trace_builder is not None:
                     combined.update(_cognitive_trace_builder.cumulative_ms())
-                    analysis = record_critical_path(
-                        active_settings,
-                        org_id=org_id,
-                        user_id=user_id,
-                        conversation_id=conversation_id,
-                        turn_id=str(trace_dict.get("turn_id") or ""),
-                        marks=combined,
-                        spoken_mode=bool(spoken_mode),
-                    )
-                    env["data"]["latency_critical_path"] = {
-                        "dominant_stage": analysis.get("dominant_stage"),
-                        "dominant_ms": analysis.get("dominant_ms"),
-                        "total_ms": analysis.get("total_ms"),
-                    }
-                except Exception:  # noqa: BLE001
-                    pass
+                analysis = record_critical_path(
+                    active_settings,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    turn_id=turn_id,
+                    marks=combined,
+                    spoken_mode=bool(spoken_mode),
+                )
+                env["data"]["latency_critical_path"] = {
+                    "dominant_stage": analysis.get("dominant_stage"),
+                    "dominant_ms": analysis.get("dominant_ms"),
+                    "total_ms": analysis.get("total_ms"),
+                    "waterfall": analysis.get("waterfall"),
+                    "stages_compact": analysis.get("stages_compact"),
+                }
+            except Exception:  # noqa: BLE001
+                pass
             return env
 
         async def _composed_reply(
@@ -1946,6 +1952,150 @@ class AgentIntelligence:
                 close=close,
             )
             return packed
+
+        async def _emit_compiled_operational_short_circuit(_analytics_turn: dict[str, Any]):
+            nonlocal task_state
+            task_state = _analytics_turn.get("task_state") or task_state
+            if _cognitive_trace_builder is not None:
+                _cognitive_trace_builder.mark("execution", path="analytics_short_circuit")
+            task_state = _merge_trace_into_state(
+                task_state if isinstance(task_state, dict) else None
+            )
+            if conversation_id and isinstance(task_state, dict):
+                try:
+                    patch = {
+                        **task_state,
+                        "analytics_traffic_short_circuited": True,
+                    }
+                    await get_conversation_state_service(active_settings).update_task_state(
+                        conversation_id,
+                        org_id,
+                        patch,
+                        client=client,
+                    )
+                    task_state = await get_conversation_state_service(active_settings).get_task_state(
+                        conversation_id,
+                        org_id,
+                        client=client,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("analytics_short_circuit_state_persist_skipped: %s", exc)
+            from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
+
+            body = enforce_terminal_turn_outcome(
+                str(_analytics_turn.get("message") or ""),
+                task_state=_analytics_turn.get("task_state")
+                if isinstance(_analytics_turn.get("task_state"), dict)
+                else task_state,
+                workflow_status=str(_analytics_turn.get("workflow_status") or "completed"),
+            )
+            prefix = (conversational_prefix or "").strip()
+            if social_ack_emitted or not prefix:
+                response_text = (body or "").strip()
+            elif not (body or "").strip():
+                response_text = prefix
+            else:
+                response_text = f"{prefix}\n\n{(body or '').strip()}"
+            dialogue_mode = str(_analytics_turn.get("dialogue_mode") or "answer")
+            ws = str(
+                _analytics_turn.get("workflow_status")
+                or _analytics_turn.get("plan_terminal_status")
+                or "completed"
+            )
+            compose_kind = (
+                "clarify"
+                if ws in {"needs clarification", "clarifying"}
+                else (
+                    "error"
+                    if ws in {"blocked", "failed", "connector_not_connected"}
+                    else "canned"
+                )
+            )
+            compose_extra: dict[str, Any] = {
+                "success": ws == "completed",
+                "data": {"text": response_text},
+                "workflow_status": ws,
+            }
+            _evidence = _analytics_turn.get("provider_result_evidence")
+            if not isinstance(_evidence, dict) and isinstance(task_state, dict):
+                _evidence = task_state.get("provider_result_evidence")
+            if isinstance(_evidence, dict):
+                compose_extra["provider_result_evidence"] = _evidence
+                compose_extra["data"]["provider_result_evidence"] = _evidence
+            _blocks = _analytics_turn.get("response_blocks")
+            if isinstance(_blocks, list) and _blocks:
+                compose_extra["response_blocks"] = _blocks
+                compose_extra["data"]["response_blocks"] = _blocks
+            _ar = _analytics_turn.get("analytics_result")
+            if isinstance(_ar, dict):
+                compose_extra["analytics_result"] = _ar
+                compose_extra["data"]["analytics_result"] = _ar
+            _mark("composer_start")
+            packed = await _composed_reply(
+                response_text,
+                kind=compose_kind,
+                extra=compose_extra,
+                trace_state=task_state if isinstance(task_state, dict) else None,
+            )
+            _mark("composer_complete")
+            response_text = packed.text
+            for ev in packed.events:
+                if getattr(ev, "sse_type", "") == "text-delta" and "first_sse" not in _pre_kernel_checkpoints:
+                    _mark("first_sse")
+                yield ev
+            loop_trace.record(
+                "RETRIEVE",
+                ok=True,
+                skipped=True,
+                skip_reason="analytics_traffic_short_circuit",
+            )
+            loop_trace.record(
+                "PLAN",
+                ok=True,
+                skipped=True,
+                skip_reason="analytics_traffic_short_circuit",
+            )
+            loop_trace.record(
+                "ACT",
+                ok=True,
+                skipped=False,
+                skip_reason="analytics_traffic_short_circuit",
+            )
+            await _complete_cognitive_loop(pending_task=_analytics_turn.get("pending_task"))
+            yield sse_intelligence_metadata(
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Analytics traffic overview (canonical short-circuit)",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                task_state=task_state,
+                execution_result=_analytics_turn.get("execution_result"),
+                pending_task=_analytics_turn.get("pending_task"),
+                effective_mode=mode_key,
+                pipeline_tier=pipeline_tier,
+                routing_tier=routing_control.tier,
+                routing={
+                    **(routing_sse if isinstance(routing_sse, dict) else {}),
+                    **loop_trace.to_sse(),
+                    "analyticsShortCircuit": True,
+                },
+            )
+            yield AssistantStreamComplete(
+                full_content=response_text,
+                tool_results=_tool_results_from_connector_turn(_analytics_turn),
+                react_result=None,
+                model="analytics_traffic_overview",
+                message_id=message_id,
+                confidence={"score": classification_confidence, "needs_clarification": False},
+                answer_explanation="Analytics traffic overview (canonical short-circuit)",
+                dialogue_mode=dialogue_mode,
+                persona_key=str(persona.get("persona_key") or ""),
+                proactive_suggestions=list(_analytics_turn.get("suggestions") or []),
+                task_state=task_state,
+                execution_result=_analytics_turn.get("execution_result"),
+                pending_task=_analytics_turn.get("pending_task"),
+            )
+            _mark("turn_complete")
 
         spoken_progress_text_id: str | None = None
         spoken_progress_text = ""
@@ -3422,6 +3572,32 @@ class AgentIntelligence:
             # swallows compiled department READs (pipeline) so Composer can speak
             # from a proposal without a provider Observation.
             _unified_live_ok = False
+        _mark("capability_compile")
+        if not _unified_live_ok:
+            from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn as _try_compiled_early
+
+            if should_skip_unified_live_for_compiled_read(
+                task_text,
+                task_state if isinstance(task_state, dict) else _canonical_task_state,
+                list(connected_early or []),
+            ):
+                _early_ts = task_state if isinstance(task_state, dict) else _canonical_task_state
+                if isinstance(_early_ts, dict) and isinstance(_canonical_task_state, dict):
+                    _early_ts = {**_canonical_task_state, **_early_ts}
+                _early_turn = await _try_compiled_early(
+                    message=task_text,
+                    resolution=_cognitive_resolution,
+                    org_id=org_id,
+                    client=client,
+                    settings=active_settings,
+                    connected_integrations=list(connected_early or []),
+                    task_state=_early_ts,
+                    user_id=user_id,
+                )
+                if _early_turn and _early_turn.get("stop_pipeline"):
+                    async for ev in _emit_compiled_operational_short_circuit(_early_turn):
+                        yield ev
+                    return
         _compiled_unified_reasoning = None
         if (
             _unified_live_ok
@@ -4671,6 +4847,12 @@ class AgentIntelligence:
             ).section,
         )
         _mark("system_prompt_built")
+        if isinstance(task_state, dict) and task_state.get("honest_pending_auth_prose"):
+            system_prompt = (
+                f"{system_prompt}\n\nHONEST SOURCE GAPS:\n"
+                f"{task_state['honest_pending_auth_prose']}\n"
+                "Do not invent traffic or analytics for those sources."
+            )
 
         prepared_context = await maybe_summarize_history(
             history=conversation_history or [],
@@ -4969,133 +5151,8 @@ class AgentIntelligence:
             user_id=user_id,
         )
         if _analytics_turn and _analytics_turn.get("stop_pipeline"):
-            task_state = _analytics_turn.get("task_state") or task_state
-            if _cognitive_trace_builder is not None:
-                _cognitive_trace_builder.mark("execution", path="analytics_short_circuit")
-            task_state = _merge_trace_into_state(
-                task_state if isinstance(task_state, dict) else None
-            )
-            if conversation_id and isinstance(task_state, dict):
-                try:
-                    patch = {
-                        **task_state,
-                        "analytics_traffic_short_circuited": True,
-                    }
-                    await get_conversation_state_service(active_settings).update_task_state(
-                        conversation_id,
-                        org_id,
-                        patch,
-                        client=client,
-                    )
-                    task_state = await get_conversation_state_service(active_settings).get_task_state(
-                        conversation_id,
-                        org_id,
-                        client=client,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("analytics_short_circuit_state_persist_skipped: %s", exc)
-            from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
-
-            response_text = _with_social(
-                enforce_terminal_turn_outcome(
-                    str(_analytics_turn.get("message") or ""),
-                    task_state=_analytics_turn.get("task_state") if isinstance(_analytics_turn.get("task_state"), dict) else task_state,
-                    workflow_status=str(_analytics_turn.get("workflow_status") or "completed"),
-                )
-            )
-            dialogue_mode = str(_analytics_turn.get("dialogue_mode") or "answer")
-            ws = str(_analytics_turn.get("workflow_status") or _analytics_turn.get("plan_terminal_status") or "completed")
-            compose_kind = (
-                "clarify"
-                if ws in {"needs clarification", "clarifying"}
-                else (
-                    "error"
-                    if ws in {"blocked", "failed", "connector_not_connected"}
-                    else "canned"
-                )
-            )
-            compose_extra: dict[str, Any] = {
-                "success": ws == "completed",
-                "data": {"text": response_text},
-                "workflow_status": ws,
-            }
-            _evidence = _analytics_turn.get("provider_result_evidence")
-            if not isinstance(_evidence, dict) and isinstance(task_state, dict):
-                _evidence = task_state.get("provider_result_evidence")
-            if isinstance(_evidence, dict):
-                compose_extra["provider_result_evidence"] = _evidence
-                compose_extra["data"]["provider_result_evidence"] = _evidence
-            _blocks = _analytics_turn.get("response_blocks")
-            if isinstance(_blocks, list) and _blocks:
-                compose_extra["response_blocks"] = _blocks
-                compose_extra["data"]["response_blocks"] = _blocks
-            _ar = _analytics_turn.get("analytics_result")
-            if isinstance(_ar, dict):
-                compose_extra["analytics_result"] = _ar
-                compose_extra["data"]["analytics_result"] = _ar
-            packed = await _composed_reply(
-                response_text,
-                kind=compose_kind,
-                extra=compose_extra,
-                trace_state=task_state if isinstance(task_state, dict) else None,
-            )
-            response_text = packed.text
-            for ev in packed.events:
-                if getattr(ev, "sse_type", "") == "text-delta" and "first_sse" not in _pre_kernel_checkpoints:
-                    _mark("first_sse")
+            async for ev in _emit_compiled_operational_short_circuit(_analytics_turn):
                 yield ev
-            loop_trace.record(
-                "RETRIEVE",
-                ok=True,
-                skipped=True,
-                skip_reason="analytics_traffic_short_circuit",
-            )
-            loop_trace.record(
-                "PLAN",
-                ok=True,
-                skipped=True,
-                skip_reason="analytics_traffic_short_circuit",
-            )
-            loop_trace.record(
-                "ACT",
-                ok=True,
-                skipped=False,
-                skip_reason="analytics_traffic_short_circuit",
-            )
-            await _complete_cognitive_loop(pending_task=_analytics_turn.get("pending_task"))
-            yield sse_intelligence_metadata(
-                message_id=message_id,
-                confidence={"score": classification_confidence, "needs_clarification": False},
-                answer_explanation="Analytics traffic overview (canonical short-circuit)",
-                dialogue_mode=dialogue_mode,
-                persona_key=str(persona.get("persona_key") or ""),
-                task_state=task_state,
-                execution_result=_analytics_turn.get("execution_result"),
-                pending_task=_analytics_turn.get("pending_task"),
-                effective_mode=mode_key,
-                pipeline_tier=pipeline_tier,
-                routing_tier=routing_control.tier,
-                routing={
-                    **(routing_sse if isinstance(routing_sse, dict) else {}),
-                    **loop_trace.to_sse(),
-                    "analyticsShortCircuit": True,
-                },
-            )
-            yield AssistantStreamComplete(
-                full_content=response_text,
-                tool_results=_tool_results_from_connector_turn(_analytics_turn),
-                react_result=None,
-                model="analytics_traffic_overview",
-                message_id=message_id,
-                confidence={"score": classification_confidence, "needs_clarification": False},
-                answer_explanation="Analytics traffic overview (canonical short-circuit)",
-                dialogue_mode=dialogue_mode,
-                persona_key=str(persona.get("persona_key") or ""),
-                proactive_suggestions=list(_analytics_turn.get("suggestions") or []),
-                task_state=task_state,
-                execution_result=_analytics_turn.get("execution_result"),
-                pending_task=_analytics_turn.get("pending_task"),
-            )
             return
 
         if spoken_mode:

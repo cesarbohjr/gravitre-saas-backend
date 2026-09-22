@@ -1,0 +1,96 @@
+{
+  "audit": "gravitre-post-convergence-regressions",
+  "implementation_sha": "426fce81964dbe27af0300c7a19c73dadca888be",
+  "items": [
+    {
+      "id": "R-P2-TTFT",
+      "severity": "P0",
+      "area": "HubSpot first useful text",
+      "before": "19931ms canned 25 @ a7a0dd56",
+      "after": "29823ms canned 25 @ 426fce81",
+      "verdict": "REGRESSION"
+    },
+    {
+      "id": "R-P4-CEO",
+      "severity": "P0",
+      "area": "CEO business question",
+      "before": "PARTIALLY_COMPLETED internals (KB/workflows/status); skipped healthy HubSpot/Ads",
+      "after": "Failed verified-result copy; still KB/workflows/status; still no HubSpot/Ads Observation",
+      "verdict": "REGRESSION_OR_UNFIXED"
+    },
+    {
+      "id": "R-P1-DUAL",
+      "severity": "P0",
+      "area": "Single selection",
+      "before": "LIVE then ReAct tool-choice on CEO 2859eecc",
+      "after": "Same pattern on c0422a72: fallthrough + inference.tool_completion + react.iteration",
+      "verdict": "UNFIXED"
+    },
+    {
+      "id": "R-P3-PCM",
+      "severity": "P0",
+      "area": "Pipecat SAPI PCM",
+      "before": "empty assistant_text, 2 interrupts before transcript",
+      "after": "same on 426fce81 despite audio_origin=probe_pcm",
+      "verdict": "UNFIXED"
+    },
+    {
+      "id": "R-P2-WATERFALL",
+      "severity": "P1",
+      "area": "latency marks in audit",
+      "after": "critical_path meta still spoken_mode only",
+      "verdict": "UNFIXED_OBSERVABILITY"
+    },
+    {
+      "id": "R-GREET-SLOW",
+      "severity": "P1",
+      "area": "warm greeting TTFT",
+      "before": 2092,
+      "after": 4685,
+      "verdict": "REGRESSION"
+    },
+    {
+      "id": "R-WRITE-SLOW",
+      "severity": "P1",
+      "area": "Sarah clarify TTFT",
+      "before": 15756,
+      "after": 28776,
+      "verdict": "REGRESSION_SPEED_ONLY"
+    },
+    {
+      "id": "R-CI-LIVE-GUARDS",
+      "severity": "P1",
+      "area": "GitHub on 426fce81",
+      "failed": [
+        "Authenticated Click Audit",
+        "Voice duplex browser guard",
+        "Connector Verified Writes Live",
+        "Credential DB Bypass Guard (Daily)"
+      ],
+      "required_ci": "CI success 35706291861",
+      "verdict": "MIXED"
+    },
+    {
+      "id": "R-FOLLOWUP-KB",
+      "severity": "P2",
+      "area": "Only the large ones",
+      "after": "SSE searchKnowledgeBase x2 while clarifying; HubSpot not re-listed",
+      "verdict": "WATCH"
+    },
+    {
+      "id": "KEPT",
+      "severity": "info",
+      "area": "non-regression holds",
+      "holds": [
+        "HubSpot 25 HMAC canned",
+        "no silent WRITE",
+        "shortcut greetings",
+        "HTTP Talk audio",
+        "pending-family/defer fallthrough reasons",
+        "no Computer Use",
+        "isolated org",
+        "prod model tier still low"
+      ]
+    }
+  ]
+}

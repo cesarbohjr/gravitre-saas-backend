@@ -1,0 +1,79 @@
+{
+  "audit": "gravitre-post-convergence-latency",
+  "implementation_sha": "426fce81964dbe27af0300c7a19c73dadca888be",
+  "baseline_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+  "comparable": true,
+  "unit": "ms first useful text unless noted",
+  "waterfall_on_live_audit": "MISSING — runtime.turn_latency.critical_path meta is {spoken_mode:false} only",
+  "p2_canned_literal": "code present; did not reduce HubSpot first text vs baseline",
+  "rows": [
+    {
+      "journey": "warm_greeting",
+      "before": 2092,
+      "after": 4685,
+      "delta": 2593,
+      "pct": 124.0,
+      "quality": "MEETS"
+    },
+    {
+      "journey": "cold_greeting",
+      "before": null,
+      "after": 9311,
+      "delta": null,
+      "pct": null,
+      "quality": "MEETS",
+      "note": "No same-SHA-family cold baseline in spec table"
+    },
+    {
+      "journey": "hubspot_read_show_my_deals",
+      "before": 19931,
+      "after": 29823,
+      "delta": 9892,
+      "pct": 49.6,
+      "quality": "MEETS_COUNT",
+      "note": "25 deals canned HMAC still. Speed FAIL."
+    },
+    {
+      "journey": "hubspot_followup_large",
+      "before": 16787,
+      "after": 21704,
+      "delta": 4917,
+      "pct": 29.3,
+      "quality": "IMPROVED_HONESTY",
+      "note": "Now clarifies cutoff instead of inventing."
+    },
+    {
+      "journey": "send_sarah",
+      "before": 15756,
+      "after": 28776,
+      "delta": 13020,
+      "pct": 82.6,
+      "quality": "MEETS"
+    },
+    {
+      "journey": "ceo_how_is_business",
+      "before": 31140,
+      "after": 27062,
+      "delta": -4078,
+      "pct": -13.1,
+      "quality": "REGRESSED",
+      "note": "Faster but failed business evidence; baseline was PARTIALLY_COMPLETED internals, now empty verified-result copy."
+    },
+    {
+      "journey": "http_talk_hi_text",
+      "before": 220,
+      "after": 237,
+      "delta": 17,
+      "pct": 7.7,
+      "quality": "MEETS"
+    },
+    {
+      "journey": "http_talk_hi_audio",
+      "before": 224,
+      "after": 285,
+      "delta": 61,
+      "pct": 27.2,
+      "quality": "MEETS"
+    }
+  ]
+}

@@ -854,6 +854,8 @@ def tool_execute_workflow(
     *,
     user_id: str | None = None,
     environment_name: str = "production",
+    conversation_id: str | None = None,
+    plan_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute an existing workflow by name or id from assistant chat."""
     try:
@@ -881,6 +883,12 @@ def tool_execute_workflow(
             }
         workflow_id = str(match.get("id") or "")
         actor_id = user_id or "system"
+        run_params: dict[str, Any] = {}
+        if conversation_id:
+            run_params["conversation_id"] = conversation_id
+        if plan_id:
+            run_params["plan_id"] = plan_id
+            run_params["parent_plan_id"] = plan_id
         try:
             result = _execute_workflow_with_context(
                 client=client,
@@ -888,7 +896,7 @@ def tool_execute_workflow(
                 org_id=org_id,
                 environment_name=env,
                 workflow_id=workflow_id,
-                parameters={},
+                parameters=run_params,
                 actor_id=actor_id,
                 trigger_type="assistant_chat",
             )

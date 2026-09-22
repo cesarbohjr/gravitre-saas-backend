@@ -101,6 +101,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         gravitre_org_id: str | None = None,
         gravitre_user_id: str | None = None,
         gravitre_conversation_id: str | None = None,
+        voice_session: Any | None = None,
         **kwargs,
     ):
         super().__init__(enable_interruptions=enable_interruptions, **kwargs)
@@ -110,6 +111,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._gravitre_org_id = gravitre_org_id
         self._gravitre_user_id = gravitre_user_id
         self._gravitre_conversation_id = gravitre_conversation_id
+        self._voice_session = voice_session
 
         self._bot_speaking = False
         self._pending = False
@@ -131,13 +133,35 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
     async def process_frame(self, frame: Frame) -> ProcessFrameResult:
         if isinstance(frame, BotStartedSpeakingFrame):
             self._bot_speaking = True
+            if self._voice_session is not None:
+                from app.services.pipecat_voice.voice_audio_origin import SPEAKING
+
+                self._voice_session.set_turn_state(SPEAKING)
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, BotStoppedSpeakingFrame):
             self._bot_speaking = False
+            if self._voice_session is not None:
+                from app.services.pipecat_voice.voice_audio_origin import LISTENING
+
+                self._voice_session.set_turn_state(LISTENING)
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
+            from app.services.pipecat_voice.voice_audio_origin import (
+                SPEAKING,
+                get_session_origin,
+                should_suppress_interrupt,
+            )
+
+            origin = get_session_origin(self._voice_session)
+            if self._bot_speaking and should_suppress_interrupt(
+                origin=origin,
+                turn_state=SPEAKING,
+                settings=self._gravitre_settings,
+            ):
+                # Probe/TTS echo overlapping TTS must not barge-in.
+                return ProcessFrameResult.STOP
             if self._pending:
                 # Already holding one open - don't restart the window.
                 return ProcessFrameResult.STOP
@@ -228,7 +252,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         )
 
         if should_suppress_interrupt(
-            origin=get_session_origin(),
+            origin=get_session_origin(self._voice_session),
             turn_state=SPEAKING,
             settings=self._gravitre_settings,
         ):

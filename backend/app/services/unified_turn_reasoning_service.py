@@ -673,6 +673,9 @@ async def run_unified_turn_shadow(
         from app.services.capability_evidence_plan import (
             build_capability_evidence_plan,
             pin_tools_for_evidence,
+            apply_evidence_plan_handoffs,
+            strip_internal_tools,
+            pending_auth_prose,
         )
 
         evidence_plan = build_capability_evidence_plan(
@@ -715,9 +718,14 @@ async def run_unified_turn_shadow(
                 "embeddingSkippedReason": skip_reason,
             }
         visible = pin_tools_for_evidence(list(visible or []), list(all_tools or []), evidence_plan)
+        visible = strip_internal_tools(list(visible or []), evidence_plan)
         tool_stats = {**(tool_stats or {}), **tool_stats_extra}
         if isinstance(task_state, dict) and evidence_plan:
             task_state["capability_evidence_plan"] = evidence_plan
+            apply_evidence_plan_handoffs(task_state, evidence_plan)
+            note = pending_auth_prose(evidence_plan)
+            if note:
+                task_state["honest_pending_auth_prose"] = note
         # Passed through directly, not as list(visible or []): _stable_tool_list has
         # its own preserve-branch, and wrapping in list() here strips the marker
         # before that branch can see it, leaving the branch dead. Third instance of

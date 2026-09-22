@@ -1,0 +1,96 @@
+{
+  "audit": "gravitre-post-convergence-journeys",
+  "implementation_sha": "426fce81964dbe27af0300c7a19c73dadca888be",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "captured_at": "2026-09-22T14:19:58Z",
+  "note": "Live on Railway git_sha 426fce81. Classes per spec §0.11. tool.invoke ≠ completed work.",
+  "journeys": [
+    {
+      "id": "EV-J-001",
+      "prompt": "Hi. / Hello again.",
+      "conversation_ids": ["see gravitre-evidence-closure-live.json"],
+      "class": "ANSWERED",
+      "text_experience": "MEETS",
+      "first_useful_text_ms": {"cold": 9311, "warm": 4685},
+      "notes": "Shortcut; natural greeting. Slower than baseline warm 2092ms."
+    },
+    {
+      "id": "EV-J-002",
+      "prompt": "Show my deals. / Only the large ones.",
+      "conversation_id": "1dfc6b80-b91c-4a6f-8e2a-655df4a83a50",
+      "class": "COMPLETED then ANSWERED",
+      "text_experience": "PARTIAL",
+      "first_useful_text_ms": {"deals": 29823, "followup": 21704},
+      "provider": "hubspot.deals.list 25 canned HMAC plan 3dbabd9b step read_sales_pipeline_health",
+      "followup": "Clarified cutoff; SSE listed searchKnowledgeBase twice; no invented amount.",
+      "notes": "Quality preserved; speed regression vs 19931ms baseline."
+    },
+    {
+      "id": "EV-J-003",
+      "prompt": "Send Sarah a summary.",
+      "conversation_id": "b574e03b-c778-4782-9b9d-33cd1552f805",
+      "class": "ANSWERED",
+      "text_experience": "MEETS",
+      "first_useful_text_ms": 28776,
+      "excerpt": "Which Sarah, and what should the summary cover?",
+      "write": "not invoked"
+    },
+    {
+      "id": "EV-J-004",
+      "prompt": "How is the business doing and what should I worry about?",
+      "conversation_id": "c0422a72-3b49-4691-b17e-fefc0cf83203",
+      "class": "FAILED",
+      "text_experience": "DOES_NOT_MEET",
+      "first_useful_text_ms": 27062,
+      "excerpt": "I compiled that business read but I don't have a verified result from the connected system yet…",
+      "tools": ["searchKnowledgeBase", "getWorkflowRuns", "getConnectorStatus", "getAgentStatus"],
+      "hubspot_or_ads_observation": false,
+      "honest_pending_auth": false,
+      "p1": "LIVE fallthrough read_tool_classical then inference.tool_completion + agent.react.iteration (dual selection)",
+      "notes": "Healthy HubSpot and Google Ads were not used."
+    },
+    {
+      "id": "EV-J-005",
+      "prompt": "Is Apollo connected (SAPI PCM)",
+      "class": "FAILED",
+      "voice_experience": "DOES_NOT_MEET",
+      "proof": "docs/audits/gravitre-pcm-closure-live.json",
+      "transcript": "is Apollo connected.",
+      "assistant_text": "",
+      "audio_frames": 0,
+      "interrupt_events": 2,
+      "physical_mic": "HUMAN_TEST_PENDING"
+    },
+    {
+      "id": "EV-J-006",
+      "prompt": "HTTP Talk greeting",
+      "conversation_id": "9e1b48db-3c0b-4c51-9738-5fc6f9f72934",
+      "class": "COMPLETED",
+      "voice_experience": "PARTIAL",
+      "first_useful_text_ms": 237,
+      "first_audio_ms": 285,
+      "proof_class": "HTTP_TALK_NOT_PHYSICAL_MIC"
+    },
+    {
+      "id": "EV-J-007",
+      "prompt": "chat then workflow child",
+      "class": "NOT_RUN",
+      "notes": "Composer kind workflow_waiting has no call site."
+    },
+    {
+      "id": "EV-J-008",
+      "prompt": "text then spoken same conversation",
+      "class": "NOT_RUN"
+    },
+    {
+      "id": "SALES-ATTENTION",
+      "prompt": "Show me the deals that need attention… (not separately prompted; deals path used)",
+      "class": "NOT_RUN",
+      "notes": "Representative extra objectives not added beyond closure matrix to avoid extra prod load; deals path is COMPLETED count-only."
+    },
+    {
+      "id": "CROSS-SYSTEM-CUSTOMERS",
+      "class": "NOT_RUN"
+    }
+  ]
+}

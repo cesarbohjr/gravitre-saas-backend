@@ -1578,6 +1578,8 @@ class ToolRegistry:
                     settings,
                     user_id=user_id,
                     environment_name=ctx.environment_name,
+                    conversation_id=getattr(ctx, "conversation_id", None),
+                    plan_id=getattr(ctx, "plan_id", None),
                 )
             elif tool_name == "assistant_dependency_impact":
                 payload = await assistant_tools_module.tool_dependency_impact(

@@ -136,6 +136,11 @@ def build_pipecat_voice_task(
 
     krisp_filter, krisp_meta = build_krisp_viva_input_filter(settings)
 
+    from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
+
+    voice_session = VoicePipelineSession()
+    serializer = GravitreJsonAudioSerializer(session=voice_session)
+
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(
@@ -146,7 +151,7 @@ def build_pipecat_voice_task(
             audio_in_channels=1,
             audio_out_channels=1,
             audio_in_filter=krisp_filter,
-            serializer=GravitreJsonAudioSerializer(),
+            serializer=serializer,
         ),
     )
 
@@ -213,6 +218,7 @@ def build_pipecat_voice_task(
         spoken_ledger=spoken_ledger,
         tts_service=tts,
         speculative_coordinator=speculative_coordinator,
+        voice_session=voice_session,
     )
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
@@ -236,6 +242,7 @@ def build_pipecat_voice_task(
                     gravitre_org_id=org_id,
                     gravitre_user_id=user_id,
                     gravitre_conversation_id=conversation_id,
+                    voice_session=voice_session,
                 )
             ],
             stop=[ExternalUserTurnStopStrategy()],

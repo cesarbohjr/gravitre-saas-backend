@@ -30,6 +30,13 @@ STAGE_CANONICAL = {
     "preflight": "PREFLIGHT",
     "context_entry": "CONTEXT_BUILD",
     "context_compile": "CONTEXT_BUILD",
+    "capability_compile": "CONTEXT_BUILD",
+    "resource_resolution": "RESOLUTION",
+    "observation": "PROVIDER",
+    "composer_start": "COMPOSER",
+    "composer_complete": "COMPOSER",
+    "request_received": "NETWORK",
+    "turn_complete": "COMPOSER",
     "context_inline": "CONTEXT_BUILD",
     "context_prefetch_adopted": "CONTEXT_BUILD",
     "assistant_turn_prepared": "CONTEXT_BUILD",
@@ -183,12 +190,17 @@ def analyze_cumulative_checkpoints(marks: dict[str, int] | None) -> dict[str, An
         )
         prev_ms = cumulative
     dominant = max(stages, key=lambda row: int(row["delta_ms"])) if stages else None
+    waterfall = {name: cumulative for name, cumulative in items}
     return {
         "stages": stages,
         "dominant_stage": str((dominant or {}).get("stage") or "UNKNOWN"),
         "dominant_checkpoint": str((dominant or {}).get("checkpoint") or ""),
         "dominant_ms": int((dominant or {}).get("delta_ms") or 0),
         "total_ms": prev_ms,
+        "waterfall": waterfall,
+        "stages_compact": ",".join(
+            f"{row['checkpoint']}:{row['delta_ms']}" for row in stages
+        ),
     }
 
 

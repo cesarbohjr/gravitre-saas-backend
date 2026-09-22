@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any
 
 ORIGINS = frozenset({"user_mic", "probe_pcm", "tts_echo"})
@@ -19,11 +20,34 @@ _current_origin: ContextVar[str] = ContextVar("gravitre_audio_origin", default=U
 _current_turn_state: ContextVar[str] = ContextVar("gravitre_turn_state", default=LISTENING)
 
 
+@dataclass
+class VoicePipelineSession:
+    """Process-shared origin/turn state for one Pipecat websocket.
+
+    ContextVars do not survive Pipecat processor task hops. Every processor
+    on this session must read/write this object, not the ContextVar.
+    """
+
+    origin: str = USER_MIC
+    turn_state: str = LISTENING
+
+    def set_origin(self, origin: str) -> None:
+        self.origin = normalize_origin(origin)
+        set_session_origin(self.origin)
+
+    def set_turn_state(self, state: str) -> None:
+        value = str(state or LISTENING).strip().lower()
+        self.turn_state = value if value in TURN_STATES else LISTENING
+        set_turn_state(self.turn_state)
+
+
 def set_session_origin(origin: str) -> None:
     _current_origin.set(normalize_origin(origin))
 
 
-def get_session_origin() -> str:
+def get_session_origin(session: VoicePipelineSession | None = None) -> str:
+    if session is not None:
+        return normalize_origin(session.origin, default=USER_MIC)
     return normalize_origin(_current_origin.get(), default=USER_MIC)
 
 
@@ -32,7 +56,10 @@ def set_turn_state(state: str) -> None:
     _current_turn_state.set(value if value in TURN_STATES else LISTENING)
 
 
-def get_turn_state() -> str:
+def get_turn_state(session: VoicePipelineSession | None = None) -> str:
+    if session is not None:
+        value = str(session.turn_state or LISTENING)
+        return value if value in TURN_STATES else LISTENING
     value = str(_current_turn_state.get() or LISTENING)
     return value if value in TURN_STATES else LISTENING
 

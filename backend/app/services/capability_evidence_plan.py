@@ -24,6 +24,18 @@ _GSC_KEYS = ("google_search_console", "search_console", "gsc")
 HUBSPOT_TOOLS = ("hubspot.deals.list", "hubspot_deals_list", "listDeals")
 ADS_TOOLS = ("google_ads.campaigns.list", "google_ads_campaigns_list")
 
+_INTERNAL_TOOL_NEEDLES = (
+    "searchknowledgebase",
+    "getworkflowruns",
+    "listworkflow",
+    "getagentstatus",
+    "listagents",
+    "connector_status",
+    "listconnectors",
+    "getconnector",
+    "getpipelinestatus",
+)
+
 
 def p4_evidence_plan_enabled(settings: Any | None) -> bool:
     if settings is None:
@@ -122,6 +134,53 @@ def build_capability_evidence_plan(
         "kf_may_substitute": False,
         "honest_pending_auth": [b["provider"] for b in blocked],
     }
+
+
+def apply_evidence_plan_handoffs(task_state: dict[str, Any] | None, plan: dict[str, Any] | None) -> None:
+    """Queue required live READs so ReAct executes them without a second model pick."""
+    if not isinstance(task_state, dict) or not plan:
+        return
+    queue: list[dict[str, Any]] = []
+    for step in plan.get("required") or []:
+        names = [str(n) for n in (step.get("tool_names") or []) if n]
+        if not names:
+            names = [str(step.get("action_key") or "")]
+        underscored = [n for n in names if "_" in n and "." not in n]
+        tool_name = (underscored[0] if underscored else names[0]) if names else ""
+        if not tool_name:
+            continue
+        queue.append(
+            {
+                "tool_name": tool_name,
+                "tool_invoke_action": str(step.get("action_key") or tool_name),
+                "tool_arguments": {},
+                "fallthrough_reason": "evidence_plan_required_read",
+                "single_selection": True,
+            }
+        )
+    if queue:
+        from app.services.live_classical_handoff import stash_handoff_queue
+
+        stash_handoff_queue(task_state, queue)
+        task_state["capability_evidence_plan"] = plan
+
+
+def is_internal_status_tool(name: str) -> bool:
+    n = str(name or "").lower().replace("-", "_").replace(".", "")
+    return any(needle.replace("_", "") in n.replace("_", "") for needle in _INTERNAL_TOOL_NEEDLES)
+
+
+def strip_internal_tools(visible: list[Any], plan: dict[str, Any] | None) -> list[Any]:
+    if not plan or plan.get("kf_may_substitute"):
+        return visible
+    out = []
+    for t in visible or []:
+        fn = (t or {}).get("function") if isinstance(t, dict) else None
+        name = str((fn or {}).get("name") or "")
+        if is_internal_status_tool(name):
+            continue
+        out.append(t)
+    return out
 
 
 def pin_tools_for_evidence(visible: list[Any], all_tools: list[Any], plan: dict[str, Any] | None) -> list[Any]:
