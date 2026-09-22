@@ -20,6 +20,7 @@ LIVE_FALLTHROUGH_REASONS: Final[frozenset[str]] = frozenset(
         "false_connector_disconnect_claim",
         "write_plan_unavailable",
         "read_tool_classical",
+        "evidence_plan_required_read",
     }
 )
 
