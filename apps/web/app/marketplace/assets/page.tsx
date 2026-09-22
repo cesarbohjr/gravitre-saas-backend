@@ -147,7 +147,7 @@ function AssetCard({
   const showPrimaryAction = isAdmin && !asset.installed
 
   return (
-    <article className="border-b border-divide py-3 last:border-b-0">
+    <article className="border-b border-divide py-3 last:border-b-0" data-testid="marketplace-pack-row">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
@@ -423,7 +423,7 @@ function MarketplaceAssetsContent() {
     <AppShell title="Marketplace">
       {/* shrink-0 keeps AppShell's flex-col <main> from compressing the catalog
          so the grid can scroll with the page instead of clipping. */}
-      <div className="relative shrink-0 bg-[color:var(--g-canvas)]">
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-testid="marketplace-catalog-b">
         <GravitrePageHeader
           eyebrow="Gravitre Marketplace"
           title="Install packs into your workspace"
@@ -602,7 +602,10 @@ function MarketplaceAssetsContent() {
                     No uninstalled packs match these filters. Installed packs are listed under ops below.
                   </p>
                 ) : (
-                  <div className="mt-2 divide-y divide-divide border-y border-divide">
+                  <div
+                    className="mt-2 divide-y divide-divide border-y border-divide"
+                    data-testid="marketplace-scan-list"
+                  >
                     {discoveryAssets.map((asset) => (
                       <AssetCard
                         key={asset.id}

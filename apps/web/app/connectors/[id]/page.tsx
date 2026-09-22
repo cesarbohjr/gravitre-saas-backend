@@ -23,6 +23,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { TYPE } from "@/lib/design-system"
 import {
   ArrowLeft,
   XCircle,
@@ -200,7 +201,7 @@ export default function ConnectorDetailPage() {
 
   return (
     <AppShell title={connector.name} breadcrumbVendor={connector.type}>
-      <div className="flex flex-col min-h-full">
+      <div className="flex min-h-full flex-col" data-testid="connector-detail-b">
         <GravitrePageHeader
           eyebrow="Connectors"
           title={connector.name}
@@ -294,9 +295,10 @@ export default function ConnectorDetailPage() {
           </div>
         </GravitrePageHeader>
 
-        {/* Main Content */}
-        <div className="flex-1 p-4 md:p-6 space-y-6 overflow-auto">
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-divide py-4 md:grid-cols-4">
+        <div className="flex-1 space-y-6 overflow-auto p-4 md:p-6">
+          <section data-testid="connector-detail-status" className="border-b border-divide pb-4">
+            <p className={TYPE.eyebrow}>Live status</p>
+            <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
             <div>
               <dt className="text-xs text-muted-foreground">Status</dt>
               <dd className="text-sm font-medium capitalize text-foreground">{connector.status}</dd>
@@ -313,27 +315,29 @@ export default function ConnectorDetailPage() {
               <dt className="text-xs text-muted-foreground">Environment</dt>
               <dd className="text-sm font-medium capitalize text-foreground">{connector.environment}</dd>
             </div>
-          </dl>
+            </dl>
+            <p className={cn(TYPE.meta, "mt-3")}>
+              Usage metrics and activity logs are not recorded for this connector.
+            </p>
+          </section>
 
-          <p className="text-sm text-muted-foreground">
-            Usage metrics and activity logs are not recorded for this connector.
-          </p>
+          <section data-testid="connector-detail-linkage" className="border-b border-divide pb-4">
+            <p className={TYPE.eyebrow}>Linkage & actions</p>
+            <div className="mt-2">
+              <ConnectorLinkage
+                vendor={vendorKey}
+                connectorStatus={connector.status}
+                catalog={vendorCatalog}
+                workflows={workflows}
+              />
+            </div>
+          </section>
 
-          {/* G4: live action readiness, workflow linkage, and starter workflows */}
-          <ConnectorLinkage
-            vendor={vendorKey}
-            connectorStatus={connector.status}
-            catalog={vendorCatalog}
-            workflows={workflows}
-          />
-
-          {/* Configuration */}
-          <div className="grid gap-6">
-            {/* Configuration */}
-          <section className="space-y-3 border-b border-divide py-4">
+          <section data-testid="connector-detail-config" className="space-y-3 border-b border-divide py-4">
+            <p className={TYPE.eyebrow}>Configuration</p>
             <h2 className="flex items-center gap-2 text-sm font-medium">
               <Key className="h-4 w-4 text-warning" />
-              Configuration
+              Credentials & sync
             </h2>
                 <div className="space-y-1.5">
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">API Key</label>
@@ -390,7 +394,6 @@ export default function ConnectorDetailPage() {
                 <p className="text-sm font-medium">Every {connector.config.syncInterval}</p>
               </div>
           </section>
-          </div>
         </div>
 
         {/* Delete Dialog */}

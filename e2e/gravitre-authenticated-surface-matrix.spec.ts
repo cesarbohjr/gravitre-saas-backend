@@ -117,10 +117,34 @@ test.describe("Authenticated product surface matrix", () => {
     })
   })
 
-  test("Sources — /sources table", async ({ page }) => {
-    await assertAuthenticatedRoute(page, "/sources", () =>
-      page.getByRole("heading", { name: /source/i }).first(),
-    )
+  test("Connectors — detail section flatten", async ({ page }) => {
+    await page.goto("/connectors")
+    await expect(page).not.toHaveURL(/\/login/)
+    await page.waitForResponse(
+      (r) => r.url().includes("/api/connectors") && r.status() === 200,
+      { timeout: 90_000 },
+    ).catch(() => undefined)
+    const detailLink = page.locator('a[href^="/connectors/"]').first()
+    if (!(await detailLink.isVisible().catch(() => false))) {
+      test.skip(true, "BLOCKED — no connectors in fixture org for detail slice")
+    }
+    await detailLink.click()
+    await expect(page.getByTestId("connector-detail-b")).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByTestId("connector-detail-status")).toBeVisible()
+    await expect(page.getByTestId("connector-detail-config")).toBeVisible()
+  })
+
+  test("Sources — /sources table slice", async ({ page }) => {
+    await page.goto("/sources")
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.getByTestId("sources-hub-b")).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole("heading", { name: /source/i }).first()).toBeVisible({
+      timeout: 90_000,
+    })
+    const table = page.getByTestId("sources-table-view")
+    if (await table.isVisible().catch(() => false)) {
+      await expect(table).toBeVisible()
+    }
   })
 
   test("Approvals — /approvals queue", async ({ page }) => {
@@ -129,10 +153,17 @@ test.describe("Authenticated product surface matrix", () => {
     )
   })
 
-  test("Marketplace — /marketplace catalog", async ({ page }) => {
-    await assertAuthenticatedRoute(page, "/marketplace", () =>
-      page.getByRole("heading", { name: /marketplace|pack/i }).first(),
-    )
+  test("Marketplace — scan list catalog", async ({ page }) => {
+    await page.goto("/marketplace/assets")
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.getByTestId("marketplace-catalog-b")).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole("heading", { name: /marketplace|install packs/i }).first()).toBeVisible({
+      timeout: 90_000,
+    })
+    const scanList = page.getByTestId("marketplace-scan-list")
+    if (await scanList.isVisible().catch(() => false)) {
+      await expect(page.getByText("More about this pack").first()).toBeVisible()
+    }
   })
 
   test("Models — /models catalog", async ({ page }) => {

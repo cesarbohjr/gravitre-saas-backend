@@ -42,10 +42,10 @@ Wave 2 — Intelligence sub-routes (batch or route-by-route)
 Wave 3 — Global shell · SHIPPED 2026-09-21
   Navigation B on production AppShell / sidebar (`nav-rail-b`, pin, keyboard ↑↓)
   ↓
-Wave 4 — Integration surfaces · IN PROGRESS
-  Connectors hub markers + list-first (`connectors-hub-b`)
-  Sources
-  Marketplace (discovery + install path — J10)
+Wave 4 — Integration surfaces · SHIPPED 2026-09-21
+  Connectors hub + detail sections (`connectors-hub-b`, `connector-detail-b`)
+  Sources table (`sources-hub-b`, `sources-table-view`)
+  Marketplace scan list (`marketplace-catalog-b`, `marketplace-scan-list`)
 ```
 
 Each wave ships with: slice plan doc · vitest where logic · Playwright journey or surface-matrix extension · append to `GRAVITRE_3.0_JOURNEY_RESULTS.md`.

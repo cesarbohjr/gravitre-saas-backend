@@ -18,8 +18,9 @@
 | Intelligence I3 Matrix default | **AUTHORIZED** | Cesar 2026-09-21 · Wave 1 |
 | Intelligence sub-routes (`/intelligence/*`) | **AUTHORIZED** | Cesar 2026-09-21 · Wave 2 |
 | Navigation B production | **SHIPPED** | `sidebar.tsx` · `nav-rail-b` · pin + click expand · localStorage |
-| Connectors hub (list-first) | **SHIPPING** | `connectors-hub-b` · list default · Wave 4 partial |
-| Sources / Marketplace | **AUTHORIZED** | Cesar 2026-09-21 · Wave 4 · pending |
+| Connectors hub + detail | **SHIPPED** | `connectors-hub-b` · `connector-detail-b` sections |
+| Sources table slice | **SHIPPED** | `sources-hub-b` · `sources-table-view` |
+| Marketplace scan list | **SHIPPED** | `marketplace-catalog-b` · `marketplace-scan-list` |
 | Authenticated journey tests | **PARTIAL** | J6 + J7 PASS · remaining → `GRAVITRE_3.0_JOURNEY_RESULTS.md` |
 
 ---

@@ -479,7 +479,7 @@ export default function SourcesPage() {
 
   return (
     <AppShell title={SOURCES_TITLE}>
-      <div>
+      <div data-testid="sources-hub-b">
         <GravitrePageHeader
           title={SOURCES_TITLE}
           description={SOURCES_DESCRIPTION}
@@ -598,7 +598,10 @@ export default function SourcesPage() {
                     </span>
                   </div>
                   <div className="overflow-x-auto rounded-lg border border-divide">
-                    <table className="w-full min-w-[720px] text-left text-sm">
+                    <table
+                      className="w-full min-w-[720px] text-left text-sm"
+                      data-testid="sources-table-view"
+                    >
                       <thead className="border-b border-divide bg-[color:var(--g-surface-2)] text-[11px] uppercase tracking-wide text-muted-foreground">
                         <tr>
                           <th className="px-3 py-2 font-medium">Source</th>
