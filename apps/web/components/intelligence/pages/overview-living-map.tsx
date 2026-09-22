@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { buildChangeEvents } from "@/lib/intelligence/build-change-events"
 import { resolveOverviewFieldState } from "@/lib/intelligence/overview-field-state"
+import type { CanonicalGraphNode } from "@/lib/intelligence/canonical-graph-topology"
 import { useGravitreMobileViewport } from "@/hooks/use-gravitre-mobile-viewport"
 import { useReducedMotion } from "framer-motion"
 
@@ -89,6 +90,10 @@ export function OverviewLivingMap({
   const [matrixFocusIds, setMatrixFocusIds] = useState<string[]>([])
 
   const changeEvents = useMemo(() => buildChangeEvents(pageContext), [pageContext])
+  const canonicalGraphNodes = useMemo(
+    () => (pageContext?.graph?.nodes ?? undefined) as CanonicalGraphNode[] | undefined,
+    [pageContext?.graph?.nodes],
+  )
 
   const knownEntities = entityCount ?? pageContext?.metrics?.knowledge?.knownEntities ?? null
   const knownRels = relationshipCount ?? pageContext?.metrics?.knowledge?.knownRelationships ?? null
@@ -307,7 +312,7 @@ export function OverviewLivingMap({
 
             {!mapLoading && !isError && !isEmpty && !isSparse && viewMode === "matrix" ? (
               <IntelligenceMatrixLens
-                graphNodes={pageContext?.graph?.nodes}
+                graphNodes={canonicalGraphNodes}
                 selectedCellKey={matrixCellKey}
                 onSelectCell={(key, lens, nodeIds) => {
                   setMatrixCellKey(key)
