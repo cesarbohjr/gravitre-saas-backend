@@ -1,12 +1,12 @@
 {
   "probe": "master_audit_evidence_closure",
-  "started_at": "2026-09-22T06:31:35.631144+00:00",
+  "started_at": "2026-09-22T20:08:20.687179+00:00",
   "health": {
     "status": "ok",
-    "timestamp": "2026-09-22T06:31:33.025027+00:00",
+    "timestamp": "2026-09-22T20:08:18.652436+00:00",
     "version": "0.1.0",
     "environment": "prod",
-    "git_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+    "git_sha": "54c9e7a192f6eaff6372ebdce0a42afb67741fac",
     "ai_disabled": false,
     "unified_turn_shadow_enabled": true,
     "unified_turn_live_enabled": true,
@@ -16,6 +16,7 @@
     "unified_turn_qa_hooks_enabled": true,
     "internet_research_enabled": true,
     "web_research_provider_configured": true,
+    "convergence_p1_single_selection_v1": true,
     "checks": {
       "database": "healthy",
       "cache": "healthy",
@@ -87,76 +88,74 @@
     }
   ],
   "fallthrough_24h_isolated": {
-    "n": 71,
+    "n": 14,
     "reasons": {
-      "defer_classical_tool_sse": 38,
-      "pending_family_classical_resume": 19,
-      "read_tool_classical": 14
+      "defer_classical_tool_sse": 8,
+      "read_tool_classical": 4,
+      "pending_family_classical_resume": 2
     }
   },
   "fallthrough_7d_isolated": {
-    "n": 152,
+    "n": 162,
     "reasons": {
-      "defer_classical_tool_sse": 74,
-      "read_tool_classical": 56,
-      "pending_family_classical_resume": 22
+      "defer_classical_tool_sse": 78,
+      "read_tool_classical": 60,
+      "pending_family_classical_resume": 24
     }
   },
   "audit_counts_24h_isolated": {
-    "unified_turn.live.fallthrough": 71,
-    "classical.answer_path.reached": 72,
-    "tool.invoke.completed": 35,
-    "response.composer.completed": 165
+    "unified_turn.live.fallthrough": 14,
+    "classical.answer_path.reached": 26,
+    "tool.invoke.completed": 26,
+    "response.composer.completed": 219
   },
   "outcomes_7d_isolated": {
     "n": 50,
     "events": {
-      "connector_action_executed": 18,
-      "workflow_executed": 17,
-      "recommendation_created": 10,
-      "workflow_cancelled": 4,
-      "workflow_failed": 1
+      "recommendation_created": 31,
+      "connector_action_executed": 10,
+      "workflow_executed": 9
     },
     "latest": [
       {
-        "outcome_event": "connector_action_executed",
-        "created_at": "2026-09-21T20:02:46.09381+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:18:11.277853+00:00",
+        "department": "support"
       },
       {
-        "outcome_event": "workflow_executed",
-        "created_at": "2026-09-21T20:02:42.404806+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:18:11.16242+00:00",
+        "department": "support"
       },
       {
-        "outcome_event": "connector_action_executed",
-        "created_at": "2026-09-21T19:59:58.993142+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:18:02.578044+00:00",
+        "department": "support"
       },
       {
-        "outcome_event": "workflow_executed",
-        "created_at": "2026-09-21T19:59:57.070616+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:18:02.460312+00:00",
+        "department": "support"
       },
       {
-        "outcome_event": "connector_action_executed",
-        "created_at": "2026-09-21T19:57:57.410353+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:17:04.090319+00:00",
+        "department": ""
       },
       {
-        "outcome_event": "workflow_executed",
-        "created_at": "2026-09-21T19:57:55.868042+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:17:03.312723+00:00",
+        "department": ""
       },
       {
-        "outcome_event": "connector_action_executed",
-        "created_at": "2026-09-21T19:40:11.958783+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:16:44.799596+00:00",
+        "department": ""
       },
       {
-        "outcome_event": "workflow_executed",
-        "created_at": "2026-09-21T19:40:08.90265+00:00",
-        "department": null
+        "outcome_event": "recommendation_created",
+        "created_at": "2026-09-22T18:16:44.56597+00:00",
+        "department": ""
       }
     ]
   },
@@ -164,8 +163,8 @@
     {
       "prompt": "Hi.",
       "http_status": 200,
-      "first_useful_text_ms": 6123,
-      "completion_ms": 9473,
+      "first_useful_text_ms": 3814,
+      "completion_ms": 6690,
       "assistant_excerpt": "Hey \u2014 I'm here. What do you want to get done?",
       "tools": [],
       "errors": [],
@@ -180,10 +179,11 @@
         "text-end",
         "finish-step",
         "finish",
+        "data-suggestions",
         "[DONE]"
       ],
       "id": "cold_greeting",
-      "conversation_id": "7534fea8-49e9-4567-bb40-e545400c6d62",
+      "conversation_id": "aaa65860-aa19-47f8-ad46-726d6dfe3aa3",
       "cohort": "cold",
       "audit_actions": [
         "runtime.turn_latency.critical_path",
@@ -200,6 +200,19 @@
       "invokes": [],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "client_ready": 13,
+            "intent_gateway": 108,
+            "shortcut_composer_start": 126,
+            "workspace_focus_resolved": 13
+          },
+          "stages_compact": "gateway:0,compose:0,client_ready:13,workspace_focus_resolved:0,intent_gateway:95,shortcut_composer_start:18",
+          "dominant_stage": "RESOLUTION",
+          "dominant_ms": 95,
+          "total_ms": 126,
+          "dominant_checkpoint": "intent_gateway",
           "spoken_mode": false
         }
       ]
@@ -207,8 +220,8 @@
     {
       "prompt": "Hello again.",
       "http_status": 200,
-      "first_useful_text_ms": 2092,
-      "completion_ms": 5081,
+      "first_useful_text_ms": 1600,
+      "completion_ms": 3665,
       "assistant_excerpt": "Hey \u2014 I'm here. What do you want to get done?",
       "tools": [],
       "errors": [],
@@ -227,7 +240,7 @@
         "[DONE]"
       ],
       "id": "warm_greeting",
-      "conversation_id": "7534fea8-49e9-4567-bb40-e545400c6d62",
+      "conversation_id": "aaa65860-aa19-47f8-ad46-726d6dfe3aa3",
       "cohort": "warm_followup",
       "audit_actions": [
         "runtime.turn_latency.critical_path",
@@ -244,6 +257,19 @@
       "invokes": [],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "client_ready": 13,
+            "intent_gateway": 69,
+            "shortcut_composer_start": 70,
+            "workspace_focus_resolved": 13
+          },
+          "stages_compact": "gateway:0,compose:0,client_ready:13,workspace_focus_resolved:0,intent_gateway:56,shortcut_composer_start:1",
+          "dominant_stage": "RESOLUTION",
+          "dominant_ms": 56,
+          "total_ms": 70,
+          "dominant_checkpoint": "intent_gateway",
           "spoken_mode": false
         }
       ]
@@ -251,8 +277,8 @@
     {
       "prompt": "What can you help me with in one sentence?",
       "http_status": 200,
-      "first_useful_text_ms": 2632,
-      "completion_ms": 5586,
+      "first_useful_text_ms": 5240,
+      "completion_ms": 7316,
       "assistant_excerpt": "I am Gravitre \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Google Ads, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
       "tools": [],
       "errors": [],
@@ -267,10 +293,11 @@
         "text-end",
         "finish-step",
         "finish",
+        "data-suggestions",
         "[DONE]"
       ],
       "id": "general_conversation",
-      "conversation_id": "63c9f8d3-cef9-4329-93ce-053f97e32305",
+      "conversation_id": "59365360-6ef2-4a75-b79e-857db1e707a3",
       "cohort": "cold",
       "audit_actions": [
         "runtime.turn_latency.critical_path",
@@ -287,6 +314,19 @@
       "invokes": [],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "client_ready": 16,
+            "intent_gateway": 637,
+            "shortcut_composer_start": 642,
+            "workspace_focus_resolved": 16
+          },
+          "stages_compact": "gateway:0,compose:0,client_ready:16,workspace_focus_resolved:0,intent_gateway:621,shortcut_composer_start:5",
+          "dominant_stage": "RESOLUTION",
+          "dominant_ms": 621,
+          "total_ms": 642,
+          "dominant_checkpoint": "intent_gateway",
           "spoken_mode": false
         }
       ]
@@ -294,18 +334,15 @@
     {
       "prompt": "Show my deals.",
       "http_status": 200,
-      "first_useful_text_ms": 19931,
-      "completion_ms": 23199,
-      "assistant_excerpt": "I found 25 deals in your connected CRM.",
+      "first_useful_text_ms": 6526,
+      "completion_ms": 9642,
+      "assistant_excerpt": "I found 25 deals in the connected CRM.",
       "tools": [],
       "errors": [],
       "text_delta_count": 1,
       "event_types_head": [
         "start",
         "start-step",
-        "data-intelligence",
-        "data-intelligence",
-        "data-intelligence",
         "data-intelligence",
         "data-intelligence",
         "data-intelligence",
@@ -320,12 +357,11 @@
         "[DONE]"
       ],
       "id": "hubspot_read",
-      "conversation_id": "0d35dba2-ab04-4094-8cbd-e2a43bc9c561",
+      "conversation_id": "6255a43d-c76e-4739-a553-207675a2d1d8",
       "cohort": "cold",
       "audit_actions": [
         "context.understanding.extracted",
         "memory.recalled",
-        "classical.answer_path.reached",
         "tool.invoke.requested",
         "tool.invoke.completed",
         "runtime.turn_latency.critical_path",
@@ -333,7 +369,7 @@
         "cognitive.loop.completed"
       ],
       "fallthrough": [],
-      "classical_reached": true,
+      "classical_reached": false,
       "composer": [
         {
           "kind": "canned",
@@ -344,12 +380,51 @@
         {
           "action": "hubspot.deals.list",
           "provider_invoked": true,
-          "plan_id": "1cbc5337-51cd-4fec-b7b7-033587448085",
+          "plan_id": "96fb577e-7b56-4d2c-9bea-649e969f60fb",
           "step_id": "read_sales_pipeline_health"
         }
       ],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "provider": 4758,
+            "execution": 0,
+            "mcp_tools": 1281,
+            "preflight": 3334,
+            "sentiment": 1416,
+            "resolution": 0,
+            "observation": 4927,
+            "client_ready": 15,
+            "understanding": 1493,
+            "composer_start": 4927,
+            "intent_gateway": 75,
+            "kernel_pre_act": 3085,
+            "engine_settings": 1281,
+            "memory.recalled": 3085,
+            "task_classifier": 1619,
+            "capability_route": 1741,
+            "parameter_ledger": 1848,
+            "persona_resolved": 2052,
+            "pre_kernel_entry": 2052,
+            "capability_compile": 3087,
+            "router_enrichments": 1692,
+            "routing_classified": 1281,
+            "task_state_initial": 1761,
+            "spoken_lite_decided": 1394,
+            "understanding_audit": 1548,
+            "enrich_classification": 1692,
+            "connected_integrations": 1281,
+            "dialogue_settings_full": 1416,
+            "voice_expression_bound": 1761,
+            "workspace_focus_resolved": 15
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:15,workspace_focus_resolved:0,intent_gateway:60,connected_integrations:1206,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:113,dialogue_settings_full:22,sentiment:0,understanding:77,understanding_audit:55,task_classifier:71,enrich_classification:73,router_enrichments:0,capability_route:49,task_state_initial:20,voice_expression_bound:0,parameter_ledger:87,persona_resolved:204,pre_kernel_entry:0,kernel_pre_act:1033,memory.recalled:0,capability_compile:2,preflight:247,provider:1424,observation:169,composer_start:0",
+          "dominant_stage": "PROVIDER",
+          "dominant_ms": 1424,
+          "total_ms": 4927,
+          "dominant_checkpoint": "provider",
           "spoken_mode": false
         }
       ]
@@ -357,13 +432,10 @@
     {
       "prompt": "Only the large ones.",
       "http_status": 200,
-      "first_useful_text_ms": 16787,
-      "completion_ms": 19495,
-      "assistant_excerpt": "What amount should count as \u201clarge\u201d so I can filter the 25 deals properly? I won\u2019t guess the cutoff.",
-      "tools": [
-        "searchKnowledgeBase",
-        "searchKnowledgeBase"
-      ],
+      "first_useful_text_ms": 18947,
+      "completion_ms": 21630,
+      "assistant_excerpt": "What amount should count as \u201clarge\u201d for those deals? I won\u2019t guess the cutoff.",
+      "tools": [],
       "errors": [],
       "text_delta_count": 1,
       "event_types_head": [
@@ -373,11 +445,6 @@
         "data-intelligence",
         "data-intelligence",
         "data-intelligence",
-        "data-intelligence",
-        "data-intelligence",
-        "data-intelligence",
-        "tool-input-available",
-        "tool-output-available",
         "text-start",
         "text-delta",
         "text-end",
@@ -388,18 +455,17 @@
         "[DONE]"
       ],
       "id": "hubspot_followup",
-      "conversation_id": "0d35dba2-ab04-4094-8cbd-e2a43bc9c561",
+      "conversation_id": "6255a43d-c76e-4739-a553-207675a2d1d8",
       "cohort": "warm_followup",
       "audit_actions": [
         "context.understanding.extracted",
         "memory.recalled",
-        "classical.answer_path.reached",
         "runtime.turn_latency.critical_path",
         "response.composer.completed",
         "cognitive.loop.completed"
       ],
       "fallthrough": [],
-      "classical_reached": true,
+      "classical_reached": false,
       "composer": [
         {
           "kind": "clarify",
@@ -409,6 +475,43 @@
       "invokes": [],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "execution": 0,
+            "mcp_tools": 698,
+            "sentiment": 866,
+            "resolution": 0,
+            "observation": 10563,
+            "client_ready": 16,
+            "understanding": 2849,
+            "composer_start": 10563,
+            "intent_gateway": 75,
+            "kernel_pre_act": 10451,
+            "engine_settings": 698,
+            "memory.recalled": 10451,
+            "task_classifier": 7976,
+            "capability_route": 8153,
+            "parameter_ledger": 8269,
+            "persona_resolved": 9325,
+            "pre_kernel_entry": 9325,
+            "capability_compile": 10454,
+            "router_enrichments": 8066,
+            "routing_classified": 698,
+            "task_state_initial": 8180,
+            "spoken_lite_decided": 839,
+            "understanding_audit": 4195,
+            "enrich_classification": 8065,
+            "connected_integrations": 698,
+            "dialogue_settings_full": 866,
+            "voice_expression_bound": 8180,
+            "workspace_focus_resolved": 16
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:16,workspace_focus_resolved:0,intent_gateway:59,connected_integrations:623,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:141,dialogue_settings_full:27,sentiment:0,understanding:1983,understanding_audit:1346,task_classifier:3781,enrich_classification:89,router_enrichments:1,capability_route:87,task_state_initial:27,voice_expression_bound:0,parameter_ledger:89,persona_resolved:1056,pre_kernel_entry:0,kernel_pre_act:1126,memory.recalled:0,capability_compile:3,observation:109,composer_start:0",
+          "dominant_stage": "TASK_CLASSIFIER",
+          "dominant_ms": 3781,
+          "total_ms": 10563,
+          "dominant_checkpoint": "task_classifier",
           "spoken_mode": false
         }
       ]
@@ -416,9 +519,9 @@
     {
       "prompt": "What should we do about it?",
       "http_status": 200,
-      "first_useful_text_ms": 16574,
-      "completion_ms": 20790,
-      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me what \u201cit\u201d refers to, and I\u2019ll tell you the next move.",
+      "first_useful_text_ms": 18453,
+      "completion_ms": 24934,
+      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me what \u201cit\u201d is, and I\u2019ll tell you what to do next.",
       "tools": [],
       "errors": [],
       "text_delta_count": 1,
@@ -438,7 +541,7 @@
         "[DONE]"
       ],
       "id": "ambiguous",
-      "conversation_id": "fc8503d6-b6dc-4221-9a1c-a4de593de83d",
+      "conversation_id": "40993b7b-32ae-452b-b9b5-55e1117c2506",
       "cohort": "cold",
       "audit_actions": [
         "context.understanding.extracted",
@@ -462,6 +565,43 @@
       "invokes": [],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "mcp_tools": 1364,
+            "sentiment": 1481,
+            "resolution": 0,
+            "client_ready": 19,
+            "understanding": 3082,
+            "intent_gateway": 78,
+            "kernel_pre_act": 4215,
+            "engine_settings": 1364,
+            "memory.recalled": 4215,
+            "task_classifier": 3301,
+            "capability_route": 3450,
+            "parameter_ledger": 3539,
+            "persona_resolved": 3779,
+            "pre_kernel_entry": 3779,
+            "capability_compile": 4216,
+            "router_enrichments": 3390,
+            "routing_classified": 1364,
+            "task_state_initial": 3470,
+            "spoken_lite_decided": 1458,
+            "understanding_audit": 3168,
+            "enrich_classification": 3389,
+            "unified_live_resolved": 14182,
+            "connected_integrations": 1364,
+            "dialogue_settings_full": 1481,
+            "voice_expression_bound": 3470,
+            "context_compile_unified": 0,
+            "model_reasoning_started": 0,
+            "workspace_focus_resolved": 19
+          },
+          "stages_compact": "gateway:0,resolution:0,context_compile_unified:0,model_reasoning_started:0,compose:0,client_ready:19,workspace_focus_resolved:0,intent_gateway:59,connected_integrations:1286,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:94,dialogue_settings_full:23,sentiment:0,understanding:1601,understanding_audit:86,task_classifier:133,enrich_classification:88,router_enrichments:1,capability_route:60,task_state_initial:20,voice_expression_bound:0,parameter_ledger:69,persona_resolved:240,pre_kernel_entry:0,kernel_pre_act:436,memory.recalled:0,capability_compile:1,unified_live_resolved:9966",
+          "dominant_stage": "UNIFIED_LIVE_RESOLVED",
+          "dominant_ms": 9966,
+          "total_ms": 14182,
+          "dominant_checkpoint": "unified_live_resolved",
           "spoken_mode": false
         }
       ]
@@ -469,9 +609,9 @@
     {
       "prompt": "Send Sarah a summary.",
       "http_status": 200,
-      "first_useful_text_ms": 15756,
-      "completion_ms": 18750,
-      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me who Sarah is and what you want included in the summary.",
+      "first_useful_text_ms": 23401,
+      "completion_ms": 26018,
+      "assistant_excerpt": "Who is Sarah, and what should the summary cover?",
       "tools": [],
       "errors": [],
       "text_delta_count": 1,
@@ -492,14 +632,14 @@
         "[DONE]"
       ],
       "id": "safe_write_clarify",
-      "conversation_id": "0356dcf0-bae9-4122-961a-56d14ff31ffc",
+      "conversation_id": "7d21fb69-5ca7-4426-b20d-b6c62358acad",
       "cohort": "cold",
       "audit_actions": [
         "context.understanding.extracted",
         "memory.recalled",
         "evidence.sufficiency.assessed",
-        "runtime.jit.context_profile",
         "runtime.jit.tool_namespace",
+        "runtime.jit.context_profile",
         "unified_turn.live.completed",
         "runtime.turn_latency.critical_path",
         "response.composer.completed",
@@ -509,13 +649,50 @@
       "classical_reached": false,
       "composer": [
         {
-          "kind": "success",
+          "kind": "clarify",
           "success": true
         }
       ],
       "invokes": [],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "mcp_tools": 1239,
+            "sentiment": 1365,
+            "resolution": 0,
+            "client_ready": 21,
+            "understanding": 3280,
+            "intent_gateway": 85,
+            "kernel_pre_act": 4765,
+            "engine_settings": 1239,
+            "memory.recalled": 4765,
+            "task_classifier": 3408,
+            "capability_route": 3532,
+            "parameter_ledger": 3621,
+            "persona_resolved": 3847,
+            "pre_kernel_entry": 3847,
+            "capability_compile": 4768,
+            "router_enrichments": 3483,
+            "routing_classified": 1240,
+            "task_state_initial": 3553,
+            "spoken_lite_decided": 1343,
+            "understanding_audit": 3345,
+            "enrich_classification": 3482,
+            "unified_live_resolved": 16306,
+            "connected_integrations": 1239,
+            "dialogue_settings_full": 1365,
+            "voice_expression_bound": 3553,
+            "context_compile_unified": 0,
+            "model_reasoning_started": 0,
+            "workspace_focus_resolved": 21
+          },
+          "stages_compact": "gateway:0,resolution:0,context_compile_unified:0,model_reasoning_started:0,compose:0,client_ready:21,workspace_focus_resolved:0,intent_gateway:64,connected_integrations:1154,mcp_tools:0,engine_settings:0,routing_classified:1,spoken_lite_decided:103,dialogue_settings_full:22,sentiment:0,understanding:1915,understanding_audit:65,task_classifier:63,enrich_classification:74,router_enrichments:1,capability_route:49,task_state_initial:21,voice_expression_bound:0,parameter_ledger:68,persona_resolved:226,pre_kernel_entry:0,kernel_pre_act:918,memory.recalled:0,capability_compile:3,unified_live_resolved:11538",
+          "dominant_stage": "UNIFIED_LIVE_RESOLVED",
+          "dominant_ms": 11538,
+          "total_ms": 16306,
+          "dominant_checkpoint": "unified_live_resolved",
           "spoken_mode": false
         }
       ]
@@ -523,16 +700,10 @@
     {
       "prompt": "How is the business doing and what should I worry about?",
       "http_status": 200,
-      "first_useful_text_ms": 31140,
-      "completion_ms": 33703,
-      "assistant_excerpt": "The business looks operational, but there are a few clear risks. - **Workflows:** recent runs are mostly **completed** or **partial_success**. That means the automation is running, but some runs are not fully clean.\n- **Agent health:** the one configured agent I can see is **Active** and **idle**, so the agent layer is **Healthy**.\n- **Connectors:** several key connectors are **disconnected** or **expired**. Notably **QuickBooks** and **Gmail** are pending auth, and **Stripe, Greenhouse, LinkedI",
-      "tools": [
-        "searchKnowledgeBase",
-        "searchKnowledgeBase",
-        "getWorkflowRuns",
-        "getAgentStatus",
-        "getConnectorStatus"
-      ],
+      "first_useful_text_ms": 8505,
+      "completion_ms": 13144,
+      "assistant_excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+      "tools": [],
       "errors": [],
       "text_delta_count": 1,
       "event_types_head": [
@@ -542,112 +713,84 @@
         "data-intelligence",
         "data-intelligence",
         "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
         "data-intelligence",
-        "data-intelligence",
-        "data-intelligence",
-        "tool-input-available",
-        "tool-output-available",
-        "tool-input-available",
-        "data-intelligence",
-        "tool-input-available",
-        "data-intelligence",
-        "tool-input-available",
-        "data-intelligence",
-        "tool-output-available",
-        "tool-output-available",
-        "tool-output-available"
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
       ],
       "id": "multi_source",
-      "conversation_id": "2859eecc-121e-47a0-8e25-fdc353aec210",
+      "conversation_id": "77481f98-da4f-4aea-8134-07262fdb5966",
       "cohort": "cold",
       "audit_actions": [
         "context.understanding.extracted",
         "memory.recalled",
-        "evidence.sufficiency.assessed",
-        "runtime.jit.context_profile",
-        "runtime.jit.tool_namespace",
-        "unified_turn.live.fallthrough",
-        "classical.answer_path.reached",
-        "inference.tool_completion",
-        "agent.react.iteration",
-        "agent.react.iteration",
-        "agent.react.iteration",
-        "inference.tool_completion",
-        "agent.react.iteration",
-        "cognitive.loop.completed",
+        "tool.invoke.requested",
+        "tool.invoke.completed",
         "runtime.turn_latency.critical_path",
-        "response.composer.completed"
+        "response.composer.completed",
+        "cognitive.loop.completed"
       ],
-      "fallthrough": [
-        {
-          "fallthrough_reason": "read_tool_classical",
-          "model": "gpt-5.4-mini",
-          "latency_breakdown": {
-            "total_tools": 86,
-            "pre_model_ms": 60,
-            "max_tools_cap": 16,
-            "model_ttft_ms": 1326,
-            "prompt_tokens": 8597,
-            "topSimilarity": 0.1662,
-            "visible_tools": 20,
-            "embed_query_ms": 46,
-            "messages_chars": 35565,
-            "model_total_ms": 1390,
-            "narrow_tools_ms": 57,
-            "retrieval_query": "How is the business doing and what should I worry about?",
-            "task_model_tier": "low",
-            "turn_shape_hint": "task_shaped",
-            "retrieval_method": "embedding_narrow_tools_for_turn",
-            "stream_timeout_s": 20.0,
-            "completion_tokens": 47,
-            "context_prompt_ms": 1,
-            "embed_query_model": "all-MiniLM-L6-v2",
-            "registry_tools_ms": 0,
-            "embed_query_method": "local",
-            "embed_tool_docs_ms": 0,
-            "inference_provider": "openai",
-            "cached_prompt_ratio": 0.5509,
-            "system_prompt_chars": 22362,
-            "tools_payload_bytes": 4691,
-            "auto_schema_retry_ms": 1742,
-            "cached_prompt_tokens": 4736,
-            "embed_query_provider": "local",
-            "embed_narrow_total_ms": 53,
-            "embed_query_cache_hit": false,
-            "embed_query_encode_ms": 46,
-            "context_size_breakdown": {},
-            "progressive_disclosure": true,
-            "wall_to_first_token_ms": 1393,
-            "embeddingCandidateCount": 41,
-            "embed_similarity_rank_ms": 1,
-            "embedding_tool_retrieval": true,
-            "context_real_tokens_total": 8984,
-            "embed_tool_doc_cache_hits": 41,
-            "openai_create_schedule_ms": 6,
-            "full_catalog_payload_bytes": 57083,
-            "context_token_estimate_only": false,
-            "embed_query_cache_lookup_ms": 0,
-            "embed_tool_doc_cache_misses": 0,
-            "full_narrowed_payload_bytes": 8704,
-            "pre_first_token_overhead_ms": 67,
-            "progressive_gate_auto_retry": true,
-            "embed_tool_doc_batch_api_calls": 0,
-            "embed_tool_doc_cache_lookup_ms": 1,
-            "progressive_gate_auto_retry_resolved": true
-          },
-          "outcome_kind": "connector_tool_proposal"
-        }
-      ],
-      "classical_reached": true,
+      "fallthrough": [],
+      "classical_reached": false,
       "composer": [
         {
-          "kind": "success",
+          "kind": "canned",
           "success": true
         }
       ],
-      "invokes": [],
+      "invokes": [
+        {
+          "action": "hubspot.deals.list",
+          "provider_invoked": true,
+          "plan_id": "4efa041f-f792-4070-aa7e-321e620b5ece",
+          "step_id": "read_sales_pipeline_health"
+        }
+      ],
       "latency_audit": [
         {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "provider": 5703,
+            "execution": 0,
+            "mcp_tools": 1237,
+            "preflight": 4310,
+            "sentiment": 1374,
+            "resolution": 0,
+            "observation": 6503,
+            "client_ready": 16,
+            "understanding": 2685,
+            "composer_start": 6503,
+            "intent_gateway": 73,
+            "kernel_pre_act": 4092,
+            "engine_settings": 1237,
+            "memory.recalled": 4092,
+            "task_classifier": 2850,
+            "capability_route": 2953,
+            "parameter_ledger": 3074,
+            "persona_resolved": 3288,
+            "pre_kernel_entry": 3288,
+            "capability_compile": 4094,
+            "router_enrichments": 2908,
+            "routing_classified": 1237,
+            "task_state_initial": 2970,
+            "spoken_lite_decided": 1352,
+            "understanding_audit": 2739,
+            "enrich_classification": 2908,
+            "connected_integrations": 1237,
+            "dialogue_settings_full": 1374,
+            "voice_expression_bound": 2970,
+            "workspace_focus_resolved": 16
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:16,workspace_focus_resolved:0,intent_gateway:57,connected_integrations:1164,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:115,dialogue_settings_full:22,sentiment:0,understanding:1311,understanding_audit:54,task_classifier:111,enrich_classification:58,router_enrichments:0,capability_route:45,task_state_initial:17,voice_expression_bound:0,parameter_ledger:104,persona_resolved:214,pre_kernel_entry:0,kernel_pre_act:804,memory.recalled:0,capability_compile:2,preflight:216,provider:1393,observation:800,composer_start:0",
+          "dominant_stage": "PROVIDER",
+          "dominant_ms": 1393,
+          "total_ms": 6503,
+          "dominant_checkpoint": "provider",
           "spoken_mode": false
         }
       ]
@@ -655,10 +798,10 @@
   ],
   "voice_http_greeting": {
     "http_status": 200,
-    "conversation_id": "b493d681-66b7-43c9-8c91-ca19c0566a11",
-    "first_useful_text_ms": 220,
-    "first_audio_ms": 224,
-    "completion_ms": 1204,
+    "conversation_id": "323c3a09-71d4-431d-96bd-ec857f415d13",
+    "first_useful_text_ms": 614,
+    "first_audio_ms": 618,
+    "completion_ms": 2040,
     "event_types_head": [
       "voice.session.accepted",
       "voice.text.delta",
@@ -682,10 +825,10 @@
   },
   "voice_http_tool": {
     "http_status": 200,
-    "conversation_id": "b493d681-66b7-43c9-8c91-ca19c0566a11",
-    "first_useful_text_ms": 324,
-    "first_audio_ms": 375,
-    "completion_ms": 18830,
+    "conversation_id": "323c3a09-71d4-431d-96bd-ec857f415d13",
+    "first_useful_text_ms": 1099,
+    "first_audio_ms": 1107,
+    "completion_ms": 10072,
     "event_types_head": [
       "voice.session.accepted",
       "voice.text.delta",
@@ -707,5 +850,5 @@
     "error": null,
     "proof_class": "HTTP_TALK_NOT_PHYSICAL_MIC"
   },
-  "finished_at": "2026-09-22T06:34:31.336188+00:00"
+  "finished_at": "2026-09-22T20:10:46.727998+00:00"
 }

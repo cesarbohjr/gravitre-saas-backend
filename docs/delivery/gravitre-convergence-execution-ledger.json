@@ -1,42 +1,24 @@
 {
   "ledger": "gravitre-convergence-execution",
   "spec": "docs/audits/GRAVITRE_CONVERGENCE_SPEC.md",
-  "status": "ENGINEERING_EXECUTED_LIVE_PROOF_PENDING",
+  "status": "GAP_CLOSURE_EXECUTED_NOT_PRODUCT_ACCEPTED",
   "implementation_authorized": true,
   "direction": "PRESERVE + CONVERGE",
   "current_phase": "EV",
-  "next_executable_phase": "Railway deploy then isolated live matrix",
+  "next_executable_phase": "independent re-audit on 3773cbf5",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "updated_at": "2026-09-22T08:40:00Z",
+  "updated_at": "2026-09-22T20:30:00Z",
+  "current_sha": "3773cbf5976c31ede37dd19786dd5a61f01e5e55",
   "dashboard": {
     "total_requirements": 56,
-    "implemented": 54,
-    "test_passed": 56,
-    "integration_passed": 54,
-    "live_verified": 0,
-    "blocked": 4,
-    "failed": 0,
-    "not_started": 0,
-    "approved_scope_exception": 2,
-    "open_p0_p1_defects": 0,
-    "pct_live_verified": 0,
-    "all_requirements_processed": true,
-    "engineering_complete": true,
+    "independent_audit_sha": "0191297fa2eb4def8620a1b913a41314520d17bb",
+    "independent_pass": 25,
+    "independent_partial": 25,
+    "independent_fail": 2,
+    "independent_not_run": 0,
+    "gap_closure_sha": "3773cbf5976c31ede37dd19786dd5a61f01e5e55",
     "product_accepted": false,
-    "implementation_status_counts": {
-      "IMPLEMENTED_AND_VERIFIED": 9,
-      "EXTERNALLY_BLOCKED": 2,
-      "IMPLEMENTED_PROOF_PENDING": 43,
-      "APPROVED_SCOPE_EXCEPTION": 2
-    },
-    "live_status_counts": {
-      "N_A": 8,
-      "NOT_RUN": 43,
-      "HUMAN_EXPERIENCE_PENDING": 2,
-      "NOT_IN_CYCLE": 2,
-      "NOT_THIS_STAGE": 1
-    },
-    "note": "Engineering complete from ID terminal states. FAILED/NOT_IMPLEMENTED are 0. Live verified is 0 until post-merge SHA. Unit tests are not live verified."
+    "note": "Post-0191297f implementation. Do not treat these notes as independent acceptance."
   },
   "release_pair": {
     "backend_sha_at_baseline": "a7a0dd560a4edc1cccd00b172520a554eab2df66",

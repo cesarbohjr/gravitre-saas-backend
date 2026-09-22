@@ -1,0 +1,92 @@
+{
+  "health": "54c9e7a192f6eaff6372ebdce0a42afb67741fac",
+  "turns": [
+    {
+      "prompt": "How is my company doing?",
+      "conversation_id": "c6bbbde9-6a7d-45f9-9968-58ab7e9fe4f6",
+      "http": 200,
+      "first_ms": 41237,
+      "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+      "actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "tool.invoke.requested",
+        "tool.invoke.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed"
+      ],
+      "invokes": [
+        {
+          "id": "f3d8e8cf-336",
+          "action": "tool.invoke.completed",
+          "created_at": "2026-09-22T20:11:32.092379+00:00",
+          "meta": {
+            "action": "hubspot.deals.list",
+            "provider_invoked": true,
+            "plan_id": "192d3ec8-5238-4387-8172-9d66b8911250",
+            "step_id": "read_sales_pipeline_health"
+          }
+        }
+      ]
+    },
+    {
+      "prompt": "How's the company doing?",
+      "conversation_id": "82b75e5e-f804-4f07-9c43-91c3c8d5cd6e",
+      "http": 200,
+      "first_ms": 9110,
+      "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+      "actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "tool.invoke.requested",
+        "tool.invoke.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed"
+      ],
+      "invokes": [
+        {
+          "id": "904541c1-92a",
+          "action": "tool.invoke.completed",
+          "created_at": "2026-09-22T20:11:45.599195+00:00",
+          "meta": {
+            "action": "hubspot.deals.list",
+            "provider_invoked": true,
+            "plan_id": "5ba191ca-73bd-4bd9-b695-b95a54d927e3",
+            "step_id": "read_sales_pipeline_health"
+          }
+        }
+      ]
+    },
+    {
+      "prompt": "Give me a business performance snapshot from connected systems.",
+      "conversation_id": "6dd2f852-557e-4777-ba66-c41ee3a286d4",
+      "http": 200,
+      "first_ms": 9701,
+      "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+      "actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "tool.invoke.requested",
+        "tool.invoke.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed"
+      ],
+      "invokes": [
+        {
+          "id": "ee837e39-5f6",
+          "action": "tool.invoke.completed",
+          "created_at": "2026-09-22T20:12:01.72819+00:00",
+          "meta": {
+            "action": "hubspot.deals.list",
+            "provider_invoked": true,
+            "plan_id": "d92180d5-9e3c-4f97-926c-40a012d977a8",
+            "step_id": "read_sales_pipeline_health"
+          }
+        }
+      ]
+    }
+  ]
+}

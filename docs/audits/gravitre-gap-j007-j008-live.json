@@ -1,0 +1,76 @@
+{
+  "health_sha": "3773cbf5976c31ede37dd19786dd5a61f01e5e55",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "workflows": [
+    {
+      "id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
+      "name": "Canvas Write Governance Probe (no approval node)"
+    },
+    {
+      "id": "30a24755-0563-5196-af41-efdfebcc27ca",
+      "name": "Uncertain lead \u2192 Council \u2192 Enroll or nurture"
+    },
+    {
+      "id": "f68084d7-1056-5ea0-948f-66caf4901d68",
+      "name": "New Lead \u2192 Sales qualifies \u2192 Marketing enrolls"
+    },
+    {
+      "id": "872074ad-89fc-400d-a5b1-c2b44c15c2af",
+      "name": "Sales Automation"
+    },
+    {
+      "id": "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "name": "Competitive Intelligence Monitoring"
+    },
+    {
+      "id": "c993590b-a542-468c-bfda-c697a99c181b",
+      "name": "F6 Prod Process Verify (entity_get)"
+    }
+  ],
+  "j007": {
+    "conversation_id": "9713a5b0-627c-4fc3-bde0-3fed5b35f20c",
+    "prompt": "Run the workflow named Canvas Write Governance Probe (no approval node) in this conversation now.",
+    "assistant": "That workflow hit an error before it could run \u2014 nothing was executed. If you want to try again, let me know and I'll queue it back up.",
+    "yes_assistant": "That workflow already has a run in progress. Open the active run to monitor or cancel it, then try again.",
+    "first_ms": 30308,
+    "yes_ms": 13320,
+    "child_obs": [],
+    "workflow_waiting": [],
+    "invokes": [],
+    "audit_head": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "tool.invoke.requested",
+      "tool.invoke.failed",
+      "workflow.execute.failed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ]
+  },
+  "j008": {
+    "conversation_id": "ab11a9d3-0319-43d7-9b4d-92d13e49e99c",
+    "text_hi": "Hey \u2014 I'm here. What do you want to get done?",
+    "spoken_first_text_ms": 212,
+    "spoken_first_audio_ms": 221,
+    "spoken_types": [
+      "voice.session.accepted",
+      "voice.text.delta",
+      "voice.ttft",
+      "voice.ttfa",
+      "voice.agent_speech.start",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta"
+    ]
+  }
+}
