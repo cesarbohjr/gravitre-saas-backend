@@ -33,6 +33,14 @@
 
 ---
 
+## J6 Wave 1 re-run (2026-09-22) — BLOCKED
+
+**Attempt:** Post–Wave 1 deploy (`27da2830` I3 matrix default + I2 mobile)  
+**Result:** **NOT RUN** — expired `e2e/.fixtures/gravitre-e2e-storage.json`; `beforeEach` timed out on marketing/login (no `aside nav`).  
+**Action:** Regenerate storage via `e2e/consume-smoke-session.mjs`, then re-run J6 (asserts `intel-i3-matrix`, Matrix→Field toggle).
+
+---
+
 ## J6 detail (2026-09-21)
 
 **Command:**
