@@ -906,14 +906,23 @@ def tool_execute_workflow(
             if isinstance(detail, dict):
                 detail = detail.get("detail") or str(detail)
             return {"error": "workflow_execute_failed", "message": str(detail or exc.status_code)}
+        status = str(result.get("status") or "queued")
+        errors = [str(e) for e in (result.get("errors") or []) if e]
+        if status.lower() in {"failed", "cancelled"} or errors:
+            return {
+                "error": "workflow_execute_failed",
+                "message": "; ".join(errors) or f"Workflow ended with status {status}.",
+                "runId": str(result.get("run_id") or result.get("id") or ""),
+                "status": status,
+            }
         return {
             "workflowId": workflow_id,
             "workflowName": str(match.get("name") or "Workflow"),
             "runId": str(result.get("run_id") or result.get("id") or ""),
-            "status": str(result.get("status") or "queued"),
+            "status": status,
             "message": (
                 f"Workflow “{match.get('name') or 'Workflow'}” finished."
-                if str(result.get("status") or "").lower() in {"completed", "success"}
+                if status.lower() in {"completed", "success"}
                 else "Workflow run started — open Runs to track progress."
             ),
         }

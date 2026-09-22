@@ -34,6 +34,7 @@ from app.services.pipecat_voice.voice_latency_tuning import (
 from app.services.pipecat_voice.voice_tool_narration import (
     narrate_tool_completed,
     narrate_tool_started,
+    skip_spoken_tool_progress,
 )
 from app.services.voice_session_service import normalize_spoken_text, split_speakable_chunks
 from app.services.chat_turn_cancel_service import is_stop_requested
@@ -271,8 +272,9 @@ class GravitreCognitiveLLMService(LLMService):
                     tool_call_started_at[call_id] = time.perf_counter()
                 if tool_name and tool_name not in narrated_tool_starts:
                     narrated_tool_starts.add(tool_name)
-                    await self._flush_client_text(client_text_filter)
-                    await self._speak_narration(narrate_tool_started(tool_name))
+                    if not skip_spoken_tool_progress(tool_name):
+                        await self._flush_client_text(client_text_filter)
+                        await self._speak_narration(narrate_tool_started(tool_name))
                 continue
             if event.sse_type == "tool-output-available":
                 payload = event.payload if isinstance(event.payload, dict) else {}
@@ -288,7 +290,7 @@ class GravitreCognitiveLLMService(LLMService):
                         int((time.perf_counter() - turn_start) * 1000),
                     )
                 narration = narrate_tool_completed(tool_name, payload.get("output"))
-                if narration:
+                if narration and not skip_spoken_tool_progress(tool_name):
                     await self._flush_client_text(client_text_filter)
                     await self._speak_narration(narration)
                 continue

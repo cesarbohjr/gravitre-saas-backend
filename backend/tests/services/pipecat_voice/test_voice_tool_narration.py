@@ -9,11 +9,15 @@ from app.services.pipecat_voice.voice_tool_narration import (
     narrate_loop_stage,
     narrate_tool_completed,
     narrate_tool_started,
+    skip_spoken_tool_progress,
     will_execute_staged_connector_write,
 )
 
 
 class TestNarrateToolStarted:
+    def test_connector_status_skips_progress_speech(self) -> None:
+        assert skip_spoken_tool_progress("getConnectorStatus") is True
+        assert skip_spoken_tool_progress("getPipelineHealth") is False
     def test_known_friendly_tool_name_maps_to_hand_tuned_phrase(self) -> None:
         assert narrate_tool_started("getPipelineHealth") == "Let me check your pipeline."
 

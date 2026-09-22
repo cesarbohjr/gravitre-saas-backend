@@ -163,6 +163,17 @@ def _gerund_phrase(tool_name: str) -> str:
     return "that"
 
 
+def skip_spoken_tool_progress(tool_name: str) -> bool:
+    """Connector-status tools must not replace the spoken answer with check-narration."""
+    key = re.sub(r"[^a-z]", "", (tool_name or "").lower())
+    return key in {
+        "getconnectorstatus",
+        "assistantgetconnectorstatus",
+        "listconnectors",
+        "assistantlistconnectors",
+    } or "connectorstatus" in key
+
+
 def narrate_tool_started(tool_name: str) -> str:
     """Short, honest, spoken sentence for a real tool call that just started.
 
