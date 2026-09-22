@@ -44,6 +44,7 @@ def _availability_row(
     ("message", "kind", "slug"),
     [
         ("Is HubSpot connected?", ConnectorStatusQuestionKind.CONNECTION, "hubspot"),
+        ("is Apollo connected.", ConnectorStatusQuestionKind.CONNECTION, "apollo"),
         ("Is Clay connected?", ConnectorStatusQuestionKind.CONNECTION, "clay"),
         ("Is GA4 connected?", ConnectorStatusQuestionKind.CONNECTION, "google_analytics"),
         ("Does Gravitre support Clay?", ConnectorStatusQuestionKind.SUPPORT, "clay"),
@@ -256,6 +257,7 @@ def test_internal_language_guard():
 
 def test_is_connector_status_question():
     assert is_connector_status_question("Is Clay connected?") is True
+    assert is_connector_status_question("is Apollo connected.") is True
     assert is_connector_status_question("Create a HubSpot contact") is False
 
 

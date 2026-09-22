@@ -16,7 +16,7 @@ from app.capability_ontology.conversational_grace import vendor_display_label
 _IS_VENDOR_CONNECTED_RE = re.compile(
     r"(?i)^\s*(?:is|are|do\s+we\s+have|have\s+we\s+got)\s+"
     r"(?P<vendor>[\w][\w\s.&'-]{0,48}?)\s+"
-    r"(?:connected|hooked\s+up|set\s+up|configured)\s*\??\s*$"
+    r"(?:connected|hooked\s+up|set\s+up|configured)\s*[.?!]*\s*$"
 )
 _SUPPORT_QUESTION_RE = re.compile(
     r"(?i)\b(?:does\s+gravitre\s+support|do\s+you\s+support|is\s+[\w\s.&'-]{1,48}\s+supported)\b"
