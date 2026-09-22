@@ -130,8 +130,17 @@ class ConversationalExecutionService:
                 return "execute_workflow"
             if "agent" in str(primary.get("kind") or ""):
                 return "run_agent_task"
-        if isinstance(pending, dict) and pending.get("type"):
-            return str(pending["type"])
+        if isinstance(pending, dict):
+            params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+            nested_type = str(params.get("type") or "")
+            # Installed-workflow retrieve used to stamp pending.type=create_workflow
+            # while params.type=execute_workflow — "yes" then never invoked.
+            if nested_type == "execute_workflow" or (
+                params.get("workflow_id") and str(params.get("source") or "").endswith("installed_workflow")
+            ):
+                return "execute_workflow"
+            if pending.get("type"):
+                return str(pending["type"])
         if understanding.get("conversational_create"):
             if WORKFLOW_CREATE.search(message):
                 return "create_workflow"
@@ -535,7 +544,13 @@ class ConversationalExecutionService:
             elif task_type == "create_workflow":
                 result = await self._create_workflow(org_id, user_id, clarified, client)
             elif task_type == "execute_workflow":
-                result = await self._execute_workflow(org_id, user_id, clarified, client)
+                result = await self._execute_workflow(
+                    org_id,
+                    user_id,
+                    clarified,
+                    client,
+                    conversation_id=conversation_id,
+                )
             elif task_type == "run_agent_task":
                 result = await self._run_agent_task(org_id, user_id, clarified, client)
             else:
@@ -715,6 +730,7 @@ class ConversationalExecutionService:
         user_id: str,
         clarified: dict[str, Any],
         client: Any,
+        conversation_id: str | None = None,
     ) -> ExecutionResult:
         from app.services.assistant_tools import tool_execute_workflow
         from app.workflows.audit import write_audit_event
@@ -738,12 +754,15 @@ class ConversationalExecutionService:
                 "workflow_name": clarified.get("workflow_name"),
             },
         )
+        parent_plan = str(clarified.get("plan_id") or clarified.get("parent_plan_id") or "").strip()
         output = tool_execute_workflow(
             org_id,
             query,
             self.settings,
             user_id=user_id,
             environment_name=env,
+            conversation_id=conversation_id or str(clarified.get("conversation_id") or "").strip() or None,
+            plan_id=parent_plan or None,
         )
         if output.get("error"):
             write_audit_event(

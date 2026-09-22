@@ -273,7 +273,7 @@ def _match_installed_workflow(
             ),
             dialogue_mode="confirm",
             source="retrieve_plan_gate_installed_workflow",
-            pending_type="create_workflow",
+            pending_type="execute_workflow",
             pending_status="awaiting_confirm",
             params={
                 "type": "execute_workflow",
@@ -281,6 +281,7 @@ def _match_installed_workflow(
                 "workflow_id": wf_id,
                 "workflow_name": name,
                 "workflow_slug": slug,
+                "query": name,
                 "source": "retrieve_plan_gate_installed_workflow",
             },
             block_fabrication=True,

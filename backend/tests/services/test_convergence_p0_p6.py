@@ -114,6 +114,74 @@ def test_p4_ceo_skips_live_for_compiled_hubspot_read() -> None:
     ) is True
 
 
+def test_p4_paraphrases_same_evidence_class() -> None:
+    from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+    paraphrases = [
+        "How is the business doing and what should I worry about?",
+        "How is my company doing?",
+        "How's the company doing?",
+        "Give me a business performance snapshot from connected systems.",
+        "How are we doing this quarter?",
+    ]
+    connected = ["hubspot", "google_ads", "google_analytics"]
+    for prompt in paraphrases:
+        assert looks_like_ceo_ops_question(prompt), prompt
+        plan = build_capability_evidence_plan(prompt, connected_integrations=connected)
+        assert plan and plan["required"]
+        assert any(s.get("provider") == "hubspot" for s in plan["required"]), prompt
+        assert should_skip_unified_live_for_compiled_read(prompt, {}, connected) is True
+
+
+def test_p5_skip_live_for_run_workflow_and_pending_yes() -> None:
+    from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+    assert should_skip_unified_live_for_compiled_read(
+        "Run the workflow named Canvas Write Governance Probe (no approval node) in this conversation now.",
+        {},
+        ["hubspot"],
+    )
+    assert should_skip_unified_live_for_compiled_read(
+        "yes",
+        {
+            "pending_task": {
+                "type": "create_workflow",
+                "status": "awaiting_confirm",
+                "params": {"type": "execute_workflow", "workflow_id": "wf-1"},
+            }
+        },
+        ["hubspot"],
+    )
+
+
+def test_p3_probe_warmup_drops_barge_in_user_mic_does_not() -> None:
+    from app.services.pipecat_voice.voice_audio_origin import (
+        LISTENING,
+        should_drop_barge_in_broadcast,
+    )
+
+    assert should_drop_barge_in_broadcast(
+        origin=PROBE_PCM, turn_state=LISTENING, tts_warming=True
+    )
+    assert should_drop_barge_in_broadcast(
+        origin=PROBE_PCM, turn_state=SPEAKING, bot_speaking=True
+    )
+    assert not should_drop_barge_in_broadcast(
+        origin=USER_MIC, turn_state=SPEAKING, bot_speaking=True, tts_warming=True
+    )
+
+
+def test_p2_observation_and_first_sse_marks() -> None:
+    assert map_stage("observation") == "PROVIDER"
+    assert map_stage("first_sse") == "FIRST_SSE"
+    begin_p2_marks()
+    record_p2_mark("observation", 900)
+    record_p2_mark("first_sse", 950)
+    snap = snapshot_p2_marks()
+    assert snap["observation"] == 900
+    assert snap["first_sse"] == 950
+
+
 def test_p4_ceo_plan_requires_hubspot_not_kf_substitute() -> None:
     assert looks_like_ceo_ops_question("How is the business doing and what should I worry about?")
     plan = build_capability_evidence_plan(

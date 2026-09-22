@@ -147,6 +147,8 @@ def build_pipecat_voice_task(
         query_origin = ""
     if query_origin:
         voice_session.set_origin(normalize_origin(query_origin, default=voice_session.origin))
+    if voice_session.origin != "user_mic":
+        voice_session.tts_warming = True
     serializer = GravitreJsonAudioSerializer(
         session=voice_session,
         default_origin=voice_session.origin,
@@ -409,6 +411,10 @@ def build_pipecat_voice_task(
             warm = await warm_elevenlabs_tts_connection(tts)
             session_meta["tts_warmed"] = bool(warm.get("ok"))
             if warm.get("ok"):
+                try:
+                    voice_session.mark_tts_warming()
+                except Exception:  # noqa: BLE001
+                    pass
                 try:
                     await websocket.send_json(
                         {"type": "tts.warmed", "method": warm.get("method"), "ok": True}

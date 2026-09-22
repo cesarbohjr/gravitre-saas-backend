@@ -175,6 +175,7 @@ def invoke_sealed_f1_read(
         dict(proof.compiled_parameters),
     )
     record_p2_mark("provider")
+    record_p2_mark("observation")
     report = unwrap_report_payload(invoked.data) if invoked.success else {}
     obs = ExecutionObservation(
         observation_id=str(uuid4()),

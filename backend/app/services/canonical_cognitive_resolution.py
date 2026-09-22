@@ -156,6 +156,24 @@ def should_skip_unified_live_for_compiled_read(
 
     if looks_like_ceo_ops_question(message or ""):
         return True
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    pending_execute = str(pending.get("type") or "") == "execute_workflow" or str(
+        params.get("type") or ""
+    ) == "execute_workflow"
+    if pending_execute and str(pending.get("status") or "") in {
+        "awaiting_confirm",
+        "awaiting_plan_confirm",
+        "awaiting_step_confirm",
+    }:
+        return True
+    text = " ".join((message or "").lower().split())
+    if re.search(
+        r"\b(?:run|start|trigger|execute|launch)\b.+\bworkflow\b|\bworkflow\b.+\b(?:named|called)\b",
+        text,
+    ):
+        return True
     from app.capability_ontology.cognitive_recipe_planner import match_recipe_for_query
     from app.services.operational_read_execution import OPERATIONAL_READ_RECIPES
     from app.services.task_continuity import frame_is_analytics

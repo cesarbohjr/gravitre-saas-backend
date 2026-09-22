@@ -1,18 +1,29 @@
 """P4 — required live-provider evidence before JIT/KF ranking."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
-_CEO_OPS_NEEDLES = (
-    "how is my business",
-    "how is the business",
-    "how's the business",
-    "hows the business",
-    "what should i worry",
-    "how are we doing",
-    "business doing",
-    "ops review",
-    "how is the company",
+# Semantic class, not golden-phrase needles. Paraphrases must match.
+_CEO_OPS_RE = re.compile(
+    r"(?is)"
+    r"(?:"
+    r"how(?:'s|s| is| are)\s+(?:my |the |our )?(?:business|company|org(?:anization)?|pipeline)\b"
+    r"|how(?:'s|s| is| are)\s+we\s+doing"
+    r"|(?:my |the |our )?(?:business|company|org(?:anization)?)\s+(?:doing|performance|health|snapshot)"
+    r"|business\s+performance"
+    r"|company\s+performance"
+    r"|performance\s+snapshot"
+    r"|what should i (?:worry|watch|focus)"
+    r"|ops review"
+    r"|how(?:'s|s| is)\s+(?:the |my |our )?company"
+    r")"
+)
+_NOT_CEO_RE = re.compile(
+    r"(?i)\b("
+    r"connector(?:s)?|oauth|sign[- ]?in|reconnect|"
+    r"workflow named|run the workflow|create (?:an? )?agent"
+    r")\b"
 )
 
 _HUBSPOT_KEYS = ("hubspot",)
@@ -49,7 +60,11 @@ def _norm_connected(connected: list[str] | None) -> set[str]:
 
 def looks_like_ceo_ops_question(message: str) -> bool:
     text = " ".join((message or "").lower().split())
-    return any(n in text for n in _CEO_OPS_NEEDLES)
+    if not text:
+        return False
+    if _NOT_CEO_RE.search(text) and not _CEO_OPS_RE.search(text):
+        return False
+    return bool(_CEO_OPS_RE.search(text))
 
 
 def _has_any(connected: set[str], keys: tuple[str, ...]) -> bool:

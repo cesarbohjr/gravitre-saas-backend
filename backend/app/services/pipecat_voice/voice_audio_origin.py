@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 ORIGINS = frozenset({"user_mic", "probe_pcm", "tts_echo"})
-TURN_STATES = frozenset({"listening", "committing_utterance", "speaking"})
+TURN_STATES = frozenset({"listening", "committing_utterance", "speaking", "warming"})
+WARMING = "warming"
 
 USER_MIC = "user_mic"
 PROBE_PCM = "probe_pcm"
@@ -30,6 +31,7 @@ class VoicePipelineSession:
 
     origin: str = USER_MIC
     turn_state: str = LISTENING
+    tts_warming: bool = False
 
     def set_origin(self, origin: str) -> None:
         self.origin = normalize_origin(origin)
@@ -39,6 +41,11 @@ class VoicePipelineSession:
         value = str(state or LISTENING).strip().lower()
         self.turn_state = value if value in TURN_STATES else LISTENING
         set_turn_state(self.turn_state)
+        if self.turn_state == SPEAKING:
+            self.tts_warming = False
+
+    def mark_tts_warming(self) -> None:
+        self.tts_warming = True
 
 
 def set_session_origin(origin: str) -> None:
@@ -98,6 +105,21 @@ def should_suppress_interrupt(
     if origin_n != USER_MIC:
         return True
     return False
+
+
+def should_drop_barge_in_broadcast(
+    *,
+    origin: str,
+    turn_state: str,
+    bot_speaking: bool = False,
+    tts_warming: bool = False,
+    settings: Any | None = None,
+) -> bool:
+    """True when this origin must not send InterruptionFrame (warmup or probe TTS)."""
+    if not should_suppress_interrupt(origin=origin, turn_state=turn_state, settings=settings):
+        return False
+    state = str(turn_state or "").strip().lower()
+    return bool(bot_speaking or tts_warming or state in {SPEAKING, WARMING})
 
 
 def should_honor_user_mic_barge_in(*, origin: str, turn_state: str) -> bool:

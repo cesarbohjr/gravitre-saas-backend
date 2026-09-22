@@ -150,17 +150,27 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
             from app.services.pipecat_voice.voice_audio_origin import (
                 SPEAKING,
+                WARMING,
                 get_session_origin,
-                should_suppress_interrupt,
+                get_turn_state,
+                should_drop_barge_in_broadcast,
             )
 
             origin = get_session_origin(self._voice_session)
-            if self._bot_speaking and should_suppress_interrupt(
+            warming = bool(getattr(self._voice_session, "tts_warming", False))
+            turn_state = get_turn_state(self._voice_session)
+            if should_drop_barge_in_broadcast(
                 origin=origin,
-                turn_state=SPEAKING,
+                turn_state=turn_state or (WARMING if warming else SPEAKING),
+                bot_speaking=self._bot_speaking,
+                tts_warming=warming,
                 settings=self._gravitre_settings,
             ):
-                # Probe/TTS echo overlapping TTS must not barge-in.
+                # Probe/TTS echo during warmup or TTS: open the user turn for STT
+                # without broadcasting InterruptionFrame.
+                await self.trigger_user_turn_started(
+                    enable_interruptions=False, enable_user_speaking_frames=True
+                )
                 return ProcessFrameResult.STOP
             if self._pending:
                 # Already holding one open - don't restart the window.
@@ -195,6 +205,27 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, UserStartedSpeakingFrame):
+            from app.services.pipecat_voice.voice_audio_origin import (
+                SPEAKING,
+                WARMING,
+                get_session_origin,
+                get_turn_state,
+                should_drop_barge_in_broadcast,
+            )
+
+            origin = get_session_origin(self._voice_session)
+            warming = bool(getattr(self._voice_session, "tts_warming", False))
+            if should_drop_barge_in_broadcast(
+                origin=origin,
+                turn_state=get_turn_state(self._voice_session) or (WARMING if warming else SPEAKING),
+                bot_speaking=self._bot_speaking,
+                tts_warming=warming,
+                settings=self._gravitre_settings,
+            ):
+                await self.trigger_user_turn_started(
+                    enable_interruptions=False, enable_user_speaking_frames=True
+                )
+                return ProcessFrameResult.STOP
             return await super().process_frame(frame)
 
         return ProcessFrameResult.CONTINUE

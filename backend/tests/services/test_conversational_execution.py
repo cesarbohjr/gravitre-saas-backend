@@ -150,3 +150,45 @@ async def test_execute_workflow_yes_confirms_from_pending_params(execution_servi
     assert result is not None
     assert result["execution_result"]["entity_id"] == "run-1"
     assert "started" in result["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_yes_invokes_when_pending_type_was_create_workflow_stamp():
+    """Retrieve-plan used to stamp create_workflow while params said execute."""
+    execution_service = ConversationalExecutionService()
+    mock_result = ExecutionResult(
+        success=True,
+        entity_type="workflow_run",
+        entity_id="run-2",
+        result_url="/runs/run-2",
+        title="Canvas Write Governance Probe (no approval node)",
+        body="Workflow run started",
+        notification_type="workflow_executed",
+        task_label="Executed workflow",
+    )
+    with patch.object(execution_service, "execute_task", AsyncMock(return_value=mock_result)):
+        result = await execution_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="yes",
+            understanding={},
+            classification={},
+            task_state={
+                "clarified_params": {},
+                "pending_task": {
+                    "type": "create_workflow",
+                    "status": "awaiting_confirm",
+                    "params": {
+                        "type": "execute_workflow",
+                        "workflow_id": "wf-canvas",
+                        "workflow_name": "Canvas Write Governance Probe (no approval node)",
+                        "query": "Canvas Write Governance Probe (no approval node)",
+                        "source": "retrieve_plan_gate_installed_workflow",
+                    },
+                },
+            },
+            client=MagicMock(),
+        )
+    assert result is not None
+    assert result["execution_result"]["entity_id"] == "run-2"

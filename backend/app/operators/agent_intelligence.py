@@ -2030,6 +2030,8 @@ class AgentIntelligence:
             if isinstance(_ar, dict):
                 compose_extra["analytics_result"] = _ar
                 compose_extra["data"]["analytics_result"] = _ar
+            if isinstance(_evidence, dict) or compose_kind == "canned":
+                _mark("observation")
             _mark("composer_start")
             packed = await _composed_reply(
                 response_text,
@@ -2040,9 +2042,13 @@ class AgentIntelligence:
             _mark("composer_complete")
             response_text = packed.text
             for ev in packed.events:
-                if getattr(ev, "sse_type", "") == "text-delta" and "first_sse" not in _pre_kernel_checkpoints:
-                    _mark("first_sse")
+                if "first_sse" not in _pre_kernel_checkpoints:
+                    st = str(getattr(ev, "sse_type", "") or "")
+                    if st in {"text-delta", "text-start", "text"} or "text" in st:
+                        _mark("first_sse")
                 yield ev
+            if packed.events and "first_sse" not in _pre_kernel_checkpoints:
+                _mark("first_sse")
             loop_trace.record(
                 "RETRIEVE",
                 ok=True,
