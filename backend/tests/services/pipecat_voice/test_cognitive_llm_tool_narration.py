@@ -163,8 +163,9 @@ class TestToolCompletedNarration:
         ]
         _, tts = _drive(events)
 
-        # Only the tool-started narration should be present, nothing extra.
-        assert len(tts) == 1
+        # Connector-status tools skip progress speech so the Composer answer
+        # is what the user hears.
+        assert tts == []
 
     def test_output_for_unknown_call_id_never_crashes_the_turn(self) -> None:
         """A tool-output-available with no matching tool-input-available in
