@@ -155,13 +155,12 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             )
 
             origin = get_session_origin(self._voice_session)
-            if should_suppress_interrupt(
+            if self._bot_speaking and should_suppress_interrupt(
                 origin=origin,
                 turn_state=SPEAKING,
                 settings=self._gravitre_settings,
             ):
-                # Probe/TTS echo must not barge-in, including warmup overlap
-                # before BotStartedSpeakingFrame has been observed.
+                # Probe/TTS echo overlapping TTS must not barge-in.
                 return ProcessFrameResult.STOP
             if self._pending:
                 # Already holding one open - don't restart the window.

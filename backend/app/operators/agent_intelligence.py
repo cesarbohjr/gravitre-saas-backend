@@ -3097,11 +3097,20 @@ class AgentIntelligence:
                     "department": department_scope,
                     "ui_department_scope": department_scope,
                 }
-            router_enrichments = await chat_facade.run_router_enrichments(
-                org_id,
+            from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+            if should_skip_unified_live_for_compiled_read(
                 task_text,
-                pipeline_classification,
-            )
+                task_state if isinstance(task_state, dict) else _canonical_task_state,
+                list(connected_early or []),
+            ):
+                router_enrichments = {}
+            else:
+                router_enrichments = await chat_facade.run_router_enrichments(
+                    org_id,
+                    task_text,
+                    pipeline_classification,
+                )
             _mark("router_enrichments")
             _boot_cognitive_trace(
                 task_state if isinstance(task_state, dict) else _canonical_task_state
