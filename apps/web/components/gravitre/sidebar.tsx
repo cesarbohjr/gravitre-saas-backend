@@ -32,6 +32,13 @@ import { cycleNavFocus } from "@/lib/nav-rail-focus"
 
 const sectionColors = SIDEBAR_SECTION_COLORS
 
+function sidebarLinkTestId(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+}
+
 interface SidebarProps {
   isOpen?: boolean
   onClose?: () => void
@@ -145,6 +152,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
 
       {/* Sidebar */}
       <aside
+        data-testid="nav-rail-b"
+        data-nav-expanded={navExpanded ? "true" : "false"}
         className={cn(
           // Nodus Phase 8: gray rail, white content canvas, divide borders
           "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-divide bg-[color:var(--g-background)] transition-all duration-300 ease-in-out",
@@ -369,6 +378,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                       ) : (
                               <Link
                                 href={item.href}
+                                data-testid={`sidebar-link-${sidebarLinkTestId(item.name)}`}
                                 onClick={onClose}
                                 className={itemClassName}
                               >

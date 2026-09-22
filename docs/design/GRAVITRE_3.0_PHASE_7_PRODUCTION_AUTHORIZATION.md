@@ -39,11 +39,11 @@ Wave 2 — Intelligence sub-routes (batch or route-by-route)
   /intelligence/learning · /predictive · /performance · /reports · /memory · /models · /model-studio
   (redirect-only routes stay redirect-only)
   ↓
-Wave 3 — Global shell
-  Navigation B on production AppShell / sidebar
+Wave 3 — Global shell · SHIPPED 2026-09-21
+  Navigation B on production AppShell / sidebar (`nav-rail-b`, pin, keyboard ↑↓)
   ↓
-Wave 4 — Integration surfaces
-  Connectors (list + detail)
+Wave 4 — Integration surfaces · IN PROGRESS
+  Connectors hub markers + list-first (`connectors-hub-b`)
   Sources
   Marketplace (discovery + install path — J10)
 ```

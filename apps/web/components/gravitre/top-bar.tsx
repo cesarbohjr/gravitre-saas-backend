@@ -230,6 +230,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             variant="ghost"
             size="icon"
             className={TOUCH_ICON_BUTTON}
+            data-testid="nav-toggle"
             onClick={onMenuClick}
           >
             <Icon name="menu" size="lg" />

@@ -2903,7 +2903,7 @@ function ConnectorsPageContent() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-col" data-testid="connectors-hub-b">
         <GravitrePageHeader
           title={SURFACE_COPY.pages.connectors.headline}
           description={chromeCollapsed ? undefined : SURFACE_COPY.pages.connectors.description}
@@ -3298,7 +3298,7 @@ function ConnectorsPageContent() {
 
           {/* Management: compact list (default). Topology remains opt-in. */}
           {viewMode === "grid" && (
-            <div data-review-surface="connectors-management">
+            <div data-testid="connectors-list-view" data-review-surface="connectors-management">
               <div className="mb-3">
                 <p className={TYPE.eyebrow}>Management</p>
                 <p className={cn(TYPE.meta, "mt-0.5")}>

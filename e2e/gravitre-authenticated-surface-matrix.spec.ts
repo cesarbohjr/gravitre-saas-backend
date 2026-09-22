@@ -74,16 +74,17 @@ test.describe("Authenticated product surface matrix", () => {
     )
   })
 
-  test("Navigation — expand rail + pin labels", async ({ page }) => {
+  test("Navigation B — rail expand + pin labels", async ({ page }) => {
     await page.goto("/home")
     await expect(page).not.toHaveURL(/\/login/)
-    const aside = page.locator("aside nav").first()
-    await expect(aside).toBeVisible({ timeout: 60_000 })
-    // Prefer explicit pin control — avoid matching AI chat / other "navigation" buttons.
+    const rail = page.getByTestId("nav-rail-b")
+    await expect(rail).toBeVisible({ timeout: 60_000 })
+    await expect(rail).toHaveAttribute("data-nav-expanded", "false")
     const pin = page.getByTestId("nav-pin-labels")
     await expect(pin).toBeVisible({ timeout: 30_000 })
     await pin.click({ force: true })
-    await expect(aside).toBeVisible()
+    await expect(rail).toHaveAttribute("data-nav-expanded", "true")
+    await expect(page.getByTestId("sidebar-link-activity")).toBeVisible()
     await expect(page).not.toHaveURL(/\/login/)
   })
 
@@ -107,10 +108,13 @@ test.describe("Authenticated product surface matrix", () => {
     )
   })
 
-  test("Connectors — /connectors list-first", async ({ page }) => {
-    await assertAuthenticatedRoute(page, "/connectors", () =>
-      page.getByRole("heading", { name: /connector/i }).first(),
-    )
+  test("Connectors — /connectors hub list-first", async ({ page }) => {
+    await page.goto("/connectors")
+    await expect(page).not.toHaveURL(/\/login/)
+    await expect(page.getByTestId("connectors-hub-b")).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole("heading", { name: /connector/i }).first()).toBeVisible({
+      timeout: 90_000,
+    })
   })
 
   test("Sources — /sources table", async ({ page }) => {
