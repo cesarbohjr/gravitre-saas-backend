@@ -152,6 +152,10 @@ def should_skip_unified_live_for_compiled_read(
     )
     if needs.analytics_short_circuit:
         return True
+    from app.services.capability_evidence_plan import looks_like_ceo_ops_question
+
+    if looks_like_ceo_ops_question(message or ""):
+        return True
     from app.capability_ontology.cognitive_recipe_planner import match_recipe_for_query
     from app.services.operational_read_execution import OPERATIONAL_READ_RECIPES
     from app.services.task_continuity import frame_is_analytics
@@ -264,18 +268,21 @@ async def try_compiled_operational_read_turn(
     user_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Analytics first, then other F1 department READs, before ReAct."""
-    analytics = await try_analytics_short_circuit_turn(
-        message=message,
-        resolution=resolution,
-        org_id=org_id,
-        client=client,
-        settings=settings,
-        connected_integrations=connected_integrations,
-        task_state=task_state,
-        user_id=user_id,
-    )
-    if analytics:
-        return analytics
+    from app.services.capability_evidence_plan import looks_like_ceo_ops_question
+
+    if not looks_like_ceo_ops_question(message or ""):
+        analytics = await try_analytics_short_circuit_turn(
+            message=message,
+            resolution=resolution,
+            org_id=org_id,
+            client=client,
+            settings=settings,
+            connected_integrations=connected_integrations,
+            task_state=task_state,
+            user_id=user_id,
+        )
+        if analytics:
+            return analytics
     from app.services.operational_read_execution import try_operational_read_short_circuit_turn
 
     operational = await try_operational_read_short_circuit_turn(
@@ -288,6 +295,22 @@ async def try_compiled_operational_read_turn(
         user_id=user_id,
     )
     if operational:
+        from app.services.capability_evidence_plan import (
+            build_capability_evidence_plan,
+            looks_like_ceo_ops_question,
+            pending_auth_prose,
+        )
+
+        if looks_like_ceo_ops_question(message or ""):
+            plan = build_capability_evidence_plan(
+                message or "",
+                connected_integrations=list(connected_integrations or []),
+                settings=settings,
+            )
+            note = pending_auth_prose(plan)
+            if note:
+                body = str(operational.get("message") or "").rstrip()
+                operational["message"] = f"{body}\n\n{note}" if body else note
         return operational
     from app.services.governed_write_compile import try_governed_write_compile_turn
 

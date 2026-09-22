@@ -51,6 +51,7 @@ async def _drive(token: str, speech: bytes) -> dict:
             "access_token": token,
             "org_id": ORG,
             "conversation_id": str(uuid.uuid4()),
+            "audio_origin": "probe_pcm",
         },
     )
     types: list[str] = []

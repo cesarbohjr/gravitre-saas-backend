@@ -196,9 +196,12 @@ async def try_operational_read_short_circuit_turn(
 ) -> dict[str, Any] | None:
     recipe = match_recipe_for_query(message)
     if recipe is None or recipe.recipe_id not in OPERATIONAL_READ_RECIPES:
+        from app.services.capability_evidence_plan import looks_like_ceo_ops_question
         from app.services.task_continuity import decide_task_continuity
 
-        if decide_task_continuity(message, task_state) == "continue":
+        if looks_like_ceo_ops_question(message or ""):
+            recipe = get_recipe("sales.pipeline.health")
+        elif decide_task_continuity(message, task_state) == "continue":
             cap = infer_operational_recipe_id(task_state)
             if cap in OPERATIONAL_READ_RECIPES:
                 recipe = get_recipe(cap)

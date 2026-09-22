@@ -1951,6 +1951,24 @@ async def apply_unified_turn_live(
     Write tool proposals stage ``awaiting_confirm`` — never bypass approval.
     """
     active = settings or get_settings()
+    from app.services.capability_evidence_plan import looks_like_ceo_ops_question
+
+    if looks_like_ceo_ops_question(message or ""):
+        silent = UnifiedTurnShadowResult(
+            outcome_kind="skipped",
+            error="evidence_plan_required_read",
+            live_served=False,
+        )
+        _mark_live_fallthrough(silent, "evidence_plan_required_read")
+        emit_unified_turn_shadow_audit(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+            result=silent,
+        )
+        return None
+
     if not getattr(active, "unified_turn_live_enabled", False):
         # Capstone: no silent handoff — emit when caller reached LIVE with a client.
         if client is not None and org_id:

@@ -105,6 +105,7 @@ async def drive_turn(token: str, speech: bytes, *, deadline_s: float = 90.0) -> 
             "access_token": token,
             "org_id": ISOLATED_ORG,
             "conversation_id": str(uuid.uuid4()),
+            "audio_origin": "probe_pcm",
         },
     )
 

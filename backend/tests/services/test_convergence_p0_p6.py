@@ -104,6 +104,16 @@ def test_p3_probe_pcm_does_not_barge_in_user_mic_does() -> None:
     assert should_honor_user_mic_barge_in(origin=PROBE_PCM, turn_state=SPEAKING) is False
 
 
+def test_p4_ceo_skips_live_for_compiled_hubspot_read() -> None:
+    from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+    assert should_skip_unified_live_for_compiled_read(
+        "How is the business doing and what should I worry about?",
+        {},
+        ["hubspot", "google_ads"],
+    ) is True
+
+
 def test_p4_ceo_plan_requires_hubspot_not_kf_substitute() -> None:
     assert looks_like_ceo_ops_question("How is the business doing and what should I worry about?")
     plan = build_capability_evidence_plan(

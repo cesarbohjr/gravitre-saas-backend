@@ -136,10 +136,21 @@ def build_pipecat_voice_task(
 
     krisp_filter, krisp_meta = build_krisp_viva_input_filter(settings)
 
-    from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
+    from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession, normalize_origin
 
     voice_session = VoicePipelineSession()
-    serializer = GravitreJsonAudioSerializer(session=voice_session)
+    query_origin = ""
+    try:
+        qp = getattr(websocket, "query_params", None) or {}
+        query_origin = str(qp.get("audio_origin") or qp.get("origin") or "")
+    except Exception:  # noqa: BLE001
+        query_origin = ""
+    if query_origin:
+        voice_session.set_origin(normalize_origin(query_origin, default=voice_session.origin))
+    serializer = GravitreJsonAudioSerializer(
+        session=voice_session,
+        default_origin=voice_session.origin,
+    )
 
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
