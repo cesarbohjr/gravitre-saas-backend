@@ -1,10 +1,10 @@
 {
   "probe": "3.0_closeout_live",
-  "started_at": "2026-09-21T21:25:07.313302+00:00",
+  "started_at": "2026-09-22T02:39:08.523885+00:00",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "health": {
-    "git_sha": "7a2eaaabecd99d969f1b43478687b7599c13e747",
-    "timestamp": "2026-09-21T21:24:16.575665+00:00"
+    "git_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+    "timestamp": "2026-09-22T02:38:22.670698+00:00"
   },
   "h_unique_bind": {
     "pass": true,
@@ -55,20 +55,22 @@
   },
   "d_resume": {
     "pass": true,
-    "conversation_id": "2ec268a2-84af-48ab-99a3-ef95d59c578a",
-    "list_name": "gravitre-3-0-d-resume-20260921212418",
+    "conversation_id": "c2e362ec-3a30-416c-95ad-43ba80654ba2",
+    "list_name": "gravitre-3-0-d-resume-20260922023825",
     "stage_http": 200,
     "hold_http": 200,
     "stage_plan_ids": [
-      "752df0d0-34a7-418d-a9d6-4f71f8e1046f"
+      "a8d95f75-f4b6-49c1-81ea-3d7f4ec8f186"
     ],
     "hold_plan_ids": [],
-    "stored_plan_id": "752df0d0-34a7-418d-a9d6-4f71f8e1046f",
-    "resumed_plan_id": null,
-    "sent_claim": false
+    "stored_plan_id": "a8d95f75-f4b6-49c1-81ea-3d7f4ec8f186",
+    "checkpoint_plan_id": "a8d95f75-f4b6-49c1-81ea-3d7f4ec8f186",
+    "resumed_plan_id": "a8d95f75-f4b6-49c1-81ea-3d7f4ec8f186",
+    "sent_claim": false,
+    "durable_checkpoint_present": true
   },
   "pass": true,
-  "finished_at": "2026-09-21T21:25:07.313336+00:00",
+  "finished_at": "2026-09-22T02:39:08.523902+00:00",
   "lane_b": "NOT_RUN",
   "voice_c": "NOT_RUN"
 }
