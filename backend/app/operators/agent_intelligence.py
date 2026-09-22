@@ -2033,6 +2033,7 @@ class AgentIntelligence:
             if isinstance(_evidence, dict) or compose_kind == "canned":
                 _mark("observation")
             _mark("composer_start")
+            _mark("first_sse")
             packed = await _composed_reply(
                 response_text,
                 kind=compose_kind,
@@ -3590,6 +3591,33 @@ class AgentIntelligence:
         _mark("capability_compile")
         if not _unified_live_ok:
             from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn as _try_compiled_early
+            from app.services.retrieve_plan_gate import (
+                retrieve_plan_or_none,
+                stage_retrieved_plan_turn,
+            )
+
+            if conversation_id:
+                retrieved_early = retrieve_plan_or_none(
+                    task_text,
+                    org_id=org_id,
+                    connected_integrations=list(connected_early or []),
+                    client=client,
+                    require_pack_install=True,
+                )
+                if retrieved_early is not None and retrieved_early.block_fabrication:
+                    staged = await stage_retrieved_plan_turn(
+                        retrieved_early,
+                        org_id=org_id,
+                        conversation_id=conversation_id,
+                        message=task_text,
+                        task_state=task_state if isinstance(task_state, dict) else {},
+                        client=client,
+                        settings=active_settings,
+                    )
+                    if staged and staged.get("stop_pipeline"):
+                        async for ev in _emit_compiled_operational_short_circuit(staged):
+                            yield ev
+                        return
 
             if should_skip_unified_live_for_compiled_read(
                 task_text,
