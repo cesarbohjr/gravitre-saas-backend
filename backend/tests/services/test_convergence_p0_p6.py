@@ -224,6 +224,42 @@ def test_p5_workflow_ctx_inherits_parent_plan() -> None:
     assert tool_ctx.cognitive_invoke is False
 
 
+def test_p5_drain_skips_pending_approval_and_completed_steps() -> None:
+    from app.workflows.policy import can_inline_drain_unstarted_run
+
+    assert (
+        can_inline_drain_unstarted_run(
+            {"status": "pending_approval", "trigger_type": "assistant_chat", "steps": []}
+        )
+        is False
+    )
+    assert (
+        can_inline_drain_unstarted_run(
+            {
+                "status": "running",
+                "trigger_type": "assistant_chat",
+                "steps": [{"status": "completed"}],
+            }
+        )
+        is False
+    )
+    assert (
+        can_inline_drain_unstarted_run(
+            {"status": "running", "trigger_type": "assistant_chat", "steps": []}
+        )
+        is True
+    )
+
+
+def test_p5_tool_execute_workflow_is_force_inline() -> None:
+    import inspect
+
+    from app.services import assistant_tools
+
+    src = inspect.getsource(assistant_tools.tool_execute_workflow)
+    assert "force_inline=True" in src
+
+
 def test_p6_tool_success_is_not_plan_bias() -> None:
     assert tool_success_is_business_impact("connector_action_executed") is False
     bias = bias_notes_from_event_rows(

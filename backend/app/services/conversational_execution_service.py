@@ -602,23 +602,40 @@ class ConversationalExecutionService:
             result=result,
         )
 
-        await self._state.update_task_state(
-            conversation_id,
-            org_id,
-            {
-                "pending_task": {"type": task_type, "status": "executed", "result": result.__dict__},
-                "completed_steps": [
-                    {
-                        "step_id": f"execute_{task_type}",
-                        "label": result.task_label or result.title,
-                        "url": result.result_url,
-                        "entity_type": result.entity_type,
-                        "entity_id": result.entity_id,
+        if result.success:
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_task": {"type": task_type, "status": "executed", "result": result.__dict__},
+                    "completed_steps": [
+                        {
+                            "step_id": f"execute_{task_type}",
+                            "label": result.task_label or result.title,
+                            "url": result.result_url,
+                            "entity_type": result.entity_type,
+                            "entity_id": result.entity_id,
+                        }
+                    ],
+                    "approved_actions": [{"type": task_type, "entity_id": result.entity_id, "url": result.result_url}],
+                },
+            )
+        else:
+            body_l = str(result.body or "").lower()
+            resumable = "in progress" in body_l or "try again" in body_l
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {
+                    "pending_task": {
+                        "type": task_type,
+                        "status": "awaiting_confirm" if resumable else "failed",
+                        "params": clarified,
+                        "last_error": result.body,
+                        "error_code": result.error_code,
                     }
-                ],
-                "approved_actions": [{"type": task_type, "entity_id": result.entity_id, "url": result.result_url}],
-            },
-        )
+                },
+            )
 
         await self._record_learning_outcome(org_id, user_id, result, classification)
         return result

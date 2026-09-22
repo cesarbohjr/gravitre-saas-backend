@@ -114,6 +114,27 @@ def check_concurrency(
     return None
 
 
+def can_inline_drain_unstarted_run(run: dict | None) -> bool:
+    """True when a RUNNING assistant_chat run has no completed/failed steps.
+
+    Used so chat force_inline can finish a queued-but-undrained job without
+    creating a second execute run. pending_approval is never drainable here.
+    """
+    from app.workflows.constants import RUN_STATUS_RUNNING, STEP_STATUS_COMPLETED, STEP_STATUS_FAILED
+
+    if not run:
+        return False
+    if str(run.get("status") or "") != RUN_STATUS_RUNNING:
+        return False
+    trigger = str(run.get("trigger_type") or run.get("trigger") or "").strip()
+    if trigger and trigger not in {"assistant_chat", "chat"}:
+        return False
+    steps = run.get("steps") or []
+    if any(str(s.get("status") or "") in {STEP_STATUS_COMPLETED, STEP_STATUS_FAILED} for s in steps):
+        return False
+    return True
+
+
 def active_run_conflict_detail(active_run_id: str) -> dict[str, str]:
     """Plain-language 409 payload for execute concurrency conflicts."""
     short = active_run_id[:8] if active_run_id else ""

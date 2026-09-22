@@ -1990,6 +1990,72 @@ async def execute_workflow(
         }
 
 
+def _drain_unstarted_assistant_chat_run(
+    *,
+    client,
+    settings: Settings,
+    org_id: str,
+    environment_name: str,
+    actor_id: str,
+    definition: dict,
+    parameters: dict,
+    run_id: str,
+    start: float,
+) -> dict | None:
+    """Complete a chat-queued run that never left RUNNING because the worker did not drain.
+
+    Does not resume pending_approval (approvals stay required) and does not
+    attach to a run that already has completed or failed steps.
+    """
+    from app.workflows.policy import can_inline_drain_unstarted_run
+    from app.workflows.repository import get_run_with_steps
+
+    run = get_run_with_steps(client, org_id, run_id, environment_name)
+    if not can_inline_drain_unstarted_run(run):
+        return None
+    merged = dict((run or {}).get("parameters") or {})
+    merged.update(parameters or {})
+    steps_exist = bool((run or {}).get("steps"))
+    final_status, step_rows, errors, rate_limited = execute_workflow_steps(
+        settings=settings,
+        org_id=org_id,
+        user_id=actor_id,
+        run_id=run_id,
+        definition=definition,
+        parameters=merged,
+        client=client,
+        environment_name=environment_name,
+        steps_exist=steps_exist,
+    )
+    if rate_limited:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+        )
+    rag_failed = any(s.get("error_code") == ERROR_CODE_RAG_UNAVAILABLE for s in step_rows)
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    logger.info(
+        "workflow_execute_drained_inline org_id=%s run_id=%s latency_ms=%s status=%s",
+        org_id,
+        run_id,
+        latency_ms,
+        final_status,
+    )
+    if rag_failed:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Retrieval temporarily unavailable",
+        )
+    return {
+        "run_id": run_id,
+        "status": final_status,
+        "approval_required": False,
+        "steps": [_step_to_out(s) for s in step_rows],
+        "errors": errors,
+        "drained_inline": True,
+    }
+
+
 def _execute_workflow_with_context(
     *,
     client,
@@ -2072,6 +2138,20 @@ def _execute_workflow_with_context(
 
     active_run_id = check_concurrency(client, org_id, workflow_id, environment_name=environment_name)
     if active_run_id:
+        if force_inline:
+            drained = _drain_unstarted_assistant_chat_run(
+                client=client,
+                settings=settings,
+                org_id=org_id,
+                environment_name=environment_name,
+                actor_id=actor_id,
+                definition=definition,
+                parameters=parameters,
+                run_id=active_run_id,
+                start=start,
+            )
+            if drained is not None:
+                return drained
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=active_run_conflict_detail(active_run_id),

@@ -398,6 +398,16 @@ async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
             extras=hold.extras,
         )
     if is_operator_task_shaped(text):
+        status = await _propose_connector_status(ctx)
+        if status is not None and (status.answer or "").strip():
+            return GatewayDecision(
+                action="shortcut",
+                reason="candidate_accepted",
+                candidate_id=status.candidate_id,
+                confidence=status.confidence,
+                answer=status.answer,
+                extras=status.extras,
+            )
         return GatewayDecision(action="fallthrough", reason="operator_task_shaped")
 
     proposals: list[CandidateVerdict] = []

@@ -86,3 +86,36 @@ async def test_retrieval_ab_a_20260921_live_false_claim_blocked_without_getconne
     assert decision.extras.get("status_tool_invoked") is True
     assert decision.extras.get("verified_tool") is None
 
+
+@pytest.mark.asyncio
+@patch("app.services.connector_status_reply_service._rows_from_get_connector_status")
+async def test_gateway_shortcuts_is_apollo_connected_despite_operator_work_regex(mock_rows):
+    mock_rows.return_value = (
+        [
+            {
+                "vendor": "apollo",
+                "execution_available": True,
+                "auth_status": "connected",
+                "display_status": "connected",
+                "connected": True,
+            }
+        ],
+        False,
+    )
+    decision = await evaluate_intent_gateway(
+        GatewayContext(
+            message="Is Apollo connected?",
+            org_id="org-1",
+            client=MagicMock(),
+            connected_integrations=["apollo"],
+            settings=MagicMock(),
+        )
+    )
+    assert decision.action == "shortcut"
+    assert decision.candidate_id == "connector_status"
+    assert decision.reason != "operator_task_shaped"
+    assert decision.answer is not None
+    assert "connected" in decision.answer.lower()
+    assert "checking" not in decision.answer.lower()
+    assert "knowledge base" not in decision.answer.lower()
+

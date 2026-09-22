@@ -62,6 +62,17 @@ def looks_like_operator_task(message: str) -> bool:
     text = (message or "").strip()
     if not text:
         return False
+    try:
+        from app.services.connector_status_reply_service import parse_connector_status_question
+
+        parsed = parse_connector_status_question(text)
+        if parsed is not None and parsed.kind.value == "connection":
+            from app.services.connector_status_reply_service import _IS_VENDOR_CONNECTED_RE
+
+            if _IS_VENDOR_CONNECTED_RE.match(text):
+                return False
+    except Exception:  # noqa: BLE001
+        pass
     lowered = text.lower()
     if any(hint in lowered for hint in OPERATOR_TASK_HINTS):
         return True

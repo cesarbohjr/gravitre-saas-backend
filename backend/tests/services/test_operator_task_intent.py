@@ -47,6 +47,12 @@ def test_connector_lookup_and_list_create_are_operator_tasks() -> None:
     assert looks_like_operator_task("In Apollo, create a contact list.")
 
 
+def test_simple_apollo_connected_question_is_not_operator_task() -> None:
+    assert not looks_like_operator_task("Is Apollo connected")
+    assert not looks_like_operator_task("Is Apollo connected?")
+    assert not is_operator_task_shaped("Is Apollo connected?")
+
+
 def test_spoken_lite_path_is_absorbed_by_the_gateway() -> None:
     assert not use_spoken_lite_path(
         spoken_mode=True,

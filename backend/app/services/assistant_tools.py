@@ -899,6 +899,7 @@ def tool_execute_workflow(
                 parameters=run_params,
                 actor_id=actor_id,
                 trigger_type="assistant_chat",
+                force_inline=True,
             )
         except HTTPException as exc:
             detail = exc.detail
@@ -910,7 +911,11 @@ def tool_execute_workflow(
             "workflowName": str(match.get("name") or "Workflow"),
             "runId": str(result.get("run_id") or result.get("id") or ""),
             "status": str(result.get("status") or "queued"),
-            "message": "Workflow run started — open Runs to track progress.",
+            "message": (
+                f"Workflow “{match.get('name') or 'Workflow'}” finished."
+                if str(result.get("status") or "").lower() in {"completed", "success"}
+                else "Workflow run started — open Runs to track progress."
+            ),
         }
     except Exception as exc:  # noqa: BLE001
         logger.warning("assistant execute_workflow tool failed org_id=%s error=%s", org_id, str(exc))

@@ -2002,9 +2002,14 @@ class AgentIntelligence:
                 or _analytics_turn.get("plan_terminal_status")
                 or "completed"
             )
+            confirming = dialogue_mode in {"confirm", "clarifying"} or ws in {
+                "awaiting_confirm",
+                "needs clarification",
+                "clarifying",
+            }
             compose_kind = (
                 "clarify"
-                if ws in {"needs clarification", "clarifying"}
+                if confirming
                 else (
                     "error"
                     if ws in {"blocked", "failed", "connector_not_connected"}
@@ -2012,7 +2017,7 @@ class AgentIntelligence:
                 )
             )
             compose_extra: dict[str, Any] = {
-                "success": ws == "completed",
+                "success": confirming or ws == "completed",
                 "data": {"text": response_text},
                 "workflow_status": ws,
             }
@@ -2113,6 +2118,10 @@ class AgentIntelligence:
         ) -> list[AssistantStreamEvent]:
             nonlocal spoken_progress_text_id, spoken_progress_text
             if not spoken_mode or loop_trace.fast_path:
+                return []
+            from app.services.connector_status_reply_service import is_connector_status_question
+
+            if is_connector_status_question(task_text):
                 return []
             name = str(stage or "").strip().upper()
             if name in spoken_progress_stages:

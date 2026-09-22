@@ -192,3 +192,34 @@ async def test_yes_invokes_when_pending_type_was_create_workflow_stamp():
         )
     assert result is not None
     assert result["execution_result"]["entity_id"] == "run-2"
+
+
+@pytest.mark.asyncio
+async def test_failed_in_progress_keeps_awaiting_confirm(execution_service):
+    failed = ExecutionResult(
+        success=False,
+        entity_type="workflow",
+        entity_id="wf-1",
+        result_url="/workflows/wf-1",
+        title="Workflow execution failed",
+        body="This workflow already has a run in progress (abcd1234…). Open that run to monitor or cancel it, then try again.",
+        error_code="workflow_execute_failed",
+    )
+    execution_service._state.get_task_state = AsyncMock(
+        return_value={"clarified_params": {}, "pending_task": {"type": "execute_workflow", "status": "awaiting_confirm"}}
+    )
+    with patch.object(execution_service, "_execute_workflow", AsyncMock(return_value=failed)):
+        with patch.object(execution_service, "_finalize_task_outcome"):
+            result = await execution_service.execute_task(
+                org_id="org-1",
+                user_id="user-1",
+                conversation_id="conv-1",
+                task_type="execute_workflow",
+                clarified={"workflow_id": "wf-1", "query": "Lead nurture"},
+                client=MagicMock(),
+                classification={},
+            )
+    assert result.success is False
+    execution_service._state.update_task_state.assert_awaited()
+    patch_payload = execution_service._state.update_task_state.await_args.args[2]
+    assert patch_payload["pending_task"]["status"] == "awaiting_confirm"
