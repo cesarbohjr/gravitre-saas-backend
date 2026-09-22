@@ -1,0 +1,32 @@
+{
+  "release_pair_id": "2026-09-22T06:31Z",
+  "objective": "provenance + compatibility, not identical SHAs",
+  "backend": {
+    "platform": "Railway",
+    "health_url": "https://api.gravitre.app/health",
+    "git_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+    "health_timestamp": "2026-09-22T06:31:33.025027+00:00",
+    "flags": {
+      "unified_turn_live_enabled": true,
+      "unified_turn_shadow_enabled": true,
+      "unified_turn_task_model_tier": "low"
+    },
+    "rollback": "redeploy prior Railway image with known git_sha"
+  },
+  "frontend": {
+    "platform": "Vercel",
+    "project": "gravitre-saas-backend",
+    "git_sha": "9eb88ee63e23c84672269748ef2ed103f0637582",
+    "deployment_id": "dpl_8HYCguvWjJ68SHcV6fePjUKv1pqA",
+    "rollback_candidate": true,
+    "note": "I3 TypeScript cast / UX commits after backend tip"
+  },
+  "git_origin_main": "9eb88ee63e23c84672269748ef2ed103f0637582",
+  "lineage": {
+    "backend_is_ancestor_of_frontend": true,
+    "divergence_class": "INTENTIONAL_INDEPENDENT_DEPLOY",
+    "accidental_if": "frontend SHA is not a descendant of backend SHA"
+  },
+  "db_migrations": "UNKNOWN this pass — health database=healthy only",
+  "evidence_level": "PRODUCTION_VERIFIED"
+}

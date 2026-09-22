@@ -1,0 +1,55 @@
+{
+  "audit": "GRAVITRE_MASTER_PLATFORM_AUDIT_2026",
+  "evidence_level": "CODE_INSPECTED (config.py MODEL_TIERS + adapters). Per-call average tokens/latency/cost: UNKNOWN (not aggregated this pass).",
+  "providers_wired": ["openai", "anthropic", "gemini"],
+  "providers_absent": ["groq", "together", "azure_openai"],
+  "preferred_provider_default": "openai",
+  "failover_enabled_default": true,
+  "tiers": {
+    "low": {"openai": "gpt-5.4-mini", "anthropic": "claude-haiku-4-5-20251001", "gemini": "gemini-2.5-flash"},
+    "medium_high": {"openai": "gpt-5.5", "anthropic": "claude-sonnet-4-6", "gemini": "gemini-2.5-pro"},
+    "vision": {"openai": "gpt-4o", "anthropic": "claude-3-5-sonnet-20241022", "gemini": "gemini-2.5-pro"}
+  },
+  "special_models": {
+    "voice_conversational": "gpt-5.4-nano",
+    "web_research": "gemini-2.5-flash",
+    "embedding": "text-embedding-3-small",
+    "tool_embed_local": "all-MiniLM-L6-v2",
+    "rerank_prod": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "moderation": "omni-moderation-latest",
+    "stt_http": "nova-2",
+    "stt_pipecat": "flux-general-en",
+    "tts": "eleven_flash_v2_5",
+    "audio_transcribe_openai": "gpt-4o-mini-transcribe",
+    "finetune_base": "gpt-4.1-mini"
+  },
+  "prod_health_task_model_tier": "low",
+  "call_site_classes": [
+    {"purpose": "assistant_stream", "router": "model_router.py", "streaming": true},
+    {"purpose": "unified_turn_tools_openai", "file": "unified_turn_reasoning_service.py", "streaming": true},
+    {"purpose": "unified_turn_tools_non_openai", "file": "provider_tool_router.py", "streaming": false},
+    {"purpose": "react_tools", "file": "react_engine.py", "streaming": "mixed"},
+    {"purpose": "composer", "file": "response_composer.py", "streaming": false},
+    {"purpose": "embeddings", "file": "rag/embedding.py", "streaming": false},
+    {"purpose": "moderation", "file": "ai_guardrails.py", "streaming": false},
+    {"purpose": "voice_bridge", "file": "pipecat_voice/cognitive_llm.py", "streaming": true, "note": "does not use Pipecat OpenAI LLM"}
+  ],
+  "llm_used_for": [
+    "classification",
+    "reasoning",
+    "planning",
+    "tool_selection",
+    "summarization",
+    "composer",
+    "voice_response",
+    "entity_extract_kg",
+    "clarification_polish",
+    "verification_critic"
+  ],
+  "deterministic_should_replace_llm_candidates": [
+    "connector_status intent gateway (already shortcut)",
+    "spoken yes-wait hold (already shortcut)",
+    "F1 HMAC preflight",
+    "pack-common list create retrieve_plan_gate"
+  ]
+}

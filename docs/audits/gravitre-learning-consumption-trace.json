@@ -1,0 +1,26 @@
+{
+  "org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "window": "7d sample cap 50",
+  "events": {
+    "connector_action_executed": 18,
+    "workflow_executed": 17,
+    "recommendation_created": 10,
+    "workflow_cancelled": 4,
+    "workflow_failed": 1,
+    "business_metric_improved": 0
+  },
+  "classification": "TOOL_SUCCESS_AND_WORKFLOW_ONLY",
+  "business_outcome_present": false,
+  "later_plan_changed_because_of_kpi": "NOT_PROVEN",
+  "hubspot_objective_trace": {
+    "plan": "read_sales_pipeline_health",
+    "action": "hubspot.deals.list",
+    "observation": "25 deals",
+    "measured_business_outcome": "ABSENT",
+    "persisted_learning": "possibly connector_action_executed (not verified row-linked this pass)",
+    "subsequent_task": "Only the large ones — cutoff clarify; not a biased plan from KPI"
+  },
+  "knowledge_fabric_on_ceo_prompt": "searchKnowledgeBase used; did not invoke HubSpot/Ads; substituted internal tools",
+  "trained_ml_serving_kernel": false,
+  "mechanisms": ["llm", "embeddings_jit", "rules_hmac", "heuristics_fallthrough"]
+}

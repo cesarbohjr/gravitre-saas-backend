@@ -1,0 +1,711 @@
+{
+  "probe": "master_audit_evidence_closure",
+  "started_at": "2026-09-22T06:31:35.631144+00:00",
+  "health": {
+    "status": "ok",
+    "timestamp": "2026-09-22T06:31:33.025027+00:00",
+    "version": "0.1.0",
+    "environment": "prod",
+    "git_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+    "ai_disabled": false,
+    "unified_turn_shadow_enabled": true,
+    "unified_turn_live_enabled": true,
+    "unified_turn_embedding_tool_retrieval": true,
+    "unified_turn_embed_min_catalog_tools": 40,
+    "unified_turn_task_model_tier": "low",
+    "unified_turn_qa_hooks_enabled": true,
+    "internet_research_enabled": true,
+    "web_research_provider_configured": true,
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    }
+  },
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "isolated_connectors": [
+    {
+      "type": "quickbooks",
+      "status": "pending_auth",
+      "error_class": null
+    },
+    {
+      "type": "gmail",
+      "status": "pending_auth",
+      "error_class": null
+    },
+    {
+      "type": "google_ads",
+      "status": "healthy",
+      "error_class": null
+    },
+    {
+      "type": "google_search_console",
+      "status": "pending_auth",
+      "error_class": null
+    },
+    {
+      "type": "google_analytics",
+      "status": "pending_auth",
+      "error_class": null
+    },
+    {
+      "type": "stripe",
+      "status": "active",
+      "error_class": null
+    },
+    {
+      "type": "greenhouse",
+      "status": "active",
+      "error_class": null
+    },
+    {
+      "type": "linkedin",
+      "status": "active",
+      "error_class": null
+    },
+    {
+      "type": "clay",
+      "status": "active",
+      "error_class": null
+    },
+    {
+      "type": "slack",
+      "status": "error",
+      "error_class": null
+    },
+    {
+      "type": "hubspot",
+      "status": "healthy",
+      "error_class": null
+    },
+    {
+      "type": "apollo",
+      "status": "healthy",
+      "error_class": null
+    }
+  ],
+  "fallthrough_24h_isolated": {
+    "n": 71,
+    "reasons": {
+      "defer_classical_tool_sse": 38,
+      "pending_family_classical_resume": 19,
+      "read_tool_classical": 14
+    }
+  },
+  "fallthrough_7d_isolated": {
+    "n": 152,
+    "reasons": {
+      "defer_classical_tool_sse": 74,
+      "read_tool_classical": 56,
+      "pending_family_classical_resume": 22
+    }
+  },
+  "audit_counts_24h_isolated": {
+    "unified_turn.live.fallthrough": 71,
+    "classical.answer_path.reached": 72,
+    "tool.invoke.completed": 35,
+    "response.composer.completed": 165
+  },
+  "outcomes_7d_isolated": {
+    "n": 50,
+    "events": {
+      "connector_action_executed": 18,
+      "workflow_executed": 17,
+      "recommendation_created": 10,
+      "workflow_cancelled": 4,
+      "workflow_failed": 1
+    },
+    "latest": [
+      {
+        "outcome_event": "connector_action_executed",
+        "created_at": "2026-09-21T20:02:46.09381+00:00",
+        "department": null
+      },
+      {
+        "outcome_event": "workflow_executed",
+        "created_at": "2026-09-21T20:02:42.404806+00:00",
+        "department": null
+      },
+      {
+        "outcome_event": "connector_action_executed",
+        "created_at": "2026-09-21T19:59:58.993142+00:00",
+        "department": null
+      },
+      {
+        "outcome_event": "workflow_executed",
+        "created_at": "2026-09-21T19:59:57.070616+00:00",
+        "department": null
+      },
+      {
+        "outcome_event": "connector_action_executed",
+        "created_at": "2026-09-21T19:57:57.410353+00:00",
+        "department": null
+      },
+      {
+        "outcome_event": "workflow_executed",
+        "created_at": "2026-09-21T19:57:55.868042+00:00",
+        "department": null
+      },
+      {
+        "outcome_event": "connector_action_executed",
+        "created_at": "2026-09-21T19:40:11.958783+00:00",
+        "department": null
+      },
+      {
+        "outcome_event": "workflow_executed",
+        "created_at": "2026-09-21T19:40:08.90265+00:00",
+        "department": null
+      }
+    ]
+  },
+  "turns": [
+    {
+      "prompt": "Hi.",
+      "http_status": 200,
+      "first_useful_text_ms": 6123,
+      "completion_ms": 9473,
+      "assistant_excerpt": "Hey \u2014 I'm here. What do you want to get done?",
+      "tools": [],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "[DONE]"
+      ],
+      "id": "cold_greeting",
+      "conversation_id": "7534fea8-49e9-4567-bb40-e545400c6d62",
+      "cohort": "cold",
+      "audit_actions": [
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed"
+      ],
+      "fallthrough": [],
+      "classical_reached": false,
+      "composer": [
+        {
+          "kind": "shortcut",
+          "success": true
+        }
+      ],
+      "invokes": [],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    },
+    {
+      "prompt": "Hello again.",
+      "http_status": 200,
+      "first_useful_text_ms": 2092,
+      "completion_ms": 5081,
+      "assistant_excerpt": "Hey \u2014 I'm here. What do you want to get done?",
+      "tools": [],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "id": "warm_greeting",
+      "conversation_id": "7534fea8-49e9-4567-bb40-e545400c6d62",
+      "cohort": "warm_followup",
+      "audit_actions": [
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed"
+      ],
+      "fallthrough": [],
+      "classical_reached": false,
+      "composer": [
+        {
+          "kind": "shortcut",
+          "success": true
+        }
+      ],
+      "invokes": [],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    },
+    {
+      "prompt": "What can you help me with in one sentence?",
+      "http_status": 200,
+      "first_useful_text_ms": 2632,
+      "completion_ms": 5586,
+      "assistant_excerpt": "I am Gravitre \u2014 a calm operator for your Connected tools. Connected for this org right now: Apollo, Google Ads, Hubspot. Writes go through catalog write-authority with explicit approval when required (Decision Queue / reply **yes**). I can also help with multi-step plans, run history, and marketplace intelligence packs once connectors are Connected.",
+      "tools": [],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "[DONE]"
+      ],
+      "id": "general_conversation",
+      "conversation_id": "63c9f8d3-cef9-4329-93ce-053f97e32305",
+      "cohort": "cold",
+      "audit_actions": [
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed"
+      ],
+      "fallthrough": [],
+      "classical_reached": false,
+      "composer": [
+        {
+          "kind": "shortcut",
+          "success": true
+        }
+      ],
+      "invokes": [],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    },
+    {
+      "prompt": "Show my deals.",
+      "http_status": 200,
+      "first_useful_text_ms": 19931,
+      "completion_ms": 23199,
+      "assistant_excerpt": "I found 25 deals in your connected CRM.",
+      "tools": [],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "data-intelligence",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "id": "hubspot_read",
+      "conversation_id": "0d35dba2-ab04-4094-8cbd-e2a43bc9c561",
+      "cohort": "cold",
+      "audit_actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "classical.answer_path.reached",
+        "tool.invoke.requested",
+        "tool.invoke.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed"
+      ],
+      "fallthrough": [],
+      "classical_reached": true,
+      "composer": [
+        {
+          "kind": "canned",
+          "success": true
+        }
+      ],
+      "invokes": [
+        {
+          "action": "hubspot.deals.list",
+          "provider_invoked": true,
+          "plan_id": "1cbc5337-51cd-4fec-b7b7-033587448085",
+          "step_id": "read_sales_pipeline_health"
+        }
+      ],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    },
+    {
+      "prompt": "Only the large ones.",
+      "http_status": 200,
+      "first_useful_text_ms": 16787,
+      "completion_ms": 19495,
+      "assistant_excerpt": "What amount should count as \u201clarge\u201d so I can filter the 25 deals properly? I won\u2019t guess the cutoff.",
+      "tools": [
+        "searchKnowledgeBase",
+        "searchKnowledgeBase"
+      ],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "tool-input-available",
+        "tool-output-available",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "data-intelligence",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "id": "hubspot_followup",
+      "conversation_id": "0d35dba2-ab04-4094-8cbd-e2a43bc9c561",
+      "cohort": "warm_followup",
+      "audit_actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "classical.answer_path.reached",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed"
+      ],
+      "fallthrough": [],
+      "classical_reached": true,
+      "composer": [
+        {
+          "kind": "clarify",
+          "success": false
+        }
+      ],
+      "invokes": [],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    },
+    {
+      "prompt": "What should we do about it?",
+      "http_status": 200,
+      "first_useful_text_ms": 16574,
+      "completion_ms": 20790,
+      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me what \u201cit\u201d refers to, and I\u2019ll tell you the next move.",
+      "tools": [],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "[DONE]"
+      ],
+      "id": "ambiguous",
+      "conversation_id": "fc8503d6-b6dc-4221-9a1c-a4de593de83d",
+      "cohort": "cold",
+      "audit_actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "evidence.sufficiency.assessed",
+        "runtime.jit.tool_namespace",
+        "runtime.jit.context_profile",
+        "unified_turn.live.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed"
+      ],
+      "fallthrough": [],
+      "classical_reached": false,
+      "composer": [
+        {
+          "kind": "success",
+          "success": true
+        }
+      ],
+      "invokes": [],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    },
+    {
+      "prompt": "Send Sarah a summary.",
+      "http_status": 200,
+      "first_useful_text_ms": 15756,
+      "completion_ms": 18750,
+      "assistant_excerpt": "I don\u2019t have enough information yet. Tell me who Sarah is and what you want included in the summary.",
+      "tools": [],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "text-start",
+        "text-delta",
+        "text-end",
+        "finish-step",
+        "finish",
+        "data-suggestions",
+        "[DONE]"
+      ],
+      "id": "safe_write_clarify",
+      "conversation_id": "0356dcf0-bae9-4122-961a-56d14ff31ffc",
+      "cohort": "cold",
+      "audit_actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "evidence.sufficiency.assessed",
+        "runtime.jit.context_profile",
+        "runtime.jit.tool_namespace",
+        "unified_turn.live.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed"
+      ],
+      "fallthrough": [],
+      "classical_reached": false,
+      "composer": [
+        {
+          "kind": "success",
+          "success": true
+        }
+      ],
+      "invokes": [],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    },
+    {
+      "prompt": "How is the business doing and what should I worry about?",
+      "http_status": 200,
+      "first_useful_text_ms": 31140,
+      "completion_ms": 33703,
+      "assistant_excerpt": "The business looks operational, but there are a few clear risks. - **Workflows:** recent runs are mostly **completed** or **partial_success**. That means the automation is running, but some runs are not fully clean.\n- **Agent health:** the one configured agent I can see is **Active** and **idle**, so the agent layer is **Healthy**.\n- **Connectors:** several key connectors are **disconnected** or **expired**. Notably **QuickBooks** and **Gmail** are pending auth, and **Stripe, Greenhouse, LinkedI",
+      "tools": [
+        "searchKnowledgeBase",
+        "searchKnowledgeBase",
+        "getWorkflowRuns",
+        "getAgentStatus",
+        "getConnectorStatus"
+      ],
+      "errors": [],
+      "text_delta_count": 1,
+      "event_types_head": [
+        "start",
+        "start-step",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "data-intelligence",
+        "tool-input-available",
+        "tool-output-available",
+        "tool-input-available",
+        "data-intelligence",
+        "tool-input-available",
+        "data-intelligence",
+        "tool-input-available",
+        "data-intelligence",
+        "tool-output-available",
+        "tool-output-available",
+        "tool-output-available"
+      ],
+      "id": "multi_source",
+      "conversation_id": "2859eecc-121e-47a0-8e25-fdc353aec210",
+      "cohort": "cold",
+      "audit_actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "evidence.sufficiency.assessed",
+        "runtime.jit.context_profile",
+        "runtime.jit.tool_namespace",
+        "unified_turn.live.fallthrough",
+        "classical.answer_path.reached",
+        "inference.tool_completion",
+        "agent.react.iteration",
+        "agent.react.iteration",
+        "agent.react.iteration",
+        "inference.tool_completion",
+        "agent.react.iteration",
+        "cognitive.loop.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed"
+      ],
+      "fallthrough": [
+        {
+          "fallthrough_reason": "read_tool_classical",
+          "model": "gpt-5.4-mini",
+          "latency_breakdown": {
+            "total_tools": 86,
+            "pre_model_ms": 60,
+            "max_tools_cap": 16,
+            "model_ttft_ms": 1326,
+            "prompt_tokens": 8597,
+            "topSimilarity": 0.1662,
+            "visible_tools": 20,
+            "embed_query_ms": 46,
+            "messages_chars": 35565,
+            "model_total_ms": 1390,
+            "narrow_tools_ms": 57,
+            "retrieval_query": "How is the business doing and what should I worry about?",
+            "task_model_tier": "low",
+            "turn_shape_hint": "task_shaped",
+            "retrieval_method": "embedding_narrow_tools_for_turn",
+            "stream_timeout_s": 20.0,
+            "completion_tokens": 47,
+            "context_prompt_ms": 1,
+            "embed_query_model": "all-MiniLM-L6-v2",
+            "registry_tools_ms": 0,
+            "embed_query_method": "local",
+            "embed_tool_docs_ms": 0,
+            "inference_provider": "openai",
+            "cached_prompt_ratio": 0.5509,
+            "system_prompt_chars": 22362,
+            "tools_payload_bytes": 4691,
+            "auto_schema_retry_ms": 1742,
+            "cached_prompt_tokens": 4736,
+            "embed_query_provider": "local",
+            "embed_narrow_total_ms": 53,
+            "embed_query_cache_hit": false,
+            "embed_query_encode_ms": 46,
+            "context_size_breakdown": {},
+            "progressive_disclosure": true,
+            "wall_to_first_token_ms": 1393,
+            "embeddingCandidateCount": 41,
+            "embed_similarity_rank_ms": 1,
+            "embedding_tool_retrieval": true,
+            "context_real_tokens_total": 8984,
+            "embed_tool_doc_cache_hits": 41,
+            "openai_create_schedule_ms": 6,
+            "full_catalog_payload_bytes": 57083,
+            "context_token_estimate_only": false,
+            "embed_query_cache_lookup_ms": 0,
+            "embed_tool_doc_cache_misses": 0,
+            "full_narrowed_payload_bytes": 8704,
+            "pre_first_token_overhead_ms": 67,
+            "progressive_gate_auto_retry": true,
+            "embed_tool_doc_batch_api_calls": 0,
+            "embed_tool_doc_cache_lookup_ms": 1,
+            "progressive_gate_auto_retry_resolved": true
+          },
+          "outcome_kind": "connector_tool_proposal"
+        }
+      ],
+      "classical_reached": true,
+      "composer": [
+        {
+          "kind": "success",
+          "success": true
+        }
+      ],
+      "invokes": [],
+      "latency_audit": [
+        {
+          "spoken_mode": false
+        }
+      ]
+    }
+  ],
+  "voice_http_greeting": {
+    "http_status": 200,
+    "conversation_id": "b493d681-66b7-43c9-8c91-ca19c0566a11",
+    "first_useful_text_ms": 220,
+    "first_audio_ms": 224,
+    "completion_ms": 1204,
+    "event_types_head": [
+      "voice.session.accepted",
+      "voice.text.delta",
+      "voice.ttft",
+      "voice.ttfa",
+      "voice.agent_speech.start",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta"
+    ],
+    "error": null,
+    "proof_class": "HTTP_TALK_NOT_PHYSICAL_MIC"
+  },
+  "voice_http_tool": {
+    "http_status": 200,
+    "conversation_id": "b493d681-66b7-43c9-8c91-ca19c0566a11",
+    "first_useful_text_ms": 324,
+    "first_audio_ms": 375,
+    "completion_ms": 18830,
+    "event_types_head": [
+      "voice.session.accepted",
+      "voice.text.delta",
+      "voice.ttft",
+      "voice.ttfa",
+      "voice.agent_speech.start",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta"
+    ],
+    "error": null,
+    "proof_class": "HTTP_TALK_NOT_PHYSICAL_MIC"
+  },
+  "finished_at": "2026-09-22T06:34:31.336188+00:00"
+}

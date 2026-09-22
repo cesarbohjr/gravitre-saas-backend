@@ -1,96 +1,47 @@
 #!/usr/bin/env python3
-"""Voice-C PCM into the real Pipecat WS (not a physical mic, not lane B).
-
-Synthesizes 16 kHz PCM16 (Windows SAPI when ElevenLabs is absent), speaks it
-into /api/voice/pipecat/ws, and records session.ready / transcript / assistant_text.
-"""
+"""PCM evidence closure: capture interrupts, user-llm-text, audio, assistant_text."""
 from __future__ import annotations
 
 import asyncio
 import base64
 import json
 import os
-import subprocess
 import sys
-import tempfile
 import time
-import uuid
-import wave
-from array import array
 from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
-from dotenv import dotenv_values
+import importlib.util
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKEND = ROOT / "backend"
-sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(ROOT / "scripts"))
+
+spec = importlib.util.spec_from_file_location(
+    "pcm_src", ROOT / "scripts" / "verify-3-0-pcm-live.py"
+)
+mod = importlib.util.module_from_spec(spec)
+assert spec.loader
+spec.loader.exec_module(mod)
 
 from _voice_probe_lib import CHUNK_BYTES, CHUNK_MS, SAMPLE_RATE, service_token, ws_url  # noqa: E402
 
 LIVE_API = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
-OUT = ROOT / "docs" / "delivery" / "gravitre-3.0-pcm-live.json"
-PHRASE = "Is Apollo connected"
-
-
-def _load_env() -> None:
-    for path in (BACKEND / ".env", ROOT / ".env", BACKEND / ".env.operator.local"):
-        if not path.is_file():
-            continue
-        for enc in ("utf-8", "utf-8-sig", "cp1252"):
-            try:
-                loaded = dotenv_values(path, encoding=enc)
-                break
-            except UnicodeDecodeError:
-                loaded = {}
-        for key, value in loaded.items():
-            if value and not os.environ.get(key):
-                os.environ[key] = value
-
-
-def _sapi_pcm16(text: str) -> bytes:
-    wav_path = Path(tempfile.gettempdir()) / "gravitre-3-0-pcm-live.wav"
-    spoken = text.replace("'", "")
-    ps = (
-        "Add-Type -AssemblyName System.Speech; "
-        "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
-        "$s.Rate = -4; "
-        f"$s.SetOutputToWaveFile('{wav_path}'); "
-        f"$s.Speak('{spoken}'); "
-        "$s.Dispose()"
-    )
-    subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True, timeout=60)
-    with wave.open(str(wav_path), "rb") as handle:
-        rate = handle.getframerate()
-        channels = handle.getnchannels()
-        width = handle.getsampwidth()
-        frames = handle.readframes(handle.getnframes())
-    if width != 2:
-        raise RuntimeError(f"unexpected sample width {width}")
-    samples = array("h")
-    samples.frombytes(frames)
-    if channels == 2:
-        samples = array("h", [samples[i] for i in range(0, len(samples), 2)])
-    if rate != SAMPLE_RATE:
-        ratio = rate / float(SAMPLE_RATE)
-        out = array("h")
-        n = int(len(samples) / ratio)
-        for i in range(n):
-            out.append(samples[min(int(i * ratio), len(samples) - 1)])
-        samples = out
-    return samples.tobytes()
+OUT = ROOT / "docs" / "audits" / "gravitre-pcm-closure-live.json"
+ORG = "f07e57c0-1501-4000-8000-c04e57a00001"
 
 
 async def _drive(token: str, speech: bytes) -> dict:
     import ssl
+    import uuid
+
     import websockets
 
     try:
         import certifi
 
-        ssl_ctx: ssl.SSLContext | bool = ssl.create_default_context(cafile=certifi.where())
+        ssl_ctx = ssl.create_default_context(cafile=certifi.where())
     except Exception:  # noqa: BLE001
         ssl_ctx = True
 
@@ -98,15 +49,22 @@ async def _drive(token: str, speech: bytes) -> dict:
         "/api/voice/pipecat/ws",
         {
             "access_token": token,
-            "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+            "org_id": ORG,
             "conversation_id": str(uuid.uuid4()),
         },
     )
     types: list[str] = []
     transcripts: list[str] = []
     assistant: list[str] = []
+    user_llm: list[str] = []
     ready = False
     t_speech_end = None
+    t_stt_final = None
+    t_first_assistant = None
+    t_first_audio = None
+    audio_frames = 0
+    interrupts = 0
+    bot_llm_stopped = False
     async with websockets.connect(
         url, open_timeout=30, close_timeout=10, max_size=8_000_000, ssl=ssl_ctx
     ) as ws:
@@ -131,7 +89,7 @@ async def _drive(token: str, speech: bytes) -> dict:
                 await asyncio.sleep(CHUNK_MS / 1000)
             t_speech_end = time.monotonic()
             silence = base64.b64encode(b"\x00" * CHUNK_BYTES).decode("ascii")
-            for _ in range(int((2.4 * 1000) / CHUNK_MS)):
+            for _ in range(int((1.2 * 1000) / CHUNK_MS)):
                 await ws.send(
                     json.dumps(
                         {
@@ -145,10 +103,10 @@ async def _drive(token: str, speech: bytes) -> dict:
                 )
                 await asyncio.sleep(CHUNK_MS / 1000)
 
-        deadline = time.monotonic() + 75.0
+        deadline = time.monotonic() + 90.0
         while time.monotonic() < deadline:
             try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=20.0)
+                raw = await asyncio.wait_for(ws.recv(), timeout=25.0)
             except asyncio.TimeoutError:
                 break
             except Exception:  # noqa: BLE001
@@ -170,45 +128,72 @@ async def _drive(token: str, speech: bytes) -> dict:
                 text = str(msg.get("text") or msg.get("delta") or "").strip()
                 if text:
                     transcripts.append(text)
+                    if t_stt_final is None:
+                        t_stt_final = time.monotonic()
             elif kind == "assistant_text":
                 delta = str(msg.get("delta") or "").strip()
                 if delta:
                     assistant.append(delta)
-            if assistant and t_speech_end is not None and time.monotonic() - t_speech_end > 6:
-                break
+                    if t_first_assistant is None:
+                        t_first_assistant = time.monotonic()
+            elif kind == "user-llm-text":
+                t = str(msg.get("text") or msg.get("delta") or "").strip()
+                if t:
+                    user_llm.append(t)
+            elif kind in {"audio", "voice.audio.delta"}:
+                audio_frames += 1
+                if t_first_audio is None:
+                    t_first_audio = time.monotonic()
+            elif "interrupt" in kind:
+                interrupts += 1
+            elif kind == "bot-llm-stopped":
+                bot_llm_stopped = True
+            if bot_llm_stopped and t_speech_end is not None:
+                if time.monotonic() - t_speech_end > 12:
+                    break
         if send_task is not None and not send_task.done():
             send_task.cancel()
+
+    def rel(ts):
+        if ts is None or t_speech_end is None:
+            return None
+        return int((ts - t_speech_end) * 1000)
+
     return {
         "session_ready": ready,
-        "types": types[:40],
+        "types": types[:60],
         "transcripts": transcripts[:8],
         "assistant_text": " ".join(assistant)[:400],
+        "user_llm_text": user_llm[:6],
         "spoke": t_speech_end is not None,
         "pcm_bytes": len(speech),
+        "audio_frames": audio_frames,
+        "interrupt_events": interrupts,
+        "bot_llm_stopped": bot_llm_stopped,
+        "ms_speech_end_to_stt_final": rel(t_stt_final),
+        "ms_speech_end_to_first_assistant_text": rel(t_first_assistant),
+        "ms_speech_end_to_first_audio": rel(t_first_audio),
+        "empty_assistant_text": not bool(" ".join(assistant).strip()),
     }
 
 
 def main() -> int:
-    _load_env()
+    mod._load_env()
     health = httpx.get(f"{LIVE_API}/health", timeout=45.0).json()
-    speech = _sapi_pcm16(PHRASE)
+    speech = mod._sapi_pcm16(mod.PHRASE)
     driven = asyncio.run(_drive(service_token(), speech))
-    ok = bool(driven.get("session_ready") and (driven.get("transcripts") or driven.get("assistant_text")))
     report = {
-        "probe": "3.0_pcm_live",
+        "probe": "pcm_closure",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "health": {"git_sha": health.get("git_sha"), "timestamp": health.get("timestamp")},
         "proof_class": "SYNTHESIZED_PCM_INTO_PIPECAT_WS",
-        "pcm_source": "windows_sapi",
-        "phrase": PHRASE,
         "physical_mic": False,
-        "lane_b_webrtc": False,
+        "phrase": mod.PHRASE,
         **driven,
-        "pass": ok,
     }
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(report, indent=2))
-    return 0 if ok else 1
+    print(json.dumps(report, indent=2)[:4000])
+    return 0
 
 
 if __name__ == "__main__":

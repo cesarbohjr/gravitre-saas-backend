@@ -123,6 +123,8 @@ def invoke_sealed_f1_read(
         capability_id=capability_id or plan.capability_id,
         conversation_id=ctx.conversation_id or plan.conversation_id,
     )
+    from app.services.sealed_read_latency_marks import record_p2_mark
+
     proof = preflight_read_action(
         execution_plan=plan,
         execution_step=step,
@@ -143,6 +145,7 @@ def invoke_sealed_f1_read(
             "time_window_override": window,
         },
     )
+    record_p2_mark("preflight")
     if not proof.ok:
         obs = ExecutionObservation(
             observation_id=str(uuid4()),
@@ -171,6 +174,7 @@ def invoke_sealed_f1_read(
         registry_action_key(catalog),
         dict(proof.compiled_parameters),
     )
+    record_p2_mark("provider")
     report = unwrap_report_payload(invoked.data) if invoked.success else {}
     obs = ExecutionObservation(
         observation_id=str(uuid4()),

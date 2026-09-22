@@ -1,0 +1,26 @@
+{
+  "audit": "GRAVITRE_CONVERGENCE_SPEC",
+  "default": "PRESERVE",
+  "supersedes": "master audit disposition that required LIVE to own all tool turns",
+  "items": [
+    {"id": "execute_task_streaming", "disposition": "PRESERVE"},
+    {"id": "cognitive_turn_kernel", "disposition": "PRESERVE"},
+    {"id": "sealed_compiled_read", "disposition": "PRESERVE", "reason": "HubSpot deals.list live canned; LIVE must not own this class"},
+    {"id": "unified_turn_live", "disposition": "CONVERGE", "reason": "Skip LIVE when sealed READ owns; no second tool-choice after LIVE proposal"},
+    {"id": "react_engine", "disposition": "PRESERVE", "reason": "Legitimate fallback and repair only"},
+    {"id": "fallthrough_enum", "disposition": "CONVERGE", "reason": "Strategy router"},
+    {"id": "action_spec_hmac", "disposition": "PRESERVE"},
+    {"id": "pending_action", "disposition": "PRESERVE"},
+    {"id": "response_composer_shortcut_canned", "disposition": "PRESERVE", "reason": "Not the HubSpot 19.9s tax"},
+    {"id": "pipecat_deepgram_elevenlabs", "disposition": "PRESERVE"},
+    {"id": "pcm_interrupt", "disposition": "OPTIMIZE", "reason": "Audio origin and turn state; not global STT hold"},
+    {"id": "knowledge_fabric_pgvector", "disposition": "PRESERVE", "reason": "Supplemental after capability evidence plan"},
+    {"id": "entity_fabric", "disposition": "PRESERVE"},
+    {"id": "outcome_learning", "disposition": "PRESERVE", "reason": "Gated consume; API success is not business success"},
+    {"id": "workflow_engine", "disposition": "CONVERGE", "reason": "Same Observation and task identity"},
+    {"id": "release_pair", "disposition": "PRESERVE", "reason": "Identical SHAs not required"},
+    {"id": "model_tier_prod_low", "disposition": "HOLD", "reason": "Until eval contract signed"},
+    {"id": "computer_use_product", "disposition": "EXTEND", "reason": "Future strategy; no build this program"},
+    {"id": "second_cognitive_runtime", "disposition": "REMOVE"}
+  ]
+}

@@ -340,28 +340,41 @@ async def compile_unified_reasoning_context(
         knowledge_meta = {"skipped": "remind_me_turn"}
         _record("knowledge_fabric", "EXCLUDE", "remind_me_turn")
     elif client is not None and org_id and rag_enabled:
-        from app.services.unified_turn_knowledge_context import build_unified_turn_knowledge_context
+        from app.services.capability_evidence_plan import build_capability_evidence_plan
 
-        _record("knowledge_fabric", "RETRIEVE", "registry:rag_or_pack")
-        knowledge_block, knowledge_meta = await build_unified_turn_knowledge_context(
-            org_id=org_id,
-            query=message or "",
-            client=client,
-            settings=active,
-            classification=cls,
-            agent=agent,
-            knowledge_assignments=knowledge_assignments,
-            connected_integrations=connected,
-            supplemental_context=cognitive_prompt_sections,
-            research_scope=research_scope,
-            reasoning_depth=reasoning_depth,
-            actor_id=user_id,
-            conversation_id=conversation_id,
-        )
-        if knowledge_block:
-            _add_part("knowledge_fabric", knowledge_block)
+        _ev_plan = task_state.get("capability_evidence_plan") if isinstance(task_state, dict) else None
+        if not isinstance(_ev_plan, dict):
+            _ev_plan = build_capability_evidence_plan(
+                message or "",
+                connected_integrations=connected,
+                settings=active,
+            )
+        if isinstance(_ev_plan, dict) and _ev_plan.get("required") and not _ev_plan.get("kf_may_substitute"):
+            knowledge_meta = {"skipped": "p4_live_evidence_required", "supplemental_only": True}
+            _record("knowledge_fabric", "EXCLUDE", "p4_deferred_until_live_observation")
         else:
-            _record("knowledge_fabric", "EXCLUDE", "retrieval_empty")
+            from app.services.unified_turn_knowledge_context import build_unified_turn_knowledge_context
+
+            _record("knowledge_fabric", "RETRIEVE", "registry:rag_or_pack")
+            knowledge_block, knowledge_meta = await build_unified_turn_knowledge_context(
+                org_id=org_id,
+                query=message or "",
+                client=client,
+                settings=active,
+                classification=cls,
+                agent=agent,
+                knowledge_assignments=knowledge_assignments,
+                connected_integrations=connected,
+                supplemental_context=cognitive_prompt_sections,
+                research_scope=research_scope,
+                reasoning_depth=reasoning_depth,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+            )
+            if knowledge_block:
+                _add_part("knowledge_fabric", knowledge_block)
+            else:
+                _record("knowledge_fabric", "EXCLUDE", "retrieval_empty")
     else:
         reason = "registry:rag_off" if not rag_enabled else "missing_client_or_org"
         knowledge_meta = {"skipped": reason}

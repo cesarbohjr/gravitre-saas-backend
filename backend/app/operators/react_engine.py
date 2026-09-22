@@ -490,16 +490,31 @@ class ReActEngine:
             )
             try:
                 _llm_started = time.perf_counter()
-                response = await self._chat_with_tools(messages, tools, resolved_model)
-                _log_react_llm_round(
-                    org_id=getattr(ctx, "org_id", None),
-                    iteration=iteration,
-                    phase=phase,
-                    model=resolved_model,
-                    n_tools=len(tools),
-                    elapsed_ms=int((time.perf_counter() - _llm_started) * 1000),
-                    response=response,
-                )
+                from app.services.live_classical_handoff import consume_handoff, fake_tool_choice_response
+
+                _handoff = consume_handoff() if iteration == 1 else None
+                if _handoff:
+                    response = fake_tool_choice_response(_handoff)
+                    _log_react_llm_round(
+                        org_id=getattr(ctx, "org_id", None),
+                        iteration=iteration,
+                        phase="live_classical_handoff",
+                        model="live_classical_handoff",
+                        n_tools=len(tools),
+                        elapsed_ms=int((time.perf_counter() - _llm_started) * 1000),
+                        response=response,
+                    )
+                else:
+                    response = await self._chat_with_tools(messages, tools, resolved_model)
+                    _log_react_llm_round(
+                        org_id=getattr(ctx, "org_id", None),
+                        iteration=iteration,
+                        phase=phase,
+                        model=resolved_model,
+                        n_tools=len(tools),
+                        elapsed_ms=int((time.perf_counter() - _llm_started) * 1000),
+                        response=response,
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("react_model_call_failed iteration=%s error=%s", iteration, exc)
                 yield ReActStreamEvent(

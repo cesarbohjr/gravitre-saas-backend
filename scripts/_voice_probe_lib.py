@@ -127,6 +127,7 @@ async def drive_turn(token: str, speech: bytes, *, deadline_s: float = 90.0) -> 
                             ).decode("ascii"),
                             "sample_rate": SAMPLE_RATE,
                             "num_channels": 1,
+                            "audio_origin": "probe_pcm",
                         }
                     )
                 )
@@ -141,6 +142,7 @@ async def drive_turn(token: str, speech: bytes, *, deadline_s: float = 90.0) -> 
                             "pcm16_b64": silence,
                             "sample_rate": SAMPLE_RATE,
                             "num_channels": 1,
+                            "audio_origin": "probe_pcm",
                         }
                     )
                 )

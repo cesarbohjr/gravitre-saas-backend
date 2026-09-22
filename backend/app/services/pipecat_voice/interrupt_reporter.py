@@ -84,6 +84,30 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         elif isinstance(frame, LLMFullResponseEndFrame):
             pass
         elif isinstance(frame, InterruptionFrame):
+            from app.services.pipecat_voice.voice_audio_origin import (
+                SPEAKING,
+                get_session_origin,
+                get_turn_state,
+                should_suppress_interrupt,
+            )
+
+            origin = str(
+                getattr(frame, "gravitre_audio_origin", None) or get_session_origin()
+            )
+            turn_state = str(
+                getattr(frame, "gravitre_turn_state", None) or get_turn_state() or SPEAKING
+            )
+            if should_suppress_interrupt(
+                origin=origin,
+                turn_state=turn_state,
+                settings=self._settings,
+            ):
+                logger.info(
+                    "pipecat_interrupt_suppressed origin=%s turn_state=%s",
+                    origin,
+                    turn_state,
+                )
+                return
             offset = getattr(frame, "gravitre_playback_offset_ms", None)
             if offset is not None:
                 try:

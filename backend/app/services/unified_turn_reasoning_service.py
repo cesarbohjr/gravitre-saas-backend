@@ -670,6 +670,21 @@ async def run_unified_turn_shadow(
         else:
             max_tools = int(getattr(active, "unified_turn_shadow_max_tools", 32) or 32)
 
+        from app.services.capability_evidence_plan import (
+            build_capability_evidence_plan,
+            pin_tools_for_evidence,
+        )
+
+        evidence_plan = build_capability_evidence_plan(
+            message or "",
+            connected_integrations=connected,
+            settings=active,
+        )
+        if evidence_plan:
+            tool_stats_extra = {"capabilityEvidencePlan": True, "pinTools": evidence_plan.get("pin_tools")}
+        else:
+            tool_stats_extra = {}
+
         if embed_on:
             visible, tool_stats = embed_narrow_tools_for_turn(
                 all_tools,
@@ -699,6 +714,10 @@ async def run_unified_turn_shadow(
                 "embeddingToolRetrieval": False,
                 "embeddingSkippedReason": skip_reason,
             }
+        visible = pin_tools_for_evidence(list(visible or []), list(all_tools or []), evidence_plan)
+        tool_stats = {**(tool_stats or {}), **tool_stats_extra}
+        if isinstance(task_state, dict) and evidence_plan:
+            task_state["capability_evidence_plan"] = evidence_plan
         # Passed through directly, not as list(visible or []): _stable_tool_list has
         # its own preserve-branch, and wrapping in list() here strips the marker
         # before that branch can see it, leaving the branch dead. Third instance of
@@ -2488,6 +2507,12 @@ async def apply_unified_turn_live(
             if str(result.outcome_kind or "") == "connector_tool_proposal"
             else "defer_classical_tool_sse"
         )
+        from app.services.live_classical_handoff import stash_live_classical_handoff
+
+        if isinstance(task_state, dict):
+            stash_live_classical_handoff(
+                task_state, result, reason=defer_reason, settings=active
+            )
         _mark_live_fallthrough(result, defer_reason)
         emit_unified_turn_shadow_audit(
             client=client,
@@ -2873,6 +2898,12 @@ async def apply_unified_turn_live(
             }
 
         # Read tool proposals: fall through to classical governed execution (no bypass).
+        from app.services.live_classical_handoff import stash_live_classical_handoff
+
+        if isinstance(task_state, dict):
+            stash_live_classical_handoff(
+                task_state, result, reason="read_tool_classical", settings=active
+            )
         _mark_live_fallthrough(result, "read_tool_classical")
         emit_unified_turn_shadow_audit(
             client=client,

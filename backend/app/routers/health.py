@@ -63,8 +63,10 @@ def health(request: Request) -> dict:
     unified_embed_tools = False
     unified_task_tier = ""
     unified_embed_min_catalog = None
+    unified_qa_hooks = False
     internet_research_enabled = False
     web_research_provider_configured = False
+    convergence_p1 = True
     try:
         from app.config import get_settings
 
@@ -76,6 +78,7 @@ def health(request: Request) -> dict:
         unified_embed_min_catalog = int(getattr(s, "unified_turn_embed_min_catalog_tools", 200) or 200)
         unified_qa_hooks = bool(getattr(s, "unified_turn_qa_hooks_enabled", False))
         internet_research_enabled = bool(getattr(s, "internet_research_enabled", False))
+        convergence_p1 = bool(getattr(s, "convergence_p1_single_selection_v1", True))
         from app.services.web_research import is_web_research_provider_configured
 
         web_research_provider_configured = is_web_research_provider_configured(s)
@@ -105,6 +108,8 @@ def health(request: Request) -> dict:
             (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
             or (os.environ.get("TAVILY_API_KEY") or "").strip()
         )
+        unified_qa_hooks = False
+        convergence_p1 = True
 
     return {
         "status": status,
@@ -123,5 +128,6 @@ def health(request: Request) -> dict:
         "unified_turn_qa_hooks_enabled": unified_qa_hooks,
         "internet_research_enabled": internet_research_enabled,
         "web_research_provider_configured": web_research_provider_configured,
+        "convergence_p1_single_selection_v1": convergence_p1,
         "checks": checks,
     }

@@ -378,10 +378,14 @@ class WebhookPostHandler(StepHandler):
     def execute(self, context: StepContext) -> dict[str, Any]:
         _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
-        result = invoke_tool(
-            tool_context_from_step(context),
+        params = context.parameters if isinstance(context.parameters, dict) else {}
+        task_state = params.get("task_state") if isinstance(params.get("task_state"), dict) else None
+        result = _invoke_canvas_registered_tool(
+            context,
             action,
             params_for_step(self.step_type, context.config or {}, context.parameters),
+            intent_text=str(params.get("intent_text") or ""),
+            task_state=task_state,
         )
         return _truncate_output_snapshot(result.to_step_output())
 

@@ -1,0 +1,56 @@
+{
+  "sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+  "org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "captured": "2026-09-22T06:31:35Z",
+  "classes": [
+    {
+      "class": "compiled_deterministic_READ",
+      "example": "Show my deals.",
+      "owner": "classical_hmac",
+      "live_fallthrough": false,
+      "classical_reached": true,
+      "action": "hubspot.deals.list",
+      "observation": "25 deals canned composer",
+      "conversation_id": "0d35dba2-ab04-4094-8cbd-e2a43bc9c561",
+      "plan_id": "1cbc5337-51cd-4fec-b7b7-033587448085"
+    },
+    {
+      "class": "followup_READ_refine",
+      "example": "Only the large ones.",
+      "owner": "classical",
+      "live_fallthrough": false,
+      "classical_reached": true,
+      "provider_invoke": false,
+      "note": "clarify cutoff; KB search present but not required for outcome"
+    },
+    {
+      "class": "ambiguous",
+      "example": "What should we do about it?",
+      "owner": "unified_turn.live.completed",
+      "live_fallthrough": false
+    },
+    {
+      "class": "safe_WRITE_clarify",
+      "example": "Send Sarah a summary.",
+      "owner": "unified_turn.live.completed",
+      "pending_action": false,
+      "note": "clarified identity; no compile WRITE this turn"
+    },
+    {
+      "class": "multi_step_exploratory",
+      "example": "How is the business doing...",
+      "owner": "LIVE_then_classical_ReAct",
+      "fallthrough_reason": "read_tool_classical",
+      "model": "gpt-5.4-mini",
+      "duplicate_model_work": true,
+      "conversation_id": "2859eecc-121e-47a0-8e25-fdc353aec210"
+    }
+  ],
+  "fallthrough_24h_isolated": {
+    "n": 71,
+    "defer_classical_tool_sse": 38,
+    "pending_family_classical_resume": 19,
+    "read_tool_classical": 14
+  },
+  "workflow_child": "UNKNOWN"
+}

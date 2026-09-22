@@ -1627,9 +1627,14 @@ class AgentIntelligence:
         # unattributed "pre_llm_ms" number. Log-only, zero behavior change.
         _pre_kernel_t0 = time.perf_counter()
         _pre_kernel_checkpoints: dict[str, int] = {}
+        from app.services.sealed_read_latency_marks import begin_p2_marks, merge_p2_into, record_p2_mark
+
+        begin_p2_marks(_pre_kernel_t0)
 
         def _mark(name: str) -> None:
             _pre_kernel_checkpoints[name] = int((time.perf_counter() - _pre_kernel_t0) * 1000)
+            if name in {"understanding", "memory.recalled", "preflight", "provider", "compose_canned", "first_sse"}:
+                record_p2_mark(name)
 
         if client is None:
             from app.workflows.repository import get_supabase_client
@@ -1886,7 +1891,7 @@ class AgentIntelligence:
                 try:
                     from app.services.turn_latency_trace import record_critical_path
 
-                    combined = dict(_pre_kernel_checkpoints)
+                    combined = merge_p2_into(dict(_pre_kernel_checkpoints))
                     combined.update(_cognitive_trace_builder.cumulative_ms())
                     analysis = record_critical_path(
                         active_settings,
@@ -1923,7 +1928,9 @@ class AgentIntelligence:
                 draft=draft,
             )
             env["data"].setdefault("text", draft)
-            return await compose_reply_events(
+            if kind == "canned":
+                _mark("compose_canned")
+            packed = await compose_reply_events(
                 env,
                 kind=kind,
                 draft=draft,
@@ -1938,6 +1945,7 @@ class AgentIntelligence:
                 existing_text_id=existing_text_id,
                 close=close,
             )
+            return packed
 
         spoken_progress_text_id: str | None = None
         spoken_progress_text = ""
@@ -3273,6 +3281,7 @@ class AgentIntelligence:
                 ):
                     yield ev
             _mark("kernel_pre_act")
+            _mark("memory.recalled")
             if isinstance(task_state, dict):
                 task_state = {
                     **task_state,
@@ -5032,6 +5041,8 @@ class AgentIntelligence:
             )
             response_text = packed.text
             for ev in packed.events:
+                if getattr(ev, "sse_type", "") == "text-delta" and "first_sse" not in _pre_kernel_checkpoints:
+                    _mark("first_sse")
                 yield ev
             loop_trace.record(
                 "RETRIEVE",
@@ -5108,6 +5119,9 @@ class AgentIntelligence:
             execution_plan_patch_from_react_runtime,
             prepare_react_execution_plan,
         )
+        from app.services.live_classical_handoff import arm_from_task_state
+
+        arm_from_task_state(task_state if isinstance(task_state, dict) else None)
 
         _react_plan_runtime = prepare_react_execution_plan(
             message=task_text,

@@ -22,6 +22,9 @@ class StepContext:
     step_outputs: dict[str, Any]
     client: Any | None
     is_dry_run: bool
+    plan_id: str | None = None
+    conversation_id: str | None = None
+    durable_checkpoint: str | None = None
 
 
 class StepHandler:

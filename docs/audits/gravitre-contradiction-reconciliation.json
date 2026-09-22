@@ -1,0 +1,51 @@
+{
+  "reconciled_at": "2026-09-22T06:40:00Z",
+  "current_backend_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+  "org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "items": [
+    {
+      "topic": "HubSpot READ",
+      "prior": "PRODUCTION_USER_PROVEN on SHAs 6cd43ae3, c64e0352, 4f98e744, b95a8735",
+      "master_audit": "classified isolated HubSpot as BLOCKED / OAuth",
+      "resolution": "Master audit was stale on connector state. Re-proven PASS on a7a0dd56 conv 0d35dba2-ab04-4094-8cbd-e2a43bc9c561 25 deals canned.",
+      "keep_prior": "Yes as SHA-bound evidence",
+      "certifies_current": true
+    },
+    {
+      "topic": "identical SHA requirement",
+      "master_audit": "git==Railway==Vercel required",
+      "resolution": "Incorrect. Release pair + ancestor lineage. Frontend 9eb88ee6 descendant of backend a7a0dd56.",
+      "keep_prior": false
+    },
+    {
+      "topic": "LIVE fallthrough as cohesion failure",
+      "master_audit": "~48% fallthrough dual brain",
+      "resolution": "24h isolated reasons are designed router classes. Compiled HubSpot READ skipped LIVE entirely. Do not converge sealed READ into LIVE.",
+      "keep_prior": "Fallthrough volume is real; interpretation was wrong"
+    },
+    {
+      "topic": "empty spoken Composer",
+      "master_audit": "PCM assistant_text empty unknown",
+      "resolution": "False barge-in before transcript; HTTP Talk first audio 224ms disproves global Composer mute",
+      "keep_prior": "empty PCM still true"
+    },
+    {
+      "topic": "Composer 18s tax",
+      "master_audit": "ranked #2 latency",
+      "resolution": "Different SHA/cohort. On a7a0dd56 greetings are shortcut; HubSpot canned. 20s is classical READ not Composer LLM.",
+      "keep_prior": "Do not mix cohorts"
+    },
+    {
+      "topic": "2.0-K learning",
+      "prior": "UNIT tool_success is not business impact",
+      "master_audit": "WEAK consume",
+      "resolution": "Confirmed: 7d sample has no business_metric_improved. Unit still valid.",
+      "keep_prior": true
+    },
+    {
+      "topic": "model bake-off",
+      "master_audit": "prod low outdated",
+      "resolution": "LIVE uses gpt-5.4-mini when LIVE runs. Sealed READ does not. Direct 5.5 comparison UNKNOWN (no local key)."
+    }
+  ]
+}

@@ -495,6 +495,10 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
                 step_outputs=step_outputs_snapshot,
                 client=ctx.client,
                 is_dry_run=False,
+                plan_id=(merged_parameters or {}).get("plan_id")
+                or (merged_parameters or {}).get("parent_plan_id"),
+                conversation_id=(merged_parameters or {}).get("conversation_id"),
+                durable_checkpoint=(merged_parameters or {}).get("durable_checkpoint"),
             )
             output = handler.execute(context)
             if isinstance(output, dict):

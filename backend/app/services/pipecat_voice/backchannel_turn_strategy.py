@@ -221,6 +221,22 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             resolved_by_timeout,
         )
 
+        from app.services.pipecat_voice.voice_audio_origin import (
+            SPEAKING,
+            get_session_origin,
+            should_suppress_interrupt,
+        )
+
+        if should_suppress_interrupt(
+            origin=get_session_origin(),
+            turn_state=SPEAKING,
+            settings=self._gravitre_settings,
+        ):
+            await self.trigger_user_turn_started(
+                enable_interruptions=False, enable_user_speaking_frames=False
+            )
+            return
+
         if backchannel:
             # Open the turn silently: no UserStartedSpeakingFrame, no
             # interruption. Then drop the buffered text from the LLM context

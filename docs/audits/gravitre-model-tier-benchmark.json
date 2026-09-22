@@ -1,0 +1,12 @@
+{
+  "probe": "model_tier_benchmark_synthetic",
+  "captured_at": "2026-09-22T06:34:31.895132+00:00",
+  "note": "Direct OpenAI chat, not production kernel, not live connectors.",
+  "models": [
+    "gpt-5.4-mini",
+    "gpt-5.5"
+  ],
+  "runs": [],
+  "status": "UNKNOWN",
+  "reason": "OPENAI_API_KEY not available in local env"
+}

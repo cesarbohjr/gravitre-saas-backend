@@ -4975,6 +4975,17 @@ def tool_context_from_step(context: Any) -> ToolContext:
         transparency_log_id = str(params["_transparency_log_id"])
     if params.get("_autonomous_run") and params.get("operator_id"):
         operator_id = str(params["operator_id"])
+    parent_plan = (
+        getattr(context, "plan_id", None)
+        or params.get("plan_id")
+        or params.get("parent_plan_id")
+        or (f"workflow:{context.run_id}" if context.run_id else None)
+    )
+    conversation_id = (
+        getattr(context, "conversation_id", None)
+        or params.get("conversation_id")
+        or None
+    )
     return ToolContext(
         settings=context.settings,
         client=context.client,
@@ -4982,12 +4993,13 @@ def tool_context_from_step(context: Any) -> ToolContext:
         actor_id=context.user_id or "workflow_engine",
         environment_name=context.environment_name or "production",
         run_id=context.run_id,
-        plan_id=getattr(context, "plan_id", None) or (f"workflow:{context.run_id}" if context.run_id else None),
+        plan_id=parent_plan,
         step_id=context.step_id,
         step_type=context.step_type,
         operator_id=operator_id,
         transparency_log_id=transparency_log_id,
         connector_id=(context.config or {}).get("connector_id"),
+        conversation_id=str(conversation_id) if conversation_id else None,
         cognitive_invoke=False,
     )
 

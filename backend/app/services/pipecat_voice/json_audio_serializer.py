@@ -30,6 +30,10 @@ from pipecat.serializers.base_serializer import FrameSerializer
 
 
 class GravitreJsonAudioSerializer(FrameSerializer):
+    def __init__(self, *, default_origin: str = "user_mic") -> None:
+        self._default_origin = default_origin
+        self._session_origin: str | None = None
+
     async def setup(self, frame: StartFrame) -> None:
         pass
 
@@ -82,11 +86,23 @@ class GravitreJsonAudioSerializer(FrameSerializer):
             raw = base64.b64decode(str(msg.get("pcm16_b64") or ""))
             if not raw:
                 return None
-            return InputAudioRawFrame(
+            from app.services.pipecat_voice.voice_audio_origin import normalize_origin
+
+            origin = normalize_origin(
+                msg.get("audio_origin") or msg.get("origin") or self._session_origin,
+                default=self._default_origin,
+            )
+            self._session_origin = origin
+            from app.services.pipecat_voice.voice_audio_origin import set_session_origin
+
+            set_session_origin(origin)
+            frame = InputAudioRawFrame(
                 audio=raw,
                 sample_rate=int(msg.get("sample_rate") or 16000),
                 num_channels=int(msg.get("num_channels") or 1),
             )
+            setattr(frame, "gravitre_audio_origin", origin)
+            return frame
         if kind == "interrupt":
             frame = InterruptionFrame()
             # Optional FE playback cursor — Speak-v2-style offset for ElevenLabs path.

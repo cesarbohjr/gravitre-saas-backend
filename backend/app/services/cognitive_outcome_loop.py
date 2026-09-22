@@ -48,6 +48,14 @@ def bias_from_outcomes(
         return {"bias_notes": bias_notes, "weight_delta": weight_delta}
 
     needle = (query or "").strip().lower()
+    return bias_notes_from_event_rows(rows, needle)
+
+
+def bias_notes_from_event_rows(rows: list[Any], query: str = "") -> dict[str, Any]:
+    """PLAN bias from already-fetched outcome rows. TOOL_SUCCESS never injects."""
+    bias_notes: list[str] = []
+    weight_delta = 0.0
+    needle = (query or "").strip().lower()
     positive = 0
     negative = 0
     for row in rows:

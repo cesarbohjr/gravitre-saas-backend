@@ -64,6 +64,7 @@ _FALLBACK_BY_KIND: dict[str, str] = {
     "correction": "Got it, I'll use that from here.",
     "canned": "I have that. What should we do with it?",
     "progress": "I'm working through this now.",
+    "workflow_waiting": "This workflow is waiting on you before it can continue.",
     "success": "Done.",
     "stopped": "Stopped.",
 }
@@ -426,6 +427,11 @@ async def compose_user_reply(
     must_compose = resolved_kind in MUST_COMPOSE_KINDS or looks_like_raw_backend(draft)
     if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
         must_compose = False
+    if resolved_kind == "plan_hold" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
+    # P5: human-waiting workflow narration is already drafted by orchestration.
+    if resolved_kind == "workflow_waiting" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
     # Spoken Metric B plan-hold: orchestration already composed the staged plan;
     # re-running the Composer LLM adds 3–15 s with no user value.
     if resolved_kind == "plan_hold" and draft and not looks_like_raw_backend(draft):
@@ -433,6 +439,19 @@ async def compose_user_reply(
     # Phrase-bank greetings are already user-facing English. Composer still owns
     # leak filtering via looks_like_raw_backend / finalize; skip a second LLM rewrite.
     if resolved_kind == "shortcut" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
+    # P2: sealed operational READ already produced a complete canned draft with
+    # provider evidence. A second LLM rewrite is not Composer authority — skip it.
+    if (
+        resolved_kind == "canned"
+        and draft
+        and not looks_like_raw_backend(draft)
+        and bool(getattr(settings, "convergence_p2_canned_literal_v1", True))
+        and (
+            env.get("provider_result_evidence")
+            or (isinstance(env.get("data"), dict) and env["data"].get("provider_result_evidence"))
+        )
+    ):
         must_compose = False
     used_model = False
     fallback = False

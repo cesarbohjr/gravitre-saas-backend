@@ -1,0 +1,21 @@
+{
+  "audit": "EVIDENCE_CLOSURE_2026-09-22",
+  "backend_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+  "org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "hubspot": {
+    "status": "healthy",
+    "deals_list": "LIVE_PROVEN",
+    "conversation_id": "0d35dba2-ab04-4094-8cbd-e2a43bc9c561",
+    "count": 25
+  },
+  "google_ads": {"status": "healthy", "ceo_prompt_invoked": false},
+  "google_analytics": {"status": "pending_auth"},
+  "gmail": {"status": "pending_auth"},
+  "scenarios": [
+    {"id": "ceo_how_is_business", "classification": "PARTIALLY_EXECUTED", "note": "internal tools not CRM/Ads; GA blocked"},
+    {"id": "sales_deals", "classification": "COMPLETED", "note": "count-only 25 deals; not verified deal-level quality"},
+    {"id": "sales_large_followup", "classification": "ANSWERED", "note": "clarify cutoff"},
+    {"id": "write_sarah", "classification": "ANSWERED", "note": "clarify identity; no WRITE"},
+    {"id": "autonomous_ads", "classification": "BLOCKED", "note": "not run; Ads healthy but WRITE not requested this pass"}
+  ]
+}

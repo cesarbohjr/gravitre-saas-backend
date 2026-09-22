@@ -1,0 +1,37 @@
+{
+  "backend_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+  "org": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "http_talk": {
+    "proof_class": "HTTP_TALK_NOT_PHYSICAL_MIC",
+    "greeting": {
+      "conversation_id": "b493d681-66b7-43c9-8c91-ca19c0566a11",
+      "first_useful_text_ms": 220,
+      "first_audio_ms": 224,
+      "completion_ms": 1204
+    },
+    "show_my_deals": {
+      "conversation_id": "b493d681-66b7-43c9-8c91-ca19c0566a11",
+      "first_useful_text_ms": 324,
+      "first_audio_ms": 375,
+      "completion_ms": 18830,
+      "spoken_transcript": "UNKNOWN"
+    }
+  },
+  "pcm": {
+    "proof_class": "SYNTHESIZED_PCM_INTO_PIPECAT_WS",
+    "physical_mic": false,
+    "phrase": "Is Apollo connected",
+    "transcript": "is Apollo connected.",
+    "assistant_text": "",
+    "audio_frames": 0,
+    "interrupt_events": 2,
+    "types_include": ["speech.interrupted", "bot-interrupted", "bot-llm-started", "bot-llm-stopped"],
+    "empty_spoken_root_cause": "false_barge_in_before_stt_final_not_global_composer_failure"
+  },
+  "text_equivalent_deals": {
+    "conversation_id": "0d35dba2-ab04-4094-8cbd-e2a43bc9c561",
+    "action": "hubspot.deals.list",
+    "outcome": "25 deals canned"
+  },
+  "human_mic": "EXTERNALLY_BLOCKED"
+}

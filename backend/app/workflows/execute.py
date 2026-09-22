@@ -173,9 +173,40 @@ def execute_workflow_steps(
                 step_outputs=step_outputs,
                 client=client,
                 is_dry_run=False,
+                plan_id=(parameters or {}).get("plan_id") or (parameters or {}).get("parent_plan_id"),
+                conversation_id=(parameters or {}).get("conversation_id"),
+                durable_checkpoint=(parameters or {}).get("durable_checkpoint"),
             )
             output = handler.execute(context)
             step_outputs[step_id] = output
+            try:
+                from app.services.workflow_execution_strategy import workflow_observation
+
+                parent_plan = getattr(context, "plan_id", None)
+                if parent_plan and bool(getattr(settings, "convergence_p5_workflow_child_identity_v1", True)):
+                    obs = workflow_observation(
+                        plan_id=str(parent_plan),
+                        step_id=step_id,
+                        workflow_id=str(run_id or ""),
+                        result=output if isinstance(output, dict) else {"result": output},
+                    )
+                    write_audit_event(
+                        client, org_id, user_id,
+                        action="workflow.child.observation",
+                        resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
+                        resource_id=run_id,
+                        metadata={
+                            "plan_id": obs.plan_id,
+                            "conversation_id": getattr(context, "conversation_id", None),
+                            "durable_checkpoint": getattr(context, "durable_checkpoint", None),
+                            "step_id": step_id,
+                            "observation_id": obs.observation_id,
+                            "success": obs.success,
+                            "hmac_bypass": False,
+                        },
+                    )
+            except Exception:  # noqa: BLE001
+                pass
             completed_at = datetime.now(timezone.utc).isoformat()
             duration_ms = int((datetime.fromisoformat(completed_at) - datetime.fromisoformat(step_started)).total_seconds() * 1000)
             update_step(

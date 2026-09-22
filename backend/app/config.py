@@ -114,6 +114,46 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
     )
+    # Convergence P1 — LIVE proposal executes classically without a second model tool-choice.
+    convergence_p1_single_selection_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "CONVERGENCE_P1_SINGLE_SELECTION_V1",
+            "convergence_p1_single_selection_v1",
+        ),
+    )
+    # Convergence P2 — skip Composer LLM for already-complete canned sealed READ drafts.
+    convergence_p2_canned_literal_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "CONVERGENCE_P2_CANNED_LITERAL_V1",
+            "convergence_p2_canned_literal_v1",
+        ),
+    )
+    # Convergence P3 — origin-aware PCM interrupt (probe ≠ user barge-in).
+    convergence_p3_pcm_origin_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "CONVERGENCE_P3_PCM_ORIGIN_V1",
+            "convergence_p3_pcm_origin_v1",
+        ),
+    )
+    # Convergence P4 — required live evidence before JIT/KF for CEO/ops NL.
+    convergence_p4_evidence_plan_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "CONVERGENCE_P4_EVIDENCE_PLAN_V1",
+            "convergence_p4_evidence_plan_v1",
+        ),
+    )
+    # Convergence P5 — workflow child Observations inherit parent plan/conversation.
+    convergence_p5_workflow_child_identity_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "CONVERGENCE_P5_WORKFLOW_CHILD_IDENTITY_V1",
+            "convergence_p5_workflow_child_identity_v1",
+        ),
+    )
     # CognitiveTurnKernel kill-switch — when false, pre-ACT stages return a skipped minimal context.
     cognitive_turn_kernel_enabled: bool = Field(
         default=True,

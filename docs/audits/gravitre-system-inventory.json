@@ -1,0 +1,68 @@
+{
+  "audit": "GRAVITRE_MASTER_PLATFORM_AUDIT_2026",
+  "captured_at": "2026-09-22T03:10:00Z",
+  "evidence_level": "PRODUCTION_VERIFIED where sha/health/vercel listed; CODE_INSPECTED otherwise",
+  "git": {
+    "local_HEAD": "5213d3ddff823c9ff214e36c3f266c620e259233",
+    "origin_main": "5213d3ddff823c9ff214e36c3f266c620e259233",
+    "local_subject": "feat(nav): Nav B prod markers; Connectors hub Wave 4 test ids"
+  },
+  "production_backend": {
+    "url": "https://api.gravitre.app/health",
+    "git_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+    "timestamp": "2026-09-22T03:03:22.221642+00:00",
+    "environment": "prod",
+    "status": "ok",
+    "flags": {
+      "ai_disabled": false,
+      "unified_turn_shadow_enabled": true,
+      "unified_turn_live_enabled": true,
+      "unified_turn_embedding_tool_retrieval": true,
+      "unified_turn_embed_min_catalog_tools": 40,
+      "unified_turn_task_model_tier": "low",
+      "unified_turn_qa_hooks_enabled": true,
+      "internet_research_enabled": true,
+      "web_research_provider_configured": true
+    },
+    "checks": {
+      "database": "healthy",
+      "cache": "healthy",
+      "temporal": "configured",
+      "clickhouse": "configured"
+    },
+    "lag_vs_origin_main": "SHA DIVERGED — origin/main 5213d3dd is not the Railway tip"
+  },
+  "production_frontend": {
+    "platform": "Vercel",
+    "project": "gravitre-saas-backend",
+    "project_id": "prj_ZKQZcnavQ8UnQTWH85125nBgTVfO",
+    "team": "gravitre-ai",
+    "latest_listed_production_sha": "a5f97faacb972415426b9167ddd514790a2c4a9d",
+    "deployment_id": "dpl_73ryW1MTFym3T7N35vnevDhvYCRD",
+    "evidence_level": "PRODUCTION_VERIFIED (Vercel list_deployments target=production state=READY)",
+    "note": "Listed production SHA is older than origin/main 5213d3dd and older than Railway a7a0dd56. Frontend/backend/git tips are not one SHA."
+  },
+  "config_defaults_vs_prod": {
+    "UNIFIED_TURN_LIVE_ENABLED_code_default": false,
+    "UNIFIED_TURN_LIVE_ENABLED_prod_health": true,
+    "COGNITIVE_TURN_KERNEL_ENABLED_code_default": true,
+    "browser_agent_enabled_code_default": true,
+    "browser_agent_interact_enabled_code_default": false,
+    "production_allows_webrtc_media": false
+  },
+  "stores": {
+    "primary_db": "Supabase Postgres",
+    "cache": "Redis (health cache=healthy)",
+    "vectors": "pgvector rag_embeddings (OpenAI text-embedding-3-small); Pinecone is a Sources driver only",
+    "analytics": "ClickHouse configured",
+    "workflow_durable": "Temporal configured (health); asyncio/cron schedulers also exist",
+    "knowledge_fabric": "knowledge_sources/documents/chunks",
+    "entities": "org_business_entities",
+    "outcomes": "intelligence_outcome_events"
+  },
+  "ingress": {
+    "chat": "POST /api/assistant/chat -> AgentIntelligence.execute_task_streaming",
+    "voice": "WS /api/voice/pipecat/ws JSON PCM16 -> execute_task_streaming(spoken_mode=True)",
+    "workflows": "workflows/execution_engine_runtime.py (not chat SSE / not Response Composer)"
+  }
+}

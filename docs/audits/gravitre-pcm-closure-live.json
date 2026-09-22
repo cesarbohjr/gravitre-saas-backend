@@ -1,0 +1,41 @@
+{
+  "probe": "pcm_closure",
+  "generated_at": "2026-09-22T06:38:13.307122+00:00",
+  "health": {
+    "git_sha": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
+    "timestamp": "2026-09-22T06:37:39.081557+00:00"
+  },
+  "proof_class": "SYNTHESIZED_PCM_INTO_PIPECAT_WS",
+  "physical_mic": false,
+  "phrase": "Is Apollo connected",
+  "session_ready": true,
+  "types": [
+    "session.ready",
+    "tts.warmed",
+    "metrics",
+    "speech.interrupted",
+    "user-started-speaking",
+    "bot-interrupted",
+    "transcript",
+    "metrics",
+    "user-transcription",
+    "user-llm-text",
+    "user-stopped-speaking",
+    "bot-llm-started",
+    "bot-llm-stopped"
+  ],
+  "transcripts": [
+    "is Apollo connected."
+  ],
+  "assistant_text": "",
+  "user_llm_text": [],
+  "spoke": true,
+  "pcm_bytes": 98370,
+  "audio_frames": 0,
+  "interrupt_events": 2,
+  "bot_llm_stopped": true,
+  "ms_speech_end_to_stt_final": -679,
+  "ms_speech_end_to_first_assistant_text": null,
+  "ms_speech_end_to_first_audio": null,
+  "empty_assistant_text": true
+}

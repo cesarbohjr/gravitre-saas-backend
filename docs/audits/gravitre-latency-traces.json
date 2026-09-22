@@ -1,0 +1,69 @@
+{
+  "audit": "GRAVITRE_MASTER_PLATFORM_AUDIT_2026",
+  "note": "This audit did not instrument 11 fresh request classes. Numbers below are existing live artifacts. Unmeasured classes are UNKNOWN.",
+  "production_backend_sha_at_voice_slo": "7a2eaaabecd99d969f1b43478687b7599c13e747",
+  "traces": [
+    {
+      "class": "voice_http_talk_plan_hold_metric_a_b",
+      "evidence_level": "LIVE_TEST_VERIFIED",
+      "artifact": "docs/delivery/voice-slo-two-metric-live.json",
+      "captured_at": "2026-09-21T21:25:48Z",
+      "n": 5,
+      "metric_a_p50_ms": 254,
+      "metric_a_p95_ms": 300,
+      "metric_b_p50_ms": 1832,
+      "metric_b_p95_ms": 2432,
+      "note": "HTTP Talk plan-hold, not physical mic. Same-turn A and B."
+    },
+    {
+      "class": "voice_pcm_stt",
+      "evidence_level": "LIVE_TEST_VERIFIED",
+      "artifact": "docs/delivery/gravitre-3.0-pcm-live.json",
+      "sha": "c7d6b1155d9cb345f4be17021da24cd997d6b6ae",
+      "session_ready": true,
+      "transcript": "is Apollo connected.",
+      "assistant_text": "",
+      "note": "SAPI PCM into Pipecat WS. STT proven. Spoken compose empty on that sample."
+    },
+    {
+      "class": "text_critical_path_24h_isolated_org",
+      "evidence_level": "LIVE_TEST_VERIFIED",
+      "artifact": "docs/delivery/3.0-a-latency-baseline-latest.json",
+      "window": "2026-09-18/19",
+      "n": 34,
+      "turn_total_p50_ms": 13215,
+      "turn_total_p95_ms": 23846,
+      "dominant_COMPOSER_p50_when_wins_ms": 18724,
+      "note": "Small n. COMPOSER can dominate when it wins the stage."
+    },
+    {
+      "class": "unified_live_stage_24h",
+      "evidence_level": "LIVE_TEST_VERIFIED",
+      "artifact": "docs/delivery/3.0-b-efficiency-baseline-latest.json",
+      "sha": "7a2eaaabecd99d969f1b43478687b7599c13e747",
+      "UNIFIED_LIVE_RESOLVED_p50_ms": 13800,
+      "UNIFIED_LIVE_RESOLVED_p95_ms": 33686,
+      "win_count": 75,
+      "visible_tools_p95": 20,
+      "note": "Largest measured serial stage on JIT-cohort window. Not a 700-tool dump."
+    },
+    {
+      "class": "simple_greeting",
+      "evidence_level": "UNKNOWN",
+      "note": "Not re-instrumented this audit."
+    },
+    {
+      "class": "multi_source_ga4_gsc",
+      "evidence_level": "LIVE_TEST_VERIFIED",
+      "status": "BLOCKED",
+      "reason": "isolated org pending_auth / human Google consent"
+    }
+  ],
+  "ranked_contributors": [
+    {"rank": 1, "stage": "UNIFIED_LIVE_RESOLVED", "p50_ms": 13800, "evidence": "3.0-b 24h"},
+    {"rank": 2, "stage": "COMPOSER_when_dominant", "p50_ms": 18724, "evidence": "3.0-a n=5 wins"},
+    {"rank": 3, "stage": "UNDERSTANDING", "p50_ms": 2425, "evidence": "3.0-b jit cohort"},
+    {"rank": 4, "stage": "voice_operator_completion_http", "p50_ms": 1832, "evidence": "voice-slo Metric B"},
+    {"rank": 5, "stage": "TOOL_DISCOVERY_keyword", "p50_ms": 0, "evidence": "3.0-b split"}
+  ]
+}
