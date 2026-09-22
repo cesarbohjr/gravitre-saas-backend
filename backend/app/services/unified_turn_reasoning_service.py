@@ -2538,6 +2538,40 @@ async def apply_unified_turn_live(
         "confirmation_request",
     }
     if result.outcome_kind in text_kinds and (result.user_message or "").strip():
+        from app.services.capability_evidence_plan import (
+            apply_evidence_plan_handoffs,
+            build_capability_evidence_plan,
+            looks_like_ceo_ops_question,
+        )
+
+        if looks_like_ceo_ops_question(message or "") or (
+            isinstance(task_state, dict)
+            and (
+                task_state.get("live_classical_handoff_queue")
+                or (
+                    isinstance(task_state.get("capability_evidence_plan"), dict)
+                    and (task_state["capability_evidence_plan"].get("required") or [])
+                )
+            )
+        ):
+            if isinstance(task_state, dict):
+                plan = task_state.get("capability_evidence_plan")
+                if not isinstance(plan, dict):
+                    plan = build_capability_evidence_plan(
+                        message or "",
+                        connected_integrations=list(connected_integrations or []),
+                        settings=active,
+                    )
+                apply_evidence_plan_handoffs(task_state, plan)
+            _mark_live_fallthrough(result, "evidence_plan_required_read")
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return None
         if unified_live_message_violates_no_pending_hold(
             message=result.user_message, task_state=task_state
         ):
