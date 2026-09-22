@@ -8,6 +8,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from app.core.safe_dict import safe_normalize_stored_dict
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.billing.service import (
     apply_usage_with_overage,
@@ -2013,7 +2015,7 @@ def _drain_unstarted_assistant_chat_run(
     run = get_run_with_steps(client, org_id, run_id, environment_name)
     if not can_inline_drain_unstarted_run(run):
         return None
-    merged = dict((run or {}).get("parameters") or {})
+    merged = safe_normalize_stored_dict(run or {}, key="parameters")
     merged.update(parameters or {})
     steps_exist = bool((run or {}).get("steps"))
     final_status, step_rows, errors, rate_limited = execute_workflow_steps(
