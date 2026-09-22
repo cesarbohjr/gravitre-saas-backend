@@ -1,0 +1,25 @@
+{
+  "health": "8bb99a6c7e1a2c4419fc8dc9d4625dd3f441349d",
+  "conv": "695d5512-b12a-4654-a711-177216444683",
+  "ask": "Ready to run the existing workflow **F6 Prod Process Verify (entity_get)**. Reply **yes** to start it, or tell me what to change.",
+  "yes": "Done \u2014 I started **F6 Prod Process Verify (entity_get)**. Open **Runs** to track progress.",
+  "actions": [
+    "context.understanding.extracted",
+    "memory.recalled",
+    "runtime.turn_latency.critical_path",
+    "response.composer.completed",
+    "cognitive.loop.completed",
+    "context.understanding.extracted",
+    "memory.recalled",
+    "pending_reply.classified",
+    "tool.invoke.requested",
+    "policy.override.approval_floor_applied",
+    "workflow.execute.created",
+    "workflow.execute.pending_approval",
+    "tool.invoke.completed",
+    "workflow.execute.completed",
+    "runtime.turn_latency.critical_path",
+    "response.composer.completed"
+  ],
+  "child": []
+}\n

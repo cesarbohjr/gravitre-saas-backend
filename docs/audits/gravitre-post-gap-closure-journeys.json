@@ -1,0 +1,69 @@
+{
+  "audit": "gravitre-post-gap-closure-acceptance",
+  "sha": "0191297fa2eb4def8620a1b913a41314520d17bb",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "captured_at": "2026-09-22T18:20:00Z",
+  "journeys": [
+    {
+      "id": "EV-J-001",
+      "name": "Greeting",
+      "status": "PARTIAL",
+      "conversation_id": "bc9334d6-7bd5-413f-aa94-335d70c96e4c",
+      "evidence": "Cold first_useful_text_ms=6329 HTTP 200. Warm same conversation HTTP 502 empty."
+    },
+    {
+      "id": "EV-J-002",
+      "name": "Deals + large follow-up",
+      "status": "PASS",
+      "conversation_id": "346fdc99-486e-4d5b-b750-9855e4c59f89",
+      "plan_id": "960763e6-dcf4-4445-aac3-6f6582bd6650",
+      "evidence": "Show my deals: hubspot.deals.list provider_invoked, 25 canned, TTFT 9062 complete 15168. Follow-up large amount: clarify 11224ms no invented figure."
+    },
+    {
+      "id": "EV-J-003",
+      "name": "Sarah WRITE clarify",
+      "status": "PASS",
+      "conversation_id": "61f409a5-a1b4-44bf-bb95-15b65f6cf5d5",
+      "evidence": "first_useful_text_ms=33743; asks which Sarah; WRITE not invoked."
+    },
+    {
+      "id": "EV-J-004",
+      "name": "CEO / business evidence",
+      "status": "PARTIAL",
+      "conversation_ids": [
+        "fe585cb1-2d07-4545-b878-bb603862d8a6",
+        "888d620c-a19c-4986-a686-41af145b81c3",
+        "f46ab5d0-9132-48cb-99be-ff6f816c79ae"
+      ],
+      "evidence": "Exact prior CEO phrase: 25 deals + pending_auth TTFT 9772 no inference.tool_completion. How is my company doing?: internals menu + tool_completion 50980ms. Snapshot: GA/GSC pending_auth honest, no HubSpot."
+    },
+    {
+      "id": "EV-J-005",
+      "name": "PCM Apollo spoken",
+      "status": "PARTIAL",
+      "proof_class": "SYNTHESIZED_PCM_INTO_PIPECAT_WS",
+      "evidence": "n=3 interrupt_events=1 each after tts.warmed; audio_frames 0 / 60 / 5; last run assistant_text loop narration not Apollo connector answer."
+    },
+    {
+      "id": "EV-J-006",
+      "name": "HTTP Talk greeting",
+      "status": "PASS",
+      "conversation_id": "29619a96-67c7-42fa-8f9b-65cb4e350257",
+      "evidence": "first_useful_text_ms=274 first_audio_ms=282 completion_ms=3122; HTTP_TALK_NOT_PHYSICAL_MIC."
+    },
+    {
+      "id": "EV-J-007",
+      "name": "Chat-started workflow child",
+      "status": "FAIL",
+      "conversation_id": "31e8bfb7-0300-441d-a609-3a4943a57a97",
+      "evidence": "Confirmation card/text appeared. User yes: not a permitted action. child_obs=[] workflow_waiting=[] invokes=[]. No assistant_execute_workflow."
+    },
+    {
+      "id": "EV-J-008",
+      "name": "Text then spoken same conversation",
+      "status": "PASS",
+      "conversation_id": "11b34c29-02b3-47f3-8275-fde4a6d97577",
+      "evidence": "Text greeting then HTTP Talk spoken_first_text_ms=672. HTTP Talk not Pipecat/physical."
+    }
+  ]
+}

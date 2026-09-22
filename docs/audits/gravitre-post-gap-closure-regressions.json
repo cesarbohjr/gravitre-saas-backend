@@ -1,0 +1,45 @@
+{
+  "audit": "gravitre-post-gap-closure-acceptance",
+  "sha": "0191297fa2eb4def8620a1b913a41314520d17bb",
+  "required_ci": {
+    "name": "CI",
+    "conclusion": "success",
+    "url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35761237481"
+  },
+  "four_non_required_jobs": {
+    "ran_on_0191297f": false,
+    "classification": "stale / schedule-or-path-filter; last recorded failures on 426fce81, not a 0191297f execution",
+    "jobs": [
+      {
+        "name": "Click Audit",
+        "class": "infra-only / path-filter + nightly",
+        "overlap_current_runtime": false
+      },
+      {
+        "name": "Voice duplex",
+        "class": "schedule-only",
+        "overlap_current_runtime": true,
+        "note": "Does not re-prove P3 PCM interrupt race. PCM live n=3 already PARTIAL independently."
+      },
+      {
+        "name": "Verified Writes",
+        "class": "cron",
+        "overlap_current_runtime": false
+      },
+      {
+        "name": "Credential DB",
+        "class": "daily schedule",
+        "overlap_current_runtime": false
+      }
+    ]
+  },
+  "governance_recheck": {
+    "hmac": "PASS — deals and exact-CEO compiled READ provider_invoked with plan/step",
+    "pending_action": "PASS — Sarah WRITE not invoked",
+    "write_safety": "PASS this sample",
+    "tenant_isolation": "PASS org f07e57c0 only",
+    "operator_org_kernel_chat": "PASS not used",
+    "oauth_bypass": "PASS pending_auth stated for GA/GSC",
+    "invented_provider_results": "PASS 25-deal canned matches invoke; company prompt did not invent HubSpot numbers"
+  }
+}

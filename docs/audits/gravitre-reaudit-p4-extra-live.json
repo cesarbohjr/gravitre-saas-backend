@@ -1,0 +1,63 @@
+{
+  "health": "0191297fa2eb4def8620a1b913a41314520d17bb",
+  "turns": [
+    {
+      "prompt": "How is my company doing?",
+      "conversation_id": "888d620c-a19c-4986-a686-41af145b81c3",
+      "http": 200,
+      "first_ms": 50980,
+      "excerpt": "I don\u2019t have enough information yet to assess your company. Tell me what you want measured \u2014 for example agent health, connector health, workflow success, or CRM activity \u2014 and I\u2019ll check it.\nI don\u2019t have enough information yet to assess your company. Tell me what you want measured \u2014 for example agent health, connector health, workflow success, or CRM activity \u2014 and I\u2019ll check it.",
+      "actions": [
+        "context.understanding.extracted",
+        "context.understanding.extracted",
+        "memory.recalled",
+        "memory.recalled",
+        "unified_turn.live.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed",
+        "evidence.sufficiency.assessed",
+        "runtime.jit.context_profile",
+        "runtime.jit.tool_namespace",
+        "unified_turn.live.fallthrough",
+        "classical.answer_path.reached",
+        "context.understanding.extracted",
+        "memory.recalled",
+        "pending_reply.classified",
+        "unified_turn.live.fallthrough",
+        "pending_reply.classified",
+        "pending_reply.classified",
+        "classical.answer_path.reached",
+        "inference.tool_completion",
+        "agent.react.iteration",
+        "cognitive.loop.completed"
+      ],
+      "invokes": []
+    },
+    {
+      "prompt": "Give me a business performance snapshot from connected systems.",
+      "conversation_id": "f46ab5d0-9132-48cb-99be-ff6f816c79ae",
+      "http": 200,
+      "first_ms": 19337,
+      "excerpt": "I can\u2019t produce the business performance snapshot yet. The available website analytics sources aren\u2019t authorized in this workspace: - **Google Analytics:** connected, but needs sign-in\n- **Search Console:** connected, but needs sign-in Reconnect those at `/connectors`, then ask for the snapshot again and I\u2019ll pick it up from there.",
+      "actions": [
+        "inference.tool_completion",
+        "agent.react.iteration",
+        "cognitive.loop.completed",
+        "context.understanding.extracted",
+        "memory.recalled",
+        "runtime.turn_latency.critical_path",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "response.composer.completed",
+        "cognitive.loop.completed",
+        "response.composer.completed",
+        "voice.slo.metric_a",
+        "context.understanding.extracted",
+        "response.composer.completed",
+        "memory.recalled"
+      ],
+      "invokes": []
+    }
+  ]
+}

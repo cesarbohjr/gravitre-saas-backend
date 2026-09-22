@@ -1,0 +1,97 @@
+{
+  "audit": "gravitre-post-gap-closure-acceptance",
+  "sha": "0191297fa2eb4def8620a1b913a41314520d17bb",
+  "captured_at": "2026-09-22T18:20:00Z",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "note": "First useful text = first non-empty SSE text-delta. Quality is scored with speed, not instead of it.",
+  "waterfall_live": {
+    "source": "runtime.turn_latency.critical_path stages_compact",
+    "present_on_0191297f": true,
+    "hubspot_deals_compact": "understanding:132, memory.recalled:0, capability_compile:3, preflight:261, provider:1552, composer_start:273",
+    "hubspot_dominant": "PROVIDER 1552ms of 6671ms compact total",
+    "named_marks": {
+      "understanding": true,
+      "context": "present as connected_integrations/persona/parameter_ledger",
+      "memory": "checkpoint present; compact often 0",
+      "compile": true,
+      "resource": "mcp_tools/engine_settings present",
+      "preflight": true,
+      "provider": true,
+      "Observation": false,
+      "Composer": "composer_start present",
+      "first_SSE": false,
+      "complete": "journey completion_ms recorded separately"
+    }
+  },
+  "rows": [
+    {
+      "scenario": "Warm greeting",
+      "a7a0dd56_first_ms": 2092,
+      "426fce81_first_ms": 4685,
+      "0191297f_first_ms": 6329,
+      "0191297f_complete_ms": null,
+      "delta_vs_a7_ms": 4237,
+      "delta_vs_426_ms": 1644,
+      "quality": "PARTIAL — cold ANSWERED; same-conv warm HTTP 502 empty body"
+    },
+    {
+      "scenario": "Show my deals (HubSpot HMAC READ)",
+      "a7a0dd56_first_ms": 19931,
+      "426fce81_first_ms": 29823,
+      "0191297f_first_ms": 9062,
+      "0191297f_complete_ms": 15168,
+      "delta_vs_a7_ms": -10869,
+      "delta_vs_426_ms": -20761,
+      "quality": "PASS — 25 deals canned; hubspot.deals.list provider_invoked; plan 960763e6 step read_sales_pipeline_health conv 346fdc99"
+    },
+    {
+      "scenario": "Large amount follow-up",
+      "a7a0dd56_first_ms": 16787,
+      "426fce81_first_ms": 21704,
+      "0191297f_first_ms": 11224,
+      "0191297f_complete_ms": null,
+      "delta_vs_a7_ms": -5563,
+      "delta_vs_426_ms": -10480,
+      "quality": "PASS — clarify cutoff; no invented amount"
+    },
+    {
+      "scenario": "Sarah WRITE clarify",
+      "a7a0dd56_first_ms": 15756,
+      "426fce81_first_ms": 28776,
+      "0191297f_first_ms": 33743,
+      "0191297f_complete_ms": null,
+      "delta_vs_a7_ms": 17987,
+      "delta_vs_426_ms": 4967,
+      "quality": "PASS — which Sarah; WRITE not invoked"
+    },
+    {
+      "scenario": "CEO phrase (How is the business doing…)",
+      "a7a0dd56_first_ms": 31140,
+      "426fce81_first_ms": 27062,
+      "0191297f_first_ms": 9772,
+      "0191297f_complete_ms": 14916,
+      "delta_vs_a7_ms": -21368,
+      "delta_vs_426_ms": -17290,
+      "quality": "PASS on this exact prompt — 25 deals + GA/GSC pending_auth; no inference.tool_completion"
+    },
+    {
+      "scenario": "Related: How is my company doing?",
+      "a7a0dd56_first_ms": null,
+      "426fce81_first_ms": null,
+      "0191297f_first_ms": 50980,
+      "0191297f_complete_ms": 50980,
+      "delta_vs_a7_ms": null,
+      "delta_vs_426_ms": null,
+      "quality": "FAIL — internals-shaped clarify; inference.tool_completion; conv 888d620c"
+    },
+    {
+      "scenario": "HTTP Talk greeting",
+      "a7a0dd56_first_ms": null,
+      "426fce81_first_ms": null,
+      "0191297f_first_ms": 274,
+      "0191297f_complete_ms": 3122,
+      "first_audio_ms": 282,
+      "quality": "PASS HTTP Talk — not physical mic; conv 29619a96"
+    }
+  ]
+}

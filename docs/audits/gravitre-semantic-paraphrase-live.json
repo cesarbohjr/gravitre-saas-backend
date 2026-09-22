@@ -1,11 +1,11 @@
 {
-  "health": "54c9e7a192f6eaff6372ebdce0a42afb67741fac",
+  "health": "8bb99a6c7e1a2c4419fc8dc9d4625dd3f441349d",
   "turns": [
     {
       "prompt": "How is my company doing?",
-      "conversation_id": "c6bbbde9-6a7d-45f9-9968-58ab7e9fe4f6",
+      "conversation_id": "6ed95a51-be10-4337-bdae-733e13095a22",
       "http": 200,
-      "first_ms": 41237,
+      "first_ms": 10813,
       "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
       "actions": [
         "context.understanding.extracted",
@@ -18,13 +18,13 @@
       ],
       "invokes": [
         {
-          "id": "f3d8e8cf-336",
+          "id": "dda96c39-e46",
           "action": "tool.invoke.completed",
-          "created_at": "2026-09-22T20:11:32.092379+00:00",
+          "created_at": "2026-09-22T22:11:35.653914+00:00",
           "meta": {
             "action": "hubspot.deals.list",
             "provider_invoked": true,
-            "plan_id": "192d3ec8-5238-4387-8172-9d66b8911250",
+            "plan_id": "3f519ebf-e87a-45a7-8491-a2b437033c1c",
             "step_id": "read_sales_pipeline_health"
           }
         }
@@ -32,9 +32,9 @@
     },
     {
       "prompt": "How's the company doing?",
-      "conversation_id": "82b75e5e-f804-4f07-9c43-91c3c8d5cd6e",
+      "conversation_id": "65b0fd69-4a43-4c3f-9178-f1af3b749040",
       "http": 200,
-      "first_ms": 9110,
+      "first_ms": 8857,
       "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
       "actions": [
         "context.understanding.extracted",
@@ -47,13 +47,13 @@
       ],
       "invokes": [
         {
-          "id": "904541c1-92a",
+          "id": "7e3f48d5-657",
           "action": "tool.invoke.completed",
-          "created_at": "2026-09-22T20:11:45.599195+00:00",
+          "created_at": "2026-09-22T22:11:48.919597+00:00",
           "meta": {
             "action": "hubspot.deals.list",
             "provider_invoked": true,
-            "plan_id": "5ba191ca-73bd-4bd9-b695-b95a54d927e3",
+            "plan_id": "7c2e17d0-e746-4835-bce5-dc36cb4ee220",
             "step_id": "read_sales_pipeline_health"
           }
         }
@@ -61,9 +61,9 @@
     },
     {
       "prompt": "Give me a business performance snapshot from connected systems.",
-      "conversation_id": "6dd2f852-557e-4777-ba66-c41ee3a286d4",
+      "conversation_id": "1fe87cb1-25f5-450e-9894-41f9db56a462",
       "http": 200,
-      "first_ms": 9701,
+      "first_ms": 6844,
       "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
       "actions": [
         "context.understanding.extracted",
@@ -76,13 +76,13 @@
       ],
       "invokes": [
         {
-          "id": "ee837e39-5f6",
+          "id": "70e2a3ed-9ac",
           "action": "tool.invoke.completed",
-          "created_at": "2026-09-22T20:12:01.72819+00:00",
+          "created_at": "2026-09-22T22:12:00.658858+00:00",
           "meta": {
             "action": "hubspot.deals.list",
             "provider_invoked": true,
-            "plan_id": "d92180d5-9e3c-4f97-926c-40a012d977a8",
+            "plan_id": "7a3edda2-0c7d-4b8f-88a9-dca376f289b0",
             "step_id": "read_sales_pipeline_health"
           }
         }

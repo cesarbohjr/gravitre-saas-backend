@@ -1,5 +1,5 @@
 {
-  "health_sha": "3773cbf5976c31ede37dd19786dd5a61f01e5e55",
+  "health_sha": "d543279021678f4275f28696217a90eeca96c08a",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "workflows": [
     {
@@ -27,13 +27,20 @@
       "name": "F6 Prod Process Verify (entity_get)"
     }
   ],
+  "picked_workflow": {
+    "id": "75d651be-fb4f-5031-be42-83035c4cd19e",
+    "name": "Competitive Intelligence Monitoring",
+    "blocked_ids": [
+      "f91610f0-7d3a-43aa-bc6e-7185c08f9182"
+    ]
+  },
   "j007": {
-    "conversation_id": "9713a5b0-627c-4fc3-bde0-3fed5b35f20c",
-    "prompt": "Run the workflow named Canvas Write Governance Probe (no approval node) in this conversation now.",
-    "assistant": "That workflow hit an error before it could run \u2014 nothing was executed. If you want to try again, let me know and I'll queue it back up.",
-    "yes_assistant": "That workflow already has a run in progress. Open the active run to monitor or cancel it, then try again.",
-    "first_ms": 30308,
-    "yes_ms": 13320,
+    "conversation_id": "292f8964-30e9-41f1-9ee2-8647d072bbce",
+    "prompt": "Run the workflow named Competitive Intelligence Monitoring in this conversation now.",
+    "assistant": "I can run the existing **Competitive Intelligence Monitoring** workflow now. Reply **yes** to start it, or tell me what to change.",
+    "yes_assistant": "I couldn\u2019t start **Competitive Intelligence Monitoring**. Its run configuration is incomplete, so it needs to be fixed before I can run it here.",
+    "first_ms": 14541,
+    "yes_ms": 16242,
     "child_obs": [],
     "workflow_waiting": [],
     "invokes": [],
@@ -47,6 +54,11 @@
       "memory.recalled",
       "pending_reply.classified",
       "tool.invoke.requested",
+      "workflow.execute.created",
+      "workflow.execute.started",
+      "workflow.execute.step_failed",
+      "workflow.execute.step_timing",
+      "workflow.execute.failed",
       "tool.invoke.failed",
       "workflow.execute.failed",
       "runtime.turn_latency.critical_path",
@@ -54,10 +66,10 @@
     ]
   },
   "j008": {
-    "conversation_id": "ab11a9d3-0319-43d7-9b4d-92d13e49e99c",
+    "conversation_id": "5453d5a3-56cf-4204-b58b-80c1bd12a485",
     "text_hi": "Hey \u2014 I'm here. What do you want to get done?",
-    "spoken_first_text_ms": 212,
-    "spoken_first_audio_ms": 221,
+    "spoken_first_text_ms": 263,
+    "spoken_first_audio_ms": 264,
     "spoken_types": [
       "voice.session.accepted",
       "voice.text.delta",
