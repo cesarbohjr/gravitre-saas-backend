@@ -249,7 +249,7 @@ def persist_uncertain_outcome_patch(
     existing = ExecutionPlan.from_dict(state.get("execution_plan"))
     exec_plan = write_plan_for_action(connector_plan, existing=existing)
     exec_plan.terminal_status = "blocked"
-    pending = dict(state.get("pending_task") or {})
+    pending = safe_normalize_stored_dict(state, key="pending_task")
     pending["type"] = "connector_action"
     pending["status"] = "outcome_uncertain"
     pending["lifecycle"] = "OUTCOME_UNCERTAIN"
@@ -329,7 +329,8 @@ def persist_write_outcome_patch(
         exec_plan.terminal_status = "completed"
     elif success:
         exec_plan.terminal_status = "partial"
-    pending = dict(pending_task or state.get("pending_task") or {})
+    pending = pending_task if isinstance(pending_task, dict) else safe_normalize_stored_dict(state, key="pending_task")
+    pending = dict(pending)
     pending["type"] = "connector_action"
     if success and verification and verification.get("verified"):
         pending["status"] = "executed"

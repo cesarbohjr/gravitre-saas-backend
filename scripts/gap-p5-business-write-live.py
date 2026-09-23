@@ -82,6 +82,33 @@ def main() -> int:
         time.sleep(0.8)
         confirm = evc.chat_turn(client, headers, iso_org, conv, history, "yes")
         time.sleep(2.0)
+    conv_row = (
+        sb.table("conversations")
+        .select("task_state")
+        .eq("id", conv)
+        .eq("org_id", iso_org)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    task_state = conv_row[0].get("task_state") if conv_row and isinstance(conv_row[0], dict) else {}
+    if not isinstance(task_state, dict):
+        task_state = {}
+    plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
+    obs = task_state.get("execution_observations") if isinstance(task_state.get("execution_observations"), list) else []
+    pending = task_state.get("pending_task") if isinstance(task_state.get("pending_task"), dict) else {}
+    last_obs = obs[-1] if obs and isinstance(obs[-1], dict) else {}
+    structured = last_obs.get("structured") if isinstance(last_obs.get("structured"), dict) else {}
+    out["canonical"] = {
+        "plan_source": plan.get("source"),
+        "plan_terminal": plan.get("terminal_status"),
+        "observation_count": len(obs),
+        "provider_record_id": structured.get("provider_record_id") or last_obs.get("resource"),
+        "pending_status": pending.get("status"),
+        "lifecycle": pending.get("lifecycle") or task_state.get("action_lifecycle"),
+        "verification_status": structured.get("verification_status"),
+    }
     out["first"] = {
         "excerpt": (first.get("assistant_excerpt") or "")[:900],
         "http_status": first.get("http_status"),
@@ -236,8 +263,13 @@ def main() -> int:
     completed_language = "complet" in (out["confirm"].get("excerpt") or "").lower() or "created" in (
         out["confirm"].get("excerpt") or ""
     ).lower()
-    out["chain_ok"] = bool(invoke_ok and entity_id)
+    canonical = out.get("canonical") if isinstance(out.get("canonical"), dict) else {}
+    obs_ok = int(canonical.get("observation_count") or 0) > 0
+    plan_not_running = str(canonical.get("plan_terminal") or "") not in {"running", "pending"}
+    out["chain_ok"] = bool(invoke_ok and obs_ok and plan_not_running)
     out["completed_language"] = completed_language
+    if entity_id is None and canonical.get("provider_record_id"):
+        out["written_entity_id"] = canonical.get("provider_record_id")
     OUT.write_text(json.dumps(out, indent=2, default=str)[:120000] + "\n", encoding="utf-8")
     print(json.dumps(out, indent=2, default=str)[:8000])
     return 0 if out["chain_ok"] else 1
