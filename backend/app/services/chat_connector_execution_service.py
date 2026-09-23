@@ -1599,7 +1599,12 @@ class ChatConnectorExecutionService:
             canonical_exec = resolve_executable_connector_plan(task_state)
             if canonical_exec is not None and canonical_exec.invoke_action:
                 plan = canonical_exec
-            pending_params = self.plan_to_dict(plan)
+            staged_params = (task_state.get("pending_task") or {}).get("params")
+            pending_params = (
+                staged_params
+                if isinstance(staged_params, dict) and staged_params.get("invoke_action")
+                else self.plan_to_dict(plan)
+            )
             execution = await self.execute_plan(
                 org_id=org_id,
                 user_id=user_id,
@@ -1735,25 +1740,33 @@ class ChatConnectorExecutionService:
         from app.services.approval_action_binding import (
             ApprovalActionMismatchError,
             MismatchAuditContext,
+            assert_plan_matches_binding,
             format_approval_mismatch_message,
             plan_from_approved_params,
         )
         from app.services.execution_dispatch import resolve_executable_connector_plan
 
         canonical_exec = resolve_executable_connector_plan(task_state)
+        audit = MismatchAuditContext(
+            client=client,
+            org_id=org_id,
+            actor_id=user_id,
+            conversation_id=conversation_id,
+        )
         try:
             if canonical_exec is not None and canonical_exec.invoke_action:
+                assert_plan_matches_binding(
+                    canonical_exec,
+                    params,
+                    registry=self._registry,
+                    audit=audit,
+                )
                 plan = canonical_exec
             else:
                 plan = plan_from_approved_params(
                     params,
                     registry=self._registry,
-                    audit=MismatchAuditContext(
-                        client=client,
-                        org_id=org_id,
-                        actor_id=user_id,
-                        conversation_id=conversation_id,
-                    ),
+                    audit=audit,
                 )
         except ApprovalActionMismatchError as exc:
             return ExecutionResult(
