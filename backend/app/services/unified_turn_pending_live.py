@@ -38,34 +38,25 @@ async def _execute_governed_pending_confirm(
     settings: Settings,
 ) -> Any:
     """Run the frozen pending WRITE through HMAC/approval execute — not LIVE narration."""
+    from app.services.pending_write_resume import (
+        frozen_connector_write_params,
+        resume_frozen_write_on_confirm,
+    )
     from app.services.unified_turn_reasoning_service import UnifiedTurnShadowResult
 
-    pending = (task_state or {}).get("pending_task") if isinstance(task_state, dict) else None
-    pending = pending if isinstance(pending, dict) else {}
-    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
-    invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
-    if str(pending.get("type") or "") != "connector_action":
-        return None
-    if str(pending.get("status") or "") not in {"awaiting_confirm", "awaiting_admin_approval"}:
-        return None
+    params = frozen_connector_write_params(task_state) or {}
+    invoke = str(params.get("invoke_action") or "").strip()
     if not invoke:
         return None
-    from app.services.chat_connector_execution_service import get_chat_connector_execution_service
-
-    integration = str(params.get("integration") or "").strip()
-    connected = [integration] if integration else []
     try:
-        turn = await get_chat_connector_execution_service(settings).process_turn(
+        turn = await resume_frozen_write_on_confirm(
+            message=message,
+            task_state=task_state,
             org_id=org_id,
             user_id=user_id,
-            conversation_id=conversation_id or "",
-            message=message,
-            classification={},
-            task_state=dict(task_state or {}),
-            connected_integrations=connected,
+            conversation_id=conversation_id,
             client=client,
-            environment_name="production",
-            pending_reply_intent="confirm",
+            settings=settings,
         )
     except Exception:  # noqa: BLE001
         return None

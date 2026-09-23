@@ -3586,12 +3586,12 @@ class AgentIntelligence:
         # before the full answer completes (Phase 5). Same LIVE path — not a fork.
         _unified_live_ok = bool(getattr(active_settings, "unified_turn_live_enabled", False))
         from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
-        from app.services.pending_reply_classifier import has_pending_family
-        from app.services.conversational_execution_service import CONFIRM_PATTERN
+        from app.services.pending_write_resume import should_skip_unified_live_for_compiled_write
 
+        _live_state = task_state if isinstance(task_state, dict) else _canonical_task_state
         if _unified_live_ok and should_skip_unified_live_for_compiled_read(
             task_text,
-            task_state if isinstance(task_state, dict) else _canonical_task_state,
+            _live_state,
             list(connected_early or []),
         ):
             # Dual-path: LIVE otherwise swallows GA4/website-traffic turns before
@@ -3599,19 +3599,14 @@ class AgentIntelligence:
             # swallows compiled department READs (pipeline) so Composer can speak
             # from a proposal without a provider Observation.
             _unified_live_ok = False
-        if _unified_live_ok and CONFIRM_PATTERN.match((task_text or "").strip()) and conversation_id:
-            try:
-                _confirm_state = await get_conversation_state_service(active_settings).get_task_state(
-                    conversation_id,
-                    org_id,
-                    client=client,
-                )
-                if has_pending_family(_confirm_state):
-                    task_state = _confirm_state
-                    _unified_live_ok = False
-            except Exception:  # noqa: BLE001
-                if has_pending_family(task_state if isinstance(task_state, dict) else {}):
-                    _unified_live_ok = False
+        if _unified_live_ok and should_skip_unified_live_for_compiled_write(
+            task_text,
+            _live_state if isinstance(_live_state, dict) else {},
+            list(connected_early or []),
+        ):
+            # Governed WRITE: compile → HMAC → PendingAction → confirm → same frozen
+            # action. LIVE must not re-select tools or re-ask yes.
+            _unified_live_ok = False
         _mark("capability_compile")
         if not _unified_live_ok:
             from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn as _try_compiled_early

@@ -83,7 +83,8 @@ def resolve_dispatch_target(
         chosen = next((s for s in steps if s.step_id == step_id), None)
     if chosen is None:
         pending = _executable_steps(plan)
-        chosen = pending[0] if pending else (steps[0] if steps else None)
+        # Compose/answer-only first steps are not connector execution targets.
+        chosen = pending[0] if pending else None
     if chosen is None:
         return None
     strategy = str(plan.execution_strategy or chosen.kind or "DIRECT").upper()
@@ -194,17 +195,29 @@ def resolve_executable_connector_plan(
     if isinstance(kernel_plan, dict):
         assert_plan_is_dispatchable(kernel_plan)
 
+    from app.services.pending_write_resume import frozen_connector_write_plan
+
+    frozen = frozen_connector_write_plan(state)
     target = resolve_dispatch_target(state, step_id=step_id)
     if target is not None:
         derived = connector_plan_from_execution_step(target.step)
+        executable_kinds = {"read", "write", "workflow", "agent_delegation"}
+        if target.step.kind not in executable_kinds or not (
+            derived and derived.invoke_action
+        ):
+            if frozen is not None:
+                return frozen
+            if structured_plan is not None:
+                return structured_plan
+            return derived
         if derived is not None and (derived.invoke_action or derived.integration):
             pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None
             return ignore_stale_pending_overrides(derived, pending)
         if structured_plan is not None:
             return structured_plan
-        return derived
+        return derived if derived is not None else frozen
 
-    return structured_plan
+    return structured_plan if structured_plan is not None else frozen
 
 
 def dispatch_execution_step(

@@ -650,6 +650,14 @@ class ChatConnectorExecutionService:
             return False
         if pending_type == "connector_action":
             return True
+        params = pending.get("params") if isinstance(pending, dict) else None
+        if (
+            isinstance(params, dict)
+            and str(params.get("invoke_action") or "").strip()
+            and str(pending.get("status") or "") in {"awaiting_confirm", "awaiting_admin_approval"}
+            and str(params.get("kind") or "write").lower() != "read"
+        ):
+            return True
         text = message.strip()
         if not text or len(text) < 8:
             return False
