@@ -28,6 +28,7 @@ from app.services.sealed_read_execution import (
     ensure_plan_read_step,
     invoke_sealed_f1_read,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.tool_types import ToolContext, ToolValidationError
 
 OPERATIONAL_READ_RECIPES = frozenset(
@@ -606,7 +607,7 @@ async def try_operational_read_short_circuit_turn(
     if isinstance(artifacts, list) and artifacts:
         last = artifacts[-1] if isinstance(artifacts[-1], dict) else None
         if last is not None:
-            meta = dict(last.get("metadata") or {})
+            meta = safe_normalize_stored_dict(last.get("metadata"))
             meta["capability_id"] = plan.capability_id
             meta["jit_runtime"] = "procedure_only"
             last["metadata"] = meta

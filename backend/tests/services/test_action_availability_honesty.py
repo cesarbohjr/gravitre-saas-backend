@@ -133,6 +133,40 @@ def test_normalize_state_keeps_durable_checkpoint():
     assert normalized["durable_session"]["plan_id"] == "plan-d-keep"
 
 
+def test_normalize_state_keeps_work_artifacts():
+    from app.services.conversation_state_service import ConversationStateService
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    raw = {
+        "durable_deliverable": {
+            "diagnosis": "From the connected CRM I received 2 deals in this sample.",
+            "evidence": ["hubspot.deals.list rows=2 obs=obs-keep"],
+            "required": False,
+        },
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-keep",
+                "kind": "report",
+                "title": "Pipeline sample",
+                "preview": "2 deals",
+                "metadata": {
+                    "plan_id": "plan-keep",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-keep"],
+                    "code": "Evidence\n- hubspot.deals.list rows=2 obs=obs-keep",
+                },
+            }
+        ],
+        "execution_plan": {"plan_id": "plan-keep", "terminal_status": "completed"},
+    }
+    normalized = ConversationStateService._normalize_state(raw)
+    assert normalized["work_artifacts"][0]["artifact_id"] == "report:plan-keep"
+    assert normalized["durable_deliverable"]["evidence"][0].startswith("hubspot.deals.list")
+    reconstructed = reconstruct_execution_result(normalized)
+    assert reconstructed is not None
+    assert reconstructed["artifacts"][0]["kind"] == "report"
+
+
 def test_normalize_state_keeps_provider_result_evidence():
     from app.services.conversation_state_service import ConversationStateService
 
