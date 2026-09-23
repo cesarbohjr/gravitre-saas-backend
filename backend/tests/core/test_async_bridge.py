@@ -54,3 +54,16 @@ def test_call_with_resource_retry_retries_eagain_once():
 
     assert call_with_resource_retry(_flaky) == "ok"
     assert calls["n"] == 2
+
+
+def test_call_with_resource_retry_retries_wrapped_eagain_text():
+    calls = {"n": 0}
+
+    def _flaky() -> str:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise RuntimeError("[Errno 11] Resource temporarily unavailable")
+        return "ok"
+
+    assert call_with_resource_retry(_flaky) == "ok"
+    assert calls["n"] == 3

@@ -960,13 +960,25 @@ def execute_workflow_graph(
         skipped_nodes=[],
     )
 
+    def _run_batches() -> tuple[str, list[str], bool]:
+        return _run_graph_batches(
+            ctx, batches, skip_nodes_with_outputs=bool(ctx.node_outputs)
+        )
+
     try:
-        final_status, errors, rate_limited = _run_graph_batches(ctx, batches)
+        final_status, errors, rate_limited = call_with_resource_retry(_run_batches)
     except Exception as exc:  # noqa: BLE001
         logger.exception("workflow_graph_execute_crashed run_id=%s", run_id)
         final_status, errors, rate_limited = RUN_STATUS_FAILED, [str(exc)], False
     run_error_message = errors[0] if errors else None
-    return _finalize_run(ctx, final_status=final_status, errors=errors, run_error_message=run_error_message, rate_limited=rate_limited)
+    return call_with_resource_retry(
+        _finalize_run,
+        ctx,
+        final_status=final_status,
+        errors=errors,
+        run_error_message=run_error_message,
+        rate_limited=rate_limited,
+    )
 
 
 def _resume_graph_from_node(

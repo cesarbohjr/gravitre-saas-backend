@@ -65,15 +65,30 @@ def run_coro_sync(coro: Coroutine[Any, Any, T], *, timeout: float | None = None)
     return future.result(timeout=timeout)
 
 
-def call_with_resource_retry(fn: Callable[..., T], *args: Any, retries: int = 1, **kwargs: Any) -> T:
-    """Retry once on EAGAIN (Railway thread/fd exhaustion during sequential steps)."""
-    last: OSError | None = None
+def is_resource_unavailable(exc: BaseException) -> bool:
+    """True for errno 11 / EAGAIN, including wrapped HTTP/API errors."""
+    current: BaseException | None = exc
+    seen = 0
+    while current is not None and seen < 6:
+        if getattr(current, "errno", None) == 11:
+            return True
+        msg = str(current).lower()
+        if "resource temporarily unavailable" in msg or "[errno 11]" in msg:
+            return True
+        current = current.__cause__ or current.__context__
+        seen += 1
+    return False
+
+
+def call_with_resource_retry(fn: Callable[..., T], *args: Any, retries: int = 2, **kwargs: Any) -> T:
+    """Retry on EAGAIN (Railway thread/fd exhaustion during sequential graph work)."""
+    last: BaseException | None = None
     for attempt in range(retries + 1):
         try:
             return fn(*args, **kwargs)
-        except OSError as exc:
+        except Exception as exc:
             last = exc
-            if getattr(exc, "errno", None) != 11 or attempt >= retries:
+            if not is_resource_unavailable(exc) or attempt >= retries:
                 raise
             time.sleep(0.5 * (attempt + 1))
     assert last is not None
