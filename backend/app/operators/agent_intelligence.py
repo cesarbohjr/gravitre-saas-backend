@@ -4213,18 +4213,30 @@ class AgentIntelligence:
                 )
             exec_res = conv_turn.get("execution_result")
             failed = isinstance(exec_res, dict) and exec_res.get("success") is False
-            compose_kind = (
-                "error"
-                if failed
-                else ("clarify" if dialogue_mode in {"confirm", "clarifying"} else "canned")
+            from app.services.action_lifecycle import (
+                composer_envelope_from_turn,
+                composer_kind_for_stage,
+                semantic_stage_from_state,
+            )
+
+            _compose_env = composer_envelope_from_turn(
+                task_state=task_state if isinstance(task_state, dict) else {},
+                execution=exec_res,
+            )
+            compose_kind = composer_kind_for_stage(
+                semantic_stage_from_state(task_state if isinstance(task_state, dict) else {}),
+                success=not failed,
             )
             packed = await _composed_reply(
                 response_text,
                 kind=compose_kind,
                 extra={
-                    "success": not failed,
-                    "data": {"text": response_text},
+                    **_compose_env,
                     "execution_result": exec_res,
+                    "data": {
+                        **_compose_env.get("data", {}),
+                        "text": response_text,
+                    },
                 },
             )
             response_text = packed.text
@@ -4450,7 +4462,35 @@ class AgentIntelligence:
                         routing_tier=routing_control.tier,
                         routing=routing_sse,
                     )
-                packed = await _composed_reply(response_text, kind="canned")
+                from app.services.action_lifecycle import (
+                    composer_envelope_from_turn,
+                    composer_kind_for_stage,
+                    semantic_stage_from_state,
+                )
+
+                _compose_env = composer_envelope_from_turn(
+                    task_state=task_state if isinstance(task_state, dict) else {},
+                    execution=connector_turn.get("execution_result"),
+                )
+                _exec = connector_turn.get("execution_result")
+                _exec_ok = not (isinstance(_exec, dict) and _exec.get("success") is False)
+                compose_kind = composer_kind_for_stage(
+                    semantic_stage_from_state(task_state if isinstance(task_state, dict) else {}),
+                    success=_exec_ok,
+                )
+                packed = await _composed_reply(
+                    response_text,
+                    kind=compose_kind,
+                    extra={
+                        **_compose_env,
+                        "execution_result": _exec,
+                        "pending_task": connector_turn.get("pending_task"),
+                        "data": {
+                            **_compose_env.get("data", {}),
+                            "text": response_text,
+                        },
+                    },
+                )
                 response_text = packed.text
                 for ev in packed.events:
                     yield ev

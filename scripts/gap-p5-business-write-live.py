@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 import time
 import uuid
@@ -56,8 +57,8 @@ def main() -> int:
     marker = uuid.uuid4().hex[:10]
     probe_email = f"placeholder.isolated.{marker}@{EMAIL_DOMAIN}"
     prompt = (
-        f'Create a HubSpot contact for {probe_email} named "Placeholder Isolated Org". '
-        "This is a labeled isolated-org operator verification fixture, not a customer action."
+        f'Create a HubSpot contact named "Placeholder Isolated Org" '
+        f"with email {probe_email}."
     )
     since = (datetime.now(timezone.utc) - timedelta(seconds=2)).isoformat()
     out: dict = {
@@ -262,12 +263,21 @@ def main() -> int:
     invoke_ok = any(a.get("action") == "tool.invoke.completed" for a in out["invokes"])
     completed_language = "complet" in (out["confirm"].get("excerpt") or "").lower() or "created" in (
         out["confirm"].get("excerpt") or ""
-    ).lower()
+    ).lower() or "confirmed" in (out["confirm"].get("excerpt") or "").lower()
+    refused = bool(
+        re.search(
+            r"not permitted|isn't permitted|won't create|will not",
+            out["confirm"].get("excerpt") or "",
+            re.I,
+        )
+    )
     canonical = out.get("canonical") if isinstance(out.get("canonical"), dict) else {}
     obs_ok = int(canonical.get("observation_count") or 0) > 0
     plan_not_running = str(canonical.get("plan_terminal") or "") not in {"running", "pending"}
-    out["chain_ok"] = bool(invoke_ok and obs_ok and plan_not_running)
+    composer_agrees = bool(completed_language and not refused)
+    out["chain_ok"] = bool(invoke_ok and obs_ok and plan_not_running and composer_agrees)
     out["completed_language"] = completed_language
+    out["composer_agrees"] = composer_agrees
     if entity_id is None and canonical.get("provider_record_id"):
         out["written_entity_id"] = canonical.get("provider_record_id")
     OUT.write_text(json.dumps(out, indent=2, default=str)[:120000] + "\n", encoding="utf-8")

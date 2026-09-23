@@ -90,7 +90,53 @@ _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bcapability__[a-z0-9_]+\b", re.I),
 )
 
+_LIFECYCLE_LEAK = re.compile(
+    r"\b(?:PREPARED|AWAITING_APPROVAL|APPROVED|EXECUTING|EXECUTED_UNVERIFIED|"
+    r"VERIFIED|COMPLETED|REJECTED|CANCELLED|FAILED|OUTCOME_UNCERTAIN|"
+    r"AWAITING_RECONCILIATION)\b"
+)
+_REFUSAL_CLAIM = re.compile(
+    r"\b(?:not permitted|isn't permitted|isn['’]t permitted|won't create|"
+    r"won['’]t create|cannot create|can['’]t create|will not (?:create|run|execute))\b",
+    re.I,
+)
+_SUCCESS_CLAIM = re.compile(
+    r"\b(?:is confirmed|I created|successfully created|all set|it's done)\b",
+    re.I,
+)
+
 _CODE_AS_MESSAGE = re.compile(r"^[a-z][a-z0-9_]{2,}$")
+
+
+def align_composed_text_to_lifecycle(
+    text: str,
+    envelope: dict[str, Any] | None,
+    *,
+    draft: str | None = None,
+) -> str:
+    """Keep Composer prose unless it contradicts canonical execution state."""
+    env = envelope if isinstance(envelope, dict) else {}
+    data = env.get("data") if isinstance(env.get("data"), dict) else {}
+    stage = str(env.get("canonical_lifecycle") or data.get("canonical_lifecycle") or "").strip()
+    verified = bool(env.get("execution_verified") is True or data.get("execution_verified") is True)
+    success = env.get("success") is not False
+    cleaned = _LIFECYCLE_LEAK.sub("", text or "")
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    fallback = (draft or "").strip()
+    if fallback and looks_like_raw_backend(fallback):
+        fallback = ""
+    if verified and success and _REFUSAL_CLAIM.search(cleaned):
+        if fallback and not _REFUSAL_CLAIM.search(fallback):
+            return fallback
+    if stage in {"FAILED", "REJECTED", "CANCELLED"} or success is False:
+        if _SUCCESS_CLAIM.search(cleaned) and fallback:
+            return fallback
+    if stage == "AWAITING_APPROVAL" and _SUCCESS_CLAIM.search(cleaned) and fallback:
+        return fallback
+    if stage == "OUTCOME_UNCERTAIN" and (_SUCCESS_CLAIM.search(cleaned) or _REFUSAL_CLAIM.search(cleaned)):
+        if fallback:
+            return fallback
+    return cleaned or (text or "")
 
 _INTERNAL_IDS = re.compile(
     r"\b(?:org_id|user_id|connector_id|run_id|task_id|conversation_id)\b",
@@ -302,6 +348,11 @@ def _system_prompt(*, spoken: bool) -> str:
         "Never invent record counts, revenue, tickets, deals, invoices, traffic, "
         "or workflow outcomes. Only state those facts when the envelope includes "
         "provider_result_evidence from a completed provider observation.\n"
+        "AUTHORITATIVE ACTION STATE in the envelope overrides conversation history. "
+        "If execution_verified is true, the action completed — do not refuse it, "
+        "do not say it is not permitted, and do not claim you did not run it. "
+        "If the envelope says the action is waiting for approval, ask for approval "
+        "without claiming it already ran. If success is false, do not claim completion.\n"
     )
 
 
@@ -438,7 +489,32 @@ async def compose_user_reply(
         must_compose = False
     # Phrase-bank greetings are already user-facing English. Composer still owns
     # leak filtering via looks_like_raw_backend / finalize; skip a second LLM rewrite.
-    if resolved_kind == "shortcut" and draft and not looks_like_raw_backend(draft):
+    if (
+        resolved_kind == "error"
+        and draft
+        and not looks_like_raw_backend(draft)
+        and env.get("success") is False
+    ):
+        must_compose = False
+        if env.get("execution_verified") is True or (
+            isinstance(env.get("data"), dict) and env["data"].get("execution_verified") is True
+        ):
+            must_compose = False
+    if (
+        resolved_kind == "clarify"
+        and draft
+        and not looks_like_raw_backend(draft)
+        and str(
+            env.get("canonical_lifecycle")
+            or (
+                env["data"].get("canonical_lifecycle")
+                if isinstance(env.get("data"), dict)
+                else ""
+            )
+            or ""
+        )
+        == "AWAITING_APPROVAL"
+    ):
         must_compose = False
     # P2: sealed operational READ already produced a complete canned draft with
     # provider evidence. A second LLM rewrite is not Composer authority — skip it.
@@ -450,6 +526,15 @@ async def compose_user_reply(
         and (
             env.get("provider_result_evidence")
             or (isinstance(env.get("data"), dict) and env["data"].get("provider_result_evidence"))
+            or env.get("execution_verified") is True
+            or (isinstance(env.get("data"), dict) and env["data"].get("execution_verified") is True)
+            or str(env.get("canonical_lifecycle") or "") in {
+                "COMPLETED",
+                "EXECUTED_UNVERIFIED",
+                "OUTCOME_UNCERTAIN",
+                "FAILED",
+                "AWAITING_APPROVAL",
+            }
         )
     ):
         must_compose = False
@@ -556,6 +641,7 @@ async def compose_user_reply(
     from app.services.provider_result_grounding import apply_provider_result_grounding
 
     text = apply_provider_result_grounding(text, env)
+    text = align_composed_text_to_lifecycle(text, env, draft=draft)
     return text
 
 

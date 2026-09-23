@@ -1661,6 +1661,7 @@ class ChatConnectorExecutionService:
                 "pending_task": {
                     "type": "connector_action",
                     "status": pending_status,
+                    "actor_id": user_id,
                     "params": pending_params,
                 },
                 "recent_user_messages": [message],
@@ -2032,6 +2033,7 @@ class ChatConnectorExecutionService:
                     prior_for_claim,
                     client=client,
                     plan=plan,
+                    actor_id=user_id,
                 )
                 if claim_gate is not None:
                     return claim_gate
@@ -2435,6 +2437,7 @@ class ChatConnectorExecutionService:
         *,
         client: Any,
         plan: ConnectorActionPlan,
+        actor_id: str | None = None,
     ) -> ExecutionResult | None:
         from app.services.action_lifecycle import claim_pending_write, recover_orphaned_executing
 
@@ -2462,7 +2465,19 @@ class ChatConnectorExecutionService:
                 task_label=plan.label,
                 error_code="AWAITING_RECONCILIATION",
             )
-        outcome, claimed = claim_pending_write(pending)
+        outcome, claimed = claim_pending_write(pending, actor_id=actor_id)
+        if outcome == "unauthorized":
+            return ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+                title=plan.label,
+                body="You can't approve this action for another person.",
+                integration=plan.integration,
+                task_label=plan.label,
+                error_code="WRITE_CLAIM_UNAUTHORIZED",
+            )
         if outcome == "already_done":
             return ExecutionResult(
                 success=True,
@@ -2488,16 +2503,31 @@ class ChatConnectorExecutionService:
                 error_code="WRITE_IN_FLIGHT",
             )
         if outcome != "claimed":
+            if pending and str(pending.get("status") or ""):
+                return ExecutionResult(
+                    success=False,
+                    entity_type="connector",
+                    entity_id="",
+                    result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+                    title=plan.label,
+                    body="There is no open approval for that action, so I will not run it.",
+                    integration=plan.integration,
+                    task_label=plan.label,
+                    error_code="WRITE_CLAIM_CONFLICT",
+                )
             return None
         expected = str(pending.get("status") or "awaiting_confirm")
-        cas = getattr(self._state, "compare_and_set_pending_status", None)
-        if cas is not None:
-            ok = await cas(
+        import inspect
+
+        cls_fn = getattr(type(self._state), "compare_and_set_pending_status", None)
+        if inspect.iscoroutinefunction(cls_fn):
+            ok = await self._state.compare_and_set_pending_status(
                 conversation_id,
                 org_id,
                 expected_status=expected,
                 updates={"pending_task": claimed},
                 client=client,
+                actor_id=actor_id,
             )
             if not ok:
                 return ExecutionResult(

@@ -262,3 +262,51 @@ async def test_standalone_done_draft_without_verification_is_rewritten():
         compose_fn=_compose_fn,
     )
     assert text.strip().lower() != "done."
+
+
+@pytest.mark.asyncio
+async def test_verified_write_keeps_completion_over_stale_refusal():
+    async def refuse(**kwargs):
+        return "That request isn't permitted. I won't create contacts."
+
+    draft = "The HubSpot contact is confirmed.\n\nContact created."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_verified": True,
+            "canonical_lifecycle": "COMPLETED",
+            "provider_result_evidence": True,
+            "data": {
+                "text": draft,
+                "execution_verified": True,
+                "canonical_lifecycle": "COMPLETED",
+                "provider_result_evidence": True,
+            },
+        },
+        kind="success",
+        draft=draft,
+        history=[{"role": "assistant", "content": "That request is not permitted."}],
+        user_message="yes",
+        org_id="org",
+        compose_fn=refuse,
+    )
+    assert "not permitted" not in text.lower()
+    assert "confirmed" in text.lower() or "created" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_genuine_pre_execution_refusal_is_kept():
+    text = await compose_user_reply(
+        {
+            "success": False,
+            "error_code": "permission_denied",
+            "canonical_lifecycle": "FAILED",
+            "data": {"text": "You don't have permission to do that."},
+        },
+        kind="error",
+        draft="You don't have permission to do that.",
+        org_id="org",
+        compose_fn=_compose_fn,
+    )
+    assert "permission" in text.lower()
+    assert "confirmed" not in text.lower()

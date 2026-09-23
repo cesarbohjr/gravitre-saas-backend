@@ -264,6 +264,72 @@ def test_composer_confirmed_when_verified() -> None:
     assert "confirmed" in turn["message"].lower()
 
 
+def test_unauthorized_actor_cannot_claim() -> None:
+    pending = {
+        "status": "awaiting_confirm",
+        "actor_id": "user-a",
+        "params": {"invoke_action": "hubspot.contacts.create"},
+    }
+    outcome, _ = claim_pending_write(pending, actor_id="user-b")
+    assert outcome == "unauthorized"
+
+
+def test_stale_completed_cannot_reclaim() -> None:
+    outcome, _ = claim_pending_write({"status": "cancelled", "actor_id": "u1"}, actor_id="u1")
+    assert outcome == "conflict"
+
+
+@pytest.mark.asyncio
+async def test_cas_second_claim_fails() -> None:
+    from app.services.conversation_state_service import ConversationStateService
+
+    svc = ConversationStateService.__new__(ConversationStateService)
+    state = {
+        "pending_task": {
+            "status": "awaiting_confirm",
+            "actor_id": "u1",
+            "type": "connector_action",
+        }
+    }
+
+    class _Rpc:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def rpc(self, *args, **kwargs):
+            self.calls += 1
+            chain = MagicMock()
+            if self.calls == 1:
+                chain.execute.return_value = MagicMock(data={"pending_task": {"status": "executing"}})
+            else:
+                chain.execute.return_value = MagicMock(data=None)
+            return chain
+
+        def table(self, *args, **kwargs):
+            raise AssertionError("filtered update should not run when rpc returns")
+
+    db = _Rpc()
+    svc._client = lambda client=None: db
+    svc.get_task_state = AsyncMock(return_value=state)
+    first = await svc.compare_and_set_pending_status(
+        "c1",
+        "o1",
+        expected_status="awaiting_confirm",
+        updates={"pending_task": {"status": "executing", "execution_claim_id": "a", "claimed_at": "t"}},
+        actor_id="u1",
+    )
+    second = await svc.compare_and_set_pending_status(
+        "c1",
+        "o1",
+        expected_status="awaiting_confirm",
+        updates={"pending_task": {"status": "executing", "execution_claim_id": "b", "claimed_at": "t"}},
+        actor_id="u1",
+    )
+    assert first is True
+    assert second is False
+    assert db.calls == 2
+
+
 @pytest.mark.asyncio
 async def test_duplicate_confirm_skips_second_invoke() -> None:
     from app.services.chat_connector_execution_service import ChatConnectorExecutionService

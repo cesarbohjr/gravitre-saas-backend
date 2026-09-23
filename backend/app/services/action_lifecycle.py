@@ -150,9 +150,17 @@ def existing_successful_write(
     return None
 
 
-def claim_pending_write(pending: dict[str, Any] | None) -> tuple[str, dict[str, Any]]:
+def claim_pending_write(
+    pending: dict[str, Any] | None,
+    *,
+    actor_id: str | None = None,
+) -> tuple[str, dict[str, Any]]:
     """Atomically-intended claim. Returns claimed | already_done | conflict."""
     blob = dict(pending) if isinstance(pending, dict) else {}
+    bound = str(blob.get("actor_id") or "").strip()
+    requester = str(actor_id or "").strip()
+    if bound and requester and bound != requester:
+        return "unauthorized", blob
     status = str(blob.get("status") or "").strip().lower()
     if status in _DONE:
         return "already_done", blob
@@ -373,6 +381,67 @@ def persist_write_outcome_patch(
     if pending_action:
         patch["pending_action"] = pending_action
     return patch
+
+
+def composer_envelope_from_turn(
+    *,
+    task_state: dict[str, Any] | None,
+    execution: Any | None,
+) -> dict[str, Any]:
+    """Composer input derived from canonical lifecycle, not conversation history."""
+    state = task_state if isinstance(task_state, dict) else {}
+    stage = semantic_stage_from_state(state)
+    structured: dict[str, Any] = {}
+    success = True
+    verified = stage == "COMPLETED"
+    if execution is not None:
+        if isinstance(execution, dict):
+            success = bool(execution.get("success", True))
+            structured = execution.get("structured") if isinstance(execution.get("structured"), dict) else {}
+        else:
+            success = bool(getattr(execution, "success", True))
+            raw = getattr(execution, "structured", None)
+            structured = raw if isinstance(raw, dict) else {}
+        verification = structured.get("verification") if isinstance(structured.get("verification"), dict) else {}
+        verified = bool(
+            verification.get("verified")
+            or structured.get("verification_status") == "verified"
+            or stage == "COMPLETED"
+        )
+    uncertain = stage in {"OUTCOME_UNCERTAIN", "AWAITING_RECONCILIATION"} or str(
+        structured.get("verification_status") or ""
+    ) == "uncertain"
+    evidence = bool(state.get("execution_observations")) or verified or stage in {
+        "COMPLETED",
+        "EXECUTED_UNVERIFIED",
+        "FAILED",
+        "OUTCOME_UNCERTAIN",
+    }
+    return {
+        "success": bool(success) and stage not in {"FAILED", "REJECTED", "CANCELLED"},
+        "execution_verified": verified and stage == "COMPLETED",
+        "canonical_lifecycle": stage,
+        "provider_result_evidence": evidence,
+        "pending_task": state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None,
+        "data": {
+            "canonical_lifecycle": stage,
+            "execution_verified": verified and stage == "COMPLETED",
+            "provider_result_evidence": evidence,
+            "uncertain": uncertain,
+        },
+    }
+
+
+def composer_kind_for_stage(stage: SemanticStage, *, success: bool) -> str:
+    if stage in {"AWAITING_APPROVAL", "PREPARED", "APPROVED"}:
+        return "clarify"
+    if stage in {"FAILED", "REJECTED", "CANCELLED"} or not success:
+        return "error"
+    if stage == "OUTCOME_UNCERTAIN":
+        return "canned"
+    if stage == "COMPLETED" and success:
+        return "success"
+    return "canned"
 
 
 def composer_truth_headline(

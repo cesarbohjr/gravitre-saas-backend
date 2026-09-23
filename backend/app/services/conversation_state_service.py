@@ -242,14 +242,67 @@ class ConversationStateService:
         expected_status: str,
         updates: dict[str, Any],
         client: Any | None = None,
+        actor_id: str | None = None,
     ) -> bool:
-        """Persist only if pending_task.status still matches expected_status."""
+        """SQL compare-and-set on pending_task.status (not a process lock)."""
         current = await self.get_task_state(conversation_id, org_id, client=client)
         pending = current.get("pending_task") if isinstance(current.get("pending_task"), dict) else {}
         if str(pending.get("status") or "") != str(expected_status or ""):
             return False
-        await self._persist_state(conversation_id, org_id, updates, client=client)
-        return True
+        bound = str(pending.get("actor_id") or "").strip()
+        requester = str(actor_id or "").strip()
+        if bound and requester and bound != requester:
+            return False
+        claimed = updates.get("pending_task") if isinstance(updates.get("pending_task"), dict) else {}
+        claim_id = str(claimed.get("execution_claim_id") or "")
+        claimed_at = str(claimed.get("claimed_at") or "")
+        db = self._client(client)
+        if claim_id:
+            try:
+                resp = db.rpc(
+                    "claim_pending_connector_write",
+                    {
+                        "p_conversation_id": conversation_id,
+                        "p_org_id": org_id,
+                        "p_actor_id": requester,
+                        "p_expected_status": expected_status,
+                        "p_claim_id": claim_id,
+                        "p_claimed_at": claimed_at,
+                    },
+                ).execute()
+                row = resp.data
+                if row:
+                    return True
+                if row is None:
+                    pass
+                else:
+                    return False
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("claim_pending_connector_write rpc skipped: %s", exc)
+        from app.services.execution_plan_adapters import enrich_task_state_patch
+
+        patch = enrich_task_state_patch(updates, current_state=current)
+        merged = deepcopy(current)
+        merged.update(patch)
+        if isinstance(patch.get("pending_task"), dict):
+            merged["pending_task"] = patch["pending_task"]
+        try:
+            resp = (
+                db.table("conversations")
+                .update({"task_state": merged})
+                .eq("id", conversation_id)
+                .eq("org_id", org_id)
+                .filter("task_state->pending_task->>status", "eq", expected_status)
+                .execute()
+            )
+            return bool(getattr(resp, "data", None))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "cas_pending_status failed conversation_id=%s error=%s",
+                conversation_id,
+                exc,
+            )
+            return False
 
     async def ensure_owned_conversation(
         self,
