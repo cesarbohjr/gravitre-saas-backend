@@ -484,23 +484,48 @@ def bind_finished_work(
     state = dict(task_state or {})
     observations = [row for row in (state.get("execution_observations") or []) if isinstance(row, dict)]
     successful = [row for row in observations if row.get("success")]
-    if not successful:
-        return state
+    unsuccessful = [row for row in observations if not row.get("success")]
     plan = ExecutionPlan.from_dict(state.get("execution_plan"))
     plan_id = plan.plan_id if plan is not None else ""
-    evidence = _observation_evidence_lines(successful)
+    terminal = str(plan.terminal_status if plan is not None else "").strip().lower()
+    source_rows = successful or unsuccessful
+    if not source_rows and terminal not in {"blocked", "failed", "partial", "cancelled"}:
+        return state
+    if successful:
+        outcome = "completed"
+        default_title = (plan.summary if plan is not None else "") or "Finished work"
+        default_diagnosis = "Work completed. Evidence is bound to the observations on this plan."
+    elif terminal == "partial":
+        outcome = "partial"
+        default_title = "Partial work"
+        default_diagnosis = "This work is only partial. I am not treating it as complete."
+    elif terminal == "blocked":
+        outcome = "blocked"
+        default_title = "Work blocked"
+        default_diagnosis = "This work is blocked. No provider WRITE was claimed complete."
+    elif terminal == "cancelled":
+        outcome = "cancelled"
+        default_title = "Work cancelled"
+        default_diagnosis = "This work was cancelled. Nothing further was invoked."
+    else:
+        outcome = "failed"
+        default_title = "Work failed"
+        default_diagnosis = "This work failed. I am not reporting a successful result."
+    evidence = _observation_evidence_lines(source_rows) if source_rows else (
+        [f"plan_terminal={terminal}"] if terminal else []
+    )
     diagnosis = str(body or "").strip()
+    if not diagnosis and source_rows:
+        diagnosis = str(source_rows[-1].get("summary") or "").strip()
     if not diagnosis:
-        diagnosis = str(successful[-1].get("summary") or "").strip()
-    if not diagnosis:
-        diagnosis = "Work completed. Evidence is bound to the observations on this plan."
+        diagnosis = default_diagnosis
     contract = DeliverableContract(
         diagnosis=diagnosis[:4000],
         evidence=evidence,
         required=False,
     )
-    report_title = str(title or (plan.summary if plan is not None else "") or "Finished work").strip()[:160]
-    markdown_bits = [diagnosis]
+    report_title = str(title or default_title).strip()[:160]
+    markdown_bits = [f"Outcome: {outcome}", diagnosis]
     if evidence:
         markdown_bits.append("")
         markdown_bits.append("Evidence")
@@ -509,8 +534,11 @@ def bind_finished_work(
         markdown_bits.append("")
         markdown_bits.append(f"Plan `{plan_id}`")
     markdown = "\n".join(markdown_bits)
+    seed = plan_id or (
+        str(source_rows[-1].get("observation_id") or source_rows[-1].get("step_id")) if source_rows else outcome
+    )
     artifact = {
-        "artifact_id": f"report:{plan_id or successful[-1].get('observation_id') or successful[-1].get('step_id') or 'work'}",
+        "artifact_id": f"report:{seed or 'work'}",
         "kind": "report",
         "title": report_title,
         "preview": diagnosis[:280],
@@ -518,9 +546,10 @@ def bind_finished_work(
         "source": "e5_execution_plan",
         "metadata": {
             "plan_id": plan_id or None,
+            "outcome": outcome,
             "observation_ids": [
                 str(row.get("observation_id") or row.get("step_id"))
-                for row in successful
+                for row in source_rows
                 if row.get("observation_id") or row.get("step_id")
             ][:8],
             "code": markdown,
@@ -539,14 +568,13 @@ def bind_finished_work(
     return state
 
 
-def execution_result_from_finished_work(
+def reconstruct_execution_result(
     task_state: dict[str, Any] | None,
     *,
     body: str | None = None,
-    success: bool = True,
 ) -> dict[str, Any] | None:
-    """SSE/API ExecutionResult for a bound report — reuses ArtifactRegistry."""
-    state = bind_finished_work(task_state, body=body)
+    """Rebuild ExecutionResult from stored artifacts — no provider re-invoke."""
+    state = task_state if isinstance(task_state, dict) else {}
     artifacts = [row for row in (state.get(WORK_ARTIFACTS_KEY) or []) if isinstance(row, dict)]
     if not artifacts:
         return None
@@ -554,9 +582,17 @@ def execution_result_from_finished_work(
     from app.services.conversational_execution_service import ExecutionResult
 
     report = artifacts[-1]
-    markdown = ""
     meta = report.get("metadata") if isinstance(report.get("metadata"), dict) else {}
     markdown = str(meta.get("code") or report.get("preview") or body or "")
+    outcome = str(meta.get("outcome") or "").strip().lower()
+    plan = ExecutionPlan.from_dict(state.get("execution_plan"))
+    terminal = str(plan.terminal_status if plan is not None else "").strip().lower()
+    success = outcome not in {"failed", "blocked", "cancelled", "partial"} and terminal not in {
+        "failed",
+        "blocked",
+        "cancelled",
+        "partial",
+    }
     result = ExecutionResult(
         success=success,
         entity_type="report",
@@ -569,11 +605,31 @@ def execution_result_from_finished_work(
             "content": markdown,
             "title": report.get("title"),
             "plan_id": meta.get("plan_id"),
+            "outcome": outcome or terminal or ("completed" if success else "failed"),
             "artifacts": artifacts,
         },
         artifacts=artifacts,
+        error_code=None if success else (outcome or terminal or "WORK_NOT_COMPLETE"),
     )
     return serialize_execution_result(result)
+
+
+def execution_result_from_finished_work(
+    task_state: dict[str, Any] | None,
+    *,
+    body: str | None = None,
+    success: bool = True,
+) -> dict[str, Any] | None:
+    """SSE/API ExecutionResult for a bound report — reuses ArtifactRegistry."""
+    state = bind_finished_work(task_state, body=body)
+    reconstructed = reconstruct_execution_result(state, body=body)
+    if reconstructed is None:
+        return None
+    if success is False:
+        reconstructed["success"] = False
+        structured = reconstructed.get("structured") if isinstance(reconstructed.get("structured"), dict) else {}
+        reconstructed["structured"] = {**structured, "outcome": structured.get("outcome") or "failed"}
+    return reconstructed
 
 
 def apply_session_complete(

@@ -423,14 +423,21 @@ async def try_operational_read_short_circuit_turn(
     except ToolValidationError as exc:
         _mark_step(plan, step, status="failed", action_key=action_key)
         plan = mark_plan_terminal(plan, "blocked")
+        blocked_state = {**(task_state or {}), **execution_plan_patch(plan)}
+        from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+        blocked_state = bind_finished_work(blocked_state, body=str(exc), title="Work blocked")
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": str(exc),
-            "task_state": {**(task_state or {}), **execution_plan_patch(plan)},
+            "task_state": blocked_state,
             "workflow_status": "blocked",
             "execution_path": "operational_f1_read",
             "error_class": getattr(exc, "code", None),
+            "execution_result": execution_result_from_finished_work(
+                blocked_state, body=str(exc), success=False
+            ),
         }
     if not proof.ok:
         status = (
@@ -440,38 +447,60 @@ async def try_operational_read_short_circuit_turn(
         )
         _mark_step(plan, step, status="failed", action_key=action_key)
         plan = mark_plan_terminal(plan, "blocked")
-        return {
-            "stop_pipeline": True,
-            "dialogue_mode": "clarifying" if status == "needs clarification" else "answer",
-            "message": proof.user_message(),
-            "task_state": {
+        from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+        blocked_state = bind_finished_work(
+            {
                 **(task_state or {}),
                 **execution_plan_patch(plan),
                 **observations_patch(
                     [_safe_observation(obs, action_key=action_key, result_count=0, invoked=False)]
                 ),
             },
+            body=proof.user_message(),
+            title="Work blocked",
+        )
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "clarifying" if status == "needs clarification" else "answer",
+            "message": proof.user_message(),
+            "task_state": blocked_state,
             "workflow_status": status,
             "execution_path": "operational_f1_read",
             "error_class": proof.error_class,
+            "execution_result": execution_result_from_finished_work(
+                blocked_state, body=proof.user_message(), success=False
+            ),
         }
     if not invoked.success:
         _mark_step(plan, step, status="failed", action_key=action_key)
         plan = mark_plan_terminal(plan, "failed")
-        return {
-            "stop_pipeline": True,
-            "dialogue_mode": "answer",
-            "message": invoked.error_message
-            or "I couldn't complete that read. Try reconnecting the system at /connectors.",
-            "task_state": {
+        fail_msg = invoked.error_message or (
+            "I couldn't complete that read. Try reconnecting the system at /connectors."
+        )
+        from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+        failed_state = bind_finished_work(
+            {
                 **(task_state or {}),
                 **execution_plan_patch(plan),
                 **observations_patch(
                     [_safe_observation(obs, action_key=action_key, result_count=0, invoked=True)]
                 ),
             },
+            body=fail_msg,
+            title="Work failed",
+        )
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": fail_msg,
+            "task_state": failed_state,
             "workflow_status": "failed",
             "execution_path": "operational_f1_read",
+            "execution_result": execution_result_from_finished_work(
+                failed_state, body=fail_msg, success=False
+            ),
         }
     count = _result_count(invoked.data)
     completed = _mark_step(plan, step, status="completed", action_key=action_key)
@@ -524,6 +553,14 @@ async def try_operational_read_short_circuit_turn(
     from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
 
     merged_state = bind_finished_work(merged_state, body=summary, title=plan.summary or "CRM read")
+    artifacts = merged_state.get("work_artifacts")
+    if isinstance(artifacts, list) and artifacts:
+        last = artifacts[-1] if isinstance(artifacts[-1], dict) else None
+        if last is not None:
+            meta = dict(last.get("metadata") or {})
+            meta["capability_id"] = plan.capability_id
+            meta["jit_runtime"] = "procedure_only"
+            last["metadata"] = meta
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",

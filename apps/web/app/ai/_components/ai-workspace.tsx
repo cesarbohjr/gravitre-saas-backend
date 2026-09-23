@@ -771,6 +771,10 @@ export function AiWorkspace({
         if (data?.task_state) {
           setTaskState(data.task_state as typeof taskState)
         }
+        const stored = data?.execution_result as ChatExecutionResult | undefined
+        if (stored && (stored.artifacts?.length || stored.body || stored.title)) {
+          setExecutionResult(stored)
+        }
       },
     },
   )

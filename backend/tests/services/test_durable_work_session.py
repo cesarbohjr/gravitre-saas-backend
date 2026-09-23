@@ -247,6 +247,7 @@ def test_bind_finished_work_report_from_observations():
         WORK_ARTIFACTS_KEY,
         bind_finished_work,
         execution_result_from_finished_work,
+        reconstruct_execution_result,
     )
 
     plan = ExecutionPlan(
@@ -285,10 +286,45 @@ def test_bind_finished_work_report_from_observations():
     assert payload["entity_type"] == "report"
     kinds = {row["kind"] for row in (payload.get("artifacts") or [])}
     assert "report" in kinds or "document" in kinds
+    again = reconstruct_execution_result(bound)
+    assert again is not None
+    assert again["entity_id"] == payload["entity_id"]
+    assert again["structured"]["plan_id"] == "plan-art-1"
 
 
 def test_bind_finished_work_skips_without_successful_observation():
-    from app.services.durable_work_session import bind_finished_work
+    from app.services.durable_work_session import bind_finished_work, reconstruct_execution_result
 
     bound = bind_finished_work({"execution_observations": [{"success": False, "summary": "no"}]})
-    assert "work_artifacts" not in bound or not bound.get("work_artifacts")
+    assert bound.get("work_artifacts")
+    assert bound["work_artifacts"][-1]["metadata"]["outcome"] == "failed"
+    rebuilt = reconstruct_execution_result(bound)
+    assert rebuilt is not None
+    assert rebuilt["success"] is False
+
+
+def test_reconstruct_does_not_require_provider_reinvoke():
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    stored = {
+        "execution_plan": {"plan_id": "plan-resume", "terminal_status": "completed", "steps": []},
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-resume",
+                "kind": "report",
+                "title": "CRM read",
+                "preview": "2 deals",
+                "metadata": {
+                    "plan_id": "plan-resume",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-9"],
+                    "code": "Outcome: completed\n2 deals\n- hubspot.deals.list rows=2 obs=obs-9",
+                },
+            }
+        ],
+    }
+    rebuilt = reconstruct_execution_result(stored)
+    assert rebuilt is not None
+    assert rebuilt["success"] is True
+    assert rebuilt["entity_id"] == "plan-resume"
+    assert "hubspot.deals.list" in str(rebuilt["structured"]["content"])

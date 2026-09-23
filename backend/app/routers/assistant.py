@@ -1770,7 +1770,12 @@ async def get_conversation_task_state(
     if not owned.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
     state = await get_conversation_state_service(settings).get_task_state(conversation_id, org_id, client=client)
-    return {"task_state": state}
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    return {
+        "task_state": state,
+        "execution_result": reconstruct_execution_result(state),
+    }
 
 
 class ConversationExecuteRequest(BaseModel):

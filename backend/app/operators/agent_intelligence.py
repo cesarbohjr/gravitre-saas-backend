@@ -3858,6 +3858,18 @@ class AgentIntelligence:
 
             if live_turn and live_turn.get("stop_pipeline"):
                 task_state = live_turn.get("task_state") or task_state
+                if conversation_id and isinstance(task_state, dict) and (
+                    task_state.get("work_artifacts") or task_state.get("durable_deliverable")
+                ):
+                    try:
+                        await get_conversation_state_service(active_settings).update_task_state(
+                            conversation_id,
+                            org_id,
+                            task_state,
+                            client=client,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("live_finished_work_persist_skipped: %s", exc)
                 response_text = str(live_turn.get("message") or "")
                 dialogue_mode = str(live_turn.get("dialogue_mode") or "answer")
                 lat_bd = (

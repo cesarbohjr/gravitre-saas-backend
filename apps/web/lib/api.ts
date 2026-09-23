@@ -1687,7 +1687,17 @@ export const assistantApi = {
       data,
     ),
   getConversationState: (conversationId: string) =>
-    fetcher<{ task_state: Record<string, unknown> }>(apiUrl(`/api/assistant/conversation/${conversationId}/state`)),
+    fetcher<{
+      task_state: Record<string, unknown>
+      execution_result?: {
+        success?: boolean
+        title?: string
+        body?: string
+        artifacts?: unknown[]
+        structured?: Record<string, unknown>
+        entity_id?: string
+      } | null
+    }>(apiUrl(`/api/assistant/conversation/${conversationId}/state`)),
   executeConversationTask: (conversationId: string) =>
     postJson<{
       success: boolean
