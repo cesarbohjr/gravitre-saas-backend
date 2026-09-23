@@ -174,6 +174,35 @@ def search_eligible_action_specs(
     return selected
 
 
+def map_eligible_actions_to_tool_names(
+    eligible: list[EligibleAction],
+    full_by_name: dict[str, dict[str, Any]] | None,
+    *,
+    max_load: int = 5,
+) -> list[str]:
+    """Map eligible ActionSpecs onto already-narrowed tool schemas. Never invent tools."""
+    cap = max(1, min(int(max_load or 5), HARD_CAP_ELIGIBLE))
+    names: list[str] = []
+    seen: set[str] = set()
+    by_invoke: dict[str, str] = {}
+    for name, tool in (full_by_name or {}).items():
+        if not isinstance(tool, dict) or not name:
+            continue
+        inv = str(tool.get("invoke_action") or "").strip()
+        if inv:
+            by_invoke[inv] = name
+        by_invoke.setdefault(str(name).replace("_", "."), name)
+    for item in eligible:
+        name = by_invoke.get(item.action_id) or item.action_id.replace(".", "_")
+        if name not in (full_by_name or {}) or name in seen:
+            continue
+        seen.add(name)
+        names.append(name)
+        if len(names) >= cap:
+            break
+    return names
+
+
 def rank_tool_names(query: str, candidate_names: list[str], *, max_load: int = 5) -> list[str]:
     """Rank already-narrowed tool names for search_catalog_tools query fallback."""
     tokens = _query_tokens(query)

@@ -92,13 +92,40 @@ def test_search_catalog_tools_uses_ranker():
         {"query": "github issues"},
         full_by_name={
             "hubspot_deals_search": {"function": {"name": "hubspot_deals_search"}},
-            "github_issues_list": {"function": {"name": "github_issues_list"}},
+            "github_issues_list": {
+                "function": {"name": "github_issues_list"},
+                "invoke_action": "github.issues.list",
+            },
         },
         loaded_names=set(),
         max_load=1,
+        connected=["github"],
     )
     assert "github_issues_list" in loaded
     assert result["count"] == 1
+
+
+def test_search_catalog_tools_prefers_eligible_connected_vendor():
+    loaded, result = execute_search_catalog_tools(
+        {"query": "deals"},
+        full_by_name={
+            "hubspot_deals_list": {
+                "function": {"name": "hubspot_deals_list"},
+                "invoke_action": "hubspot.deals.list",
+            },
+            "github_issues_list": {
+                "function": {"name": "github_issues_list"},
+                "invoke_action": "github.issues.list",
+            },
+        },
+        loaded_names=set(),
+        max_load=2,
+        connected=["hubspot"],
+        capability_id="crm.deals.read",
+    )
+    assert "hubspot_deals_list" in loaded
+    assert "github_issues_list" not in loaded
+    assert result["count"] >= 1
 
 
 def test_skills_are_versioned_procedures_not_runtime():

@@ -1347,7 +1347,11 @@ async def run_unified_turn_shadow(
                 except json.JSONDecodeError:
                     args = {}
                 loaded_names, search_result = execute_search_catalog_tools(
-                    args, full_by_name=full_by_name, loaded_names=loaded_names
+                    args,
+                    full_by_name=full_by_name,
+                    loaded_names=loaded_names,
+                    connected=connected,
+                    capability_id=str((classification or {}).get("capability_id") or "") or None,
                 )
                 attach_tools, full_by_name, loaded_names = apply_progressive_disclosure(
                     list(visible), loaded_names=loaded_names

@@ -174,6 +174,8 @@ def execute_search_catalog_tools(
     full_by_name: dict[str, dict[str, Any]],
     loaded_names: set[str],
     max_load: int = 5,
+    connected: list[str] | None = None,
+    capability_id: str | None = None,
 ) -> tuple[set[str], dict[str, Any]]:
     """Resolve search_catalog_tools call → update loaded set + result payload."""
     payload = args if isinstance(args, dict) else {}
@@ -185,9 +187,24 @@ def execute_search_catalog_tools(
         names = [str(x).strip() for x in raw if str(x).strip()]
     query = str(payload.get("query") or "").strip().lower()
     if not names and query:
-        from app.services.jit_tool_discovery import rank_tool_names
+        from app.services.jit_tool_discovery import (
+            map_eligible_actions_to_tool_names,
+            rank_tool_names,
+            search_eligible_action_specs,
+        )
 
-        names = rank_tool_names(query, list(full_by_name.keys()), max_load=max_load)
+        eligible = search_eligible_action_specs(
+            query=query,
+            capability_id=capability_id,
+            connected=list(connected or []),
+            include_writes=False,
+            max_results=max_load,
+        )
+        names = map_eligible_actions_to_tool_names(
+            eligible, full_by_name, max_load=max_load
+        )
+        if not names:
+            names = rank_tool_names(query, list(full_by_name.keys()), max_load=max_load)
         if not names:
             for name, tool in full_by_name.items():
                 blob = f"{name} {json.dumps(tool).lower()}"
