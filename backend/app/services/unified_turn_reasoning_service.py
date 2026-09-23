@@ -1992,19 +1992,6 @@ async def apply_unified_turn_live(
         unified_live_message_violates_no_pending_hold,
     )
     from app.services.pending_reply_classifier import has_pending_family
-    from app.services.conversation_state_service import get_conversation_state_service
-
-    if conversation_id and client and org_id:
-        try:
-            fresh = await get_conversation_state_service(active).get_task_state(
-                conversation_id,
-                org_id,
-                client=client,
-            )
-            if has_pending_family(fresh):
-                task_state = fresh
-        except Exception:  # noqa: BLE001
-            pass
 
     _guard_t0 = time.perf_counter()
     # Channel override + meta-capability are Intent Gateway candidates.

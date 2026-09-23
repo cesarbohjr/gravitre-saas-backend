@@ -3599,13 +3599,19 @@ class AgentIntelligence:
             # swallows compiled department READs (pipeline) so Composer can speak
             # from a proposal without a provider Observation.
             _unified_live_ok = False
-        if (
-            _unified_live_ok
-            and CONFIRM_PATTERN.match((task_text or "").strip())
-            and has_pending_family(task_state if isinstance(task_state, dict) else {})
-        ):
-            # Frozen awaiting_confirm WRITE must execute, not be re-proposed by LIVE.
-            _unified_live_ok = False
+        if _unified_live_ok and CONFIRM_PATTERN.match((task_text or "").strip()) and conversation_id:
+            try:
+                _confirm_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id,
+                    org_id,
+                    client=client,
+                )
+                if has_pending_family(_confirm_state):
+                    task_state = _confirm_state
+                    _unified_live_ok = False
+            except Exception:  # noqa: BLE001
+                if has_pending_family(task_state if isinstance(task_state, dict) else {}):
+                    _unified_live_ok = False
         _mark("capability_compile")
         if not _unified_live_ok:
             from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn as _try_compiled_early
