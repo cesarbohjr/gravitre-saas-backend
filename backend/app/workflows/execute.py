@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings
+from app.core.async_bridge import call_with_resource_retry
 from app.core.logging import get_logger, request_id_ctx
 from app.connectors.rate_limit import RateLimitError
 from app.workflows import handlers as _handlers
@@ -182,7 +183,7 @@ def execute_workflow_steps(
                 conversation_id=(parameters or {}).get("conversation_id"),
                 durable_checkpoint=(parameters or {}).get("durable_checkpoint"),
             )
-            output = handler.execute(context)
+            output = call_with_resource_retry(handler.execute, context)
             step_outputs[step_id] = output
             try:
                 from app.services.workflow_execution_strategy import workflow_observation

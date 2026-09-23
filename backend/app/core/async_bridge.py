@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from collections.abc import Coroutine
+import time
+from collections.abc import Callable, Coroutine
 from typing import Any, TypeVar
 
 T = TypeVar("T")
@@ -62,3 +63,18 @@ def run_coro_sync(coro: Coroutine[Any, Any, T], *, timeout: float | None = None)
     bridge = _ensure_bridge_loop()
     future = asyncio.run_coroutine_threadsafe(coro, bridge)
     return future.result(timeout=timeout)
+
+
+def call_with_resource_retry(fn: Callable[..., T], *args: Any, retries: int = 1, **kwargs: Any) -> T:
+    """Retry once on EAGAIN (Railway thread/fd exhaustion during sequential steps)."""
+    last: OSError | None = None
+    for attempt in range(retries + 1):
+        try:
+            return fn(*args, **kwargs)
+        except OSError as exc:
+            last = exc
+            if getattr(exc, "errno", None) != 11 or attempt >= retries:
+                raise
+            time.sleep(0.3 * (attempt + 1))
+    assert last is not None
+    raise last

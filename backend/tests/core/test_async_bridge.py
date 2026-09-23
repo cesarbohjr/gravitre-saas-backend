@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from app.core.async_bridge import run_coro_sync
+from app.core.async_bridge import call_with_resource_retry, run_coro_sync
 
 
 async def _add(a: int, b: int) -> int:
@@ -41,3 +41,16 @@ async def test_run_coro_sync_concurrent_hops_share_bridge_loop():
     with ThreadPoolExecutor(max_workers=3) as pool:
         results = list(pool.map(lambda i: run_coro_sync(_hop(i)), range(3)))
     assert sorted(results) == [0, 1, 2]
+
+
+def test_call_with_resource_retry_retries_eagain_once():
+    calls = {"n": 0}
+
+    def _flaky() -> str:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError(11, "Resource temporarily unavailable")
+        return "ok"
+
+    assert call_with_resource_retry(_flaky) == "ok"
+    assert calls["n"] == 2

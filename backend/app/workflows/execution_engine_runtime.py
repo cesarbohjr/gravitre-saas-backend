@@ -11,6 +11,7 @@ from typing import Any
 
 from app.config import Settings
 from app.connectors.rate_limit import RateLimitError
+from app.core.async_bridge import call_with_resource_retry
 from app.core.logging import get_logger, request_id_ctx
 from app.services.agent_interrupt_service import AgentExecutionInterrupted, enforce_interrupt
 from app.services.council_workflow_service import resolve_active_branch, should_skip_for_branch
@@ -500,7 +501,7 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
                 conversation_id=(merged_parameters or {}).get("conversation_id"),
                 durable_checkpoint=(merged_parameters or {}).get("durable_checkpoint"),
             )
-            output = handler.execute(context)
+            output = call_with_resource_retry(handler.execute, context)
             if isinstance(output, dict):
                 output = {**output, "upstream_outputs": upstream}
             else:
