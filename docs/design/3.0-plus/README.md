@@ -28,6 +28,13 @@
 | `07-react-flow-adoption-plan.md` | Workflow canvas plan |
 | `08-ai-native-interaction-architecture.md` | Intent layer + adaptive surfaces |
 | `09-implementation-plan-and-release-gates.md` | Dependency-ordered plan + gates |
+| `10-spec-recovery-status.md` | Full §§0–48 recovery verdict |
+| `11-react-flow-option-a-b.md` | Custom builder vs React Flow decision brief |
+| `12-show-the-work-placement.md` | Future placement; no implementation |
+
+## Spec recovery
+
+**FULL master Sections 0–48: NOT recovered.** Word copies on disk are truncated mid-document. See `10-spec-recovery-status.md`. Request complete file from Cesar.
 
 ## Explicit non-goals (until Cesar gate)
 
@@ -36,3 +43,4 @@
 - Overwriting Platform Execution 3.0-D artifact / task-state / SSE contracts
 - Fake progress, confidence, or finished-work presentation
 - “Watch Gravitre work” / Computer Use ahead of functional roadmap
+- Implementing “show the work” live checklist (placement only — see `12-show-the-work-placement.md`)

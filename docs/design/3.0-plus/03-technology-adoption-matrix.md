@@ -9,7 +9,7 @@
 | **Framer Motion** | Yes | Broad + MotionProvider | **Retain** | Existing motion + reduced-motion |
 | **Radix / shadcn / Tailwind 4** | Yes | `components/ui/**` | **Retain** | Anchored overlays; a11y |
 | **Direct Floating UI** | Transitive only | Via Radix | **Defer** | Spec: selective anchoring only — **not** Window Manager |
-| **@xyflow/react** | Yes | Relationships graph only | **Extend** | Preferred for **workflow** canvas after migration plan |
+| **@xyflow/react** | Yes | Relationships graph only | **Extend** (preferred **target** for Workflow Builder visual layer per recovered §17 fragment) — **Cesar decision** via Option A/B in `11-react-flow-option-a-b.md`. Do not auto-replace custom builder; do not permanently reject RF. |
 | **@dagrejs/dagre** | Yes | Graph layout | **Retain** until ELK justified | |
 | **ELK.js** | No | — | **Defer / Reject** | Overlaps dagre |
 | **React Grid Layout** | No | — | **Evaluate** | Only if freeform dashboard tiles needed |
@@ -21,7 +21,7 @@
 | **SWR** | Yes | Primary fetch | **Retain** | |
 | **@ai-sdk/react / ai** | Yes | Chat transport | **Retain** | Functional contract surface |
 | **Custom AI workspace** | First-party | Core product | **Retain / Extend** | Do not replace with chat kit |
-| **Custom workflow builder** | First-party | `/workflows/[id]/builder` | **Extend → migrate** | Schema SoT stays `CanvasWorkflowNode` |
+| **Custom workflow builder** | First-party | `/workflows/[id]/builder` | **Extend (interim)** — Option A/B decision in `11-react-flow-option-a-b.md`; schema SoT stays `CanvasWorkflowNode` |
 | **Playwright** | Repo root | e2e + visual | **Retain** | |
 | **GSAP** | Yes | Marketing scroll only | **Retain** (marketing) | Do not expand into product chrome |
 | **Recharts** | Yes | Dashboard charts | **Retain** | ECharts in spec → **Defer** |
