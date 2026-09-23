@@ -915,6 +915,19 @@ def tool_execute_workflow(
                 "runId": str(result.get("run_id") or result.get("id") or ""),
                 "status": status,
             }
+        if status.lower() in {"pending_approval", "awaiting_approval"}:
+            return {
+                "workflowId": workflow_id,
+                "workflowName": str(match.get("name") or "Workflow"),
+                "runId": str(result.get("run_id") or result.get("id") or ""),
+                "status": status,
+                "pending_approval": True,
+                "error": "workflow_pending_approval",
+                "message": (
+                    f"**{match.get('name') or 'This workflow'}** is waiting for approval. "
+                    "It has not completed. Approve or cancel that run, then try again."
+                ),
+            }
         return {
             "workflowId": workflow_id,
             "workflowName": str(match.get("name") or "Workflow"),

@@ -43,14 +43,26 @@ def _interesting_score(name: str) -> int:
     return 99
 
 
+def _post_conversation(client, headers) -> str:
+    last = None
+    for attempt in range(5):
+        cr = client.post(
+            f"{BASE}/api/conversations",
+            headers={k: v for k, v in headers.items() if k != "Accept"},
+            json={"title": f"p5-{uuid.uuid4().hex[:6]}"},
+        )
+        last = cr
+        if cr.status_code < 500:
+            cr.raise_for_status()
+            return str(cr.json()["id"])
+        time.sleep(2.0 * (attempt + 1))
+    if last is not None:
+        last.raise_for_status()
+    raise RuntimeError("conversation create failed")
+
+
 def _run_named(client, headers, iso_org, sb, name: str, since: str) -> dict:
-    cr = client.post(
-        f"{BASE}/api/conversations",
-        headers={k: v for k, v in headers.items() if k != "Accept"},
-        json={"title": f"p5-{uuid.uuid4().hex[:6]}"},
-    )
-    cr.raise_for_status()
-    conv = str(cr.json()["id"])
+    conv = _post_conversation(client, headers)
     history: list = []
     prompt = f"Run the workflow named {name} in this conversation now."
     turn = evc.chat_turn(client, headers, iso_org, conv, history, prompt)

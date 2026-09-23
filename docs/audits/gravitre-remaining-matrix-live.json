@@ -1,0 +1,114 @@
+{
+  "health_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "generated_at": "2026-09-23T02:03:16.377086+00:00",
+  "hmac_or_pending_write": {
+    "prompt": "Send Sarah a summary.",
+    "conversation_id": "450b0319-4a53-4902-84af-0e5e1065d36b",
+    "excerpt": "I don\u2019t have enough information yet. Tell me which Sarah and what summary to send.",
+    "first_ms": 25869,
+    "yes_excerpt": null,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "evidence.sufficiency.assessed",
+      "runtime.jit.tool_namespace",
+      "runtime.jit.context_profile",
+      "unified_turn.live.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [],
+    "child_obs": [],
+    "pending": []
+  },
+  "sales_automation": {
+    "prompt": "Run the workflow named Sales Automation in this conversation now.",
+    "conversation_id": "744ead6c-a37d-4930-a6aa-f966906f5dfb",
+    "excerpt": "I\u2019ll run the existing **Sales Automation** workflow. Reply **yes** to start it, or tell me what to change.",
+    "first_ms": 14244,
+    "yes_excerpt": "Done \u2014 **Sales Automation** is running. Open **Runs** to track progress.",
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "tool.invoke.requested",
+      "workflow.execute.created",
+      "workflow.execute.pending_approval",
+      "tool.invoke.completed",
+      "workflow.execute.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ],
+    "invokes": [
+      {
+        "id": "e890b70e-732",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T02:04:25.600911+00:00",
+        "meta": {
+          "action": "assistant.execute_workflow"
+        }
+      }
+    ],
+    "child_obs": [],
+    "pending": [
+      {
+        "id": "34ee131b-92c",
+        "action": "pending_reply.classified",
+        "created_at": "2026-09-23T02:04:24.056789+00:00",
+        "meta": {}
+      },
+      {
+        "id": "b4e4d829-939",
+        "action": "workflow.execute.pending_approval",
+        "created_at": "2026-09-23T02:04:25.418025+00:00",
+        "meta": {}
+      }
+    ]
+  },
+  "uncertain_lead": {
+    "prompt": "Run the workflow named Uncertain lead in this conversation now.",
+    "conversation_id": "a39a3826-c455-480a-b486-039725502262",
+    "excerpt": "Which \u201cUncertain lead\u201d item do you want me to run \u2014 the workflow, an agent, or a connector action?",
+    "first_ms": 35795,
+    "yes_excerpt": "I don\u2019t have enough information yet. Tell me the missing detail and I\u2019ll continue.",
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "classical.answer_path.reached",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "unified_turn.live.fallthrough",
+      "pending_reply.classified",
+      "classical.answer_path.reached",
+      "inference.tool_completion",
+      "agent.react.iteration",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [],
+    "child_obs": [],
+    "pending": [
+      {
+        "id": "4e8b7e76-61d",
+        "action": "pending_reply.classified",
+        "created_at": "2026-09-23T02:05:37.997607+00:00",
+        "meta": {}
+      },
+      {
+        "id": "1c752774-81f",
+        "action": "pending_reply.classified",
+        "created_at": "2026-09-23T02:05:38.396487+00:00",
+        "meta": {}
+      }
+    ]
+  }
+}

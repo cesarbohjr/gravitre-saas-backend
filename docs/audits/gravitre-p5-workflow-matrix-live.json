@@ -1,0 +1,293 @@
+{
+  "health_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "generated_at": "2026-09-23T01:50:30.697346+00:00",
+  "canvas_human_only": {
+    "run_id": "cdda7de2-bfbb-4cc7-b490-842fb5e7df84",
+    "row": {
+      "id": "cdda7de2-bfbb-4cc7-b490-842fb5e7df84",
+      "workflow_id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
+      "status": "pending_approval",
+      "approval_status": "pending_approval",
+      "trigger_type": "manual",
+      "run_type": "execute",
+      "created_at": "2026-09-21T18:35:31.623959+00:00",
+      "error_message": null
+    },
+    "required_human_action": "Approve, cancel, or leave pending. Do not auto-approve/cancel/bypass.",
+    "mutated": false
+  },
+  "blocked_runs": [
+    {
+      "id": "cdda7de2-bfbb-4cc7-b490-842fb5e7df84",
+      "workflow_id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
+      "status": "pending_approval",
+      "approval_status": "pending_approval",
+      "trigger_type": "manual",
+      "run_type": "execute",
+      "created_at": "2026-09-21T18:35:31.623959+00:00",
+      "error_message": null
+    },
+    {
+      "id": "4c2a8e45-dd08-47d6-98b4-c5f08426ff05",
+      "workflow_id": null,
+      "status": "running",
+      "approval_status": null,
+      "trigger_type": "api",
+      "run_type": "execute",
+      "created_at": "2026-07-19T10:07:47.916421+00:00",
+      "error_message": null
+    },
+    {
+      "id": "0dcf3443-3449-4225-9b85-bc2d5895f82d",
+      "workflow_id": null,
+      "status": "running",
+      "approval_status": null,
+      "trigger_type": "hubspot",
+      "run_type": "execute",
+      "created_at": "2026-07-20T01:02:24.801601+00:00",
+      "error_message": null
+    },
+    {
+      "id": "7841f879-4468-455e-a113-63485d7d3263",
+      "workflow_id": null,
+      "status": "running",
+      "approval_status": null,
+      "trigger_type": "api",
+      "run_type": "execute",
+      "created_at": "2026-07-20T04:14:49.594937+00:00",
+      "error_message": null
+    },
+    {
+      "id": "1f7828ec-280a-49f3-a792-7be9c26a1a52",
+      "workflow_id": null,
+      "status": "running",
+      "approval_status": null,
+      "trigger_type": "hubspot",
+      "run_type": "execute",
+      "created_at": "2026-07-20T02:29:31.562322+00:00",
+      "error_message": null
+    }
+  ],
+  "executable_candidates": [
+    {
+      "id": "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "name": "Competitive Intelligence Monitoring"
+    },
+    {
+      "id": "c993590b-a542-468c-bfda-c697a99c181b",
+      "name": "F6 Prod Process Verify (entity_get)"
+    }
+  ],
+  "success_attempts": [
+    {
+      "name": "Competitive Intelligence Monitoring",
+      "conversation_id": "d8c721d8-9ebd-43e5-b28a-3a2dede5abef",
+      "prompt": "Run the workflow named Competitive Intelligence Monitoring in this conversation now.",
+      "ask_excerpt": "I can run the existing **Competitive Intelligence Monitoring** workflow now. Reply **yes** to start it, or tell me what to change.",
+      "yes_excerpt": "I couldn\u2019t start the **Competitive Intelligence Monitoring** workflow because the service was temporarily unavailable. Try again in a moment and I can pick it back up.",
+      "ask_ms": 19128,
+      "yes_ms": 39668,
+      "actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed",
+        "context.understanding.extracted",
+        "memory.recalled",
+        "pending_reply.classified",
+        "tool.invoke.requested",
+        "workflow.execute.created",
+        "workflow.execute.started",
+        "memory.recalled",
+        "inference.tool_completion",
+        "agent.react.iteration",
+        "agent.intelligence.executed",
+        "agent.handoff.created",
+        "memory.recalled",
+        "inference.tool_completion",
+        "agent.react.iteration",
+        "agent.intelligence.executed",
+        "agent.handoff.completed",
+        "workflow.execute.step_completed",
+        "workflow.child.observation",
+        "workflow.execute.step_timing",
+        "tool.invoke.failed",
+        "workflow.execute.failed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed"
+      ],
+      "child_obs": [
+        {
+          "id": "8544da90-c63",
+          "action": "workflow.child.observation",
+          "created_at": "2026-09-23T01:51:32.072508+00:00",
+          "meta": {
+            "plan_id": "7b6d33d8-eabf-4dd0-ab26-c1ea0a24d345",
+            "step_id": "scan",
+            "success": true
+          }
+        }
+      ],
+      "step_failed": [],
+      "execute_failed": [
+        {
+          "id": "772f3e74-658",
+          "action": "workflow.execute.failed",
+          "created_at": "2026-09-23T01:51:32.399525+00:00",
+          "meta": {
+            "path": "conversational_execution"
+          }
+        }
+      ],
+      "pending_approval": [],
+      "execute_completed": [],
+      "composer": [
+        {
+          "id": "97712d83-968",
+          "action": "response.composer.completed",
+          "created_at": "2026-09-23T01:50:52.789576+00:00",
+          "meta": {
+            "kind": "clarify",
+            "success": true
+          }
+        },
+        {
+          "id": "9dca69da-78b",
+          "action": "response.composer.completed",
+          "created_at": "2026-09-23T01:51:36.430989+00:00",
+          "meta": {
+            "kind": "error",
+            "success": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "F6 Prod Process Verify (entity_get)",
+      "conversation_id": "37f5901d-8296-4e98-8ec3-18b9324c146f",
+      "prompt": "Run the workflow named F6 Prod Process Verify (entity_get) in this conversation now.",
+      "ask_excerpt": "I\u2019ll run the existing workflow **F6 Prod Process Verify (entity_get)**. Reply **yes** to start it, or tell me what to change.",
+      "yes_excerpt": "Done \u2014 started **F6 Prod Process Verify (entity_get)**. Open **Runs** to track progress.",
+      "ask_ms": 12109,
+      "yes_ms": 17708,
+      "actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed",
+        "context.understanding.extracted",
+        "memory.recalled",
+        "pending_reply.classified",
+        "tool.invoke.requested",
+        "policy.override.approval_floor_applied",
+        "workflow.execute.created",
+        "workflow.execute.pending_approval",
+        "tool.invoke.completed",
+        "workflow.execute.completed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed"
+      ],
+      "child_obs": [],
+      "step_failed": [],
+      "execute_failed": [],
+      "pending_approval": [
+        {
+          "id": "70d8657d-1dc",
+          "action": "workflow.execute.pending_approval",
+          "created_at": "2026-09-23T01:52:06.825287+00:00",
+          "meta": {}
+        }
+      ],
+      "execute_completed": [
+        {
+          "id": "baad8995-bc1",
+          "action": "workflow.execute.completed",
+          "created_at": "2026-09-23T01:52:07.878403+00:00",
+          "meta": {}
+        }
+      ],
+      "composer": [
+        {
+          "id": "3fd767a3-247",
+          "action": "response.composer.completed",
+          "created_at": "2026-09-23T01:51:55.071267+00:00",
+          "meta": {
+            "kind": "clarify",
+            "success": true
+          }
+        },
+        {
+          "id": "6a59e924-96f",
+          "action": "response.composer.completed",
+          "created_at": "2026-09-23T01:52:16.055008+00:00",
+          "meta": {
+            "kind": "canned",
+            "success": true
+          }
+        }
+      ]
+    }
+  ],
+  "blocked_attempt": {
+    "name": "Canvas Write Governance Probe (no approval node)",
+    "conversation_id": "599f8eaa-fbd5-4634-bda1-4a121bea0063",
+    "prompt": "Run the workflow named Canvas Write Governance Probe (no approval node) in this conversation now.",
+    "ask_excerpt": "I\u2019ll run the existing workflow **Canvas Write Governance Probe (no approval node)**. Reply **yes** to start it, or tell me what to change.",
+    "yes_excerpt": "This workflow already has a run waiting for approval. Approve or cancel that pending run first, then I can pick this back up.",
+    "ask_ms": 23433,
+    "yes_ms": 19277,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "tool.invoke.requested",
+      "tool.invoke.failed",
+      "workflow.execute.failed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ],
+    "child_obs": [],
+    "step_failed": [],
+    "execute_failed": [
+      {
+        "id": "128ec5be-b46",
+        "action": "workflow.execute.failed",
+        "created_at": "2026-09-23T01:53:11.916464+00:00",
+        "meta": {
+          "path": "conversational_execution"
+        }
+      }
+    ],
+    "pending_approval": [],
+    "execute_completed": [],
+    "composer": [
+      {
+        "id": "c086efd9-007",
+        "action": "response.composer.completed",
+        "created_at": "2026-09-23T01:52:47.50625+00:00",
+        "meta": {
+          "kind": "clarify",
+          "success": true
+        }
+      },
+      {
+        "id": "c8de659d-3a7",
+        "action": "response.composer.completed",
+        "created_at": "2026-09-23T01:53:16.728804+00:00",
+        "meta": {
+          "kind": "error",
+          "success": false
+        }
+      }
+    ],
+    "claimed_complete": false
+  }
+}

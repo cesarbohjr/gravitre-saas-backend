@@ -9,60 +9,64 @@ This dashboard is the current view. Historical SHA evidence below does **not** c
 
 ---
 
-## Current dashboard (2026-09-22)
+## Current dashboard (2026-09-23)
 
 | Field | Value |
 |--------|--------|
-| **Current production backend SHA** | `d543279021678f4275f28696217a90eeca96c08a` (`/health` 2026-09-22T22:30:36Z) |
-| **Tip (tests-only follow-up)** | `fb497ad5` (does not change runtime vs `d5432790`) |
+| **Current production backend SHA** | `144550ffc1459a93391890c0fd92844946de7ea7` (`/health` 2026-09-23T01:45:01Z) |
+| **Required CI** | **success** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35806536829 |
+| **Railway verify** | **success** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35806536697 |
 | **Independent re-audit SHA (frozen scorecard)** | `0191297fa2eb4def8620a1b913a41314520d17bb` — PASS 25 / PARTIAL 25 / FAIL 2 / **program NO** |
-| **Product accepted** | **NO** — independent acceptance has not run on `d5432790` |
+| **Product accepted** | **NO** — independent acceptance has not run on `144550ff` |
 | **Computer Use / 3.0 rewrite / model default** | not started; production tier still `low` |
 | **Org** | isolated `f07e57c0-1501-4000-8000-c04e57a00001` only |
 
-**Next executable:** independent acceptance on **`d5432790`** (or later runtime SHA if CI tip is redeployed). Do not grade `54c9e7a1` / `3773cbf5` / `0191297f` as this release.
+**Next executable:** independent acceptance on **`144550ff`**. Do not grade `d5432790` / `0191297f` / `54c9e7a1` as this release.
 
 ---
 
-## Current-SHA live proof (`d5432790` / paraphrases also on `8bb99a6c` same series)
+## Current-SHA live proof (`144550ff`)
 
 Isolated org. Not independent acceptance.
 
-### P0 / P1 / P4 semantic class (`8bb99a6c`)
+### P0 / P1 / P4 semantic class
 
 `docs/audits/gravitre-semantic-paraphrase-live.json`
 
 | Prompt | Conv | first useful text | Evidence |
 |--------|------|------------------:|----------|
-| How is my company doing? | `6ed95a51-…` | 10813 ms | `tool.invoke.completed` `hubspot.deals.list` @ `2026-09-22T22:11:35.653914Z` — 25 deals + GA/GSC pending_auth |
-| How's the company doing? | `65b0fd69-…` | 8857 ms | `hubspot.deals.list` @ `2026-09-22T22:11:48.919597Z` |
-| business performance snapshot | `1fe87cb1-…` | 6844 ms | `hubspot.deals.list` @ `2026-09-22T22:12:00.658858Z` |
+| How is my company doing? | `4a6617b7-…` | 10215 ms | `tool.invoke.completed` `hubspot.deals.list` @ `2026-09-23T01:57:30.151277Z` — 25 deals + GA/GSC pending_auth |
+| How's the company doing? | `e1c510ea-…` | 7501 ms | `hubspot.deals.list` @ `2026-09-23T01:57:42.375545Z` |
+| business performance snapshot | `8c2b7ba3-…` | 22247 ms | `hubspot.deals.list` @ `2026-09-23T01:58:09.977811Z` |
 
-No internals menu. Equivalent CEO/ops class → HubSpot compiled READ. **Not** the 6.5s HubSpot result from `54c9e7a1`.
+No internals menu. One HubSpot compiled READ per turn. Honest GA/GSC pending_auth.
 
-Waterfall (same class, `runtime.turn_latency.critical_path` @ `2026-09-22T21:46:16.818175Z` on `e1ef6c27`): `observation` and `first_sse` present; client first-text still ~7–11s; UNDERSTANDING and CONNECTED_INTEGRATIONS remain large on some turns.
-
-### P3 voice (`d5432790`)
+### P3 voice (synthesized PCM)
 
 `docs/audits/gravitre-pcm-closure-live.json` — SYNTHESIZED_PCM, not a physical mic.
 
-| Run | STT | Spoken assistant_text | interrupt_events | audio_frames |
-|-----|-----|------------------------|-----------------:|-------------:|
-| 1 | `is Apollo connected.` | `Yes, Apollo is connected and healthy.` | 0 | 53 |
-| 2 | `is Apollo connected.` | `Yes, Apollo is connected and healthy.` | 0 | 53 |
+| Phrase (STT) | Spoken assistant_text | audio_frames |
+|--------------|------------------------|-------------:|
+| `Is Apollo connected?` | `Yes, Apollo is connected and healthy.` | 53 |
+| `is Apollo connected.` | `Yes, Apollo is connected and healthy.` | (same class) |
+| `Can you check whether Apollo is connected?` | `Yes, Apollo is connected and healthy.` | (same class) |
+| `What is the status of Apollo?` | `Yes, Apollo is connected and healthy.` | (same class) |
+| `Is HubSpot connected?` | `Yes, Hubspot is connected and healthy.` | (same class) |
 
 Physical microphone / driving: **HUMAN_EXPERIENCE_PENDING**.
 
-### P5 workflow (`d5432790`)
+### P5 workflow
 
-Confirm path works. `tool.invoke.requested` is **not** completion.
+Confirm path works. Started ≠ completed. Audio ≠ answer.
 
 | Journey | Result | Pointer |
 |---------|--------|---------|
-| Confirm CIM | Asks for **yes** | conv `292f8964-…` |
-| Yes on CIM | Run **created and started**, step **failed** (agent step missing `agent_id`) | `workflow.execute.step_failed` scan / `workflow.execute.failed` @ `2026-09-22T22:12:56.965448Z` (prior CIM) and again on `292f8964-…`. Composer: incomplete configuration — **not** a fake Done. Child Observation **not** produced (step never completed). |
-| Canvas Write | **Legitimately blocked** | Active `pending_approval` run `cdda7de2-…` trigger `manual` since `2026-09-21T18:35:31Z`. Chat yes 409 / in-progress. **Human choice required:** approve, cancel, or leave that run. |
-| F6 entity_get | Chat yes created run then **approval floor** `pending_approval` | conv `695d5512-…` — `policy.override.approval_floor_applied` + `workflow.execute.pending_approval`. Chat confirm ≠ workflow approval. |
+| CIM NL → yes | First child **scan succeeded** with Observation | conv `d8c721d8-…`; `workflow.child.observation` scan `success=true` `hmac_bypass=false` `execution_mode=graph` @ `2026-09-23T01:51:32.072508Z` plan `7b6d33d8-…` |
+| CIM after scan | Second step hit `[Errno 11] Resource temporarily unavailable`; Composer error (not fake Done) | `tool.invoke.failed` @ `2026-09-23T01:51:32.216409Z`; run `5f7f9ef6-…` still **running** |
+| Canvas Write | **Legitimately blocked**; honest blocker | conv `599f8eaa-…`; awaiting approval `cdda7de2-…`; chat: approve/cancel that run first. **Not mutated.** |
+| F6 / Sales Automation | Approval floor `pending_approval` | F6 conv `37f5901d-…` `policy.override.approval_floor_applied` @ ~`2026-09-23T01:52:06Z`. Chat still said **Done — started** on this SHA — honesty patch not yet this `/health`. |
+| Sarah WRITE | Clarify, no WRITE | conv `450b0319-…` `2026-09-23T02:03Z` — which Sarah / what summary |
+| J008 text→HTTP Talk | Continuity | conv `dab6f643-…` spoken_first_text_ms=205 audio_ms=208 |
 
 ### P6
 
@@ -70,9 +74,8 @@ TOOL_SUCCESS still not plan bias (unit). H11 BUSINESS_IMPACT **EXTERNALLY_BLOCKE
 
 ### Required CI
 
-- `8bb99a6c` required CI **success** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35790125093  
-- `d5432790` required CI **failure** (narration unit expected old getConnectorStatus progress speech) https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35791843100  
-- `fb497ad5` test fix pushed — required CI must be confirmed green before treating tip as certified.
+- `144550ff` required CI **success** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35806536829
+- Railway backend production **success** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35806536697
 
 Four non-required jobs: not weakened (Click Audit, voice duplex browser, Connector Verified Writes, Credential DB Bypass).
 
@@ -80,10 +83,10 @@ Four non-required jobs: not weakened (Click Audit, voice duplex browser, Connect
 
 ## Engineering implementation (this return)
 
-- Chat workflow execute: `force_inline=True`, trigger_type **`api`** (DB check allows `manual|schedule|rollback|webhook|api|hubspot`), `source=assistant_chat` in parameters.
-- Drain unstarted **running** assistant/api chat jobs only — never `pending_approval`.
-- Failed / incomplete runs: Composer **error**, pending kept when resumable.
-- Connector-status: not operator-task; STT trailing `.` matches; skip getConnectorStatus progress TTS.
+- Chat workflow execute: `force_inline=True`, trigger_type **`api`**, `source=assistant_chat` in parameters.
+- Thin graph nodes overlay bound `steps[].metadata.agent_id` at compile time (class-level, not CIM-specific).
+- Graph path emits `workflow.child.observation` when parent `plan_id` is present.
+- Connector-status paraphrases: whole-utterance `Is X connected?/.`, `Can you check whether X is connected?`, `What is the status of X?`. Job-shaped “check that my Google Ads account is actually connected” stays operator-task.
 
 ---
 
@@ -91,13 +94,16 @@ Four non-required jobs: not weakened (Click Audit, voice duplex browser, Connect
 
 | Item | Status |
 |------|--------|
-| Independent product acceptance | **NOT RUN** on `d5432790` |
+| Independent product acceptance | **NOT RUN** on `144550ff` |
 | Physical mic / driving | HUMAN_EXPERIENCE_PENDING |
 | H11 labeled BUSINESS_IMPACT | EXTERNALLY_BLOCKED |
 | Eval-key bake-off / model default change | EXTERNALLY_BLOCKED / not authorized |
 | Computer Use | not built |
-| Canvas Write pending_approval `cdda7de2` | **human disposition required** |
-| CIM / F6 as golden execute-to-Observation | CIM config incomplete; F6 approval floor |
+| Canvas Write `cdda7de2` | **human:** approve, cancel, or leave pending (`pending_approval`, trigger `manual`, `2026-09-21T18:35:31Z`) |
+| CIM run `5f7f9ef6` stuck `running` after EAGAIN | **human:** fail/cancel that run (not Canvas); do not treat as completed |
+| F6 / Sales Automation approval floor vs canned “Done — started” | honesty patch in tip (pending_approval is not completion); re-verify after next Railway SHA |
+| Isolated GA/GSC | pending_auth — not an engineering failure |
+| Two fully successful end-to-end workflows to terminal completed | CIM scan Observation only; second authorized workflows hit approval floor or name ambiguity |
 
 ---
 

@@ -223,3 +223,33 @@ async def test_failed_in_progress_keeps_awaiting_confirm(execution_service):
     execution_service._state.update_task_state.assert_awaited()
     patch_payload = execution_service._state.update_task_state.await_args.args[2]
     assert patch_payload["pending_task"]["status"] == "awaiting_confirm"
+
+
+@pytest.mark.asyncio
+async def test_failed_pending_approval_keeps_awaiting_confirm(execution_service):
+    failed = ExecutionResult(
+        success=False,
+        entity_type="workflow_run",
+        entity_id="run-1",
+        result_url="/runs/run-1",
+        title="F6 Prod Process Verify (entity_get)",
+        body="**F6 Prod Process Verify (entity_get)** is waiting for approval. It has not completed. Approve or cancel that run, then try again.",
+        error_code="workflow_pending_approval",
+    )
+    execution_service._state.get_task_state = AsyncMock(
+        return_value={"clarified_params": {}, "pending_task": {"type": "execute_workflow", "status": "awaiting_confirm"}}
+    )
+    with patch.object(execution_service, "_execute_workflow", AsyncMock(return_value=failed)):
+        with patch.object(execution_service, "_finalize_task_outcome"):
+            result = await execution_service.execute_task(
+                org_id="org-1",
+                user_id="user-1",
+                conversation_id="conv-1",
+                task_type="execute_workflow",
+                clarified={"workflow_id": "wf-f6", "query": "F6"},
+                client=MagicMock(),
+                classification={},
+            )
+    assert result.success is False
+    patch_payload = execution_service._state.update_task_state.await_args.args[2]
+    assert patch_payload["pending_task"]["status"] == "awaiting_confirm"

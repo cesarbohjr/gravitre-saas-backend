@@ -1,5 +1,5 @@
 {
-  "health_sha": "d543279021678f4275f28696217a90eeca96c08a",
+  "health_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "workflows": [
     {
@@ -28,22 +28,32 @@
     }
   ],
   "picked_workflow": {
-    "id": "75d651be-fb4f-5031-be42-83035c4cd19e",
-    "name": "Competitive Intelligence Monitoring",
+    "id": "c993590b-a542-468c-bfda-c697a99c181b",
+    "name": "F6 Prod Process Verify (entity_get)",
     "blocked_ids": [
+      "75d651be-fb4f-5031-be42-83035c4cd19e",
       "f91610f0-7d3a-43aa-bc6e-7185c08f9182"
     ]
   },
   "j007": {
-    "conversation_id": "292f8964-30e9-41f1-9ee2-8647d072bbce",
-    "prompt": "Run the workflow named Competitive Intelligence Monitoring in this conversation now.",
-    "assistant": "I can run the existing **Competitive Intelligence Monitoring** workflow now. Reply **yes** to start it, or tell me what to change.",
-    "yes_assistant": "I couldn\u2019t start **Competitive Intelligence Monitoring**. Its run configuration is incomplete, so it needs to be fixed before I can run it here.",
-    "first_ms": 14541,
-    "yes_ms": 16242,
+    "conversation_id": "1c519ca2-40e4-4496-aaa5-0f5d3cced02d",
+    "prompt": "Run the workflow named F6 Prod Process Verify (entity_get) in this conversation now.",
+    "assistant": "I can run the existing workflow **F6 Prod Process Verify (entity_get)** now. Reply **yes** to start it, or tell me what to change.",
+    "yes_assistant": "Done \u2014 I started **F6 Prod Process Verify (entity_get)**. Open **Runs** to track progress.",
+    "first_ms": 14139,
+    "yes_ms": 12608,
     "child_obs": [],
     "workflow_waiting": [],
-    "invokes": [],
+    "invokes": [
+      {
+        "id": "67b2e5e2-ccc",
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T02:06:22.932523+00:00",
+        "meta": {
+          "action": "assistant.execute_workflow"
+        }
+      }
+    ],
     "audit_head": [
       "context.understanding.extracted",
       "memory.recalled",
@@ -54,22 +64,20 @@
       "memory.recalled",
       "pending_reply.classified",
       "tool.invoke.requested",
+      "policy.override.approval_floor_applied",
       "workflow.execute.created",
-      "workflow.execute.started",
-      "workflow.execute.step_failed",
-      "workflow.execute.step_timing",
-      "workflow.execute.failed",
-      "tool.invoke.failed",
-      "workflow.execute.failed",
+      "workflow.execute.pending_approval",
+      "tool.invoke.completed",
+      "workflow.execute.completed",
       "runtime.turn_latency.critical_path",
       "response.composer.completed"
     ]
   },
   "j008": {
-    "conversation_id": "5453d5a3-56cf-4204-b58b-80c1bd12a485",
+    "conversation_id": "dab6f643-78fa-4ab4-a585-63c4ab7e569d",
     "text_hi": "Hey \u2014 I'm here. What do you want to get done?",
-    "spoken_first_text_ms": 263,
-    "spoken_first_audio_ms": 264,
+    "spoken_first_text_ms": 205,
+    "spoken_first_audio_ms": 208,
     "spoken_types": [
       "voice.session.accepted",
       "voice.text.delta",

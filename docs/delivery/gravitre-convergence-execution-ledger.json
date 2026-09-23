@@ -5,10 +5,10 @@
   "implementation_authorized": true,
   "direction": "PRESERVE + CONVERGE",
   "current_phase": "implementation_return",
-  "next_executable_phase": "independent acceptance on d5432790",
+  "next_executable_phase": "independent acceptance on 144550ff",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "updated_at": "2026-09-22T22:35:00Z",
-  "current_sha": "d543279021678f4275f28696217a90eeca96c08a",
+  "updated_at": "2026-09-23T02:10:00Z",
+  "current_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
   "dashboard": {
     "total_requirements": 56,
     "independent_audit_sha": "0191297fa2eb4def8620a1b913a41314520d17bb",
@@ -16,9 +16,9 @@
     "independent_partial": 25,
     "independent_fail": 2,
     "independent_not_run": 0,
-    "gap_closure_sha": "d543279021678f4275f28696217a90eeca96c08a",
+    "gap_closure_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
     "product_accepted": false,
-    "note": "Current live SHA d5432790. Historical 0191297f/54c9e7a1/3773cbf5 evidence is not this release."
+    "note": "Current live SHA 144550ff. Historical d5432790/0191297f evidence is not this release."
   },
   "release_pair": {
     "backend_sha_at_baseline": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
