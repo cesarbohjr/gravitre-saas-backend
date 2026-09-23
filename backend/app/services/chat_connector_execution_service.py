@@ -2010,6 +2010,31 @@ class ChatConnectorExecutionService:
                     return failed
                 ctx = replace(ctx, preflight_result=proof)
                 plan = replace(plan, args=dict(proof.compiled_parameters))
+            prior_for_claim = await self._state.get_task_state(
+                conversation_id, org_id, client=client
+            )
+            replayed = await self._replay_existing_write_result(
+                prior_for_claim,
+                plan=plan,
+                conversation_id=conversation_id,
+                org_id=org_id,
+                user_id=user_id,
+                client=client,
+                own_terminal_outcome=own_terminal_outcome,
+                classification=classification,
+            )
+            if replayed is not None:
+                return replayed
+            if plan.kind == "write" and own_terminal_outcome:
+                claim_gate = await self._claim_write_before_invoke(
+                    conversation_id,
+                    org_id,
+                    prior_for_claim,
+                    client=client,
+                    plan=plan,
+                )
+                if claim_gate is not None:
+                    return claim_gate
             observation = await self._registry.execute_invoke_action(
                 ctx=ctx,
                 invoke_action=plan.invoke_action,
@@ -2053,6 +2078,7 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 exc,
             )
+            uncertain = plan.kind == "write" and self._is_uncertain_write_error(exc)
             failed = ExecutionResult(
                 success=False,
                 entity_type="connector",
@@ -2065,7 +2091,25 @@ class ChatConnectorExecutionService:
                 body=str(exc),
                 integration=plan.integration,
                 task_label=plan.label,
+                error_code="OUTCOME_UNCERTAIN" if uncertain else None,
             )
+            if uncertain and own_terminal_outcome:
+                from app.services.action_lifecycle import persist_uncertain_outcome_patch
+
+                prior = await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    persist_uncertain_outcome_patch(
+                        task_state=prior,
+                        connector_plan=plan,
+                        summary="Provider result is uncertain; reconcile before retrying.",
+                        error=str(exc),
+                    ),
+                    client=client,
+                )
             if own_terminal_outcome:
                 self._finalize_connector_outcome(
                     client,
@@ -2087,6 +2131,8 @@ class ChatConnectorExecutionService:
         success = bool(observation.get("success"))
         connector_id = str(observation.get("connector_id") or "")
         result_data = observation.get("result") if isinstance(observation.get("result"), dict) else {}
+        from app.services.action_lifecycle import provider_record_id
+        provider_id = provider_record_id(result_data)
         external_url = self._external_url(plan.integration, plan.invoke_action, result_data, observation)
         if plan.integration == "hubspot" and external_url:
             from app.services.hubspot_urls import is_portal_scoped_hubspot_url
@@ -2146,6 +2192,20 @@ class ChatConnectorExecutionService:
                 result=failed,
                 client=client,
             )
+            if own_terminal_outcome:
+                await self._persist_canonical_write_outcome(
+                    conversation_id=conversation_id,
+                    org_id=org_id,
+                    plan=plan,
+                    result=failed,
+                    structured=structured_payload,
+                    connector_id=connector_id,
+                    provider_id=provider_id,
+                    file_ledger_patch={},
+                    session_updates={},
+                    client=client,
+                    ctx=ctx,
+                )
             return failed
 
         summary = self._summarize_result(plan, result_data, observation)
@@ -2166,10 +2226,13 @@ class ChatConnectorExecutionService:
             structured_payload["outcome_effect"] = "already_existed"
         else:
             structured_payload["outcome_effect"] = write_effect
+        if provider_id:
+            structured_payload["provider_record_id"] = provider_id
+            structured_payload.setdefault("id", provider_id)
         result = ExecutionResult(
             success=True,
             entity_type="connector",
-            entity_id=connector_id,
+            entity_id=provider_id or connector_id,
             connector_management_url=connector_management_url,
             result_url=primary_url,
             external_url=external_url,
@@ -2263,37 +2326,18 @@ class ChatConnectorExecutionService:
             conversation_id=conversation_id,
         )
         if own_terminal_outcome:
-            await self._state.update_task_state(
-                conversation_id,
-                org_id,
-                {
-                    "pending_task": {
-                        "type": "connector_action",
-                        "status": "executed",
-                        "result": result.__dict__,
-                    },
-                    "completed_steps": [
-                        {
-                            "step_id": f"connector_{plan.invoke_action}",
-                            "label": plan.label,
-                            "url": result.result_url,
-                            "external_url": result.external_url,
-                            "entity_type": "connector",
-                            "entity_id": connector_id,
-                        }
-                    ],
-                    "approved_actions": [
-                        {
-                            "type": plan.invoke_action,
-                            "tool_name": plan.tool_name,
-                            "entity_id": connector_id,
-                            "url": result.result_url,
-                            "external_url": result.external_url,
-                        }
-                    ],
-                    **file_ledger_patch,
-                    **session_updates,
-                },
+            await self._persist_canonical_write_outcome(
+                conversation_id=conversation_id,
+                org_id=org_id,
+                plan=plan,
+                result=result,
+                structured=structured_payload,
+                connector_id=connector_id,
+                provider_id=provider_id,
+                file_ledger_patch=file_ledger_patch,
+                session_updates=session_updates,
+                client=client,
+                ctx=ctx,
             )
             await self._record_outcomes(
                 org_id, user_id, plan, result, observation, classification
@@ -2313,6 +2357,262 @@ class ChatConnectorExecutionService:
             client=client,
         )
         return result
+
+    @staticmethod
+    def _is_uncertain_write_error(exc: BaseException) -> bool:
+        name = type(exc).__name__.lower()
+        text = str(exc).lower()
+        return (
+            "timeout" in name
+            or "timeout" in text
+            or "timed out" in text
+            or "connection reset" in text
+            or "temporarily unavailable" in text
+        )
+
+    async def _replay_existing_write_result(
+        self,
+        task_state: dict[str, Any] | None,
+        *,
+        plan: ConnectorActionPlan,
+        conversation_id: str,
+        org_id: str,
+        user_id: str,
+        client: Any,
+        own_terminal_outcome: bool,
+        classification: dict[str, Any],
+    ) -> ExecutionResult | None:
+        if plan.kind != "write":
+            return None
+        from app.services.action_lifecycle import (
+            existing_successful_write,
+            persist_write_outcome_patch,
+            provider_record_id,
+        )
+
+        replay = existing_successful_write(task_state, invoke_action=plan.invoke_action)
+        if not replay:
+            return None
+        structured = replay.get("structured") if isinstance(replay.get("structured"), dict) else {}
+        if not structured and isinstance(replay, dict):
+            structured = dict(replay)
+        record_id = provider_record_id(structured)
+        result = ExecutionResult(
+            success=True,
+            entity_type="connector",
+            entity_id=str(record_id or ""),
+            result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+            title=plan.label,
+            body=str(replay.get("summary") or "This action already completed. I did not run it again."),
+            integration=plan.integration,
+            task_label=plan.label,
+            structured={**structured, "replayed": True},
+        )
+        if own_terminal_outcome:
+            prior = task_state if isinstance(task_state, dict) else {}
+            if not prior.get("execution_observations"):
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    persist_write_outcome_patch(
+                        task_state=prior,
+                        connector_plan=plan,
+                        success=True,
+                        summary=result.body,
+                        structured=result.structured or {},
+                        pending_task=prior.get("pending_task") if isinstance(prior.get("pending_task"), dict) else None,
+                        verification={"verified": bool(record_id), "detail": "replay_from_session"},
+                    ),
+                    client=client,
+                )
+        return result
+
+    async def _claim_write_before_invoke(
+        self,
+        conversation_id: str,
+        org_id: str,
+        task_state: dict[str, Any] | None,
+        *,
+        client: Any,
+        plan: ConnectorActionPlan,
+    ) -> ExecutionResult | None:
+        from app.services.action_lifecycle import claim_pending_write, recover_orphaned_executing
+
+        state = task_state if isinstance(task_state, dict) else {}
+        pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+        recovered = recover_orphaned_executing(pending)
+        if recovered is not None:
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {"pending_task": recovered},
+                client=client,
+            )
+            return ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+                title=plan.label,
+                body=(
+                    "This action was left in an incomplete state. "
+                    "I need to reconcile the provider record before retrying so we do not create a duplicate."
+                ),
+                integration=plan.integration,
+                task_label=plan.label,
+                error_code="AWAITING_RECONCILIATION",
+            )
+        outcome, claimed = claim_pending_write(pending)
+        if outcome == "already_done":
+            return ExecutionResult(
+                success=True,
+                entity_type="connector",
+                entity_id="",
+                result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+                title=plan.label,
+                body="This action already completed. I did not run it again.",
+                integration=plan.integration,
+                task_label=plan.label,
+                structured={"replayed": True, "verification_status": "verified"},
+            )
+        if outcome == "already_claimed":
+            return ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+                title=plan.label,
+                body="That action is already running. I will not start a second write.",
+                integration=plan.integration,
+                task_label=plan.label,
+                error_code="WRITE_IN_FLIGHT",
+            )
+        if outcome != "claimed":
+            return None
+        expected = str(pending.get("status") or "awaiting_confirm")
+        cas = getattr(self._state, "compare_and_set_pending_status", None)
+        if cas is not None:
+            ok = await cas(
+                conversation_id,
+                org_id,
+                expected_status=expected,
+                updates={"pending_task": claimed},
+                client=client,
+            )
+            if not ok:
+                return ExecutionResult(
+                    success=False,
+                    entity_type="connector",
+                    entity_id="",
+                    result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+                    title=plan.label,
+                    body="That confirmation was already used. I will not start a second write.",
+                    integration=plan.integration,
+                    task_label=plan.label,
+                    error_code="WRITE_CLAIM_CONFLICT",
+                )
+        else:
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                {"pending_task": claimed},
+                client=client,
+            )
+        return None
+
+    async def _persist_canonical_write_outcome(
+        self,
+        *,
+        conversation_id: str,
+        org_id: str,
+        plan: ConnectorActionPlan,
+        result: ExecutionResult,
+        structured: dict[str, Any],
+        connector_id: str,
+        provider_id: str | None,
+        file_ledger_patch: dict[str, Any],
+        session_updates: dict[str, Any],
+        client: Any,
+        ctx: ToolContext,
+    ) -> None:
+        from app.services.action_lifecycle import persist_write_outcome_patch
+
+        prior = await self._state.get_task_state(conversation_id, org_id, client=client)
+        verification: dict[str, Any] | None = None
+        if result.success and plan.kind == "write":
+            try:
+                from app.services.entity_get_verify import verify_entity_get
+
+                verification = verify_entity_get(
+                    invoke_action=plan.invoke_action,
+                    result_data=structured,
+                    ctx=ctx,
+                    settle=False,
+                ).as_dict()
+            except Exception:  # noqa: BLE001
+                verification = {"verified": False, "detail": "verification_error", "follow_up_attempted": True}
+        if result.structured is None:
+            result.structured = {}
+        if verification:
+            result.structured["verification"] = verification
+            result.structured["verification_status"] = (
+                "verified" if verification.get("verified") else "unverified"
+            )
+        outcome_patch = persist_write_outcome_patch(
+            task_state=prior,
+            connector_plan=plan,
+            success=bool(result.success),
+            summary=result.body or plan.label,
+            structured={**dict(structured or {}), **dict(result.structured or {})},
+            pending_task={
+                "type": "connector_action",
+                "status": "executed" if result.success else "failed",
+                "result": result.__dict__,
+            },
+            verification=verification,
+            error=None if result.success else (result.body or result.error_code),
+        )
+        record_id = provider_id or (verification or {}).get("entity_id")
+        await self._state.update_task_state(
+            conversation_id,
+            org_id,
+            {
+                **outcome_patch,
+                "completed_steps": [
+                    {
+                        "step_id": f"connector_{plan.invoke_action}",
+                        "label": plan.label,
+                        "url": result.result_url,
+                        "external_url": result.external_url,
+                        "entity_type": "connector",
+                        "entity_id": record_id or connector_id,
+                        "provider_record_id": record_id,
+                    }
+                ],
+                "approved_actions": [
+                    {
+                        "type": plan.invoke_action,
+                        "tool_name": plan.tool_name,
+                        "entity_id": record_id or connector_id,
+                        "url": result.result_url,
+                        "external_url": result.external_url,
+                    }
+                ],
+                "execution_trace": {
+                    "conversation_id": conversation_id,
+                    "invoke_action": plan.invoke_action,
+                    "provider_record_id": record_id,
+                    "claimed": True,
+                    "observation_persisted": True,
+                    "verification": verification,
+                    "plan_terminal": (outcome_patch.get("execution_plan") or {}).get("terminal_status"),
+                    "lifecycle": outcome_patch.get("action_lifecycle"),
+                },
+                **file_ledger_patch,
+                **session_updates,
+            },
+            client=client,
+        )
 
     def _finalize_connector_outcome(
         self,

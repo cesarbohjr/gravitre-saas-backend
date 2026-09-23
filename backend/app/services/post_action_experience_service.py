@@ -791,9 +791,25 @@ def enrich_execution_turn(
                 f"_Suggest only — reply_ **{recommendation['suggestedUtterance']}** "
                 f"_to proceed (nothing runs until you approve)._"
             )
+        from app.services.action_lifecycle import composer_truth_headline
+
+        structured = execution.structured if isinstance(execution.structured, dict) else {}
+        verification = structured.get("verification") if isinstance(structured.get("verification"), dict) else {}
+        verified = bool(verification.get("verified") or structured.get("verification_status") == "verified")
+        uncertain = str(execution.error_code or "") in {
+            "OUTCOME_UNCERTAIN",
+            "AWAITING_RECONCILIATION",
+            "WRITE_IN_FLIGHT",
+        }
+        headline = composer_truth_headline(
+            success=True,
+            verified=verified,
+            uncertain=uncertain,
+            label=execution.title or "that action",
+            body=execution.body or "",
+        )
         text = (
-            f"**Done — {execution.title}**\n\n"
-            f"{execution.body}\n\n"
+            f"{headline}\n\n"
             f"_What this means:_ {means}"
             f"{step_block}"
             f"{link_line}"

@@ -234,6 +234,23 @@ class ConversationStateService:
     ) -> None:
         await self._persist_state(conversation_id, org_id, updates, client=client)
 
+    async def compare_and_set_pending_status(
+        self,
+        conversation_id: str,
+        org_id: str,
+        *,
+        expected_status: str,
+        updates: dict[str, Any],
+        client: Any | None = None,
+    ) -> bool:
+        """Persist only if pending_task.status still matches expected_status."""
+        current = await self.get_task_state(conversation_id, org_id, client=client)
+        pending = current.get("pending_task") if isinstance(current.get("pending_task"), dict) else {}
+        if str(pending.get("status") or "") != str(expected_status or ""):
+            return False
+        await self._persist_state(conversation_id, org_id, updates, client=client)
+        return True
+
     async def ensure_owned_conversation(
         self,
         *,

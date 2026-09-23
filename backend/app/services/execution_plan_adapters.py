@@ -298,6 +298,20 @@ def enrich_task_state_patch(
     incoming_plan = ExecutionPlan.from_dict(patch.get("execution_plan"))
     if incoming_plan is not None:
         canonical = incoming_plan
+    elif canonical is not None and canonical.source in {"default_compose", "compose"}:
+        pending_in = patch.get("pending_task")
+        params = (
+            pending_in.get("params")
+            if isinstance(pending_in, dict) and isinstance(pending_in.get("params"), dict)
+            else {}
+        )
+        if (
+            isinstance(pending_in, dict)
+            and str(pending_in.get("status") or "") in {"executed", "executing", "failed"}
+            and str(params.get("invoke_action") or pending_in.get("invoke_action") or "").strip()
+        ):
+            # Compose-only kernel plans must not remain SoT after a governed WRITE.
+            canonical = None
 
     if canonical is not None:
         if isinstance(patch.get("pending_task"), dict):
