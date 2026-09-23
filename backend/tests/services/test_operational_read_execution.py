@@ -22,6 +22,11 @@ async def test_pipeline_health_disconnected_is_connect_guidance() -> None:
     assert turn["workflow_status"] == "connector_not_connected"
     assert "analytics source" not in str(turn["message"]).lower()
     assert "connect" in str(turn["message"]).lower()
+    arts = turn["task_state"].get("work_artifacts") or []
+    assert arts
+    assert arts[-1]["metadata"]["outcome"] == "blocked"
+    assert turn["execution_result"]["success"] is False
+    assert str(turn["task_state"]["execution_plan"]["terminal_status"]).lower() == "blocked"
 
 
 @pytest.mark.asyncio

@@ -413,16 +413,36 @@ async def try_operational_read_short_circuit_turn(
             None,
         )
     if invoke is None:
+        from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+        plan = reconcile_execution_plan(
+            message=message,
+            task_state=task_state,
+            capability_id=recipe.recipe_id,
+            connected_integrations=connected,
+        )
+        plan.capability_id = plan.capability_id or recipe.recipe_id
+        plan.execution_strategy = "FAST_PATH"
+        plan = mark_plan_terminal(plan, "blocked")
+        msg = format_not_connected_message(
+            expected_vendor,
+            display_name=connector_display_name(expected_vendor),
+        )
+        blocked_state = bind_finished_work(
+            {**(task_state or {}), **execution_plan_patch(plan)},
+            body=msg,
+            title="Work blocked",
+        )
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
-            "message": format_not_connected_message(
-                expected_vendor,
-                display_name=connector_display_name(expected_vendor),
-            ),
-            "task_state": task_state or {},
+            "message": msg,
+            "task_state": blocked_state,
             "workflow_status": "connector_not_connected",
             "execution_path": "operational_f1_read",
+            "execution_result": execution_result_from_finished_work(
+                blocked_state, body=msg, success=False
+            ),
         }
 
     action_key = str(invoke.resolved_action)
