@@ -5,10 +5,10 @@
   "implementation_authorized": true,
   "direction": "PRESERVE + CONVERGE",
   "current_phase": "implementation_return",
-  "next_executable_phase": "independent acceptance on 144550ff",
+  "next_executable_phase": "independent acceptance on d90b2838",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "updated_at": "2026-09-23T02:10:00Z",
-  "current_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
+  "updated_at": "2026-09-23T08:25:00Z",
+  "current_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
   "dashboard": {
     "total_requirements": 56,
     "independent_audit_sha": "0191297fa2eb4def8620a1b913a41314520d17bb",
@@ -16,9 +16,9 @@
     "independent_partial": 25,
     "independent_fail": 2,
     "independent_not_run": 0,
-    "gap_closure_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
+    "gap_closure_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
     "product_accepted": false,
-    "note": "Current live SHA 144550ff. Historical d5432790/0191297f evidence is not this release."
+    "note": "Current live SHA d90b2838. Do not certify from 72507653/144550ff. Two noop fixtures completed; Canvas/CIM human-only."
   },
   "release_pair": {
     "backend_sha_at_baseline": "a7a0dd560a4edc1cccd00b172520a554eab2df66",
@@ -625,13 +625,13 @@
       "implementation_status": "IMPLEMENTED_PROOF_PENDING",
       "test_status": "PASSED",
       "integration_status": "PASSED",
-      "live_verification_status": "NOT_RUN",
-      "commit": "pending_this_merge",
-      "deployment_sha": null,
+      "live_verification_status": "PASSED",
+      "commit": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
+      "deployment_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
       "evidence_id": "EV-J-007",
-      "remaining_gap": "Await post-merge Railway SHA",
-      "blocker": null,
-      "next_action": "Live isolated org after deploy"
+      "remaining_gap": "Fixture terminals live on d90b2838; CIM leftover running; independent acceptance not run",
+      "blocker": "CIM human disposition; product acceptance later",
+      "next_action": "Independent acceptance on d90b2838"
     },
     {
       "id": "REQ-P5-002",

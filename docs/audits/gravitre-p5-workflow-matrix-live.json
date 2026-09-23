@@ -1,7 +1,7 @@
 {
-  "health_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
+  "health_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
-  "generated_at": "2026-09-23T01:50:30.697346+00:00",
+  "generated_at": "2026-09-23T08:12:55.649488+00:00",
   "canvas_human_only": {
     "run_id": "cdda7de2-bfbb-4cc7-b490-842fb5e7df84",
     "row": {
@@ -17,7 +17,62 @@
     "required_human_action": "Approve, cancel, or leave pending. Do not auto-approve/cancel/bypass.",
     "mutated": false
   },
+  "cim_human_only": {
+    "run_id": "5f7f9ef6-64d9-4029-ad6c-cfb73f750374",
+    "row": {
+      "id": "5f7f9ef6-64d9-4029-ad6c-cfb73f750374",
+      "workflow_id": "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "status": "running",
+      "approval_status": "approved",
+      "trigger_type": "api",
+      "run_type": "execute",
+      "created_at": "2026-09-23T01:51:06.211632+00:00",
+      "error_message": null
+    },
+    "required_human_action": "Fail or cancel this stuck running run after EAGAIN. Do not auto-mutate.",
+    "mutated": false
+  },
+  "fixtures": [
+    {
+      "id": "dd919b0a-1241-4d7d-852d-3e1f8403e82a",
+      "name": "Operator Execution Probe Alpha (noop)"
+    },
+    {
+      "id": "166c0a15-6204-4e37-af15-0da9b16946b3",
+      "name": "Operator Execution Probe Beta (noop)"
+    }
+  ],
   "blocked_runs": [
+    {
+      "id": "5f7f9ef6-64d9-4029-ad6c-cfb73f750374",
+      "workflow_id": "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "status": "running",
+      "approval_status": "approved",
+      "trigger_type": "api",
+      "run_type": "execute",
+      "created_at": "2026-09-23T01:51:06.211632+00:00",
+      "error_message": null
+    },
+    {
+      "id": "e66daaca-b18a-4837-a26c-979d488ba470",
+      "workflow_id": "c993590b-a542-468c-bfda-c697a99c181b",
+      "status": "pending_approval",
+      "approval_status": "pending_approval",
+      "trigger_type": "api",
+      "run_type": "execute",
+      "created_at": "2026-09-23T02:33:26.917385+00:00",
+      "error_message": null
+    },
+    {
+      "id": "d24ee5e5-5104-41fc-abe0-a1327b49e206",
+      "workflow_id": "dd919b0a-1241-4d7d-852d-3e1f8403e82a",
+      "status": "running",
+      "approval_status": "approved",
+      "trigger_type": "api",
+      "run_type": "execute",
+      "created_at": "2026-09-23T07:55:00.067746+00:00",
+      "error_message": null
+    },
     {
       "id": "cdda7de2-bfbb-4cc7-b490-842fb5e7df84",
       "workflow_id": "f91610f0-7d3a-43aa-bc6e-7185c08f9182",
@@ -71,23 +126,81 @@
   ],
   "executable_candidates": [
     {
-      "id": "75d651be-fb4f-5031-be42-83035c4cd19e",
-      "name": "Competitive Intelligence Monitoring"
+      "id": "dd919b0a-1241-4d7d-852d-3e1f8403e82a",
+      "name": "Operator Execution Probe Alpha (noop)"
     },
     {
-      "id": "c993590b-a542-468c-bfda-c697a99c181b",
-      "name": "F6 Prod Process Verify (entity_get)"
+      "id": "166c0a15-6204-4e37-af15-0da9b16946b3",
+      "name": "Operator Execution Probe Beta (noop)"
     }
   ],
   "success_attempts": [
     {
-      "name": "Competitive Intelligence Monitoring",
-      "conversation_id": "d8c721d8-9ebd-43e5-b28a-3a2dede5abef",
-      "prompt": "Run the workflow named Competitive Intelligence Monitoring in this conversation now.",
-      "ask_excerpt": "I can run the existing **Competitive Intelligence Monitoring** workflow now. Reply **yes** to start it, or tell me what to change.",
-      "yes_excerpt": "I couldn\u2019t start the **Competitive Intelligence Monitoring** workflow because the service was temporarily unavailable. Try again in a moment and I can pick it back up.",
-      "ask_ms": 19128,
-      "yes_ms": 39668,
+      "name": "Operator Execution Probe Alpha (noop)",
+      "conversation_id": "cdf4a72b-e4e9-46d1-b722-253caa5d4b84",
+      "prompt": "Run the workflow named Operator Execution Probe Alpha (noop) in this conversation now.",
+      "ask_excerpt": "I\u2019ll run the existing workflow **Operator Execution Probe Alpha (noop)**. Reply **yes** to start it, or tell me what to change.",
+      "yes_excerpt": "Blocked: **Operator Execution Probe Alpha (noop)** already has a run in progress. Open the active run to monitor or cancel it, then try again.",
+      "ask_ms": 11887,
+      "yes_ms": 9538,
+      "actions": [
+        "context.understanding.extracted",
+        "memory.recalled",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed",
+        "cognitive.loop.completed",
+        "context.understanding.extracted",
+        "memory.recalled",
+        "pending_reply.classified",
+        "tool.invoke.requested",
+        "tool.invoke.failed",
+        "workflow.execute.failed",
+        "runtime.turn_latency.critical_path",
+        "response.composer.completed"
+      ],
+      "child_obs": [],
+      "step_failed": [],
+      "execute_failed": [
+        {
+          "id": "2cc19641-d3a",
+          "action": "workflow.execute.failed",
+          "created_at": "2026-09-23T08:13:15.775192+00:00",
+          "meta": {
+            "path": "conversational_execution"
+          }
+        }
+      ],
+      "pending_approval": [],
+      "execute_completed": [],
+      "composer": [
+        {
+          "id": "79239ad6-029",
+          "action": "response.composer.completed",
+          "created_at": "2026-09-23T08:13:07.95666+00:00",
+          "meta": {
+            "kind": "clarify",
+            "success": true
+          }
+        },
+        {
+          "id": "628fd0e4-008",
+          "action": "response.composer.completed",
+          "created_at": "2026-09-23T08:13:20.37794+00:00",
+          "meta": {
+            "kind": "error",
+            "success": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "Operator Execution Probe Beta (noop)",
+      "conversation_id": "c2feba24-328f-4ee9-94ae-969dadc6d955",
+      "prompt": "Run the workflow named Operator Execution Probe Beta (noop) in this conversation now.",
+      "ask_excerpt": "I\u2019ll run the existing workflow **Operator Execution Probe Beta (noop)**. Reply **yes** to start it, or tell me what to change.",
+      "yes_excerpt": "Done \u2014 **Operator Execution Probe Beta (noop)** started and finished.",
+      "ask_ms": 10134,
+      "yes_ms": 9882,
       "actions": [
         "context.understanding.extracted",
         "memory.recalled",
@@ -100,129 +213,64 @@
         "tool.invoke.requested",
         "workflow.execute.created",
         "workflow.execute.started",
-        "memory.recalled",
-        "inference.tool_completion",
-        "agent.react.iteration",
-        "agent.intelligence.executed",
-        "agent.handoff.created",
-        "memory.recalled",
-        "inference.tool_completion",
-        "agent.react.iteration",
-        "agent.intelligence.executed",
-        "agent.handoff.completed",
         "workflow.execute.step_completed",
         "workflow.child.observation",
         "workflow.execute.step_timing",
-        "tool.invoke.failed",
-        "workflow.execute.failed",
+        "workflow.execute.step_completed",
+        "workflow.child.observation",
+        "workflow.execute.step_timing",
+        "workflow.execute.completed",
+        "tool.invoke.completed",
         "runtime.turn_latency.critical_path",
         "response.composer.completed"
       ],
       "child_obs": [
         {
-          "id": "8544da90-c63",
+          "id": "3f587ac3-744",
           "action": "workflow.child.observation",
-          "created_at": "2026-09-23T01:51:32.072508+00:00",
+          "created_at": "2026-09-23T08:13:44.199776+00:00",
           "meta": {
-            "plan_id": "7b6d33d8-eabf-4dd0-ab26-c1ea0a24d345",
-            "step_id": "scan",
-            "success": true
-          }
-        }
-      ],
-      "step_failed": [],
-      "execute_failed": [
-        {
-          "id": "772f3e74-658",
-          "action": "workflow.execute.failed",
-          "created_at": "2026-09-23T01:51:32.399525+00:00",
-          "meta": {
-            "path": "conversational_execution"
-          }
-        }
-      ],
-      "pending_approval": [],
-      "execute_completed": [],
-      "composer": [
-        {
-          "id": "97712d83-968",
-          "action": "response.composer.completed",
-          "created_at": "2026-09-23T01:50:52.789576+00:00",
-          "meta": {
-            "kind": "clarify",
+            "plan_id": "fabb7b18-e80a-454a-85aa-f8dd4652cf15",
+            "step_id": "prep",
             "success": true
           }
         },
         {
-          "id": "9dca69da-78b",
-          "action": "response.composer.completed",
-          "created_at": "2026-09-23T01:51:36.430989+00:00",
+          "id": "11fb74b7-e08",
+          "action": "workflow.child.observation",
+          "created_at": "2026-09-23T08:13:44.425673+00:00",
           "meta": {
-            "kind": "error",
-            "success": false
+            "plan_id": "fabb7b18-e80a-454a-85aa-f8dd4652cf15",
+            "step_id": "finish",
+            "success": true
           }
         }
-      ]
-    },
-    {
-      "name": "F6 Prod Process Verify (entity_get)",
-      "conversation_id": "37f5901d-8296-4e98-8ec3-18b9324c146f",
-      "prompt": "Run the workflow named F6 Prod Process Verify (entity_get) in this conversation now.",
-      "ask_excerpt": "I\u2019ll run the existing workflow **F6 Prod Process Verify (entity_get)**. Reply **yes** to start it, or tell me what to change.",
-      "yes_excerpt": "Done \u2014 started **F6 Prod Process Verify (entity_get)**. Open **Runs** to track progress.",
-      "ask_ms": 12109,
-      "yes_ms": 17708,
-      "actions": [
-        "context.understanding.extracted",
-        "memory.recalled",
-        "runtime.turn_latency.critical_path",
-        "response.composer.completed",
-        "cognitive.loop.completed",
-        "context.understanding.extracted",
-        "memory.recalled",
-        "pending_reply.classified",
-        "tool.invoke.requested",
-        "policy.override.approval_floor_applied",
-        "workflow.execute.created",
-        "workflow.execute.pending_approval",
-        "tool.invoke.completed",
-        "workflow.execute.completed",
-        "runtime.turn_latency.critical_path",
-        "response.composer.completed"
       ],
-      "child_obs": [],
       "step_failed": [],
       "execute_failed": [],
-      "pending_approval": [
-        {
-          "id": "70d8657d-1dc",
-          "action": "workflow.execute.pending_approval",
-          "created_at": "2026-09-23T01:52:06.825287+00:00",
-          "meta": {}
-        }
-      ],
+      "pending_approval": [],
       "execute_completed": [
         {
-          "id": "baad8995-bc1",
+          "id": "afa75d68-40d",
           "action": "workflow.execute.completed",
-          "created_at": "2026-09-23T01:52:07.878403+00:00",
+          "created_at": "2026-09-23T08:13:44.934553+00:00",
           "meta": {}
         }
       ],
       "composer": [
         {
-          "id": "3fd767a3-247",
+          "id": "ccaccc2c-579",
           "action": "response.composer.completed",
-          "created_at": "2026-09-23T01:51:55.071267+00:00",
+          "created_at": "2026-09-23T08:13:36.637459+00:00",
           "meta": {
             "kind": "clarify",
             "success": true
           }
         },
         {
-          "id": "6a59e924-96f",
+          "id": "ab02d0ce-696",
           "action": "response.composer.completed",
-          "created_at": "2026-09-23T01:52:16.055008+00:00",
+          "created_at": "2026-09-23T08:13:49.327431+00:00",
           "meta": {
             "kind": "canned",
             "success": true
@@ -233,12 +281,12 @@
   ],
   "blocked_attempt": {
     "name": "Canvas Write Governance Probe (no approval node)",
-    "conversation_id": "599f8eaa-fbd5-4634-bda1-4a121bea0063",
+    "conversation_id": "7ce0ce19-bb98-49ec-8fbb-07c1f4c36a95",
     "prompt": "Run the workflow named Canvas Write Governance Probe (no approval node) in this conversation now.",
-    "ask_excerpt": "I\u2019ll run the existing workflow **Canvas Write Governance Probe (no approval node)**. Reply **yes** to start it, or tell me what to change.",
-    "yes_excerpt": "This workflow already has a run waiting for approval. Approve or cancel that pending run first, then I can pick this back up.",
-    "ask_ms": 23433,
-    "yes_ms": 19277,
+    "ask_excerpt": "I have the existing workflow ready: **Canvas Write Governance Probe (no approval node)**. Reply **yes** to start it, or tell me what to change.",
+    "yes_excerpt": "That workflow already has a run waiting for approval. Approve or cancel the pending run first, then I can start it again.",
+    "ask_ms": 15801,
+    "yes_ms": 8278,
     "actions": [
       "context.understanding.extracted",
       "memory.recalled",
@@ -258,9 +306,9 @@
     "step_failed": [],
     "execute_failed": [
       {
-        "id": "128ec5be-b46",
+        "id": "89328156-260",
         "action": "workflow.execute.failed",
-        "created_at": "2026-09-23T01:53:11.916464+00:00",
+        "created_at": "2026-09-23T08:14:20.123244+00:00",
         "meta": {
           "path": "conversational_execution"
         }
@@ -270,18 +318,18 @@
     "execute_completed": [],
     "composer": [
       {
-        "id": "c086efd9-007",
+        "id": "6035ffc1-03b",
         "action": "response.composer.completed",
-        "created_at": "2026-09-23T01:52:47.50625+00:00",
+        "created_at": "2026-09-23T08:14:12.342464+00:00",
         "meta": {
           "kind": "clarify",
           "success": true
         }
       },
       {
-        "id": "c8de659d-3a7",
+        "id": "7a9e4e91-6b9",
         "action": "response.composer.completed",
-        "created_at": "2026-09-23T01:53:16.728804+00:00",
+        "created_at": "2026-09-23T08:14:23.692863+00:00",
         "meta": {
           "kind": "error",
           "success": false

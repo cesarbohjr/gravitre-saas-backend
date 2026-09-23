@@ -1,5 +1,5 @@
 {
-  "health_sha": "144550ffc1459a93391890c0fd92844946de7ea7",
+  "health_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
   "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
   "workflows": [
     {
@@ -25,30 +25,61 @@
     {
       "id": "c993590b-a542-468c-bfda-c697a99c181b",
       "name": "F6 Prod Process Verify (entity_get)"
+    },
+    {
+      "id": "dd919b0a-1241-4d7d-852d-3e1f8403e82a",
+      "name": "Operator Execution Probe Alpha (noop)"
+    },
+    {
+      "id": "166c0a15-6204-4e37-af15-0da9b16946b3",
+      "name": "Operator Execution Probe Beta (noop)"
     }
   ],
   "picked_workflow": {
-    "id": "c993590b-a542-468c-bfda-c697a99c181b",
-    "name": "F6 Prod Process Verify (entity_get)",
+    "id": "166c0a15-6204-4e37-af15-0da9b16946b3",
+    "name": "Operator Execution Probe Beta (noop)",
     "blocked_ids": [
       "75d651be-fb4f-5031-be42-83035c4cd19e",
+      "872074ad-89fc-400d-a5b1-c2b44c15c2af",
+      "c993590b-a542-468c-bfda-c697a99c181b",
       "f91610f0-7d3a-43aa-bc6e-7185c08f9182"
     ]
   },
   "j007": {
-    "conversation_id": "1c519ca2-40e4-4496-aaa5-0f5d3cced02d",
-    "prompt": "Run the workflow named F6 Prod Process Verify (entity_get) in this conversation now.",
-    "assistant": "I can run the existing workflow **F6 Prod Process Verify (entity_get)** now. Reply **yes** to start it, or tell me what to change.",
-    "yes_assistant": "Done \u2014 I started **F6 Prod Process Verify (entity_get)**. Open **Runs** to track progress.",
-    "first_ms": 14139,
-    "yes_ms": 12608,
-    "child_obs": [],
+    "conversation_id": "6b8bc07d-93bb-4316-a382-98464a29c33f",
+    "prompt": "Run the workflow named Operator Execution Probe Beta (noop) in this conversation now.",
+    "assistant": "Ready to run **Operator Execution Probe Beta (noop)** using the existing workflow definition. Reply **yes** to start it, or tell me what to change.",
+    "yes_assistant": "Done \u2014 **Operator Execution Probe Beta (noop)** ran and finished.",
+    "first_ms": 9859,
+    "yes_ms": 10097,
+    "child_obs": [
+      {
+        "id": "8d0593a2-580",
+        "action": "workflow.child.observation",
+        "created_at": "2026-09-23T08:20:53.961493+00:00",
+        "meta": {
+          "plan_id": "d3fe5e0b-f1c1-405d-a8af-c22c2a015d8d",
+          "step_id": "prep",
+          "success": true
+        }
+      },
+      {
+        "id": "aa876e85-06d",
+        "action": "workflow.child.observation",
+        "created_at": "2026-09-23T08:20:54.196766+00:00",
+        "meta": {
+          "plan_id": "d3fe5e0b-f1c1-405d-a8af-c22c2a015d8d",
+          "step_id": "finish",
+          "success": true
+        }
+      }
+    ],
     "workflow_waiting": [],
     "invokes": [
       {
-        "id": "67b2e5e2-ccc",
+        "id": "a0fa624a-f89",
         "action": "tool.invoke.completed",
-        "created_at": "2026-09-23T02:06:22.932523+00:00",
+        "created_at": "2026-09-23T08:20:55.162219+00:00",
         "meta": {
           "action": "assistant.execute_workflow"
         }
@@ -64,20 +95,25 @@
       "memory.recalled",
       "pending_reply.classified",
       "tool.invoke.requested",
-      "policy.override.approval_floor_applied",
       "workflow.execute.created",
-      "workflow.execute.pending_approval",
-      "tool.invoke.completed",
+      "workflow.execute.started",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
       "workflow.execute.completed",
+      "tool.invoke.completed",
       "runtime.turn_latency.critical_path",
       "response.composer.completed"
     ]
   },
   "j008": {
-    "conversation_id": "dab6f643-78fa-4ab4-a585-63c4ab7e569d",
+    "conversation_id": "1bb45907-3b2c-4371-bb6f-f1ee02fb9c11",
     "text_hi": "Hey \u2014 I'm here. What do you want to get done?",
-    "spoken_first_text_ms": 205,
-    "spoken_first_audio_ms": 208,
+    "spoken_first_text_ms": 161,
+    "spoken_first_audio_ms": 164,
     "spoken_types": [
       "voice.session.accepted",
       "voice.text.delta",

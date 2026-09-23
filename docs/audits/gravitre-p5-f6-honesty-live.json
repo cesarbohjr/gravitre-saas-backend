@@ -1,0 +1,13 @@
+{
+  "health_sha": "7250765321b615cb0b91eede92c97beb68aae497",
+  "conversation_id": "ee6460ab-630c-4ab4-b8fe-d42c831f0081",
+  "ask": "I\u2019ll run the existing workflow **F6 Prod Process Verify (entity_get)**. Reply **yes** to start it, or tell me what to change.",
+  "yes": "That workflow hasn\u2019t completed. It\u2019s still waiting for approval, so approve or cancel the pending run first, then I can pick it back up.",
+  "canvas": {
+    "id": "cdda7de2-bfbb-4cc7-b490-842fb5e7df84",
+    "status": "pending_approval",
+    "approval_status": "pending_approval",
+    "trigger_type": "manual",
+    "created_at": "2026-09-21T18:35:31.623959+00:00"
+  }
+}

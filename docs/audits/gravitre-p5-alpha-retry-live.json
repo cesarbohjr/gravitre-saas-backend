@@ -1,0 +1,94 @@
+{
+  "health_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
+  "stuck_cleanup": {
+    "id": "d24ee5e5-5104-41fc-abe0-a1327b49e206",
+    "status": "failed",
+    "error_message": "isolated-org noop fixture leftover after EAGAIN; not Canvas/CIM",
+    "workflow_id": "dd919b0a-1241-4d7d-852d-3e1f8403e82a"
+  },
+  "alpha_retry": {
+    "name": "Operator Execution Probe Alpha (noop)",
+    "conversation_id": "3d011b1f-8d14-4608-b4fe-049407bd6fc0",
+    "prompt": "Run the workflow named Operator Execution Probe Alpha (noop) in this conversation now.",
+    "ask_excerpt": "I\u2019ll run the existing workflow **Operator Execution Probe Alpha (noop)**. Reply **yes** to start it, or tell me what to change.",
+    "yes_excerpt": "Done \u2014 **Operator Execution Probe Alpha (noop)** ran and finished.",
+    "ask_ms": 11317,
+    "yes_ms": 10910,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "tool.invoke.requested",
+      "workflow.execute.created",
+      "workflow.execute.started",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
+      "workflow.execute.completed",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ],
+    "child_obs": [
+      {
+        "id": "f9d04779-c36",
+        "action": "workflow.child.observation",
+        "created_at": "2026-09-23T08:16:41.995357+00:00",
+        "meta": {
+          "plan_id": "643d1791-61c6-4871-a2f0-cdaaec459fb5",
+          "step_id": "prep",
+          "success": true
+        }
+      },
+      {
+        "id": "f74fbcd7-153",
+        "action": "workflow.child.observation",
+        "created_at": "2026-09-23T08:16:42.286322+00:00",
+        "meta": {
+          "plan_id": "643d1791-61c6-4871-a2f0-cdaaec459fb5",
+          "step_id": "finish",
+          "success": true
+        }
+      }
+    ],
+    "step_failed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "execute_completed": [
+      {
+        "id": "07554d10-b12",
+        "action": "workflow.execute.completed",
+        "created_at": "2026-09-23T08:16:43.024146+00:00",
+        "meta": {}
+      }
+    ],
+    "composer": [
+      {
+        "id": "3c65c103-57d",
+        "action": "response.composer.completed",
+        "created_at": "2026-09-23T08:16:33.892287+00:00",
+        "meta": {
+          "kind": "clarify",
+          "success": true
+        }
+      },
+      {
+        "id": "5cd2218d-787",
+        "action": "response.composer.completed",
+        "created_at": "2026-09-23T08:16:47.803389+00:00",
+        "meta": {
+          "kind": "canned",
+          "success": true
+        }
+      }
+    ]
+  }
+}

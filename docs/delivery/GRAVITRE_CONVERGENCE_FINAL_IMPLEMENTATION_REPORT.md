@@ -1,8 +1,9 @@
 # GRAVITRE CONVERGENCE FINAL IMPLEMENTATION REPORT
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-23  
+**Production SHA:** `d90b283800c1f446ee4181fd64ed5b8bfbb46030`  
 **H0:** Approved with four binding amendments.  
-**Engineering vs product:** Engineering executed (all 56 IDs processed). **Product is not accepted** — independent audit is a later stage. **Live verified on this program's SHA: 0** at report time (Railway still `a7a0dd56`).
+**Engineering vs product:** Engineering work for this cycle is returned. **Product is not accepted.** Independent acceptance has **not** run on this SHA.
 
 This report is **not** the independent acceptance audit.
 
@@ -10,124 +11,83 @@ This report is **not** the independent acceptance audit.
 
 ## 1. Original approved scope
 
-`docs/audits/GRAVITRE_CONVERGENCE_SPEC.md` Section 0 (product contract) + P0–P6 + M, P7 freeze. Isolated org `f07e57c0-…` only. PRESERVE + CONVERGE. No Computer Use. No 3.0 rewrite.
+`docs/audits/GRAVITRE_CONVERGENCE_SPEC.md` Section 0 (product contract) + P0–P6 + M, P7 freeze. Isolated org `f07e57c0-1501-4000-8000-c04e57a00001` only. PRESERVE + CONVERGE. No Computer Use. No 3.0 rewrite. No second planner or workflow engine.
 
-H0 amendments: (1) no H13 Cesar stop after P2 marks; (2) physical-mic remains HUMAN_EXPERIENCE_PENDING for final audit; (3) engineering-complete ≠ all-IDs-processed; FAILED/NOT_IMPLEMENTED excluded; EXTERNALLY_BLOCKED counts only if implementation is done; (4) deferred Section 0 gaps stay tracked.
+## 2. Architecture (unchanged spine)
 
-## 2. Final implemented architecture
+`execute_task_streaming` → CognitiveTurnKernel → sealed HMAC READ **or** Unified LIVE → classical ReAct fallback → Composer. Canonical task identity, child Observations, HMAC, PendingAction, durable execution preserved.
 
-Unchanged spine: `execute_task_streaming` → CognitiveTurnKernel → sealed HMAC READ **or** Unified LIVE → classical ReAct fallback → Composer. Added:
+Workflow execute from chat: `force_inline=True`, `trigger_type=api`, `source=assistant_chat`, parent `plan_id` on child Observations. Graph compile overlays bound `agent_id` onto thin stubs.
 
-- P1 `live_classical_handoff` (one-shot tool execute, no second tool-choice)
-- P2 sealed READ waterfall marks + canned-literal Composer skip when evidence exists
-- P3 PCM `audio_origin` / interrupt suppress for `probe_pcm` / `tts_echo`
-- P4 `capability_evidence_plan` before JIT; KF not a substitute
-- P5 parent `plan_id`/`conversation_id` on workflow ToolContext + `workflow.child.observation`
-- P6 `bias_notes_from_event_rows` (TOOL_SUCCESS never biases)
-- Flags: `convergence_p1_single_selection_v1`, `convergence_p2_canned_literal_v1`, `convergence_p3_pcm_origin_v1`, `convergence_p4_evidence_plan_v1`, `convergence_p5_workflow_child_identity_v1` (defaults true; env kill-switch)
+EAGAIN class (`[Errno 11] Resource temporarily unavailable`): dedicated `gravitre-async-bridge` loop; `call_with_resource_retry` on handler execute, whole graph node, graph batches (skip already-produced nodes), and `_finalize_run`, including wrapped error text.
 
-## 3. Phase-by-phase
+## 3. Current-SHA evidence (`d90b2838` only)
 
-| Phase | Engineering | Live this SHA |
-|-------|-------------|----------------|
-| P0 | Standing HMAC/Composer/release-pair preserved; regression tests green | Proof pending post-deploy |
-| P1 | Handoff stash + ReAct first-iter skip LLM | Proof pending |
-| P2 | Marks + canned LLM skip (named opt) | Waterfall on new SHA pending |
-| P3 | Origin policy; probe scripts tag `probe_pcm`; user_mic barge-in kept | SAPI pending; physical HUMAN_EXPERIENCE_PENDING |
-| P4 | CEO evidence plan; pin HubSpot/Ads; KF skip until live required | CEO live pending |
-| P5 | Child identity + observation audit | Chat→workflow live pending |
-| P6 | TOOL_SUCCESS filter proven in unit; consume path exists | H11 unlabeled |
-| M | Harness present; prod tier unchanged | EXTERNALLY_BLOCKED (no local key) |
-| P7 | No Computer Use code added | Freeze held |
+Do **not** certify this SHA from `144550ff` / `72507653` / `1d1e78d4`.
 
-## 4. Requirement-by-requirement disposition
+### Text paraphrases / HubSpot grounding
 
-See `docs/delivery/gravitre-convergence-execution-ledger.json`. Counts: 56 processed; 9 IMPLEMENTED_AND_VERIFIED; 43 IMPLEMENTED_PROOF_PENDING; 2 EXTERNALLY_BLOCKED (M keys); 2 APPROVED_SCOPE_EXCEPTION (deferred artifacts/computer UX); 0 FAILED; 0 NOT_IMPLEMENTED; **0 live verified**.
+`docs/audits/gravitre-semantic-paraphrase-live.json`
 
-## 5–8. Reused / converged / optimized / extended
+| Prompt | Conv | first_ms | Evidence |
+|--------|------|--------:|----------|
+| How is my company doing? | `2846e08e-5e37-4b1f-8268-cfad289ec230` | 7592 | `hubspot.deals.list` @ `2026-09-23T08:17:47.503988Z` |
+| How's the company doing? | `8aa0bd09-f371-4916-aea1-bc2a971bc8cf` | 5798 | `hubspot.deals.list` @ `2026-09-23T08:17:57.241677Z` |
+| business performance snapshot | `d3c44f58-dac4-48ec-bf9f-e9f857afe16b` | 7127 | `hubspot.deals.list` @ `2026-09-23T08:18:08.152101Z` |
 
-**Reused:** HMAC sealed READ, fallthrough enum, Pipecat/Deepgram/ElevenLabs, Composer kinds, KF, entities, outcome table, ExecutionPlan/Observation, release pair.  
-**Converged:** LIVE proposal → classical execute without dual tool-choice; workflow child → parent plan_id; CEO evidence before JIT.  
-**Optimized:** Canned sealed READ no longer pays Composer LLM when provider evidence is present (P2).  
-**Extended:** Origin-aware interrupt; evidence plan; P2 marks; workflow.child.observation.
+25 deals. Honest GA/GSC pending_auth. No internals-only substitute.
 
-## 9. Removed or deprecated
+### Spoken answers / text-voice parity (synthesized PCM)
 
-None of the six shared contracts removed. ReAct retained as fallback/repair.
+`docs/audits/gravitre-pcm-closure-live.json` — **not** a physical microphone.
 
-## 10. Final deployed release pair
+Spoken assistant_text on this SHA: Apollo paraphrases → `Yes, Apollo is connected and healthy.`; HubSpot → `Yes, Hubspot is connected and healthy.` Audio frames present. J008 same-conversation Talk: conv `1bb45907-3b2c-4371-bb6f-f1ee02fb9c11`, spoken_first_text_ms=161, spoken_first_audio_ms=164.
 
-At report time:
+Physical mic / driving: **HUMAN_EXPERIENCE_PENDING**.
 
-- Backend Railway `/health` `git_sha`: **`a7a0dd560a4edc1cccd00b172520a554eab2df66`** (pre-this-merge)
-- Frontend Vercel baseline: **`9eb88ee6`**
-- This implementation: **pending merge SHA** (ledger `commit: pending_this_merge`)
+### Workflow terminal completion (two authorized fixtures)
 
-Identical SHAs are not required.
+Isolated-org **Operator Execution Probe Alpha/Beta (noop)** — labeled placeholder, not customer catalog. **(b) scaffold.**
 
-## 11. Required CI results
+| Workflow | Conv | `workflow.execute.completed` | Parent plan + child Observations |
+|----------|------|------------------------------|----------------------------------|
+| Alpha | `3d011b1f-8d14-4608-b4fe-049407bd6fc0` | `2026-09-23T08:16:43.024146Z` | plan `643d1791-…` prep+finish success |
+| Beta | `c2feba24-328f-4ee9-94ae-969dadc6d955` | `2026-09-23T08:13:44.934553Z` | plan `fabb7b18-…` prep+finish success |
 
-Local (this machine):
+Composer stated the named workflow **finished** (not “started” as completion). A leftover Alpha fixture run `d24ee5e5` from an earlier SHA was failed as **fixture cleanup only** (not Canvas/CIM) so Alpha could be retried.
 
-- `tests/services/test_convergence_p0_p6.py` + latency + HubSpot grounding + KLM: **51 passed**
-- unified turn + canonical ingress + operational READ + 2.0-A + Pipecat interrupt/backchannel: **76 passed**
-- E4 context compiler + Composer + workflow builder: **29 passed**
+J007 repeat Beta: conv `6b8bc07d-…`; `tool.invoke.completed` `assistant.execute_workflow` @ `2026-09-23T08:20:55.162219Z`.
 
-GitHub CI on the merge commit is required after push. Not claimed green until the Actions URL exists.
+### Blocked / pending (truthful, resumable; not mutated)
 
-## 12. Current latency measurements
+| Run | Status | Human decision required |
+|-----|--------|-------------------------|
+| Canvas Write `cdda7de2-bfbb-4cc7-b490-842fb5e7df84` | `pending_approval`, trigger `manual`, since `2026-09-21T18:35:31.623959Z` | Approve, cancel, or leave pending |
+| CIM `5f7f9ef6-64d9-4029-ad6c-cfb73f750374` | `running` leftover after historical EAGAIN | Fail or cancel. **Not** completed work. Historical scan Observation @ `2026-09-23T01:51:32.072508Z` is a child step only |
+| Sales Automation | `workflow.execute.pending_approval` @ `2026-09-23T08:19:15.742858Z` conv `85ef1f0d-…` | Approve or cancel pending run; chat did **not** claim Done |
 
-Baseline (old SHA `a7a0dd56`): T-hs-read first text **19931 ms** canned. P2 named optimization: skip Composer LLM on evidenced canned drafts. **Do not claim TTFT improved in production** until a waterfall on the new SHA exists.
+### PendingAction / HMAC
 
-## 13–20. Journey results (this program SHA)
+`Send Sarah a summary.` conv `a481e417-…`: clarify which Sarah / what summary. No WRITE invoke.
 
-All **NOT_RUN** on the new SHA. Baseline classes remain historical only:
+## 4. Required CI and deploy
 
-| ID | Historical class (`a7a0dd56`) | This program |
-|----|-------------------------------|--------------|
-| EV-J-001 greeting | ANSWERED shortcut | Proof pending |
-| EV-J-002 deals | COMPLETED 25 canned | Proof pending |
-| EV-J-003 Sarah WRITE | ANSWERED clarify | Proof pending |
-| EV-J-004 CEO | PARTIALLY_COMPLETED internals | Engineering: P1+P4; live pending; GA/GSC pending_auth |
-| EV-J-005 PCM Apollo | FAILED spoken | Engineering: origin policy; live SAPI pending |
-| EV-J-006 HTTP Talk | COMPLETED audio 224 ms | Unchanged path |
-| EV-J-007 workflow child | UNKNOWN | Engineering: observation emit; live pending |
-| EV-J-008 text then spoken | UNKNOWN | Proof pending |
-| Physical mic / driving | — | **HUMAN_EXPERIENCE_PENDING** (final audit) |
-| Computer / artifacts factory | Out of cycle | **Not satisfied** by deferral |
+- CI **success** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35834639673
+- Railway **success** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/35834639759
+- `/health` git_sha `d90b283800c1f446ee4181fd64ed5b8bfbb46030`
 
-## 21. Remaining gaps
+## 5. Remaining blockers (honest)
 
-`docs/delivery/GRAVITRE_CONVERGENCE_GAPS_AND_EXCEPTIONS.md`
+- Independent product acceptance **NOT RUN**
+- Physical microphone / driving **HUMAN_EXPERIENCE_PENDING**
+- Model eval credentials / prod tier change **EXTERNALLY_BLOCKED**
+- H11 labeled BUSINESS_IMPACT **EXTERNALLY_BLOCKED**
+- CIM and Canvas Write require **named human** disposition
+- Isolated GA/GSC **pending_auth** (not an engineering failure)
+- Computer Use / richer artifacts **out of cycle**
 
-## 22. Failed or blocked acceptance criteria
+## 6. Product contract (binding; not self-certified)
 
-- Live P0–P6 journeys on **this** SHA: blocked on deploy (GAP-010)
-- M bake-off: EXTERNALLY_BLOCKED (no local `OPENAI_API_KEY`)
-- P6 live consume: no labeled BUSINESS_IMPACT (H11)
-- Physical-mic LIVE_PROVEN: HUMAN_EXPERIENCE_PENDING
-- Visible computer / richer artifacts: deferred Section 0
+ChatGPT/Claude-quality text and natural voice, plus Manus/Cowork/Grok-style finished execution, remain the independent-audit standard. A started run is not completion. A completed tool is not necessarily completed work. A spoken answer must address the request. A fast response must still use correct evidence.
 
-No requirement relabeled complete when failed.
-
-## 23. Sequence changes
-
-P2 optimize proceeded without Cesar H13 (amendment 1). P7 Computer Use **not** started. No 3.0 rewrite.
-
-## 24. Evidence supporting completion claims
-
-| Claim | Evidence |
-|-------|----------|
-| Unit contracts P1–P6 | pytest 51/76/29 green locally (this session) |
-| P1 one-shot | `test_p1_handoff_skips_second_tool_choice`; `react_engine.py` consume_handoff |
-| P2 marks + canned skip | `test_p2_*`; `response_composer.py` canned literal; `sealed_read_execution.py` marks |
-| P3 origin | `test_p3_probe_pcm_does_not_barge_in_user_mic_does`; interrupt_reporter suppress; probe scripts `audio_origin=probe_pcm` |
-| P4 evidence plan | `test_p4_ceo_plan_requires_hubspot_not_kf_substitute`; `context_compiler.py` KF skip |
-| P5 identity | `test_p5_workflow_ctx_inherits_parent_plan`; `workflow.child.observation` |
-| P6 no TOOL_SUCCESS bias | `test_p6_tool_success_is_not_plan_bias` |
-| P7 freeze | no browser-agent brain merged |
-| Prod still old SHA | GET `https://api.gravitre.app/health` `git_sha=a7a0dd56` @ 2026-09-22T08:35:46Z |
-| Isolated org | Unchanged; no operator-org kernel chat |
-
-**Engineering completion:** yes (processed IDs; 0 FAILED/NOT_IMPLEMENTED).  
-**Product acceptance:** no.
+**Product accepted: NO.**
