@@ -119,9 +119,36 @@ class ConversationalExecutionService:
         message: str,
         understanding: dict[str, Any],
         task_state: dict[str, Any],
+        connected_integrations: list[str] | None = None,
     ) -> str | None:
         pending = task_state.get("pending_task") or {}
         exec_plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
+        pending_type = str(pending.get("type") or "") if isinstance(pending, dict) else ""
+        if pending_type and pending_type not in PLATFORM_TASK_TYPES:
+            return None
+        from app.services.pending_write_resume import (
+            should_resume_frozen_write,
+            should_skip_unified_live_for_compiled_write,
+        )
+
+        if should_resume_frozen_write(message, task_state):
+            return None
+        if should_skip_unified_live_for_compiled_write(
+            message,
+            task_state,
+            list(connected_integrations or []),
+        ):
+            return None
+        from app.services.chat_action_mapper import WRITE_VERBS
+        from app.services.connector_semantic_registry import message_mentions_any_connector
+
+        if (
+            WRITE_VERBS.search(message or "")
+            and message_mentions_any_connector(message or "")
+            and not AGENT_CREATE.search(message or "")
+            and not WORKFLOW_CREATE.search(message or "")
+        ):
+            return None
         if isinstance(exec_plan, dict) and exec_plan.get("steps"):
             steps = exec_plan.get("steps") or []
             primary = steps[0] if steps and isinstance(steps[0], dict) else {}
@@ -251,8 +278,14 @@ class ConversationalExecutionService:
         classification: dict[str, Any],
         task_state: dict[str, Any],
         client: Any,
+        connected_integrations: list[str] | None = None,
     ) -> dict[str, Any] | None:
-        task_type = self.resolve_task_type(message, understanding, task_state)
+        task_type = self.resolve_task_type(
+            message,
+            understanding,
+            task_state,
+            connected_integrations=connected_integrations,
+        )
         if not task_type:
             return None
 

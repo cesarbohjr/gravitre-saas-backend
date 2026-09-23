@@ -4188,6 +4188,7 @@ class AgentIntelligence:
             classification=pipeline_classification,
             task_state=task_state,
             client=client,
+            connected_integrations=list(connected_early or []),
         )
         _mark("conversational_execution")
         if conv_turn and conv_turn.get("stop_pipeline"):

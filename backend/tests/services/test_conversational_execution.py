@@ -26,6 +26,22 @@ def execution_service():
     return service
 
 
+def test_hubspot_contact_write_is_not_create_agent(execution_service):
+    prompt = (
+        'Create a HubSpot contact for placeholder.isolated@gravitre-smoke.example.com '
+        'named "Placeholder Isolated Org".'
+    )
+    assert (
+        execution_service.resolve_task_type(
+            prompt,
+            {"conversational_create": True},
+            {},
+            connected_integrations=["hubspot"],
+        )
+        is None
+    )
+
+
 @pytest.mark.asyncio
 async def test_extracts_agent_name_and_purpose_from_single_reply(execution_service):
     updates = execution_service.extract_param_updates(
