@@ -67,12 +67,25 @@ def looks_like_operator_task(message: str) -> bool:
 
         parsed = parse_connector_status_question(text)
         if parsed is not None and parsed.kind.value == "connection":
-            extra_job = re.search(
-                r"(?i)\b(and what|access does|create |campaign|set it up)\b",
-                text,
+            from app.services.connector_status_reply_service import (
+                _CHECK_WHETHER_CONNECTED_RE,
+                _IS_VENDOR_CONNECTED_RE,
+                _STATUS_OF_VENDOR_RE,
             )
-            if extra_job is None:
-                return False
+
+            # Only whole-utterance status asks skip the operator-task path.
+            # Substring "is … connected" inside a job brief must still reason.
+            if (
+                _IS_VENDOR_CONNECTED_RE.match(text)
+                or _CHECK_WHETHER_CONNECTED_RE.match(text)
+                or _STATUS_OF_VENDOR_RE.match(text)
+            ):
+                extra_job = re.search(
+                    r"(?i)\b(and what|access does|create |campaign|set it up)\b",
+                    text,
+                )
+                if extra_job is None:
+                    return False
     except Exception:  # noqa: BLE001
         pass
     lowered = text.lower()
