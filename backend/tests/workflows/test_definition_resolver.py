@@ -115,3 +115,54 @@ def test_resolve_repairs_orphaned_enrichment_crm_sync_edges():
     targets = {e["to_node_id"] for e in resolved["graph"]["edges"]}
     roots = [n["id"] for n in resolved["graph"]["nodes"] if n["id"] not in targets]
     assert roots == ["apollo_contacts_search"]
+
+
+def test_resolve_overlays_step_agent_id_onto_thin_graph_nodes():
+    definition = {
+        "schema_version": "v1",
+        "steps": [
+            {
+                "id": "scan",
+                "name": "Scan competitors",
+                "type": "agent",
+                "metadata": {"agent_id": "d7575e83-0000-4000-8000-000000000001", "task": "scan"},
+                "config": {},
+            },
+            {
+                "id": "brief",
+                "name": "Write brief",
+                "type": "agent",
+                "metadata": {"agent_id": "c4940fc5-0000-4000-8000-000000000002", "task": "brief"},
+                "config": {},
+            },
+        ],
+        "graph": {
+            "nodes": [
+                {"id": "scan", "node_type": "agent", "name": "Scan competitors", "config": None, "metadata": None},
+                {"id": "brief", "node_type": "agent", "name": "Write brief", "config": None, "metadata": None},
+            ],
+            "edges": [{"from": "scan", "to": "brief"}],
+        },
+    }
+    resolved = resolve_executable_definition(MagicMock(), "org-1", "wf-1", definition, "production")
+    nodes = {n["id"]: n for n in resolved["graph"]["nodes"]}
+    assert nodes["scan"]["metadata"]["agent_id"] == "d7575e83-0000-4000-8000-000000000001"
+    assert nodes["brief"]["metadata"]["agent_id"] == "c4940fc5-0000-4000-8000-000000000002"
+
+
+def test_overlay_step_bindings_prefers_populated_node_fields():
+    from app.workflows.definition_resolver import _overlay_step_bindings_onto_graph_nodes
+
+    nodes = [
+        {
+            "id": "scan",
+            "name": "Scan",
+            "metadata": {"agent_id": "node-agent"},
+            "config": {},
+        }
+    ]
+    steps = [
+        {"id": "scan", "name": "Scan", "metadata": {"agent_id": "step-agent"}, "config": {}},
+    ]
+    overlayed = _overlay_step_bindings_onto_graph_nodes(nodes, steps)
+    assert overlayed[0]["metadata"]["agent_id"] == "node-agent"

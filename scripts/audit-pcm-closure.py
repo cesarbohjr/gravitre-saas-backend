@@ -181,19 +181,31 @@ async def _drive(token: str, speech: bytes) -> dict:
 def main() -> int:
     mod._load_env()
     health = httpx.get(f"{LIVE_API}/health", timeout=45.0).json()
-    speech = mod._sapi_pcm16(mod.PHRASE)
-    driven = asyncio.run(_drive(service_token(), speech))
+    phrases = [
+        p.strip()
+        for p in (os.environ.get("PCM_PHRASES") or "").split("|")
+        if p.strip()
+    ]
+    if not phrases:
+        phrases = [os.environ.get("PHRASE") or mod.PHRASE]
+    runs = []
+    for phrase in phrases:
+        speech = mod._sapi_pcm16(phrase)
+        driven = asyncio.run(_drive(service_token(), speech))
+        runs.append({"phrase": phrase, **driven})
     report = {
         "probe": "pcm_closure",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "health": {"git_sha": health.get("git_sha"), "timestamp": health.get("timestamp")},
         "proof_class": "SYNTHESIZED_PCM_INTO_PIPECAT_WS",
         "physical_mic": False,
-        "phrase": mod.PHRASE,
-        **driven,
+        "phrase": phrases[0],
+        "phrases": phrases,
+        "runs": runs,
+        **runs[0],
     }
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(report, indent=2)[:4000])
+    print(json.dumps(report, indent=2)[:5000])
     return 0
 
 

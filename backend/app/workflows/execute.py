@@ -73,7 +73,12 @@ def execute_workflow_steps(
     if isinstance(graph_block, dict):
         graph_nodes = graph_block.get("nodes")
         graph_edges = graph_block.get("edges")
-        if isinstance(graph_nodes, list) and graph_nodes and isinstance(graph_edges, list):
+        graph_ready = isinstance(graph_nodes, list) and graph_nodes and isinstance(graph_edges, list)
+        if graph_ready:
+            if isinstance(steps_def, list) and steps_def:
+                from app.workflows.definition_resolver import _overlay_step_bindings_onto_graph_nodes
+
+                graph_nodes = _overlay_step_bindings_onto_graph_nodes(graph_nodes, steps_def)
             from app.workflows.execution_engine import execute_workflow_graph
 
             return execute_workflow_graph(

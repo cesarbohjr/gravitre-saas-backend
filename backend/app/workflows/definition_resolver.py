@@ -183,6 +183,60 @@ def _repair_enrichment_graph_edges(
     return resolved
 
 
+def _overlay_step_bindings_onto_graph_nodes(
+    nodes: list[Any],
+    steps: list[Any],
+) -> list[Any]:
+    """Copy agent/tool bindings from compiled steps onto thin graph nodes.
+
+    Some saved versions keep executable ``steps`` (with ``metadata.agent_id``)
+    while ``graph.nodes`` are id/type stubs. Graph execute compiles those stubs
+    and drops the binding. Overlay is class-level, not workflow-specific.
+    """
+    by_id: dict[str, dict[str, Any]] = {}
+    by_name: dict[str, dict[str, Any]] = {}
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        sid = str(step.get("id") or "").strip()
+        if sid:
+            by_id[sid] = step
+        name = str(step.get("name") or "").strip().lower()
+        if name:
+            by_name[name] = step
+    out: list[Any] = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            out.append(node)
+            continue
+        row = dict(node)
+        sid = str(row.get("id") or "").strip()
+        name = str(row.get("name") or row.get("title") or "").strip().lower()
+        step = by_id.get(sid) or by_name.get(name)
+        if not step:
+            out.append(row)
+            continue
+        step_meta = step.get("metadata") if isinstance(step.get("metadata"), dict) else {}
+        step_cfg = step.get("config") if isinstance(step.get("config"), dict) else {}
+        node_meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        node_cfg = row.get("config") if isinstance(row.get("config"), dict) else {}
+        merged_meta = {**step_meta, **{k: v for k, v in node_meta.items() if v not in (None, "", {})}}
+        merged_cfg = {**step_cfg, **{k: v for k, v in node_cfg.items() if v not in (None, "", {})}}
+        if step_meta.get("agent_id") and not merged_meta.get("agent_id"):
+            merged_meta["agent_id"] = step_meta["agent_id"]
+        if step_cfg.get("agent_id") and not merged_cfg.get("agent_id"):
+            merged_cfg["agent_id"] = step_cfg["agent_id"]
+        if merged_meta:
+            row["metadata"] = merged_meta
+        if merged_cfg:
+            row["config"] = merged_cfg
+        if not (row.get("type") or row.get("node_type")) and step.get("type"):
+            row["type"] = step.get("type")
+            row["node_type"] = step.get("type")
+        out.append(row)
+    return out
+
+
 def resolve_executable_definition(
     client: Any,
     org_id: str,
@@ -205,6 +259,9 @@ def resolve_executable_definition(
             )
             if not graph_edges:
                 normalized_graph["edges"] = _normalize_edges([], normalized_graph["nodes"])
+            normalized_graph["nodes"] = _overlay_step_bindings_onto_graph_nodes(
+                normalized_graph["nodes"], resolved["steps"]
+            )
             resolved["graph"] = normalized_graph
             return _repair_enrichment_graph_edges(resolved)
         return resolved

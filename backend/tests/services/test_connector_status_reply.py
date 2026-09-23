@@ -45,6 +45,8 @@ def _availability_row(
     [
         ("Is HubSpot connected?", ConnectorStatusQuestionKind.CONNECTION, "hubspot"),
         ("is Apollo connected.", ConnectorStatusQuestionKind.CONNECTION, "apollo"),
+        ("Can you check whether Apollo is connected?", ConnectorStatusQuestionKind.CONNECTION, "apollo"),
+        ("What is the status of Apollo?", ConnectorStatusQuestionKind.CONNECTION, "apollo"),
         ("Is Clay connected?", ConnectorStatusQuestionKind.CONNECTION, "clay"),
         ("Is GA4 connected?", ConnectorStatusQuestionKind.CONNECTION, "google_analytics"),
         ("Does Gravitre support Clay?", ConnectorStatusQuestionKind.SUPPORT, "clay"),

@@ -18,6 +18,17 @@ _IS_VENDOR_CONNECTED_RE = re.compile(
     r"(?P<vendor>[\w][\w\s.&'-]{0,48}?)\s+"
     r"(?:connected|hooked\s+up|set\s+up|configured)\s*[.?!]*\s*$"
 )
+_CHECK_WHETHER_CONNECTED_RE = re.compile(
+    r"(?i)^\s*(?:can|could|would)\s+you\s+(?:please\s+)?"
+    r"(?:check|tell\s+me|see)\s+(?:if|whether)\s+"
+    r"(?P<vendor>[\w][\w\s.&'-]{0,48}?)\s+"
+    r"(?:is\s+)?(?:connected|hooked\s+up|set\s+up)\s*[.?!]*\s*$"
+)
+_STATUS_OF_VENDOR_RE = re.compile(
+    r"(?i)^\s*(?:what(?:'s|\s+is)\s+(?:the\s+)?(?:connection\s+)?status\s+of|"
+    r"(?:what(?:'s|\s+is)\s+)?(?:the\s+)?status\s+of)\s+"
+    r"(?P<vendor>[\w][\w\s.&'-]{0,48}?)\s*[.?!]*\s*$"
+)
 _SUPPORT_QUESTION_RE = re.compile(
     r"(?i)\b(?:does\s+gravitre\s+support|do\s+you\s+support|is\s+[\w\s.&'-]{1,48}\s+supported)\b"
 )
@@ -126,6 +137,16 @@ def parse_connector_status_question(message: str) -> ConnectorStatusQuestion | N
     if _IS_VENDOR_CONNECTED_RE.match(text):
         slug = resolve_connector_slug_from_text(text)
         return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.CONNECTION, vendor_slug=slug)
+    check = _CHECK_WHETHER_CONNECTED_RE.match(text)
+    if check:
+        slug = _slug_from_vendor_token(str(check.group("vendor") or "")) or resolve_connector_slug_from_text(text)
+        if slug:
+            return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.CONNECTION, vendor_slug=slug)
+    status_of = _STATUS_OF_VENDOR_RE.match(text)
+    if status_of:
+        slug = _slug_from_vendor_token(str(status_of.group("vendor") or "")) or resolve_connector_slug_from_text(text)
+        if slug:
+            return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.CONNECTION, vendor_slug=slug)
     if re.search(
         r"(?i)\b(?:is|are|do\s+we\s+have|have\s+we\s+got)\s+"
         r"[\w][\w \t.&'-]{0,48}\s+(?:connected|hooked\s+up)\b",

@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Any, Literal
+from uuid import uuid4
 
 RetrieveKind = Literal[
     "pack_common_list_create",
@@ -283,6 +284,7 @@ def _match_installed_workflow(
                 "workflow_slug": slug,
                 "query": name,
                 "source": "retrieve_plan_gate_installed_workflow",
+                "plan_id": str(uuid4()),
             },
             block_fabrication=True,
         )
@@ -405,6 +407,7 @@ async def stage_retrieved_plan_turn(
 
     # MSP enrich / installed workflow
     params = dict(retrieved.params or {})
+    plan_id = str(params.get("plan_id") or "").strip()
     await state.update_task_state(
         conversation_id,
         org_id,
@@ -415,6 +418,7 @@ async def stage_retrieved_plan_turn(
                 "status": retrieved.pending_status or "awaiting_confirm",
                 "params": params,
             },
+            **({"execution_plan_id": plan_id} if plan_id else {}),
             "recent_user_messages": [message or ""],
         },
         client=client,

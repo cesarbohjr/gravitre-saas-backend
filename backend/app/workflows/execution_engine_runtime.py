@@ -529,6 +529,41 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
                 completed_at=completed_at,
             )
             emit_execute_step_completed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, step_index, step_id)
+            try:
+                from app.services.workflow_execution_strategy import workflow_observation
+                from app.workflows.audit import write_audit_event as _write_child_obs
+                from app.workflows.constants import RESOURCE_TYPE_WORKFLOW_RUN as _RT_RUN
+
+                parent_plan = getattr(context, "plan_id", None)
+                if parent_plan and bool(
+                    getattr(ctx.settings, "convergence_p5_workflow_child_identity_v1", True)
+                ):
+                    obs = workflow_observation(
+                        plan_id=str(parent_plan),
+                        step_id=step_id,
+                        workflow_id=str(ctx.run_id or ""),
+                        result=output if isinstance(output, dict) else {"result": output},
+                    )
+                    _write_child_obs(
+                        ctx.client,
+                        ctx.org_id,
+                        ctx.user_id,
+                        action="workflow.child.observation",
+                        resource_type=_RT_RUN,
+                        resource_id=ctx.run_id,
+                        metadata={
+                            "plan_id": obs.plan_id,
+                            "conversation_id": getattr(context, "conversation_id", None),
+                            "durable_checkpoint": getattr(context, "durable_checkpoint", None),
+                            "step_id": step_id,
+                            "observation_id": obs.observation_id,
+                            "success": obs.success,
+                            "hmac_bypass": False,
+                            "execution_mode": "graph",
+                        },
+                    )
+            except Exception:  # noqa: BLE001
+                pass
             write_audit_event(
                 ctx.client,
                 ctx.org_id,

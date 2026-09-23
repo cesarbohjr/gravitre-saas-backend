@@ -51,6 +51,8 @@ def test_simple_apollo_connected_question_is_not_operator_task() -> None:
     assert not looks_like_operator_task("Is Apollo connected")
     assert not looks_like_operator_task("Is Apollo connected?")
     assert not looks_like_operator_task("is Apollo connected.")
+    assert not looks_like_operator_task("Can you check whether Apollo is connected?")
+    assert not looks_like_operator_task("What is the status of Apollo?")
     assert not is_operator_task_shaped("Is Apollo connected?")
     assert not is_operator_task_shaped("is Apollo connected.")
 

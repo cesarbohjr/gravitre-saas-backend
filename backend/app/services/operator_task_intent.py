@@ -67,9 +67,11 @@ def looks_like_operator_task(message: str) -> bool:
 
         parsed = parse_connector_status_question(text)
         if parsed is not None and parsed.kind.value == "connection":
-            from app.services.connector_status_reply_service import _IS_VENDOR_CONNECTED_RE
-
-            if _IS_VENDOR_CONNECTED_RE.match(text):
+            extra_job = re.search(
+                r"(?i)\b(and what|access does|create |campaign|set it up)\b",
+                text,
+            )
+            if extra_job is None:
                 return False
     except Exception:  # noqa: BLE001
         pass

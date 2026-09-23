@@ -365,6 +365,10 @@ class ConversationalExecutionService:
             merged = pending_params
             merged.update(clarified)
             clarified = merged
+        plan_from_state = str(task_state.get("execution_plan_id") or "").strip()
+        if plan_from_state and not str(clarified.get("plan_id") or "").strip():
+            clarified["plan_id"] = plan_from_state
+            clarified["parent_plan_id"] = plan_from_state
         updates = self.extract_param_updates(message, task_type, clarified)
         if updates:
             clarified.update(updates)
@@ -775,7 +779,12 @@ class ConversationalExecutionService:
                 "workflow_name": clarified.get("workflow_name"),
             },
         )
-        parent_plan = str(clarified.get("plan_id") or clarified.get("parent_plan_id") or "").strip()
+        parent_plan = str(
+            clarified.get("plan_id")
+            or clarified.get("parent_plan_id")
+            or clarified.get("execution_plan_id")
+            or ""
+        ).strip()
         output = tool_execute_workflow(
             org_id,
             query,
