@@ -24,7 +24,104 @@ spec.loader.exec_module(evc)
 ORG = evc.ORG
 BASE = evc.BASE
 CANVAS_RUN = "cdda7de2-bfbb-4cc7-b490-842fb5e7df84"
+CIM_RUN = "5f7f9ef6-64d9-4029-ad6c-cfb73f750374"
 OUT = ROOT / "docs" / "audits" / "gravitre-p5-workflow-matrix-live.json"
+
+FIXTURE_NAMES = (
+    "Operator Execution Probe Alpha (noop)",
+    "Operator Execution Probe Beta (noop)",
+)
+
+_NOOP_DEFINITION = {
+    "schema_version": "2025.1",
+    "steps": [
+        {"id": "prep", "name": "Prepare", "type": "noop", "config": {}},
+        {"id": "finish", "name": "Finish", "type": "noop", "config": {}},
+    ],
+    "graph": {
+        "nodes": [
+            {"id": "prep", "node_type": "tool", "name": "Prepare", "config": {"step_type": "noop"}},
+            {"id": "finish", "node_type": "tool", "name": "Finish", "config": {"step_type": "noop"}},
+        ],
+        "edges": [{"from": "prep", "to": "finish"}],
+    },
+}
+
+
+def _ensure_noop_fixtures(sb, org_id: str, user_id: str) -> list[dict]:
+    """Isolated-org execute fixtures — not a customer catalog surface."""
+    from app.workflows.constants import SCHEMA_VERSION
+    from app.workflows.repository import (
+        create_workflow_version,
+        get_next_workflow_version_number,
+        set_active_workflow_version,
+    )
+    from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
+
+    created: list[dict] = []
+    for name in FIXTURE_NAMES:
+        existing = (
+            sb.table("workflows")
+            .select("id,name")
+            .eq("org_id", org_id)
+            .eq("name", name)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if existing:
+            created.append(existing[0])
+            continue
+        row = {
+            "org_id": org_id,
+            "name": name,
+            "goal": "Isolated-org execution fixture (noop chain). Not a customer product.",
+            "description": "Placeholder isolated-org test fixture — not customer-facing catalog.",
+            "definition": _NOOP_DEFINITION,
+            "schema_version": SCHEMA_VERSION,
+            "status": "active",
+            "stage": "ready",
+            "version": "v1.0.0",
+            "created_by": user_id,
+        }
+        inserted = sb.table("workflow_defs").insert(row).execute().data or []
+        if not inserted:
+            raise RuntimeError(f"failed to insert fixture {name}")
+        wf = dict(inserted[0])
+        wid = str(wf["id"])
+        try:
+            mirror_legacy_workflow_row_to_contract(sb, wf, environment_name="production")
+        except Exception:  # noqa: BLE001
+            pass
+        version = get_next_workflow_version_number(sb, org_id, wid, "production")
+        created_ver = create_workflow_version(
+            sb,
+            org_id=org_id,
+            workflow_id=wid,
+            environment_name="production",
+            version=version,
+            definition=_NOOP_DEFINITION,
+            schema_version=SCHEMA_VERSION,
+            created_by=user_id,
+        )
+        set_active_workflow_version(
+            sb, org_id, wid, "production", str(created_ver["id"]), user_id
+        )
+        try:
+            sb.table("approval_policies").insert(
+                {
+                    "org_id": org_id,
+                    "workflow_id": wid,
+                    "required_approvals": 0,
+                    "approver_roles": ["admin", "owner"],
+                    "run_types": ["execute"],
+                }
+            ).execute()
+        except Exception:  # noqa: BLE001
+            pass
+        created.append({"id": wid, "name": name})
+    return created
 
 INTERESTING = (
     "competitive intelligence",
@@ -68,7 +165,7 @@ def _run_named(client, headers, iso_org, sb, name: str, since: str) -> dict:
     turn = evc.chat_turn(client, headers, iso_org, conv, history, prompt)
     time.sleep(0.8)
     yes = evc.chat_turn(client, headers, iso_org, conv, history, "yes")
-    time.sleep(2.5)
+    time.sleep(4.0)
     audits = evc.audit_since(sb, iso_org, since, 160)
     actions = [a.get("action") for a in audits]
     return {
@@ -100,6 +197,7 @@ def main() -> int:
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     health = httpx.get(f"{BASE}/health", timeout=45).json()
     iso_org, user_id, email = evc.resolve_isolated_conversation_actor(env, sb)
+    fixtures = _ensure_noop_fixtures(sb, iso_org, user_id)
     token = evc.mint(env, user_id, email)
     headers = {
         **evc.smoke_http_headers(),
@@ -138,6 +236,15 @@ def main() -> int:
         .data
         or []
     )
+    cim = (
+        sb.table("workflow_runs")
+        .select("id,workflow_id,status,approval_status,trigger_type,run_type,created_at,error_message")
+        .eq("id", CIM_RUN)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
     zero_approval = {
         str(p.get("workflow_id") or "")
         for p in (
@@ -151,10 +258,16 @@ def main() -> int:
         )
         if p.get("workflow_id") and "execute" in (p.get("run_types") or [])
     }
-    executable = sorted(
-        [w for w in wfs if str(w.get("id") or "") in zero_approval and str(w.get("id") or "") not in blocked_ids],
-        key=lambda w: _interesting_score(str(w.get("name") or "")),
-    )
+    executable = list(fixtures)
+    extra = [
+        w
+        for w in wfs
+        if str(w.get("id") or "") in zero_approval
+        and str(w.get("id") or "") not in blocked_ids
+        and str(w.get("name") or "") not in FIXTURE_NAMES
+    ]
+    extra = sorted(extra, key=lambda w: _interesting_score(str(w.get("name") or "")))
+    executable.extend(extra)
     blocked_named = [w for w in wfs if str(w.get("id") or "") in blocked_ids]
     canvas_wf = next((w for w in wfs if "canvas write" in str(w.get("name") or "").lower()), None)
 
@@ -168,6 +281,13 @@ def main() -> int:
             "required_human_action": "Approve, cancel, or leave pending. Do not auto-approve/cancel/bypass.",
             "mutated": False,
         },
+        "cim_human_only": {
+            "run_id": CIM_RUN,
+            "row": cim[0] if cim else None,
+            "required_human_action": "Fail or cancel this stuck running run after EAGAIN. Do not auto-mutate.",
+            "mutated": False,
+        },
+        "fixtures": fixtures,
         "blocked_runs": blocked_rows,
         "executable_candidates": [{"id": w.get("id"), "name": w.get("name")} for w in executable[:8]],
     }

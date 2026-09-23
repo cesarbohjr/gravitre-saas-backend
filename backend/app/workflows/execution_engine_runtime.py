@@ -953,7 +953,11 @@ def execute_workflow_graph(
         skipped_nodes=[],
     )
 
-    final_status, errors, rate_limited = _run_graph_batches(ctx, batches)
+    try:
+        final_status, errors, rate_limited = _run_graph_batches(ctx, batches)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("workflow_graph_execute_crashed run_id=%s", run_id)
+        final_status, errors, rate_limited = RUN_STATUS_FAILED, [str(exc)], False
     run_error_message = errors[0] if errors else None
     return _finalize_run(ctx, final_status=final_status, errors=errors, run_error_message=run_error_message, rate_limited=rate_limited)
 
