@@ -326,9 +326,9 @@ async def try_compiled_operational_read_turn(
                 settings=settings,
             )
             note = pending_auth_prose(plan)
-            if note:
-                body = str(operational.get("message") or "").rstrip()
-                operational["message"] = f"{body}\n\n{note}" if body else note
+            body = str(operational.get("message") or "")
+            if note and note not in body:
+                operational["message"] = f"{body.rstrip()}\n\n{note}" if body.strip() else note
         return operational
     from app.services.governed_write_compile import try_governed_write_compile_turn
 

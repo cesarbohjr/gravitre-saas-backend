@@ -29,7 +29,11 @@ _REFINE_RE = re.compile(
     r"the\s+(?:first|second|third|last)\s+one|"
     r"only\s+the|large\s+ones|just\s+the|overdue|top\s+three|"
     r"who\s+owns|draft\s+a\s+summary|"
-    r"draft\s+an\s+email|don'?t\s+send"
+    r"draft\s+an\s+email|don'?t\s+send|"
+    r"what\s+(?:appears\s+)?important|what\s+is\s+happening|"
+    r"what\s+(?:is\s+)?missing|cannot\s+conclude|can(?:not|'t)\s+conclude|"
+    r"what\s+should\s+i\s+(?:do|investigate|look)|(?:do|investigate)\s+next|"
+    r"tell\s+me\s+more|go\s+deeper|why\s+(?:does|is)\s+that"
     r")\b"
 )
 

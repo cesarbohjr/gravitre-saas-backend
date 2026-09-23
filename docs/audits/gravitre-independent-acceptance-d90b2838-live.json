@@ -1,0 +1,1125 @@
+{
+  "audit": "independent-acceptance",
+  "expect_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
+  "health_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
+  "sha_match": true,
+  "health": {
+    "git_sha": "d90b283800c1f446ee4181fd64ed5b8bfbb46030",
+    "timestamp": "2026-09-23T08:57:29.758225+00:00",
+    "unified_turn_live_enabled": true,
+    "unified_turn_task_model_tier": "low",
+    "convergence_p1_single_selection_v1": true,
+    "environment": "prod"
+  },
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "generated_at": "2026-09-23T08:57:33.119852+00:00",
+  "canvas_untouched": {
+    "id": "cdda7de2-bfbb-4cc7-b490-842fb5e7df84",
+    "status": "pending_approval",
+    "approval_status": "pending_approval",
+    "trigger_type": "manual",
+    "created_at": "2026-09-21T18:35:31.623959+00:00"
+  },
+  "cim_untouched": {
+    "id": "5f7f9ef6-64d9-4029-ad6c-cfb73f750374",
+    "status": "running",
+    "approval_status": "approved",
+    "trigger_type": "api",
+    "created_at": "2026-09-23T01:51:06.211632+00:00",
+    "error_message": null
+  },
+  "p6_business_audit_sample": [],
+  "greeting": {
+    "prompt": "Hi.",
+    "conversation_id": "fbeb1b76-ff46-44ef-920b-13ac6e5dc659",
+    "http": 200,
+    "first_ms": 2458,
+    "completion_ms": 4393,
+    "excerpt": "Hey \u2014 I'm here. What do you want to get done?",
+    "yes_excerpt": null,
+    "yes_ms": null,
+    "actions": [
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ],
+    "invokes": [],
+    "latency": [
+      {
+        "id": "a14e90be-05c",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:57:36.055653+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "client_ready": 34,
+            "intent_gateway": 83,
+            "shortcut_composer_start": 85,
+            "workspace_focus_resolved": 34
+          },
+          "stages_compact": "gateway:0,compose:0,client_ready:34,workspace_focus_resolved:0,intent_gateway:49,shortcut_composer_start:2",
+          "dominant_stage": "RESOLUTION",
+          "dominant_ms": 49,
+          "total_ms": 85,
+          "dominant_checkpoint": "intent_gateway",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:57:36.137416+00:00",
+        "kind": "shortcut"
+      }
+    ]
+  },
+  "deals": {
+    "prompt": "Show my deals.",
+    "conversation_id": "58abb039-a6f7-4e38-9698-ec6b8161c7a0",
+    "http": 200,
+    "first_ms": 5045,
+    "completion_ms": 7240,
+    "excerpt": "I found 25 deals in the connected CRM.",
+    "yes_excerpt": null,
+    "yes_ms": null,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "tool.invoke.requested",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T08:57:43.91009+00:00",
+        "meta": {
+          "action": "hubspot.deals.list",
+          "provider_invoked": true,
+          "plan_id": "1f1993ab-5927-4fbf-a89d-6d1054a8b069",
+          "step_id": "read_sales_pipeline_health"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "f25045e1-29f",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:57:44.175001+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "provider": 3526,
+            "execution": 0,
+            "first_sse": 3663,
+            "mcp_tools": 602,
+            "preflight": 2442,
+            "sentiment": 706,
+            "resolution": 0,
+            "observation": 3663,
+            "client_ready": 15,
+            "understanding": 779,
+            "composer_start": 3663,
+            "intent_gateway": 59,
+            "kernel_pre_act": 2221,
+            "engine_settings": 602,
+            "memory.recalled": 2221,
+            "task_classifier": 906,
+            "capability_route": 1014,
+            "parameter_ledger": 1125,
+            "persona_resolved": 1316,
+            "pre_kernel_entry": 1316,
+            "capability_compile": 2239,
+            "router_enrichments": 978,
+            "routing_classified": 602,
+            "task_state_initial": 1034,
+            "spoken_lite_decided": 682,
+            "understanding_audit": 825,
+            "enrich_classification": 977,
+            "connected_integrations": 602,
+            "dialogue_settings_full": 706,
+            "voice_expression_bound": 1034,
+            "workspace_focus_resolved": 15
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:15,workspace_focus_resolved:0,intent_gateway:44,connected_integrations:543,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:80,dialogue_settings_full:24,sentiment:0,understanding:73,understanding_audit:46,task_classifier:81,enrich_classification:71,router_enrichments:1,capability_route:36,task_state_initial:20,voice_expression_bound:0,parameter_ledger:91,persona_resolved:191,pre_kernel_entry:0,kernel_pre_act:905,memory.recalled:0,capability_compile:18,preflight:203,provider:1084,observation:137,composer_start:0,first_sse:0",
+          "dominant_stage": "PROVIDER",
+          "dominant_ms": 1084,
+          "total_ms": 3663,
+          "dominant_checkpoint": "provider",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:57:44.222746+00:00",
+        "kind": "canned"
+      }
+    ]
+  },
+  "ceo_exact": {
+    "prompt": "How is the business doing and what should I worry about?",
+    "conversation_id": "780141eb-efa9-487a-aab6-27e06fd7d258",
+    "http": 200,
+    "first_ms": 5734,
+    "completion_ms": 7907,
+    "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+    "yes_excerpt": null,
+    "yes_ms": null,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "tool.invoke.requested",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T08:57:52.912507+00:00",
+        "meta": {
+          "action": "hubspot.deals.list",
+          "provider_invoked": true,
+          "plan_id": "70e2582f-4570-48c4-a343-4145f69cccde",
+          "step_id": "read_sales_pipeline_health"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "d21b4552-f7c",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:57:53.201548+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "provider": 4181,
+            "execution": 0,
+            "first_sse": 4315,
+            "mcp_tools": 616,
+            "preflight": 3178,
+            "sentiment": 725,
+            "resolution": 0,
+            "observation": 4315,
+            "client_ready": 15,
+            "understanding": 1782,
+            "composer_start": 4315,
+            "intent_gateway": 56,
+            "kernel_pre_act": 2980,
+            "engine_settings": 616,
+            "memory.recalled": 2980,
+            "task_classifier": 1911,
+            "capability_route": 2052,
+            "parameter_ledger": 2134,
+            "persona_resolved": 2321,
+            "pre_kernel_entry": 2321,
+            "capability_compile": 2982,
+            "router_enrichments": 1991,
+            "routing_classified": 617,
+            "task_state_initial": 2072,
+            "spoken_lite_decided": 702,
+            "understanding_audit": 1837,
+            "enrich_classification": 1991,
+            "connected_integrations": 616,
+            "dialogue_settings_full": 725,
+            "voice_expression_bound": 2072,
+            "workspace_focus_resolved": 15
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:15,workspace_focus_resolved:0,intent_gateway:41,connected_integrations:560,mcp_tools:0,engine_settings:0,routing_classified:1,spoken_lite_decided:85,dialogue_settings_full:23,sentiment:0,understanding:1057,understanding_audit:55,task_classifier:74,enrich_classification:80,router_enrichments:0,capability_route:61,task_state_initial:20,voice_expression_bound:0,parameter_ledger:62,persona_resolved:187,pre_kernel_entry:0,kernel_pre_act:659,memory.recalled:0,capability_compile:2,preflight:196,provider:1003,observation:134,composer_start:0,first_sse:0",
+          "dominant_stage": "UNDERSTANDING",
+          "dominant_ms": 1057,
+          "total_ms": 4315,
+          "dominant_checkpoint": "understanding",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:57:53.257862+00:00",
+        "kind": "canned"
+      }
+    ]
+  },
+  "company": {
+    "prompt": "How is my company doing?",
+    "conversation_id": "9709d2a7-021d-467f-91e3-f6a43ab54a02",
+    "http": 200,
+    "first_ms": 7955,
+    "completion_ms": 10272,
+    "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+    "yes_excerpt": null,
+    "yes_ms": null,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "tool.invoke.requested",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T08:58:04.253986+00:00",
+        "meta": {
+          "action": "hubspot.deals.list",
+          "provider_invoked": true,
+          "plan_id": "b98df7de-4f6e-4e66-94a7-a1f14a5de61f",
+          "step_id": "read_sales_pipeline_health"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "0bc2deb9-2e7",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:58:04.635576+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "provider": 6425,
+            "execution": 0,
+            "first_sse": 6582,
+            "mcp_tools": 936,
+            "preflight": 5165,
+            "sentiment": 1047,
+            "resolution": 0,
+            "observation": 6582,
+            "client_ready": 15,
+            "understanding": 2017,
+            "composer_start": 6582,
+            "intent_gateway": 58,
+            "kernel_pre_act": 4871,
+            "engine_settings": 936,
+            "memory.recalled": 4871,
+            "task_classifier": 2257,
+            "capability_route": 3403,
+            "parameter_ledger": 3624,
+            "persona_resolved": 3841,
+            "pre_kernel_entry": 3841,
+            "capability_compile": 4873,
+            "router_enrichments": 2396,
+            "routing_classified": 936,
+            "task_state_initial": 3472,
+            "spoken_lite_decided": 1024,
+            "understanding_audit": 2174,
+            "enrich_classification": 2395,
+            "connected_integrations": 936,
+            "dialogue_settings_full": 1047,
+            "voice_expression_bound": 3472,
+            "workspace_focus_resolved": 15
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:15,workspace_focus_resolved:0,intent_gateway:43,connected_integrations:878,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:88,dialogue_settings_full:23,sentiment:0,understanding:970,understanding_audit:157,task_classifier:83,enrich_classification:138,router_enrichments:1,capability_route:1007,task_state_initial:69,voice_expression_bound:0,parameter_ledger:152,persona_resolved:217,pre_kernel_entry:0,kernel_pre_act:1030,memory.recalled:0,capability_compile:2,preflight:292,provider:1260,observation:157,composer_start:0,first_sse:0",
+          "dominant_stage": "PROVIDER",
+          "dominant_ms": 1260,
+          "total_ms": 6582,
+          "dominant_checkpoint": "provider",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:58:04.768772+00:00",
+        "kind": "canned"
+      }
+    ]
+  },
+  "company_contraction": {
+    "prompt": "How's the company doing?",
+    "conversation_id": "4ff31a89-9d68-4397-abd6-5c194b0b15cf",
+    "http": 200,
+    "first_ms": 5979,
+    "completion_ms": 7950,
+    "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+    "yes_excerpt": null,
+    "yes_ms": null,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "tool.invoke.requested",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T08:58:13.934414+00:00",
+        "meta": {
+          "action": "hubspot.deals.list",
+          "provider_invoked": true,
+          "plan_id": "9728c5ea-c71e-4f19-8ea3-cf7f83883e3c",
+          "step_id": "read_sales_pipeline_health"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "747d13a3-f18",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:58:14.174432+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "provider": 4310,
+            "execution": 0,
+            "first_sse": 4442,
+            "mcp_tools": 574,
+            "preflight": 3252,
+            "sentiment": 687,
+            "resolution": 0,
+            "observation": 4442,
+            "client_ready": 20,
+            "understanding": 1873,
+            "composer_start": 4442,
+            "intent_gateway": 68,
+            "kernel_pre_act": 3033,
+            "engine_settings": 574,
+            "memory.recalled": 3033,
+            "task_classifier": 2023,
+            "capability_route": 2151,
+            "parameter_ledger": 2246,
+            "persona_resolved": 2439,
+            "pre_kernel_entry": 2439,
+            "capability_compile": 3036,
+            "router_enrichments": 2114,
+            "routing_classified": 574,
+            "task_state_initial": 2169,
+            "spoken_lite_decided": 668,
+            "understanding_audit": 1951,
+            "enrich_classification": 2114,
+            "connected_integrations": 574,
+            "dialogue_settings_full": 687,
+            "voice_expression_bound": 2169,
+            "workspace_focus_resolved": 20
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:20,workspace_focus_resolved:0,intent_gateway:48,connected_integrations:506,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:94,dialogue_settings_full:19,sentiment:0,understanding:1186,understanding_audit:78,task_classifier:72,enrich_classification:91,router_enrichments:0,capability_route:37,task_state_initial:18,voice_expression_bound:0,parameter_ledger:77,persona_resolved:193,pre_kernel_entry:0,kernel_pre_act:594,memory.recalled:0,capability_compile:3,preflight:216,provider:1058,observation:132,composer_start:0,first_sse:0",
+          "dominant_stage": "UNDERSTANDING",
+          "dominant_ms": 1186,
+          "total_ms": 4442,
+          "dominant_checkpoint": "understanding",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:58:14.238207+00:00",
+        "kind": "canned"
+      }
+    ]
+  },
+  "snapshot": {
+    "prompt": "Give me a business performance snapshot from connected systems.",
+    "conversation_id": "bb0f79fc-88d2-48eb-b51b-e07d21a5d1ac",
+    "http": 200,
+    "first_ms": 6191,
+    "completion_ms": 8118,
+    "excerpt": "I found 25 deals in the connected CRM. I don't have a live google_analytics, google_search_console connection yet (sign-in still pending), so traffic from those sources isn't in this answer.",
+    "yes_excerpt": null,
+    "yes_ms": null,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "tool.invoke.requested",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T08:58:23.219245+00:00",
+        "meta": {
+          "action": "hubspot.deals.list",
+          "provider_invoked": true,
+          "plan_id": "a39644e8-9263-4265-be82-94bbe60528fc",
+          "step_id": "read_sales_pipeline_health"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "cda29167-a6f",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:58:23.472011+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "provider": 4664,
+            "execution": 0,
+            "first_sse": 4803,
+            "mcp_tools": 1014,
+            "preflight": 3675,
+            "sentiment": 1131,
+            "resolution": 0,
+            "observation": 4803,
+            "client_ready": 15,
+            "understanding": 2205,
+            "composer_start": 4803,
+            "intent_gateway": 57,
+            "kernel_pre_act": 3470,
+            "engine_settings": 1014,
+            "memory.recalled": 3470,
+            "task_classifier": 2318,
+            "capability_route": 2443,
+            "parameter_ledger": 2526,
+            "persona_resolved": 2712,
+            "pre_kernel_entry": 2712,
+            "capability_compile": 3473,
+            "router_enrichments": 2395,
+            "routing_classified": 1014,
+            "task_state_initial": 2462,
+            "spoken_lite_decided": 1115,
+            "understanding_audit": 2247,
+            "enrich_classification": 2394,
+            "connected_integrations": 1014,
+            "dialogue_settings_full": 1131,
+            "voice_expression_bound": 2462,
+            "workspace_focus_resolved": 15
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:15,workspace_focus_resolved:0,intent_gateway:42,connected_integrations:957,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:101,dialogue_settings_full:16,sentiment:0,understanding:1074,understanding_audit:42,task_classifier:71,enrich_classification:76,router_enrichments:1,capability_route:48,task_state_initial:19,voice_expression_bound:0,parameter_ledger:64,persona_resolved:186,pre_kernel_entry:0,kernel_pre_act:758,memory.recalled:0,capability_compile:3,preflight:202,provider:989,observation:139,composer_start:0,first_sse:0",
+          "dominant_stage": "UNDERSTANDING",
+          "dominant_ms": 1074,
+          "total_ms": 4803,
+          "dominant_checkpoint": "understanding",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:58:23.520413+00:00",
+        "kind": "canned"
+      }
+    ]
+  },
+  "sarah": {
+    "prompt": "Send Sarah a summary.",
+    "conversation_id": "086a6d75-8c2f-45f8-aeba-0bb1ce9f8b79",
+    "http": 200,
+    "first_ms": 15881,
+    "completion_ms": 18176,
+    "excerpt": "I need two details: which Sarah should receive it, and what should the summary cover?",
+    "yes_excerpt": null,
+    "yes_ms": null,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "evidence.sufficiency.assessed",
+      "runtime.jit.tool_namespace",
+      "runtime.jit.context_profile",
+      "unified_turn.live.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed"
+    ],
+    "invokes": [],
+    "latency": [
+      {
+        "id": "ef097b58-eb6",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:58:38.803202+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "mcp_tools": 1194,
+            "sentiment": 1305,
+            "resolution": 0,
+            "client_ready": 20,
+            "understanding": 2577,
+            "intent_gateway": 75,
+            "kernel_pre_act": 3811,
+            "engine_settings": 1194,
+            "memory.recalled": 3811,
+            "task_classifier": 2733,
+            "capability_route": 2839,
+            "parameter_ledger": 2934,
+            "persona_resolved": 3134,
+            "pre_kernel_entry": 3134,
+            "capability_compile": 3813,
+            "router_enrichments": 2799,
+            "routing_classified": 1194,
+            "task_state_initial": 2857,
+            "spoken_lite_decided": 1279,
+            "understanding_audit": 2662,
+            "enrich_classification": 2799,
+            "unified_live_resolved": 10092,
+            "connected_integrations": 1194,
+            "dialogue_settings_full": 1305,
+            "voice_expression_bound": 2857,
+            "context_compile_unified": 0,
+            "model_reasoning_started": 0,
+            "workspace_focus_resolved": 20
+          },
+          "stages_compact": "gateway:0,resolution:0,context_compile_unified:0,model_reasoning_started:0,compose:0,client_ready:20,workspace_focus_resolved:0,intent_gateway:55,connected_integrations:1119,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:85,dialogue_settings_full:26,sentiment:0,understanding:1272,understanding_audit:85,task_classifier:71,enrich_classification:66,router_enrichments:0,capability_route:40,task_state_initial:18,voice_expression_bound:0,parameter_ledger:77,persona_resolved:200,pre_kernel_entry:0,kernel_pre_act:677,memory.recalled:0,capability_compile:2,unified_live_resolved:6279",
+          "dominant_stage": "UNIFIED_LIVE_RESOLVED",
+          "dominant_ms": 6279,
+          "total_ms": 10092,
+          "dominant_checkpoint": "unified_live_resolved",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [
+      "unified_turn.live.completed"
+    ],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:58:42.38468+00:00",
+        "kind": "clarify"
+      }
+    ]
+  },
+  "alpha": {
+    "prompt": "Run the workflow named Operator Execution Probe Alpha (noop) in this conversation now.",
+    "conversation_id": "7cf6791b-d540-4ec2-9a34-1e01125338f7",
+    "http": 200,
+    "first_ms": 8728,
+    "completion_ms": 11035,
+    "excerpt": "I\u2019ll run the existing workflow **Operator Execution Probe Alpha (noop)**. Reply **yes** to start it, or tell me what to change.",
+    "yes_excerpt": "Done \u2014 **Operator Execution Probe Alpha (noop)** finished.",
+    "yes_ms": 11462,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "tool.invoke.requested",
+      "workflow.execute.created",
+      "workflow.execute.started",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
+      "workflow.execute.completed",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T08:59:04.471106+00:00",
+        "meta": {
+          "action": "assistant.execute_workflow"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "36f7488d-a45",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:58:51.270104+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "execution": 0,
+            "first_sse": 3938,
+            "mcp_tools": 1066,
+            "sentiment": 1180,
+            "resolution": 0,
+            "client_ready": 14,
+            "understanding": 2309,
+            "composer_start": 3938,
+            "intent_gateway": 58,
+            "kernel_pre_act": 3738,
+            "engine_settings": 1066,
+            "memory.recalled": 3738,
+            "task_classifier": 2417,
+            "capability_route": 2535,
+            "parameter_ledger": 2608,
+            "persona_resolved": 2814,
+            "pre_kernel_entry": 2814,
+            "capability_compile": 3740,
+            "router_enrichments": 2497,
+            "routing_classified": 1067,
+            "task_state_initial": 2553,
+            "spoken_lite_decided": 1161,
+            "understanding_audit": 2352,
+            "enrich_classification": 2496,
+            "connected_integrations": 1066,
+            "dialogue_settings_full": 1179,
+            "voice_expression_bound": 2553,
+            "workspace_focus_resolved": 14
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:14,workspace_focus_resolved:0,intent_gateway:44,connected_integrations:1008,mcp_tools:0,engine_settings:0,routing_classified:1,spoken_lite_decided:94,dialogue_settings_full:18,sentiment:1,understanding:1129,understanding_audit:43,task_classifier:65,enrich_classification:79,router_enrichments:1,capability_route:38,task_state_initial:18,voice_expression_bound:0,parameter_ledger:55,persona_resolved:206,pre_kernel_entry:0,kernel_pre_act:924,memory.recalled:0,capability_compile:2,composer_start:198,first_sse:0",
+          "dominant_stage": "UNDERSTANDING",
+          "dominant_ms": 1129,
+          "total_ms": 3938,
+          "dominant_checkpoint": "understanding",
+          "spoken_mode": false
+        }
+      },
+      {
+        "id": "77be7f1e-274",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:59:04.796317+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "mcp_tools": 607,
+            "sentiment": 727,
+            "resolution": 0,
+            "client_ready": 14,
+            "understanding": 1852,
+            "intent_gateway": 80,
+            "kernel_pre_act": 3567,
+            "pre_turn_shape": 3620,
+            "engine_settings": 607,
+            "memory.recalled": 3567,
+            "task_classifier": 1968,
+            "capability_route": 2083,
+            "parameter_ledger": 2175,
+            "persona_resolved": 2355,
+            "pre_kernel_entry": 2355,
+            "capability_compile": 3569,
+            "router_enrichments": 2026,
+            "routing_classified": 607,
+            "task_state_initial": 2104,
+            "spoken_lite_decided": 704,
+            "understanding_audit": 1908,
+            "enrich_classification": 2026,
+            "turn_shape_classified": 3620,
+            "connected_integrations": 607,
+            "dialogue_settings_full": 727,
+            "voice_expression_bound": 2104,
+            "conversational_execution": 6191,
+            "unified_shadow_scheduled": 3620,
+            "workspace_focus_resolved": 14
+          },
+          "stages_compact": "gateway:0,resolution:0,compose:0,client_ready:14,workspace_focus_resolved:0,intent_gateway:66,connected_integrations:527,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:97,dialogue_settings_full:23,sentiment:0,understanding:1125,understanding_audit:56,task_classifier:60,enrich_classification:58,router_enrichments:0,capability_route:57,task_state_initial:21,voice_expression_bound:0,parameter_ledger:71,persona_resolved:180,pre_kernel_entry:0,kernel_pre_act:1212,memory.recalled:0,capability_compile:2,unified_shadow_scheduled:51,pre_turn_shape:0,turn_shape_classified:0,conversational_execution:2571",
+          "dominant_stage": "CONVERSATIONAL_EXECUTION",
+          "dominant_ms": 2571,
+          "total_ms": 6191,
+          "dominant_checkpoint": "conversational_execution",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [
+      {
+        "created_at": "2026-09-23T08:59:03.166649+00:00",
+        "meta": {
+          "plan_id": "fa58d43e-1888-4b8c-8fed-d3e5adc7c374",
+          "step_id": "prep",
+          "success": true
+        }
+      },
+      {
+        "created_at": "2026-09-23T08:59:03.467301+00:00",
+        "meta": {
+          "plan_id": "fa58d43e-1888-4b8c-8fed-d3e5adc7c374",
+          "step_id": "finish",
+          "success": true
+        }
+      }
+    ],
+    "execute_completed": [
+      "2026-09-23T08:59:04.18209+00:00"
+    ],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:58:54.506248+00:00",
+        "kind": "clarify"
+      },
+      {
+        "created_at": "2026-09-23T08:59:08.860809+00:00",
+        "kind": "canned"
+      }
+    ]
+  },
+  "beta": {
+    "prompt": "Run the workflow named Operator Execution Probe Beta (noop) in this conversation now.",
+    "conversation_id": "9379be10-389c-429b-8f44-31949272e992",
+    "http": 200,
+    "first_ms": 9144,
+    "completion_ms": 11428,
+    "excerpt": "I\u2019ll run the existing workflow **Operator Execution Probe Beta (noop)**. Reply **yes** to start it, or tell me what to change.",
+    "yes_excerpt": "Done \u2014 **Operator Execution Probe Beta (noop)** ran and finished.",
+    "yes_ms": 9450,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "tool.invoke.requested",
+      "workflow.execute.created",
+      "workflow.execute.started",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
+      "workflow.execute.step_completed",
+      "workflow.child.observation",
+      "workflow.execute.step_timing",
+      "workflow.execute.completed",
+      "tool.invoke.completed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.completed",
+        "created_at": "2026-09-23T08:59:33.153862+00:00",
+        "meta": {
+          "action": "assistant.execute_workflow"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "4d00f282-e4c",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:59:19.993625+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "execution": 0,
+            "first_sse": 3714,
+            "mcp_tools": 1064,
+            "sentiment": 1166,
+            "resolution": 0,
+            "client_ready": 14,
+            "understanding": 2335,
+            "composer_start": 3714,
+            "intent_gateway": 92,
+            "kernel_pre_act": 3535,
+            "engine_settings": 1064,
+            "memory.recalled": 3535,
+            "task_classifier": 2465,
+            "capability_route": 2573,
+            "parameter_ledger": 2642,
+            "persona_resolved": 2822,
+            "pre_kernel_entry": 2822,
+            "capability_compile": 3537,
+            "router_enrichments": 2535,
+            "routing_classified": 1064,
+            "task_state_initial": 2588,
+            "spoken_lite_decided": 1151,
+            "understanding_audit": 2403,
+            "enrich_classification": 2534,
+            "connected_integrations": 1064,
+            "dialogue_settings_full": 1166,
+            "voice_expression_bound": 2588,
+            "workspace_focus_resolved": 14
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:14,workspace_focus_resolved:0,intent_gateway:78,connected_integrations:972,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:87,dialogue_settings_full:15,sentiment:0,understanding:1169,understanding_audit:68,task_classifier:62,enrich_classification:69,router_enrichments:1,capability_route:38,task_state_initial:15,voice_expression_bound:0,parameter_ledger:54,persona_resolved:180,pre_kernel_entry:0,kernel_pre_act:713,memory.recalled:0,capability_compile:2,composer_start:177,first_sse:0",
+          "dominant_stage": "UNDERSTANDING",
+          "dominant_ms": 1169,
+          "total_ms": 3714,
+          "dominant_checkpoint": "understanding",
+          "spoken_mode": false
+        }
+      },
+      {
+        "id": "7c2a9f71-fdd",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:59:33.493546+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "mcp_tools": 622,
+            "sentiment": 758,
+            "resolution": 0,
+            "client_ready": 14,
+            "understanding": 1992,
+            "intent_gateway": 70,
+            "kernel_pre_act": 3244,
+            "pre_turn_shape": 3299,
+            "engine_settings": 622,
+            "memory.recalled": 3244,
+            "task_classifier": 2103,
+            "capability_route": 2221,
+            "parameter_ledger": 2299,
+            "persona_resolved": 2511,
+            "pre_kernel_entry": 2511,
+            "capability_compile": 3245,
+            "router_enrichments": 2174,
+            "routing_classified": 622,
+            "task_state_initial": 2239,
+            "spoken_lite_decided": 734,
+            "understanding_audit": 2036,
+            "enrich_classification": 2174,
+            "turn_shape_classified": 3299,
+            "connected_integrations": 622,
+            "dialogue_settings_full": 758,
+            "voice_expression_bound": 2239,
+            "conversational_execution": 5491,
+            "unified_shadow_scheduled": 3299,
+            "workspace_focus_resolved": 14
+          },
+          "stages_compact": "gateway:0,resolution:0,compose:0,client_ready:14,workspace_focus_resolved:0,intent_gateway:56,connected_integrations:552,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:112,dialogue_settings_full:24,sentiment:0,understanding:1234,understanding_audit:44,task_classifier:67,enrich_classification:71,router_enrichments:0,capability_route:47,task_state_initial:18,voice_expression_bound:0,parameter_ledger:60,persona_resolved:212,pre_kernel_entry:0,kernel_pre_act:733,memory.recalled:0,capability_compile:1,unified_shadow_scheduled:54,pre_turn_shape:0,turn_shape_classified:0,conversational_execution:2192",
+          "dominant_stage": "CONVERSATIONAL_EXECUTION",
+          "dominant_ms": 2192,
+          "total_ms": 5491,
+          "dominant_checkpoint": "conversational_execution",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [
+      {
+        "created_at": "2026-09-23T08:59:32.142392+00:00",
+        "meta": {
+          "plan_id": "633295ed-c7bf-49e4-ab90-4265e0b19730",
+          "step_id": "prep",
+          "success": true
+        }
+      },
+      {
+        "created_at": "2026-09-23T08:59:32.376737+00:00",
+        "meta": {
+          "plan_id": "633295ed-c7bf-49e4-ab90-4265e0b19730",
+          "step_id": "finish",
+          "success": true
+        }
+      }
+    ],
+    "execute_completed": [
+      "2026-09-23T08:59:32.941164+00:00"
+    ],
+    "execute_failed": [],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:59:23.918213+00:00",
+        "kind": "clarify"
+      },
+      {
+        "created_at": "2026-09-23T08:59:36.249508+00:00",
+        "kind": "canned"
+      }
+    ]
+  },
+  "canvas": {
+    "prompt": "Run the workflow named Canvas Write Governance Probe (no approval node) in this conversation now.",
+    "conversation_id": "246e9a0b-5b98-466e-878c-1edc8ba808bd",
+    "http": 200,
+    "first_ms": 10295,
+    "completion_ms": 12474,
+    "excerpt": "Ready to run **Canvas Write Governance Probe (no approval node)** using the existing workflow definition. Reply **yes** to start it, or tell me what to change.",
+    "yes_excerpt": "Blocked: that workflow already has a run waiting for approval. Approve or cancel the pending run, then I can start it again.",
+    "yes_ms": 13922,
+    "actions": [
+      "context.understanding.extracted",
+      "memory.recalled",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed",
+      "cognitive.loop.completed",
+      "context.understanding.extracted",
+      "memory.recalled",
+      "pending_reply.classified",
+      "tool.invoke.requested",
+      "tool.invoke.failed",
+      "workflow.execute.failed",
+      "runtime.turn_latency.critical_path",
+      "response.composer.completed"
+    ],
+    "invokes": [
+      {
+        "action": "tool.invoke.failed",
+        "created_at": "2026-09-23T09:00:03.234126+00:00",
+        "meta": {
+          "action": "assistant.execute_workflow"
+        }
+      }
+    ],
+    "latency": [
+      {
+        "id": "280bc248-282",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T08:59:48.104086+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "execution": 0,
+            "first_sse": 3347,
+            "mcp_tools": 673,
+            "sentiment": 807,
+            "resolution": 0,
+            "client_ready": 28,
+            "understanding": 2031,
+            "composer_start": 3347,
+            "intent_gateway": 72,
+            "kernel_pre_act": 3171,
+            "engine_settings": 673,
+            "memory.recalled": 3171,
+            "task_classifier": 2152,
+            "capability_route": 2262,
+            "parameter_ledger": 2334,
+            "persona_resolved": 2512,
+            "pre_kernel_entry": 2512,
+            "capability_compile": 3182,
+            "router_enrichments": 2220,
+            "routing_classified": 673,
+            "task_state_initial": 2279,
+            "spoken_lite_decided": 787,
+            "understanding_audit": 2096,
+            "enrich_classification": 2220,
+            "connected_integrations": 673,
+            "dialogue_settings_full": 807,
+            "voice_expression_bound": 2279,
+            "workspace_focus_resolved": 28
+          },
+          "stages_compact": "gateway:0,resolution:0,execution:0,compose:0,client_ready:28,workspace_focus_resolved:0,intent_gateway:44,connected_integrations:601,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:114,dialogue_settings_full:20,sentiment:0,understanding:1224,understanding_audit:65,task_classifier:56,enrich_classification:68,router_enrichments:0,capability_route:42,task_state_initial:17,voice_expression_bound:0,parameter_ledger:55,persona_resolved:178,pre_kernel_entry:0,kernel_pre_act:659,memory.recalled:0,capability_compile:11,composer_start:165,first_sse:0",
+          "dominant_stage": "UNDERSTANDING",
+          "dominant_ms": 1224,
+          "total_ms": 3347,
+          "dominant_checkpoint": "understanding",
+          "spoken_mode": false
+        }
+      },
+      {
+        "id": "38ef3b5f-9ec",
+        "action": "runtime.turn_latency.critical_path",
+        "created_at": "2026-09-23T09:00:05.431231+00:00",
+        "meta": {
+          "waterfall": {
+            "compose": 0,
+            "gateway": 0,
+            "mcp_tools": 579,
+            "sentiment": 775,
+            "resolution": 0,
+            "client_ready": 14,
+            "understanding": 1719,
+            "intent_gateway": 56,
+            "kernel_pre_act": 6051,
+            "pre_turn_shape": 6122,
+            "engine_settings": 579,
+            "memory.recalled": 6051,
+            "task_classifier": 2010,
+            "capability_route": 2344,
+            "parameter_ledger": 2649,
+            "persona_resolved": 3019,
+            "pre_kernel_entry": 3019,
+            "capability_compile": 6053,
+            "router_enrichments": 2121,
+            "routing_classified": 579,
+            "task_state_initial": 2398,
+            "spoken_lite_decided": 752,
+            "understanding_audit": 1918,
+            "enrich_classification": 2121,
+            "turn_shape_classified": 6122,
+            "connected_integrations": 579,
+            "dialogue_settings_full": 775,
+            "voice_expression_bound": 2399,
+            "conversational_execution": 9120,
+            "unified_shadow_scheduled": 6122,
+            "workspace_focus_resolved": 14
+          },
+          "stages_compact": "gateway:0,resolution:0,compose:0,client_ready:14,workspace_focus_resolved:0,intent_gateway:42,connected_integrations:523,mcp_tools:0,engine_settings:0,routing_classified:0,spoken_lite_decided:173,dialogue_settings_full:23,sentiment:0,understanding:944,understanding_audit:199,task_classifier:92,enrich_classification:111,router_enrichments:0,capability_route:223,task_state_initial:54,voice_expression_bound:1,parameter_ledger:250,persona_resolved:370,pre_kernel_entry:0,kernel_pre_act:3032,memory.recalled:0,capability_compile:2,unified_shadow_scheduled:69,pre_turn_shape:0,turn_shape_classified:0,conversational_execution:2998",
+          "dominant_stage": "PLANNING",
+          "dominant_ms": 3032,
+          "total_ms": 9120,
+          "dominant_checkpoint": "kernel_pre_act",
+          "spoken_mode": false
+        }
+      }
+    ],
+    "child_obs": [],
+    "execute_completed": [],
+    "execute_failed": [
+      "2026-09-23T09:00:03.487596+00:00"
+    ],
+    "pending_approval": [],
+    "react": [],
+    "composer": [
+      {
+        "created_at": "2026-09-23T08:59:52.326958+00:00",
+        "kind": "clarify"
+      },
+      {
+        "created_at": "2026-09-23T09:00:08.98025+00:00",
+        "kind": "error"
+      }
+    ]
+  },
+  "j008": {
+    "conversation_id": "9d92e7ed-2208-4774-abf2-7a289fb4c056",
+    "text_hi": "Hey \u2014 I'm here. What do you want to get done?",
+    "spoken_first_text_ms": 224,
+    "spoken_first_audio_ms": 234,
+    "spoken_types": [
+      "voice.session.accepted",
+      "voice.text.delta",
+      "voice.ttft",
+      "voice.ttfa",
+      "voice.agent_speech.start",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta",
+      "voice.audio.delta"
+    ]
+  }
+}

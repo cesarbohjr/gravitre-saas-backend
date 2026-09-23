@@ -148,3 +148,21 @@ def test_pending_family_is_projection_not_new_runtime() -> None:
     continued = reconcile_execution_plan(message="yes", task_state=state)
     assert continued.plan_id == "plan-traffic-1"
     assert continued.terminal_status == "running"
+
+
+def test_pipeline_analysis_follow_up_continues_completed_frame() -> None:
+    state = {
+        "execution_plan": {
+            "plan_id": "plan-pipe-1",
+            "capability_id": "sales.pipeline.health",
+            "terminal_status": "completed",
+            "steps": [],
+        },
+        "provider_result_evidence": {
+            "action_key": "hubspot.deals.list",
+            "provider_invoked": True,
+            "result_count": 25,
+        },
+    }
+    assert decide_task_continuity("What appears important?", state) == "continue"
+    assert decide_task_continuity("What is missing?", state) == "continue"

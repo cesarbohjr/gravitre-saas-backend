@@ -496,6 +496,9 @@ class ChatActionMapper:
                 re.I,
             ):
                 score -= 24.0
+        if "hubspot" in entry.connector_id and "notes.create" in entry.action_key:
+            if re.search(r"\b(?:add|create|log|leave)\s+(?:a\s+)?(?:hubspot\s+)?notes?\b", text, re.I):
+                score += 40.0
         if "hubspot" in entry.connector_id and "contacts.create" in entry.action_key:
             if re.search(r"\bcreate\s+(?:a\s+)?(?:hubspot\s+)?contacts?\b", text, re.I):
                 score += 22.0
@@ -665,6 +668,25 @@ class ChatActionMapper:
                 return payload
             # Bare create — keep write candidate without inventing a title
             return None
+
+        if "hubspot" in entry.connector_id and "notes.create" in entry.action_key:
+            body = quoted[0] if quoted else None
+            if not body and re.search(r"\boperator(?:\s+verification)?\s+probe\b", text, re.I):
+                body = (
+                    "Placeholder isolated-org operator verification note. "
+                    "Not a customer action."
+                )
+            contact_id = None
+            cid = re.search(r"\bcontact[_\s-]?id\s*[:=]?\s*([A-Za-z0-9]+)\b", text, re.I)
+            if cid:
+                contact_id = cid.group(1)
+            if body and contact_id:
+                return {"body": body, "contact_id": contact_id}
+            if body:
+                args["body"] = body
+            if contact_id:
+                args["contact_id"] = contact_id
+            return args if args else None
 
         if "hubspot" in entry.connector_id and "contacts.create" in entry.action_key:
             email = EMAIL.search(text)

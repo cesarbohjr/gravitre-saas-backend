@@ -45,10 +45,14 @@ _RECIPE_TRIGGERS: tuple[tuple[str, tuple[str, ...]], ...] = (
         (
             "pipeline health",
             "how is the pipeline",
+            "how's the pipeline",
             "how are deals doing",
             "show my deals",
             "open deals",
             "pipeline this month",
+            "deal snapshot",
+            "crm snapshot",
+            "how are we doing in sales",
         ),
     ),
     (

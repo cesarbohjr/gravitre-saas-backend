@@ -48,7 +48,106 @@ async def test_pipeline_health_uses_deals_list_not_search() -> None:
         )
     assert turn is not None
     assert turn["workflow_status"] == "completed"
-    assert "2 deal" in str(turn["message"])
+    message = str(turn["message"])
+    assert "2 deal" in message
+    assert "What is happening:" in message
+    assert "What appears important:" in message
+    assert "What I cannot conclude:" in message
+    assert "What is missing:" in message
+    assert "What to do next:" in message
+    assert mock_invoke.call_args.kwargs["action_key"] == "hubspot.deals.list"
+
+
+@pytest.mark.asyncio
+async def test_pipeline_synthesis_uses_stage_and_amount_without_inventing_traffic() -> None:
+    invoked = NormalizedResult(
+        success=True,
+        action="hubspot.deals.list",
+        connector_id="hubspot",
+        data={
+            "results": [
+                {
+                    "id": "1",
+                    "properties": {
+                        "dealname": "Acme renewal",
+                        "dealstage": "contractsent",
+                        "amount": "12000",
+                    },
+                },
+                {
+                    "id": "2",
+                    "properties": {
+                        "dealname": "Beta intro",
+                        "dealstage": "appointmentscheduled",
+                        "amount": "",
+                    },
+                },
+            ]
+        },
+    )
+    proof = MagicMock(ok=True, error_class=None)
+    obs = MagicMock(success=True)
+    with patch(
+        "app.services.operational_read_execution.invoke_sealed_f1_read",
+        return_value=(invoked, proof, obs),
+    ):
+        turn = await try_operational_read_short_circuit_turn(
+            message="How is my company doing?",
+            org_id="org-1",
+            client=object(),
+            settings=MagicMock(),
+            connected_integrations=["hubspot"],
+            task_state={},
+        )
+    body = str(turn["message"])
+    assert "contractsent" in body
+    assert "12,000" in body or "12000" in body
+    assert (
+        "google analytics" in body.lower()
+        or "google_analytics" in body.lower()
+        or "search console" in body.lower()
+        or "pending" in body.lower()
+    )
+    assert "win rate" in body.lower()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_follow_up_reuses_operational_read() -> None:
+    invoked = NormalizedResult(
+        success=True,
+        action="hubspot.deals.list",
+        connector_id="hubspot",
+        data={"results": [{"id": "1", "properties": {"dealname": "Acme", "dealstage": "closedwon"}}]},
+    )
+    proof = MagicMock(ok=True, error_class=None)
+    obs = MagicMock(success=True)
+    prior = {
+        "execution_plan": {
+            "plan_id": "plan-1",
+            "capability_id": "sales.pipeline.health",
+            "terminal_status": "completed",
+            "steps": [{"step_id": "read_sales_pipeline_health", "action_key": "hubspot.deals.list"}],
+        },
+        "provider_result_evidence": {
+            "action_key": "hubspot.deals.list",
+            "provider_invoked": True,
+            "result_count": 1,
+        },
+    }
+    with patch(
+        "app.services.operational_read_execution.invoke_sealed_f1_read",
+        return_value=(invoked, proof, obs),
+    ) as mock_invoke:
+        turn = await try_operational_read_short_circuit_turn(
+            message="What appears important?",
+            org_id="org-1",
+            client=object(),
+            settings=MagicMock(),
+            connected_integrations=["hubspot"],
+            task_state=prior,
+        )
+    assert turn is not None
+    assert "What appears important:" in str(turn["message"])
     assert mock_invoke.call_args.kwargs["action_key"] == "hubspot.deals.list"
 
 

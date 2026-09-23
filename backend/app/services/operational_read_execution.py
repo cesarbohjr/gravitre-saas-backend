@@ -145,17 +145,117 @@ def _result_count(data: Any) -> int:
     return 0
 
 
-def _summarize_read(action_key: str, data: Any) -> str:
+def _deal_rows(data: Any) -> list[dict[str, Any]]:
+    payload = data if isinstance(data, dict) else {}
+    rows = payload.get("results") or []
+    if not isinstance(rows, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        props = row.get("properties") if isinstance(row.get("properties"), dict) else {}
+        out.append(
+            {
+                "id": str(row.get("id") or props.get("hs_object_id") or ""),
+                "name": str(props.get("dealname") or row.get("dealname") or "").strip(),
+                "stage": str(props.get("dealstage") or row.get("dealstage") or "").strip(),
+                "amount": props.get("amount") if props.get("amount") is not None else row.get("amount"),
+                "closedate": str(props.get("closedate") or row.get("closedate") or "").strip(),
+            }
+        )
+    return out
+
+
+def _parse_amount(raw: Any) -> float | None:
+    if raw in (None, ""):
+        return None
+    try:
+        return float(str(raw).replace(",", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _synthesize_pipeline(data: Any, *, pending_auth: str = "") -> str:
+    """Grounded CRM synthesis — never invent traffic or missing amounts."""
+    rows = _deal_rows(data)
+    n = len(rows) or _result_count(data)
+    if n <= 0:
+        body = (
+            "The connected CRM returned no deals in this read.\n"
+            "What is happening: I have a live HubSpot connection, but this list is empty.\n"
+            "What appears important: I cannot rank pipeline risk without records.\n"
+            "What I cannot conclude: revenue, stage mix, or close timing.\n"
+            "What is missing: deal rows from HubSpot for this org.\n"
+            "What to do next: confirm deals exist in HubSpot, or name a specific pipeline or owner."
+        )
+        return f"{body}\n\n{pending_auth}".strip() if pending_auth else body
+    by_stage: dict[str, int] = {}
+    named: list[str] = []
+    amounts: list[float] = []
+    missing_amount = 0
+    missing_stage = 0
+    for row in rows:
+        stage = row.get("stage") or "unspecified stage"
+        if not row.get("stage"):
+            missing_stage += 1
+        by_stage[stage] = by_stage.get(stage, 0) + 1
+        amt = _parse_amount(row.get("amount"))
+        if amt is None:
+            missing_amount += 1
+        else:
+            amounts.append(amt)
+        name = row.get("name") or ""
+        if name:
+            named.append(name)
+    stage_bits = ", ".join(f"{stage} ({count})" for stage, count in sorted(by_stage.items(), key=lambda kv: (-kv[1], kv[0]))[:8])
+    top_stage = max(by_stage.items(), key=lambda kv: kv[1])[0] if by_stage else "unspecified"
+    amount_line = (
+        f"Among deals with a numeric amount ({len(amounts)} of {n}), the listed total is {sum(amounts):,.0f} in HubSpot's amount field."
+        if amounts
+        else "No numeric amounts were present on these rows, so I am not stating a pipeline value."
+    )
+    examples = ", ".join(named[:3]) if named else "none named"
+    missing_bits = [
+        "This read is HubSpot's first-page deal list (limit 25), not a guaranteed complete census.",
+    ]
+    if missing_amount:
+        missing_bits.append(f"{missing_amount} deal(s) have no usable amount.")
+    if missing_stage:
+        missing_bits.append(f"{missing_stage} deal(s) have no stage.")
+    if pending_auth:
+        missing_bits.append(pending_auth)
+    else:
+        missing_bits.append("I am not using Google Analytics or Search Console in this answer.")
+    important = (
+        f"The largest stage bucket in this sample is {top_stage}."
+        if n
+        else "There is no stage mix to rank."
+    )
+    return (
+        f"From the connected CRM I received {n} deal{'s' if n != 1 else ''} in this sample.\n"
+        f"What is happening: HubSpot returned those records. Stage mix in this sample: {stage_bits or 'not labeled'}. {amount_line}\n"
+        f"What appears important: {important} Named examples: {examples}.\n"
+        "What I cannot conclude: overall company health, win rate, or traffic — those are not in this deal list.\n"
+        f"What is missing: {' '.join(missing_bits)}\n"
+        "What to do next: pick a stage, owner, or amount cutoff to inspect, or connect a live traffic source if you need acquisition evidence."
+    )
+
+
+def _summarize_read(action_key: str, data: Any, *, pending_auth: str = "") -> str:
     n = _result_count(data)
     if n <= 0:
-        return "The connected system returned no matching records for that read."
+        empty = "The connected system returned no matching records for that read."
+        return f"{empty}\n\n{pending_auth}".strip() if pending_auth else empty
     if "deal" in action_key:
-        return f"I found {n} deal{'s' if n != 1 else ''} in the connected CRM."
+        return _synthesize_pipeline(data, pending_auth=pending_auth)
     if "invoice" in action_key:
-        return f"I found {n} invoice{'s' if n != 1 else ''} in the connected finance system."
-    if "ticket" in action_key:
-        return f"I found {n} ticket{'s' if n != 1 else ''} in the connected support system."
-    return f"I found {n} matching records."
+        base = f"I found {n} invoice{'s' if n != 1 else ''} in the connected finance system."
+    elif "ticket" in action_key:
+        base = f"I found {n} ticket{'s' if n != 1 else ''} in the connected support system."
+    else:
+        base = f"I found {n} matching records."
+    return f"{base}\n\n{pending_auth}".strip() if pending_auth else base
 
 
 def _mark_step(plan: Any, step: ExecutionStep, *, status: str, action_key: str) -> ExecutionStep:
@@ -386,6 +486,24 @@ async def try_operational_read_short_circuit_turn(
         success=True,
         provider_invoked=True,
     )
+    pending_auth = ""
+    try:
+        from app.services.capability_evidence_plan import (
+            build_capability_evidence_plan,
+            looks_like_ceo_ops_question,
+            pending_auth_prose,
+        )
+
+        if looks_like_ceo_ops_question(message or ""):
+            ev_plan = build_capability_evidence_plan(
+                message or "",
+                connected_integrations=connected,
+                settings=active_settings,
+            )
+            pending_auth = pending_auth_prose(ev_plan)
+    except Exception:  # noqa: BLE001
+        pending_auth = ""
+    summary = _summarize_read(action_key, invoked.data, pending_auth=pending_auth)
     try:
         from app.services.outcome_learning_service import get_outcome_learning_service
 
@@ -400,7 +518,7 @@ async def try_operational_read_short_circuit_turn(
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
-        "message": _summarize_read(action_key, invoked.data),
+        "message": summary,
         "task_state": {
             **(task_state or {}),
             **execution_plan_patch(plan),
