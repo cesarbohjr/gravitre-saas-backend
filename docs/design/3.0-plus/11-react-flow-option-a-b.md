@@ -2,11 +2,34 @@
 
 **Status:** Structural decision for Cesar — **do not replace builder yet**  
 **Spec recovered fragment (≈ §17):** React Flow / xyflow is the **preferred foundation** for the operational Workflow Builder, subject to audit. RF is the visual interaction layer; canonical workflow definition remains SoT.  
-**Repo facts:** `@xyflow/react` installed; used for Intelligence Relationships only. Builder is custom at `app/workflows/[id]/builder/page.tsx`. Schema bridge: `CanvasWorkflowNode` + `canvasToSavePayload` / load helpers in `lib/workflows/builder-persistence.ts` → `workflowsApi.getBuilder` / `saveBuilder`.
+**Repo facts:** `@xyflow/react` installed; used for Intelligence Relationships only. Builder is custom (~6.7k-line page) at `app/workflows/[id]/builder/page.tsx`. Schema bridge: `CanvasWorkflowNode` + `canvasToSavePayload` / load helpers in `lib/workflows/builder-persistence.ts` → `workflowsApi.getBuilder` / `saveBuilder`.
+
+**Capability audit:** [Workflow builder capability audit](69355e98-0b6e-4113-8ec8-85f9064e214c) (2026-09-23).
+
+## Save / load contract (freeze unless Platform Execution owns a schema change)
+
+| Layer | Function |
+|-------|----------|
+| Page | `loadBuilderGraph` / `saveBuilderGraph` |
+| Persistence | `apiGraphToCanvasNodes`, `canvasToSavePayload`, `normalizeCanvasNodeType` |
+| HTTP | `GET/PUT /api/workflows/{id}/builder` via `workflowsApi.getBuilder` / `saveBuilder` |
+| Related | `execute` / `dryRun`; run poll via `runsApi.getWithSteps`; Meson edit/apply → reload graph |
+
+Edges persist as `{ fromNodeId, toNodeId }` from `node.connections[]`.
 
 ## Spec requirements (from recovered Word fragment)
 
 Where backed by existing capabilities, upgraded builder should support: custom nodes, drag/drop, connector/agent/condition/action/approval/knowledge/IO nodes, error paths, branching, nested/subflows, grouping, validation, node/edge inspection, **live execution overlays**, history, AI-assisted editing. Modes: **Design / Live / Explain / History**. One canonical representation for AI + manual edits. Compact previews in AI workspace open into full builder. Visual language: Nodus/Gravitre — not stock RF demos. ELK evaluate for layout; tldraw must not replace builder.
+
+## What the custom builder already does
+
+- Node types: agent, task, connector, tool, source, approval, decision, council, if/switch/merge/loop  
+- Edges: handle drag + SVG; decision path dimming; connect/disconnect confirms  
+- Inspect: ConfigPanel + `NodeRunDebugPanel` when `lastRunId`  
+- Run: save → execute → poll step states onto nodes; pause/cancel; links to approvals/runs  
+- Meson: suggest/alert/insight/edit/apply/explain/reliability; reload after apply  
+- Intelligence drawer: timing, risk, dry-run  
+- Gaps: no pan/zoom/minimap; version-history UI unused; thin keyboard a11y; monolith maintainability
 
 ---
 
@@ -14,16 +37,16 @@ Where backed by existing capabilities, upgraded builder should support: custom n
 
 | Dimension | Assessment |
 |-----------|------------|
-| **Preserved** | Existing custom canvas, Meson panel hooks, `CanvasWorkflowNode` types (agent/task/connector/approval/decision/council/if/switch/merge/loop), connector bind, dry-run / intelligence drawer integration, save/load via builder API |
-| **Missing vs §17** | Formal Live/Explain/History mode shells; first-class live execution overlays; RF ecosystem (minimap, controls, a11y plugins); likely weaker graph layout for AI-generated graphs |
-| **Migration complexity** | N/A (no migration) — feature work is **Large** to reach Design/Live/Explain/History parity |
-| **Bundle / perf** | Avoids second canvas engine on builder route; RF already paid on Relationships route |
-| **Accessibility** | Custom canvas must be audited; no RF keyboard defaults |
-| **Maintainability** | Owns all interaction code; higher long-term cost vs RF community patterns |
-| **Risk to functional agent** | **Lowest** if schema/persistence untouched |
-| **Nodus fit** | Full control of node chrome — good if disciplined |
+| **Preserved** | Full current surface; lowest chance of breaking `CanvasWorkflowNode` ↔ PUT path |
+| **Missing vs §17** | Viewport ops, undo/redo, version history UI, formal Live/Explain/History shells, stronger a11y |
+| **Migration complexity** | **S** incremental; **L** to reach RF-parity viewport/a11y without RF |
+| **Bundle / perf** | No new dep on builder route; custom SVG re-renders all edges on drag — weak at scale |
+| **Accessibility** | Partial labels; mouse-first |
+| **Maintainability** | Poor (~6.7k monolith) |
+| **Risk to functional agent** | **Low** if schema untouched |
+| **Nodus fit** | Token/CSS-first polish without structural change |
 
-**When A wins:** Cesar prioritizes zero migration risk and incremental hardening of current canvas while functional A–J continues.
+**When A wins:** Cesar prioritizes zero migration risk while functional A–J continues.
 
 ---
 
@@ -31,30 +54,28 @@ Where backed by existing capabilities, upgraded builder should support: custom n
 
 | Dimension | Assessment |
 |-----------|------------|
-| **Preserved** | Canonical schema/persistence/execution/approvals/governance via adapter: RF nodes/edges ↔ `CanvasWorkflowNode` / save payload — **no second workflow definition** |
-| **Missing initially** | Custom node chrome rewrite; Meson sync must target same SoT; Live/Explain/History still need product work (RF enables overlays, does not invent runtime events) |
-| **Migration complexity** | **Large** (builder page is a major surface) but bounded if phased: read-only RF → editable → flag cutover |
-| **Bundle / perf** | RF already in app; builder route would load it (acceptable if code-split) |
-| **Accessibility** | Better starting point (RF focus/keyboard) + custom node a11y still required |
-| **Maintainability** | Aligns with preferred §17 foundation; shared skills with Relationships graph |
-| **Risk to functional agent** | **Medium** if save payload drifts — mitigated by golden tests on `canvasToSavePayload` / load round-trip and no backend schema change |
-| **Nodus fit** | Must theme heavily — stock RF look is explicitly forbidden |
+| **Preserved** | Same PUT body / execute / Meson reload / drawer if adapter is strict; custom node chrome as RF `nodeTypes` |
+| **Missing initially** | History/explain product work still required; RF enables overlays, does not invent runtime events |
+| **Migration complexity** | **M** (extract canvas → RF shell; connections↔edges; decision multi-out regression). **L** only if persistence rewritten |
+| **Bundle / perf** | RF already in app (Relationships); code-split builder chunk; watch dual state |
+| **Accessibility** | Better baseline; still need labeled custom nodes |
+| **Maintainability** | Better if canvas extracted; reuse Relationships patterns |
+| **Risk to functional agent** | **Low–Med** if visual-only; **High** if edge IDs/handles change compile semantics — guard with PUT golden tests + live execute |
+| **Nodus fit** | Strong long-term if themed; forbid stock RF look |
 
-**When B wins:** Cesar accepts a migration to hit Live overlays, layout, and long-term maintainability without rewriting runtime.
+**When B wins:** Cesar accepts phased migration for ops ergonomics without rewriting runtime.
 
 ---
 
 ## Recommendation (for Cesar decision — not a unilateral cutover)
 
-**Prefer B as the target visual foundation**, with **A as interim** until RF-1 (read-only harness) and RF-2 (editable same payload) pass contract tests. Do **not** auto-replace production builder. Do **not** permanently reject RF because the builder is currently custom.
+**Prefer B as the target visual foundation**, with **A as interim**. Do **not** auto-replace production builder. Do **not** permanently reject RF because the builder is currently custom.
 
 ### Cesar approval ask (G-STRUCT / G-DEP)
 
-Choose one:
-
-1. **Target B** — authorize RF-1 harness prototype on this frontend branch  
+1. **Target B** — authorize RF-1 harness (read-only `CanvasWorkflowNode` → xyflow) on this frontend branch  
 2. **Stay A** — authorize custom-canvas Design/Live/Explain/History prototypes without RF  
-3. **Defer** — keep documenting; no builder visual work until functional 3.0-D+ quieter
+3. **Defer** — docs only until functional track quieter  
 
 ---
 
@@ -62,5 +83,5 @@ Choose one:
 
 - One canonical workflow definition  
 - AI (Meson) and manual edits converge on the same SoT  
-- No rewrite of workflow execution / approvals / HMAC / Observations  
+- Do not change `CanvasWorkflowNode` / `canvasToSavePayload` / `saveBuilder` unless Platform Execution owns a schema revision  
 - No fake live execution — overlays only when runtime emits real state
