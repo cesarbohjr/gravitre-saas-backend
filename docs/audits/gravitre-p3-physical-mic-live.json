@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-09-23T15:05:29.108366+00:00",
+  "audio_endpoints_ok": [
+    "Speakers (Realtek(R) Audio)",
+    "Microphone Array (Intelr Smart Sound Technology for Digital Microphones)"
+  ],
+  "capture_like": [
+    "Microphone Array (Intelr Smart Sound Technology for Digital Microphones)"
+  ],
+  "stdin_is_tty": true,
+  "used_physical_microphone": false,
+  "human_spoken_turns": 0,
+  "barge_in_observed": false,
+  "correction_observed": false,
+  "approval_language_spoken": false,
+  "verdict": "HUMAN_EXPERIENCE_PENDING",
+  "reason": "Capture device present, but this run is not an attended human conversation."
+}

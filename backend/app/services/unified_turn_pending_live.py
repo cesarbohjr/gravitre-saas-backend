@@ -27,6 +27,66 @@ _HOLD_ABANDON_RE = re.compile(
 )
 
 
+async def _execute_governed_pending_confirm(
+    *,
+    message: str,
+    task_state: dict[str, Any] | None,
+    org_id: str,
+    user_id: str,
+    conversation_id: str | None,
+    client: Any,
+    settings: Settings,
+) -> Any:
+    """Run the frozen pending WRITE through HMAC/approval execute — not LIVE narration."""
+    from app.services.unified_turn_reasoning_service import UnifiedTurnShadowResult
+
+    pending = (task_state or {}).get("pending_task") if isinstance(task_state, dict) else None
+    pending = pending if isinstance(pending, dict) else {}
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
+    if str(pending.get("type") or "") != "connector_action":
+        return None
+    if str(pending.get("status") or "") not in {"awaiting_confirm", "awaiting_admin_approval"}:
+        return None
+    if not invoke:
+        return None
+    from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+
+    integration = str(params.get("integration") or "").strip()
+    connected = [integration] if integration else []
+    try:
+        turn = await get_chat_connector_execution_service(settings).process_turn(
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id or "",
+            message=message,
+            classification={},
+            task_state=dict(task_state or {}),
+            connected_integrations=connected,
+            client=client,
+            environment_name="production",
+            pending_reply_intent="confirm",
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(turn, dict) or not str(turn.get("message") or "").strip():
+        return None
+    exec_ok = bool(turn.get("execution_result") or turn.get("provider_invoked"))
+    return UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message=str(turn.get("message") or ""),
+        live_served=True,
+        model="chat_connector_execution",
+        tool_invoke_action=invoke,
+        tool_stats={
+            "task_state": turn.get("task_state") or task_state,
+            "pending_task": turn.get("pending_task"),
+            "provider_invoked": exec_ok,
+            "workflow_status": turn.get("workflow_status"),
+        },
+    )
+
+
 async def resolve_unified_live_pending_reply(
     *,
     message: str,
@@ -70,6 +130,19 @@ async def resolve_unified_live_pending_reply(
             live_served=True,
             model="spoken_write_approval",
         )
+
+    if intent == "confirm":
+        executed = await _execute_governed_pending_confirm(
+            message=message,
+            task_state=task_state,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            client=client,
+            settings=active,
+        )
+        if executed is not None:
+            return executed
 
     if intent in {"confirm", "reject", "modify", "slot_answer"}:
         return None

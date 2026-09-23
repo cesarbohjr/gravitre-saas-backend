@@ -29,6 +29,11 @@ EMAIL_DOMAIN = "gravitre-smoke.example.com"
 
 def main() -> int:
     env = evc.load_env()
+    import os
+
+    for key, value in env.items():
+        if value:
+            os.environ.setdefault(key, value)
     from supabase import create_client
 
     from app.services.entity_get_verify import extract_entity_id, verify_entity_get
@@ -128,50 +133,104 @@ def main() -> int:
             break
     out["connector_id"] = connector_id
     entity_id = None
-    if connector_id:
-        ctx = ToolContext(
-            settings=settings,
-            client=sb,
-            org_id=iso_org,
-            actor_id=user_id,
-            connector_id=connector_id,
-        )
-        listed = invoke_tool(
-            ctx,
-            "hubspot.contacts.search",
-            {"connector_id": connector_id, "query": probe_email, "limit": 5},
-        )
-        out["search_after"] = {
-            "success": bool(listed.success),
-            "error": (listed.error_message or "")[:200] or None,
-        }
-        payload = listed.data if isinstance(listed.data, dict) else {}
-        for row in payload.get("results") or []:
-            if not isinstance(row, dict):
-                continue
-            props = row.get("properties") if isinstance(row.get("properties"), dict) else {}
-            if str(props.get("email") or "").lower() == probe_email.lower():
-                entity_id = str(row.get("id") or "")
-                break
-            entity_id = str(row.get("id") or entity_id or "")
-        if entity_id:
-            verify = verify_entity_get(
-                invoke_action="hubspot.contacts.create",
-                result_data={"id": entity_id},
+    try:
+        import re
+        from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
+        from app.services.sealed_read_execution import invoke_sealed_f1_read
+
+        blob = f"{out.get('confirm', {}).get('excerpt') or ''} {out.get('first', {}).get('excerpt') or ''}"
+        ids = re.findall(r"\b(\d{6,})\b", blob)
+        if connector_id:
+            ctx = ToolContext(
+                settings=settings,
+                client=sb,
+                org_id=iso_org,
+                actor_id=user_id,
+                connector_id=connector_id,
+                cognitive_invoke=True,
+            )
+            plan = ExecutionPlan(
+                plan_id=str(uuid.uuid4()),
+                summary="isolated-org placeholder contact verify",
+                steps=[],
+                source="operator_probe",
+                capability_id="crm.contact.create",
+                objective=probe_email,
+            )
+            step = ExecutionStep(
+                step_id="verify_placeholder_contact",
+                title="HMAC search placeholder contact",
+                kind="read",
+                connector_id="hubspot",
+                action_key="hubspot.contacts.search",
+            )
+            invoked, proof, _obs = invoke_sealed_f1_read(
                 ctx=ctx,
-                settle=True,
+                action_key="hubspot.contacts.search",
+                user_message=probe_email,
+                task_state={},
+                connected_integrations=["hubspot"],
+                plan=plan,
+                step=step,
+                proposed_args={"query": probe_email, "limit": 5},
             )
-            out["verify_entity_get"] = verify.as_dict()
-            d = invoke_tool(
-                ctx,
-                "hubspot.contacts.delete",
-                {"connector_id": connector_id, "contact_id": entity_id},
-            )
-            out["cleanup_deleted"] = {
-                "success": bool(d.success),
-                "error": (d.error_message or "")[:200] or None,
-                "contact_id": entity_id,
+            out["hmac_search"] = {
+                "success": bool(invoked.success),
+                "preflight_ok": bool(proof.ok),
+                "error": (invoked.error_message or "")[:200] or None,
             }
+            payload = invoked.data if isinstance(invoked.data, dict) else {}
+            for row in payload.get("results") or []:
+                if not isinstance(row, dict):
+                    continue
+                props = row.get("properties") if isinstance(row.get("properties"), dict) else {}
+                if str(props.get("email") or "").lower() == probe_email.lower():
+                    entity_id = str(row.get("id") or "")
+                    break
+            if not entity_id and ids:
+                entity_id = ids[0]
+            if entity_id:
+                verify = verify_entity_get(
+                    invoke_action="hubspot.contacts.create",
+                    result_data={"id": entity_id},
+                    ctx=ctx,
+                    settle=True,
+                )
+                out["verify_entity_get"] = verify.as_dict()
+                from app.services.write_preflight import compile_write_for_context
+
+                del_ctx = ctx
+                try:
+                    proof_del = compile_write_for_context(
+                        ctx=del_ctx,
+                        invoke_action="hubspot.contacts.delete",
+                        args={"contact_id": entity_id, "connector_id": connector_id},
+                        user_message=f"Delete placeholder contact {entity_id}",
+                        connected_integrations=["hubspot"],
+                    )
+                    if proof_del.ok:
+                        from dataclasses import replace as dc_replace
+
+                        d = invoke_tool(
+                            dc_replace(del_ctx, preflight_result=proof_del),
+                            "hubspot.contacts.delete",
+                            {"connector_id": connector_id, "contact_id": entity_id},
+                        )
+                    else:
+                        d = invoke_tool(
+                            del_ctx,
+                            "hubspot.contacts.delete",
+                            {"connector_id": connector_id, "contact_id": entity_id},
+                        )
+                    out["cleanup_deleted"] = {
+                        "success": bool(d.success),
+                        "error": (d.error_message or "")[:200] or None,
+                        "contact_id": entity_id,
+                    }
+                except Exception as exc:  # noqa: BLE001
+                    out["cleanup_deleted"] = {"success": False, "error": f"{exc.__class__.__name__}: {exc}"}
+    except Exception as exc:  # noqa: BLE001
+        out["verify_error"] = f"{exc.__class__.__name__}: {exc}"
     out["written_entity_id"] = entity_id
     invoke_ok = any(a.get("action") == "tool.invoke.completed" for a in out["invokes"])
     completed_language = "complet" in (out["confirm"].get("excerpt") or "").lower() or "created" in (

@@ -2022,7 +2022,14 @@ async def apply_unified_turn_live(
             conversation_id=conversation_id,
             result=pending_result,
         )
-        return _unified_live_turn_payload(pending_result, task_state)
+        stats = pending_result.tool_stats if isinstance(pending_result.tool_stats, dict) else {}
+        served_state = stats.get("task_state") if isinstance(stats.get("task_state"), dict) else task_state
+        payload = _unified_live_turn_payload(pending_result, served_state)
+        if stats.get("pending_task") is not None:
+            payload["pending_task"] = stats.get("pending_task")
+        if stats.get("provider_invoked"):
+            payload["provider_invoked"] = True
+        return payload
 
     # confirm/reject/modify/slot_answer return None from the pending resolver so
     # classical Module B can execute them. Do not let shadow invent a yes/hold.
