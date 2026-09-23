@@ -155,6 +155,64 @@ async def test_pipeline_follow_up_reuses_operational_read() -> None:
 
 
 @pytest.mark.asyncio
+async def test_stored_deliverable_is_not_reinvoked() -> None:
+    prior = {
+        "execution_plan": {
+            "plan_id": "plan-keep",
+            "capability_id": "sales.pipeline.health",
+            "terminal_status": "completed",
+            "steps": [{"step_id": "read_sales_pipeline_health", "action_key": "hubspot.deals.list"}],
+        },
+        "provider_result_evidence": {
+            "action_key": "hubspot.deals.list",
+            "provider_invoked": True,
+            "result_count": 2,
+        },
+        "execution_observations": [
+            {
+                "step_id": "read_sales_pipeline_health",
+                "observation_id": "obs-keep",
+                "success": True,
+                "summary": "From the connected CRM I received 2 deals in this sample.",
+                "structured": {"action_key": "hubspot.deals.list", "result_count": 2, "provider_invoked": True},
+            }
+        ],
+        "durable_deliverable": {
+            "diagnosis": "From the connected CRM I received 2 deals in this sample.",
+            "evidence": ["hubspot.deals.list rows=2 obs=obs-keep"],
+            "required": False,
+        },
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-keep",
+                "kind": "report",
+                "title": "Pipeline sample",
+                "preview": "2 deals",
+                "metadata": {
+                    "plan_id": "plan-keep",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-keep"],
+                    "code": "Evidence\n- hubspot.deals.list rows=2 obs=obs-keep",
+                },
+            }
+        ],
+    }
+    with patch("app.services.operational_read_execution.invoke_sealed_f1_read") as mock_invoke:
+        turn = await try_operational_read_short_circuit_turn(
+            message="Remind me of that report. Do not create HubSpot records.",
+            org_id="org-1",
+            client=object(),
+            settings=MagicMock(),
+            connected_integrations=["hubspot"],
+            task_state=prior,
+        )
+    assert mock_invoke.call_count == 0
+    assert turn["execution_path"] == "operational_f1_read_resume"
+    assert turn["execution_result"]["entity_id"] == "plan-keep"
+    assert turn["provider_reinvoked"] is False
+
+
+@pytest.mark.asyncio
 async def test_provider_error_is_failed_not_completed() -> None:
     invoked = NormalizedResult(
         success=False,

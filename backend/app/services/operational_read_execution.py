@@ -347,6 +347,55 @@ async def try_operational_read_short_circuit_turn(
             "provider_result_evidence": evidence,
             "selected_action": evidence.get("action_key"),
         }
+    stored_arts = (task_state or {}).get("work_artifacts") if isinstance(task_state, dict) else None
+    stored_deliv = (task_state or {}).get("durable_deliverable") if isinstance(task_state, dict) else None
+    wants_fresh = bool(
+        re.search(
+            r"\b(refresh|reload|latest|again|rerun|re-run|recheck|check now)\b",
+            message or "",
+            re.I,
+        )
+    )
+    if (
+        not wants_fresh
+        and isinstance(evidence, dict)
+        and evidence.get("provider_invoked")
+        and (stored_arts or stored_deliv)
+        and (
+            decide_task_continuity(message, task_state) == "continue"
+            or infer_operational_recipe_id(task_state) == recipe.recipe_id
+        )
+    ):
+        from app.services.durable_work_session import reconstruct_execution_result
+
+        diagnosis = ""
+        if isinstance(stored_deliv, dict):
+            diagnosis = str(stored_deliv.get("diagnosis") or "")
+        reconstructed = reconstruct_execution_result(task_state, body=diagnosis)
+        plan = reconcile_execution_plan(
+            message=message,
+            task_state=task_state,
+            capability_id=recipe.recipe_id,
+            connected_integrations=connected,
+        )
+        plan.capability_id = plan.capability_id or recipe.recipe_id
+        plan = mark_plan_terminal(plan, "completed")
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": diagnosis or str((reconstructed or {}).get("body") or "I still have that finished report."),
+            "task_state": {
+                **(task_state or {}),
+                **execution_plan_patch(plan),
+                "provider_result_evidence": evidence,
+            },
+            "workflow_status": "completed",
+            "execution_path": "operational_f1_read_resume",
+            "provider_result_evidence": evidence,
+            "selected_action": evidence.get("action_key"),
+            "execution_result": reconstructed,
+            "provider_reinvoked": False,
+        }
     resolved = resolve_recipe(
         recipe.recipe_id,
         connected_integrations=connected,
