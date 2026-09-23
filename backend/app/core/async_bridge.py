@@ -75,6 +75,6 @@ def call_with_resource_retry(fn: Callable[..., T], *args: Any, retries: int = 1,
             last = exc
             if getattr(exc, "errno", None) != 11 or attempt >= retries:
                 raise
-            time.sleep(0.3 * (attempt + 1))
+            time.sleep(0.5 * (attempt + 1))
     assert last is not None
     raise last

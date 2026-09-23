@@ -879,14 +879,20 @@ def _run_graph_batches(
         base_index = ctx.step_index
         if _batch_requires_serial(ctx, node_ids):
             outcomes = [
-                _execute_graph_node(ctx, node_id, base_index + offset)
+                call_with_resource_retry(_execute_graph_node, ctx, node_id, base_index + offset)
                 for offset, node_id in enumerate(node_ids)
             ]
         else:
             outcomes = []
             with ThreadPoolExecutor(max_workers=min(len(node_ids), 8)) as pool:
                 futures = {
-                    pool.submit(_execute_graph_node, ctx, node_id, base_index + offset): node_id
+                    pool.submit(
+                        call_with_resource_retry,
+                        _execute_graph_node,
+                        ctx,
+                        node_id,
+                        base_index + offset,
+                    ): node_id
                     for offset, node_id in enumerate(node_ids)
                 }
                 by_node = {}
