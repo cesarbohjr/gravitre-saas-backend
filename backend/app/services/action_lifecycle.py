@@ -380,6 +380,17 @@ def persist_write_outcome_patch(
     }
     if pending_action:
         patch["pending_action"] = pending_action
+    from app.services.durable_work_session import bind_finished_work
+
+    bound = bind_finished_work(
+        {**state, **patch},
+        body=summary,
+        title=connector_plan.label or "Connector write",
+    )
+    if bound.get("durable_deliverable"):
+        patch["durable_deliverable"] = bound["durable_deliverable"]
+    if bound.get("work_artifacts"):
+        patch["work_artifacts"] = bound["work_artifacts"]
     return patch
 
 

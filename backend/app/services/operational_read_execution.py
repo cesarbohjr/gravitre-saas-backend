@@ -515,18 +515,23 @@ async def try_operational_read_short_circuit_turn(
         )
     except Exception:
         pass
+    merged_state = {
+        **(task_state or {}),
+        **execution_plan_patch(plan),
+        **observations_patch([safe_obs]),
+        "provider_result_evidence": evidence,
+    }
+    from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+    merged_state = bind_finished_work(merged_state, body=summary, title=plan.summary or "CRM read")
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
         "message": summary,
-        "task_state": {
-            **(task_state or {}),
-            **execution_plan_patch(plan),
-            **observations_patch([safe_obs]),
-            "provider_result_evidence": evidence,
-        },
+        "task_state": merged_state,
         "workflow_status": "completed",
         "execution_path": "operational_f1_read",
         "provider_result_evidence": evidence,
         "selected_action": action_key,
+        "execution_result": execution_result_from_finished_work(merged_state, body=summary),
     }

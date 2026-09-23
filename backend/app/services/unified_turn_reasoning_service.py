@@ -1823,6 +1823,15 @@ def _unified_live_turn_payload(
     )
     if process and isinstance(out.get("evidence"), dict):
         out["evidence"]["evidence_process"] = process
+    merged_state = out.get("task_state") if isinstance(out.get("task_state"), dict) else task_state
+    if isinstance(merged_state, dict) and merged_state.get("execution_observations"):
+        from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+        bound = bind_finished_work(merged_state, body=result.user_message)
+        out["task_state"] = bound
+        finished = execution_result_from_finished_work(bound, body=result.user_message)
+        if finished:
+            out["execution_result"] = finished
     return out
 
 

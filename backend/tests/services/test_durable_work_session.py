@@ -239,3 +239,56 @@ def test_not_a_second_worker_runtime():
     source = open(mod.__file__, encoding="utf-8").read()
     assert "cowork" not in source.lower()
     assert "second runtime" not in source.lower() or "not a second runtime" in source.lower()
+
+
+def test_bind_finished_work_report_from_observations():
+    from app.services.durable_work_session import (
+        DELIVERABLE_KEY,
+        WORK_ARTIFACTS_KEY,
+        bind_finished_work,
+        execution_result_from_finished_work,
+    )
+
+    plan = ExecutionPlan(
+        plan_id="plan-art-1",
+        summary="Pipeline sample",
+        steps=[ExecutionStep(step_id="r1", title="list deals", kind="read")],
+        source="operational_read",
+        terminal_status="completed",
+    )
+    state = {
+        "execution_plan": plan.as_dict(),
+        "execution_observations": [
+            {
+                "step_id": "r1",
+                "observation_id": "obs-1",
+                "success": True,
+                "summary": "From the connected CRM I received 2 deals in this sample.",
+                "structured": {
+                    "action_key": "hubspot.deals.list",
+                    "result_count": 2,
+                    "provider_invoked": True,
+                },
+            }
+        ],
+    }
+    bound = bind_finished_work(state, body=state["execution_observations"][0]["summary"])
+    contract = bound[DELIVERABLE_KEY]
+    artifacts = bound[WORK_ARTIFACTS_KEY]
+    assert contract["diagnosis"].startswith("From the connected CRM")
+    assert any("hubspot.deals.list" in line for line in contract["evidence"])
+    assert artifacts[-1]["kind"] == "report"
+    assert artifacts[-1]["metadata"]["plan_id"] == "plan-art-1"
+    assert "$" not in artifacts[-1]["preview"]
+    payload = execution_result_from_finished_work(bound)
+    assert payload is not None
+    assert payload["entity_type"] == "report"
+    kinds = {row["kind"] for row in (payload.get("artifacts") or [])}
+    assert "report" in kinds or "document" in kinds
+
+
+def test_bind_finished_work_skips_without_successful_observation():
+    from app.services.durable_work_session import bind_finished_work
+
+    bound = bind_finished_work({"execution_observations": [{"success": False, "summary": "no"}]})
+    assert "work_artifacts" not in bound or not bound.get("work_artifacts")

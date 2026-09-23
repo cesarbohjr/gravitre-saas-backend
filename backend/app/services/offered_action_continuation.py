@@ -537,7 +537,12 @@ def live_payload_for_execution(
         state["execution_observations"] = executed["execution_observations"]
     if isinstance(executed.get("pending_action"), dict):
         state["pending_action"] = executed["pending_action"]
-    return {
+    from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+    message = str(executed.get("message") or "")
+    state = bind_finished_work(state, body=message)
+    finished = execution_result_from_finished_work(state, body=message)
+    payload = {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
         "message": executed.get("message") or "",
@@ -561,6 +566,9 @@ def live_payload_for_execution(
             "Completed: Checking systems",
         ],
     }
+    if finished:
+        payload["execution_result"] = finished
+    return payload
 
 
 def patch_task_state_offered(
@@ -649,6 +657,14 @@ async def persist_offered_action(
         terminal_status=terminal_status,
         observations=observations,
     )
+    if observations:
+        from app.services.durable_work_session import bind_finished_work
+
+        bound = bind_finished_work({**(task_state or {}), **patch})
+        if bound.get("durable_deliverable"):
+            patch["durable_deliverable"] = bound["durable_deliverable"]
+        if bound.get("work_artifacts"):
+            patch["work_artifacts"] = bound["work_artifacts"]
     try:
         from app.services.conversation_state_service import get_conversation_state_service
 

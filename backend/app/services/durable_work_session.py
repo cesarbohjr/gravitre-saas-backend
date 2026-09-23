@@ -33,6 +33,7 @@ SessionPhase = Literal[
 CHECKPOINT_KEY = "durable_checkpoint"
 SESSION_KEY = "durable_session"
 DELIVERABLE_KEY = "durable_deliverable"
+WORK_ARTIFACTS_KEY = "work_artifacts"
 
 _SECRET_FRAGMENTS = (
     "secret",
@@ -440,6 +441,139 @@ def verify_before_complete(
         if not deliverable.evidence:
             return False, "deliverable_evidence_missing"
     return True, "ok"
+
+
+def _observation_evidence_lines(observations: list[dict[str, Any]] | None) -> list[str]:
+    lines: list[str] = []
+    for row in observations or []:
+        if not isinstance(row, dict) or not row.get("success"):
+            continue
+        structured = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+        action = str(structured.get("action_key") or structured.get("invoke_action") or "").strip()
+        obs_id = str(row.get("observation_id") or row.get("step_id") or "").strip()
+        count = structured.get("result_count")
+        record_id = structured.get("provider_record_id")
+        bits = []
+        if action:
+            bits.append(action)
+        if count is not None and str(count).strip() != "":
+            bits.append(f"rows={count}")
+        if record_id:
+            bits.append(f"record={record_id}")
+        if obs_id:
+            bits.append(f"obs={obs_id}")
+        if bits:
+            lines.append(" ".join(bits))
+        summary = str(row.get("summary") or "").strip()
+        if summary and summary not in lines:
+            lines.append(summary[:400])
+    return lines[:12]
+
+
+def bind_finished_work(
+    task_state: dict[str, Any] | None,
+    *,
+    body: str | None = None,
+    title: str | None = None,
+) -> dict[str, Any]:
+    """Persist a task-bound report artifact from Observations (REQ-PX-011).
+
+    Description-only chat is not the deliverable. Numbers come only from
+    stored observation summaries/structured fields — never invented.
+    """
+    state = dict(task_state or {})
+    observations = [row for row in (state.get("execution_observations") or []) if isinstance(row, dict)]
+    successful = [row for row in observations if row.get("success")]
+    if not successful:
+        return state
+    plan = ExecutionPlan.from_dict(state.get("execution_plan"))
+    plan_id = plan.plan_id if plan is not None else ""
+    evidence = _observation_evidence_lines(successful)
+    diagnosis = str(body or "").strip()
+    if not diagnosis:
+        diagnosis = str(successful[-1].get("summary") or "").strip()
+    if not diagnosis:
+        diagnosis = "Work completed. Evidence is bound to the observations on this plan."
+    contract = DeliverableContract(
+        diagnosis=diagnosis[:4000],
+        evidence=evidence,
+        required=False,
+    )
+    report_title = str(title or (plan.summary if plan is not None else "") or "Finished work").strip()[:160]
+    markdown_bits = [diagnosis]
+    if evidence:
+        markdown_bits.append("")
+        markdown_bits.append("Evidence")
+        markdown_bits.extend(f"- {line}" for line in evidence)
+    if plan_id:
+        markdown_bits.append("")
+        markdown_bits.append(f"Plan `{plan_id}`")
+    markdown = "\n".join(markdown_bits)
+    artifact = {
+        "artifact_id": f"report:{plan_id or successful[-1].get('observation_id') or successful[-1].get('step_id') or 'work'}",
+        "kind": "report",
+        "title": report_title,
+        "preview": diagnosis[:280],
+        "mime_type": "text/markdown",
+        "source": "e5_execution_plan",
+        "metadata": {
+            "plan_id": plan_id or None,
+            "observation_ids": [
+                str(row.get("observation_id") or row.get("step_id"))
+                for row in successful
+                if row.get("observation_id") or row.get("step_id")
+            ][:8],
+            "code": markdown,
+            "previewFormat": "markdown",
+        },
+    }
+    prior = [row for row in (state.get(WORK_ARTIFACTS_KEY) or []) if isinstance(row, dict)]
+    merged = [row for row in prior if str(row.get("artifact_id") or "") != artifact["artifact_id"]]
+    merged.append(artifact)
+    state[DELIVERABLE_KEY] = contract.as_dict()
+    state[WORK_ARTIFACTS_KEY] = merged[-4:]
+    ck = load_checkpoint(state)
+    if ck is not None and artifact["artifact_id"] not in ck.artifact_refs:
+        ck.artifact_refs = list(ck.artifact_refs) + [str(artifact["artifact_id"])]
+        state[CHECKPOINT_KEY] = ck.as_dict()
+    return state
+
+
+def execution_result_from_finished_work(
+    task_state: dict[str, Any] | None,
+    *,
+    body: str | None = None,
+    success: bool = True,
+) -> dict[str, Any] | None:
+    """SSE/API ExecutionResult for a bound report — reuses ArtifactRegistry."""
+    state = bind_finished_work(task_state, body=body)
+    artifacts = [row for row in (state.get(WORK_ARTIFACTS_KEY) or []) if isinstance(row, dict)]
+    if not artifacts:
+        return None
+    from app.services.artifact_registry_service import serialize_execution_result
+    from app.services.conversational_execution_service import ExecutionResult
+
+    report = artifacts[-1]
+    markdown = ""
+    meta = report.get("metadata") if isinstance(report.get("metadata"), dict) else {}
+    markdown = str(meta.get("code") or report.get("preview") or body or "")
+    result = ExecutionResult(
+        success=success,
+        entity_type="report",
+        entity_id=str(meta.get("plan_id") or report.get("artifact_id") or ""),
+        title=str(report.get("title") or "Finished work"),
+        body=str(body or report.get("preview") or "")[:4000],
+        task_label=str(report.get("title") or "Finished work"),
+        structured={
+            "format": "markdown",
+            "content": markdown,
+            "title": report.get("title"),
+            "plan_id": meta.get("plan_id"),
+            "artifacts": artifacts,
+        },
+        artifacts=artifacts,
+    )
+    return serialize_execution_result(result)
 
 
 def apply_session_complete(

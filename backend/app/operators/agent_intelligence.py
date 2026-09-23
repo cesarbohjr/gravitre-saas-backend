@@ -3923,6 +3923,9 @@ class AgentIntelligence:
                         if isinstance(live_turn.get("progress_steps"), list)
                         else None
                     ),
+                    execution_result=live_turn.get("execution_result")
+                    if isinstance(live_turn.get("execution_result"), dict)
+                    else None,
                 )
                 pending_live = (
                     live_turn.get("pending_task")
@@ -3986,6 +3989,9 @@ class AgentIntelligence:
                     proactive_suggestions=[],
                     task_state=task_state,
                     pending_task=live_turn.get("pending_task"),
+                    execution_result=live_turn.get("execution_result")
+                    if isinstance(live_turn.get("execution_result"), dict)
+                    else None,
                 )
                 return
 
