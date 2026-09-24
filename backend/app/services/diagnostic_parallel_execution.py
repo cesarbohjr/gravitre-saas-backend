@@ -404,6 +404,25 @@ async def try_diagnostic_parallel_read_turn(
         structured["missing_sources"] = missing
         structured["provider_reinvoked"] = provider_reinvoked
         payload["structured"] = structured
+    evidence = None
+    live_obs = next((row for row in observations if row.success), None)
+    if live_obs is not None:
+        from app.services.provider_result_grounding import evidence_from_observation
+
+        structured_obs = live_obs.structured if isinstance(live_obs.structured, dict) else {}
+        count = structured_obs.get("result_count")
+        evidence = evidence_from_observation(
+            action_key=str(structured_obs.get("action_key") or live_obs.connector_id or ""),
+            result_count=int(count) if isinstance(count, int) else 0,
+            observation_id=live_obs.observation_id,
+            plan_id=plan.plan_id,
+            step_id=live_obs.step_id,
+            success=True,
+            provider_invoked=True,
+        )
+        if not provider_reinvoked:
+            evidence["kind"] = "identified_source"
+            evidence["source"] = str(live_obs.observation_id or live_obs.step_id)
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
@@ -413,5 +432,6 @@ async def try_diagnostic_parallel_read_turn(
         "execution_path": "diagnostic_parallel_read",
         "execution_result": payload,
         "provider_reinvoked": provider_reinvoked,
+        "provider_result_evidence": evidence,
         "diagnostic_conclusion": verdict,
     }

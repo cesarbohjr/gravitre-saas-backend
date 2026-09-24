@@ -77,6 +77,7 @@ async def test_why_pipeline_parallel_read_binds_fact_labels_and_missing_source()
     assert summaries
     assert all(item.strip().lower() != "ok" for item in summaries)
     assert "deal" in str(turn["message"]).lower()
+    assert "verified result" not in str(turn["message"]).lower()
 
 
 @pytest.mark.asyncio

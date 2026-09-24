@@ -135,7 +135,13 @@ async def test_large_ones_followup_recovers_observation_without_persisted_eviden
     assert turn["task_state"]["execution_plan"]["capability_id"] == "sales.pipeline.health"
 
 
-def test_ungrounded_deal_count_is_stripped() -> None:
+def test_catalog_eligibility_copy_is_not_treated_as_ungrounded_crm() -> None:
+    text = apply_provider_result_grounding(
+        "I found 12 eligible actions (cap 32). Writes still need approval and were not included.",
+        {"success": True, "execution_path": "catalog_search_eligible"},
+    )
+    assert "eligible actions" in text.lower()
+    assert "verified result" not in text.lower()
     text = apply_provider_result_grounding("Found 25 deals in your CRM.", {"success": True})
     assert "25" not in text
     assert "verified result" in text.lower() or "connected system" in text.lower()

@@ -145,6 +145,11 @@ def apply_provider_result_grounding(text: str, envelope: dict[str, Any] | None) 
     cleaned = (text or "").strip()
     if not cleaned:
         return cleaned
+    env = envelope if isinstance(envelope, dict) else {}
+    data = env.get("data") if isinstance(env.get("data"), dict) else {}
+    path = str(env.get("execution_path") or data.get("execution_path") or "")
+    if path == "catalog_search_eligible":
+        return cleaned
     evidence = extract_provider_result_evidence(envelope)
     if not looks_like_business_result_claim(cleaned):
         return cleaned
