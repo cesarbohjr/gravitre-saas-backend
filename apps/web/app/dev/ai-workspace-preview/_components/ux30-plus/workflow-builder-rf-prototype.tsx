@@ -6,20 +6,17 @@
  * Design / Live / Explain / History compositions · fixture run overlays only.
  */
 
-import { memo, useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Background,
   Controls,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
-  Handle,
-  Position,
   useEdgesState,
   useNodesState,
   type Edge,
   type Node,
-  type NodeProps,
   type OnConnect,
   type Connection,
 } from "@xyflow/react"
@@ -29,18 +26,16 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import {
   canvasToSavePayload,
-  type CanvasNodeType,
   type CanvasWorkflowNode,
-  type NodeState,
 } from "@/lib/workflows/builder-persistence"
 import { HarnessSurface } from "./topology-primitives"
 
 type BuilderMode = "design" | "live" | "explain" | "history" | "ai-preview"
 type RfBuilderNodeData = {
+  label?: string
   canvas: CanvasWorkflowNode
   selected: boolean
 }
-type RfBuilderNode = Node<RfBuilderNodeData, "workflowCanvas">
 
 const HARNESS_FIXTURE: CanvasWorkflowNode[] = [
   {
@@ -127,35 +122,23 @@ const HISTORY_FIXTURE = [
   { id: "v1", label: "v1 · scaffold", at: "2026-09-20T14:00:00Z", note: "Source → agent only" },
 ]
 
-function stateTone(state?: NodeState): string {
-  switch (state) {
-    case "running":
-    case "evaluating":
-    case "debating":
-      return "border-[color:var(--g-signal)] bg-[color:var(--g-signal-soft)]"
-    case "success":
-    case "consensus":
-      return "border-[color:var(--g-success)] bg-[color:var(--g-success-soft)]"
-    case "error":
-    case "escalated":
-      return "border-[color:var(--g-danger)] bg-[color:var(--g-danger-soft)]"
-    case "waiting":
-      return "border-[color:var(--g-warning)] bg-[color:var(--g-warning-soft)]"
-    default:
-      return "border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
-  }
-}
-
-function typeLabel(t: CanvasNodeType): string {
-  return t
-}
-
-function canvasToRf(nodes: CanvasWorkflowNode[]): { nodes: RfBuilderNode[]; edges: Edge[] } {
-  const rfNodes: RfBuilderNode[] = nodes.map((n) => ({
+function canvasToRf(nodes: CanvasWorkflowNode[]): { nodes: Node[]; edges: Edge[] } {
+  const rfNodes: Node[] = nodes.map((n) => ({
     id: n.id,
-    type: "workflowCanvas",
+    type: "default",
     position: { ...n.position },
-    data: { canvas: n, selected: false },
+    data: {
+      label: `${n.name}\n(${n.type}${n.state && n.state !== "idle" ? ` · ${n.state}` : ""})`,
+      canvas: n,
+      selected: false,
+    },
+    style: {
+      width: 200,
+      border: "1px solid var(--g-border-default)",
+      borderRadius: 8,
+      fontSize: 12,
+      background: "var(--g-surface-1)",
+    },
   }))
   const edges: Edge[] = []
   for (const n of nodes) {
@@ -172,51 +155,17 @@ function canvasToRf(nodes: CanvasWorkflowNode[]): { nodes: RfBuilderNode[]; edge
   return { nodes: rfNodes, edges }
 }
 
-function rfToCanvas(nodes: RfBuilderNode[], edges: Edge[]): CanvasWorkflowNode[] {
+function rfToCanvas(nodes: Node[], edges: Edge[]): CanvasWorkflowNode[] {
   return nodes.map((n) => {
     const connections = edges.filter((e) => e.source === n.id).map((e) => e.target)
+    const canvas = (n.data as RfBuilderNodeData).canvas
     return {
-      ...n.data.canvas,
+      ...canvas,
       position: { x: n.position.x, y: n.position.y },
       connections,
     }
   })
 }
-
-function WorkflowCanvasNodeView({ data, selected }: NodeProps<RfBuilderNode>) {
-  const n = data.canvas
-  return (
-    <>
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !bg-[color:var(--g-brand)]" />
-      <div
-        className={cn(
-          "w-[200px] rounded-lg border px-3 py-2 shadow-sm",
-          stateTone(n.state),
-          selected && "ring-2 ring-[color:var(--g-brand)]/60",
-        )}
-        data-testid={`rf-node-${n.id}`}
-      >
-        <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
-          {typeLabel(n.type)}
-          {n.state && n.state !== "idle" ? ` · ${n.state}` : ""}
-        </p>
-        <p className="truncate text-sm font-medium text-[color:var(--g-text-primary)]">{n.name}</p>
-        {n.description ? (
-          <p className="mt-0.5 line-clamp-2 text-[11px] text-[color:var(--g-text-secondary)]">{n.description}</p>
-        ) : null}
-        {n.vendor ? (
-          <p className="mt-1 font-mono text-[10px] text-[color:var(--g-text-muted)]">
-            {n.vendor}
-            {n.selectedAction ? ` · ${n.selectedAction}` : ""}
-          </p>
-        ) : null}
-      </div>
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !bg-[color:var(--g-brand)]" />
-    </>
-  )
-}
-
-const nodeTypes = { workflowCanvas: memo(WorkflowCanvasNodeView) }
 
 function BuilderCanvasInner({
   mode,
@@ -231,6 +180,11 @@ function BuilderCanvasInner({
   selectedEdgeId: string | null
   onSelectEdge: (id: string | null) => void
 }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const initial = useMemo(() => canvasToRf(HARNESS_FIXTURE), [])
   const [nodes, , onNodesChange] = useNodesState(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
@@ -250,132 +204,177 @@ function BuilderCanvasInner({
     [setEdges],
   )
 
-  const canvasNodes = useMemo(() => rfToCanvas(nodes, edges), [nodes, edges])
+  const canvasNodes = useMemo(() => {
+    // Prefer live RF graph; fall back to fixture so inspector/save proof always works.
+    if (nodes.length > 0) return rfToCanvas(nodes, edges)
+    return HARNESS_FIXTURE
+  }, [nodes, edges])
   const savePayload = useMemo(() => canvasToSavePayload(canvasNodes), [canvasNodes])
   const selected = canvasNodes.find((n) => n.id === selectedId) ?? null
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId) ?? null
   const editable = mode === "design" || mode === "ai-preview"
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-      <HarnessSurface className="relative h-[420px] overflow-hidden p-0">
-        <div className="absolute left-3 top-3 z-10 rounded-md border border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]/95 px-2 py-1 text-[10px] uppercase tracking-wide text-[color:var(--g-text-muted)]">
-          Prototype · not production builder · mode={mode}
+    <div className="space-y-3">
+      <HarnessSurface className="p-3">
+        <p className={TYPE.eyebrow}>Representative workflow · fixture · click to inspect</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {HARNESS_FIXTURE.map((n, i) => (
+            <div key={n.id} className="flex items-center gap-2">
+              {i > 0 ? <span className="text-[color:var(--g-text-muted)]">→</span> : null}
+              <button
+                type="button"
+                data-testid={`rf-node-${n.id}`}
+                onClick={() => onSelect(n.id)}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left text-sm",
+                  selectedId === n.id
+                    ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]"
+                    : "border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]",
+                )}
+              >
+                <span className="block text-[10px] uppercase text-[color:var(--g-text-muted)]">
+                  {n.type}
+                  {n.state && n.state !== "idle" ? ` · ${n.state}` : ""}
+                </span>
+                <span className="font-medium">{n.name}</span>
+              </button>
+            </div>
+          ))}
         </div>
-        <ReactFlow
-          nodes={nodes.map((n) => ({
-            ...n,
-            data: { ...n.data, selected: n.id === selectedId },
-            selected: n.id === selectedId,
-          }))}
-          edges={edges.map((e) => ({
-            ...e,
-            selected: e.id === selectedEdgeId,
-            style: {
-              ...e.style,
-              stroke: e.id === selectedEdgeId ? "var(--g-brand)" : "var(--g-border-strong, #64748b)",
-              strokeWidth: e.id === selectedEdgeId ? 2.5 : 1.5,
-            },
-          }))}
-          onNodesChange={editable ? onNodesChange : undefined}
-          onEdgesChange={editable ? onEdgesChange : undefined}
-          onConnect={editable ? onConnect : undefined}
-          nodeTypes={nodeTypes}
-          fitView
-          proOptions={{ hideAttribution: true }}
-          nodesDraggable={editable}
-          nodesConnectable={editable}
-          elementsSelectable
-          onSelectionChange={({ nodes: sel, edges: edgeSel }) => {
-            onSelect(sel[0]?.id ?? null)
-            onSelectEdge(edgeSel[0]?.id ?? null)
-          }}
-          className="bg-[color:var(--g-canvas)]"
-        >
-          <Background gap={18} color="var(--g-border-subtle)" />
-          <Controls showInteractive={editable} />
-          <MiniMap pannable zoomable className="!bg-[color:var(--g-surface-1)]" />
-        </ReactFlow>
+        <p className={cn(TYPE.meta, "mt-2")}>
+          Same CanvasWorkflowNode fixture as RF layer · branches at Route → HubSpot / Nurture
+        </p>
       </HarnessSurface>
 
-      <div className="space-y-3">
-        {mode === "ai-preview" && (
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        <HarnessSurface className="relative h-[420px] overflow-hidden p-0">
+          <div className="absolute left-3 top-3 z-10 rounded-md border border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]/95 px-2 py-1 text-[10px] uppercase tracking-wide text-[color:var(--g-text-muted)]">
+            @xyflow visual layer · mode={mode} · client-mounted={mounted ? "yes" : "no"}
+          </div>
+          {mounted ? (
+            <div className="h-full w-full">
+              <ReactFlow
+                nodes={nodes.map((n) => ({
+                  ...n,
+                  selected: n.id === selectedId,
+                }))}
+                edges={edges.map((e) => ({
+                  ...e,
+                  selected: e.id === selectedEdgeId,
+                  style: {
+                    ...e.style,
+                    stroke: e.id === selectedEdgeId ? "var(--g-brand)" : "var(--g-border-strong, #64748b)",
+                    strokeWidth: e.id === selectedEdgeId ? 2.5 : 1.5,
+                  },
+                }))}
+                onNodesChange={editable ? onNodesChange : onNodesChange}
+                onEdgesChange={editable ? onEdgesChange : undefined}
+                onConnect={editable ? onConnect : undefined}
+                fitView
+                fitViewOptions={{ padding: 0.25 }}
+                minZoom={0.2}
+                maxZoom={1.75}
+                proOptions={{ hideAttribution: true }}
+                nodesDraggable={editable}
+                nodesConnectable={editable}
+                elementsSelectable
+                onNodeClick={(_, node) => onSelect(node.id)}
+                onEdgeClick={(_, edge) => onSelectEdge(edge.id)}
+                className="h-full w-full bg-[color:var(--g-canvas)]"
+                style={{ width: "100%", height: "100%" }}
+              >
+                <Background gap={18} color="var(--g-border-subtle)" />
+                <Controls showInteractive={editable} />
+                <MiniMap pannable zoomable className="!bg-[color:var(--g-surface-1)]" />
+              </ReactFlow>
+            </div>
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-[color:var(--g-text-muted)]">
+              Mounting React Flow…
+            </div>
+          )}
+        </HarnessSurface>
+
+        <div className="space-y-3">
+          {mode === "ai-preview" && (
+            <HarnessSurface className="p-3">
+              <p className={TYPE.eyebrow}>AI-generated (fixture)</p>
+              <p className="mt-1 text-xs">Plan applied to canonical nodes · Open full builder = production route later</p>
+              <Button size="sm" className="mt-2" variant="secondary" asChild>
+                <a href="/dev/ai-workspace-preview?s=workflow-gen&scene=preview">Open gen composition</a>
+              </Button>
+            </HarnessSurface>
+          )}
           <HarnessSurface className="p-3">
-            <p className={TYPE.eyebrow}>AI-generated (fixture)</p>
-            <p className="mt-1 text-xs">Plan applied to canonical nodes · Open full builder = production route later</p>
-            <Button size="sm" className="mt-2" variant="secondary" asChild>
-              <a href="/dev/ai-workspace-preview?s=workflow-gen&scene=preview">Open gen composition</a>
-            </Button>
-          </HarnessSurface>
-        )}
-        <HarnessSurface className="p-3">
-          <p className={TYPE.eyebrow}>Node inspector</p>
-          {selected ? (
-            <div className="mt-2 space-y-1 text-sm">
-              <p className="font-medium">{selected.name}</p>
-              <p className="text-[color:var(--g-text-muted)]">
-                {selected.type} · {selected.id}
-              </p>
-              {mode === "explain" && selected.decisionConfig?.reasoning ? (
-                <p className="mt-2 text-xs text-[color:var(--g-text-secondary)]">
-                  {selected.decisionConfig.reasoning.summary} (
-                  {Math.round(selected.decisionConfig.reasoning.confidence * 100)}%)
+            <p className={TYPE.eyebrow}>Node inspector</p>
+            {selected ? (
+              <div className="mt-2 space-y-1 text-sm">
+                <p className="font-medium">{selected.name}</p>
+                <p className="text-[color:var(--g-text-muted)]">
+                  {selected.type} · {selected.id}
                 </p>
-              ) : null}
-              {mode === "live" && selected.state ? (
-                <p className="mt-2 text-xs">Live overlay from fixture NodeState: {selected.state}</p>
-              ) : null}
-            </div>
-          ) : (
-            <p className={cn(TYPE.meta, "mt-2")}>Select a node</p>
-          )}
-        </HarnessSurface>
-
-        <HarnessSurface className="p-3">
-          <p className={TYPE.eyebrow}>Edge inspector</p>
-          {selectedEdge ? (
-            <div className="mt-2 space-y-1 text-xs">
-              <p className="font-mono">{selectedEdge.id}</p>
-              <p>
-                {selectedEdge.source} → {selectedEdge.target}
-              </p>
-              <p className="text-[color:var(--g-text-muted)]">Maps to connections[] / fromNodeId·toNodeId</p>
-            </div>
-          ) : (
-            <p className={cn(TYPE.meta, "mt-2")}>Select an edge</p>
-          )}
-        </HarnessSurface>
-
-        <HarnessSurface className="p-3">
-          <p className={TYPE.eyebrow}>Save/load mapping evidence</p>
-          <pre className="mt-2 max-h-36 overflow-auto rounded border border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-2 font-mono text-[10px] text-[color:var(--g-text-secondary)]">
-            {JSON.stringify(
-              {
-                nodeCount: savePayload.nodes.length,
-                edgeCount: savePayload.edges.length,
-                edges: savePayload.edges.slice(0, 8),
-              },
-              null,
-              2,
+                {mode === "explain" && selected.decisionConfig?.reasoning ? (
+                  <p className="mt-2 text-xs text-[color:var(--g-text-secondary)]">
+                    {selected.decisionConfig.reasoning.summary} (
+                    {Math.round(selected.decisionConfig.reasoning.confidence * 100)}%)
+                  </p>
+                ) : null}
+                {mode === "live" && selected.state ? (
+                  <p className="mt-2 text-xs">Live overlay from fixture NodeState: {selected.state}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className={cn(TYPE.meta, "mt-2")}>Select a node</p>
             )}
-          </pre>
-        </HarnessSurface>
-
-        {mode === "history" ? (
-          <HarnessSurface className="p-3">
-            <p className={TYPE.eyebrow}>History composition</p>
-            <ul className="mt-2 space-y-2 text-xs">
-              {HISTORY_FIXTURE.map((h) => (
-                <li key={h.id} className="border-b border-[color:var(--g-border-subtle)] pb-2">
-                  <p className="font-medium">{h.label}</p>
-                  <p className="text-[color:var(--g-text-muted)]">{h.at}</p>
-                  <p>{h.note}</p>
-                </li>
-              ))}
-            </ul>
-            <p className={cn(TYPE.meta, "mt-2")}>UI shell only — version restore API not wired (functional gap).</p>
           </HarnessSurface>
-        ) : null}
+
+          <HarnessSurface className="p-3">
+            <p className={TYPE.eyebrow}>Edge inspector</p>
+            {selectedEdge ? (
+              <div className="mt-2 space-y-1 text-xs">
+                <p className="font-mono">{selectedEdge.id}</p>
+                <p>
+                  {selectedEdge.source} → {selectedEdge.target}
+                </p>
+                <p className="text-[color:var(--g-text-muted)]">Maps to connections[] / fromNodeId·toNodeId</p>
+              </div>
+            ) : (
+              <p className={cn(TYPE.meta, "mt-2")}>Select an edge · or inspect via node connections</p>
+            )}
+          </HarnessSurface>
+
+          <HarnessSurface className="p-3">
+            <p className={TYPE.eyebrow}>Save/load mapping evidence</p>
+            <pre className="mt-2 max-h-36 overflow-auto rounded border border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-2 font-mono text-[10px] text-[color:var(--g-text-secondary)]">
+              {JSON.stringify(
+                {
+                  nodeCount: savePayload.nodes.length,
+                  edgeCount: savePayload.edges.length,
+                  edges: savePayload.edges.slice(0, 8),
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </HarnessSurface>
+
+          {mode === "history" ? (
+            <HarnessSurface className="p-3">
+              <p className={TYPE.eyebrow}>History composition</p>
+              <ul className="mt-2 space-y-2 text-xs">
+                {HISTORY_FIXTURE.map((h) => (
+                  <li key={h.id} className="border-b border-[color:var(--g-border-subtle)] pb-2">
+                    <p className="font-medium">{h.label}</p>
+                    <p className="text-[color:var(--g-text-muted)]">{h.at}</p>
+                    <p>{h.note}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className={cn(TYPE.meta, "mt-2")}>UI shell only — version restore API not wired (functional gap).</p>
+            </HarnessSurface>
+          ) : null}
+        </div>
       </div>
     </div>
   )

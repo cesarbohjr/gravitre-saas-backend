@@ -14,18 +14,22 @@
 | 5 Design-system consolidation | ✅ Master + `GRAVITRE_*.md` companions |
 | 6 Structural prototypes | ✅ Partial — see `13-phase6-prototype-queue.md` |
 | 7 Validation | ⬜ Per prototype; journeys NOT PROVEN until authenticated evidence |
-| 8 Production implementation | **BLOCKED** — G-STRUCT |
+| 8 Production implementation | **BLOCKED** — awaiting Cesar G-STRUCT + Slice 0 authorize (`20-g-struct-decision-package.md`) |
 
 ## Release gates
 
 | Gate | Required | Blocks |
 |------|----------|--------|
-| **G-STRUCT** | Cesar approves window + Field primacy + page-intro + RF cutover | Broad Phase 8 |
+| **G-STRUCT** | Cesar records page-intro vocabulary/map, WM policy, Intelligence structure, AI/Model Studio direction, RF Option B as direction-only (not cutover) | Broad Phase 8 |
 | **G-DEP** | Cesar approves new platform deps | Installs |
 | **G-FUNC** | No overwrite of Platform Execution contracts | Shared file PRs |
 | **G-PROOF** | Authenticated journey PASS with evidence pointer | “Shipped UX” claims |
 | **G-HONEST** | No invented prices/badges/confidence/artifacts | Any customer surface |
 | **§43 coverage** | Routes dispositioned in `15-coverage-matrix.md` | Declaring redesign complete |
+
+## First production slice (after G-STRUCT)
+
+**Slice 0:** tokens/typography → shared primitives → Window Manager presentation shell. See `20-g-struct-decision-package.md` §9.
 
 ## Safe defect track (not Phase 8)
 

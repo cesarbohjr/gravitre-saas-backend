@@ -33,9 +33,11 @@ import { DashboardConceptsPrototype } from "./ux30-plus/dashboard-concepts-proto
 import { AgentWorkspaceConceptsPrototype } from "./ux30-plus/agent-workspace-concepts-prototype"
 import { WorkflowGenPreviewPrototype } from "./ux30-plus/workflow-gen-preview-prototype"
 import { SaaSFrameResearchTrace } from "./ux30-plus/saasframe-research-trace"
+import { GStructDecisionPackage } from "./ux30-plus/g-struct-decision-package"
 
 const UX30_SURFACES = [
   "selection",
+  "g-struct",
   "saasframe",
   "page-intro",
   "window-manager",
@@ -73,6 +75,7 @@ type Surface = Ux30Surface | LegacySurface
 
 const UX30_SCENES: Record<Ux30Surface, string[]> = {
   selection: ["index"],
+  "g-struct": ["decide"],
   saasframe: ["trace"],
   foundation: ["default", "reduced"],
   intelligence: [
@@ -195,6 +198,7 @@ export function DesignExplorationShell() {
       </header>
       <main className="p-4 md:p-6">
         {surface === "selection" && <DesignSelectionIndex />}
+        {surface === "g-struct" && <GStructDecisionPackage scene={scene} />}
         {surface === "saasframe" && <SaaSFrameResearchTrace scene={scene} />}
         {surface === "foundation" && <FoundationPrototype scene={scene} />}
         {surface === "intelligence" && <IntelligenceFieldPrototype scene={scene} />}
@@ -228,6 +232,7 @@ export function DesignExplorationShell() {
 
 function defaultScene(surface: Surface): string {
   if (surface === "selection") return "index"
+  if (surface === "g-struct") return "decide"
   if (surface === "saasframe") return "trace"
   if (surface === "foundation") return "default"
   if (surface === "intelligence") return "field-primary"

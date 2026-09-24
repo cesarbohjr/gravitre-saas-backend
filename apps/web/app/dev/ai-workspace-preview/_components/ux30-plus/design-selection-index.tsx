@@ -201,19 +201,22 @@ export function DesignSelectionIndex() {
         <p className={TYPE.eyebrow}>How to review</p>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-[color:var(--g-text-secondary)]">
           <li>
-            Start with{" "}
+            Open{" "}
+            <a className="text-[color:var(--g-brand)] underline-offset-2 hover:underline" href="/dev/ai-workspace-preview?s=g-struct">
+              G-STRUCT decision package
+            </a>{" "}
+            and record selections (or use{" "}
+            <code className="font-mono text-[11px]">docs/design/3.0-plus/20-g-struct-decision-package.md</code>).
+          </li>
+          <li>
+            Optionally review{" "}
             <a className="text-[color:var(--g-brand)] underline-offset-2 hover:underline" href="/dev/ai-workspace-preview?s=saasframe">
               SaaSFrame research → design
-            </a>{" "}
-            (REF → pattern → Gravitre → preview).
+            </a>
+            .
           </li>
-          <li>Open each section’s links below in this harness (same tab).</li>
-          <li>Compare structural differences (layout / hierarchy / interaction), not cosmetics.</li>
-          <li>
-            Offline backup screenshots:{" "}
-            <code className="font-mono text-[11px]">docs/design/3.0-plus/selection-shots/</code>
-          </li>
-          <li>Record selections in the checklist at the bottom — do not approve Phase 8 from text alone.</li>
+          <li>Open each section’s links below only if you need more detail — do not treat the harness as production.</li>
+          <li>Do not approve Phase 8 until G-STRUCT is signed and Slice 0 is explicitly authorized.</li>
         </ol>
       </HarnessSurface>
 
