@@ -30,16 +30,24 @@ getBuilder/saveBuilder · execute/dryRun · Meson reload · approvals · governa
 
 ## Gaps / would regress without more work
 
-| Gap | Severity | Owner |
-|-----|----------|-------|
-| Decision multi-out handle dimming | Med | Frontend migration |
-| Council debate UI | Med | Frontend + existing config |
-| Meson suggest/apply on RF canvas | Med | Frontend; keep Meson contracts |
-| Version restore API | High if History is product | Functional |
-| Live step map from runsApi | Med | Consume existing run poll; no fake SSE |
-| Full keyboard a11y on custom nodes | Med | Frontend |
-| Dual React Flow instances (Relationships + Builder) | Low–Med bundle | Code-split already pattern |
+| Gap | Severity | Owner | In this package |
+|-----|----------|-------|-----------------|
+| Decision multi-out handle dimming | Med | Frontend migration | **Not demonstrated** |
+| Council debate UI | Med | Frontend + existing config | **Not demonstrated** |
+| Meson suggest/apply on RF canvas | Med | Frontend; keep Meson contracts | **Not demonstrated** |
+| Version restore API | High if History is product | Functional | History UI shell only |
+| Live step map from runsApi | Med | Consume existing run poll; no fake SSE | Fixture NodeState only |
+| Full keyboard a11y on custom nodes | Med | Frontend | PARTIAL |
+| Dual React Flow instances (Relationships + Builder) | Low–Med bundle | Code-split already pattern | Acceptable for harness |
+
+## Newly demonstrated (Phase 6 selection package)
+
+| Capability | Where |
+|------------|--------|
+| Edge inspection | `?s=workflow-rf` edge inspector |
+| AI-generated → compact preview → RF | `?s=workflow-gen` + `scene=ai-preview` |
+| Demonstrated vs conceptual callout | RF prototype footer |
 
 ## Cutover ask (later)
 
-Present this harness + golden PUT fixture tests to Cesar before any production builder swap. Runtime/execution engine remains functional-agent owned.
+Present this harness + golden PUT fixture tests to Cesar before any production builder swap. Runtime/execution engine remains functional-agent owned. **Do not request cutover from text-only report.**

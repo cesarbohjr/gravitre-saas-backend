@@ -35,7 +35,7 @@ import {
 } from "@/lib/workflows/builder-persistence"
 import { HarnessSurface } from "./topology-primitives"
 
-type BuilderMode = "design" | "live" | "explain" | "history"
+type BuilderMode = "design" | "live" | "explain" | "history" | "ai-preview"
 type RfBuilderNodeData = {
   canvas: CanvasWorkflowNode
   selected: boolean
@@ -222,10 +222,14 @@ function BuilderCanvasInner({
   mode,
   selectedId,
   onSelect,
+  selectedEdgeId,
+  onSelectEdge,
 }: {
   mode: BuilderMode
   selectedId: string | null
   onSelect: (id: string | null) => void
+  selectedEdgeId: string | null
+  onSelectEdge: (id: string | null) => void
 }) {
   const initial = useMemo(() => canvasToRf(HARNESS_FIXTURE), [])
   const [nodes, , onNodesChange] = useNodesState(initial.nodes)
@@ -249,6 +253,8 @@ function BuilderCanvasInner({
   const canvasNodes = useMemo(() => rfToCanvas(nodes, edges), [nodes, edges])
   const savePayload = useMemo(() => canvasToSavePayload(canvasNodes), [canvasNodes])
   const selected = canvasNodes.find((n) => n.id === selectedId) ?? null
+  const selectedEdge = edges.find((e) => e.id === selectedEdgeId) ?? null
+  const editable = mode === "design" || mode === "ai-preview"
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
@@ -262,28 +268,48 @@ function BuilderCanvasInner({
             data: { ...n.data, selected: n.id === selectedId },
             selected: n.id === selectedId,
           }))}
-          edges={edges}
-          onNodesChange={mode === "design" ? onNodesChange : undefined}
-          onEdgesChange={mode === "design" ? onEdgesChange : undefined}
-          onConnect={mode === "design" ? onConnect : undefined}
+          edges={edges.map((e) => ({
+            ...e,
+            selected: e.id === selectedEdgeId,
+            style: {
+              ...e.style,
+              stroke: e.id === selectedEdgeId ? "var(--g-brand)" : "var(--g-border-strong, #64748b)",
+              strokeWidth: e.id === selectedEdgeId ? 2.5 : 1.5,
+            },
+          }))}
+          onNodesChange={editable ? onNodesChange : undefined}
+          onEdgesChange={editable ? onEdgesChange : undefined}
+          onConnect={editable ? onConnect : undefined}
           nodeTypes={nodeTypes}
           fitView
           proOptions={{ hideAttribution: true }}
-          nodesDraggable={mode === "design"}
-          nodesConnectable={mode === "design"}
+          nodesDraggable={editable}
+          nodesConnectable={editable}
           elementsSelectable
-          onSelectionChange={({ nodes: sel }) => onSelect(sel[0]?.id ?? null)}
+          onSelectionChange={({ nodes: sel, edges: edgeSel }) => {
+            onSelect(sel[0]?.id ?? null)
+            onSelectEdge(edgeSel[0]?.id ?? null)
+          }}
           className="bg-[color:var(--g-canvas)]"
         >
           <Background gap={18} color="var(--g-border-subtle)" />
-          <Controls showInteractive={mode === "design"} />
+          <Controls showInteractive={editable} />
           <MiniMap pannable zoomable className="!bg-[color:var(--g-surface-1)]" />
         </ReactFlow>
       </HarnessSurface>
 
       <div className="space-y-3">
+        {mode === "ai-preview" && (
+          <HarnessSurface className="p-3">
+            <p className={TYPE.eyebrow}>AI-generated (fixture)</p>
+            <p className="mt-1 text-xs">Plan applied to canonical nodes · Open full builder = production route later</p>
+            <Button size="sm" className="mt-2" variant="secondary" asChild>
+              <a href="/dev/ai-workspace-preview?s=workflow-gen&scene=preview">Open gen composition</a>
+            </Button>
+          </HarnessSurface>
+        )}
         <HarnessSurface className="p-3">
-          <p className={TYPE.eyebrow}>Inspector</p>
+          <p className={TYPE.eyebrow}>Node inspector</p>
           {selected ? (
             <div className="mt-2 space-y-1 text-sm">
               <p className="font-medium">{selected.name}</p>
@@ -299,9 +325,6 @@ function BuilderCanvasInner({
               {mode === "live" && selected.state ? (
                 <p className="mt-2 text-xs">Live overlay from fixture NodeState: {selected.state}</p>
               ) : null}
-              {selected.stepError ? (
-                <p className="text-xs text-[color:var(--g-danger)]">{selected.stepError}</p>
-              ) : null}
             </div>
           ) : (
             <p className={cn(TYPE.meta, "mt-2")}>Select a node</p>
@@ -309,24 +332,28 @@ function BuilderCanvasInner({
         </HarnessSurface>
 
         <HarnessSurface className="p-3">
-          <p className={TYPE.eyebrow}>Persistence evidence</p>
-          <p className={cn(TYPE.meta, "mt-2")}>
-            Round-trip via <code className="font-mono text-[10px]">canvasToSavePayload</code> — same PUT shape as
-            production builder.
-          </p>
-          <pre className="mt-2 max-h-40 overflow-auto rounded border border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-2 font-mono text-[10px] text-[color:var(--g-text-secondary)]">
+          <p className={TYPE.eyebrow}>Edge inspector</p>
+          {selectedEdge ? (
+            <div className="mt-2 space-y-1 text-xs">
+              <p className="font-mono">{selectedEdge.id}</p>
+              <p>
+                {selectedEdge.source} → {selectedEdge.target}
+              </p>
+              <p className="text-[color:var(--g-text-muted)]">Maps to connections[] / fromNodeId·toNodeId</p>
+            </div>
+          ) : (
+            <p className={cn(TYPE.meta, "mt-2")}>Select an edge</p>
+          )}
+        </HarnessSurface>
+
+        <HarnessSurface className="p-3">
+          <p className={TYPE.eyebrow}>Save/load mapping evidence</p>
+          <pre className="mt-2 max-h-36 overflow-auto rounded border border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-2 font-mono text-[10px] text-[color:var(--g-text-secondary)]">
             {JSON.stringify(
               {
                 nodeCount: savePayload.nodes.length,
                 edgeCount: savePayload.edges.length,
-                edges: savePayload.edges.slice(0, 6),
-                sampleNode: savePayload.nodes[0]
-                  ? {
-                      id: savePayload.nodes[0].id,
-                      type: savePayload.nodes[0].type,
-                      position: savePayload.nodes[0].position,
-                    }
-                  : null,
+                edges: savePayload.edges.slice(0, 8),
               },
               null,
               2,
@@ -346,9 +373,7 @@ function BuilderCanvasInner({
                 </li>
               ))}
             </ul>
-            <p className={cn(TYPE.meta, "mt-2")}>
-              UI shell only — version restore requires functional workflow history contract (not mocked as live).
-            </p>
+            <p className={cn(TYPE.meta, "mt-2")}>UI shell only — version restore API not wired (functional gap).</p>
           </HarnessSurface>
         ) : null}
       </div>
@@ -364,22 +389,25 @@ export function WorkflowBuilderRfPrototype({ scene }: { scene: string }) {
         ? "explain"
         : scene.includes("history")
           ? "history"
-          : "design"
+          : scene.includes("ai-preview") || scene.includes("ai")
+            ? "ai-preview"
+            : "design"
   const [selectedId, setSelectedId] = useState<string | null>("decision-route")
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
 
   return (
     <div data-review-surface="workflow-rf" data-review-scene={scene} className="mx-auto max-w-6xl space-y-4">
       <header>
-        <p className={TYPE.eyebrow}>3.0 Plus · Option B prototype · harness only</p>
+        <p className={TYPE.eyebrow}>Selection D · Option B prototype · harness only</p>
         <h2 className={cn(TYPE.pageTitle, "mt-1")}>React Flow Workflow Builder (visual layer)</h2>
         <p className={cn(TYPE.pageLead, "mt-2")}>
-          Maps fixture <code className="font-mono text-xs">CanvasWorkflowNode[]</code> ↔ @xyflow. Does not call
-          getBuilder/saveBuilder. Does not replace <code className="font-mono text-xs">app/workflows/[id]/builder</code>.
+          Demonstrated vs conceptual distinguished below. Production builder untouched. Gaps: Meson apply, decision
+          multi-handles, council UI, version restore API, live runsApi overlays.
         </p>
       </header>
 
       <div className="flex flex-wrap gap-2">
-        {(["design", "live", "explain", "history"] as const).map((m) => (
+        {(["design", "live", "explain", "history", "ai-preview"] as const).map((m) => (
           <Button key={m} size="sm" variant={mode === m ? "secondary" : "ghost"} asChild>
             <a href={`/dev/ai-workspace-preview?s=workflow-rf&scene=${m}`}>{m}</a>
           </Button>
@@ -387,19 +415,26 @@ export function WorkflowBuilderRfPrototype({ scene }: { scene: string }) {
       </div>
 
       <ReactFlowProvider>
-        <BuilderCanvasInner mode={mode} selectedId={selectedId} onSelect={setSelectedId} />
+        <BuilderCanvasInner
+          mode={mode}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          selectedEdgeId={selectedEdgeId}
+          onSelectEdge={setSelectedEdgeId}
+        />
       </ReactFlowProvider>
 
       <HarnessSurface className="p-4">
-        <p className={TYPE.eyebrow}>Preservation / regression ledger</p>
+        <p className={TYPE.eyebrow}>Demonstrated vs conceptual</p>
         <ul className={cn(TYPE.bodyMuted, "mt-2 list-disc space-y-1 pl-5 text-sm")}>
-          <li>Preserved in prototype: node types, positions, connections→edges, inspector, Design pan/zoom/minimap</li>
-          <li>Preserved via shared lib (not rewritten): canvasToSavePayload edge shape {"{ fromNodeId, toNodeId }"}</li>
-          <li>Composition only: Live overlays use fixture NodeState — no fake execute</li>
-          <li>Composition only: Explain uses decisionConfig.reasoning when present</li>
-          <li>Composition only: History list — no restore API wired</li>
-          <li>Not in prototype: Meson apply, dry-run drawer, pause/cancel, decision multi-handle dimming, council debate UI</li>
-          <li>Would need functional work for production: version history API, richer Live SSE step map, a11y labels on custom nodes</li>
+          <li>
+            <strong>Demonstrated:</strong> RF canvas, Design edit/connect, node+edge inspect, canvasToSavePayload,
+            Live/Explain/History compositions, AI-preview fixture graph
+          </li>
+          <li>
+            <strong>Conceptual / not wired:</strong> getBuilder/saveBuilder HTTP, Meson apply, decision multi-handles,
+            council debate, version restore, runsApi live poll
+          </li>
         </ul>
       </HarnessSurface>
     </div>

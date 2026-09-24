@@ -1,8 +1,8 @@
 "use client"
 
 /**
- * Page introduction / information-hierarchy variants — harness only.
- * Operating · Expert · Empty · Immersive — Cesar structural selection.
+ * Page-intro structural choice package — realistic content + family map + compare.
+ * Harness only · Cesar selects · not one global header.
  */
 
 import { Button } from "@/components/ui/button"
@@ -10,103 +10,219 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { HarnessSurface } from "./topology-primitives"
 
-type IntroVariant = "operating" | "expert" | "empty" | "immersive"
+type IntroVariant = "operating" | "expert" | "empty" | "immersive" | "compare"
 
-const VARIANTS: IntroVariant[] = ["operating", "expert", "empty", "immersive"]
+const FAMILIES: Record<Exclude<IntroVariant, "compare">, string[]> = {
+  operating: ["Dashboard", "Activity", "Assignments", "Approvals", "Notifications", "Goals (list)"],
+  expert: ["Workflow Builder", "Model Studio", "Connectors admin", "Settings dense", "Agent configuration"],
+  empty: ["First-run any family", "Insufficient Intelligence data", "No connectors", "Empty Marketplace search"],
+  immersive: ["Intelligence Field", "Relationship Graph", "Knowledge Graph", "Fullscreen AI work"],
+}
+
+const TRADEOFFS: Record<Exclude<IntroVariant, "compare">, { pros: string; cons: string }> = {
+  operating: {
+    pros: "Answer what matters now; clear primary action; suits interrupted operators.",
+    cons: "Weak for dense expert canvas; strips can become KPI card parking.",
+  },
+  expert: {
+    pros: "Metadata + tools first; maximizes workspace; power users orient fast.",
+    cons: "Cold for first-run; can feel like admin software.",
+  },
+  empty: {
+    pros: "Honest insufficient data; one next action; avoids fake density.",
+    cons: "Must not be the default when data exists.",
+  },
+  immersive: {
+    pros: "Field/canvas is the product; chrome recedes; matches §21 Field primacy.",
+    cons: "Harder discoverability of secondary actions; needs strong empty handling.",
+  },
+}
+
+function OperatingFrame({ mobile }: { mobile?: boolean }) {
+  return (
+    <HarnessSurface className={cn("space-y-4 p-5", mobile && "max-w-[390px]")}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className={TYPE.eyebrow}>Operating</p>
+          <h3 className={cn(TYPE.pageTitle, "mt-1")}>Intelligence</h3>
+          <p className={cn(TYPE.pageLead, "mt-1")}>3 accounts need attention · 1 workflow waiting on approval.</p>
+        </div>
+        <Button size="sm">Review approvals</Button>
+      </div>
+      <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "sm:grid-cols-3")}>
+        {[
+          ["Needs attention", "Acme renewal risk"],
+          ["Running", "Prospect enrich · step 2/5"],
+          ["Next action", "Approve HubSpot write"],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-[color:var(--g-border-subtle)] p-3">
+            <p className={TYPE.meta}>{label}</p>
+            <p className="mt-1 text-sm font-medium">{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary">
+          What changed?
+        </Button>
+        <Button size="sm" variant="ghost">
+          Open Matrix
+        </Button>
+        <Button size="sm" variant="ghost">
+          Ask Gravitre
+        </Button>
+      </div>
+      <div className="h-36 rounded-lg border border-dashed border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-3">
+        <p className={TYPE.meta}>Field preview (secondary under operating strip)</p>
+      </div>
+    </HarnessSurface>
+  )
+}
+
+function ExpertFrame({ mobile }: { mobile?: boolean }) {
+  return (
+    <HarnessSurface className={cn("p-5", mobile && "max-w-[390px]")}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className={TYPE.eyebrow}>Expert</p>
+          <h3 className={cn(TYPE.pageTitle, "mt-1")}>Intelligence</h3>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-mono text-[11px] text-[color:var(--g-text-muted)]">128 entities · 412 rel · lens knows</p>
+          <Button size="sm" variant="secondary">
+            Filters
+          </Button>
+          <Button size="sm">Inspect</Button>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1 border-b border-[color:var(--g-border-subtle)] pb-2 text-xs">
+        {["Field", "Matrix", "Relationships", "Predictive"].map((t) => (
+          <span
+            key={t}
+            className={cn(
+              "rounded-md px-2 py-1",
+              t === "Field" ? "bg-[color:var(--g-intelligence-soft)]" : "text-[color:var(--g-text-muted)]",
+            )}
+          >
+            {t}
+          </span>
+        ))}
+      </div>
+      <div className="mt-4 h-56 rounded-lg border border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]" />
+    </HarnessSurface>
+  )
+}
+
+function EmptyFrame() {
+  return (
+    <HarnessSurface className="flex min-h-[280px] flex-col items-start justify-center p-8">
+      <p className={TYPE.eyebrow}>Empty / first-run</p>
+      <h3 className={cn(TYPE.pageTitle, "mt-2")}>No knowledge fabric yet</h3>
+      <p className={cn(TYPE.pageLead, "mt-2 max-w-md")}>
+        Connect a source or run a workflow that writes entities. Do not invent demo graph density.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button size="sm">Connect source</Button>
+        <Button size="sm" variant="secondary">
+          Open Marketplace packs
+        </Button>
+      </div>
+    </HarnessSurface>
+  )
+}
+
+function ImmersiveFrame() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-[color:var(--g-border-default)]">
+      <div className="relative h-[380px] bg-[color:var(--g-canvas)]">
+        <svg className="absolute inset-0 h-full w-full" aria-hidden>
+          <line x1="20%" y1="40%" x2="48%" y2="52%" stroke="var(--g-border-subtle)" />
+          <line x1="48%" y1="52%" x2="72%" y2="30%" stroke="var(--g-border-subtle)" />
+          <circle cx="20%" cy="40%" r="6" fill="var(--g-intelligence)" />
+          <circle cx="48%" cy="52%" r="8" fill="var(--g-brand)" />
+          <circle cx="72%" cy="30%" r="6" fill="var(--g-signal)" />
+        </svg>
+        <div className="absolute left-4 top-4 max-w-sm rounded-lg border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/95 p-3">
+          <p className={TYPE.eyebrow}>Immersive</p>
+          <h3 className={cn(TYPE.cardTitle, "mt-1")}>Field is the page</h3>
+          <p className={TYPE.meta}>Acme · relationship strengthened · Ask or inspect</p>
+          <div className="mt-2 flex gap-2">
+            <Button size="sm">Inspect</Button>
+            <Button size="sm" variant="ghost">
+              Matrix
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function PageIntroVariantsPrototype({ scene }: { scene: string }) {
-  const variant = (VARIANTS.find((v) => scene.includes(v)) ?? "operating") as IntroVariant
+  const variant = (["operating", "expert", "empty", "immersive", "compare"].find((v) => scene.includes(v)) ??
+    "operating") as IntroVariant
+  const mobile = scene.includes("mobile")
 
   return (
     <div data-review-surface="page-intro" data-review-scene={scene} className="mx-auto max-w-5xl space-y-4">
       <header>
-        <p className={TYPE.eyebrow}>3.0 Plus · Page introduction variants · harness only</p>
-        <h2 className={cn(TYPE.pageTitle, "mt-1")}>Information hierarchy — pick one structural direction</h2>
+        <p className={TYPE.eyebrow}>Selection A · Page introduction · harness only</p>
+        <h2 className={cn(TYPE.pageTitle, "mt-1")}>Structural hierarchy options</h2>
         <p className={cn(TYPE.pageLead, "mt-2")}>
-          Same route intent (Intelligence). Different intro / primacy. Not production chrome.
+          Realistic Gravitre content. Different structures — not cosmetic skins. Final pick reserved for Cesar.
         </p>
       </header>
 
       <div className="flex flex-wrap gap-1">
-        {VARIANTS.map((v) => (
+        {(["operating", "expert", "empty", "immersive", "compare"] as const).map((v) => (
           <Button key={v} size="sm" variant={variant === v ? "secondary" : "ghost"} asChild>
             <a href={`/dev/ai-workspace-preview?s=page-intro&scene=${v}`}>{v}</a>
           </Button>
         ))}
+        <Button size="sm" variant={mobile ? "secondary" : "ghost"} asChild>
+          <a href={`/dev/ai-workspace-preview?s=page-intro&scene=${variant === "compare" ? "operating" : variant}-mobile`}>
+            mobile
+          </a>
+        </Button>
       </div>
 
-      {variant === "operating" && (
-        <HarnessSurface className="space-y-4 p-5">
-          <div>
-            <p className={TYPE.eyebrow}>Operating</p>
-            <h3 className={cn(TYPE.pageTitle, "mt-1")}>Intelligence</h3>
-            <p className={cn(TYPE.pageLead, "mt-1")}>What changed · what needs attention · what to do next.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {["Needs attention", "Running", "Next action"].map((label) => (
-              <div key={label} className="rounded-lg border border-[color:var(--g-border-subtle)] p-3">
-                <p className={TYPE.meta}>{label}</p>
-                <p className="mt-1 text-sm font-medium">Fixture strip</p>
-              </div>
-            ))}
-          </div>
-          <div className="h-40 rounded-lg border border-dashed border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)]" />
-        </HarnessSurface>
-      )}
+      {variant === "operating" && <OperatingFrame mobile={mobile} />}
+      {variant === "expert" && <ExpertFrame mobile={mobile} />}
+      {variant === "empty" && <EmptyFrame />}
+      {variant === "immersive" && <ImmersiveFrame />}
 
-      {variant === "expert" && (
-        <HarnessSurface className="p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className={TYPE.eyebrow}>Expert</p>
-              <h3 className={cn(TYPE.pageTitle, "mt-1")}>Intelligence</h3>
-            </div>
-            <p className="font-mono text-[11px] text-[color:var(--g-text-muted)]">
-              entities 128 · rel 412 · lens knows
-            </p>
-          </div>
-          <p className={cn(TYPE.meta, "mt-2")}>Dense metadata first · Field fills remaining viewport</p>
-          <div className="mt-4 h-56 rounded-lg border border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]" />
-        </HarnessSurface>
-      )}
-
-      {variant === "empty" && (
-        <HarnessSurface className="flex min-h-[320px] flex-col items-start justify-center p-8">
-          <p className={TYPE.eyebrow}>Empty / first-run</p>
-          <h3 className={cn(TYPE.pageTitle, "mt-2")}>No knowledge fabric yet</h3>
-          <p className={cn(TYPE.pageLead, "mt-2 max-w-md")}>
-            Connect a source or run a workflow that writes entities. Do not invent demo graph density.
-          </p>
-          <Button className="mt-4" size="sm">
-            Connect source
-          </Button>
-        </HarnessSurface>
-      )}
-
-      {variant === "immersive" && (
-        <div className="overflow-hidden rounded-xl border border-[color:var(--g-border-default)]">
-          <div className="relative h-[420px] bg-[color:var(--g-canvas)]">
-            <div className="absolute inset-0 opacity-80">
-              <div className="absolute left-1/4 top-1/3 h-3 w-3 rounded-full bg-[color:var(--g-intelligence)]" />
-              <div className="absolute left-1/2 top-1/2 h-3 w-3 rounded-full bg-[color:var(--g-brand)]" />
-              <div className="absolute left-2/3 top-1/4 h-3 w-3 rounded-full bg-[color:var(--g-signal)]" />
-            </div>
-            <div className="absolute left-4 top-4 max-w-sm rounded-lg border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/95 p-3 backdrop-blur-sm">
-              <p className={TYPE.eyebrow}>Immersive</p>
-              <h3 className={cn(TYPE.cardTitle, "mt-1")}>Field is the page</h3>
-              <p className={TYPE.meta}>Title + one line overlay · chrome recedes</p>
-            </div>
-          </div>
+      {variant === "compare" && (
+        <div className="space-y-6">
+          <OperatingFrame />
+          <ExpertFrame />
+          <EmptyFrame />
+          <ImmersiveFrame />
         </div>
       )}
 
-      <HarnessSurface className="p-4">
-        <p className={TYPE.eyebrow}>Selection note</p>
-        <p className="mt-2 text-sm">
-          Cesar picks one primary intro pattern (or route-specific mapping). Prototype authorization ≠ production
-          choice.
-        </p>
-      </HarnessSurface>
+      {variant !== "compare" && (
+        <HarnessSurface className="p-4">
+          <p className={TYPE.eyebrow}>Intended page families</p>
+          <p className="mt-2 text-sm">{FAMILIES[variant].join(" · ")}</p>
+          <p className={cn(TYPE.meta, "mt-3")}>Advantages</p>
+          <p className="text-sm">{TRADEOFFS[variant].pros}</p>
+          <p className={cn(TYPE.meta, "mt-3")}>Tradeoffs</p>
+          <p className="text-sm">{TRADEOFFS[variant].cons}</p>
+        </HarnessSurface>
+      )}
+
+      {variant === "compare" && (
+        <HarnessSurface className="p-4">
+          <p className={TYPE.eyebrow}>Family → pattern map (proposal, not decision)</p>
+          <ul className="mt-2 space-y-2 text-sm">
+            {(Object.keys(FAMILIES) as Exclude<IntroVariant, "compare">[]).map((k) => (
+              <li key={k}>
+                <span className="font-medium capitalize">{k}:</span> {FAMILIES[k].join(", ")}
+              </li>
+            ))}
+          </ul>
+        </HarnessSurface>
+      )}
     </div>
   )
 }
