@@ -32,7 +32,7 @@ Then open: **http://localhost:3010/dev/ai-workspace-preview?s=selection**
 | §40 Dashboard | `?s=dashboard&scene=attention-first` |
 | §40 Agent | `?s=agent-workspace&scene=roster-detail` |
 
-**Screenshots:** open each link above in the browser during review (agent automated capture blocked this session by Next first-compile stalls + isolated browser localhost). Prefer live harness over static shots for interaction/transitions.
+**Screenshots (live harness captures):** `docs/design/3.0-plus/selection-shots/` — see `18-design-selection-reviewability.md` for HTTP + browser proof. Prefer the live index for interaction/transitions; shots are offline backup only.
 
 Package navigator doc: this file. Status canvas: `gravitre-3.0-plus-section-44.canvas.tsx`.
 
