@@ -1,8 +1,8 @@
 # Gravitre 3.0 Plus — Frontend parallel track
 
 **Branch / worktree:** `feat/gravitre-3.0-plus-frontend` @ `.cursor-tmp/wt-3.0-plus-frontend`  
-**Status:** Master §§0–48 recovered · Section 44 docs · Phase 5 consolidation · Phase 6 harness — **not** Phase 8  
-**Gate:** Broad production UI rewrite requires Cesar **G-STRUCT**
+**Status:** G-STRUCT **SELECTED** (2026-09-24) · Slice 0 **AUTHORIZED** · Phase 6 harness retained  
+**Gate:** Broad Phase 8 areas 4–15 + RF cutover still separately authorized
 
 ## Authority
 
@@ -29,16 +29,23 @@
 
 ## Harness (`/dev/ai-workspace-preview?s=`)
 
-`workflow-rf` · `window-manager` · `page-intro` · `ai-workspace` · `intelligence` (field-primary) · `model-studio`
+`g-struct` · `selection` · `saasframe` · `workflow-rf` · `window-manager` · `page-intro` · `ai-workspace` · `intelligence-journey` · `model-studio`
 
-## Explicit non-goals until Cesar gate
+## Slice 0 production preview
 
-- Broad Phase 8 production redesign  
-- Production Workflow Builder cutover  
+`/dev/slice-0-foundation` — tokens, PageIntro families, WM presentation shell (light/dark).
+
+## Decision package
+
+- `20-g-struct-decision-package.md` — **SELECTED** 2026-09-24  
+- `21-slice-0-foundation.md` — Slice 0 delivery notes  
+- `19-saasframe-research-mapping.md` — SaaSFrame research → design
+
+## Explicit non-goals until further Cesar authorization
+
+- Broad Phase 8 areas 4–15  
+- Production Workflow Builder / React Flow cutover  
 - Blind installs of Evaluate/Defer stack items  
 - Second AI runtime or parallel workflow schema  
 - Show-the-work live checklist implementation  
-
-- `19-saasframe-research-mapping.md` � SaaSFrame mandatory research ? Gravitre design (inspected URLs + Pro limits)
-- Harness: `?s=saasframe` research?design trace
 

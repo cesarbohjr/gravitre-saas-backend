@@ -27,7 +27,7 @@ const FIXTURE = {
   artifact: "Contact draft · Acme Corp",
 }
 
-const DEFAULT_PROPOSAL: WmMode = "docked"
+const DEFAULT_PROPOSAL: WmMode | null = null
 
 function compositionFor(mode: WmMode) {
   switch (mode) {
@@ -100,8 +100,7 @@ export function WindowManagerDockedPrototype({ scene }: { scene: string }) {
         <p className={TYPE.eyebrow}>Selection B · Window Manager · harness only</p>
         <h2 className={cn(TYPE.pageTitle, "mt-1")}>Mode compositions & transitions</h2>
         <p className={cn(TYPE.pageLead, "mt-2")}>
-          Fixture conversation/task ids stay stable across transitions. Not production chat remount. Proposed default:{" "}
-          <strong>docked</strong> (Cesar decides).
+          Fixture conversation/task ids stay stable across transitions. Not production chat remount. G-STRUCT A3: contextual default + remembered preference (docked is not universal default).
         </p>
       </header>
 

@@ -13,14 +13,14 @@
 | 4 Reference research | ✅ `05-reference-selection-matrix.md` (deepen per family as prototypes need) |
 | 5 Design-system consolidation | ✅ Master + `GRAVITRE_*.md` companions |
 | 6 Structural prototypes | ✅ Partial — see `13-phase6-prototype-queue.md` |
-| 7 Validation | ⬜ Per prototype; journeys NOT PROVEN until authenticated evidence |
-| 8 Production implementation | **BLOCKED** — awaiting Cesar G-STRUCT + Slice 0 authorize (`20-g-struct-decision-package.md`) |
+| 7 Validation | Structural selection **done** (G-STRUCT 2026-09-24). Harness PARTIAL. Full product UX acceptance **pending**. |
+| 8 Production implementation | **Slice 0 AUTHORIZED** (2026-09-24). Areas 4–15 + RF cutover still separately gated. |
 
 ## Release gates
 
 | Gate | Required | Blocks |
 |------|----------|--------|
-| **G-STRUCT** | Cesar records page-intro vocabulary/map, WM policy, Intelligence structure, AI/Model Studio direction, RF Option B as direction-only (not cutover) | Broad Phase 8 |
+| **G-STRUCT** | Cesar records page-intro vocabulary/map, WM policy, Intelligence structure, AI/Model Studio direction, RF Option B as direction-only (not cutover) | Broad Phase 8 — **PASSED 2026-09-24** (see `20`) |
 | **G-DEP** | Cesar approves new platform deps | Installs |
 | **G-FUNC** | No overwrite of Platform Execution contracts | Shared file PRs |
 | **G-PROOF** | Authenticated journey PASS with evidence pointer | “Shipped UX” claims |
@@ -29,7 +29,7 @@
 
 ## First production slice (after G-STRUCT)
 
-**Slice 0:** tokens/typography → shared primitives → Window Manager presentation shell. See `20-g-struct-decision-package.md` §9.
+**Slice 0 (AUTHORIZED 2026-09-24):** tokens/typography → shared primitives → Window Manager presentation shell (contextual default + preference; presentation-only). See `20-g-struct-decision-package.md` §9 · `21-slice-0-foundation.md`.
 
 ## Safe defect track (not Phase 8)
 

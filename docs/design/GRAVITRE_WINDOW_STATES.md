@@ -29,4 +29,4 @@ Anchored menus/popovers/tooltips/command/inspectors only — **not** the Window 
 
 ## Production gate
 
-Docked production + unified restore persistence require Cesar **G-STRUCT**. Harness only until then.
+**G-STRUCT PASSED 2026-09-24** — Option A: contextual default + remembered preference; docked is **not** the universal default. Slice 0 may ship the presentation shell. Full provider→runtime docked cutover still requires identity-preservation evidence and coordinated soft-conflict review.

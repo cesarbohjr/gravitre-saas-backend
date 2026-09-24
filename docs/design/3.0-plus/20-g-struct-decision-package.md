@@ -6,7 +6,7 @@
 **Harness:** http://127.0.0.1:3010/dev/ai-workspace-preview?s=selection · `?s=g-struct`  
 **Purpose of harness:** Structural / interaction validation — **not** finished Gravitre frontend.
 
-**Status:** Package ready for Cesar selection. Broad Phase 8 **blocked** until G-STRUCT is recorded below and Cesar authorizes the first production slice.
+**Status:** **G-STRUCT SELECTED** (2026-09-24). **Slice 0 AUTHORIZED.** Broad Phase 8 areas 4–15 remain separately authorized. RF production cutover **not** authorized.
 
 ---
 
@@ -188,20 +188,29 @@ Use `01` audit + `15` coverage matrix for dependencies. Isolated worktree until 
 
 ## Cesar signature (G-STRUCT)
 
-Record decisions here (or Linear append-only) when selected:
+### Recorded (2026-09-24) — Cesar selection
 
 | ID | Cesar selection | Date |
 |----|-----------------|------|
-| A1 Page vocabulary | ☐ Approve · ☐ Amend: ___ | |
-| A2 Family map | ☐ Approve · ☐ Amend: ___ | |
-| A3 WM policy | ☐ A Contextual+pref · ☐ B Single default=___ | |
-| A4 Intelligence structure | ☐ Field-primary · ☐ Matrix rail · ☐ Split insight | |
-| A5 Journey preserved | ☐ Yes | |
-| A6 AI composition | ☐ Conversation · ☐ Work · ☐ Split · ☐ Other: ___ | |
-| A7 Model Studio Std/Adv | ☐ Yes | |
-| A8 RF Option B direction (not cutover) | ☐ Yes · ☐ Hold | |
-| A9 §40 Dashboard/Agent | ☐ Skip · ☐ Pick: ___ | |
-| A10 Reference hierarchy | ☐ Confirm | |
-| **Authorize Slice 0** | ☐ Not yet · ☐ Authorized | |
+| A1 Page vocabulary | **APPROVED** — Operating / Expert / Empty / Immersive | 2026-09-24 |
+| A2 Family map | **APPROVED** — proposed map; coverage-matrix route dispositions preserved | 2026-09-24 |
+| A3 WM policy | **OPTION A** — Contextual default + remembered preference; all seven modes; docked is **not** universal default; WM = presentation only | 2026-09-24 |
+| A4 Intelligence structure | **FIELD-PRIMARY** — preserve Matrix / KG / Relationship / expert capabilities; no decorative-only graph | 2026-09-24 |
+| A5 Journey preserved | **APPROVED** — Insight → Evidence → Relationship → Expert graph | 2026-09-24 |
+| A6 AI composition | **APPROVED** — Conversation / Work / Split; Intelligence Core authoritative | 2026-09-24 |
+| A7 Model Studio Std/Adv | **APPROVED** — Standard / Advanced progressive disclosure; advanced retained | 2026-09-24 |
+| A8 RF Option B direction (not cutover) | **DIRECTION ONLY** — preferred visual layer; production builder intact until migration + G-PROOF + explicit cutover | 2026-09-24 |
+| A9 §40 Dashboard/Agent | **STRUCTURAL DIRECTION** — attention-first Dashboard; roster-to-detail Agent; production acceptance still pending | 2026-09-24 |
+| A10 Reference hierarchy | **APPROVED** — Nodus visual · SaaSFrame composition · SaaSUI enterprise · Mobbin flows · Beautiful UI widgets · Refero · 21st.dev after structure; Gravitre identity retained | 2026-09-24 |
+| **Authorize Slice 0** | **AUTHORIZED** — tokens → primitives → WM presentation shell | 2026-09-24 |
 
-**Broad Phase 8 and RF production cutover remain separately authorized.**
+### Phase 7 layer status after selection
+
+| Layer | Status |
+|-------|--------|
+| Structural selection (G-STRUCT) | **SELECTED** |
+| Harness validation | PARTIAL (sufficient for Slice 0; not full product acceptance) |
+| Production integration | Slice 0 in progress; areas 4–15 pending |
+| Human acceptance of full product UX | **PENDING** — not marked accepted |
+
+**Broad Phase 8 (areas 4–15) and RF production cutover remain separately authorized.**

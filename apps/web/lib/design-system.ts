@@ -38,7 +38,7 @@ export const TYPE = {
    */
   eyebrow:
     "font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]",
-  /** Caps label under a metric. Same tracking as eyebrow, lighter weight. */
+  /** Caps label under a metric. */
   metricLabel:
     "font-sans text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]",
   /** Large number in a stat card. */
@@ -56,6 +56,54 @@ export const TYPE = {
   /** Table cell primary values. */
   tableCell:
     "font-sans text-sm font-medium tabular-nums text-[color:var(--g-text-primary)]",
+} as const
+
+/**
+ * Page-introduction families (G-STRUCT A1, 2026-09-24).
+ * Not one universal header — pick by job. Route exceptions stay in coverage matrix.
+ */
+export const PAGE_FAMILY = {
+  operating: {
+    id: "operating",
+    shell: "space-y-[var(--g-space-4)]",
+    title: TYPE.pageTitle,
+    lead: TYPE.pageLead,
+    actions: "flex flex-wrap items-center gap-2",
+  },
+  expert: {
+    id: "expert",
+    shell: "space-y-[var(--g-space-2)] border-b border-[color:var(--g-border-subtle)] pb-3",
+    title: "font-sans text-base font-semibold tracking-tight text-[color:var(--g-text-primary)] sm:text-lg",
+    lead: "font-sans text-xs text-[color:var(--g-text-muted)]",
+    actions: "flex flex-wrap items-center gap-1.5",
+  },
+  empty: {
+    id: "empty",
+    shell: "mx-auto flex max-w-lg flex-col items-start gap-3 py-10",
+    title: TYPE.pageTitle,
+    lead: TYPE.pageLead,
+    actions: "flex flex-wrap items-center gap-2",
+  },
+  immersive: {
+    id: "immersive",
+    shell: "relative z-10 flex items-start justify-between gap-3",
+    title: "font-sans text-sm font-semibold tracking-tight text-[color:var(--g-text-primary)]",
+    lead: "font-sans text-xs text-[color:var(--g-text-muted)]",
+    actions: "flex flex-wrap items-center gap-1.5",
+  },
+} as const
+
+export type PageFamilyId = keyof typeof PAGE_FAMILY
+
+/** Window Manager chrome tokens (presentation-only). */
+export const WINDOW_CHROME = {
+  frame:
+    "border border-[color:var(--g-wm-border)] bg-[color:var(--g-wm-surface)] shadow-[var(--g-wm-shadow)]",
+  header:
+    "flex h-10 shrink-0 items-center gap-2 border-b border-[color:var(--g-border-subtle)] px-3",
+  identity:
+    "font-mono text-[10px] text-[color:var(--g-text-muted)]",
+  dockWidth: "var(--g-wm-dock-width)",
 } as const
 
 /**

@@ -10,6 +10,8 @@ describe("presentation compatibility mapping", () => {
   it("maps canonical names onto shipped React-state values", () => {
     expect(toLegacyPresentationMode("minimized")).toBe("helper")
     expect(toLegacyPresentationMode("compact")).toBe("float")
+    expect(toLegacyPresentationMode("floating")).toBe("floating")
+    expect(toLegacyPresentationMode("docked")).toBe("docked")
     expect(toLegacyPresentationMode("expanded")).toBe("expanded")
     expect(toLegacyPresentationMode("fullscreen")).toBe("fullscreen")
   })
@@ -17,12 +19,21 @@ describe("presentation compatibility mapping", () => {
   it("maps shipped names onto canonical states", () => {
     expect(toCanonicalPresentationState("helper")).toBe("minimized")
     expect(toCanonicalPresentationState("float")).toBe("compact")
+    expect(toCanonicalPresentationState("floating")).toBe("floating")
+    expect(toCanonicalPresentationState("docked")).toBe("docked")
     expect(toCanonicalPresentationState("expanded")).toBe("expanded")
     expect(toCanonicalPresentationState("fullscreen")).toBe("fullscreen")
   })
 
   it("round-trips every canonical state through the legacy layer", () => {
-    for (const canonical of ["minimized", "compact", "expanded", "fullscreen"] as const) {
+    for (const canonical of [
+      "minimized",
+      "compact",
+      "floating",
+      "docked",
+      "expanded",
+      "fullscreen",
+    ] as const) {
       expect(toCanonicalPresentationState(toLegacyPresentationMode(canonical))).toBe(canonical)
     }
   })
@@ -38,6 +49,7 @@ describe("presentation compatibility mapping", () => {
     expect(deriveCanonicalPresentation({ floatWorkspaceOpen: true, mode: "helper" })).toBe(
       "compact",
     )
+    expect(deriveCanonicalPresentation({ floatWorkspaceOpen: true, mode: "docked" })).toBe("docked")
   })
 
   it("restore still returns the user to compact rather than the launcher", () => {
@@ -46,5 +58,7 @@ describe("presentation compatibility mapping", () => {
     expect(modeToRemember("helper")).toBe("float")
     expect(restoreTargetMode("fullscreen")).toBe("fullscreen")
     expect(restoreTargetMode("float")).toBe("float")
+    expect(restoreTargetMode("docked")).toBe("docked")
+    expect(modeToRemember("docked")).toBe("docked")
   })
 })

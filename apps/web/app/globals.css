@@ -315,6 +315,15 @@
   --g-space-6: 2rem;
   --g-space-7: 3rem;
   --g-space-8: 4rem;
+
+  /* Window Manager chrome (Slice 0 / 3.0 Plus) — presentation only */
+  --g-wm-surface: var(--g-surface-1);
+  --g-wm-border: var(--g-border-default);
+  --g-wm-shadow: var(--g-shadow-elevated);
+  --g-wm-dock-width: min(420px, 42vw);
+  --g-wm-compact-width: 360px;
+  --g-wm-floating-min-width: 480px;
+  --g-wm-header-h: 40px;
 }
 
 /* Marketing daylight canvas — warm mineral light (not sterile #FFF) */
@@ -457,6 +466,7 @@
   --status-idle: var(--muted-foreground);
 
   /* Design Pass 2 aliases — dark values where intelligence/emerald diverge */
+  --g-canvas: var(--background);
   --g-void: var(--background);
   --g-background: var(--background);
   --g-surface-1: var(--card);
@@ -497,6 +507,15 @@
   --g-shadow-surface: var(--elevation-1);
   --g-shadow-elevated: var(--elevation-2);
   --g-blur-atmosphere: 56px;
+
+  /* Window Manager chrome (dark) */
+  --g-wm-surface: var(--g-surface-1);
+  --g-wm-border: var(--g-border-default);
+  --g-wm-shadow: var(--elevation-3);
+  --g-wm-dock-width: min(420px, 42vw);
+  --g-wm-compact-width: 360px;
+  --g-wm-floating-min-width: 480px;
+  --g-wm-header-h: 40px;
   --g-duration-micro: 150ms;
   --g-duration-state: 320ms;
   --g-duration-flow: 800ms;

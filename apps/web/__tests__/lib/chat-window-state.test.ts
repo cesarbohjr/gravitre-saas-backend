@@ -11,8 +11,8 @@ import {
   type ChatWindowMode,
 } from "@/lib/chat-window-state"
 
-const ALL_SURFACES: ChatSurface[] = ["float", "expanded", "fullscreen", "embedded"]
-const ALL_MODES: ChatWindowMode[] = ["helper", "float", "expanded", "fullscreen"]
+const ALL_SURFACES: ChatSurface[] = ["float", "floating", "docked", "expanded", "fullscreen", "embedded"]
+const ALL_MODES: ChatWindowMode[] = ["helper", "float", "floating", "docked", "expanded", "fullscreen"]
 
 describe("no surface is a dead-end", () => {
   // The invariant the whole module exists for. Iterating the full surface list
