@@ -85,6 +85,26 @@ def test_normalize_spoken_text_removes_visual_markdown():
     assert spoken == "Update. First point. second point. Reply yes to continue. Open run."
 
 
+def test_reconstitute_spoken_email_digit_words():
+    from app.services.voice_session_service import reconstitute_spoken_identity_fields
+
+    source = (
+        "Create a HubSpot contact named Gravitre PCM write two zero two six "
+        "with email gravitre pcm write two zero two six at alpha dot test "
+        "dot gravitre dot app. Do not create it until I approve."
+    )
+    out = reconstitute_spoken_identity_fields(source)
+    assert "gravitrepcmwrite2026@alpha.test.gravitre.app" in out.lower()
+    assert "dot gravitre" not in out.lower()
+
+
+def test_reconstitute_spoken_email_does_not_rewrite_plain_at():
+    from app.services.voice_session_service import reconstitute_spoken_identity_fields
+
+    source = "Look at this HubSpot deal and tell me what changed."
+    assert reconstitute_spoken_identity_fields(source) == source
+
+
 
 def test_acoustic_short_audio_insufficient():
     # Tiny buffer → not ok

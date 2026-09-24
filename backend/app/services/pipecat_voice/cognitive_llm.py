@@ -36,7 +36,11 @@ from app.services.pipecat_voice.voice_tool_narration import (
     narrate_tool_started,
     skip_spoken_tool_progress,
 )
-from app.services.voice_session_service import normalize_spoken_text, split_speakable_chunks
+from app.services.voice_session_service import (
+    normalize_spoken_text,
+    reconstitute_spoken_identity_fields,
+    split_speakable_chunks,
+)
 from app.services.chat_turn_cancel_service import is_stop_requested
 
 logger = get_logger(__name__)
@@ -117,6 +121,7 @@ class GravitreCognitiveLLMService(LLMService):
         user_text, history = _messages_from_context(context)
         if not user_text:
             return
+        user_text = reconstitute_spoken_identity_fields(user_text)
         if is_stop_requested(
             str(self._org_id or ""),
             self._conversation_id,

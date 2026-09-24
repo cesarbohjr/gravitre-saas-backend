@@ -64,7 +64,7 @@ def _sapi_pcm16(text: str) -> bytes:
     ps = (
         "Add-Type -AssemblyName System.Speech; "
         "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
-        "$s.Rate = -3; "
+        "$s.Rate = -4; "
         f"$s.SetOutputToWaveFile('{wav_path}'); "
         f"$s.Speak('{spoken}'); "
         "$s.Dispose()"
@@ -91,7 +91,7 @@ def _sapi_pcm16(text: str) -> bytes:
     return samples.tobytes()
 
 
-async def _send_pcm(ws, speech: bytes) -> None:
+async def _send_pcm(ws, speech: bytes, *, trailing_silence_s: float = 3.2) -> None:
     for i in range(0, len(speech), CHUNK_BYTES):
         await ws.send(
             json.dumps(
@@ -106,7 +106,7 @@ async def _send_pcm(ws, speech: bytes) -> None:
         )
         await asyncio.sleep(CHUNK_MS / 1000)
     silence = base64.b64encode(b"\x00" * CHUNK_BYTES).decode("ascii")
-    for _ in range(int((2.2 * 1000) / CHUNK_MS)):
+    for _ in range(int((trailing_silence_s * 1000) / CHUNK_MS)):
         await ws.send(
             json.dumps(
                 {
@@ -121,7 +121,7 @@ async def _send_pcm(ws, speech: bytes) -> None:
         await asyncio.sleep(CHUNK_MS / 1000)
 
 
-async def _collect(ws, *, settle_s: float, deadline_s: float) -> dict:
+async def _collect(ws, *, settle_s: float, deadline_s: float, require_assistant: bool) -> dict:
     types: list[str] = []
     transcripts: list[str] = []
     assistant: list[str] = []
@@ -129,11 +129,11 @@ async def _collect(ws, *, settle_s: float, deadline_s: float) -> dict:
     last_text = time.monotonic()
     while time.monotonic() - t0 < deadline_s:
         try:
-            raw = await asyncio.wait_for(ws.recv(), timeout=12.0)
+            raw = await asyncio.wait_for(ws.recv(), timeout=14.0)
         except asyncio.TimeoutError:
             if assistant and time.monotonic() - last_text > settle_s:
                 break
-            if time.monotonic() - t0 > 8 and not assistant:
+            if (not require_assistant) and time.monotonic() - t0 > 10 and not assistant:
                 break
             continue
         if isinstance(raw, bytes):
@@ -157,7 +157,7 @@ async def _collect(ws, *, settle_s: float, deadline_s: float) -> dict:
         if assistant and time.monotonic() - last_text > settle_s:
             break
     return {
-        "types": types[:24],
+        "types": types[:48],
         "transcripts": transcripts[:8],
         "assistant_text": " ".join(assistant)[:1800],
         "elapsed_ms": int((time.monotonic() - t0) * 1000),
@@ -196,11 +196,17 @@ async def _session(token: str, conv: str, utterances: list[tuple[str, bytes]]) -
             if str(msg.get("type") or "") == "session.ready":
                 ready = True
         for name, pcm in utterances:
-            await _send_pcm(ws, pcm)
-            settle = 28.0 if name in {"confirm", "stage"} else 10.0
-            deadline = 90.0 if name == "confirm" else 55.0
-            turns[name] = await _collect(ws, settle_s=settle, deadline_s=deadline)
-            await asyncio.sleep(1.2)
+            await _send_pcm(ws, pcm, trailing_silence_s=3.6 if name == "confirm" else 3.0)
+            require = name in {"stage", "ambiguous", "confirm", "duplicate", "follow"}
+            settle = 45.0 if name == "confirm" else (22.0 if name == "stage" else 12.0)
+            deadline = 130.0 if name == "confirm" else 70.0
+            turns[name] = await _collect(
+                ws,
+                settle_s=settle,
+                deadline_s=deadline,
+                require_assistant=require,
+            )
+            await asyncio.sleep(3.5)
     return {"session_ready": ready, "turns": turns}
 
 
@@ -224,6 +230,22 @@ def main() -> int:
     }
     pcms = {key: _sapi_pcm16(text) for key, text in phrases.items()}
     token = service_token(user_id)
+    json_headers = {
+        **smoke_http_headers(),
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "x-org-id": org_id,
+    }
+    created = httpx.post(
+        f"{LIVE_API}/api/conversations",
+        headers=json_headers,
+        json={"title": f"pcm-write-{tag}", "id": conv},
+        timeout=60,
+    )
+    if created.status_code < 400:
+        body = created.json() or {}
+        conv = str(body.get("id") or conv)
     driven = asyncio.run(
         _session(
             token,
@@ -237,13 +259,6 @@ def main() -> int:
             ],
         )
     )
-    json_headers = {
-        **smoke_http_headers(),
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "x-org-id": org_id,
-    }
     state = httpx.get(
         f"{LIVE_API}/api/assistant/conversation/{conv}/state",
         headers=json_headers,
@@ -271,6 +286,7 @@ def main() -> int:
         "probe_email": probe_email,
         "probe_name": name,
         "prior_placeholder_contact_id": "278972733388",
+        "conversation_create_http": created.status_code,
         "session_ready": driven.get("session_ready"),
         "turns": driven.get("turns"),
         "state_http": state.status_code,

@@ -228,6 +228,61 @@ def normalize_spoken_text(text: str) -> str:
     return " ".join(lines).strip()
 
 
+_DIGIT_WORDS = {
+    "zero": "0",
+    "oh": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+}
+
+_SPOKEN_EMAIL = re.compile(
+    r"(?i)\bemail\s+"
+    r"([A-Za-z][A-Za-z0-9 \-]{1,96}?)"
+    r"\s+at\s+"
+    r"((?:[A-Za-z0-9]+\s+dot\s+){1,}[A-Za-z0-9]+(?:\s+dot\s+[A-Za-z0-9]+)*)"
+)
+
+
+def _spoken_local_part(raw: str) -> str:
+    pieces: list[str] = []
+    for token in re.split(r"[\s\-]+", raw.strip()):
+        low = token.lower().strip(".,:;\"'")
+        if not low:
+            continue
+        if low in _DIGIT_WORDS:
+            pieces.append(_DIGIT_WORDS[low])
+        else:
+            pieces.append(re.sub(r"[^a-z0-9]+", "", low))
+    return "".join(pieces)
+
+
+def reconstitute_spoken_identity_fields(text: str) -> str:
+    """Recover RFC emails from ASR 'at'/'dot'/digit-word speech before planning.
+
+    Does not invent identities. Only rewrites spans that already contain
+    ``email … at … dot …``.
+    """
+    if not text or " dot " not in f" {text.lower()} ":
+        return text
+
+    def _replace(match: re.Match[str]) -> str:
+        local = _spoken_local_part(match.group(1))
+        domain = re.sub(r"\s+dot\s+", ".", match.group(2).strip(), flags=re.I)
+        domain = re.sub(r"\s+", "", domain).lower()
+        if not local or "@" in local or "." not in domain:
+            return match.group(0)
+        return f"email {local}@{domain}"
+
+    return _SPOKEN_EMAIL.sub(_replace, text)
+
+
 async def stream_voice_turn_events(
     *,
     settings: Settings,
