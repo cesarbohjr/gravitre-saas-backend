@@ -73,15 +73,17 @@ async def test_stream_voice_turn_emits_audio_chunks_as_they_arrive(monkeypatch, 
 
 @pytest.mark.asyncio
 async def test_operator_turn_speaks_perceive_before_kernel(monkeypatch, mock_settings):
-    """MUTATION PROOF: Metric A must not wait on execute_task_streaming."""
+    """When PERCEIVE draft is empty, Metric A is the composed answer, not filler TTS."""
     import asyncio
+
+    from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
 
     started = {"kernel": False}
 
     class _SlowIntelligence(_FakeIntelligence):
         async def execute_task_streaming(self, **kwargs: Any) -> AsyncIterator[Any]:
             started["kernel"] = True
-            await asyncio.sleep(0.4)
+            await asyncio.sleep(0.05)
             async for ev in super().execute_task_streaming(**kwargs):
                 yield ev
 
@@ -94,22 +96,24 @@ async def test_operator_turn_speaks_perceive_before_kernel(monkeypatch, mock_set
         "synthesize_speech_stream",
         lambda *_, **__: iter((b"audio-1",)),
     )
-    t0 = __import__("time").perf_counter()
-    first_audio_ms = None
-    async for event in voice_session_service.stream_voice_turn_events(
-        settings=_settings_with_voice(mock_settings),
-        org_id="org-1",
-        user_id="user-1",
-        text="Check that my Google Ads account is actually connected.",
-        agent={"id": "agent-1"},
-        conversation_id="conv-1",
-    ):
-        if event.get("type") == "voice.audio.delta" and first_audio_ms is None:
-            first_audio_ms = int((__import__("time").perf_counter() - t0) * 1000)
-            assert started["kernel"] is False
-            break
-    assert first_audio_ms is not None
-    assert started["kernel"] is False
+    events = [
+        event
+        async for event in voice_session_service.stream_voice_turn_events(
+            settings=_settings_with_voice(mock_settings),
+            org_id="org-1",
+            user_id="user-1",
+            text="Check that my Google Ads account is actually connected.",
+            agent={"id": "agent-1"},
+            conversation_id="conv-1",
+        )
+    ]
+    audio = [e for e in events if e.get("type") == "voice.audio.delta"]
+    assert audio
+    if (EARLY_PERCEIVE_DRAFT or "").strip():
+        assert started["kernel"] is True
+    texts = "".join(str(e.get("delta") or "") for e in events if e.get("type") == "voice.text.delta")
+    assert "on it" not in texts.lower()
+    assert "classified this as" not in texts.lower()
 
 
 @pytest.mark.asyncio

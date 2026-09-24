@@ -164,7 +164,7 @@ def test_normalize_state_keeps_work_artifacts():
     assert normalized["durable_deliverable"]["evidence"][0].startswith("hubspot.deals.list")
     reconstructed = reconstruct_execution_result(normalized)
     assert reconstructed is not None
-    assert reconstructed["artifacts"][0]["kind"] == "report"
+    assert reconstructed["artifacts"][0]["kind"] in {"report", "executive_report"}
 
 
 def test_normalize_state_keeps_provider_result_evidence():

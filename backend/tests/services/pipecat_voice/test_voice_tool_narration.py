@@ -270,7 +270,8 @@ class TestNarrateLoopStage:
             trace,
             GatewayDecision(action="fallthrough", reason="operator_task_shaped"),
         )
-        spoken = narrate_loop_stage("ACT", trace=trace)
+        spoken = narrate_loop_stage("PLAN", trace=trace)
         assert spoken is not None
-        assert "not executing" in spoken.lower()
+        assert "nothing has run" in spoken.lower()
+        assert narrate_loop_stage("ACT", trace=trace) is None
         assert narrate_loop_stage("LEARN", trace=trace) is None
