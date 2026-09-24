@@ -228,6 +228,10 @@ def execute_search_catalog_tools(
         "loaded": sorted(loaded),
         "schemas": schemas,
         "count": len(schemas),
+        "eligibleQuery": bool(query),
+        "connectedVendors": [str(v) for v in (connected or []) if str(v).strip()][:12],
+        "capabilityId": capability_id,
+        "hardCap": 32,
         "note": (
             "Full schemas loaded. You may now invoke these tools with real "
             "arguments. Writes still require normal approval gates."

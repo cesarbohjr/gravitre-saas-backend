@@ -295,6 +295,10 @@ async def try_operational_read_short_circuit_turn(
     task_state: dict[str, Any] | None,
     user_id: str | None = None,
 ) -> dict[str, Any] | None:
+    from app.services.multi_source_diagnostic import match_diagnostic_recipe
+
+    if match_diagnostic_recipe(message or ""):
+        return None
     recipe = match_recipe_for_query(message)
     if recipe is None or recipe.recipe_id not in OPERATIONAL_READ_RECIPES:
         from app.services.capability_evidence_plan import looks_like_ceo_ops_question

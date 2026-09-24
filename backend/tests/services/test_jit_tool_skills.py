@@ -128,6 +128,23 @@ def test_search_catalog_tools_prefers_eligible_connected_vendor():
     assert result["count"] >= 1
 
 
+def test_catalog_search_intent_excludes_disconnected_github():
+    from app.services.catalog_search_turn import try_catalog_search_turn
+
+    turn = try_catalog_search_turn(
+        message="Search the tool catalog for GitHub issue list tools. Do not create records.",
+        connected_integrations=["hubspot"],
+    )
+    assert turn is not None
+    assert turn["execution_path"] == "catalog_search_eligible"
+    assert turn["eligible_count"] <= 32
+    assert all(not str(i).startswith("github.") for i in turn["eligible_action_ids"])
+    assert turn["github_excluded"] is True
+    assert turn["writes_started"] is False
+    assert "github" in str(turn["message"]).lower()
+
+
+
 def test_skills_are_versioned_procedures_not_runtime():
     skills = load_jit_procedures(
         query="website traffic",

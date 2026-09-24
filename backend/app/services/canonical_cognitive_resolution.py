@@ -301,6 +301,28 @@ async def try_compiled_operational_read_turn(
         )
         if analytics:
             return analytics
+    from app.services.catalog_search_turn import try_catalog_search_turn
+
+    catalog = try_catalog_search_turn(
+        message=message,
+        connected_integrations=connected_integrations,
+        capability_id=None,
+    )
+    if catalog:
+        return catalog
+    from app.services.diagnostic_parallel_execution import try_diagnostic_parallel_read_turn
+
+    diagnostic = await try_diagnostic_parallel_read_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+        user_id=user_id,
+    )
+    if diagnostic:
+        return diagnostic
     from app.services.operational_read_execution import try_operational_read_short_circuit_turn
 
     operational = await try_operational_read_short_circuit_turn(
