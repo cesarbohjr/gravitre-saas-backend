@@ -108,6 +108,42 @@ def test_listing_intent_matches_natural_language_hubspot_deals() -> None:
     assert intent.list_tool == "hubspot.deals.list"
 
 
+def test_listing_intent_matches_hubspot_contact_count() -> None:
+    from app.services.listing_f2_read_turn import listing_f2_intent, match_listing_f2_intent
+
+    prompt = (
+        "How many HubSpot contacts are in this isolated test account? "
+        "Read only. Do not create or update anything."
+    )
+    intent = listing_f2_intent(prompt)
+    assert intent is not None
+    assert intent.search_tool == "hubspot.contacts.search"
+    assert intent.count_query is True
+    assert match_listing_f2_intent("Count HubSpot contacts") is True
+    assert listing_f2_intent("Did that contact already get created?") is None
+    assert listing_f2_intent("Create a HubSpot contact named Probe") is None
+    from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+    assert should_skip_unified_live_for_compiled_read(prompt, {}, ["hubspot"]) is True
+
+
+def test_listing_disconnected_hubspot_does_not_fall_through() -> None:
+    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
+
+    turn = try_listing_f2_read_turn(
+        message="Count HubSpot contacts",
+        org_id="org",
+        client=None,
+        settings=None,
+        connected_integrations=[],
+        task_state={},
+    )
+    assert turn is not None
+    assert turn["stop_pipeline"] is True
+    assert turn["workflow_status"] == "blocked"
+    assert turn["writes_started"] is False
+
+
 def test_entity_join_intent_is_not_live_provider_claim() -> None:
     from app.services.entity_join_answer_turn import entity_join_intent
 

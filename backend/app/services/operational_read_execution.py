@@ -137,10 +137,16 @@ def _open_ended_read(message: str) -> bool:
 
 def _result_count(data: Any) -> int:
     payload = data if isinstance(data, dict) else {}
-    results = payload.get("results") or payload.get("invoices") or payload.get("tickets") or []
+    nested = payload.get("search") if isinstance(payload.get("search"), dict) else {}
+    for source in (payload, nested):
+        if isinstance(source, dict) and "total" in source:
+            total = source.get("total")
+            if isinstance(total, (int, float)):
+                return int(total)
+    results = payload.get("results") or payload.get("invoices") or payload.get("tickets") or payload.get("contacts") or []
     if isinstance(results, list):
         return len(results)
-    total = payload.get("total") or payload.get("count")
+    total = payload.get("count")
     if isinstance(total, (int, float)):
         return int(total)
     return 0

@@ -23,7 +23,7 @@ from app.services.f2_read_repair import RepairBudget, emit_f2_repair_audit, repa
 from app.services.sealed_read_execution import attributable_read_actor_id, invoke_sealed_f1_read
 from app.services.tool_types import ToolContext, ToolValidationError
 
-_LISTING = re.compile(
+_DEALS = re.compile(
     r"(?is)\b("
     r"search hubspot deals"
     r"|list (?:all )?(?:my )?(?:the )?(?:hubspot )?deals"
@@ -31,6 +31,19 @@ _LISTING = re.compile(
     r"|show (?:me )?(?:all )?(?:my )?(?:hubspot )?deals"
     r")\b"
 )
+_CONTACTS = re.compile(
+    r"(?is)\b("
+    r"how many (?:hubspot )?contacts"
+    r"|count (?:(?:the|my|our|all) )?(?:hubspot )?contacts"
+    r"|hubspot contact(?:s)? count"
+    r"|list (?:all )?(?:my )?(?:the )?(?:hubspot )?contacts"
+    r"|search hubspot contacts"
+    r"|how many.{0,80}hubspot.{0,40}contacts"
+    r"|hubspot contacts (?:are|in this|in the|do we)"
+    r")\b"
+)
+_BARE_WRITE = re.compile(r"(?is)\b(create|update|delete|enroll)\b")
+_NEGATED_WRITE = re.compile(r"(?is)\bdo not (?:create|update|delete)\b")
 
 
 @dataclass(frozen=True)
@@ -38,29 +51,40 @@ class ListingF2Intent:
     provider: str
     search_tool: str
     list_tool: str
+    capability_id: str
+    title: str
+    count_query: bool = False
 
 
 def listing_f2_intent(message: str) -> ListingF2Intent | None:
-    if not match_listing_f2_intent(message or ""):
+    text = message or ""
+    if _BARE_WRITE.search(text) and not _NEGATED_WRITE.search(text):
         return None
-    return ListingF2Intent(
-        provider="hubspot",
-        search_tool="hubspot.deals.search",
-        list_tool="hubspot.deals.list",
-    )
-
-
-_BARE_WRITE = re.compile(r"(?is)\b(create|update|delete|enroll)\b")
-_NEGATED_WRITE = re.compile(r"(?is)\bdo not (?:create|update|delete)\b")
+    if _CONTACTS.search(text):
+        wants_count = bool(
+            re.search(r"(?is)\b(how many|count)\b", text) or re.search(r"(?is)\bcontact(?:s)? count\b", text)
+        )
+        return ListingF2Intent(
+            provider="hubspot",
+            search_tool="hubspot.contacts.search",
+            list_tool="hubspot.contacts.list",
+            capability_id="crm.contacts.read",
+            title="HubSpot contacts",
+            count_query=wants_count,
+        )
+    if _DEALS.search(text):
+        return ListingF2Intent(
+            provider="hubspot",
+            search_tool="hubspot.deals.search",
+            list_tool="hubspot.deals.list",
+            capability_id="crm.deals.read",
+            title="HubSpot deals",
+        )
+    return None
 
 
 def match_listing_f2_intent(message: str) -> bool:
-    text = message or ""
-    if not _LISTING.search(text):
-        return False
-    if _BARE_WRITE.search(text) and not _NEGATED_WRITE.search(text):
-        return False
-    return True
+    return listing_f2_intent(message) is not None
 
 
 def try_listing_f2_read_turn(
@@ -74,30 +98,41 @@ def try_listing_f2_read_turn(
     user_id: str | None = None,
     conversation_id: str | None = None,
 ) -> dict[str, Any] | None:
-    if not match_listing_f2_intent(message or ""):
+    intent = listing_f2_intent(message or "")
+    if intent is None:
         return None
     connected = [str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()]
     if "hubspot" not in set(connected):
-        return None
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": (
+                "HubSpot is not connected on this workspace, so I cannot read those records. "
+                "Connect HubSpot, then ask again."
+            ),
+            "workflow_status": "blocked",
+            "execution_path": "listing_f2_read",
+            "writes_started": False,
+        }
     from app.services.operational_read_execution import _result_count, _summarize_read
 
     existing = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
     plan_id = existing.plan_id if existing is not None else str(uuid4())
     step = ExecutionStep(
-        step_id="read_deals",
-        title="List HubSpot deals",
+        step_id="read_listing",
+        title=f"Read {intent.title}",
         kind="read",
         connector_id="hubspot",
-        capability_id="crm.deals.read",
-        action_key="hubspot.deals.search",
+        capability_id=intent.capability_id,
+        action_key=intent.search_tool,
     )
     plan = ExecutionPlan(
         plan_id=plan_id,
-        summary="List HubSpot deals",
+        summary=f"Read {intent.title}",
         objective=str(message or "")[:240],
         steps=[step],
         source="listing_f2_read",
-        capability_id="crm.deals.read",
+        capability_id=intent.capability_id,
         continuation_of_plan_id=existing.plan_id if existing is not None else None,
     )
     if existing is not None:
@@ -125,8 +160,16 @@ def try_listing_f2_read_turn(
     raw = (task_state or {}).get("repair_budget") if isinstance(task_state, dict) else None
     if isinstance(raw, dict):
         budget = RepairBudget.from_dict(raw)
-    action_key = "hubspot.deals.search"
+    action_key = intent.search_tool
     repaired_used = False
+    proposed_args: dict[str, Any] = {"limit": 25}
+    if intent.count_query and "contacts" in intent.search_tool:
+        proposed_args = {
+            "limit": 1,
+            "filter_groups": [
+                {"filters": [{"propertyName": "createdate", "operator": "HAS_PROPERTY"}]}
+            ],
+        }
     try:
         invoked, proof, obs = invoke_sealed_f1_read(
             ctx=tool_ctx,
@@ -136,7 +179,7 @@ def try_listing_f2_read_turn(
             connected_integrations=connected,
             plan=plan,
             step=step,
-            proposed_args={"limit": 25},
+            proposed_args=proposed_args,
             capability_id=plan.capability_id,
         )
     except ToolValidationError as exc:
@@ -153,7 +196,7 @@ def try_listing_f2_read_turn(
             blocked=proof,
             ctx=tool_ctx,
             invoke_action=action_key,
-            args={"limit": 25},
+            args=dict(proposed_args),
             user_message=message or "",
             connected_integrations=connected,
             budget=budget,
@@ -184,7 +227,7 @@ def try_listing_f2_read_turn(
             connected_integrations=connected,
             plan=plan,
             step=step,
-            proposed_args=dict(repaired.args or {"limit": 25}),
+            proposed_args=dict(repaired.args or proposed_args),
             capability_id=plan.capability_id,
         )
         action_key = catalog_action_key(repaired.action)
@@ -208,7 +251,10 @@ def try_listing_f2_read_turn(
     if not is_f1_read_action(action_key):
         return None
     count = _result_count(getattr(invoked, "data", None))
-    summary = _summarize_read(action_key, invoked.data)
+    if intent.count_query and "contact" in action_key:
+        summary = f"This HubSpot account has {count} contact{'s' if count != 1 else ''}."
+    else:
+        summary = _summarize_read(action_key, invoked.data)
     observation = ExecutionObservation(
         observation_id=obs.observation_id,
         step_id=step.step_id,
@@ -234,7 +280,7 @@ def try_listing_f2_read_turn(
         "repair_budget": budget.to_dict(),
         "repair_error_memory": list(budget.error_memory),
     }
-    merged = bind_finished_work(merged, body=summary, title="HubSpot deals")
+    merged = bind_finished_work(merged, body=summary, title=intent.title)
     evidence = evidence_from_observation(
         action_key=action_key,
         result_count=int(count),
