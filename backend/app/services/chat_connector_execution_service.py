@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -1651,6 +1652,7 @@ class ChatConnectorExecutionService:
                 if isinstance(staged_params, dict) and staged_params.get("invoke_action")
                 else self.plan_to_dict(plan)
             )
+            execute_started = time.perf_counter()
             execution = await self.execute_plan(
                 org_id=org_id,
                 user_id=user_id,
@@ -1660,6 +1662,19 @@ class ChatConnectorExecutionService:
                 classification=classification,
                 environment_name=environment_name,
                 approved_params=pending_params if isinstance(pending_params, dict) else None,
+            )
+            execute_plan_ms = int((time.perf_counter() - execute_started) * 1000)
+            structured = dict(execution.structured or {})
+            structured["latency_budget"] = {
+                "execute_plan_ms": execute_plan_ms,
+                "includes": "provider_invoke_and_required_verification",
+            }
+            execution.structured = structured
+            logger.info(
+                "spoken_write_latency_budget org_id=%s conversation_id=%s execute_plan_ms=%s",
+                org_id,
+                conversation_id,
+                execute_plan_ms,
             )
             self._promote_confirmed_workspace_memory(
                 client,

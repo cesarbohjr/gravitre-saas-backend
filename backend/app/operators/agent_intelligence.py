@@ -4463,12 +4463,14 @@ class AgentIntelligence:
                         else {}
                     )
                     pending_label = str(_pending_params.get("label") or "")
-                    packed = await _composed_reply(
-                        narrate_connector_write_executing(pending_label),
-                        kind="canned",
-                    )
-                    for ev in packed.events:
-                        yield ev
+                    executing_speech = narrate_connector_write_executing(pending_label)
+                    if executing_speech.strip():
+                        packed = await _composed_reply(
+                            executing_speech,
+                            kind="canned",
+                        )
+                        for ev in packed.events:
+                            yield ev
 
             connector_turn = await run_connector_turn(
                 settings=active_settings,

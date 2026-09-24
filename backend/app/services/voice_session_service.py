@@ -263,24 +263,46 @@ def _spoken_local_part(raw: str) -> str:
     return "".join(pieces)
 
 
-def reconstitute_spoken_identity_fields(text: str) -> str:
-    """Recover RFC emails from ASR 'at'/'dot'/digit-word speech before planning.
+_DIGIT_WORD_RUN = re.compile(
+    r"(?i)(?:(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)(?:\s+)){2,}"
+    r"(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)\b"
+)
 
-    Does not invent identities. Only rewrites spans that already contain
-    ``email … at … dot …``.
-    """
-    if not text or " dot " not in f" {text.lower()} ":
-        return text
 
+def _collapse_digit_word_runs(text: str) -> str:
     def _replace(match: re.Match[str]) -> str:
-        local = _spoken_local_part(match.group(1))
-        domain = re.sub(r"\s+dot\s+", ".", match.group(2).strip(), flags=re.I)
-        domain = re.sub(r"\s+", "", domain).lower()
-        if not local or "@" in local or "." not in domain:
-            return match.group(0)
-        return f"email {local}@{domain}"
+        digits: list[str] = []
+        for token in match.group(0).split():
+            mapped = _DIGIT_WORDS.get(token.lower())
+            if mapped is None:
+                return match.group(0)
+            digits.append(mapped)
+        return "".join(digits)
 
-    return _SPOKEN_EMAIL.sub(_replace, text)
+    return _DIGIT_WORD_RUN.sub(_replace, text)
+
+
+def reconstitute_spoken_identity_fields(text: str) -> str:
+    """Recover RFC emails and digit-word runs from ASR before planning.
+
+    Does not invent identities. Email rewrite requires ``email … at … dot …``.
+    Digit-word collapse requires three or more consecutive number words.
+    """
+    if not text:
+        return text
+    rewritten = text
+    if " dot " in f" {text.lower()} ":
+
+        def _replace_email(match: re.Match[str]) -> str:
+            local = _spoken_local_part(match.group(1))
+            domain = re.sub(r"\s+dot\s+", ".", match.group(2).strip(), flags=re.I)
+            domain = re.sub(r"\s+", "", domain).lower()
+            if not local or "@" in local or "." not in domain:
+                return match.group(0)
+            return f"email {local}@{domain}"
+
+        rewritten = _SPOKEN_EMAIL.sub(_replace_email, rewritten)
+    return _collapse_digit_word_runs(rewritten)
 
 
 async def stream_voice_turn_events(

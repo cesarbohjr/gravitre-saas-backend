@@ -96,6 +96,14 @@ def test_reconstitute_spoken_email_digit_words():
     out = reconstitute_spoken_identity_fields(source)
     assert "gravitrepcmwrite2026@alpha.test.gravitre.app" in out.lower()
     assert "dot gravitre" not in out.lower()
+    assert "named Gravitre PCM write 2026 with email" in out
+
+
+def test_reconstitute_digit_word_run_does_not_touch_one_moment():
+    from app.services.voice_session_service import reconstitute_spoken_identity_fields
+
+    source = "One moment, look at this deal."
+    assert reconstitute_spoken_identity_fields(source) == source
 
 
 def test_reconstitute_spoken_email_does_not_rewrite_plain_at():

@@ -320,26 +320,15 @@ def will_execute_staged_connector_write(task_state: dict[str, Any] | None, messa
 
 
 def narrate_connector_write_executing(label: str | None) -> str:
-    """Phase 3 follow-up: honest EXECUTING narration for an already-staged connector
-    write, spoken the moment its confirmation turn is about to run — before the real,
-    possibly slow, vendor call resolves. Only ever call this when
-    ``will_execute_staged_connector_write`` returned True for this exact turn.
+    """EXECUTING-phase speech for an already-staged connector write.
 
-    ``label`` should be the real staged action's own label (e.g.
-    ``PendingSnapshot.action_label`` — "Create contact list Q3 Leads"), never a
-    guessed/invented description. Falls back to a generic, still-honest phrase when
-    no label is available.
+    Returns empty: first useful confirm speech is the verified Composer
+    result, not a mechanical “One moment” preamble. Governance and the
+    vendor call are unchanged. ``label`` remains accepted so callers do
+    not invent a second narration path.
     """
-    text = (label or "").strip()
-    # _gerund_phrase() falls back to a bare "that" when no verb prefix matches
-    # (fine at its original call site, which only ever calls it after
-    # is_write_shaped_tool_name() already confirmed a match) — check the same
-    # condition here first so an unmatched label (e.g. "Zendesk Ticket
-    # Escalation") falls back to the generic phrase instead of the broken
-    # "I'm that now."
-    if text and is_write_shaped_tool_name(text):
-        return f"One moment, I'm {_gerund_phrase(text)} now."
-    return "One moment, I'm doing that now."
+    _ = (label or "").strip()
+    return ""
 
 
 def narrate_loop_stage(

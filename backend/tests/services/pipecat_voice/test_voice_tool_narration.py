@@ -230,29 +230,19 @@ class TestWillExecuteStagedConnectorWrite:
 
 
 class TestNarrateConnectorWriteExecuting:
-    def test_known_write_verb_label_produces_a_matching_gerund(self) -> None:
-        assert (
-            narrate_connector_write_executing("Create contact list Q3 Leads")
-            == "One moment, I'm creating that now."
-        )
+    def test_known_write_verb_label_is_silent_until_verified(self) -> None:
+        assert narrate_connector_write_executing("Create contact list Q3 Leads") == ""
 
-    def test_send_verb_label(self) -> None:
-        assert (
-            narrate_connector_write_executing("Send email to Sarah")
-            == "One moment, I'm sending that now."
-        )
+    def test_send_verb_label_is_silent_until_verified(self) -> None:
+        assert narrate_connector_write_executing("Send email to Sarah") == ""
 
-    def test_no_label_falls_back_to_generic_honest_phrase(self) -> None:
-        assert narrate_connector_write_executing(None) == "One moment, I'm doing that now."
-        assert narrate_connector_write_executing("") == "One moment, I'm doing that now."
+    def test_no_label_does_not_invent_one_moment(self) -> None:
+        assert narrate_connector_write_executing(None) == ""
+        assert narrate_connector_write_executing("") == ""
 
-    def test_label_with_no_recognizable_verb_falls_back_to_generic_phrase(self) -> None:
-        """MUTATION PROOF: a label that doesn't start with a known write verb
-        must never produce the broken 'I'm that now.' — is_write_shaped_tool_name
-        must gate the gerund phrase, not _gerund_phrase's own bare fallback.
-        """
+    def test_unmatched_label_never_speaks_im_that_now(self) -> None:
         out = narrate_connector_write_executing("Zendesk Ticket Escalation")
-        assert out == "One moment, I'm doing that now."
+        assert out == ""
         assert "I'm that now" not in out
 
 
