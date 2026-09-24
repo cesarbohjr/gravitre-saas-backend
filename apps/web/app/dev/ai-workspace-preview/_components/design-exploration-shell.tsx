@@ -22,8 +22,22 @@ import { IntelligenceFieldPrototype } from "./ux30-plus/intelligence-field-proto
 import { ActivityTracePrototype } from "./ux30-plus/activity-trace-prototype"
 import { NavRailPrototype } from "./ux30-plus/nav-rail-prototype"
 import { CreativeKfPrototype } from "./creative-kf-prototype"
+import { WorkflowBuilderRfPrototype } from "./ux30-plus/workflow-builder-rf-prototype"
+import { WindowManagerDockedPrototype } from "./ux30-plus/window-manager-docked-prototype"
+import { PageIntroVariantsPrototype } from "./ux30-plus/page-intro-variants-prototype"
+import { SharedAiWorkspacePrototype } from "./ux30-plus/shared-ai-workspace-prototype"
 
-const UX30_SURFACES = ["foundation", "intelligence", "activity", "navigation", "creative"] as const
+const UX30_SURFACES = [
+  "foundation",
+  "intelligence",
+  "activity",
+  "navigation",
+  "creative",
+  "workflow-rf",
+  "window-manager",
+  "page-intro",
+  "ai-workspace",
+] as const
 type Ux30Surface = (typeof UX30_SURFACES)[number]
 
 const LEGACY_SURFACES = [
@@ -57,6 +71,7 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
     "error",
     "mobile",
     "reduced",
+    "field-primary",
   ],
   activity: [
     "default",
@@ -73,6 +88,16 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
   ],
   navigation: ["compact", "expanded", "pinned", "keyboard", "mobile"],
   creative: ["compare", "workbench", "refined", "pilot3"],
+  "workflow-rf": ["design", "live", "explain", "history"],
+  "window-manager": ["docked", "compact", "floating", "expanded", "fullscreen", "minimized"],
+  "page-intro": ["operating", "expert", "empty", "immersive"],
+  "ai-workspace": [
+    "conversation-primary",
+    "work-primary",
+    "show-the-work-slot",
+    "voice-continuity",
+    "split",
+  ],
 }
 
 const AI_SCENES: AiScene[] = [
@@ -148,6 +173,10 @@ export function DesignExplorationShell() {
         {surface === "activity" && <ActivityTracePrototype scene={scene} />}
         {surface === "navigation" && <NavRailPrototype scene={scene} />}
         {surface === "creative" && <CreativeKfPrototype scene={scene} />}
+        {surface === "workflow-rf" && <WorkflowBuilderRfPrototype scene={scene} />}
+        {surface === "window-manager" && <WindowManagerDockedPrototype scene={scene} />}
+        {surface === "page-intro" && <PageIntroVariantsPrototype scene={scene} />}
+        {surface === "ai-workspace" && <SharedAiWorkspacePrototype scene={scene} />}
         {surface === "nucleo" && <SelectedNucleo scene={scene} />}
         {surface === "ai" && <SelectedAiCommandOs scene={normalizeAi(scene)} />}
         {surface === "agents" && <SelectedAgents scene={scene} />}
@@ -166,10 +195,14 @@ export function DesignExplorationShell() {
 
 function defaultScene(surface: Surface): string {
   if (surface === "foundation") return "default"
-  if (surface === "intelligence") return "default"
+  if (surface === "intelligence") return "field-primary"
   if (surface === "activity") return "default"
   if (surface === "navigation") return "compact"
   if (surface === "creative") return "compare"
+  if (surface === "workflow-rf") return "design"
+  if (surface === "window-manager") return "docked"
+  if (surface === "page-intro") return "operating"
+  if (surface === "ai-workspace") return "conversation-primary"
   if (surface === "ai") return "compact-conversation"
   if (surface === "agents") return "default"
   return "default"

@@ -1,40 +1,37 @@
 # Spec recovery status — Master 3.0 Plus (Sections 0–48)
 
-**Date:** 2026-09-23  
+**Date:** 2026-09-23 (updated after Cesar “supplying full text” authorization)  
 **Worktree:** `feat/gravitre-3.0-plus-frontend`  
-**Verdict: FULL Sections 0–48 NOT RECOVERED**
+**Verdict: FULL labeled Sections 0–48 STILL NOT ON DISK**
 
-## Sources checked
+## What Cesar authorized this turn
+
+- Treat “full original master specification §§0–48” as authoritative when available.
+- Word files remain truncated and must not be used to invent missing requirements.
+- Option B approved for **isolated structural prototyping** only (not production builder cutover).
+- Phase 6 harness prototypes authorized.
+
+## Sources re-checked (2026-09-23 ~17:00 local)
 
 | Source | Result |
 |--------|--------|
-| `C:\Users\Cesar\Downloads\GRAVITRE 3.0 PLUS.docx` (60,921 bytes) | Truncated — XML starts at “Floating UI”, ends at “Nucleo” |
-| `GRAVITRE 3.0 PLUS (1).docx` | Byte-identical to above |
-| `Documents` / `Desktop` / `OneDrive` (depth-4) | No alternate 3.0 Plus master |
-| AgentStores / assets | No complete master copy |
-| Repo `docs/design/*3.0*PLUS*` | Prior planning packages — **not** the Sections 0–48 master |
+| Authorization message body | Instructions only — **no §§0–48 document body attached** |
+| `Downloads\GRAVITRE 3.0 PLUS.docx` / `(1).docx` (60,921 B) | Unchanged truncated mid-doc |
+| `.tmp-3.0-plus-full.txt` / `gravitre-3.0-plus-extracted.txt` (~28 KB, 1164 lines) | Same extract: starts **Floating UI**, ends mid **Phase 2** |
+| Newer Downloads / Desktop / Documents (depth-3) | No alternate complete master |
 
-## What the Word file contains (partial mid-document)
+## Present in truncated extract (narrative, unlabeled)
 
-Present (unnumbered / narrative; **not** labeled §0–§48):
+≈§14 Floating UI · ≈§15 Window Manager · ≈§17 Workflow Builder + React Flow preference · Intelligence / Model Studio fragments · route inventory fragments · methodology Phase 0–2 start · Nucleo mention
 
-- Floating UI usage rules (≈ §14 material)
-- Gravitre Window Manager modes + composition (≈ §15)
-- Dashboard widgets / React Grid Layout evaluate (≈ later stack)
-- **Workflow Builder + React Flow preferred foundation** + Design/Live/Explain/History modes (≈ §17)
-- ELK evaluate, tldraw defer, analytics refs
-- assistant-ui / AG-UI / CopilotKit references
-- Required methodology Phase 0–2
-- “Complete Gravitre 3.0 Plus stack” layer list (incomplete in extract)
+## Confirmed absent from disk copy
 
-## Confirmed missing from Word copy
+Labeled **§§0–13**, **Complete technology stack**, numbered **§§28–33** inventories as formal sections, **§§39–42** research/concepts/validation blocks as formal sections, **§§43–48** (Coverage, Deliverables, Acceptance, Execution rules) including **Section 44** heading.
 
-Cannot verify presence of labeled Sections **0–13**, **18–20**, **21–27** (Intelligence / Model Studio as numbered §§), **28–38**, **39–42** research/validation methodology completeness, **43–48** coverage/acceptance/execution rules as numbered sections.
+## Reconciliation rule
 
-Do **not** treat this agent’s Section 44 deliverable package as a substitute for the missing master text.
+Completed frontend package (`00–13`, harness prototypes) remains valid against recovered fragments + Cesar authorizations. **Do not claim full-spec compliance** until Cesar provides a complete §§0–48 file (docx/md/pdf). Missing material will be reconciled then — audits already done will not be repeated wholesale.
 
-## Request to Cesar
+## Ask Cesar
 
-Please provide the **complete** master specification (PDF/DOCX/Markdown) with Sections **0–48** intact. Preferred: drop into `Downloads/` or paste into the frontend worktree as `docs/design/3.0-plus/MASTER_SPEC_SOURCE.md` (read-only archive).
-
-Until then: **no claim of full-spec compliance**. Work continues only on recovered material + prior Cesar authorizations + repository facts.
+Please attach or drop the complete master file (Sections 0–48) into Downloads or this chat. Until then, prototypes proceed under explicit authorizations in this thread only.

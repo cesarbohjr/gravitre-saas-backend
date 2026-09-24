@@ -1,8 +1,10 @@
 # React Flow vs custom Workflow Builder — Option A / B
 
-**Status:** Structural decision for Cesar — **do not replace builder yet**  
+**Status:** Structural decision — **Option B approved for isolated prototyping** (Cesar 2026-09-23). Production custom builder **not** replaced.  
 **Spec recovered fragment (≈ §17):** React Flow / xyflow is the **preferred foundation** for the operational Workflow Builder, subject to audit. RF is the visual interaction layer; canonical workflow definition remains SoT.  
 **Repo facts:** `@xyflow/react` installed; used for Intelligence Relationships only. Builder is custom (~6.7k-line page) at `app/workflows/[id]/builder/page.tsx`. Schema bridge: `CanvasWorkflowNode` + `canvasToSavePayload` / load helpers in `lib/workflows/builder-persistence.ts` → `workflowsApi.getBuilder` / `saveBuilder`.
+
+**Harness:** `/dev/ai-workspace-preview?s=workflow-rf` — see `14-option-b-preservation-evidence.md`.
 
 **Capability audit:** [Workflow builder capability audit](69355e98-0b6e-4113-8ec8-85f9064e214c) (2026-09-23).
 
@@ -69,13 +71,13 @@ Where backed by existing capabilities, upgraded builder should support: custom n
 
 ## Recommendation (for Cesar decision — not a unilateral cutover)
 
-**Prefer B as the target visual foundation**, with **A as interim**. Do **not** auto-replace production builder. Do **not** permanently reject RF because the builder is currently custom.
+**Option B authorized for harness prototyping.** Prefer B as the target visual foundation; A remains production interim until cutover approval.
 
-### Cesar approval ask (G-STRUCT / G-DEP)
+### Cesar approval ask (remaining)
 
-1. **Target B** — authorize RF-1 harness (read-only `CanvasWorkflowNode` → xyflow) on this frontend branch  
-2. **Stay A** — authorize custom-canvas Design/Live/Explain/History prototypes without RF  
-3. **Defer** — docs only until functional track quieter  
+1. ~~**Target B harness**~~ — **done** (`?s=workflow-rf`)  
+2. **Production cutover** — only after reviewing RF prototype + `14-option-b-preservation-evidence.md`  
+3. **G-STRUCT** — page-intro / WM / Field primacy production defaults  
 
 ---
 

@@ -1,17 +1,26 @@
-# Phase 6 — Next isolated prototypes (harness only)
+# Phase 6 — Isolated structural prototypes
 
-**Venue:** `/dev/ai-workspace-preview` only  
-**Blocked on Cesar:** production builder cutover (Option A/B), docked WM production, Field primacy production chrome
+**Venue:** `/dev/ai-workspace-preview` only · branch `feat/gravitre-3.0-plus-frontend`  
+**Option B:** Cesar approved RF as target for **isolated prototyping** (2026-09-23) — not production cutover.
 
-## Independently executable now
+## Shipped in harness (this package)
 
-1. **Docked window concept frame** — static/harness composition; no chat remount  
-2. **Page intro variants** — Operating / Expert / Empty / Immersive mock frames  
-3. **Intelligence Field-primary composition** — harness scene (production Field already exists; chrome primacy is the gap)  
-4. **RF-1 readiness spike** — only after Cesar picks Option B: read-only map `CanvasWorkflowNode` → `@xyflow` in harness  
+| Surface (`?s=`) | Scenes | Notes |
+|-----------------|--------|-------|
+| `workflow-rf` | design / live / explain / history | Option B RF visual layer + `canvasToSavePayload` evidence |
+| `window-manager` | docked / compact / floating / expanded / fullscreen / minimized | Docked concept + mode compositions |
+| `page-intro` | operating / expert / empty / immersive | Hierarchy variants for Cesar pick |
+| `ai-workspace` | conversation-primary / work-primary / show-the-work-slot / voice-continuity / split | Shared AI compositions; show-the-work **placement only** |
+| `intelligence` | includes `field-primary` | Existing Field prototype; primacy scene called out |
+
+## Still blocked on Cesar (not Phase 8)
+
+- Production builder cutover (present RF prototype + migration evidence first)
+- Final page-intro / WM mode as production default (G-STRUCT)
+- Broad Phase 8 redesign
 
 ## Not starting
 
-- Broad Phase 8  
-- Show-the-work live checklist  
-- Core product file edits listed in `00-ownership-and-conflict-matrix.md`
+- Show-the-work live checklist / backend events
+- Core product file edits in `00-ownership-and-conflict-matrix.md`
+- Workflow execution engine rewrite

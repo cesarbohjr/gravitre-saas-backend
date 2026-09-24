@@ -1,46 +1,45 @@
 # Gravitre 3.0 Plus — Frontend parallel track
 
 **Branch / worktree:** `feat/gravitre-3.0-plus-frontend` @ `.cursor-tmp/wt-3.0-plus-frontend`  
-**Baseline:** `origin/main` @ `bbd3d439`  
-**Status:** Phases 0–7 planning package (Section 44) — **not** Phase 8 production redesign  
-**Gate:** Broad production UI rewrite requires Cesar approval of structural direction
+**Status:** Phases 0–7 docs + **Phase 6 harness prototypes** — **not** Phase 8 production redesign  
+**Gate:** Broad production UI rewrite requires Cesar approval of structural direction (G-STRUCT)
 
 ## Authority
 
 | Document | Role |
 |----------|------|
-| `C:\Users\Cesar\Downloads\GRAVITRE 3.0 PLUS.docx` | Master AI-native UX/UI Architecture (authoritative; do not rewrite) |
-| Cesar parallel-execution authorization (this chat) | Execution boundaries vs Platform Execution 3.0 |
-| `docs/ai/GRAVITRE_PLATFORM_EXECUTION_3.0.md` | Functional A–J program (other agent) |
-| `docs/design/GRAVITRE_3.0_PLUS_CESAR_APPROVAL_PACKAGE.md` | Prior 3.0 Plus planning baseline |
+| Complete master §§0–48 (when Cesar provides file) | Authoritative UX/UI architecture — **not yet on disk** |
+| Truncated Word / `.tmp-3.0-plus-full.txt` | Partial mid-doc only — do not invent missing §§ |
+| Cesar authorizations (this chat) | Option B prototype; Phase 6 surfaces; no production cutover |
+| `docs/ai/GRAVITRE_PLATFORM_EXECUTION_3.0.md` | Functional A–J (other agent) |
 
-## Package contents (Section 44)
+## Package contents (Section 44-aligned)
 
 | File | Deliverable |
 |------|-------------|
-| `00-ownership-and-conflict-matrix.md` | Worktree ownership + overlap with functional agent |
-| `01-current-state-architecture-audit.md` | Phase 0 architecture audit |
-| `02-route-interaction-inventory.md` | Phase 1 inventories |
-| `03-technology-adoption-matrix.md` | Phase 2 Retain/Adopt/Extend/Evaluate/Defer/Reject |
-| `04-design-system-proposal.md` | Consolidation proposal (no blind token rewrite) |
-| `05-reference-selection-matrix.md` | Behavioral references (not visual copies) |
-| `06-window-architecture.md` | Compact…Restored + docked gap |
-| `07-react-flow-adoption-plan.md` | Workflow canvas plan |
-| `08-ai-native-interaction-architecture.md` | Intent layer + adaptive surfaces |
-| `09-implementation-plan-and-release-gates.md` | Dependency-ordered plan + gates |
+| `00`–`09` | Ownership, audits, inventories, tech matrix, DS, refs, window, RF plan, AI-native, gates |
 | `10-spec-recovery-status.md` | Full §§0–48 recovery verdict |
-| `11-react-flow-option-a-b.md` | Custom builder vs React Flow decision brief |
-| `12-show-the-work-placement.md` | Future placement; no implementation |
+| `11-react-flow-option-a-b.md` | Option A/B; B prototyping approved |
+| `12-show-the-work-placement.md` | Placement only |
+| `13-phase6-prototype-queue.md` | Harness scene index |
+| `14-option-b-preservation-evidence.md` | RF preservation / gap ledger |
+
+## Harness entry points
+
+- `/dev/ai-workspace-preview?s=workflow-rf&scene=design`
+- `/dev/ai-workspace-preview?s=window-manager&scene=docked`
+- `/dev/ai-workspace-preview?s=page-intro&scene=operating`
+- `/dev/ai-workspace-preview?s=ai-workspace&scene=show-the-work-slot`
+- `/dev/ai-workspace-preview?s=intelligence&scene=field-primary`
 
 ## Spec recovery
 
-**FULL master Sections 0–48: NOT recovered.** Word copies on disk are truncated mid-document. See `10-spec-recovery-status.md`. Request complete file from Cesar.
+**FULL master Sections 0–48: NOT recovered on disk.** See `10-spec-recovery-status.md`.
 
 ## Explicit non-goals (until Cesar gate)
 
-- Broad Phase 8 production redesign of Dashboard / Marketplace / Workflows list / Agents / Goals shells
+- Broad Phase 8 production redesign
+- Production Workflow Builder cutover
 - Installing assistant-ui, AG-UI, CopilotKit, ELK, tldraw, React Grid Layout, Chromatic without approval
-- Overwriting Platform Execution 3.0-D artifact / task-state / SSE contracts
-- Fake progress, confidence, or finished-work presentation
-- “Watch Gravitre work” / Computer Use ahead of functional roadmap
-- Implementing “show the work” live checklist (placement only — see `12-show-the-work-placement.md`)
+- Overwriting Platform Execution contracts
+- Implementing “show the work” live checklist
