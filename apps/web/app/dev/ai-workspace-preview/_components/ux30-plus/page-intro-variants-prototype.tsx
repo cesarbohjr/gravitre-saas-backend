@@ -39,41 +39,79 @@ const TRADEOFFS: Record<Exclude<IntroVariant, "compare">, { pros: string; cons: 
 }
 
 function OperatingFrame({ mobile }: { mobile?: boolean }) {
+  // SaaSFrame Mintlify: greeting + secondary actions + stepper + hero status card + activity — not equal KPI cards.
   return (
     <HarnessSurface className={cn("space-y-4 p-5", mobile && "max-w-[390px]")}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className={TYPE.eyebrow}>Operating</p>
+          <p className={TYPE.eyebrow}>Operating · SaaSFrame Mintlify structure</p>
           <h3 className={cn(TYPE.pageTitle, "mt-1")}>Intelligence</h3>
-          <p className={cn(TYPE.pageLead, "mt-1")}>3 accounts need attention · 1 workflow waiting on approval.</p>
+          <p className={cn(TYPE.pageLead, "mt-1")}>
+            3 accounts need attention · 1 workflow waiting on approval.
+          </p>
         </div>
-        <Button size="sm">Review approvals</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm">Review approvals</Button>
+          <Button size="sm" variant="secondary">
+            What changed?
+          </Button>
+          <Button size="sm" variant="ghost">
+            Ask Gravitre
+          </Button>
+        </div>
       </div>
-      <div className={cn("grid gap-3", mobile ? "grid-cols-1" : "sm:grid-cols-3")}>
+
+      <div className="flex flex-wrap gap-2 text-xs">
         {[
-          ["Needs attention", "Acme renewal risk"],
-          ["Running", "Prospect enrich · step 2/5"],
-          ["Next action", "Approve HubSpot write"],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-[color:var(--g-border-subtle)] p-3">
-            <p className={TYPE.meta}>{label}</p>
-            <p className="mt-1 text-sm font-medium">{value}</p>
-          </div>
+          { n: 1, label: "Sources connected", done: true },
+          { n: 2, label: "First Field insight", done: true },
+          { n: 3, label: "Clear approvals", done: false },
+        ].map((s) => (
+          <span
+            key={s.n}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1",
+              s.done
+                ? "border-[color:var(--g-brand)]/30 bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]"
+                : "border-[color:var(--g-border-subtle)] text-[color:var(--g-text-muted)]",
+            )}
+          >
+            <span className="font-mono text-[10px]">{s.done ? "✓" : s.n}</span>
+            {s.label}
+          </span>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary">
-          What changed?
-        </Button>
-        <Button size="sm" variant="ghost">
-          Open Matrix
-        </Button>
-        <Button size="sm" variant="ghost">
-          Ask Gravitre
-        </Button>
+
+      <div className="rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className={TYPE.meta}>Primary work · fixture</p>
+            <p className="mt-1 text-sm font-medium">Acme renewal risk · Field insight ready</p>
+            <p className={TYPE.meta}>Last update · fixture · not live evidence</p>
+          </div>
+          <span className="rounded-md bg-[color:var(--g-brand-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--g-brand)]">
+            Live lens
+          </span>
+        </div>
+        <div className="mt-3 h-28 rounded-lg border border-dashed border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-3">
+          <p className={TYPE.meta}>Field preview (secondary under operating strip)</p>
+        </div>
       </div>
-      <div className="h-36 rounded-lg border border-dashed border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] p-3">
-        <p className={TYPE.meta}>Field preview (secondary under operating strip)</p>
+
+      <div className="overflow-hidden rounded-lg border border-[color:var(--g-border-subtle)]">
+        <div className="border-b border-[color:var(--g-border-subtle)] px-3 py-2">
+          <p className={TYPE.eyebrow}>Recent activity · fixture</p>
+        </div>
+        <ul className="divide-y divide-[color:var(--g-border-subtle)] text-sm">
+          <li className="flex justify-between gap-2 px-3 py-2">
+            <span>Prospect enrich · failed step 3</span>
+            <span className="text-[color:var(--g-danger)]">failed</span>
+          </li>
+          <li className="flex justify-between gap-2 px-3 py-2">
+            <span>HubSpot write · awaiting approval</span>
+            <span className="text-[color:var(--g-warning)]">waiting</span>
+          </li>
+        </ul>
       </div>
     </HarnessSurface>
   )

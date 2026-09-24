@@ -1,8 +1,8 @@
 "use client"
 
 /**
- * Dashboard §40 — three meaningfully different structural concepts.
- * Harness only · SaaSFrame-informed hierarchy · Nodus/Gravitre visual.
+ * Dashboard §40 — SaaSFrame-informed (Wise + Mintlify) · Nodus/Gravitre visual.
+ * Harness only · fixture data · not live production evidence.
  */
 
 import { Button } from "@/components/ui/button"
@@ -16,13 +16,13 @@ const CONCEPTS: { id: Concept; title: string; pros: string; cons: string }[] = [
   {
     id: "attention-first",
     title: "Attention-first",
-    pros: "Answers what requires action now; clear primary CTA; matches §16 questions.",
+    pros: "Wise-style hero status + accent CTA; Mintlify activity truth; matches §16 / §35.",
     cons: "Weaker for scanning many healthy systems; risk of alert fatigue.",
   },
   {
     id: "ops-board",
     title: "Ops board",
-    pros: "Running / failed / approvals as columns; operator muscle memory.",
+    pros: "Mintlify activity-table language across Running / Failed / Approvals columns.",
     cons: "Can look like generic kanban; business outcomes secondary.",
   },
   {
@@ -33,6 +33,13 @@ const CONCEPTS: { id: Concept; title: string; pros: string; cons: string }[] = [
   },
 ]
 
+const ACTIVITY = [
+  { label: "Approve HubSpot write · Acme", status: "waiting" as const, when: "2m ago", duration: "—" },
+  { label: "Prospect enrich · step 3", status: "failed" as const, when: "14m ago", duration: "41s" },
+  { label: "Qualify lead · HubSpot", status: "ok" as const, when: "1h ago", duration: "2m 04s" },
+  { label: "Apollo connector · auth check", status: "warn" as const, when: "3h ago", duration: "—" },
+]
+
 export function DashboardConceptsPrototype({ scene }: { scene: string }) {
   const concept = (CONCEPTS.find((c) => scene.includes(c.id))?.id ?? "attention-first") as Concept
   const meta = CONCEPTS.find((c) => c.id === concept)!
@@ -40,10 +47,10 @@ export function DashboardConceptsPrototype({ scene }: { scene: string }) {
   return (
     <div data-review-surface="dashboard" data-review-scene={scene} className="mx-auto max-w-5xl space-y-4">
       <header>
-        <p className={TYPE.eyebrow}>§40 · Dashboard structural concepts · harness only</p>
-        <h2 className={cn(TYPE.pageTitle, "mt-1")}>Three different structures</h2>
+        <p className={TYPE.eyebrow}>§40 · Dashboard · SaaSFrame Wise + Mintlify · harness only</p>
+        <h2 className={cn(TYPE.pageTitle, "mt-1")}>Operational overview (research-applied)</h2>
         <p className={cn(TYPE.pageLead, "mt-2")}>
-          Not card rearrangements. What matters / changed / running / attention / next — no decorative KPIs.
+          REF Wise/Mintlify → hero attention + action row + activity table. Nodus tokens. Fixture ≠ production.
         </p>
       </header>
 
@@ -56,44 +63,105 @@ export function DashboardConceptsPrototype({ scene }: { scene: string }) {
       </div>
 
       {concept === "attention-first" && (
-        <HarnessSurface className="space-y-4 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className={TYPE.cardTitle}>Needs you</h3>
-              <p className={TYPE.meta}>2 approvals · 1 failed run · 1 connector degraded</p>
+        <div className="space-y-4">
+          <HarnessSurface className="space-y-4 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className={TYPE.eyebrow}>Needs you · fixture</p>
+                <h3 className={cn(TYPE.pageTitle, "mt-1 text-[1.5rem]")}>3 items require action</h3>
+                <p className={TYPE.meta}>2 approvals · 1 failed run · 1 connector degraded</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm">Resolve next</Button>
+                <Button size="sm" variant="secondary">
+                  Ask Gravitre
+                </Button>
+                <Button size="sm" variant="ghost">
+                  What changed?
+                </Button>
+              </div>
             </div>
-            <Button size="sm">Resolve next</Button>
-          </div>
-          <ul className="space-y-2 text-sm">
-            <li className="rounded-lg border border-[color:var(--g-warning)]/40 p-3">Approve HubSpot write · Acme</li>
-            <li className="rounded-lg border border-[color:var(--g-danger)]/40 p-3">Prospect enrich failed · step 3</li>
-            <li className="rounded-lg border border-[color:var(--g-border-subtle)] p-3">Apollo connector · auth expiring</li>
-          </ul>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-dashed border-[color:var(--g-border-subtle)] p-3">
-              <p className={TYPE.meta}>Running now</p>
-              <p className="text-sm">Qualify lead · 2/4</p>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { t: "Waiting approval", v: "HubSpot write · Acme", tone: "border-[color:var(--g-warning)]/40" },
+                { t: "Failed", v: "Prospect enrich · step 3", tone: "border-[color:var(--g-danger)]/40" },
+                { t: "Degraded", v: "Apollo · auth expiring", tone: "border-[color:var(--g-border-subtle)]" },
+              ].map((c) => (
+                <div key={c.t} className={cn("rounded-lg border p-3", c.tone)}>
+                  <p className={TYPE.meta}>{c.t}</p>
+                  <p className="mt-1 text-sm font-medium">{c.v}</p>
+                </div>
+              ))}
             </div>
-            <div className="rounded-lg border border-dashed border-[color:var(--g-border-subtle)] p-3">
-              <p className={TYPE.meta}>Changed</p>
-              <p className="text-sm">3 Intelligence updates · open Field</p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] p-3">
+                <p className={TYPE.meta}>Running now</p>
+                <p className="mt-1 text-sm font-medium">Qualify lead · 2/4 steps</p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--g-border-subtle)]">
+                  <div className="h-full w-1/2 rounded-full bg-[color:var(--g-brand)]" />
+                </div>
+              </div>
+              <div className="rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] p-3">
+                <p className={TYPE.meta}>Changed</p>
+                <p className="mt-1 text-sm font-medium">3 Intelligence updates</p>
+                <Button size="sm" variant="ghost" className="mt-1 h-7 px-0" asChild>
+                  <a href="/dev/ai-workspace-preview?s=intelligence-journey&scene=field-primary">Open Field →</a>
+                </Button>
+              </div>
             </div>
-          </div>
-        </HarnessSurface>
+          </HarnessSurface>
+
+          <HarnessSurface className="overflow-hidden p-0">
+            <div className="flex items-center justify-between border-b border-[color:var(--g-border-subtle)] px-4 py-3">
+              <p className={TYPE.eyebrow}>Activity · fixture</p>
+              <button type="button" className="text-xs text-[color:var(--g-brand)]">
+                See all
+              </button>
+            </div>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[color:var(--g-surface-2)] text-[11px] uppercase tracking-wide text-[color:var(--g-text-muted)]">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Activity</th>
+                  <th className="px-4 py-2 font-medium">Updated</th>
+                  <th className="px-4 py-2 font-medium">Duration</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ACTIVITY.map((row) => (
+                  <tr key={row.label} className="border-t border-[color:var(--g-border-subtle)]">
+                    <td className="px-4 py-2.5">{row.label}</td>
+                    <td className="px-4 py-2.5 text-[color:var(--g-text-muted)]">{row.when}</td>
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-[color:var(--g-text-muted)]">
+                      {row.duration}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <StatusPill status={row.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </HarnessSurface>
+        </div>
       )}
 
       {concept === "ops-board" && (
         <div className="grid gap-3 md:grid-cols-3">
-          {[
-            ["Running", ["Qualify lead", "Sync contacts"]],
-            ["Blocked", ["Approve outreach", "Connector auth"]],
-            ["Done today", ["Enrich batch", "Report draft"]],
-          ].map(([col, items]) => (
-            <HarnessSurface key={col as string} className="p-3">
-              <p className={TYPE.eyebrow}>{col as string}</p>
-              <ul className="mt-2 space-y-2 text-sm">
-                {(items as string[]).map((i) => (
-                  <li key={i} className="rounded border border-[color:var(--g-border-subtle)] px-2 py-2">
+          {(
+            [
+              ["Running", ["Qualify lead · 2/4", "Enrich contacts · 1/5"]],
+              ["Failed", ["Prospect enrich · step 3"]],
+              ["Approvals", ["HubSpot write · Acme", "Outreach draft · Contoso"]],
+            ] as const
+          ).map(([col, items]) => (
+            <HarnessSurface key={col} className="p-4">
+              <p className={TYPE.eyebrow}>{col}</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {items.map((i) => (
+                  <li key={i} className="rounded-md border border-[color:var(--g-border-subtle)] px-2 py-2">
                     {i}
                   </li>
                 ))}
@@ -104,34 +172,39 @@ export function DashboardConceptsPrototype({ scene }: { scene: string }) {
       )}
 
       {concept === "outcome-rail" && (
-        <HarnessSurface className="p-5">
-          <h3 className={TYPE.cardTitle}>Outcomes</h3>
-          <div className="mt-4 space-y-3">
-            {[
-              ["Pipeline health", "Workflows 2 · Agents 1 · Ask"],
-              ["Renewals this month", "Intelligence signals · Approval"],
-            ].map(([goal, under]) => (
-              <div key={goal} className="rounded-lg border border-[color:var(--g-border-default)] p-4">
-                <p className="font-medium">{goal}</p>
-                <p className={TYPE.meta}>{under}</p>
-                <Button size="sm" className="mt-2" variant="secondary">
-                  Continue
-                </Button>
-              </div>
-            ))}
-          </div>
+        <HarnessSurface className="space-y-3 p-5">
+          <p className={TYPE.eyebrow}>Outcomes · fixture</p>
+          {[
+            ["Renewal risk ↓", "Acme · Intelligence Field"],
+            ["Pipeline coverage", "3 workflows · 1 waiting approval"],
+          ].map(([t, s]) => (
+            <div key={t} className="rounded-lg border border-[color:var(--g-border-subtle)] p-3">
+              <p className="text-sm font-medium">{t}</p>
+              <p className={TYPE.meta}>{s}</p>
+            </div>
+          ))}
         </HarnessSurface>
       )}
 
       <HarnessSurface className="p-4">
         <p className={TYPE.eyebrow}>{meta.title} · tradeoffs</p>
-        <p className="mt-2 text-sm">
-          <span className="font-medium">Pros:</span> {meta.pros}
-        </p>
-        <p className="mt-1 text-sm">
-          <span className="font-medium">Cons:</span> {meta.cons}
-        </p>
+        <p className="mt-2 text-sm text-[color:var(--g-text-secondary)]">Pros: {meta.pros}</p>
+        <p className="mt-1 text-sm text-[color:var(--g-text-secondary)]">Cons: {meta.cons}</p>
       </HarnessSurface>
     </div>
   )
+}
+
+function StatusPill({ status }: { status: "ok" | "failed" | "waiting" | "warn" }) {
+  const label =
+    status === "ok" ? "ok" : status === "failed" ? "failed" : status === "waiting" ? "waiting" : "warn"
+  const cls =
+    status === "ok"
+      ? "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]"
+      : status === "failed"
+        ? "bg-[color:var(--g-danger)]/10 text-[color:var(--g-danger)]"
+        : status === "waiting"
+          ? "bg-[color:var(--g-warning)]/15 text-[color:var(--g-warning)]"
+          : "bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)]"
+  return <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-medium", cls)}>{label}</span>
 }

@@ -32,9 +32,11 @@ import { IntelligenceJourneyPrototype } from "./ux30-plus/intelligence-journey-p
 import { DashboardConceptsPrototype } from "./ux30-plus/dashboard-concepts-prototype"
 import { AgentWorkspaceConceptsPrototype } from "./ux30-plus/agent-workspace-concepts-prototype"
 import { WorkflowGenPreviewPrototype } from "./ux30-plus/workflow-gen-preview-prototype"
+import { SaaSFrameResearchTrace } from "./ux30-plus/saasframe-research-trace"
 
 const UX30_SURFACES = [
   "selection",
+  "saasframe",
   "page-intro",
   "window-manager",
   "intelligence-journey",
@@ -71,6 +73,7 @@ type Surface = Ux30Surface | LegacySurface
 
 const UX30_SCENES: Record<Ux30Surface, string[]> = {
   selection: ["index"],
+  saasframe: ["trace"],
   foundation: ["default", "reduced"],
   intelligence: [
     "field-primary",
@@ -109,9 +112,13 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
   "ai-workspace": [
     "conversation-primary",
     "work-primary",
+    "split",
+    "generating",
+    "streaming",
+    "complete",
+    "needs-approval",
     "show-the-work-slot",
     "voice-continuity",
-    "split",
   ],
   "model-studio": ["standard", "advanced"],
   dashboard: ["attention-first", "ops-board", "outcome-rail"],
@@ -188,6 +195,7 @@ export function DesignExplorationShell() {
       </header>
       <main className="p-4 md:p-6">
         {surface === "selection" && <DesignSelectionIndex />}
+        {surface === "saasframe" && <SaaSFrameResearchTrace scene={scene} />}
         {surface === "foundation" && <FoundationPrototype scene={scene} />}
         {surface === "intelligence" && <IntelligenceFieldPrototype scene={scene} />}
         {surface === "intelligence-journey" && <IntelligenceJourneyPrototype scene={scene} />}
@@ -220,6 +228,7 @@ export function DesignExplorationShell() {
 
 function defaultScene(surface: Surface): string {
   if (surface === "selection") return "index"
+  if (surface === "saasframe") return "trace"
   if (surface === "foundation") return "default"
   if (surface === "intelligence") return "field-primary"
   if (surface === "intelligence-journey") return "field-primary"

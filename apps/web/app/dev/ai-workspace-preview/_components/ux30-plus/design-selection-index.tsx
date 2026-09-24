@@ -200,6 +200,13 @@ export function DesignSelectionIndex() {
       <HarnessSurface className="p-4">
         <p className={TYPE.eyebrow}>How to review</p>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-[color:var(--g-text-secondary)]">
+          <li>
+            Start with{" "}
+            <a className="text-[color:var(--g-brand)] underline-offset-2 hover:underline" href="/dev/ai-workspace-preview?s=saasframe">
+              SaaSFrame research → design
+            </a>{" "}
+            (REF → pattern → Gravitre → preview).
+          </li>
           <li>Open each section’s links below in this harness (same tab).</li>
           <li>Compare structural differences (layout / hierarchy / interaction), not cosmetics.</li>
           <li>
@@ -208,6 +215,31 @@ export function DesignSelectionIndex() {
           </li>
           <li>Record selections in the checklist at the bottom — do not approve Phase 8 from text alone.</li>
         </ol>
+      </HarnessSurface>
+
+      <HarnessSurface className="space-y-3 p-4">
+        <h3 className={TYPE.cardTitle}>SaaSFrame mandatory research (restored)</h3>
+        <p className={cn(TYPE.meta, "mt-1")}>
+          Cesar chooses: confirm research→design mappings before Phase 8. Pro library still gated.
+        </p>
+        <p className="text-sm text-[color:var(--g-text-secondary)]">
+          Hierarchy: Nodus visual · SaaSFrame product screens · SaaSUI enterprise · Mobbin journeys · Refero ·
+          Beautiful UI widgets · 21st.dev after structure.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" asChild>
+            <a href="/dev/ai-workspace-preview?s=saasframe">Open research → design trace</a>
+          </Button>
+          <Button size="sm" variant="secondary" asChild>
+            <a href="/dev/ai-workspace-preview?s=dashboard&scene=attention-first">Updated Dashboard</a>
+          </Button>
+          <Button size="sm" variant="secondary" asChild>
+            <a href="/dev/ai-workspace-preview?s=ai-workspace&scene=generating">AI generation states</a>
+          </Button>
+          <Button size="sm" variant="secondary" asChild>
+            <a href="/dev/ai-workspace-preview?s=page-intro&scene=operating">Operating intro (no 3-card KPI)</a>
+          </Button>
+        </div>
       </HarnessSurface>
 
       {SECTIONS.map((section) => (

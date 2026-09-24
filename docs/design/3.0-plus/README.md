@@ -38,3 +38,7 @@
 - Blind installs of Evaluate/Defer stack items  
 - Second AI runtime or parallel workflow schema  
 - Show-the-work live checklist implementation  
+
+- `19-saasframe-research-mapping.md` — SaaSFrame mandatory research ? Gravitre design (inspected URLs + Pro limits)
+- Harness: `?s=saasframe` research?design trace
+

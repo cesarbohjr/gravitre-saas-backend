@@ -26,11 +26,11 @@ export function IntelligenceJourneyPrototype({ scene }: { scene: string }) {
   return (
     <div data-review-surface="intelligence-journey" data-review-scene={scene} className="mx-auto max-w-6xl space-y-4">
       <header>
-        <p className={TYPE.eyebrow}>Selection C · Intelligence · harness only · §21</p>
+        <p className={TYPE.eyebrow}>Selection C · Intelligence · SaaSFrame June Report · harness only · §21</p>
         <h2 className={cn(TYPE.pageTitle, "mt-1")}>Field-primary and alternative structures</h2>
         <p className={cn(TYPE.pageLead, "mt-2")}>
-          Expert capability preserved. Journey Insight→Evidence→Relationship→Expert graph. Production Field primacy
-          reserved for Cesar.
+          Evidence-led Field (insight header + evidence cards + topology) — not an empty graph. Expert capability
+          preserved. Production Field primacy reserved for Cesar.
         </p>
       </header>
 
@@ -104,13 +104,22 @@ export function IntelligenceJourneyPrototype({ scene }: { scene: string }) {
       )}
 
       {concept === "field-primary" && (
-        <div className="grid gap-3 lg:grid-cols-[1fr_280px]">
-          <HarnessSurface className="min-h-[360px] p-4">
-            <div className="flex items-center justify-between">
-              <p className={TYPE.eyebrow}>Concept 1 · Field owns the viewport</p>
-              <Button size="sm" variant="outline">
-                What changed?
-              </Button>
+        <div className="space-y-3">
+          <HarnessSurface className="p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className={TYPE.eyebrow}>Concept 1 · June Report zones · Field primacy</p>
+                <h3 className={cn(TYPE.cardTitle, "mt-1")}>Acme renewal risk rose</h3>
+                <p className={TYPE.meta}>Insight · fixture · not live production evidence</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline">
+                  What changed?
+                </Button>
+                <Button size="sm" variant="secondary">
+                  Filters
+                </Button>
+              </div>
             </div>
             <div className="mt-3 flex gap-1 text-xs">
               {["knows", "learns", "predicts", "acts", "improves"].map((l) => (
@@ -119,32 +128,80 @@ export function IntelligenceJourneyPrototype({ scene }: { scene: string }) {
                 </span>
               ))}
             </div>
-            <div className="mt-4 flex h-64 items-center justify-center rounded-lg border border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]">
-              <p className="text-sm text-[color:var(--g-text-muted)]">Field topology (fixture) · Matrix demoted to Expert</p>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-1">
-              <Button size="sm" variant="ghost">
-                Matrix
-              </Button>
-              <Button size="sm" variant="ghost">
-                Knowledge Graph
-              </Button>
-              <Button size="sm" variant="ghost">
-                Relationships
-              </Button>
-              <Button size="sm" variant="ghost">
-                Predictive
-              </Button>
-            </div>
           </HarnessSurface>
-          <HarnessSurface className="p-4">
-            <p className={TYPE.eyebrow}>Inspector</p>
-            <p className="mt-2 text-sm font-medium">Acme Corp</p>
-            <p className={TYPE.meta}>Evidence · Ask · Advance filters</p>
-            <p className="mt-4 text-xs text-[color:var(--g-text-secondary)]">
-              Pros: matches §21 overview-first. Cons: expert Matrix less visible — must stay one click away.
-            </p>
-          </HarnessSurface>
+
+          <div className="grid gap-3 lg:grid-cols-[1fr_280px]">
+            <div className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-3">
+                {[
+                  ["Evidence", "run_01 · HubSpot activity"],
+                  ["Relationship", "Acme ↔ Roderick · works_at"],
+                  ["Next", "Review approval · enrich"],
+                ].map(([t, v]) => (
+                  <HarnessSurface key={t} className="p-3">
+                    <p className={TYPE.meta}>{t}</p>
+                    <p className="mt-1 text-sm font-medium">{v}</p>
+                  </HarnessSurface>
+                ))}
+              </div>
+              <HarnessSurface className="min-h-[280px] p-4">
+                <p className={TYPE.eyebrow}>Field · owns the viewport</p>
+                <div className="relative mt-3 h-56 overflow-hidden rounded-lg border border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]">
+                  <svg viewBox="0 0 480 220" className="h-full w-full" aria-hidden>
+                    <line x1="120" y1="110" x2="240" y2="70" stroke="var(--g-border-default)" strokeWidth="1.5" />
+                    <line x1="240" y1="70" x2="360" y2="120" stroke="var(--g-border-default)" strokeWidth="1.5" />
+                    <line x1="120" y1="110" x2="240" y2="160" stroke="var(--g-border-default)" strokeWidth="1.5" />
+                    <rect x="70" y="90" width="100" height="40" rx="8" fill="color-mix(in oklch, var(--g-emerald) 8%, white)" stroke="var(--g-emerald)" />
+                    <text x="120" y="114" textAnchor="middle" fontSize="11" fill="var(--g-text-primary)">
+                      Acme Corp
+                    </text>
+                    <rect x="190" y="50" width="100" height="40" rx="8" fill="var(--g-surface-1)" stroke="var(--g-border-default)" />
+                    <text x="240" y="74" textAnchor="middle" fontSize="11" fill="var(--g-text-primary)">
+                      Roderick
+                    </text>
+                    <rect x="310" y="100" width="100" height="40" rx="8" fill="var(--g-surface-1)" stroke="var(--g-border-default)" />
+                    <text x="360" y="124" textAnchor="middle" fontSize="11" fill="var(--g-text-primary)">
+                      HubSpot
+                    </text>
+                    <rect x="190" y="140" width="100" height="40" rx="8" fill="color-mix(in oklch, var(--g-approval) 10%, white)" stroke="var(--g-approval)" />
+                    <text x="240" y="164" textAnchor="middle" fontSize="11" fill="var(--g-text-primary)">
+                      Renewal risk
+                    </text>
+                  </svg>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  <Button size="sm" variant="ghost">
+                    Matrix
+                  </Button>
+                  <Button size="sm" variant="ghost">
+                    Knowledge Graph
+                  </Button>
+                  <Button size="sm" variant="ghost">
+                    Relationships
+                  </Button>
+                  <Button size="sm" variant="ghost">
+                    Predictive
+                  </Button>
+                </div>
+              </HarnessSurface>
+            </div>
+            <HarnessSurface className="p-4">
+              <p className={TYPE.eyebrow}>Inspector</p>
+              <p className="mt-2 text-sm font-medium">Acme Corp</p>
+              <p className={TYPE.meta}>Evidence · Ask · Advance filters</p>
+              <ul className="mt-3 space-y-2 text-xs text-[color:var(--g-text-secondary)]">
+                <li className="rounded border border-[color:var(--g-border-subtle)] px-2 py-1.5">
+                  Signal · buying intent +2 (fixture)
+                </li>
+                <li className="rounded border border-[color:var(--g-border-subtle)] px-2 py-1.5">
+                  Source · HubSpot · run_01
+                </li>
+              </ul>
+              <p className="mt-4 text-xs text-[color:var(--g-text-secondary)]">
+                Pros: matches §21 overview-first. Cons: expert Matrix less visible — must stay one click away.
+              </p>
+            </HarnessSurface>
+          </div>
         </div>
       )}
 
