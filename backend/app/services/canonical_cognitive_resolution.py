@@ -294,6 +294,7 @@ async def try_compiled_operational_read_turn(
     connected_integrations: list[str] | None,
     task_state: dict[str, Any] | None,
     user_id: str | None = None,
+    conversation_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Analytics first, then other F1 department READs, before ReAct."""
     from app.services.capability_evidence_plan import looks_like_ceo_ops_question
@@ -353,6 +354,7 @@ async def try_compiled_operational_read_turn(
         connected_integrations=connected_integrations,
         task_state=task_state,
         user_id=user_id,
+        conversation_id=conversation_id,
     )
     if listing:
         return listing

@@ -551,7 +551,7 @@ async def compose_user_reply(
     # is still Composer-owned (leak filter + finalize); it is not a second runtime.
     if (
         resolved_kind == "canned"
-        and path == "catalog_search_eligible"
+        and path in {"catalog_search_eligible", "listing_f2_read", "entity_join_store"}
         and draft
         and not looks_like_raw_backend(draft)
     ):

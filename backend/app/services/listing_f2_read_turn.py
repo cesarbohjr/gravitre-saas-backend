@@ -72,6 +72,7 @@ def try_listing_f2_read_turn(
     connected_integrations: list[str] | None,
     task_state: dict[str, Any] | None,
     user_id: str | None = None,
+    conversation_id: str | None = None,
 ) -> dict[str, Any] | None:
     if not match_listing_f2_intent(message or ""):
         return None
@@ -103,6 +104,12 @@ def try_listing_f2_read_turn(
         plan.plan_id = existing.plan_id
     actor_id = attributable_read_actor_id(user_id) or "listing-f2-read"
     active_settings = settings or get_settings()
+    cid = str(conversation_id or "")
+    if not cid and isinstance(task_state, dict):
+        trace = task_state.get("resolution_trace")
+        if isinstance(trace, dict):
+            cid = str(trace.get("conversation_id") or "")
+        cid = cid or str(task_state.get("conversation_id") or "")
     tool_ctx = ToolContext(
         settings=active_settings,
         client=client,
@@ -112,6 +119,7 @@ def try_listing_f2_read_turn(
         cognitive_invoke=True,
         plan_id=plan.plan_id,
         capability_id=plan.capability_id,
+        conversation_id=cid or None,
     )
     budget = RepairBudget.fresh()
     raw = (task_state or {}).get("repair_budget") if isinstance(task_state, dict) else None

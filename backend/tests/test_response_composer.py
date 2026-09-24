@@ -320,6 +320,31 @@ async def test_catalog_search_skips_composer_llm() -> None:
 
 
 @pytest.mark.asyncio
+async def test_listing_f2_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten into five headings"
+
+    draft = "From the connected CRM I received 25 deals in this sample."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "listing_f2_read",
+            "data": {"text": draft, "execution_path": "listing_f2_read"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "25 deals" in text.lower()
+
+
+@pytest.mark.asyncio
 async def test_genuine_pre_execution_refusal_is_kept():
     text = await compose_user_reply(
         {
