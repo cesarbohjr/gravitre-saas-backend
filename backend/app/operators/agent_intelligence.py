@@ -2035,6 +2035,10 @@ class AgentIntelligence:
             if isinstance(_ar, dict):
                 compose_extra["analytics_result"] = _ar
                 compose_extra["data"]["analytics_result"] = _ar
+            _path = str(_analytics_turn.get("execution_path") or "")
+            if _path:
+                compose_extra["execution_path"] = _path
+                compose_extra["data"]["execution_path"] = _path
             if isinstance(_evidence, dict) or compose_kind == "canned":
                 _mark("observation")
             _mark("composer_start")

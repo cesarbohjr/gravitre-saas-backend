@@ -25,8 +25,10 @@
 
 `execution_result.structured` may include:
 
-- `claim_labels`: `[{ "text": string, "label": "FACT"|"INFERENCE"|"HYPOTHESIS"|"RECOMMENDATION" }]`
+- `claim_labels`: `[{ "text": string, "label": "FACT"|"INFERENCE"|"HYPOTHESIS"|"RECOMMENDATION", "observation_id"?: string }]`
 - `missing_sources`: string[] of honest not-connected copy
 - `provider_reinvoked`: boolean (false when stored Observations were reused)
 
-Existing `kind=report` artifacts and GET `/api/assistant/conversation/{id}/state` are unchanged. Presentation remains the current artifact panel / work canvas.
+GET `/api/assistant/conversation/{id}/state` reconstructs those fields from persisted `diagnostic_conclusion`. Presentation remains the current artifact panel / work canvas.
+
+`task_state.repair_error_memory` / `task_state.repair_budget` (3.0-G) are in-task only: `{ action, args, resource, reason, error_class }` with secrets stripped. Do not render them as a customer learning store.

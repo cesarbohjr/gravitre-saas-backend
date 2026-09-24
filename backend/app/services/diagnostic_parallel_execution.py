@@ -91,16 +91,52 @@ def _compose_message(
 ) -> str:
     parts = [str(verdict.get("message") or "").strip()]
     if missing:
-        parts.append("Missing sources: " + " ".join(missing))
-    labels = verdict.get("labels") if isinstance(verdict.get("labels"), list) else []
-    tagged = [
-        f"{row.get('label')}: {row.get('text')}"
-        for row in labels
-        if isinstance(row, dict) and row.get("label") and row.get("text")
-    ]
-    if tagged:
-        parts.append("\n".join(tagged))
+        parts.append(" ".join(missing))
     return "\n\n".join(part for part in parts if part).strip()
+
+
+def _grounded_observation(
+    *,
+    action_key: str,
+    invoked: Any,
+    obs: ExecutionObservation,
+    proof_ok: bool,
+) -> tuple[str, dict[str, Any]]:
+    from app.services.operational_read_execution import _result_count, _summarize_read
+
+    structured = dict(obs.structured or {})
+    structured["action_key"] = action_key
+    structured["provider_invoked"] = bool(proof_ok and getattr(invoked, "success", False))
+    count = _result_count(getattr(invoked, "data", None))
+    structured["result_count"] = count
+    if obs.observation_id:
+        structured["observation_id"] = obs.observation_id
+    if proof_ok and getattr(invoked, "success", False):
+        summary = _summarize_read(action_key, invoked.data)
+    else:
+        summary = str(getattr(invoked, "error_message", None) or obs.summary or "read failed")
+    first_line = str(summary or "").split("\n", 1)[0].strip()
+    return first_line[:500], structured
+
+
+def _budget_from_state(task_state: dict[str, Any] | None):
+    from app.services.f2_read_repair import RepairBudget
+
+    state = task_state if isinstance(task_state, dict) else {}
+    raw = state.get("repair_budget")
+    if isinstance(raw, dict):
+        return RepairBudget.from_dict(raw)
+    return RepairBudget.fresh()
+
+
+def _existing_diagnostic_plan(task_state: dict[str, Any] | None) -> ExecutionPlan | None:
+    state = task_state if isinstance(task_state, dict) else {}
+    plan = ExecutionPlan.from_dict(state.get("execution_plan"))
+    if plan is None:
+        return None
+    if str(plan.source or "") != "multi_source_diagnostic":
+        return None
+    return plan
 
 
 def _invoke_evidence_step(
@@ -155,21 +191,73 @@ def _invoke_evidence_step(
             error=getattr(exc, "code", None),
             structured={"action_key": action_key, "provider_invoked": False},
         )
-    structured = dict(obs.structured or {})
-    structured["action_key"] = action_key
-    structured["provider_invoked"] = bool(proof.ok and invoked.success)
     if not proof.ok:
-        return ExecutionObservation(
-            observation_id=obs.observation_id,
-            step_id=step.step_id,
-            plan_id=plan.plan_id,
-            connector_id=obs.connector_id or vendor,
-            success=False,
-            summary=proof.user_message()[:500],
-            error=proof.error_class,
-            structured=structured,
+        from app.services.f2_read_repair import emit_f2_repair_audit, repair_blocked_read
+
+        budget = ctx.get("repair_budget")
+        repaired = repair_blocked_read(
+            blocked=proof,
+            ctx=tool_ctx,
+            invoke_action=action_key,
+            args={"limit": 25},
+            user_message=str(ctx.get("message") or ""),
+            connected_integrations=connected,
+            budget=budget,
         )
-    summary = obs.summary if obs.success else (invoked.error_message or obs.summary or "read failed")
+        if repaired is not None and repaired.preflight is not None and repaired.preflight.ok:
+            emit_f2_repair_audit(
+                tool_ctx,
+                from_action=action_key,
+                repaired=repaired,
+                budget=budget,
+            )
+            try:
+                invoked, proof, obs = invoke_sealed_f1_read(
+                    ctx=tool_ctx,
+                    action_key=repaired.action,
+                    user_message=str(ctx.get("message") or ""),
+                    task_state=ctx.get("task_state") or {},
+                    connected_integrations=connected,
+                    plan=plan,
+                    step=step,
+                    proposed_args=dict(repaired.args or {"limit": 25}),
+                    capability_id=plan.capability_id,
+                )
+                action_key = catalog_action_key(repaired.action)
+            except ToolValidationError as exc:
+                return ExecutionObservation(
+                    step_id=step.step_id,
+                    plan_id=plan.plan_id,
+                    connector_id=vendor or "unknown",
+                    success=False,
+                    summary=str(exc),
+                    error=getattr(exc, "code", None),
+                    structured={
+                        "action_key": action_key,
+                        "provider_invoked": False,
+                        "repair_attempted": True,
+                    },
+                )
+        if not proof.ok:
+            structured = dict(obs.structured or {})
+            structured["action_key"] = action_key
+            structured["provider_invoked"] = False
+            return ExecutionObservation(
+                observation_id=obs.observation_id,
+                step_id=step.step_id,
+                plan_id=plan.plan_id,
+                connector_id=obs.connector_id or vendor,
+                success=False,
+                summary=proof.user_message()[:500],
+                error=proof.error_class,
+                structured=structured,
+            )
+    summary, structured = _grounded_observation(
+        action_key=action_key,
+        invoked=invoked,
+        obs=obs,
+        proof_ok=bool(proof.ok),
+    )
     return ExecutionObservation(
         observation_id=obs.observation_id,
         step_id=step.step_id,
@@ -192,24 +280,33 @@ async def try_diagnostic_parallel_read_turn(
     task_state: dict[str, Any] | None,
     user_id: str | None = None,
 ) -> dict[str, Any] | None:
-    if match_diagnostic_recipe(message or "") is None:
-        return None
-    connected = [str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()]
-    plan = build_multi_source_diagnostic_plan(
-        message,
-        connected_integrations=connected,
-    )
-    if plan is None:
-        return None
-
     from app.services.cognitive_execution_engine import apply_observations_to_plan, execute_read_steps_parallel
     from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
     from app.services.task_continuity import decide_task_continuity
 
     stored = _reuse_stored_observations(task_state)
+    existing = _existing_diagnostic_plan(task_state)
+    continuing = decide_task_continuity(message, task_state) == "continue"
+    recipe = match_diagnostic_recipe(message or "")
+    if recipe is None and not (continuing and existing is not None and any(row.success for row in stored)):
+        return None
+    connected = [str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()]
+    plan = None
+    if recipe is not None:
+        plan = build_multi_source_diagnostic_plan(
+            message,
+            connected_integrations=connected,
+        )
+        if plan is not None and existing is not None and continuing:
+            plan.plan_id = existing.plan_id
+            plan.continuation_of_plan_id = existing.plan_id
+    elif existing is not None:
+        plan = existing
+    if plan is None:
+        return None
     reuse = (
         not _wants_fresh(message or "")
-        and decide_task_continuity(message, task_state) == "continue"
+        and continuing
         and any(row.success for row in stored)
     )
     active_settings = settings or get_settings()
@@ -225,6 +322,7 @@ async def try_diagnostic_parallel_read_turn(
         capability_id=plan.capability_id,
         conversation_id=plan.conversation_id,
     )
+    repair_budget = _budget_from_state(task_state)
     if reuse:
         observations = stored
         provider_reinvoked = False
@@ -235,6 +333,7 @@ async def try_diagnostic_parallel_read_turn(
             "tool_ctx": tool_ctx,
             "message": message,
             "task_state": task_state or {},
+            "repair_budget": repair_budget,
         }
 
         async def _handler(step: ExecutionStep, context: dict[str, Any]) -> ExecutionObservation:
@@ -249,7 +348,11 @@ async def try_diagnostic_parallel_read_turn(
     verdict = conclude_diagnostic(plan, observations)
     missing = _disconnected_notes(plan, connected)
     if isinstance(verdict, dict):
-        verdict = {**verdict, "missing_sources": missing}
+        verdict = {
+            **verdict,
+            "missing_sources": missing,
+            "provider_reinvoked": provider_reinvoked,
+        }
     body = _compose_message(verdict=verdict, missing=missing)
     succeeded = any(row.success for row in observations)
     required_expected = [
@@ -288,6 +391,8 @@ async def try_diagnostic_parallel_read_turn(
         **execution_plan_patch(plan),
         **observations_patch(observations),
         "diagnostic_conclusion": verdict,
+        "repair_budget": repair_budget.to_dict(),
+        "repair_error_memory": list(repair_budget.error_memory),
     }
     merged_state = bind_finished_work(merged_state, body=body, title=title)
     payload = execution_result_from_finished_work(merged_state, body=body, success=success_flag)

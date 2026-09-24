@@ -59,6 +59,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "durable_deliverable": None,
     "work_artifacts": [],
     "diagnostic_conclusion": None,
+    "repair_budget": None,
+    "repair_error_memory": [],
     # Phase E5 — governance continuation (confirmation/clarification/approval).
     "pending_action": None,
     # Phase D — unified turn trace (gateway → compose).

@@ -46,11 +46,14 @@ def try_catalog_search_turn(
     names = [row.action_id for row in found]
     mentioned_github = bool(re.search(r"\bgithub\b", message or "", re.I))
     github_excluded = mentioned_github and "github" not in set(connected)
-    lines = [f"- {row.action_id} ({row.kind}, {row.vendor})" for row in found[:16]]
+    lines = []
+    for row in found[:16]:
+        label = str(row.name or "").strip() or row.action_id
+        lines.append(f"- {label} ({row.vendor} {row.kind})")
     body_bits = [
-        "Here are eligible connected READ actions for that search. This is a catalog lookup, not a provider run.",
+        "Here are the connected READ actions that match that search. This is a catalog lookup, not a live provider run.",
         "\n".join(lines) if lines else "No eligible connected READ actions matched.",
-        f"Count {len(found)} (cap {HARD_CAP_ELIGIBLE}). WRITE actions were not included and still require approval.",
+        f"I found {len(found)} eligible action{'s' if len(found) != 1 else ''} (cap {HARD_CAP_ELIGIBLE}). Writes still need approval and were not included.",
     ]
     if github_excluded:
         body_bits.append("GitHub is not connected on this org, so GitHub issue tools are not eligible.")

@@ -45,6 +45,20 @@ _ERROR_CLASS_TO_BUDGET: dict[str, str] = {
     "TRANSPORT_ERROR": "transport",
 }
 
+# Permission denials and unverified WRITE outcomes are not repair invitations.
+_NO_REPAIR_CLASSES = frozenset(
+    {
+        "PERMISSION_DENIED",
+        "FORBIDDEN",
+        "AUTHORIZATION_DENIED",
+        "ACCESS_DENIED",
+        "WRITE_REQUIRES_APPROVAL",
+        "OUTCOME_UNCERTAIN",
+        "AWAITING_RECONCILIATION",
+        "EXECUTED_UNVERIFIED",
+    }
+)
+
 
 @dataclass
 class RepairBudget:
@@ -117,6 +131,31 @@ class RepairBudget:
                 "error_class": str(error_class or ""),
             }
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "remaining": dict(self.remaining),
+            "traces": list(self.traces),
+            "error_memory": list(self.error_memory),
+            "fingerprints": sorted(self._fingerprints),
+        }
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any] | None) -> RepairBudget:
+        if not isinstance(raw, dict):
+            return cls.fresh()
+        remaining = raw.get("remaining")
+        budget = cls(
+            remaining=dict(remaining) if isinstance(remaining, dict) else dict(REPAIR_BUDGET_BY_CLASS),
+            traces=list(raw.get("traces") or []) if isinstance(raw.get("traces"), list) else [],
+            error_memory=(
+                list(raw.get("error_memory") or [])
+                if isinstance(raw.get("error_memory"), list)
+                else []
+            ),
+            _fingerprints=set(str(v) for v in (raw.get("fingerprints") or [])),
+        )
+        return budget
 
 
 AUDIT_F2_REPAIR = "f2.read.repair"
@@ -250,6 +289,18 @@ def repair_blocked_read(
     """Return one alternate READ within class budget, or None to keep the original block."""
     error = str(blocked.error_class or "")
     catalog = catalog_action_key(invoke_action)
+    if error in _NO_REPAIR_CLASSES:
+        purse = budget if budget is not None else RepairBudget.fresh()
+        purse.remember_error(
+            action=invoke_action,
+            args=args,
+            resource=catalog,
+            reason=str(getattr(blocked, "repair_hint", None) or blocked.error_class or "blocked"),
+            error_class=error,
+        )
+        return None
+    if not is_f1_read_action(invoke_action) and not is_f1_read_action(catalog):
+        return None
     connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
     purse = budget if budget is not None else RepairBudget.fresh()
     purse.remember_error(

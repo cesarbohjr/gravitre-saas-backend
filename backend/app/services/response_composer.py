@@ -538,6 +538,24 @@ async def compose_user_reply(
         )
     ):
         must_compose = False
+    path = str(
+        env.get("execution_path")
+        or (
+            env["data"].get("execution_path")
+            if isinstance(env.get("data"), dict)
+            else ""
+        )
+        or ""
+    )
+    # Catalog lookup is already user-facing English. Skipping the Composer LLM
+    # is still Composer-owned (leak filter + finalize); it is not a second runtime.
+    if (
+        resolved_kind == "canned"
+        and path == "catalog_search_eligible"
+        and draft
+        and not looks_like_raw_backend(draft)
+    ):
+        must_compose = False
     used_model = False
     fallback = False
     text = (draft or "").strip()

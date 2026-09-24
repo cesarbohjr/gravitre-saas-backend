@@ -617,6 +617,11 @@ def reconstruct_execution_result(
             )
             if isinstance(state.get("diagnostic_conclusion"), dict)
             else [],
+            "provider_reinvoked": bool(
+                (state.get("diagnostic_conclusion") or {}).get("provider_reinvoked")
+            )
+            if isinstance(state.get("diagnostic_conclusion"), dict)
+            else False,
         },
         artifacts=artifacts,
         error_code=None if success else (outcome or terminal or "WORK_NOT_COMPLETE"),

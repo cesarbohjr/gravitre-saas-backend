@@ -328,3 +328,30 @@ def test_reconstruct_does_not_require_provider_reinvoke():
     assert rebuilt["success"] is True
     assert rebuilt["entity_id"] == "plan-resume"
     assert "hubspot.deals.list" in str(rebuilt["structured"]["content"])
+
+
+def test_reconstruct_returns_persisted_claim_labels():
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    stored = {
+        "execution_plan": {"plan_id": "plan-diag", "terminal_status": "completed", "steps": []},
+        "diagnostic_conclusion": {
+            "labels": [{"text": "HubSpot returned 2 deals.", "label": "FACT", "observation_id": "obs-1"}],
+            "missing_sources": ["Google Analytics is not connected."],
+            "provider_reinvoked": False,
+        },
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-diag",
+                "kind": "report",
+                "title": "Diagnostic",
+                "preview": "HubSpot returned 2 deals.",
+                "metadata": {"plan_id": "plan-diag", "outcome": "completed", "code": "HubSpot returned 2 deals."},
+            }
+        ],
+    }
+    rebuilt = reconstruct_execution_result(stored)
+    assert rebuilt is not None
+    assert rebuilt["structured"]["claim_labels"][0]["label"] == "FACT"
+    assert rebuilt["structured"]["missing_sources"]
+    assert rebuilt["structured"]["provider_reinvoked"] is False

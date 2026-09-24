@@ -295,6 +295,31 @@ async def test_verified_write_keeps_completion_over_stale_refusal():
 
 
 @pytest.mark.asyncio
+async def test_catalog_search_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "Here are the connected READ actions that match that search. This is a catalog lookup, not a live provider run."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "catalog_search_eligible",
+            "data": {"text": draft, "execution_path": "catalog_search_eligible"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "catalog lookup" in text.lower()
+
+
+@pytest.mark.asyncio
 async def test_genuine_pre_execution_refusal_is_kept():
     text = await compose_user_reply(
         {
