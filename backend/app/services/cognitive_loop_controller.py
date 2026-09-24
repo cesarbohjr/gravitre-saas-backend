@@ -61,11 +61,11 @@ _PLAN_WITHOUT_EXECUTE_RE = re.compile(
 )
 
 _SPOKEN_STAGE_DRAFTS: dict[str, str] = {
-    "PERCEIVE": "On it.",
-    "RETRIEVE": "Checking what I already know.",
-    "PLAN": "Figuring out the next step.",
-    "ACT": "Working on it.",
-    "OBSERVE": "Checking what came back.",
+    "PERCEIVE": "",
+    "RETRIEVE": "",
+    "PLAN": "",
+    "ACT": "",
+    "OBSERVE": "",
 }
 
 
@@ -199,12 +199,13 @@ def speakable_loop_stage(
         or (trace is not None and is_plan_without_execute_turn(trace.message))
     )
     if name == "ACT" and plan_hold:
-        return "I'm not executing anything. I'll show the plan for your approval."
+        return None
     if name == "PLAN" and plan_hold:
-        return "I'm putting the plan together, and I haven't executed it."
+        return "I'll show the plan first. Nothing has run yet."
     if name == "OBSERVE" and plan_hold:
-        return "I'm checking the plan. Nothing has been executed."
-    return _SPOKEN_STAGE_DRAFTS.get(name)
+        return None
+    draft = _SPOKEN_STAGE_DRAFTS.get(name) or ""
+    return draft.strip() or None
 
 
 def _elapsed_ms(t0: float) -> float:

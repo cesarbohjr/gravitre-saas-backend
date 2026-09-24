@@ -278,14 +278,14 @@ def test_bind_finished_work_report_from_observations():
     artifacts = bound[WORK_ARTIFACTS_KEY]
     assert contract["diagnosis"].startswith("From the connected CRM")
     assert any("hubspot.deals.list" in line for line in contract["evidence"])
-    assert artifacts[-1]["kind"] == "report"
+    assert artifacts[-1]["kind"] == "executive_report"
     assert artifacts[-1]["metadata"]["plan_id"] == "plan-art-1"
     assert "$" not in artifacts[-1]["preview"]
     payload = execution_result_from_finished_work(bound)
     assert payload is not None
     assert payload["entity_type"] == "report"
     kinds = {row["kind"] for row in (payload.get("artifacts") or [])}
-    assert "report" in kinds or "document" in kinds
+    assert "executive_report" in kinds or "report" in kinds or "document" in kinds
     again = reconstruct_execution_result(bound)
     assert again is not None
     assert again["entity_id"] == payload["entity_id"]

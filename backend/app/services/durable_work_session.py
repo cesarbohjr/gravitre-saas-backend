@@ -533,13 +533,40 @@ def bind_finished_work(
     if plan_id:
         markdown_bits.append("")
         markdown_bits.append(f"Plan `{plan_id}`")
+    structured_rows = []
+    for row in source_rows:
+        blob = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+        for key in ("rows", "items", "contacts", "deals", "results"):
+            maybe = blob.get(key)
+            if isinstance(maybe, list) and maybe:
+                structured_rows = [item for item in maybe if isinstance(item, dict)][:25]
+                break
+        if structured_rows:
+            break
+    if structured_rows:
+        keys = list(structured_rows[0].keys())[:6]
+        markdown_bits.append("")
+        markdown_bits.append("| " + " | ".join(str(k) for k in keys) + " |")
+        markdown_bits.append("| " + " | ".join("---" for _ in keys) + " |")
+        for item in structured_rows[:12]:
+            markdown_bits.append(
+                "| " + " | ".join(str(item.get(k) or "")[:80] for k in keys) + " |"
+            )
     markdown = "\n".join(markdown_bits)
+    kind = "table" if structured_rows else "executive_report"
+    lowered = f"{report_title} {diagnosis}".lower()
+    if "brief" in lowered:
+        kind = "brief"
+    elif "action plan" in lowered or lowered.startswith("plan"):
+        kind = "action_plan"
+    elif "research" in lowered:
+        kind = "research_summary"
     seed = plan_id or (
         str(source_rows[-1].get("observation_id") or source_rows[-1].get("step_id")) if source_rows else outcome
     )
     artifact = {
         "artifact_id": f"report:{seed or 'work'}",
-        "kind": "report",
+        "kind": kind,
         "title": report_title,
         "preview": diagnosis[:280],
         "mime_type": "text/markdown",
@@ -554,6 +581,9 @@ def bind_finished_work(
             ][:8],
             "code": markdown,
             "previewFormat": "markdown",
+            "exportable": True,
+            "deliverable_kind": kind,
+            "bound_to_plan": bool(plan_id),
         },
     }
     prior = [row for row in (state.get(WORK_ARTIFACTS_KEY) or []) if isinstance(row, dict)]

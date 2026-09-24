@@ -611,7 +611,7 @@ async def post_session_turn(
             voice_key = (body.voice or "sarah").strip() or "sarah"
             cached_audio = peek_cached_perceive_chunks(voice_key=voice_key)
             skipped_perceive = False
-            if cached_audio:
+            if cached_audio and (EARLY_PERCEIVE_DRAFT or "").strip():
                 perceive_text = EARLY_PERCEIVE_DRAFT
                 yield (
                     json.dumps(

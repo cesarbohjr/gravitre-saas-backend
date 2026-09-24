@@ -170,8 +170,8 @@ def test_speakable_loop_stage_is_honest_and_silent_on_fast_path():
         spoken_mode=True,
     )
     ctl.mark_perceive(hold, _gateway())
-    assert "not executing" in (speakable_loop_stage("ACT", trace=hold) or "").lower()
-    assert "haven't executed" in (speakable_loop_stage("PLAN", trace=hold) or "").lower()
+    assert speakable_loop_stage("ACT", trace=hold) is None
+    assert "nothing has run" in (speakable_loop_stage("PLAN", trace=hold) or "").lower()
     assert speakable_loop_stage("LEARN", trace=hold) is None
     fast = ctl.begin(message="thanks", spoken_mode=True)
     ctl.mark_perceive(

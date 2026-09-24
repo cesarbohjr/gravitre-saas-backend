@@ -3618,6 +3618,20 @@ class AgentIntelligence:
             # action. LIVE must not re-select tools or re-ask yes.
             _unified_live_ok = False
         _mark("capability_compile")
+        from app.services.proactive_business_operator import is_attention_intent, try_ranked_attention_turn
+
+        if is_attention_intent(task_text):
+            att = try_ranked_attention_turn(
+                message=task_text,
+                org_id=org_id,
+                client=client,
+                settings=active_settings,
+                task_state=_live_state if isinstance(_live_state, dict) else {},
+            )
+            if att and att.get("stop_pipeline"):
+                async for ev in _emit_compiled_operational_short_circuit(att):
+                    yield ev
+                return
         if not _unified_live_ok:
             from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn as _try_compiled_early
             from app.services.retrieve_plan_gate import (
