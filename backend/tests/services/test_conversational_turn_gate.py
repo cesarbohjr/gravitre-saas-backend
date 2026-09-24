@@ -56,7 +56,12 @@ def test_mixed_hey_plus_apollo_task():
     assert "Apollo" in decision.task_portion or "apollo" in decision.task_portion.lower()
 
 
-def test_gate_never_bypasses_when_pending():
+def test_class_a_hello_prompt_is_conversational():
+    decision = heuristic_turn_shape(
+        "Good morning. Just say hello in one short sentence. Do not look anything up."
+    )
+    assert decision is not None
+    assert decision.shape == "conversational"
     decision = heuristic_turn_shape("hey")
     assert decision is not None
     assert should_offer_conversational_path(decision, has_pending=True) is False

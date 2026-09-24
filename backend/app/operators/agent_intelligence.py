@@ -3720,10 +3720,15 @@ class AgentIntelligence:
                         yield ev
                     return
         _compiled_unified_reasoning = None
+        from app.services.conversational_turn_gate import heuristic_turn_shape
+
+        _pre_live_shape = heuristic_turn_shape(task_text)
+        _skip_unified_compile = getattr(_pre_live_shape, "shape", "") == "conversational"
         if (
             _unified_live_ok
             and bool(getattr(active_settings, "context_compiler_unified_live_v1", True))
             and not _plan_hold_spoken
+            and not _skip_unified_compile
         ):
             from app.services.context_compiler import compile_unified_reasoning_context
             from app.services.workspace_focus_resolver import workspace_focus_trace_meta
@@ -3762,9 +3767,7 @@ class AgentIntelligence:
         # and again at context_inline (~8.5s measured on HubSpot read_tool_classical).
         # Overlap prepare with LIVE when the query cannot change (non-mixed shape).
         if _unified_live_ok and _context_task is None:
-            from app.services.conversational_turn_gate import heuristic_turn_shape
-
-            _live_prefetch_shape = heuristic_turn_shape(task_text)
+            _live_prefetch_shape = _pre_live_shape
             if _live_prefetch_shape is None or getattr(_live_prefetch_shape, "shape", "") != "mixed":
                 _context_task_query = task_text
                 _context_task = asyncio.create_task(_prepare_turn_context(task_text))
