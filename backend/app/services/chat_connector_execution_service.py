@@ -1664,18 +1664,26 @@ class ChatConnectorExecutionService:
                 approved_params=pending_params if isinstance(pending_params, dict) else None,
             )
             execute_plan_ms = int((time.perf_counter() - execute_started) * 1000)
-            structured = dict(execution.structured or {})
-            structured["latency_budget"] = {
-                "execute_plan_ms": execute_plan_ms,
-                "includes": "provider_invoke_and_required_verification",
-            }
-            execution = replace(execution, structured=structured)
-            logger.info(
-                "spoken_write_latency_budget org_id=%s conversation_id=%s execute_plan_ms=%s",
-                org_id,
-                conversation_id,
-                execute_plan_ms,
-            )
+            try:
+                structured = dict(execution.structured or {})
+                structured["latency_budget"] = {
+                    "execute_plan_ms": execute_plan_ms,
+                    "includes": "provider_invoke_and_required_verification",
+                }
+                execution = replace(execution, structured=structured)
+                logger.info(
+                    "spoken_write_latency_budget org_id=%s conversation_id=%s execute_plan_ms=%s",
+                    org_id,
+                    conversation_id,
+                    execute_plan_ms,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "spoken_write_latency_budget_skipped org_id=%s conversation_id=%s error=%s",
+                    org_id,
+                    conversation_id,
+                    exc,
+                )
             self._promote_confirmed_workspace_memory(
                 client,
                 org_id=org_id,
@@ -1698,6 +1706,24 @@ class ChatConnectorExecutionService:
             )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return self._turn_from_execution(execution, refreshed, plan)
+
+        from app.services.action_lifecycle import existing_successful_write
+
+        already_written = existing_successful_write(task_state, invoke_action=plan.invoke_action)
+        if already_written:
+            summary = str(
+                already_written.get("summary")
+                or "That write already completed. I did not run it again."
+            )
+            refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": summary,
+                "task_state": refreshed,
+                "provider_invoked": False,
+                "replayed_write": True,
+            }
 
         pending_status = "awaiting_confirm" if user_can_approve else "awaiting_admin_approval"
         pending_params = {**pending_params, "status": pending_status}
@@ -2649,7 +2675,7 @@ class ChatConnectorExecutionService:
             except Exception:  # noqa: BLE001
                 verification = {"verified": False, "detail": "verification_error", "follow_up_attempted": True}
         if result.structured is None:
-            result.structured = {}
+            result = replace(result, structured={})
         if verification:
             result.structured["verification"] = verification
             result.structured["verification_status"] = (

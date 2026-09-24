@@ -142,6 +142,25 @@ def test_f_duplicate_yes_does_not_reclaim() -> None:
     assert replay is not None
 
 
+def test_existing_successful_write_matches_observation_invoke_action() -> None:
+    state = {
+        "execution_observations": [
+            {
+                "success": True,
+                "capability_id": "hubspot.contacts.create",
+                "structured": {
+                    "invoke_action": "hubspot.contacts.create",
+                    "provider_record_id": "279246127081",
+                },
+                "summary": "Created HubSpot contact",
+            }
+        ]
+    }
+    replay = existing_successful_write(state, invoke_action="hubspot.contacts.create")
+    assert replay is not None
+    assert replay["structured"]["provider_record_id"] == "279246127081"
+
+
 def test_g_worker_restart_lease_recovery() -> None:
     pending = {
         "status": "executing",

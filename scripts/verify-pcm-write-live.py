@@ -217,6 +217,9 @@ def main() -> int:
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id, user_id, email = resolve_isolated_conversation_actor(env, sb)
     health = httpx.get(f"{LIVE_API}/health", timeout=45.0).json()
+    sha = str(health.get("git_sha") or "")
+    if not sha.startswith("0b2e42c3"):
+        raise SystemExit(f"refusing WRITE probe: health SHA {sha} is not 0b2e42c3")
     tag = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     conv = str(uuid.uuid4())
     probe_email = f"gravitre-pcm-write-{tag}@alpha.test.gravitre.app"
@@ -286,6 +289,7 @@ def main() -> int:
         "probe_email": probe_email,
         "probe_name": name,
         "prior_placeholder_contact_id": "278972733388",
+        "prior_pcm_contact_id": "279209311173",
         "conversation_create_http": created.status_code,
         "session_ready": driven.get("session_ready"),
         "turns": driven.get("turns"),
@@ -299,7 +303,14 @@ def main() -> int:
         "confirm_verified": "confirmed" in confirm_text.lower() or "verified" in confirm_text.lower(),
         "duplicate_blocked": "already" in dup_text.lower() or "not running" in dup_text.lower(),
         "follow_used_observation": probe_email in follow_text or "created" in follow_text.lower(),
-        "robotic_on_it": "on it" in (stage_text + confirm_text).lower(),
+        "robotic_on_it": "on it" in (stage_text + confirm_text).lower() or "one moment" in (stage_text + confirm_text).lower(),
+        "latency_budget": (last_obs.get("structured") or {}).get("latency_budget")
+        if isinstance(last_obs, dict)
+        else None,
+        "turn_elapsed_ms": {
+            name: (driven.get("turns") or {}).get(name, {}).get("elapsed_ms")
+            for name in ("stage", "ambiguous", "confirm", "duplicate", "follow")
+        },
     }
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "turns"}, indent=2))

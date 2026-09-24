@@ -143,8 +143,15 @@ def existing_successful_write(
             if action == invoke_action and row.get("success") is True:
                 return row
     obs = _latest_observation(state)
-    if obs and str(obs.get("action_key") or "") == invoke_action and obs.get("success"):
-        return obs
+    if obs and obs.get("success"):
+        structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+        keys = {
+            str(obs.get("action_key") or ""),
+            str(obs.get("capability_id") or ""),
+            str(structured.get("invoke_action") or ""),
+        }
+        if invoke_action in keys:
+            return obs
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     if str(pending.get("status") or "") in _DONE and isinstance(pending.get("result"), dict):
         return pending["result"]
