@@ -160,7 +160,9 @@ def stamp_pending_write_binding(
     if conversation_id:
         out["conversation_id"] = str(conversation_id)
     action = str(invoke_action or out.get("invoke_action") or "").strip()
-    params = dict(out.get("params") or {}) if isinstance(out.get("params"), dict) else {}
+    from app.core.safe_dict import safe_normalize_stored_dict
+
+    params = safe_normalize_stored_dict(out, key="params")
     if not action:
         action = str(params.get("invoke_action") or "").strip()
     if action:
