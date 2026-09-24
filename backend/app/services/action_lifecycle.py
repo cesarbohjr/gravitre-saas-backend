@@ -8,6 +8,7 @@ the Observation independently from the HTTP provider call.
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
@@ -43,9 +44,21 @@ _CLAIMED = frozenset({"executing", "claimed"})
 _DONE = frozenset({"executed", "completed", "verified"})
 
 
+def _observation_verified(obs: dict[str, Any] | None) -> bool:
+    if not isinstance(obs, dict):
+        return False
+    structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+    return bool(
+        obs.get("verification_status") == "verified"
+        or structured.get("verification_status") == "verified"
+        or (isinstance(structured.get("verification"), dict) and structured["verification"].get("verified"))
+    )
+
+
 def semantic_stage_from_state(task_state: dict[str, Any] | None) -> SemanticStage:
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
     status = str(pending.get("status") or "").strip().lower()
     plan = ExecutionPlan.from_dict(state.get("execution_plan"))
     terminal = str(plan.terminal_status if plan else "")
@@ -59,20 +72,23 @@ def semantic_stage_from_state(task_state: dict[str, Any] | None) -> SemanticStag
         return "OUTCOME_UNCERTAIN"
     if status == "awaiting_reconciliation":
         return "AWAITING_RECONCILIATION"
+    pending_invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
+    obs = _latest_observation(state)
+    obs_structured = obs.get("structured") if isinstance(obs, dict) and isinstance(obs.get("structured"), dict) else {}
+    if not pending_invoke and obs:
+        pending_invoke = str(obs.get("capability_id") or obs_structured.get("invoke_action") or "").strip()
+    matching_write = bool(
+        pending_invoke and existing_successful_write(state, invoke_action=pending_invoke)
+    )
+    verified = _observation_verified(obs)
+    if matching_write:
+        if obs and obs.get("success") and verified:
+            return "COMPLETED"
+        return "EXECUTED_UNVERIFIED"
     if status in _AWAITING or terminal == "waiting_for_approval":
         return "AWAITING_APPROVAL"
     if status in _CLAIMED:
         return "EXECUTING"
-    obs = _latest_observation(state)
-    structured = obs.get("structured") if isinstance(obs, dict) and isinstance(obs.get("structured"), dict) else {}
-    verified = bool(
-        isinstance(obs, dict)
-        and (
-            obs.get("verification_status") == "verified"
-            or structured.get("verification_status") == "verified"
-            or (isinstance(structured.get("verification"), dict) and structured["verification"].get("verified"))
-        )
-    )
     if status in _DONE or terminal == "completed":
         if verified:
             return "COMPLETED"
@@ -420,6 +436,73 @@ def persist_write_outcome_patch(
         patch["durable_deliverable"] = bound["durable_deliverable"]
     if bound.get("work_artifacts"):
         patch["work_artifacts"] = bound["work_artifacts"]
+    return patch
+
+
+def reconcile_stale_pending_to_observation(
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Terminalize leftover awaiting pending/plan from a verified Observation.
+
+    Does not add, delete, or replace Observations. Does not mark unverified writes completed.
+    """
+    state = task_state if isinstance(task_state, dict) else {}
+    pending_raw = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    if not pending_raw:
+        return None
+    params = pending_raw.get("params") if isinstance(pending_raw.get("params"), dict) else {}
+    invoke = str(params.get("invoke_action") or pending_raw.get("invoke_action") or "").strip()
+    obs = _latest_observation(state)
+    structured = obs.get("structured") if isinstance(obs, dict) and isinstance(obs.get("structured"), dict) else {}
+    if not invoke and obs:
+        invoke = str(obs.get("capability_id") or structured.get("invoke_action") or "").strip()
+    if not invoke:
+        return None
+    replay = existing_successful_write(state, invoke_action=invoke)
+    if not replay:
+        return None
+    status = str(pending_raw.get("status") or "").strip().lower()
+    plan = ExecutionPlan.from_dict(state.get("execution_plan"))
+    terminal = str(plan.terminal_status if plan else "")
+    stale = status in _AWAITING or terminal in {"running", "waiting_for_approval", "pending"}
+    if not stale:
+        return None
+    verified = _observation_verified(obs) and bool(obs and obs.get("success"))
+    pending = dict(pending_raw)
+    pending["status"] = "executed"
+    pending["lifecycle"] = "COMPLETED" if verified else "EXECUTED_UNVERIFIED"
+    record_id = provider_record_id(structured) or params.get("provider_record_id")
+    pending["params"] = {
+        **params,
+        "invoke_action": invoke,
+        "provider_record_id": record_id,
+    }
+    if plan is not None:
+        plan.terminal_status = "completed" if verified else "partial"
+        obs_step = str(obs.get("step_id") or "") if isinstance(obs, dict) else ""
+        plan.steps = [
+            replace(step, status="completed")
+            if (
+                (obs_step and step.step_id == obs_step)
+                or step.action_key == invoke
+                or step.kind == "write"
+            )
+            else step
+            for step in plan.steps
+        ]
+    patch: dict[str, Any] = {
+        "pending_task": pending,
+        "action_lifecycle": "COMPLETED" if verified else "EXECUTED_UNVERIFIED",
+    }
+    if plan is not None:
+        patch.update(execution_plan_patch(plan))
+    pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), dict) else {}
+    if pending_action and verified:
+        patch["pending_action"] = {
+            **pending_action,
+            "status": "confirmed",
+            "plan_id": plan.plan_id if plan is not None else pending_action.get("plan_id"),
+        }
     return patch
 
 

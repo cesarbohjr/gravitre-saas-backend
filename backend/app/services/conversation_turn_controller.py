@@ -314,12 +314,29 @@ async def run_connector_turn(
     conversation_turns: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """Shared connector turn entry for governed chat and ReAct fallback."""
-    from app.services.action_lifecycle import recent_write_status_turn
+    from app.services.action_lifecycle import (
+        recent_write_status_turn,
+        reconcile_stale_pending_to_observation,
+    )
     from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+    from app.services.conversation_state_service import get_conversation_state_service
     from app.services.proactive_business_operator import try_ranked_attention_turn
 
     follow = recent_write_status_turn(message, task_state)
     if follow is not None:
+        recon = reconcile_stale_pending_to_observation(task_state)
+        if recon and conversation_id and org_id:
+            try:
+                state_svc = get_conversation_state_service(settings or get_settings())
+                await state_svc.update_task_state(conversation_id, org_id, recon, client=client)
+                follow["task_state"] = await state_svc.get_task_state(
+                    conversation_id, org_id, client=client
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("stale_pending_reconcile_skipped: %s", exc)
+                follow["task_state"] = {**task_state, **recon}
+        elif recon:
+            follow["task_state"] = {**task_state, **recon}
         return follow
     attention = try_ranked_attention_turn(
         message=message,

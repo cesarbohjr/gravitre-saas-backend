@@ -263,6 +263,53 @@ def test_recent_write_follow_up_uses_observation() -> None:
     assert "explicit" not in turn["message"].lower()
 
 
+def test_stale_pending_does_not_mask_verified_observation() -> None:
+    from app.services.action_lifecycle import (
+        recent_write_status_turn,
+        reconcile_stale_pending_to_observation,
+    )
+
+    state = persist_write_outcome_patch(
+        task_state=_compose_state(),
+        connector_plan=_plan(),
+        success=True,
+        summary="created",
+        structured={"id": "279246127081", "email": "gravitrepcmwrite20260924181201@alpha.test.gravitre.app"},
+        pending_task=_compose_state()["pending_task"],
+        verification={"verified": True},
+    )
+    original_obs = list(state["execution_observations"])
+    state["pending_task"]["status"] = "awaiting_confirm"
+    state["execution_plan"]["terminal_status"] = "running"
+    assert semantic_stage_from_state(state) == "COMPLETED"
+    turn = recent_write_status_turn("Did that contact already get created?", state)
+    assert turn is not None
+    assert turn["provider_write"] is False
+    assert "yes" in turn["message"].lower()
+    assert "279246127081" in turn["message"]
+    assert "waiting for your approval" not in turn["message"].lower()
+    recon = reconcile_stale_pending_to_observation(state)
+    assert recon is not None
+    assert recon["pending_task"]["status"] == "executed"
+    assert recon["execution_plan"]["terminal_status"] == "completed"
+    assert "execution_observations" not in recon
+    assert state["execution_observations"] == original_obs
+
+
+def test_awaiting_without_observation_stays_awaiting() -> None:
+    from app.services.action_lifecycle import (
+        recent_write_status_turn,
+        reconcile_stale_pending_to_observation,
+    )
+
+    state = _compose_state()
+    assert semantic_stage_from_state(state) == "AWAITING_APPROVAL"
+    turn = recent_write_status_turn("Did that contact already get created?", state)
+    assert turn is not None
+    assert "waiting for your approval" in turn["message"].lower()
+    assert reconcile_stale_pending_to_observation(state) is None
+
+
 def test_compose_plan_cannot_mask_write_observation() -> None:
     patch = persist_write_outcome_patch(
         task_state=_compose_state(),

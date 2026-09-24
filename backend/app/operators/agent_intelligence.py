@@ -1967,7 +1967,11 @@ class AgentIntelligence:
                 task_state if isinstance(task_state, dict) else None
             )
             _path = str(_analytics_turn.get("execution_path") or "")
-            if conversation_id and isinstance(task_state, dict) and _path != "catalog_search_eligible":
+            if (
+                conversation_id
+                and isinstance(task_state, dict)
+                and _path not in {"catalog_search_eligible", "recent_write_observation"}
+            ):
                 try:
                     patch = {
                         **task_state,
@@ -3599,6 +3603,37 @@ class AgentIntelligence:
         from app.services.pending_write_resume import should_skip_unified_live_for_compiled_write
 
         _live_state = task_state if isinstance(task_state, dict) else _canonical_task_state
+        from app.services.action_lifecycle import (
+            recent_write_status_turn,
+            reconcile_stale_pending_to_observation,
+        )
+
+        _write_follow = recent_write_status_turn(
+            task_text,
+            _live_state if isinstance(_live_state, dict) else {},
+        )
+        if _write_follow and _write_follow.get("stop_pipeline"):
+            _recon = reconcile_stale_pending_to_observation(
+                _live_state if isinstance(_live_state, dict) else {}
+            )
+            if _recon and conversation_id:
+                try:
+                    from app.services.conversation_state_service import get_conversation_state_service
+
+                    _state_svc = get_conversation_state_service(active_settings)
+                    await _state_svc.update_task_state(
+                        conversation_id, org_id, _recon, client=client
+                    )
+                    _write_follow["task_state"] = await _state_svc.get_task_state(
+                        conversation_id, org_id, client=client
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("stale_pending_reconcile_skipped: %s", exc)
+                    if isinstance(_live_state, dict):
+                        _write_follow["task_state"] = {**_live_state, **_recon}
+            async for ev in _emit_compiled_operational_short_circuit(_write_follow):
+                yield ev
+            return
         if _unified_live_ok and should_skip_unified_live_for_compiled_read(
             task_text,
             _live_state,
