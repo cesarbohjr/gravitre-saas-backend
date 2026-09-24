@@ -1,6 +1,8 @@
 # Gravitre 3.0-I — governed spoken WRITE / yes-wait (2026-09-21)
 
-**Status:** Source **UNIT_TEST**. Spoken HTTP traces **PASS** (`SPOKEN_HTTP_NOT_VOICE_C`). Voice-C / physical mic **NOT RUN**.
+**Status (2026-09-24):** Classifier binds confirm to org/actor/conversation/status/expiry. Natural “Yes, create it.” is confirm. Ambiguous/stale/foreign/in-flight yes never invoke. Physical mic / Voice-C **NOT RUN**. HTTP `spoken_mode` traces are not a full live-voice PASS.
+
+Cesar authorized 3.0. This phase does not start 3.0-C lane B production audio or a second voice WRITE path.
 
 Typed and spoken share `classify_spoken_write_approval`. Hold never allows `invoke_tool`. `yes wait` is an Intent Gateway shortcut (`spoken_hold_commit`) **before** CognitiveTurnKernel / PERCEIVE speech.
 

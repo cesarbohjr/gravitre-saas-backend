@@ -675,7 +675,13 @@ class ChatOrchestrationService:
             format_spoken_hold_commit,
         )
 
-        spoken = classify_spoken_write_approval(message, task_state=task_state)
+        spoken = classify_spoken_write_approval(
+            message,
+            task_state=task_state,
+            expected_org_id=org_id,
+            expected_actor_id=user_id,
+            expected_conversation_id=conversation_id,
+        )
         if spoken.decision == "hold_commit":
             return {
                 "stop_pipeline": True,
@@ -690,7 +696,43 @@ class ChatOrchestrationService:
                 "provider_invoked": False,
                 "block_fabrication": True,
             }
-        confirmed = CONFIRM_PATTERN.match(message.strip()) or message.strip().lower() in {
+        if spoken.decision == "clarify":
+            from app.services.spoken_write_approval import format_spoken_clarify
+
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarifying",
+                "message": format_spoken_clarify(),
+                "task_state": task_state,
+                "pending_task": self._pending_task_payload(task_state),
+                "spoken_write_decision": "clarify",
+                "provider_invoked": False,
+                "block_fabrication": True,
+            }
+        if spoken.decision == "stale":
+            from app.services.spoken_write_approval import (
+                format_spoken_stale,
+                format_spoken_unauthorized,
+            )
+
+            body = (
+                format_spoken_unauthorized()
+                if spoken.reason in {"foreign_org", "foreign_actor", "foreign_conversation"}
+                else format_spoken_stale(reason=spoken.reason)
+            )
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": body,
+                "task_state": task_state,
+                "pending_task": self._pending_task_payload(task_state),
+                "spoken_write_decision": spoken.reason,
+                "provider_invoked": False,
+                "block_fabrication": True,
+            }
+        confirmed = bool(spoken.invoke_allowed) or CONFIRM_PATTERN.match(
+            message.strip()
+        ) or message.strip().lower() in {
             "yes",
             "y",
             "yeah",

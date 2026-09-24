@@ -15,6 +15,7 @@ from app.services.conversational_execution_service import (
     DECLINE_PATTERN,
     ExecutionResult,
 )
+from app.services.spoken_write_approval import stamp_pending_write_binding
 from app.services.entity_link_service import build_connector_management_url
 from app.services.notification_emitter import emit_notification
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
@@ -1542,7 +1543,13 @@ class ChatConnectorExecutionService:
             format_spoken_hold_commit,
         )
 
-        spoken = classify_spoken_write_approval(message, task_state=task_state)
+        spoken = classify_spoken_write_approval(
+            message,
+            task_state=task_state,
+            expected_org_id=org_id,
+            expected_actor_id=user_id,
+            expected_conversation_id=conversation_id,
+        )
         if spoken.decision == "hold_commit":
             return {
                 "stop_pipeline": True,
@@ -1557,8 +1564,47 @@ class ChatConnectorExecutionService:
                 "spoken_write_decision": "hold_commit",
                 "provider_invoked": False,
             }
-        confirmed = CONFIRM_PATTERN.match(message.strip()) or (
-            awaiting and message.strip().lower() in {"confirm", "run", "execute"}
+        if awaiting and spoken.decision == "clarify":
+            from app.services.spoken_write_approval import format_spoken_clarify
+
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "clarifying",
+                "message": format_spoken_clarify(),
+                "task_state": await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                ),
+                "spoken_write_decision": "clarify",
+                "provider_invoked": False,
+            }
+        if awaiting and spoken.decision == "stale":
+            from app.services.spoken_write_approval import (
+                format_spoken_stale,
+                format_spoken_unauthorized,
+            )
+
+            body = (
+                format_spoken_unauthorized()
+                if spoken.reason in {"foreign_org", "foreign_actor", "foreign_conversation"}
+                else format_spoken_stale(reason=spoken.reason)
+            )
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": body,
+                "task_state": await self._state.get_task_state(
+                    conversation_id, org_id, client=client
+                ),
+                "spoken_write_decision": spoken.reason,
+                "provider_invoked": False,
+            }
+        confirmed = spoken.invoke_allowed or (
+            awaiting
+            and spoken.decision == "confirm"
+            and (
+                CONFIRM_PATTERN.match(message.strip())
+                or message.strip().lower() in {"confirm", "run", "execute"}
+            )
         )
         user_can_approve = self._user_can_approve_writes(
             client, org_id, user_id, plan=plan, hitl=hitl
@@ -1658,12 +1704,18 @@ class ChatConnectorExecutionService:
             org_id,
             {
                 "clarified_params": pending_params,
-                "pending_task": {
-                    "type": "connector_action",
-                    "status": pending_status,
-                    "actor_id": user_id,
-                    "params": pending_params,
-                },
+                "pending_task": stamp_pending_write_binding(
+                    {
+                        "type": "connector_action",
+                        "status": pending_status,
+                        "actor_id": user_id,
+                        "params": pending_params,
+                    },
+                    org_id=org_id,
+                    actor_id=user_id,
+                    conversation_id=conversation_id,
+                    invoke_action=plan.invoke_action,
+                ),
                 "recent_user_messages": [message],
                 **self._session_updates_for_pending(task_state, plan),
             },

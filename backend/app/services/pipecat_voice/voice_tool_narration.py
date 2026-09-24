@@ -298,6 +298,8 @@ def will_execute_staged_connector_write(task_state: dict[str, Any] | None, messa
     spoken = classify_spoken_write_approval(text, task_state=task_state)
     if spoken.decision == "hold_commit":
         return False
+    if spoken.invoke_allowed:
+        return True
 
     # Mirrors process_turn's own confirmed gate exactly — same pattern, same bare
     # keyword set, while pending is awaiting_confirm.

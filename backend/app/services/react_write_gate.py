@@ -24,6 +24,7 @@ from app.services.catalog_write_authority import (
 )
 from app.services.connector_action_workflows import format_write_approval_message
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.services.spoken_write_approval import stamp_pending_write_binding
 
 WRITE_APPROVAL_REQUIRED = "write_approval_required"
 WRITE_COMMIT_INTERRUPTED = "write_commit_interrupted"
@@ -971,11 +972,20 @@ async def materialize_react_write_approval_turn(
         "status": "awaiting_confirm",
         "source": "react_write_gate",
     }
-    pending_task = {
-        "type": "connector_action",
-        "status": "awaiting_confirm",
-        "params": pending_params,
-    }
+    actor_id = None
+    if isinstance(task_state, dict):
+        actor_id = str(task_state.get("actor_id") or "").strip() or None
+    pending_task = stamp_pending_write_binding(
+        {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": pending_params,
+        },
+        org_id=org_id,
+        actor_id=actor_id,
+        conversation_id=conversation_id,
+        invoke_action=pending_invoke,
+    )
     durable_patch: dict[str, Any] = {"pending_task": pending_task}
     live_state = dict(task_state or {})
     live_state["pending_task"] = pending_task

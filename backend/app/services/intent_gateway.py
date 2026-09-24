@@ -360,26 +360,62 @@ _SYNC_CANDIDATES: tuple[Callable[[GatewayContext], CandidateVerdict | None], ...
 
 
 def _propose_spoken_hold_commit(ctx: GatewayContext) -> CandidateVerdict | None:
-    """Yes-wait is never a new job and never confirm. Hold before CognitiveTurnKernel."""
+    """Yes-wait / stale / ambiguous spoken WRITE never reaches the kernel as confirm."""
     from app.services.spoken_write_approval import (
         classify_spoken_write_approval,
+        format_spoken_clarify,
         format_spoken_hold_commit,
+        format_spoken_stale,
+        format_spoken_unauthorized,
     )
 
-    spoken = classify_spoken_write_approval(ctx.message, task_state=ctx.task_state)
-    if spoken.decision != "hold_commit":
-        return None
-    return CandidateVerdict(
-        candidate_id="spoken_hold_commit",
-        confidence=_MATCH_CONFIDENCE,
-        answer=format_spoken_hold_commit(pending_action_id=spoken.pending_action_id),
-        extras={
-            "pending_reply_intent": "hold_commit",
-            "spoken_write_decision": "hold_commit",
-            "provider_invoked": False,
-            "pending_action_id": spoken.pending_action_id,
-        },
+    spoken = classify_spoken_write_approval(
+        ctx.message,
+        task_state=ctx.task_state,
+        expected_org_id=ctx.org_id,
+        expected_actor_id=ctx.user_id,
+        expected_conversation_id=ctx.conversation_id,
     )
+    if spoken.decision == "hold_commit":
+        return CandidateVerdict(
+            candidate_id="spoken_hold_commit",
+            confidence=_MATCH_CONFIDENCE,
+            answer=format_spoken_hold_commit(pending_action_id=spoken.pending_action_id),
+            extras={
+                "pending_reply_intent": "hold_commit",
+                "spoken_write_decision": "hold_commit",
+                "provider_invoked": False,
+                "pending_action_id": spoken.pending_action_id,
+            },
+        )
+    if spoken.decision == "clarify":
+        return CandidateVerdict(
+            candidate_id="spoken_write_clarify",
+            confidence=_MATCH_CONFIDENCE,
+            answer=format_spoken_clarify(),
+            extras={
+                "spoken_write_decision": "clarify",
+                "provider_invoked": False,
+                "pending_action_id": spoken.pending_action_id,
+            },
+        )
+    if spoken.decision == "stale":
+        body = (
+            format_spoken_unauthorized()
+            if spoken.reason in {"foreign_org", "foreign_actor", "foreign_conversation"}
+            else format_spoken_stale(reason=spoken.reason)
+        )
+        return CandidateVerdict(
+            candidate_id="spoken_write_stale",
+            confidence=_MATCH_CONFIDENCE,
+            answer=body,
+            extras={
+                "spoken_write_decision": spoken.reason,
+                "provider_invoked": False,
+                "pending_action_id": spoken.pending_action_id,
+            },
+        )
+    return None
 
 
 async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
