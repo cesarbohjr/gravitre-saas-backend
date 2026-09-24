@@ -196,6 +196,11 @@ def build_pending_snapshot(task_state: dict[str, Any] | None) -> PendingSnapshot
 
 def has_pending_family(task_state: dict[str, Any] | None) -> bool:
     snap = build_pending_snapshot(task_state)
+    if snap.invoke_action:
+        from app.services.action_lifecycle import existing_successful_write
+
+        if existing_successful_write(task_state, invoke_action=snap.invoke_action):
+            return False
     if snap.hold_prompt_active:
         return True
     if snap.has_current_plan:

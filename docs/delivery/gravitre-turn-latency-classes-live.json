@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-09-24T19:02:18.846136+00:00",
+  "proof_class": "SPOKEN_HTTP_NOT_VOICE_C",
+  "physical_mic": false,
+  "health_sha": "f2255a06de714f0e42650c3f7e713dfca02cecdd",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "class_a_ordinary": {
+    "conversation_id": "14043509-b6b2-4837-a155-c051d369dce6",
+    "http_status": 200,
+    "first_useful_text_ms": 9181,
+    "completion_ms": 11687,
+    "assistant_excerpt": "Good morning \u2014 hello.",
+    "tools": [],
+    "intelligence_events": 2,
+    "model_ttft_ms": null,
+    "pre_model_ms": null,
+    "wall_to_first_token_ms": null,
+    "cached_prompt_tokens": null,
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "cognitive_stage_ms": null,
+    "create_claim": false
+  },
+  "class_b_followup": {
+    "conversation_id": "59120b14-8235-4279-9692-2ef0cbee1120",
+    "state_before": {
+      "http": 200,
+      "pending_status": "awaiting_confirm",
+      "plan_terminal": "running"
+    },
+    "http_status": 200,
+    "first_useful_text_ms": 69131,
+    "completion_ms": 73723,
+    "assistant_excerpt": "There's still a contact creation in progress that isn't done yet. Your new question might actually be about that same contact \u2014 do you want me to hold the pending creation and check first, or abandon it entirely?",
+    "tools": [],
+    "intelligence_events": 5,
+    "model_ttft_ms": null,
+    "pre_model_ms": null,
+    "wall_to_first_token_ms": null,
+    "cached_prompt_tokens": null,
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "cognitive_stage_ms": null,
+    "create_claim": false,
+    "state_after": {
+      "http": 200,
+      "pending_status": "awaiting_confirm",
+      "plan_terminal": "running"
+    },
+    "write_attempted": false
+  },
+  "class_c_read": {
+    "conversation_id": "96a8948e-5f9b-4672-89c1-7644692f9e59",
+    "http_status": 200,
+    "first_useful_text_ms": 41336,
+    "completion_ms": 67866,
+    "assistant_excerpt": "I don\u2019t have enough information yet. I can\u2019t read the contact count from the data provided, and I don\u2019t have a connected CRM read result to verify it.\n\nIf you want, I can check the HubSpot contacts count in read-only mode.To get a contact count I'd need to read from HubSpot directly. I don't have that result in front of me \u2014 want me to pull it now?",
+    "tools": [
+      "searchKnowledgeBase"
+    ],
+    "intelligence_events": 8,
+    "model_ttft_ms": null,
+    "pre_model_ms": null,
+    "wall_to_first_token_ms": null,
+    "cached_prompt_tokens": null,
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "cognitive_stage_ms": null,
+    "create_claim": false
+  }
+}

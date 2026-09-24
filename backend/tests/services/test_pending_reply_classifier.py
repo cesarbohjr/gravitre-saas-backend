@@ -37,6 +37,25 @@ def test_has_pending_family_awaiting_params():
     assert has_pending_family({}) is False
 
 
+def test_has_pending_family_false_after_verified_observation():
+    state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": {"invoke_action": "hubspot.contacts.create", "kind": "write"},
+        },
+        "execution_observations": [
+            {
+                "success": True,
+                "capability_id": "hubspot.contacts.create",
+                "structured": {"invoke_action": "hubspot.contacts.create", "id": "1"},
+                "summary": "Created",
+            }
+        ],
+    }
+    assert has_pending_family(state) is False
+
+
 def test_fast_path_seven_intents_gmail_params():
     state = _gmail_awaiting_params_state()
     snap = build_pending_snapshot(state)

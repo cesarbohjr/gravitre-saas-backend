@@ -40,6 +40,10 @@ def frozen_connector_write_params(task_state: dict[str, Any] | None) -> dict[str
     pending_type = str(pending.get("type") or "").strip()
     if not invoke:
         return None
+    from app.services.action_lifecycle import existing_successful_write
+
+    if existing_successful_write(task_state, invoke_action=invoke):
+        return None
     if pending_type not in {"connector_action", "execution_plan_projection", ""}:
         return None
     if kind == "read":
