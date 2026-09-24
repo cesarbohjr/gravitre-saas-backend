@@ -248,6 +248,8 @@ async def try_diagnostic_parallel_read_turn(
     plan = apply_observations_to_plan(plan, observations)
     verdict = conclude_diagnostic(plan, observations)
     missing = _disconnected_notes(plan, connected)
+    if isinstance(verdict, dict):
+        verdict = {**verdict, "missing_sources": missing}
     body = _compose_message(verdict=verdict, missing=missing)
     succeeded = any(row.success for row in observations)
     required_expected = [

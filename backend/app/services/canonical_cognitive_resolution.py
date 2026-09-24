@@ -181,6 +181,11 @@ def should_skip_unified_live_for_compiled_read(
     recipe = match_recipe_for_query(message)
     if recipe is not None and recipe.recipe_id in OPERATIONAL_READ_RECIPES:
         return True
+    from app.services.catalog_search_turn import match_catalog_search_intent
+    from app.services.multi_source_diagnostic import match_diagnostic_recipe
+
+    if match_catalog_search_intent(message or "") or match_diagnostic_recipe(message or ""):
+        return True
     if frame_is_analytics(task_state):
         return True
     from app.services.operational_read_execution import infer_operational_recipe_id

@@ -144,6 +144,16 @@ def test_catalog_search_intent_excludes_disconnected_github():
     assert "github" in str(turn["message"]).lower()
 
 
+def test_catalog_search_skips_unified_live():
+    from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+    assert should_skip_unified_live_for_compiled_read(
+        "Search the tool catalog for HubSpot owners. Do not create records.",
+        {},
+        ["hubspot"],
+    )
+
+
 
 def test_skills_are_versioned_procedures_not_runtime():
     skills = load_jit_procedures(

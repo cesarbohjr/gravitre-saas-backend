@@ -58,6 +58,7 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     # 3.0-D — finished-work reports must survive GET /state and persist merge.
     "durable_deliverable": None,
     "work_artifacts": [],
+    "diagnostic_conclusion": None,
     # Phase E5 — governance continuation (confirmation/clarification/approval).
     "pending_action": None,
     # Phase D — unified turn trace (gateway → compose).

@@ -607,6 +607,16 @@ def reconstruct_execution_result(
             "plan_id": meta.get("plan_id"),
             "outcome": outcome or terminal or ("completed" if success else "failed"),
             "artifacts": artifacts,
+            "claim_labels": (
+                (state.get("diagnostic_conclusion") or {}).get("labels")
+                if isinstance(state.get("diagnostic_conclusion"), dict)
+                else []
+            ),
+            "missing_sources": list(
+                (state.get("diagnostic_conclusion") or {}).get("missing_sources") or []
+            )
+            if isinstance(state.get("diagnostic_conclusion"), dict)
+            else [],
         },
         artifacts=artifacts,
         error_code=None if success else (outcome or terminal or "WORK_NOT_COMPLETE"),
