@@ -1961,7 +1961,8 @@ class AgentIntelligence:
             task_state = _merge_trace_into_state(
                 task_state if isinstance(task_state, dict) else None
             )
-            if conversation_id and isinstance(task_state, dict):
+            _path = str(_analytics_turn.get("execution_path") or "")
+            if conversation_id and isinstance(task_state, dict) and _path != "catalog_search_eligible":
                 try:
                     patch = {
                         **task_state,

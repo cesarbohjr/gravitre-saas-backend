@@ -92,6 +92,18 @@ def _compose_message(
     parts = [str(verdict.get("message") or "").strip()]
     if missing:
         parts.append(" ".join(missing))
+    entity_id = ""
+    if isinstance(verdict, dict):
+        entity_id = str(verdict.get("entity_id") or "")
+        join_reason = str(verdict.get("join_reason") or "")
+        if entity_id and join_reason == "accepted_entity_bindings":
+            parts.append(
+                "An accepted company join exists for those systems. I am still reporting each live read separately and will not mix their metrics."
+            )
+        elif entity_id and join_reason:
+            parts.append(
+                "I have a stored company identity, but I do not have enough overlapping live sources to join those reads into one result."
+            )
     return "\n\n".join(part for part in parts if part).strip()
 
 
@@ -304,6 +316,17 @@ async def try_diagnostic_parallel_read_turn(
         plan = existing
     if plan is None:
         return None
+    from app.services.business_entity_fabric import load_accepted_entity_for_vendors
+    from app.services.reasoning_evidence_pipeline import stamp_entity_on_execution_plan
+
+    vendors = [str(step.connector_id or "") for step in plan.steps]
+    accepted = load_accepted_entity_for_vendors(client, org_id, vendors)
+    plan = stamp_entity_on_execution_plan(
+        plan,
+        entity=accepted,
+        expected_org_id=org_id,
+        store_available=True,
+    )
     reuse = (
         not _wants_fresh(message or "")
         and continuing
@@ -348,10 +371,17 @@ async def try_diagnostic_parallel_read_turn(
     verdict = conclude_diagnostic(plan, observations)
     missing = _disconnected_notes(plan, connected)
     if isinstance(verdict, dict):
+        join_reason = ""
+        for step in plan.steps:
+            if isinstance(step.meta, dict) and step.meta.get("join_reason"):
+                join_reason = str(step.meta.get("join_reason") or "")
+                break
         verdict = {
             **verdict,
             "missing_sources": missing,
             "provider_reinvoked": provider_reinvoked,
+            "entity_id": plan.entity_id,
+            "join_reason": join_reason,
         }
     body = _compose_message(verdict=verdict, missing=missing)
     succeeded = any(row.success for row in observations)
@@ -393,6 +423,7 @@ async def try_diagnostic_parallel_read_turn(
         "diagnostic_conclusion": verdict,
         "repair_budget": repair_budget.to_dict(),
         "repair_error_memory": list(repair_budget.error_memory),
+        "business_entity": accepted.as_dict() if accepted is not None else None,
     }
     merged_state = bind_finished_work(merged_state, body=body, title=title)
     payload = execution_result_from_finished_work(merged_state, body=body, success=success_flag)

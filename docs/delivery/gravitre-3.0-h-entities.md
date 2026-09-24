@@ -1,6 +1,19 @@
 # Gravitre 3.0-H — cross-system entities on ExecutionPlan (2026-09-21)
 
-**Status:** Source **UNIT_TEST** + live unique Alpha bind **PASS** on isolated org (synthetic QBO/Zendesk bindings; HubSpot/QBO/Zendesk OAuth not all live). No fuzzy STA-312 person joins.
+**Status (2026-09-24):** NL store-backed join answers + diagnostic plan stamp on the shared runtime. Live unique Alpha bind remains store-backed (synthetic QBO/Zendesk ids). **Not** a live multi-provider OAuth PASS. No fuzzy STA-312 person joins. Frontend contract: `gravitre-3.0-h-frontend-contract.md`.
+
+## Original 3.0-H requirements
+
+From `docs/ai/GRAVITRE_PLATFORM_EXECUTION_3.0.md`: BusinessEntity bindings; CS-13; STA-312 owner; no silent merge; gate = join tests + live. Spec §M: bindings + evidence + confidence; Memory HMAC exact.
+
+## 2026-09-24 product behavior
+
+- Natural-language “across HubSpot / QuickBooks / Zendesk” answers load `org_business_entities` for the tenant only.
+- Ambiguous display names stay unjoined.
+- Disconnected live vendors are disclosed; metrics are not mixed.
+- Diagnostic parallel READ stamps `entity_id` when an accepted join exists.
+- Person joins remain email-only (`join_provider_bindings`).
+
 
 Cesar authorized 3.0 after deferring remaining 2.0 human tests to the end. This phase does not start 3.0-C lane B production, a second worker, or fuzzy STA-312 person joins.
 

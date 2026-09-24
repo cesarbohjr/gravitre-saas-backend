@@ -84,6 +84,21 @@ def _score_spec(spec: ActionSpec, tokens: set[str], examples: list[str], tags: l
     return float(hits)
 
 
+def spec_is_governed_write(spec: ActionSpec) -> bool:
+    """WRITE-shaped ActionSpecs, including kind=advanced with write scopes."""
+    if spec.kind == "write":
+        return True
+    if spec.destructive or spec.requires_approval:
+        return True
+    for scope in spec.scopes:
+        token = str(scope or "").strip().lower()
+        if ":write" in token or token.endswith(":enroll") or token.endswith(":send"):
+            return True
+        if token in {"write", "send"}:
+            return True
+    return False
+
+
 def _query_tokens(query: str) -> set[str]:
     return {part for part in "".join(ch.lower() if ch.isalnum() else " " for ch in query).split() if len(part) >= 3}
 
@@ -97,6 +112,8 @@ class EligibleAction:
     score: float
     examples: tuple[str, ...]
     f1_read: bool
+    governed_write: bool = False
+    requires_approval: bool = False
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -107,6 +124,8 @@ class EligibleAction:
             "score": self.score,
             "examples": list(self.examples),
             "f1_read": self.f1_read,
+            "governed_write": self.governed_write,
+            "requires_approval": self.requires_approval,
         }
 
 
@@ -133,6 +152,8 @@ def search_eligible_action_specs(
             continue
         if not _capability_allows(spec, prefixes):
             continue
+        if spec_is_governed_write(spec) and not include_writes:
+            continue
         if spec.kind == "write" and not include_writes:
             continue
         row = enrichment_for_action(spec.id) or {}
@@ -147,6 +168,8 @@ def search_eligible_action_specs(
             score=score,
             examples=tuple(examples),
             f1_read=is_f1_read_action(spec.id),
+            governed_write=spec_is_governed_write(spec),
+            requires_approval=bool(spec.requires_approval or spec.destructive or spec_is_governed_write(spec)),
         )
         if item.f1_read and spec.id in F1_CATALOG_ACTIONS:
             f1_keep.append(item)

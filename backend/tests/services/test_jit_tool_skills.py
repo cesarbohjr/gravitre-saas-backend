@@ -30,7 +30,8 @@ def test_eligible_set_never_dumps_full_catalog():
     assert len(found) < catalog_n
     ids = {row.action_id for row in found}
     assert "google_analytics.reports.run" in ids
-    assert all(row.kind != "write" for row in found)
+    assert all(not row.governed_write for row in found)
+    assert all("update_stage" not in row.action_id for row in found)
 
 
 def test_f1_eligible_protected_when_vendor_connected():
@@ -142,6 +143,22 @@ def test_catalog_search_intent_excludes_disconnected_github():
     assert turn["github_excluded"] is True
     assert turn["writes_started"] is False
     assert "github" in str(turn["message"]).lower()
+    assert "approval required" not in str(turn["message"]).lower() or "WRITE" not in str(turn["message"])
+
+
+def test_general_catalog_lists_writes_as_approval_required():
+    from app.services.catalog_search_turn import try_catalog_search_turn
+
+    turn = try_catalog_search_turn(
+        message="Which connected tools can I use? Search the tool catalog.",
+        connected_integrations=["hubspot"],
+    )
+    assert turn is not None
+    assert turn["writes_started"] is False
+    message = str(turn["message"])
+    if turn.get("writes_listed"):
+        assert "approval required" in message.lower()
+        assert "not executed" in message.lower()
 
 
 def test_catalog_search_skips_unified_live():
@@ -149,6 +166,16 @@ def test_catalog_search_skips_unified_live():
 
     assert should_skip_unified_live_for_compiled_read(
         "Search the tool catalog for HubSpot owners. Do not create records.",
+        {},
+        ["hubspot"],
+    )
+    assert should_skip_unified_live_for_compiled_read(
+        "List all HubSpot deals",
+        {},
+        ["hubspot"],
+    )
+    assert should_skip_unified_live_for_compiled_read(
+        "What do we know about Alpha across HubSpot, QuickBooks, and Zendesk?",
         {},
         ["hubspot"],
     )

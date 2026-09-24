@@ -186,6 +186,11 @@ def should_skip_unified_live_for_compiled_read(
 
     if match_catalog_search_intent(message or "") or match_diagnostic_recipe(message or ""):
         return True
+    from app.services.listing_f2_read_turn import match_listing_f2_intent
+    from app.services.entity_join_answer_turn import match_cross_system_entity_intent
+
+    if match_listing_f2_intent(message or "") or match_cross_system_entity_intent(message or ""):
+        return True
     if frame_is_analytics(task_state):
         return True
     from app.services.operational_read_execution import infer_operational_recipe_id
@@ -315,6 +320,16 @@ async def try_compiled_operational_read_turn(
     )
     if catalog:
         return catalog
+    from app.services.entity_join_answer_turn import try_cross_system_entity_turn
+
+    entity_turn = try_cross_system_entity_turn(
+        message=message or "",
+        org_id=org_id,
+        client=client,
+        connected_integrations=connected_integrations,
+    )
+    if entity_turn:
+        return entity_turn
     from app.services.diagnostic_parallel_execution import try_diagnostic_parallel_read_turn
 
     diagnostic = await try_diagnostic_parallel_read_turn(
@@ -328,6 +343,19 @@ async def try_compiled_operational_read_turn(
     )
     if diagnostic:
         return diagnostic
+    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
+
+    listing = try_listing_f2_read_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+        user_id=user_id,
+    )
+    if listing:
+        return listing
     from app.services.operational_read_execution import try_operational_read_short_circuit_turn
 
     operational = await try_operational_read_short_circuit_turn(

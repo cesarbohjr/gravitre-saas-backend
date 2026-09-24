@@ -96,3 +96,141 @@ def test_join_refuses_foreign_org_binding() -> None:
     )
     assert decision.status == "refused_cross_org"
     assert decision.entity is None
+
+
+def test_listing_intent_matches_natural_language_hubspot_deals() -> None:
+    from app.services.listing_f2_read_turn import listing_f2_intent
+
+    intent = listing_f2_intent("List all HubSpot deals")
+    assert intent is not None
+    assert intent.provider == "hubspot"
+    assert intent.search_tool == "hubspot.deals.search"
+    assert intent.list_tool == "hubspot.deals.list"
+
+
+def test_entity_join_intent_is_not_live_provider_claim() -> None:
+    from app.services.entity_join_answer_turn import entity_join_intent
+
+    intent = entity_join_intent("What do we know about Alpha across HubSpot, QuickBooks, and Zendesk?")
+    assert intent is not None
+    assert intent.display_name == "Alpha"
+
+
+class _Table:
+    def __init__(self, rows: list[dict]) -> None:
+        self._rows = rows
+
+    def select(self, *_a: object, **_k: object) -> "_Table":
+        return self
+
+    def eq(self, *_a: object, **_k: object) -> "_Table":
+        return self
+
+    def limit(self, *_a: object, **_k: object) -> "_Table":
+        return self
+
+    def execute(self) -> object:
+        return type("R", (), {"data": self._rows})()
+
+
+class _Store:
+    def __init__(self, entities: list[dict], bindings: list[dict]) -> None:
+        self._entities = entities
+        self._bindings = bindings
+
+    def table(self, name: str) -> _Table:
+        if name == "org_business_entities":
+            return _Table(self._entities)
+        return _Table(self._bindings)
+
+
+def test_store_answer_discloses_disconnected_live_sources() -> None:
+    from app.services.entity_join_answer_turn import try_cross_system_entity_turn
+
+    client = _Store(
+        [
+            {
+                "id": "ent-1",
+                "org_id": E2E_ORG_ID,
+                "canonical_key": ALPHA_ENTITY_ID,
+                "display_name": "Alpha",
+                "kind": "company",
+                "confidence": 0.95,
+                "evidence": [{"kind": "host", "value": "alpha.test.gravitre.app", "source": "hubspot"}],
+            }
+        ],
+        [
+            {
+                "entity_id": "ent-1",
+                "system": "hubspot",
+                "resource_type": "company",
+                "resource_id": "hs-alpha-test",
+                "confidence": 0.95,
+                "evidence": [],
+            },
+            {
+                "entity_id": "ent-1",
+                "system": "quickbooks",
+                "resource_type": "customer",
+                "resource_id": "qbo-alpha-test",
+                "confidence": 0.95,
+                "evidence": [],
+            },
+        ],
+    )
+    turn = try_cross_system_entity_turn(
+        message="What do we know about Alpha across HubSpot, QuickBooks, and Zendesk?",
+        org_id=E2E_ORG_ID,
+        client=client,
+        connected_integrations=["hubspot"],
+    )
+    assert turn is not None
+    assert turn["join"] is True
+    assert turn["entity_id"] == ALPHA_ENTITY_ID
+    assert "not a live multi-provider census" in str(turn["message"]).lower()
+    assert turn["writes_started"] is False
+    assert turn["missing_live_sources"]
+
+
+def test_ambiguous_display_name_is_not_joined() -> None:
+    from app.services.entity_join_answer_turn import try_cross_system_entity_turn
+
+    turn = try_cross_system_entity_turn(
+        message="What do we know about Beta across HubSpot and QuickBooks?",
+        org_id=E2E_ORG_ID,
+        client=_Store(
+            [
+                {
+                    "id": "ent-1",
+                    "org_id": E2E_ORG_ID,
+                    "canonical_key": ALPHA_ENTITY_ID,
+                    "display_name": "Alpha",
+                    "kind": "company",
+                    "confidence": 0.95,
+                    "evidence": [],
+                }
+            ],
+            [
+                {
+                    "entity_id": "ent-1",
+                    "system": "hubspot",
+                    "resource_type": "company",
+                    "resource_id": "hs-alpha-test",
+                    "confidence": 0.95,
+                    "evidence": [],
+                },
+                {
+                    "entity_id": "ent-1",
+                    "system": "quickbooks",
+                    "resource_type": "customer",
+                    "resource_id": "qbo-alpha-test",
+                    "confidence": 0.95,
+                    "evidence": [],
+                },
+            ],
+        ),
+        connected_integrations=["hubspot"],
+    )
+    assert turn is not None
+    assert turn["join"] is False
+    assert "similar display name" in str(turn["message"]).lower()
