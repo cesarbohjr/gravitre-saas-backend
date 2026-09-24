@@ -1,45 +1,36 @@
 # 09 — Implementation plan and release gates
 
-## Dependency order (frontend track)
+**Authority:** Master §§42–48. Frontend track only.
 
-```
-P0 Ownership matrix + conflict freeze          ✅ (this package)
-P1 Architecture + route/state inventory        ✅
-P2 Technology matrix                           ✅
-P3 Design-system + window + RF + AI-native docs ✅
-P4 Harness structural prototypes (isolated)
-    - Page intro variants
-    - Docked window concept
-    - Intelligence Field primacy composition
-    - RF-1 read-only workflow
-P5 Cesar structural design gate  ← STOP (no broad Phase 8)
-P6 Coordinated production slices (one at a time)
-    - Honesty defects (confidence %, meta copy) can ship earlier as defects
-P7 Journey proof per slice (authenticated browser)
-```
+## Master phase mapping
+
+| Master phase | Frontend status |
+|--------------|-----------------|
+| 0 Repository audit | ✅ `01-current-state-architecture-audit.md` |
+| 1 Product inventory | ✅ `02-route-interaction-inventory.md` (expand nested routes ongoing) |
+| 2 Technology matrix | ✅ `03-technology-adoption-matrix.md` (reconciled to §7) |
+| 3 AI-native architecture | ✅ `08-ai-native-interaction-architecture.md` |
+| 4 Reference research | ✅ `05-reference-selection-matrix.md` (deepen per family as prototypes need) |
+| 5 Design-system consolidation | ✅ Master + `GRAVITRE_*.md` companions |
+| 6 Structural prototypes | ✅ Partial — see `13-phase6-prototype-queue.md` |
+| 7 Validation | ⬜ Per prototype; journeys NOT PROVEN until authenticated evidence |
+| 8 Production implementation | **BLOCKED** — G-STRUCT |
 
 ## Release gates
 
 | Gate | Required | Blocks |
 |------|----------|--------|
-| **G-STRUCT** | Cesar approves window + Field primacy + RF migration direction | Broad production redesign |
-| **G-DEP** | Cesar approves any new npm platform dependency | Installs |
-| **G-FUNC** | No overwrite of 3.0-D artifact/SSE contracts | Shared file PRs |
+| **G-STRUCT** | Cesar approves window + Field primacy + page-intro + RF cutover | Broad Phase 8 |
+| **G-DEP** | Cesar approves new platform deps | Installs |
+| **G-FUNC** | No overwrite of Platform Execution contracts | Shared file PRs |
 | **G-PROOF** | Authenticated journey PASS with evidence pointer | “Shipped UX” claims |
 | **G-HONEST** | No invented prices/badges/confidence/artifacts | Any customer surface |
+| **§43 coverage** | Routes dispositioned in `15-coverage-matrix.md` | Declaring redesign complete |
 
-## Safe to fix now (defect track, not redesign)
+## Safe defect track (not Phase 8)
 
-- Assignments confidence display bug (`3500%`)  
-- Workflows totals developer copy leak  
-- Org membership 403 recovery (already on main)  
-
-These do **not** count as Phase 8 redesign.
-
-## Structural prototypes (approved venue)
-
-`/dev/ai-workspace-preview` only until G-STRUCT.
+Assignments confidence display · workflows developer copy · org membership recovery (main)
 
 ## Parallel with functional agent
 
-Frontend may **inspect** artifact presentation and prototype improvements against the documented contract. Functional agent owns schema/lifecycle. Merge incompatibilities only via coordinated integration, not drive-by main edits from this worktree.
+Frontend prototypes consume stable contracts. Functional agent owns CognitiveTurnKernel, ExecutionPlan, ActionSpec, PendingAction, Observations, Composer, voice runtime, SSE, durable deliverables, workflow execution.

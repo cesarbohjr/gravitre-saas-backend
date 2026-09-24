@@ -1,37 +1,31 @@
 # Spec recovery status — Master 3.0 Plus (Sections 0–48)
 
-**Date:** 2026-09-23 (updated after Cesar “supplying full text” authorization)  
+**Date:** 2026-09-23  
 **Worktree:** `feat/gravitre-3.0-plus-frontend`  
-**Verdict: FULL labeled Sections 0–48 STILL NOT ON DISK**
+**Verdict: FULL Sections 0–48 RECOVERED**
 
-## What Cesar authorized this turn
+## Authoritative source
 
-- Treat “full original master specification §§0–48” as authoritative when available.
-- Word files remain truncated and must not be used to invent missing requirements.
-- Option B approved for **isolated structural prototyping** only (not production builder cutover).
-- Phase 6 harness prototypes authorized.
+| Source | Role |
+|--------|------|
+| `docs/design/GRAVITRE_3_0_PLUS_MASTER_SPEC.md` | **AUTHORITATIVE** — Cesar chat paste 2026-09-23 (~48 KB, §§0–48) |
+| `Downloads\GRAVITRE 3.0 PLUS.docx` / truncated extracts | **Superseded** — do not use to infer requirements |
 
-## Sources re-checked (2026-09-23 ~17:00 local)
+## Verified present
 
-| Source | Result |
-|--------|--------|
-| Authorization message body | Instructions only — **no §§0–48 document body attached** |
-| `Downloads\GRAVITRE 3.0 PLUS.docx` / `(1).docx` (60,921 B) | Unchanged truncated mid-doc |
-| `.tmp-3.0-plus-full.txt` / `gravitre-3.0-plus-extracted.txt` (~28 KB, 1164 lines) | Same extract: starts **Floating UI**, ends mid **Phase 2** |
-| Newer Downloads / Desktop / Documents (depth-3) | No alternate complete master |
+§§0–48 including: §7 Complete stack · §§14–15 Floating UI + Window Manager · §17 Workflow Builder / React Flow · §§21–22 Intelligence + Model Studio · §§28–33 inventories · §§39–42 research/concepts/validation/methodology · §§43–48 coverage, deliverables, acceptance, execution rules.
 
-## Present in truncated extract (narrative, unlabeled)
+## Reconciliation (do not re-audit wholesale)
 
-≈§14 Floating UI · ≈§15 Window Manager · ≈§17 Workflow Builder + React Flow preference · Intelligence / Model Studio fragments · route inventory fragments · methodology Phase 0–2 start · Nucleo mention
+| Existing package | Vs full master | Action |
+|------------------|----------------|--------|
+| `00`–`09` Section 44 set | Aligns with §44 deliverables | **Valid** — keep |
+| `03` tech matrix | §7/§8 say Evaluate for assistant-ui, AG-UI, Chromatic, Storybook, ELK, RGL, ECharts | **Updated** — Evaluate≠Reject; installs still gated |
+| `11` Option A/B | §17 preferred RF; Cesar approved B for harness | **Valid** — production cutover still gated |
+| Phase 6 harness | §42 Phase 6 priorities | **Extended** — WM, RF, AI workspace, Intelligence; Model Studio prototype next |
+| Phase 5 companion docs | §42 Phase 5 file list | **Created** — see sibling `GRAVITRE_*.md` under `docs/design/` |
+| Coverage matrix §43 | Required persistent gate | **Created** — `15-coverage-matrix.md` |
 
-## Confirmed absent from disk copy
+## Rule
 
-Labeled **§§0–13**, **Complete technology stack**, numbered **§§28–33** inventories as formal sections, **§§39–42** research/concepts/validation blocks as formal sections, **§§43–48** (Coverage, Deliverables, Acceptance, Execution rules) including **Section 44** heading.
-
-## Reconciliation rule
-
-Completed frontend package (`00–13`, harness prototypes) remains valid against recovered fragments + Cesar authorizations. **Do not claim full-spec compliance** until Cesar provides a complete §§0–48 file (docx/md/pdf). Missing material will be reconciled then — audits already done will not be repeated wholesale.
-
-## Ask Cesar
-
-Please attach or drop the complete master file (Sections 0–48) into Downloads or this chat. Until then, prototypes proceed under explicit authorizations in this thread only.
+All future frontend work references `GRAVITRE_3_0_PLUS_MASTER_SPEC.md`. Deviations require documented Cesar approval. No broad Phase 8 until G-STRUCT.

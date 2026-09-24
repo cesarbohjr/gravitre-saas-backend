@@ -1,26 +1,33 @@
 # Phase 6 — Isolated structural prototypes
 
-**Venue:** `/dev/ai-workspace-preview` only · branch `feat/gravitre-3.0-plus-frontend`  
-**Option B:** Cesar approved RF as target for **isolated prototyping** (2026-09-23) — not production cutover.
+**Venue:** `/dev/ai-workspace-preview` only · `feat/gravitre-3.0-plus-frontend`  
+**Master:** §42 Phase 6 priority list · Option B RF prototyping authorized
 
-## Shipped in harness (this package)
+## Shipped
 
-| Surface (`?s=`) | Scenes | Notes |
-|-----------------|--------|-------|
-| `workflow-rf` | design / live / explain / history | Option B RF visual layer + `canvasToSavePayload` evidence |
-| `window-manager` | docked / compact / floating / expanded / fullscreen / minimized | Docked concept + mode compositions |
-| `page-intro` | operating / expert / empty / immersive | Hierarchy variants for Cesar pick |
-| `ai-workspace` | conversation-primary / work-primary / show-the-work-slot / voice-continuity / split | Shared AI compositions; show-the-work **placement only** |
-| `intelligence` | includes `field-primary` | Existing Field prototype; primacy scene called out |
+| Surface (`?s=`) | Scenes | Maps to §42 |
+|-----------------|--------|-------------|
+| `window-manager` | docked + modes | Shared window system |
+| `ai-workspace` | conversation/work/show-the-work-slot/… | AI conversation + widget composition |
+| `workflow-rf` | design/live/explain/history | React Flow Workflow Builder |
+| `intelligence` | field-primary + prior scenes | Intelligence |
+| `page-intro` | operating/expert/empty/immersive | Hierarchy variants (G-STRUCT) |
+| `model-studio` | standard/advanced | Model Studio (§22) |
 
-## Still blocked on Cesar (not Phase 8)
+## Still queued (harness, independent)
 
-- Production builder cutover (present RF prototype + migration evidence first)
-- Final page-intro / WM mode as production default (G-STRUCT)
-- Broad Phase 8 redesign
+1. AI-generated workflow → open/edit/run **composition** (fixture plan → RF preview → Open in Builder CTA) — no second runtime  
+2. Dashboard structural concepts (three meaningfully different — §40)  
+3. Agent workspace structural concepts  
+
+## Blocked on Cesar
+
+- Production RF cutover  
+- G-STRUCT picks (intro / WM / Field primacy)  
+- Phase 8  
 
 ## Not starting
 
-- Show-the-work live checklist / backend events
-- Core product file edits in `00-ownership-and-conflict-matrix.md`
-- Workflow execution engine rewrite
+- Show-the-work live checklist  
+- Core product file edits (`00-ownership-and-conflict-matrix.md`)  
+- Workflow execution engine rewrite  

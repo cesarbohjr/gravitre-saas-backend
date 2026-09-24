@@ -26,6 +26,7 @@ import { WorkflowBuilderRfPrototype } from "./ux30-plus/workflow-builder-rf-prot
 import { WindowManagerDockedPrototype } from "./ux30-plus/window-manager-docked-prototype"
 import { PageIntroVariantsPrototype } from "./ux30-plus/page-intro-variants-prototype"
 import { SharedAiWorkspacePrototype } from "./ux30-plus/shared-ai-workspace-prototype"
+import { ModelStudioPrototype } from "./ux30-plus/model-studio-prototype"
 
 const UX30_SURFACES = [
   "foundation",
@@ -37,6 +38,7 @@ const UX30_SURFACES = [
   "window-manager",
   "page-intro",
   "ai-workspace",
+  "model-studio",
 ] as const
 type Ux30Surface = (typeof UX30_SURFACES)[number]
 
@@ -98,6 +100,7 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
     "voice-continuity",
     "split",
   ],
+  "model-studio": ["standard", "advanced"],
 }
 
 const AI_SCENES: AiScene[] = [
@@ -177,6 +180,7 @@ export function DesignExplorationShell() {
         {surface === "window-manager" && <WindowManagerDockedPrototype scene={scene} />}
         {surface === "page-intro" && <PageIntroVariantsPrototype scene={scene} />}
         {surface === "ai-workspace" && <SharedAiWorkspacePrototype scene={scene} />}
+        {surface === "model-studio" && <ModelStudioPrototype scene={scene} />}
         {surface === "nucleo" && <SelectedNucleo scene={scene} />}
         {surface === "ai" && <SelectedAiCommandOs scene={normalizeAi(scene)} />}
         {surface === "agents" && <SelectedAgents scene={scene} />}
@@ -203,6 +207,7 @@ function defaultScene(surface: Surface): string {
   if (surface === "window-manager") return "docked"
   if (surface === "page-intro") return "operating"
   if (surface === "ai-workspace") return "conversation-primary"
+  if (surface === "model-studio") return "standard"
   if (surface === "ai") return "compact-conversation"
   if (surface === "agents") return "default"
   return "default"
