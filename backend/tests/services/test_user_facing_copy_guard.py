@@ -99,6 +99,22 @@ def test_finalize_user_facing_message_scrubs_catalog_keys():
     assert "gmail.messages.list" not in cleaned
 
 
+def test_email_host_is_not_rewritten_as_catalog_action():
+    email = "gravitre-voice-write-20260924073353@alpha.test.gravitre.app"
+    mangled = "gravitre-voice-write-20260924073353@app in Alpha"
+    cleaned = finalize_user_facing_message(
+        f"Create the HubSpot contact with email {email}.",
+    )
+    assert email in cleaned
+    assert "@app in Alpha" not in cleaned
+    restored = finalize_user_facing_message(
+        f"Create the HubSpot contact with email {mangled}.",
+        identity_literals=[email],
+    )
+    assert email in restored
+    assert "app in Alpha" not in restored
+
+
 def test_url_hostnames_are_not_catalog_key_leaks():
     msg = (
         "Company/contact discovery requires an Apollo plan with search API access — "

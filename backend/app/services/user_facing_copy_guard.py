@@ -16,6 +16,22 @@ _INTERNAL_TOOL_NAME = re.compile(
 )
 
 
+_EMAIL_RE = re.compile(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", re.I)
+_HOST_TLD = frozenset({"app", "com", "io", "net", "org", "co", "ai", "dev", "example", "local"})
+
+
+def _catalog_key_match_is_identity(text: str, match: re.Match[str]) -> bool:
+    """Emails and hostnames must stay exact — they are not catalog action keys."""
+    start, end = match.span()
+    if start > 0 and text[start - 1] == "@":
+        return True
+    for email in _EMAIL_RE.finditer(text or ""):
+        if email.start() <= start < email.end():
+            return True
+    last = match.group(0).rsplit(".", 1)[-1].lower()
+    return last in _HOST_TLD
+
+
 def _catalog_key_match_inside_url(text: str, start: int) -> bool:
     """True when a dotted-token match is part of an http(s) URL host (e.g. app.apollo.io)."""
     window = (text or "")[max(0, start - 12) : start]
@@ -25,6 +41,8 @@ def _catalog_key_match_inside_url(text: str, start: int) -> bool:
 def _iter_catalog_action_key_matches(text: str):
     for match in RAW_CATALOG_ACTION_KEY.finditer(text or ""):
         if _catalog_key_match_inside_url(text, match.start()):
+            continue
+        if _catalog_key_match_is_identity(text, match):
             continue
         yield match
 
@@ -89,6 +107,8 @@ def scrub_raw_catalog_keys(text: str) -> str:
     def _repl(match: re.Match[str]) -> str:
         if _catalog_key_match_inside_url(raw, match.start()):
             return match.group(0)
+        if _catalog_key_match_is_identity(raw, match):
+            return match.group(0)
         return humanize_catalog_action_key(match.group(0))
 
     return RAW_CATALOG_ACTION_KEY.sub(_repl, raw)
@@ -134,9 +154,31 @@ def assert_no_raw_catalog_action_keys(text: str, *, context: str = "") -> None:
         )
 
 
-def finalize_user_facing_message(text: str, *, context: str = "") -> str:
+def restore_identity_literals(text: str, literals: Iterable[str] | None) -> str:
+    """Put frozen emails/names back if composition or TTS-prep mangled them."""
+    out = text or ""
+    for raw in literals or []:
+        lit = str(raw or "").strip()
+        if not lit or lit in out:
+            continue
+        if "@" in lit:
+            local = lit.split("@", 1)[0]
+            mangled = re.compile(re.escape(local) + r"@app in [A-Za-z]+", re.I)
+            if mangled.search(out):
+                out = mangled.sub(lit, out)
+    return out
+
+
+def finalize_user_facing_message(
+    text: str,
+    *,
+    context: str = "",
+    identity_literals: Iterable[str] | None = None,
+) -> str:
+    cleaned = restore_identity_literals((text or "").strip(), identity_literals)
     cleaned = dedupe_repeated_paragraphs(
-        scrub_internal_tool_references(scrub_raw_catalog_keys((text or "").strip()))
+        scrub_internal_tool_references(scrub_raw_catalog_keys(cleaned))
     )
+    cleaned = restore_identity_literals(cleaned, identity_literals)
     assert_no_raw_catalog_action_keys(cleaned, context=context or "user_facing_message")
     return cleaned

@@ -31,7 +31,7 @@ from isolated_conversation_org import (  # noqa: E402
 
 PROD_DEFAULT = "https://api.gravitre.app"
 FORBIDDEN_CLAIM = "I sent"
-FULL_LOOP_DRAFT = "I've classified this as a real request"
+FULL_LOOP_DRAFT = "On it."
 
 
 def _load_env() -> dict[str, str]:

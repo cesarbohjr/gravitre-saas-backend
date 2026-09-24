@@ -70,6 +70,33 @@ def test_high_risk_write_signals_are_dropped() -> None:
     assert recs[0].write_allowed is False
 
 
+def test_attention_intent_does_not_auto_write(monkeypatch) -> None:
+    from app.services.proactive_business_operator import is_attention_intent, try_ranked_attention_turn
+
+    monkeypatch.setattr(
+        "app.services.website_source_status.website_source_readiness",
+        lambda *args, **kwargs: {
+            "google_analytics": {
+                "present": True,
+                "executable": False,
+                "blocking_reason": "pending_auth",
+            }
+        },
+    )
+    assert is_attention_intent("what needs my attention") is True
+    turn = try_ranked_attention_turn(
+        message="what needs my attention",
+        org_id="org",
+        client=None,
+        settings=None,
+        task_state={},
+    )
+    assert turn is not None
+    assert turn["write_allowed"] is False
+    assert turn["provider_write"] is False
+    assert "will not write" in turn["message"].lower()
+
+
 def test_invented_enable_copy_is_stripped() -> None:
     recs = rank_safe_read_notices(
         [

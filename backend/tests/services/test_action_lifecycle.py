@@ -200,6 +200,50 @@ def test_j_multi_step_parent_not_complete_while_required_running() -> None:
     assert updated.steps[1].status == "pending"
 
 
+def test_verified_write_follow_up_does_not_reset_terminal() -> None:
+    state = persist_write_outcome_patch(
+        task_state=_compose_state(),
+        connector_plan=_plan(),
+        success=True,
+        summary="created",
+        structured={"id": "278976365530", "email": "ops@alpha.test.gravitre.app"},
+        pending_task=_compose_state()["pending_task"],
+        verification={"verified": True},
+    )
+    from app.services.execution_plan_service import reconcile_execution_plan
+
+    continued = reconcile_execution_plan(
+        message="Did that contact already get created?",
+        task_state=state,
+        turn_id="turn-follow",
+    )
+    assert continued.terminal_status == "completed"
+    merged = enrich_task_state_patch(
+        {"execution_plan": continued.as_dict()},
+        current_state=state,
+    )
+    assert merged["execution_plan"]["terminal_status"] == "completed"
+
+
+def test_recent_write_follow_up_uses_observation() -> None:
+    from app.services.action_lifecycle import recent_write_status_turn
+
+    state = persist_write_outcome_patch(
+        task_state=_compose_state(),
+        connector_plan=_plan(),
+        success=True,
+        summary="created",
+        structured={"id": "99", "email": "placeholder.isolated@gravitre-smoke.example.com"},
+        pending_task=_compose_state()["pending_task"],
+        verification={"verified": True},
+    )
+    turn = recent_write_status_turn("Did that contact already get created?", state)
+    assert turn is not None
+    assert turn["provider_write"] is False
+    assert "placeholder.isolated@gravitre-smoke.example.com" in turn["message"]
+    assert "explicit" not in turn["message"].lower()
+
+
 def test_compose_plan_cannot_mask_write_observation() -> None:
     patch = persist_write_outcome_patch(
         task_state=_compose_state(),

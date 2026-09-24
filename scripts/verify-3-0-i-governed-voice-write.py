@@ -160,7 +160,7 @@ def main() -> int:
     hold_conv = str(uuid.uuid4())
     write_conv = str(uuid.uuid4())
     with httpx.Client(timeout=180) as http:
-        for conv, title in ((hold_conv, "3.0-i-hold"), (write_conv, "3.0-i-write")):
+        for conv, title in ((hold_conv, f"3.0-i-hold-{tag}"), (write_conv, f"3.0-i-write-{tag}")):
             created = http.post(
                 f"{BASE}/api/conversations",
                 headers=json_headers,
@@ -194,6 +194,12 @@ def main() -> int:
         )
         ambiguous = stream_turn(http, headers, write_conv, org_id, "yes maybe", spoken=True)
         confirm = stream_turn(http, headers, write_conv, org_id, "Yes, create it.", spoken=True)
+        state_after = http.get(
+            f"{BASE}/api/assistant/conversation/{write_conv}/state",
+            headers=json_headers,
+            timeout=60,
+        )
+        state_json = state_after.json() if state_after.status_code == 200 else {"http_status": state_after.status_code}
         duplicate = stream_turn(http, headers, write_conv, org_id, "yes", spoken=True)
         follow = stream_turn(
             http,
@@ -227,9 +233,23 @@ def main() -> int:
         "stage_write": stage_write,
         "ambiguous": {**ambiguous, "pass": amb_ok},
         "confirm": confirm,
+        "state_after_confirm": {
+            "http_status": state_after.status_code,
+            "pending_status": ((state_json.get("task_state") or {}).get("pending_task") or {}).get("status"),
+            "plan_id": ((state_json.get("task_state") or {}).get("execution_plan") or {}).get("plan_id"),
+            "plan_terminal": ((state_json.get("task_state") or {}).get("execution_plan") or {}).get("terminal_status"),
+            "observation_success": (
+                ((state_json.get("task_state") or {}).get("execution_observations") or [{}])[-1].get("success")
+                if (state_json.get("task_state") or {}).get("execution_observations")
+                else None
+            ),
+        },
         "duplicate": duplicate,
         "follow": follow,
         "hold_pass": hold_ok,
+        "identity_preserved_in_approval": probe_email in str(stage_write.get("assistant_excerpt") or "")
+        and "@app in Alpha" not in str(stage_write.get("assistant_excerpt") or ""),
+        "classified_preamble_present": "classified this as a real request" in str(stage_write.get("assistant_excerpt") or "").lower(),
         "physical_human_voice_pass": False,
     }
     OUT.write_text(json.dumps(payload, indent=2), encoding="utf-8")

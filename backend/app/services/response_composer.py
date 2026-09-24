@@ -608,7 +608,14 @@ async def compose_user_reply(
             fallback = True
 
     try:
-        text = finalize_user_facing_message(text, context="response_composer")
+        identity = env.get("identity_literals")
+        if not identity and isinstance(env.get("data"), dict):
+            identity = env["data"].get("identity_literals")
+        text = finalize_user_facing_message(
+            text,
+            context="response_composer",
+            identity_literals=identity if isinstance(identity, list) else None,
+        )
     except Exception:  # noqa: BLE001
         from app.services.user_facing_copy_guard import scrub_raw_catalog_keys
 

@@ -297,7 +297,11 @@ def enrich_task_state_patch(
     canonical = authoritative_execution_plan(state)
     incoming_plan = ExecutionPlan.from_dict(patch.get("execution_plan"))
     if incoming_plan is not None:
-        canonical = incoming_plan
+        from app.services.execution_plan_authority import prefer_persisted_write_plan
+
+        canonical = prefer_persisted_write_plan(canonical, incoming_plan)
+        if canonical is not None:
+            patch["execution_plan"] = canonical.as_dict()
     elif canonical is not None and canonical.source in {"default_compose", "compose"}:
         pending_in = patch.get("pending_task")
         params = (

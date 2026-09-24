@@ -61,11 +61,11 @@ _PLAN_WITHOUT_EXECUTE_RE = re.compile(
 )
 
 _SPOKEN_STAGE_DRAFTS: dict[str, str] = {
-    "PERCEIVE": "I've classified this as a real request, so I'm running the full loop.",
-    "RETRIEVE": "I'm loading memory and knowledge now.",
-    "PLAN": "I'm putting the plan together.",
-    "ACT": "I'm preparing the next actions.",
-    "OBSERVE": "I'm checking that against what just happened.",
+    "PERCEIVE": "On it.",
+    "RETRIEVE": "Checking what I already know.",
+    "PLAN": "Figuring out the next step.",
+    "ACT": "Working on it.",
+    "OBSERVE": "Checking what came back.",
 }
 
 

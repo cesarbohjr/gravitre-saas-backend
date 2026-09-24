@@ -32,7 +32,7 @@ from _voice_probe_lib import CHUNK_BYTES, CHUNK_MS, SAMPLE_RATE, service_token, 
 
 LIVE_API = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "gravitre-3.0-pcm-live.json"
-PHRASE = "Is Apollo connected"
+PHRASE = "Create a HubSpot contact named Gravitre PCM Probe. Do not create it until I approve."
 
 
 def _load_env() -> None:
@@ -175,7 +175,7 @@ async def _drive(token: str, speech: bytes) -> dict:
                 delta = str(msg.get("delta") or "").strip()
                 if delta:
                     assistant.append(delta)
-            if assistant and t_speech_end is not None and time.monotonic() - t_speech_end > 6:
+            if assistant and t_speech_end is not None and time.monotonic() - t_speech_end > 22:
                 break
         if send_task is not None and not send_task.done():
             send_task.cancel()

@@ -5,6 +5,48 @@ from typing import Any
 
 from app.services.execution_plan_service import ExecutionPlan
 
+_PROTECTED_WRITE_TERMINALS = frozenset({"completed", "partial", "failed", "blocked", "cancelled"})
+_WEAK_PLAN_SOURCES = frozenset({"default_compose", "compose", "react", "current_plan"})
+
+
+def is_terminal_write_plan(plan: ExecutionPlan | None) -> bool:
+    """True when the plan already records a finished WRITE, not in-flight work."""
+    if plan is None:
+        return False
+    if plan.terminal_status not in _PROTECTED_WRITE_TERMINALS:
+        return False
+    writes = [step for step in plan.steps if step.kind == "write"]
+    if plan.source in {"connector_write", "connector_action"}:
+        return True
+    if not writes:
+        return False
+    return all(step.status not in {"pending", "running"} for step in writes)
+
+
+def prefer_persisted_write_plan(
+    current: ExecutionPlan | None,
+    incoming: ExecutionPlan | None,
+) -> ExecutionPlan | None:
+    """Keep verified WRITE terminal truth; do not let follow-up compose reset pending."""
+    if incoming is None:
+        return current
+    if current is None or not is_terminal_write_plan(current):
+        return incoming
+    if incoming.terminal_status == "waiting_for_approval":
+        return incoming
+    if incoming.terminal_status in _PROTECTED_WRITE_TERMINALS:
+        return incoming
+    same_id = incoming.plan_id == current.plan_id
+    weak = incoming.source in _WEAK_PLAN_SOURCES or incoming.replan_reason == "follow_up"
+    if not (same_id or weak):
+        return incoming
+    current.turn_id = incoming.turn_id or current.turn_id
+    current.conversation_id = incoming.conversation_id or current.conversation_id
+    current.revision = max(int(current.revision or 1), int(incoming.revision or 1))
+    if incoming.replan_reason:
+        current.replan_reason = incoming.replan_reason
+    return current
+
 
 def authoritative_execution_plan(state: dict[str, Any] | None) -> ExecutionPlan | None:
     """Return the canonical ExecutionPlan when present and non-terminal."""

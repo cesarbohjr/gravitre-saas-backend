@@ -1291,8 +1291,13 @@ class AgentIntelligence:
             task_state=task_state,
         )
         from app.services.user_facing_copy_guard import finalize_user_facing_message
+        from app.services.action_lifecycle import identity_literals_from_state
 
-        content = finalize_user_facing_message(content, context="assistant_finalize")
+        content = finalize_user_facing_message(
+            content,
+            context="assistant_finalize",
+            identity_literals=identity_literals_from_state(task_state if isinstance(task_state, dict) else None),
+        )
         from app.services.cognitive_evidence_envelope import build_evidence_envelope
 
         evidence = build_evidence_envelope(
@@ -5933,8 +5938,13 @@ class AgentIntelligence:
                 full_content = f"{claim_prefix}\n\n{full_content}".strip()
 
         from app.services.user_facing_copy_guard import finalize_user_facing_message
+        from app.services.action_lifecycle import identity_literals_from_state
 
-        full_content = finalize_user_facing_message(full_content, context="assistant_pre_emit")
+        full_content = finalize_user_facing_message(
+            full_content,
+            context="assistant_pre_emit",
+            identity_literals=identity_literals_from_state(task_state if isinstance(task_state, dict) else None),
+        )
 
         pending_for_loop = None
         if isinstance(task_state, dict) and isinstance(task_state.get("pending_task"), dict):

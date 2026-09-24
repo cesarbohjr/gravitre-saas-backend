@@ -277,7 +277,11 @@ def continue_execution_plan(
     if follow_up:
         plan.revision = int(plan.revision or 1) + 1
         plan.replan_reason = "follow_up"
-        plan.terminal_status = "pending"
+        from app.services.execution_plan_authority import is_terminal_write_plan
+
+        # Status questions about a verified WRITE must not demote the plan to pending.
+        if not is_terminal_write_plan(plan):
+            plan.terminal_status = "pending"
         if message:
             plan.summary = str(message)[:240]
     else:

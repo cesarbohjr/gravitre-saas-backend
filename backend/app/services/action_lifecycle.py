@@ -7,6 +7,7 @@ the Observation independently from the HTTP provider call.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
@@ -230,9 +231,16 @@ def write_plan_for_action(
             for s in existing.steps
             if s.kind in {"write", "read", "workflow"} and (s.action_key or s.kind == "write")
         ]
-        if write_steps or existing.source not in {"default_compose", "compose"}:
-            if any(s.action_key == plan.invoke_action or s.kind == "write" for s in existing.steps):
-                return existing
+        matching_write = any(
+            s.action_key == plan.invoke_action or s.kind == "write" for s in existing.steps
+        )
+        # Do not reuse an unrelated pending compile/react plan as the WRITE SoT.
+        if (
+            matching_write
+            and existing.source in {"connector_write", "connector_action"}
+            and (write_steps or existing.source not in {"default_compose", "compose"})
+        ):
+            return existing
     built = execution_plan_from_connector_action(
         plan,
         plan_id=existing.plan_id if existing else None,
@@ -357,6 +365,20 @@ def persist_write_outcome_patch(
         "args": dict(connector_plan.args or {}),
         "provider_record_id": provider_record_id(structured),
     }
+    prior_params = (
+        safe_normalize_stored_dict(state, key="pending_task").get("params")
+        if isinstance(safe_normalize_stored_dict(state, key="pending_task").get("params"), dict)
+        else {}
+    )
+    if prior_params:
+        pending["params"] = {
+            **prior_params,
+            **pending["params"],
+            "args": {
+                **(prior_params.get("args") if isinstance(prior_params.get("args"), dict) else {}),
+                **dict(connector_plan.args or {}),
+            },
+        }
     pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), dict) else {}
     if pending_action:
         pending_action = {
@@ -428,17 +450,20 @@ def composer_envelope_from_turn(
         "FAILED",
         "OUTCOME_UNCERTAIN",
     }
+    identity_literals = identity_literals_from_state(state)
     return {
         "success": bool(success) and stage not in {"FAILED", "REJECTED", "CANCELLED"},
         "execution_verified": verified and stage == "COMPLETED",
         "canonical_lifecycle": stage,
         "provider_result_evidence": evidence,
         "pending_task": state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None,
+        "identity_literals": identity_literals,
         "data": {
             "canonical_lifecycle": stage,
             "execution_verified": verified and stage == "COMPLETED",
             "provider_result_evidence": evidence,
             "uncertain": uncertain,
+            "identity_literals": identity_literals,
         },
     }
 
@@ -478,3 +503,96 @@ def composer_truth_headline(
             + (f" {detail}" if detail else "")
         ).strip()
     return f"**{title}** is confirmed.\n\n{detail}".strip()
+
+
+_WRITE_STATUS_Q = re.compile(
+    r"(?is)\b("
+    r"did (?:that|it|the contact|you)|"
+    r"already (?:get )?(?:created|done|sent|posted)|"
+    r"was (?:that|it) created|"
+    r"did you create|"
+    r"is (?:that|it) (?:done|created)"
+    r")\b"
+)
+
+
+def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]:
+    """Exact identity-bearing values from frozen args and verified observations."""
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    args = params.get("args") if isinstance(params.get("args"), dict) else {}
+    obs = _latest_observation(state) or {}
+    structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+    literals: list[str] = []
+    for value in (
+        args.get("email"),
+        args.get("firstname"),
+        args.get("lastname"),
+        args.get("name"),
+        args.get("company"),
+        params.get("provider_record_id"),
+        structured.get("provider_record_id"),
+        provider_record_id(structured),
+    ):
+        text = str(value or "").strip()
+        if text and text not in literals:
+            literals.append(text)
+    return literals
+
+
+def recent_write_status_turn(
+    message: str,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Answer natural follow-ups from Observation — never a second provider WRITE."""
+    if not _WRITE_STATUS_Q.search(message or ""):
+        return None
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    obs = _latest_observation(state)
+    stage = semantic_stage_from_state(state)
+    literals = identity_literals_from_state(state)
+    email = next((item for item in literals if "@" in item), "")
+    record = ""
+    if isinstance(pending.get("params"), dict):
+        record = str(pending["params"].get("provider_record_id") or "").strip()
+    if not record:
+        record = next((item for item in literals if item.isdigit()), "")
+
+    def _reply(text: str) -> dict[str, Any]:
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": text,
+            "task_state": state,
+            "provider_write": False,
+            "execution_path": "recent_write_observation",
+        }
+
+    if stage in {"REJECTED", "CANCELLED"}:
+        return _reply("That write was cancelled. Nothing was created.")
+    if stage == "FAILED":
+        return _reply("That write did not complete. I have not treated it as created.")
+    if stage == "OUTCOME_UNCERTAIN":
+        return _reply(
+            "I attempted that write, but the outcome is still uncertain. I will not treat it as created."
+        )
+    if stage == "AWAITING_APPROVAL":
+        target = f" for {email}" if email else ""
+        return _reply(f"Not yet. That contact is still waiting for your approval{target}.")
+    if not obs and stage not in {"COMPLETED", "EXECUTED_UNVERIFIED", "VERIFIED"}:
+        return _reply("I don't have a matching prior write in this conversation.")
+    if stage == "COMPLETED":
+        bits = ["Yes — that contact was created and verified."]
+        if email:
+            bits.append(f"The email is {email}.")
+        if record:
+            bits.append(f"The provider record is {record}.")
+        return _reply(" ".join(bits))
+    if stage in {"EXECUTED_UNVERIFIED", "VERIFIED"}:
+        return _reply(
+            "The provider accepted the write, but independent verification is still pending. "
+            "I have not marked it complete."
+        )
+    return _reply("I don't have a matching prior write in this conversation.")

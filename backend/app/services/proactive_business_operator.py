@@ -176,7 +176,7 @@ def rank_safe_read_notices(
 
 def format_ranked_read_notices(recommendations: list[ProactiveRecommendation]) -> str:
     if not recommendations:
-        return ""
+        return "I don't have a source-backed condition that needs attention right now. I won't invent one."
     lines = ["I noticed a few items worth a safe read — I will not write anything:"]
     for rec in recommendations:
         lines.append(f"- {rec.recommendation}")
@@ -222,3 +222,85 @@ def patch_task_state_with_recommendations(
         for rec in recommendations
     ]
     return state
+
+
+_ATTENTION_INTENT = re.compile(
+    r"(?is)\b("
+    r"what(?:'s| is)?\s+(?:important|urgent)|"
+    r"what needs (?:my )?attention|"
+    r"anything (?:i should|to) (?:know|watch)|"
+    r"what should i look at"
+    r")\b"
+)
+
+
+def is_attention_intent(message: str) -> bool:
+    return bool(_ATTENTION_INTENT.search(message or ""))
+
+
+def try_ranked_attention_turn(
+    *,
+    message: str,
+    org_id: str,
+    client: Any,
+    settings: Any,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """3.0-J: ranked safe READ notices from eligible evidence. Never auto WRITE."""
+    if not is_attention_intent(message):
+        return None
+    from app.services.website_source_status import website_source_readiness
+
+    readiness = website_source_readiness(client, org_id, settings)
+    recs = rank_safe_read_notices(signals_from_website_readiness(readiness))
+    merged = patch_task_state_with_recommendations(task_state, recs)
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "answer",
+        "message": format_ranked_read_notices(recs),
+        "task_state": merged,
+        "execution_path": "proactive_attention_3_0_j",
+        "provider_write": False,
+        "write_allowed": False,
+    }
+
+
+_ATTENTION_INTENT = re.compile(
+    r"(?is)\b("
+    r"what(?:'s| is)?\s+(?:important|urgent)|"
+    r"what needs (?:my )?attention|"
+    r"anything (?:i should|to) (?:know|watch)|"
+    r"what should i look at"
+    r")\b"
+)
+
+
+def is_attention_intent(message: str) -> bool:
+    return bool(_ATTENTION_INTENT.search(message or ""))
+
+
+def try_ranked_attention_turn(
+    *,
+    message: str,
+    org_id: str,
+    client: Any,
+    settings: Any,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """3.0-J: ranked safe READ notices from eligible evidence. Never auto WRITE."""
+    if not is_attention_intent(message):
+        return None
+    from app.services.website_source_status import website_source_readiness
+
+    readiness = website_source_readiness(client, org_id, settings)
+    recs = rank_safe_read_notices(signals_from_website_readiness(readiness))
+    merged = patch_task_state_with_recommendations(task_state, recs)
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "answer",
+        "message": format_ranked_read_notices(recs),
+        "task_state": merged,
+        "execution_path": "proactive_attention_3_0_j",
+        "provider_write": False,
+        "write_allowed": False,
+    }

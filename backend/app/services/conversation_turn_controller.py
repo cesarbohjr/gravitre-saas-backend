@@ -314,7 +314,22 @@ async def run_connector_turn(
     conversation_turns: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     """Shared connector turn entry for governed chat and ReAct fallback."""
+    from app.services.action_lifecycle import recent_write_status_turn
     from app.services.chat_connector_execution_service import get_chat_connector_execution_service
+    from app.services.proactive_business_operator import try_ranked_attention_turn
+
+    follow = recent_write_status_turn(message, task_state)
+    if follow is not None:
+        return follow
+    attention = try_ranked_attention_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        task_state=task_state,
+    )
+    if attention is not None:
+        return attention
 
     turns = conversation_turns
     if turns is None and client is not None and conversation_id:
