@@ -1,0 +1,465 @@
+[
+  {
+    "area": "wm",
+    "check": "dock width over time vs body reservation (1440)",
+    "result": "INFO",
+    "evidence": [
+      {
+        "t": 100,
+        "width": 426,
+        "left": 994,
+        "right": 1420,
+        "styleWidth": "var(--g-wm-dock-width)",
+        "transform": "matrix(1.01367, 0, 0, 0.99246, -23.2295, 2.87106)",
+        "varOnEl": "min(420px, 42vw)",
+        "varOnBody": "min(420px, 42vw)",
+        "padding": "420px",
+        "tag": "DIV",
+        "cls": "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)] inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)"
+      },
+      {
+        "t": 400,
+        "width": 420,
+        "left": 1020,
+        "right": 1440,
+        "styleWidth": "var(--g-wm-dock-width)",
+        "transform": "none",
+        "varOnEl": "min(420px, 42vw)",
+        "varOnBody": "min(420px, 42vw)",
+        "padding": "420px",
+        "tag": "DIV",
+        "cls": "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)] inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)"
+      },
+      {
+        "t": 900,
+        "width": 420,
+        "left": 1020,
+        "right": 1440,
+        "styleWidth": "var(--g-wm-dock-width)",
+        "transform": "none",
+        "varOnEl": "min(420px, 42vw)",
+        "varOnBody": "min(420px, 42vw)",
+        "padding": "420px",
+        "tag": "DIV",
+        "cls": "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)] inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)"
+      },
+      {
+        "t": 1500,
+        "width": 420,
+        "left": 1020,
+        "right": 1440,
+        "styleWidth": "var(--g-wm-dock-width)",
+        "transform": "none",
+        "varOnEl": "min(420px, 42vw)",
+        "varOnBody": "min(420px, 42vw)",
+        "padding": "420px",
+        "tag": "DIV",
+        "cls": "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)] inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)"
+      },
+      {
+        "t": 3000,
+        "width": 420,
+        "left": 1020,
+        "right": 1440,
+        "styleWidth": "var(--g-wm-dock-width)",
+        "transform": "none",
+        "varOnEl": "min(420px, 42vw)",
+        "varOnBody": "min(420px, 42vw)",
+        "padding": "420px",
+        "tag": "DIV",
+        "cls": "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)] inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)"
+      },
+      {
+        "t": 6000,
+        "width": 420,
+        "left": 1020,
+        "right": 1440,
+        "styleWidth": "var(--g-wm-dock-width)",
+        "transform": "none",
+        "varOnEl": "min(420px, 42vw)",
+        "varOnBody": "min(420px, 42vw)",
+        "padding": "420px",
+        "tag": "DIV",
+        "cls": "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)] inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)"
+      }
+    ]
+  },
+  {
+    "area": "wm",
+    "check": "dock settles to the reserved page space (1440)",
+    "result": "PASS",
+    "evidence": "settled width=420, right=1440, padding=420px"
+  },
+  {
+    "area": "route",
+    "check": "/ai opens the canonical workspace (one surface)",
+    "result": "PASS",
+    "evidence": {
+      "conversationId": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "messageIds": [],
+      "renderedMessageNodes": 0,
+      "duplicateMessageNodes": 0,
+      "floatSurfaces": 0,
+      "shellSurfaces": 1,
+      "mobileSheets": 0,
+      "placement": null,
+      "shellMode": "fullscreen",
+      "sheetMode": null,
+      "composition": "conversation",
+      "runtime": "idle",
+      "wmPreference": "docked",
+      "loadMs": 66416
+    }
+  },
+  {
+    "area": "route",
+    "check": "/ai fullscreen is exitable",
+    "result": "PASS",
+    "evidence": "shellMode=fullscreen; exit control present"
+  },
+  {
+    "area": "hydration",
+    "check": "desktop run: no hydration or page errors",
+    "result": "PASS",
+    "evidence": {
+      "hydration": 0,
+      "pageErrors": []
+    }
+  },
+  {
+    "area": "1024",
+    "check": "reduced-motion preference active",
+    "result": "PASS",
+    "evidence": "matches=true"
+  },
+  {
+    "area": "1024",
+    "check": "no hydration errors on load",
+    "result": "PASS",
+    "evidence": "0"
+  },
+  {
+    "area": "1024",
+    "check": "launcher focusable by keyboard",
+    "result": "PASS",
+    "evidence": {
+      "focused": true,
+      "outline": "none 1px",
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+    }
+  },
+  {
+    "area": "1024",
+    "check": "workspace surface fully on screen, exactly one surface",
+    "result": "PASS",
+    "evidence": {
+      "top": 0,
+      "left": 604,
+      "right": 1024,
+      "bottom": 768,
+      "vw": 1024,
+      "vh": 768,
+      "placement": "docked",
+      "sheet": null,
+      "shell": null
+    }
+  },
+  {
+    "area": "1024",
+    "check": "composer reachable inside the viewport",
+    "result": "PASS",
+    "evidence": {
+      "top": 715,
+      "bottom": 751,
+      "left": 666,
+      "right": 967
+    }
+  },
+  {
+    "area": "1024",
+    "check": "composer takes keyboard focus",
+    "result": "PASS",
+    "evidence": "active=true"
+  },
+  {
+    "area": "1024",
+    "check": "fullscreen exposes Exit fullscreen",
+    "result": "PASS",
+    "evidence": "exit present"
+  },
+  {
+    "area": "1024",
+    "check": "Escape leaves fullscreen",
+    "result": "PASS",
+    "evidence": "shellMode=expanded; sheet=null"
+  },
+  {
+    "area": "1024",
+    "check": "minimize hides the workspace and shows the launcher",
+    "result": "PASS",
+    "evidence": {
+      "helperVisible": true,
+      "surfaces": 0
+    }
+  },
+  {
+    "area": "1024",
+    "check": "focus returns to launcher after minimize",
+    "result": "FAIL",
+    "evidence": "<body class=\"font-sans antialiased\"><div hidden=\"\"><!--$--><!--/$--></div><script>((e, i, s, u, m, a, l, h)=>{\n    let d"
+  },
+  {
+    "area": "1024",
+    "check": "restore keeps the same conversation and messages, one surface",
+    "result": "PASS",
+    "evidence": {
+      "conversation": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "messages": "0 (ref 0)",
+      "placement": null,
+      "sheet": null
+    }
+  },
+  {
+    "area": "1024",
+    "check": "refresh keeps the canonical conversation id",
+    "result": "PASS",
+    "evidence": {
+      "before": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "after": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "surfaces": 0
+    }
+  },
+  {
+    "area": "1024",
+    "check": "no page errors, no chat POSTs from window operations",
+    "result": "PASS",
+    "evidence": {
+      "pageErrors": [],
+      "chatPosts": 0
+    }
+  },
+  {
+    "area": "834",
+    "check": "reduced-motion preference active",
+    "result": "PASS",
+    "evidence": "matches=true"
+  },
+  {
+    "area": "834",
+    "check": "no hydration errors on load",
+    "result": "PASS",
+    "evidence": "0"
+  },
+  {
+    "area": "834",
+    "check": "launcher focusable by keyboard",
+    "result": "PASS",
+    "evidence": {
+      "focused": true,
+      "outline": "none 1px",
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+    }
+  },
+  {
+    "area": "834",
+    "check": "workspace surface fully on screen, exactly one surface",
+    "result": "PASS",
+    "evidence": {
+      "top": 40,
+      "left": 64,
+      "right": 770,
+      "bottom": 1072,
+      "vw": 834,
+      "vh": 1112,
+      "placement": null,
+      "sheet": null,
+      "shell": "expanded"
+    }
+  },
+  {
+    "area": "834",
+    "check": "composer reachable inside the viewport",
+    "result": "PASS",
+    "evidence": {
+      "top": 1018,
+      "bottom": 1054,
+      "left": 126,
+      "right": 712
+    }
+  },
+  {
+    "area": "834",
+    "check": "composer takes keyboard focus",
+    "result": "PASS",
+    "evidence": "active=true"
+  },
+  {
+    "area": "834",
+    "check": "fullscreen exposes Exit fullscreen",
+    "result": "PASS",
+    "evidence": "exit present"
+  },
+  {
+    "area": "834",
+    "check": "Escape leaves fullscreen",
+    "result": "PASS",
+    "evidence": "shellMode=expanded; sheet=null"
+  },
+  {
+    "area": "834",
+    "check": "minimize hides the workspace and shows the launcher",
+    "result": "PASS",
+    "evidence": {
+      "helperVisible": true,
+      "surfaces": 0
+    }
+  },
+  {
+    "area": "834",
+    "check": "focus returns to launcher after minimize",
+    "result": "FAIL",
+    "evidence": "<body class=\"font-sans antialiased\"><div hidden=\"\"><!--$--><!--/$--></div><script>((e, i, s, u, m, a, l, h)=>{\n    let d"
+  },
+  {
+    "area": "834",
+    "check": "restore keeps the same conversation and messages, one surface",
+    "result": "PASS",
+    "evidence": {
+      "conversation": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "messages": "0 (ref 0)",
+      "placement": null,
+      "sheet": null
+    }
+  },
+  {
+    "area": "834",
+    "check": "refresh keeps the canonical conversation id",
+    "result": "PASS",
+    "evidence": {
+      "before": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "after": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "surfaces": 0
+    }
+  },
+  {
+    "area": "834",
+    "check": "no page errors, no chat POSTs from window operations",
+    "result": "PASS",
+    "evidence": {
+      "pageErrors": [],
+      "chatPosts": 0
+    }
+  },
+  {
+    "area": "390",
+    "check": "reduced-motion preference active",
+    "result": "PASS",
+    "evidence": "matches=true"
+  },
+  {
+    "area": "390",
+    "check": "no hydration errors on load",
+    "result": "PASS",
+    "evidence": "0"
+  },
+  {
+    "area": "390",
+    "check": "launcher focusable by keyboard",
+    "result": "PASS",
+    "evidence": {
+      "focused": true,
+      "outline": "none 1px",
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+    }
+  },
+  {
+    "area": "390",
+    "check": "workspace surface fully on screen, exactly one surface",
+    "result": "FAIL",
+    "evidence": {
+      "top": 68,
+      "left": 0,
+      "right": 390,
+      "bottom": 912,
+      "vw": 390,
+      "vh": 844,
+      "placement": null,
+      "sheet": "expanded",
+      "shell": null
+    }
+  },
+  {
+    "area": "390",
+    "check": "composer reachable inside the viewport",
+    "result": "PASS",
+    "evidence": {
+      "top": 791,
+      "bottom": 827,
+      "left": 61,
+      "right": 333
+    }
+  },
+  {
+    "area": "390",
+    "check": "composer takes keyboard focus",
+    "result": "PASS",
+    "evidence": "active=true"
+  },
+  {
+    "area": "390",
+    "check": "fullscreen exposes Exit fullscreen",
+    "result": "PASS",
+    "evidence": "exit present"
+  },
+  {
+    "area": "390",
+    "check": "Escape leaves fullscreen",
+    "result": "PASS",
+    "evidence": "shellMode=null; sheet=fullscreen"
+  },
+  {
+    "area": "390",
+    "check": "minimize hides the workspace and shows the launcher",
+    "result": "PASS",
+    "evidence": {
+      "helperVisible": true,
+      "surfaces": 0
+    }
+  },
+  {
+    "area": "390",
+    "check": "focus returns to launcher after minimize",
+    "result": "FAIL",
+    "evidence": "<body class=\"font-sans antialiased\" style=\"\"><div hidden=\"\"><!--$--><!--/$--></div><script>((e, i, s, u, m, a, l, h)=>{\n"
+  },
+  {
+    "area": "390",
+    "check": "restore keeps the same conversation and messages, one surface",
+    "result": "PASS",
+    "evidence": {
+      "conversation": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "messages": "0 (ref 0)",
+      "placement": null,
+      "sheet": "fullscreen"
+    }
+  },
+  {
+    "area": "390",
+    "check": "refresh keeps the canonical conversation id",
+    "result": "PASS",
+    "evidence": {
+      "before": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "after": "04310635-2332-4b3b-9452-22faebc5f8ae",
+      "surfaces": 0
+    }
+  },
+  {
+    "area": "390",
+    "check": "no page errors, no chat POSTs from window operations",
+    "result": "PASS",
+    "evidence": {
+      "pageErrors": [],
+      "chatPosts": 0
+    }
+  }
+]

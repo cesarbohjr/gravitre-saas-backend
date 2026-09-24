@@ -1,0 +1,66 @@
+{
+ "summary": {
+  "status": 200,
+  "ttfbHeadersMs": 3643,
+  "conversationId": null,
+  "requestId": "418934f2-5494-460b-8eee-f1027aeba753",
+  "org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "firstByteMs": 3650,
+  "totalMs": 11254,
+  "bytes": 3593,
+  "eventTypes": [
+   "start",
+   "start-step",
+   "data-intelligence",
+   "text-start",
+   "text-delta",
+   "text-end",
+   "finish-step",
+   "finish",
+   "data-suggestions"
+  ],
+  "ended": true
+ },
+ "chunks": [
+  {
+   "t": 3650,
+   "text": "data: {\"type\":\"start\"}\n\n"
+  },
+  {
+   "t": 3651,
+   "text": "data: {\"type\":\"start-step\"}\n\n"
+  },
+  {
+   "t": 3651,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"bd4ed10e-6dbc-4099-9209-663bbd7bb033\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Understanding your request\",\"userStatus\":{\"label\":\"Understanding your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"guide\",\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourc"
+  },
+  {
+   "t": 4196,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"ebf03c17-39d3-4ac7-afd4-18519e00b6b9\",\"confidence\":{\"score\":0.93,\"needs_clarification\":false},\"answerExplanation\":\"intent_gateway:phrase_bank\",\"userStatus\":{\"label\":\"intent_gateway:phrase_bank\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"answer\",\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSou"
+  },
+  {
+   "t": 8088,
+   "text": "data: {\"type\":\"text-start\",\"id\":\"text-f5371fb0be6a\"}\n\n"
+  },
+  {
+   "t": 8089,
+   "text": "data: {\"type\":\"text-delta\",\"id\":\"text-f5371fb0be6a\",\"delta\":\"Hello \\u2014 I'm here to help.\"}\n\n"
+  },
+  {
+   "t": 8090,
+   "text": "data: {\"type\":\"text-end\",\"id\":\"text-f5371fb0be6a\"}\n\n"
+  },
+  {
+   "t": 8092,
+   "text": "data: {\"type\":\"finish-step\"}\n\ndata: {\"type\":\"finish\"}\n\n"
+  },
+  {
+   "t": 11251,
+   "text": "data: {\"type\":\"data-suggestions\",\"data\":{\"suggestions\":[\"Should I greet formally or casually?\",\"Need help with anything else?\",\"Want a shorter or warmer greeting?\"]}}\n\n"
+  },
+  {
+   "t": 11252,
+   "text": "data: [DONE]\n\n"
+  }
+ ]
+}

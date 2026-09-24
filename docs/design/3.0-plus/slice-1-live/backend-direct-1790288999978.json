@@ -1,0 +1,66 @@
+{
+ "summary": {
+  "status": 200,
+  "ttfbHeadersMs": 4273,
+  "conversationId": null,
+  "requestId": "ade055aa-82ae-43b3-85d9-beb017e4e808",
+  "org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "firstByteMs": 4280,
+  "totalMs": 35115,
+  "bytes": 11348,
+  "eventTypes": [
+   "start",
+   "start-step",
+   "data-intelligence",
+   "text-start",
+   "text-delta",
+   "text-end",
+   "finish-step",
+   "finish",
+   "data-suggestions"
+  ],
+  "ended": true
+ },
+ "chunks": [
+  {
+   "t": 4280,
+   "text": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\ndata: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"c8521464-5587-4068-bede-b0cbdff32d4f\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Understanding your request\",\"userStatus\":{\"label\":\"Understanding your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"guide\",\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strateg"
+  },
+  {
+   "t": 4582,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"55e4a2dc-e852-4cbc-9b20-97535bb56097\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Understanding your request\",\"userStatus\":{\"label\":\"Understanding your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"guide\",\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourc"
+  },
+  {
+   "t": 5125,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"55e4a2dc-e852-4cbc-9b20-97535bb56097\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Understanding your request\",\"userStatus\":{\"label\":\"Understanding your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":null,\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourcesU"
+  },
+  {
+   "t": 10503,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"55e4a2dc-e852-4cbc-9b20-97535bb56097\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Reviewing context and memory\",\"userStatus\":{\"label\":\"Reviewing context and memory\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":null,\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSour"
+  },
+  {
+   "t": 29879,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"55e4a2dc-e852-4cbc-9b20-97535bb56097\",\"confidence\":{\"score\":0.9,\"needs_clarification\":false},\"answerExplanation\":\"Working on your request\",\"userStatus\":{\"label\":\"Working on your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"answer\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{},\"rejected_options\":[],\"approved_actions\":[],\"current_plan\":null,\"completed_steps\":[],\"pending_steps\":[],\"persona_override\":null,\"preferred_tone\":null,\"unresolved_tasks\""
+  },
+  {
+   "t": 29880,
+   "text": "data: {\"type\":\"text-start\",\"id\":\"text-4520e8d230eb\"}\n\n"
+  },
+  {
+   "t": 29880,
+   "text": "data: {\"type\":\"text-delta\",\"id\":\"text-4520e8d230eb\",\"delta\":\"I don\\u2019t have enough information to answer this.\"}\n\n"
+  },
+  {
+   "t": 30577,
+   "text": "data: {\"type\":\"text-end\",\"id\":\"text-4520e8d230eb\"}\n\ndata: {\"type\":\"finish-step\"}\n\ndata: {\"type\":\"finish\"}\n\n"
+  },
+  {
+   "t": 33771,
+   "text": "data: {\"type\":\"data-suggestions\",\"data\":{\"suggestions\":[\"What contract clause is unclear?\",\"Share the relevant contract excerpt.\",\"What outcome do you want?\"]}}\n\n"
+  },
+  {
+   "t": 33920,
+   "text": "data: [DONE]\n\n"
+  }
+ ]
+}

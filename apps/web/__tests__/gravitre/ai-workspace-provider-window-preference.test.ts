@@ -106,4 +106,15 @@ describe("provider window preference", () => {
     expect(sink.value!.presentationMode).toBe("docked")
     expect(readWindowManagerPreference()).toBe("docked")
   })
+
+  it("requests launcher focus once after minimizing, never on first load", () => {
+    const sink = mount()
+    expect(sink.value!.takeHelperFocusRequest()).toBe(false)
+    act(() => sink.value!.summonWorkspace({ presentation: "expanded" }))
+    act(() => sink.value!.minimizeToHelper())
+    expect(sink.value!.takeHelperFocusRequest()).toBe(true)
+    expect(sink.value!.takeHelperFocusRequest()).toBe(false)
+    act(() => sink.value!.restoreFromHelper())
+    expect(sink.value!.takeHelperFocusRequest()).toBe(false)
+  })
 })

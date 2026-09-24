@@ -7,6 +7,7 @@
  * AiWorkspace host owns the live useChat instance across routes.
  */
 
+import { useCallback } from "react"
 import { NucleoChat } from "@/components/icons/nucleo/semantic"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { GravitreOrb } from "@/components/gravitre/assistant/voice-presentation"
@@ -71,12 +72,19 @@ export function GravitreAIHelper() {
     pageContext,
     floatWorkspaceOpen,
     restoreFromHelper,
+    takeHelperFocusRequest,
     conversation,
     approval,
     voice,
     agentScope,
   } = useGravitreAIWorkspace()
   const { user, loading } = useAuth()
+  const focusOnMount = useCallback(
+    (node: HTMLButtonElement | null) => {
+      if (node && takeHelperFocusRequest()) node.focus()
+    },
+    [takeHelperFocusRequest],
+  )
 
   if (
     !mayShowGravitreAIHelper({
@@ -116,6 +124,7 @@ export function GravitreAIHelper() {
     <Tooltip>
       <TooltipTrigger asChild>
         <button
+          ref={focusOnMount}
           type="button"
           onClick={handleOpen}
           data-gravitre-ai-helper=""

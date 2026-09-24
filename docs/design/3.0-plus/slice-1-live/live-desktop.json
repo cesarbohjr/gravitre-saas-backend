@@ -1,0 +1,281 @@
+{
+  "ranAt": "2026-09-24T21:31:36.968Z",
+  "base": "http://127.0.0.1:3010",
+  "backendHealthSha": "491ed409d0ee2c5141333e53dfd82f078d0ea0ea",
+  "results": [
+    {
+      "area": "hydration",
+      "check": "signed-in /home loads with no hydration errors",
+      "result": "PASS",
+      "evidence": "0 hydration errors"
+    },
+    {
+      "area": "wm",
+      "check": "launcher opens the live workspace at the contextual default",
+      "result": "PASS",
+      "evidence": {
+        "conversationId": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messageIds": [],
+        "renderedMessageNodes": 0,
+        "duplicateMessageNodes": 0,
+        "floatSurfaces": 1,
+        "shellSurfaces": 0,
+        "mobileSheets": 0,
+        "placement": "window",
+        "shellMode": null,
+        "sheetMode": null,
+        "composition": null,
+        "runtime": "idle",
+        "wmPreference": null
+      }
+    },
+    {
+      "area": "chat",
+      "check": "message sent through the one /api/chat runtime (1 POST)",
+      "result": "PASS",
+      "evidence": "POST /api/chat count=1"
+    },
+    {
+      "area": "chat",
+      "check": "streamed reply received and runtime state followed it",
+      "result": "PASS",
+      "evidence": "states=generating → streaming → failed; messages 0 → 2"
+    },
+    {
+      "area": "identity",
+      "check": "canonical conversation id assigned",
+      "result": "PASS",
+      "evidence": "conversation=6657dbdb-676a-430b-a198-ab12edee6150"
+    },
+    {
+      "area": "wm",
+      "check": "dock reserves page space in the real app shell",
+      "result": "FAIL",
+      "evidence": "dock width=468; body padding-right=420px"
+    },
+    {
+      "area": "identity",
+      "check": "docked: same conversation + messages, one surface, no duplicate nodes",
+      "result": "PASS",
+      "evidence": {
+        "conversation": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messages": "2 (ref 2)",
+        "surfaces": {
+          "float": 1,
+          "shell": 0,
+          "sheet": 0
+        },
+        "duplicates": 0,
+        "placement": "docked",
+        "shellMode": null
+      }
+    },
+    {
+      "area": "wm",
+      "check": "undock returns to a floating window and releases page space",
+      "result": "PASS",
+      "evidence": "body padding-right=0px"
+    },
+    {
+      "area": "identity",
+      "check": "undocked: same conversation + messages, one surface, no duplicate nodes",
+      "result": "PASS",
+      "evidence": {
+        "conversation": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messages": "2 (ref 2)",
+        "surfaces": {
+          "float": 1,
+          "shell": 0,
+          "sheet": 0
+        },
+        "duplicates": 0,
+        "placement": "window",
+        "shellMode": null
+      }
+    },
+    {
+      "area": "identity",
+      "check": "expanded: same conversation + messages, one surface, no duplicate nodes",
+      "result": "PASS",
+      "evidence": {
+        "conversation": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messages": "2 (ref 2)",
+        "surfaces": {
+          "float": 0,
+          "shell": 1,
+          "sheet": 0
+        },
+        "duplicates": 0,
+        "placement": null,
+        "shellMode": "expanded"
+      }
+    },
+    {
+      "area": "composition",
+      "check": "composition switch present with truthful availability",
+      "result": "PASS",
+      "evidence": {
+        "composition": "conversation",
+        "options": [
+          {
+            "label": "Conversation",
+            "disabled": false,
+            "checked": "true"
+          },
+          {
+            "label": "Work",
+            "disabled": true,
+            "checked": "false"
+          },
+          {
+            "label": "Split",
+            "disabled": true,
+            "checked": "false"
+          },
+          {
+            "label": "Conversation",
+            "disabled": false,
+            "checked": "true"
+          },
+          {
+            "label": "Work",
+            "disabled": true,
+            "checked": "false"
+          },
+          {
+            "label": "Split",
+            "disabled": true,
+            "checked": "false"
+          }
+        ]
+      }
+    },
+    {
+      "area": "wm",
+      "check": "fullscreen is modal and always has exit + reduce",
+      "result": "PASS",
+      "evidence": "aria-modal=true; exit=true; reduce=true"
+    },
+    {
+      "area": "a11y",
+      "check": "fullscreen focus trap holds over 25 Tabs (live)",
+      "result": "PASS",
+      "evidence": "left dialog 0 times; outside targets=[]"
+    },
+    {
+      "area": "wm",
+      "check": "Escape exits fullscreen to expanded",
+      "result": "PASS",
+      "evidence": "shell mode=expanded"
+    },
+    {
+      "area": "identity",
+      "check": "after fullscreen: same conversation + messages, one surface, no duplicate nodes",
+      "result": "PASS",
+      "evidence": {
+        "conversation": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messages": "2 (ref 2)",
+        "surfaces": {
+          "float": 0,
+          "shell": 1,
+          "sheet": 0
+        },
+        "duplicates": 0,
+        "placement": null,
+        "shellMode": "expanded"
+      }
+    },
+    {
+      "area": "identity",
+      "check": "reduced to window: same conversation + messages, one surface, no duplicate nodes",
+      "result": "PASS",
+      "evidence": {
+        "conversation": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messages": "2 (ref 2)",
+        "surfaces": {
+          "float": 1,
+          "shell": 0,
+          "sheet": 0
+        },
+        "duplicates": 0,
+        "placement": "window",
+        "shellMode": null
+      }
+    },
+    {
+      "area": "wm",
+      "check": "minimize → launcher → restore returns to the mode minimized from",
+      "result": "PASS",
+      "evidence": "restored placement=docked; stored preference=docked"
+    },
+    {
+      "area": "identity",
+      "check": "restored: same conversation + messages, one surface, no duplicate nodes",
+      "result": "PASS",
+      "evidence": {
+        "conversation": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messages": "2 (ref 2)",
+        "surfaces": {
+          "float": 1,
+          "shell": 0,
+          "sheet": 0
+        },
+        "duplicates": 0,
+        "placement": "docked",
+        "shellMode": null
+      }
+    },
+    {
+      "area": "hydration",
+      "check": "reload with stored docked preference: no hydration errors",
+      "result": "PASS",
+      "evidence": "0 hydration errors"
+    },
+    {
+      "area": "identity",
+      "check": "after refresh (resume): same conversation + messages, one surface, no duplicate nodes",
+      "result": "PASS",
+      "evidence": {
+        "conversation": "6657dbdb-676a-430b-a198-ab12edee6150",
+        "messages": "2 (ref 2)",
+        "surfaces": {
+          "float": 1,
+          "shell": 0,
+          "sheet": 0
+        },
+        "duplicates": 0,
+        "placement": "docked",
+        "shellMode": null
+      }
+    },
+    {
+      "area": "wm",
+      "check": "remembered preference survives refresh",
+      "result": "PASS",
+      "evidence": "placement=docked"
+    },
+    {
+      "area": "step",
+      "check": "/ai route (threw)",
+      "result": "FAIL",
+      "evidence": "TimeoutError: page.goto: Timeout 60000ms exceeded."
+    },
+    {
+      "area": "console",
+      "check": "no uncaught page errors during live desktop walk",
+      "result": "PASS",
+      "evidence": []
+    }
+  ],
+  "chatRequests": [
+    {
+      "url": "http://127.0.0.1:3010/api/chat",
+      "at": "2026-09-24T21:25:51.999Z"
+    }
+  ],
+  "consoleErrors": [
+    "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://cdn.plaid.com https://www.googletagmanager.com https://www.google-ana",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://cdn.plaid.com https://www.googletagmanager.com https://www.google-ana"
+  ]
+}

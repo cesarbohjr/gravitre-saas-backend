@@ -1,0 +1,70 @@
+{
+ "summary": {
+  "status": 200,
+  "ttfbHeadersMs": 3575,
+  "conversationId": null,
+  "requestId": "71d4ab28-7eae-49c3-86dc-a97b9c31f355",
+  "org": "cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+  "firstByteMs": 3582,
+  "totalMs": 24000,
+  "bytes": 11240,
+  "eventTypes": [
+   "start",
+   "start-step",
+   "data-intelligence",
+   "text-start",
+   "text-delta",
+   "text-end",
+   "finish-step",
+   "finish",
+   "data-suggestions"
+  ],
+  "ended": true
+ },
+ "chunks": [
+  {
+   "t": 3582,
+   "text": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"start-step\"}\n\n"
+  },
+  {
+   "t": 3582,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"17337094-11c6-4098-a511-f9c186b9babb\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Understanding your request\",\"userStatus\":{\"label\":\"Understanding your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"guide\",\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourc"
+  },
+  {
+   "t": 3707,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"5bbd5fe6-a5f1-432a-9708-8b5dd209a651\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Understanding your request\",\"userStatus\":{\"label\":\"Understanding your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"guide\",\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourc"
+  },
+  {
+   "t": 4317,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"5bbd5fe6-a5f1-432a-9708-8b5dd209a651\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Understanding your request\",\"userStatus\":{\"label\":\"Understanding your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":null,\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSourcesU"
+  },
+  {
+   "t": 8755,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"5bbd5fe6-a5f1-432a-9708-8b5dd209a651\",\"confidence\":{\"score\":0.0,\"needs_clarification\":false},\"answerExplanation\":\"Reviewing context and memory\",\"userStatus\":{\"label\":\"Reviewing context and memory\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":null,\"personaKey\":null,\"proactiveSuggestions\":[],\"taskState\":null,\"simulationSummary\":null,\"executionResult\":null,\"pendingTask\":null,\"contextProfile\":null,\"contextExplanation\":null,\"businessSignals\":[],\"strategicPlan\":null,\"knowledgeAssignments\":[],\"assignedSour"
+  },
+  {
+   "t": 20501,
+   "text": "data: {\"type\":\"data-intelligence\",\"data\":{\"messageId\":\"5bbd5fe6-a5f1-432a-9708-8b5dd209a651\",\"confidence\":{\"score\":0.9,\"needs_clarification\":false},\"answerExplanation\":\"Working on your request\",\"userStatus\":{\"label\":\"Working on your request\",\"internal\":false},\"conflicts\":[],\"refinedQuery\":null,\"validation\":null,\"dialogueMode\":\"answer\",\"personaKey\":\"friendly_assistant\",\"proactiveSuggestions\":[],\"taskState\":{\"clarified_params\":{},\"rejected_options\":[],\"approved_actions\":[],\"current_plan\":null,\"completed_steps\":[],\"pending_steps\":[],\"persona_override\":null,\"preferred_tone\":null,\"unresolved_tasks\""
+  },
+  {
+   "t": 20502,
+   "text": "data: {\"type\":\"text-start\",\"id\":\"text-73e8400186a0\"}\n\n"
+  },
+  {
+   "t": 20502,
+   "text": "data: {\"type\":\"text-delta\",\"id\":\"text-73e8400186a0\",\"delta\":\"I can help with connected system lookups and workflow checks.\"}\n\n"
+  },
+  {
+   "t": 21851,
+   "text": "data: {\"type\":\"text-end\",\"id\":\"text-73e8400186a0\"}\n\ndata: {\"type\":\"finish-step\"}\n\ndata: {\"type\":\"finish\"}\n\n"
+  },
+  {
+   "t": 23999,
+   "text": "data: {\"type\":\"data-suggestions\",\"data\":{\"suggestions\":[\"What workflow checks are needed?\",\"Which system needs lookup?\",\"Any specific data fields to verify?\"]}}\n\n"
+  },
+  {
+   "t": 23999,
+   "text": "data: [DONE]\n\n"
+  }
+ ]
+}

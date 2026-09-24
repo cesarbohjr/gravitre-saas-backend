@@ -198,6 +198,12 @@ export interface GravitreAIWorkspaceContextValue {
    * session, at the remembered preference or the contextual default.
    */
   restoreFromHelper: () => void
+  /**
+   * True once after the workspace closes to the launcher, so the launcher can take
+   * focus when it mounts. Without it, focus falls to <body> because the control the
+   * user pressed unmounts with the workspace.
+   */
+  takeHelperFocusRequest: () => boolean
   /** Explicit window-mode choice (dock / undock): applies it and remembers it. */
   choosePresentationMode: (mode: GravitrePresentationMode) => void
   /** Canonical name of the visible presentation (minimized/compact/expanded/fullscreen). */
@@ -260,10 +266,18 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
   // the next render/navigation. A fresh page load resets it, which is the
   // intended "default experience" behavior, not a bug.
   const explicitlyClosedRef = useRef(false)
+  const helperFocusRequestedRef = useRef(false)
 
   const setFloatWorkspaceOpen = useCallback((open: boolean) => {
     explicitlyClosedRef.current = !open
+    helperFocusRequestedRef.current = !open
     setFloatWorkspaceOpenState(open)
+  }, [])
+
+  const takeHelperFocusRequest = useCallback(() => {
+    const requested = helperFocusRequestedRef.current
+    helperFocusRequestedRef.current = false
+    return requested
   }, [])
 
   const [previousPresentationMode, setPreviousPresentationMode] =
@@ -460,6 +474,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       previousPresentationMode,
       minimizeToHelper,
       restoreFromHelper,
+      takeHelperFocusRequest,
       choosePresentationMode,
       canonicalPresentation,
       summonWorkspace,
@@ -485,6 +500,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       previousPresentationMode,
       minimizeToHelper,
       restoreFromHelper,
+      takeHelperFocusRequest,
       choosePresentationMode,
       canonicalPresentation,
       summonWorkspace,
