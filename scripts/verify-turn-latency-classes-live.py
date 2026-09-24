@@ -99,7 +99,10 @@ def parse_sse(raw: str) -> dict:
                 }
             )
             if isinstance(data.get("routing"), dict):
-                routing = data["routing"]
+                routing = {**routing, **data["routing"]}
+                nested = data["routing"].get("latencyBreakdown")
+                if isinstance(nested, dict):
+                    routing = {**routing, **nested}
         if kind == "tool-input-available":
             name = str(data.get("toolName") or obj.get("toolName") or "")
             if name:
@@ -155,17 +158,22 @@ def stream_turn(http: httpx.Client, headers: dict, conv: str, org_id: str, promp
         "intelligence_events": parsed.get("intelligence_events"),
         "model_ttft_ms": routing.get("modelTtftMs") or routing.get("model_ttft_ms"),
         "pre_model_ms": routing.get("preModelMs") or routing.get("pre_model_ms"),
-        "wall_to_first_token_ms": routing.get("wallToFirstTokenMs"),
-        "cached_prompt_tokens": routing.get("cachedPromptTokens"),
+        "wall_to_first_token_ms": routing.get("wallToFirstTokenMs")
+        or routing.get("wall_to_first_token_ms"),
+        "cached_prompt_tokens": routing.get("cachedPromptTokens")
+        or routing.get("cached_prompt_tokens"),
         "prompt_tokens": routing.get("promptTokens") or routing.get("prompt_tokens"),
-        "completion_tokens": routing.get("completionTokens"),
-        "cognitive_stage_ms": routing.get("cognitiveStageMs"),
+        "completion_tokens": routing.get("completionTokens") or routing.get("completion_tokens"),
+        "cognitive_stage_ms": routing.get("cognitiveStageMs") or routing.get("cognitive_stage_ms"),
+        "unified_latency_ms": routing.get("unifiedLatencyMs") or routing.get("unified_latency_ms"),
+        "context_prompt_ms": routing.get("contextPromptMs") or routing.get("context_prompt_ms"),
+        "shortcut_composer_used_model": routing.get("shortcutComposerUsedModel"),
         "create_claim": "i sent" in str(parsed.get("assistant") or "").lower()
         or "created the contact" in str(parsed.get("assistant") or "").lower(),
         "asked_confirm_again": parsed.get("asked_confirm_again"),
         "used_provider_id": parsed.get("used_provider_id"),
         "used_email": parsed.get("used_email"),
-        "intelligence_tiers": parsed.get("intelligence_tiers"),
+        "routing_keys": sorted(str(k) for k in routing.keys())[:48],
     }
 
 
@@ -214,6 +222,7 @@ def main() -> int:
             timeout=60,
         )
         class_b = None
+        class_b_identity = None
         class_b_after = class_b_state
         if LATENCY_CLASS in {"all", "b"}:
             class_b = stream_turn(
@@ -222,6 +231,13 @@ def main() -> int:
                 FOLLOW_CONV,
                 org_id,
                 "Did that contact already get created?",
+            )
+            class_b_identity = stream_turn(
+                http,
+                headers,
+                FOLLOW_CONV,
+                org_id,
+                "What email was that contact created with?",
             )
             class_b_after = http.get(
                 f"{BASE}/api/assistant/conversation/{FOLLOW_CONV}/state",
@@ -281,6 +297,7 @@ def main() -> int:
             "conversation_id": FOLLOW_CONV,
             "state_before": _plan(class_b_state),
             **(class_b or {}),
+            "identity": class_b_identity,
             "state_after": _plan(class_b_after),
             "write_attempted": bool((class_b or {}).get("create_claim")),
         }

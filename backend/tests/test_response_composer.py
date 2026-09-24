@@ -345,6 +345,31 @@ async def test_listing_f2_skips_composer_llm() -> None:
 
 
 @pytest.mark.asyncio
+async def test_recent_write_observation_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "Yes — that contact was created and verified. The email is a@alpha.test.gravitre.app."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "recent_write_observation",
+            "data": {"text": draft, "execution_path": "recent_write_observation"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "a@alpha.test.gravitre.app" in text
+
+
+@pytest.mark.asyncio
 async def test_genuine_pre_execution_refusal_is_kept():
     text = await compose_user_reply(
         {

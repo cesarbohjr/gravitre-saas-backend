@@ -489,6 +489,8 @@ async def compose_user_reply(
         must_compose = False
     # Phrase-bank greetings are already user-facing English. Composer still owns
     # leak filtering via looks_like_raw_backend / finalize; skip a second LLM rewrite.
+    if resolved_kind == "shortcut" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
     if (
         resolved_kind == "error"
         and draft
@@ -551,7 +553,12 @@ async def compose_user_reply(
     # is still Composer-owned (leak filter + finalize); it is not a second runtime.
     if (
         resolved_kind == "canned"
-        and path in {"catalog_search_eligible", "listing_f2_read", "entity_join_store"}
+        and path in {
+            "catalog_search_eligible",
+            "listing_f2_read",
+            "entity_join_store",
+            "recent_write_observation",
+        }
         and draft
         and not looks_like_raw_backend(draft)
     ):

@@ -604,6 +604,13 @@ _WRITE_STATUS_Q = re.compile(
     r"is (?:that|it) (?:done|created)"
     r")\b"
 )
+_WRITE_IDENTITY_Q = re.compile(
+    r"(?is)\b("
+    r"which contact|what(?:'s| is) the email|what email|"
+    r"provider (?:record|id)|hubspot id|record id|"
+    r"the email|contact id"
+    r")\b"
+)
 
 
 def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]:
@@ -636,7 +643,7 @@ def recent_write_status_turn(
     task_state: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     """Answer natural follow-ups from Observation — never a second provider WRITE."""
-    if not _WRITE_STATUS_Q.search(message or ""):
+    if not _WRITE_STATUS_Q.search(message or "") and not _WRITE_IDENTITY_Q.search(message or ""):
         return None
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
@@ -674,12 +681,14 @@ def recent_write_status_turn(
     if not obs and stage not in {"COMPLETED", "EXECUTED_UNVERIFIED", "VERIFIED"}:
         return _reply("I don't have a matching prior write in this conversation.")
     if stage == "COMPLETED":
-        bits = ["Yes — that contact was created and verified."]
-        if email:
-            bits.append(f"The email is {email}.")
-        if record:
-            bits.append(f"The provider record is {record}.")
-        return _reply(" ".join(bits))
+        if _WRITE_IDENTITY_Q.search(message or ""):
+            bits = ["Yes — that contact was created and verified."]
+            if email:
+                bits.append(f"The email is {email}.")
+            if record:
+                bits.append(f"The provider record is {record}.")
+            return _reply(" ".join(bits))
+        return _reply("Yes — that contact was created and verified.")
     if stage in {"EXECUTED_UNVERIFIED", "VERIFIED"}:
         return _reply(
             "The provider accepted the write, but independent verification is still pending. "

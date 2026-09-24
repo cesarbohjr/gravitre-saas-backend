@@ -259,8 +259,13 @@ def test_recent_write_follow_up_uses_observation() -> None:
     turn = recent_write_status_turn("Did that contact already get created?", state)
     assert turn is not None
     assert turn["provider_write"] is False
-    assert "placeholder.isolated@gravitre-smoke.example.com" in turn["message"]
-    assert "explicit" not in turn["message"].lower()
+    assert "yes" in turn["message"].lower()
+    assert "placeholder.isolated@gravitre-smoke.example.com" not in turn["message"]
+    ident = recent_write_status_turn("What email was that contact created with?", state)
+    assert ident is not None
+    assert "placeholder.isolated@gravitre-smoke.example.com" in ident["message"]
+    assert ident["provider_write"] is False
+    assert "explicit" not in ident["message"].lower()
 
 
 def test_stale_pending_does_not_mask_verified_observation() -> None:
@@ -286,8 +291,11 @@ def test_stale_pending_does_not_mask_verified_observation() -> None:
     assert turn is not None
     assert turn["provider_write"] is False
     assert "yes" in turn["message"].lower()
-    assert "279246127081" in turn["message"]
-    assert "waiting for your approval" not in turn["message"].lower()
+    assert "279246127081" not in turn["message"]
+    ident = recent_write_status_turn("What email was that contact created with?", state)
+    assert ident is not None
+    assert "@" in ident["message"]
+    assert "279246127081" in ident["message"]
     recon = reconcile_stale_pending_to_observation(state)
     assert recon is not None
     assert recon["pending_task"]["status"] == "executed"
