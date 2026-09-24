@@ -7,9 +7,19 @@
 
 ## 1. Accessible index
 
-Open locally after `pnpm`/`npm` web dev server:
+**Primary entry (working prototype, not docs-only):**
 
-**http://localhost:3000/dev/ai-workspace-preview?s=selection**
+`/dev/ai-workspace-preview?s=selection`
+
+On branch `feat/gravitre-3.0-plus-frontend` worktree:
+
+```bash
+cd apps/web
+pnpm install   # once
+pnpm exec next dev --port 3010 --webpack
+```
+
+Then open: **http://localhost:3010/dev/ai-workspace-preview?s=selection**
 
 | Area | Primary links |
 |------|----------------|
@@ -22,7 +32,9 @@ Open locally after `pnpm`/`npm` web dev server:
 | §40 Dashboard | `?s=dashboard&scene=attention-first` |
 | §40 Agent | `?s=agent-workspace&scene=roster-detail` |
 
-Screenshots: `docs/design/3.0-plus/selection-shots/` (captured in review session).
+**Screenshots:** open each link above in the browser during review (agent automated capture blocked this session by Next first-compile stalls + isolated browser localhost). Prefer live harness over static shots for interaction/transitions.
+
+Package navigator doc: this file. Status canvas: `gravitre-3.0-plus-section-44.canvas.tsx`.
 
 ## 2. Structural options & tradeoffs (summary)
 
