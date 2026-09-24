@@ -1669,7 +1669,7 @@ class ChatConnectorExecutionService:
                 "execute_plan_ms": execute_plan_ms,
                 "includes": "provider_invoke_and_required_verification",
             }
-            execution.structured = structured
+            execution = replace(execution, structured=structured)
             logger.info(
                 "spoken_write_latency_budget org_id=%s conversation_id=%s execute_plan_ms=%s",
                 org_id,
