@@ -37,6 +37,9 @@ vi.mock("@/components/gravitre/ai-conversation-core", () => ({
 vi.mock("@/components/gravitre/ai-mobile-sheet", () => ({
   GravitreAIMobileSheet: ({ children }: { children: unknown }) => children,
 }))
+vi.mock("@/components/gravitre/ai-work-canvas", () => ({ GravitreAIWorkCanvas: () => null }))
+vi.mock("@/components/gravitre/assistant/task-side-panel", () => ({ TaskSidePanel: () => null }))
+vi.mock("@/components/gravitre/ai-context-indicator", () => ({ GravitreAIContextIndicator: () => null }))
 
 import { GravitreAIMobileSheetBridge } from "@/app/ai/_components/ai-mobile-sheet-bridge"
 
@@ -148,5 +151,44 @@ describe("GravitreAIMobileSheetBridge — same-conversation proof (test requirem
     const forwarded = stubCalls.transcript.at(-1)!
     expect(forwarded.pendingTask).toBe(pendingTask)
     expect(forwarded.dialogueMode).toBe("execute")
+  })
+})
+
+describe("GravitreAIMobileSheetBridge — approvals are never covered (Slice 1)", () => {
+  function renderWith(dialogueMode: string) {
+    root = createRoot(container)
+    act(() => {
+      root!.render(
+        createElement(GravitreAIMobileSheetBridge, {
+          mode: "float",
+          presence: "needs_approval",
+          onModeChange: vi.fn(),
+          onClose: vi.fn(),
+          messages: [],
+          status: "ready",
+          dialogueMode,
+          pendingTask: { type: "execute", title: "Create CRM contact" } as never,
+          canApprove: true,
+          input: "",
+          onInputChange: vi.fn(),
+          onSubmit: vi.fn(),
+          canSubmit: false,
+          voiceEntitled: false,
+        }),
+      )
+    })
+  }
+  const overlayOpen = () =>
+    Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "Back to conversation")
+
+  it("stays on the conversation (where Approve/Reject render) while an approval is visible", () => {
+    renderWith("confirm")
+    expect(overlayOpen()).toBe(false)
+    expect(container.querySelector('[data-gravitre-ai-runtime-state="needs_approval"]')).not.toBeNull()
+  })
+
+  it("still reveals the work overlay for a pending task that is not awaiting approval", () => {
+    renderWith("execute")
+    expect(overlayOpen()).toBe(true)
   })
 })

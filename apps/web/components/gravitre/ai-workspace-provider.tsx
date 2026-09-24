@@ -59,6 +59,13 @@ import {
   type LegacyPresentationMode,
 } from "@/lib/gravitre-ai-presentation"
 import {
+  legacyToWindowManagerPreference,
+  readWindowManagerPreference,
+  resolvePreferredWindowMode,
+  windowManagerModeToLegacy,
+  writeWindowManagerPreference,
+} from "@/lib/gravitre-window-manager"
+import {
   isGravitreAiInstrumentationEnabled,
   publishGravitreAiWorkspaceDebug,
 } from "@/lib/gravitre-ai-runtime"
@@ -186,13 +193,19 @@ export interface GravitreAIWorkspaceContextValue {
   previousPresentationMode: GravitrePresentationMode
   /** Records the current mode as the restore target, then closes to the launcher. */
   minimizeToHelper: () => void
-  /** Reopens at the remembered mode rather than always at "float". */
+  /**
+   * Reopens at the mode the user minimized from; before any minimize this
+   * session, at the remembered preference or the contextual default.
+   */
   restoreFromHelper: () => void
+  /** Explicit window-mode choice (dock / undock): applies it and remembers it. */
+  choosePresentationMode: (mode: GravitrePresentationMode) => void
   /** Canonical name of the visible presentation (minimized/compact/expanded/fullscreen). */
   canonicalPresentation: CanonicalPresentationState
   /**
-   * Open the canonical workspace over the current page. Default presentation
-   * is compact. Does not navigate to `/ai`.
+   * Open the canonical workspace over the current page. Without an explicit
+   * `presentation`, opens at the remembered preference or the contextual
+   * default (G-STRUCT A3). Does not navigate to `/ai`.
    */
   summonWorkspace: (options?: GravitreAISummonOptions) => void
   agentScope: GravitreAIAgentScope | null
@@ -255,26 +268,55 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
 
   const [previousPresentationMode, setPreviousPresentationMode] =
     useState<GravitrePresentationMode>("float")
+  // False until the user minimizes once this session; until then the launcher
+  // opens at the remembered preference or the contextual default (G-STRUCT A3).
+  const hasRestoreTargetRef = useRef(false)
+  const presentationModeRef = useRef(presentationMode)
+  presentationModeRef.current = presentationMode
 
   const minimizeToHelper = useCallback(() => {
     // Capture before closing. The old closeToHelper() overwrote the mode with
     // "expanded" first, which destroyed the only record of where to return to.
-    setPresentationModeState((current) => {
-      setPreviousPresentationMode(modeToRemember(current))
-      return current
-    })
+    const remembered = modeToRemember(presentationModeRef.current)
+    setPreviousPresentationMode(remembered)
+    hasRestoreTargetRef.current = true
+    const preference = legacyToWindowManagerPreference(toLegacyPresentationMode(remembered))
+    if (preference) writeWindowManagerPreference(preference)
     setFloatWorkspaceOpen(false)
   }, [setFloatWorkspaceOpen])
 
-  const restoreFromHelper = useCallback(() => {
-    setPresentationMode(restoreTargetMode(previousPresentationMode))
-    setFloatWorkspaceOpen(true)
-  }, [previousPresentationMode, setFloatWorkspaceOpen])
+  /** Explicit user choice of window mode (dock/undock): applied and remembered. */
+  const choosePresentationMode = useCallback((mode: GravitrePresentationMode) => {
+    const legacy = toLegacyPresentationMode(mode)
+    setPresentationModeState(legacy)
+    const preference = legacyToWindowManagerPreference(legacy)
+    if (preference) writeWindowManagerPreference(preference)
+  }, [])
 
   // usePathname/useParams are safe this high in the tree — OnboardingChecklist
   // (also mounted directly in app/layout.tsx) already relies on the same
   // Next.js App Router behavior.
   const pathname = usePathname() ?? ""
+
+  const hasPendingApproval = Boolean(approval?.pendingTask)
+  const resolveOpenMode = useCallback((): LegacyPresentationMode => {
+    const resolved = resolvePreferredWindowMode({
+      hints: {
+        pathname,
+        viewportWidth: typeof window !== "undefined" ? window.innerWidth : 0,
+        hasPendingApproval,
+      },
+      preference: readWindowManagerPreference(),
+    })
+    return windowManagerModeToLegacy(resolved)
+  }, [pathname, hasPendingApproval])
+
+  const restoreFromHelper = useCallback(() => {
+    setPresentationMode(
+      hasRestoreTargetRef.current ? restoreTargetMode(previousPresentationMode) : resolveOpenMode(),
+    )
+    setFloatWorkspaceOpen(true)
+  }, [previousPresentationMode, resolveOpenMode, setFloatWorkspaceOpen, setPresentationMode])
   const rawParams = useParams()
   const prevPathnameRef = useRef(pathname)
 
@@ -331,7 +373,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
           nonce: composerNonceRef.current,
         })
       }
-      const next = toLegacyPresentationMode(options?.presentation ?? "compact")
+      const next = options?.presentation ? toLegacyPresentationMode(options.presentation) : resolveOpenMode()
       if (next === "helper") {
         setFloatWorkspaceOpen(false)
         return
@@ -339,7 +381,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       setPresentationModeState(next)
       setFloatWorkspaceOpen(true)
     },
-    [setFloatWorkspaceOpen],
+    [resolveOpenMode, setFloatWorkspaceOpen],
   )
 
   // Direct `/ai` is fullscreen of the canonical workspace (UX Reset 1.0),
@@ -418,6 +460,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       previousPresentationMode,
       minimizeToHelper,
       restoreFromHelper,
+      choosePresentationMode,
       canonicalPresentation,
       summonWorkspace,
       agentScope,
@@ -442,6 +485,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
       previousPresentationMode,
       minimizeToHelper,
       restoreFromHelper,
+      choosePresentationMode,
       canonicalPresentation,
       summonWorkspace,
       agentScope,
@@ -479,6 +523,15 @@ export function useGravitreAIWorkspace(): GravitreAIWorkspaceContextValue {
     )
   }
   return ctx
+}
+
+/**
+ * Non-throwing read for presentation components that are also rendered
+ * standalone (tests, dev previews). Anything that needs the workspace to exist
+ * must use `useGravitreAIWorkspace()` instead.
+ */
+export function useOptionalGravitreAIWorkspace(): GravitreAIWorkspaceContextValue | null {
+  return useContext(GravitreAIWorkspaceContext)
 }
 
 /** Publish the current page object into Ask context without opening chat. */

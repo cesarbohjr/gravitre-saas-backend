@@ -1187,3 +1187,11 @@ html.chat-immersive body {
   font-weight: 600;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* 3.0 Plus Slice 1 — docked AI workspace reserves page width on md+ so the page
+   beside it stays readable and clickable. Below md the workspace is a sheet. */
+@media (min-width: 768px) {
+  body[data-gravitre-wm-docked] {
+    padding-right: var(--g-wm-dock-width);
+  }
+}

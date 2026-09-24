@@ -89,17 +89,40 @@ export type GravitreFloatingWorkspaceProps = PropsWithChildren<{
   /** Transitions straight to Fullscreen. Previously unreachable from here, so
    * fullscreen took two steps (expand, then fullscreen) for no reason. */
   onEnterFullscreen?: () => void
+  /** Docks the window to the right edge. Omitted → no Dock control. */
+  onDock?: () => void
+  /** Returns a docked window to a floating window. */
+  onUndock?: () => void
+  /**
+   * `window` is the draggable float; `docked` pins the same element to the right
+   * edge at full height. Same component instance either way, so switching never
+   * remounts the conversation inside it.
+   */
+  placement?: "window" | "docked"
+  /** Compact is the small default window; floating opens larger. */
+  variant?: "compact" | "floating"
   titleAccessory?: ReactNode
 }>
+
+/** Default size for the larger `floating` variant when no geometry is stored. */
+export const GRAVITRE_FLOATING_VARIANT_DEFAULT_SIZE: WindowSize = { width: 640, height: 640 }
+
+/** Body attribute that reserves page space for the dock on md+ (see globals.css). */
+export const GRAVITRE_WM_DOCKED_BODY_ATTR = "data-gravitre-wm-docked"
 
 export function GravitreFloatingWorkspace({
   presence,
   onClose,
   onExpand,
   onEnterFullscreen,
+  onDock,
+  onUndock,
+  placement = "window",
+  variant = "compact",
   titleAccessory,
   children,
 }: GravitreFloatingWorkspaceProps) {
+  const docked = placement === "docked"
   const dragControls = useDragControls()
   const reduceMotion = useReducedMotion()
   const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null)
@@ -123,9 +146,18 @@ export function GravitreFloatingWorkspace({
       setSize(clampFloatSize({ width: stored.width, height: stored.height }, viewport))
       dragX.set(stored.x)
       dragY.set(stored.y)
+    } else if (variant === "floating") {
+      setSize(clampFloatSize(GRAVITRE_FLOATING_VARIANT_DEFAULT_SIZE, viewport))
     }
     setGeometryHydrated(true)
-  }, [viewport, geometryHydrated, dragX, dragY])
+  }, [viewport, geometryHydrated, dragX, dragY, variant])
+
+  // Docked reserves page width so the page stays usable beside the dock.
+  useEffect(() => {
+    if (!docked) return
+    document.body.setAttribute(GRAVITRE_WM_DOCKED_BODY_ATTR, "")
+    return () => document.body.removeAttribute(GRAVITRE_WM_DOCKED_BODY_ATTR)
+  }, [docked])
 
   const persistGeometry = useCallback(
     (nextSize: WindowSize) => {
@@ -165,11 +197,12 @@ export function GravitreFloatingWorkspace({
     (event: PointerEvent<HTMLDivElement>) => {
       // Never start a drag from an interactive control inside the header —
       // architecture doc item 22: drag must not swallow button clicks.
+      if (docked) return
       const target = event.target as HTMLElement
       if (target.closest("button,a,input,textarea")) return
       dragControls.start(event)
     },
-    [dragControls],
+    [dragControls, docked],
   )
 
   if (typeof document === "undefined" || !viewport) return null
@@ -179,12 +212,16 @@ export function GravitreFloatingWorkspace({
   return createPortal(
     <motion.div
       layoutId={reduceMotion ? undefined : GRAVITRE_AI_WORKSPACE_LAYOUT_ID}
-      drag
+      drag={!docked}
       dragListener={false}
       dragControls={dragControls}
       dragMomentum={false}
       dragElastic={0}
-      style={{ x: dragX, y: dragY, width: size.width, height: size.height }}
+      style={
+        docked
+          ? { x: 0, y: 0, width: "var(--g-wm-dock-width)", height: "100dvh" }
+          : { x: dragX, y: dragY, width: size.width, height: size.height }
+      }
       dragConstraints={{
         left: 8,
         right: Math.max(8, viewport.width - size.width - 8),
@@ -196,19 +233,29 @@ export function GravitreFloatingWorkspace({
       animate={{ opacity: 1, scale: 1 }}
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
       transition={{ duration: reduceMotion ? 0 : MOTION.major, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-auto fixed bottom-5 left-5 z-[85] flex flex-col overflow-hidden rounded-[var(--g-radius-panel)] border border-divide bg-[color:var(--g-surface-1)] shadow-2xl"
+      className={cn(
+        "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)]",
+        docked
+          ? "inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)]"
+          : "bottom-5 left-5 rounded-[var(--g-radius-panel)] border shadow-2xl",
+      )}
       data-gravitre-float-workspace=""
+      data-gravitre-wm-placement={docked ? "docked" : "window"}
+      data-gravitre-wm-variant={docked ? undefined : variant}
       data-gravitre-workspace-layout-id={reduceMotion ? "reduced-motion" : GRAVITRE_AI_WORKSPACE_LAYOUT_ID}
       role="region"
-      aria-label="Gravitre AI"
+      aria-label={docked ? "Gravitre AI, docked" : "Gravitre AI"}
     >
       <div
         onPointerDown={onHeaderPointerDown}
-        data-window-drag-handle=""
-        className="flex cursor-grab select-none items-center justify-between border-b border-divide px-3 py-2.5 active:cursor-grabbing"
+        data-window-drag-handle={docked ? undefined : ""}
+        className={cn(
+          "flex select-none items-center justify-between border-b border-divide px-3 py-2.5",
+          !docked && "cursor-grab active:cursor-grabbing",
+        )}
       >
         <div className="flex min-w-0 items-center gap-2">
-          <GripVertical className="h-3.5 w-3.5 text-[color:var(--g-text-muted)]" aria-hidden />
+          {docked ? null : <GripVertical className="h-3.5 w-3.5 text-[color:var(--g-text-muted)]" aria-hidden />}
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
             <NucleoChat className="h-3.5 w-3.5" />
           </span>
@@ -227,15 +274,19 @@ export function GravitreFloatingWorkspace({
           </span>
         </div>
         <ChatWindowControls
-          surface="float"
+          surface={docked ? "docked" : "float"}
           handlers={{
             expand: onExpand,
             fullscreen: onEnterFullscreen,
             minimizeToHelper: onClose,
+            dock: onDock,
+            undock: onUndock,
           }}
         />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+      {docked ? null : (
+        <>
       {/*
         Resize handle (B5/B9). `role="slider"` isn't a great fit for 2D
         resize and neither is `separator` in the strict 1D-splitter sense,
@@ -257,6 +308,8 @@ export function GravitreFloatingWorkspace({
       >
         <GripVertical className="h-3 w-3 rotate-45" aria-hidden />
       </div>
+        </>
+      )}
     </motion.div>,
     document.body,
   )

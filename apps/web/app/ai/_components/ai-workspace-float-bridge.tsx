@@ -44,6 +44,10 @@ import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre
 import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import { floatContentTiers, useElementWidth } from "@/hooks/use-element-width"
 import { cn } from "@/lib/utils"
+import { useOptionalGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
+import { GravitreAIRuntimeStatus } from "@/components/gravitre/ai-runtime-status"
+import { toLegacyPresentationMode } from "@/lib/gravitre-ai-presentation"
+import { deriveAiRuntimeState } from "@/lib/gravitre-ai-runtime-state"
 
 export interface GravitreAIFloatBridgeProps {
   presence: GravitreHelperPresence
@@ -146,14 +150,37 @@ export function GravitreAIFloatBridge({
     setOrbHost(bodyRef.current)
   }, [])
 
+  // Window mode is presentation state owned by the provider; AiWorkspace routes
+  // every non-expanded/fullscreen mode here, so compact / floating / docked are
+  // resolved in this bridge without touching the conversation props below.
+  const workspace = useOptionalGravitreAIWorkspace()
+  const windowMode = workspace ? toLegacyPresentationMode(workspace.presentationMode) : "float"
+  const choose = workspace?.choosePresentationMode
+  const runtimeState = deriveAiRuntimeState({
+    status,
+    isStreaming,
+    isBusy,
+    dialogueMode,
+    pendingTask,
+    executionResult,
+    confirmExecuting,
+    canApprove,
+    canContinueAfterStop,
+  })
+
   return (
     <GravitreFloatingWorkspace
       presence={presence}
       onClose={onClose}
       onExpand={onExpand}
       onEnterFullscreen={onEnterFullscreen}
+      placement={windowMode === "docked" ? "docked" : "window"}
+      variant={windowMode === "floating" ? "floating" : "compact"}
+      onDock={choose ? () => choose("docked") : undefined}
+      onUndock={choose ? () => choose("floating") : undefined}
       titleAccessory={<GravitreAIContextIndicator className="mt-0.5" />}
     >
+      <GravitreAIRuntimeStatus state={runtimeState} />
       <div
         ref={bodyRef}
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"

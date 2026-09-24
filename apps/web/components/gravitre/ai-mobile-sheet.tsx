@@ -67,10 +67,22 @@ import {
   type GravitreHelperPresence,
 } from "@/lib/gravitre-ai-presence"
 
-export type GravitreAIMobileSheetMode = "float" | "expanded" | "fullscreen"
+/** The three heights the sheet can actually snap to. */
+export type GravitreAIMobileSheetSnapMode = "float" | "expanded" | "fullscreen"
+
+/**
+ * Any desktop window mode the host may hand over. There is no room to float or
+ * dock on a phone, so `floating` / `docked` present as the `float` snap point and
+ * the stored mode is left alone until the user picks another snap.
+ */
+export type GravitreAIMobileSheetMode = GravitreAIMobileSheetSnapMode | "floating" | "docked"
+
+export function mobileSheetSnapMode(mode: GravitreAIMobileSheetMode): GravitreAIMobileSheetSnapMode {
+  return mode === "floating" || mode === "docked" ? "float" : mode
+}
 
 /** Fractions of viewport height per mode — see file header. */
-export const GRAVITRE_MOBILE_SHEET_SNAP_POINTS: Record<GravitreAIMobileSheetMode, number> = {
+export const GRAVITRE_MOBILE_SHEET_SNAP_POINTS: Record<GravitreAIMobileSheetSnapMode, number> = {
   float: 0.55,
   expanded: 0.92,
   fullscreen: 1,
@@ -82,7 +94,7 @@ const SNAP_POINT_LIST = [
   GRAVITRE_MOBILE_SHEET_SNAP_POINTS.fullscreen,
 ]
 
-function modeForSnapPoint(snapPoint: number | string | null): GravitreAIMobileSheetMode {
+function modeForSnapPoint(snapPoint: number | string | null): GravitreAIMobileSheetSnapMode {
   const numeric = typeof snapPoint === "string" ? Number.parseFloat(snapPoint) : snapPoint
   if (numeric === null || numeric === undefined || Number.isNaN(numeric)) return "float"
   if (numeric >= GRAVITRE_MOBILE_SHEET_SNAP_POINTS.fullscreen) return "fullscreen"
@@ -95,7 +107,7 @@ export interface GravitreAIMobileSheetProps {
   presence: GravitreHelperPresence
   /** Fired when the user drags to a different snap point (not only via the
    * header buttons) — keeps `presentationMode` in sync with the gesture. */
-  onModeChange: (mode: GravitreAIMobileSheetMode) => void
+  onModeChange: (mode: GravitreAIMobileSheetSnapMode) => void
   /** Dismisses entirely, back to the Helper bubble — fired by the
    * "Minimize to helper" button or by dragging below the smallest snap
    * point (`vaul`'s own `dismissible` gesture handling). */
@@ -105,7 +117,7 @@ export interface GravitreAIMobileSheetProps {
 }
 
 export function GravitreAIMobileSheet({
-  mode,
+  mode: hostMode,
   presence,
   onModeChange,
   onClose,
@@ -113,6 +125,7 @@ export function GravitreAIMobileSheet({
   children,
 }: GravitreAIMobileSheetProps) {
   const contentRef = useRef<HTMLDivElement | null>(null)
+  const mode = mobileSheetSnapMode(hostMode)
   const isFullscreen = mode === "fullscreen"
   const copy = GRAVITRE_HELPER_PRESENCE_COPY[presence]
 
@@ -164,7 +177,12 @@ export function GravitreAIMobileSheet({
           }}
           className={cn(
             "fixed inset-x-0 bottom-0 z-[85] flex flex-col overflow-hidden border-t border-divide bg-[color:var(--g-surface-1)] shadow-2xl focus:outline-none",
-            isFullscreen ? "inset-0 rounded-none" : "rounded-t-[var(--g-radius-panel)]",
+            // vaul's fractional snap points translate by a share of the viewport, so
+            // the content must be viewport-tall or a short sheet lands off-screen.
+            // The translated-away part is padded out so the composer stays visible.
+            isFullscreen
+              ? "inset-0 rounded-none"
+              : "h-[100dvh] pb-[var(--snap-point-height,0px)] rounded-t-[var(--g-radius-panel)]",
           )}
           aria-label="Gravitre AI"
         >

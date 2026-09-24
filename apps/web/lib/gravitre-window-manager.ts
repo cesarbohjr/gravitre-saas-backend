@@ -149,6 +149,54 @@ export function writeWindowManagerPreference(
   } catch {
     // Quota / private mode — preference is best-effort.
   }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(GRAVITRE_WM_PREFERENCE_EVENT))
+  }
+}
+
+/** Same-tab change signal; the native `storage` event only fires in other tabs. */
+export const GRAVITRE_WM_PREFERENCE_EVENT = "gravitre:wm-preference"
+
+/**
+ * `useSyncExternalStore` subscription. The server snapshot is always `null`, so the
+ * first client render matches SSR and the stored preference lands in a follow-up
+ * render instead of during hydration.
+ */
+export function subscribeWindowManagerPreference(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {}
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === GRAVITRE_WM_PREFERENCE_STORAGE_KEY) onChange()
+  }
+  window.addEventListener("storage", onStorage)
+  window.addEventListener(GRAVITRE_WM_PREFERENCE_EVENT, onChange)
+  return () => {
+    window.removeEventListener("storage", onStorage)
+    window.removeEventListener(GRAVITRE_WM_PREFERENCE_EVENT, onChange)
+  }
+}
+
+export function getWindowManagerPreferenceServerSnapshot(): WindowManagerPreferenceMode | null {
+  return null
+}
+
+/** Legacy React presentation mode → persistable WM preference (helper is not a preference). */
+export function legacyToWindowManagerPreference(
+  mode: LegacyPresentationMode,
+): WindowManagerPreferenceMode | null {
+  switch (mode) {
+    case "helper":
+      return null
+    case "float":
+      return "compact"
+    case "floating":
+      return "floating"
+    case "docked":
+      return "docked"
+    case "expanded":
+      return "expanded"
+    case "fullscreen":
+      return "fullscreen"
+  }
 }
 
 /**

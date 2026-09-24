@@ -6,14 +6,14 @@
  * preserving identity references. Not a second chat runtime.
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useMemo, useState, type ReactNode } from "react"
+import { useWindowManagerPreference } from "@/hooks/use-window-manager-preference"
 import { Button } from "@/components/ui/button"
 import { GravitreDockedShell } from "@/components/gravitre/window-manager/gravitre-docked-shell"
 import { GravitreWindowFrame } from "@/components/gravitre/window-manager/gravitre-window-frame"
 import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { TYPE } from "@/lib/design-system"
 import {
-  readWindowManagerPreference,
   resolveContextualWindowDefault,
   resolvePreferredWindowMode,
   transitionWindowMode,
@@ -56,47 +56,31 @@ export function GravitreWindowManagerShell({
     [pathname, viewportWidth],
   )
 
-  // SSR-safe: start from contextual only; hydrate preference after mount.
-  const [preference, setPreference] = useState<WindowManagerPreferenceMode | null>(null)
-  const [mode, setMode] = useState<Exclude<WindowManagerMode, "restored">>(contextual)
-  const [lastMeaningful, setLastMeaningful] = useState<WindowManagerPreferenceMode>(contextual)
+  // Server + hydrating render: preference is null → contextual default. The stored
+  // preference arrives in the post-hydration render via useSyncExternalStore.
+  const preference = useWindowManagerPreference()
+  const resolved = resolvePreferredWindowMode({
+    hints: { pathname, viewportWidth, expertWorkspace: pathname.includes("/workflows/") },
+    preference,
+  })
+  const [explicit, setExplicit] = useState<{
+    mode: Exclude<WindowManagerMode, "restored">
+    lastMeaningful: WindowManagerPreferenceMode
+  } | null>(null)
+  const mode = explicit?.mode ?? resolved
+  const lastMeaningful = explicit?.lastMeaningful ?? resolved
   const [identity] = useState(() => DEMO_IDENTITY)
   const [log, setLog] = useState<string[]>([])
-  const [hydrated, setHydrated] = useState(false)
-
-  useEffect(() => {
-    const stored = readWindowManagerPreference()
-    setPreference(stored)
-    const resolved = resolvePreferredWindowMode({
-      hints: { pathname, viewportWidth, expertWorkspace: pathname.includes("/workflows/") },
-      preference: stored,
-    })
-    setMode(resolved)
-    setLastMeaningful(resolved)
-    setHydrated(true)
-  }, [pathname, viewportWidth])
 
   const applyMode = useCallback(
     (to: WindowManagerMode) => {
-      setMode((from) => {
-        const next = transitionWindowMode({
-          from,
-          to,
-          identity,
-          lastMeaningful,
-        })
-        setLastMeaningful(next.lastMeaningful)
-        if (next.mode !== "minimized") {
-          writeWindowManagerPreference(next.lastMeaningful)
-          setPreference(next.lastMeaningful)
-        }
-        setLog((rows) =>
-          [`${from}→${next.mode} · ${identity.conversationId} unchanged`, ...rows].slice(0, 6),
-        )
-        return next.mode as Exclude<WindowManagerMode, "restored">
-      })
+      const next = transitionWindowMode({ from: mode, to, identity, lastMeaningful })
+      const nextMode = next.mode as Exclude<WindowManagerMode, "restored">
+      setExplicit({ mode: nextMode, lastMeaningful: next.lastMeaningful })
+      if (nextMode !== "minimized") writeWindowManagerPreference(next.lastMeaningful)
+      setLog((rows) => [`${mode}→${nextMode} · ${identity.conversationId} unchanged`, ...rows].slice(0, 6))
     },
-    [identity, lastMeaningful],
+    [identity, lastMeaningful, mode],
   )
 
   const surface = surfaceForPresentationMode(
@@ -124,7 +108,7 @@ export function GravitreWindowManagerShell({
     )
 
   return (
-    <div data-slice0-wm-shell="" data-wm-hydrated={hydrated ? "true" : "false"} className="space-y-3">
+    <div data-slice0-wm-shell="" data-wm-mode-source={explicit ? "explicit" : preference ? "preference" : "contextual"} className="space-y-3">
       <div className="flex flex-wrap gap-1" role="toolbar" aria-label="Window modes">
         {WINDOW_MANAGER_MODES.map((m) => (
           <Button

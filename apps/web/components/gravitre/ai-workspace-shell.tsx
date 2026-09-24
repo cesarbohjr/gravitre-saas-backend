@@ -75,7 +75,11 @@ export interface GravitreAIWorkspaceShellProps {
   onExitFullscreen: () => void
   /** Fully closes the floating workspace back down to the Helper bubble. */
   onClose: () => void
+  /** Docks to the right edge (Expanded only; the manifest decides visibility). */
+  onDock?: () => void
   titleAccessory?: ReactNode
+  /** Centre of the header — the Conversation / Work / Split switch. */
+  headerAccessory?: ReactNode
   children: ReactNode
 }
 
@@ -93,7 +97,9 @@ export function GravitreAIWorkspaceShell({
   onEnterFullscreen,
   onExitFullscreen,
   onClose,
+  onDock,
   titleAccessory,
+  headerAccessory,
   children,
 }: GravitreAIWorkspaceShellProps) {
   const isFullscreen = mode === "fullscreen"
@@ -162,6 +168,9 @@ export function GravitreAIWorkspaceShell({
             {copy.label}
           </span>
         </div>
+        {headerAccessory ? (
+          <div className="mx-2 hidden min-w-0 flex-1 justify-center sm:flex">{headerAccessory}</div>
+        ) : null}
         <ChatWindowControls
           surface={isFullscreen ? "fullscreen" : "expanded"}
           handlers={{
@@ -169,6 +178,7 @@ export function GravitreAIWorkspaceShell({
             exitFullscreen: onExitFullscreen,
             collapseToFloat: onMinimizeToFloat,
             minimizeToHelper: onClose,
+            dock: onDock,
           }}
           leading={
             <>

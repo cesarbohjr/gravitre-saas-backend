@@ -199,7 +199,9 @@ describe("GravitreAIHelper", () => {
     expect(container.querySelector("[data-gravitre-ai-helper]")).toBeNull()
   })
 
-  it("clicking the bubble sets presentationMode to 'float' without navigating to /ai", async () => {
+  // G-STRUCT A3 (Slice 1): the first open uses the contextual default — a
+  // floating window on an operating page like /dashboard — not a fixed "float".
+  it("clicking the bubble opens at the contextual default without navigating to /ai", async () => {
     process.env[ENV_KEY] = "true"
     vi.resetModules()
     pathnameState.value = "/dashboard"
@@ -212,7 +214,7 @@ describe("GravitreAIHelper", () => {
       button.click()
     })
     expect(routerPush).not.toHaveBeenCalled()
-    expect(sink.value?.presentationMode).toBe("float")
+    expect(sink.value?.presentationMode).toBe("floating")
     expect(sink.value?.floatWorkspaceOpen).toBe(true)
   })
 })

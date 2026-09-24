@@ -1,7 +1,7 @@
 # Gravitre 3.0 Plus — Frontend parallel track
 
 **Branch / worktree:** `feat/gravitre-3.0-plus-frontend` @ `.cursor-tmp/wt-3.0-plus-frontend`  
-**Status:** G-STRUCT **SELECTED** (2026-09-24) · Slice 0 **AUTHORIZED** · Phase 6 harness retained  
+**Status:** G-STRUCT **SELECTED** (2026-09-24) · Slice 0 **AUTHORIZED** · Slice 1 **AUTHORIZED** · Phase 6 harness retained  
 **Gate:** Broad Phase 8 areas 4–15 + RF cutover still separately authorized
 
 ## Authority
@@ -35,10 +35,15 @@
 
 `/dev/slice-0-foundation` — tokens, PageIntro families, WM presentation shell (light/dark).
 
+## Slice 1 production preview
+
+`/dev/slice-1-workspace` — real AI bridges/provider with fixture props: WM modes in the host, composition, runtime states, shared inspector.
+
 ## Decision package
 
 - `20-g-struct-decision-package.md` — **SELECTED** 2026-09-24  
 - `21-slice-0-foundation.md` — Slice 0 delivery notes  
+- `22-slice-1-workspace-presentation.md` — Slice 1 delivery notes  
 - `19-saasframe-research-mapping.md` — SaaSFrame research → design
 
 ## Explicit non-goals until further Cesar authorization
