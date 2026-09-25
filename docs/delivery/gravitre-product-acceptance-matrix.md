@@ -12,7 +12,7 @@ Do not collapse this table into one PASS.
 | Governed WRITE | LIVE_API_PROVEN / LIVE_VOICE_PROVEN | CI_PROVEN | HTTP spoken_mode `dd576514` contact `278972733388`. PCM `1f548ca8` contact `279209311173` |
 | Repair | LIVE_API_PROVEN | CI_PROVEN | F2 sibling repair |
 | Cross-system entities | LIVE_API_PROVEN | CI_PROVEN | Store join; no silent merge |
-| Finished artifacts | CODE_COMPLETE / LIVE_API_PROVEN | LIVE_API_PROVEN | Bound `executive_report` on listing count `0ee198dd-…` @ `0b879ec4`. Table bind + resume without re-invoke is the next serving SHA. LIVE_UI_PROVEN: BLOCKED_EXTERNAL (expired trial) |
+| Finished artifacts | LIVE_API_PROVEN | LIVE_API_PROVEN | Listing contact-count table on `f522a717` conv `fb03f3fe-…` Observation `fd95772b-…` kind=table count 57. Resume “Show me that table” kept one Observation (`provider_reinvoked` false). LIVE_UI_PROVEN: BLOCKED_EXTERNAL (expired trial) |
 | Computer Use | CODE_COMPLETE | CI_PROVEN | Strategy + browser-agent READ. Interact off. No paid CDP. No live headful PASS |
 | Cross-surface continuity | CODE_COMPLETE | LIVE_API_PROVEN | Same conversation/plan/pending/artifacts. Contracts published |
 | Proactive attention | LIVE_API_PROVEN | LIVE_API_PROVEN | Positive: conv `5cfc0c14-…` `notice_count=2` GA+GSC re-auth, `write_allowed=false` @ `4a1e84e9` `2026-09-24T15:25:22Z` |
@@ -58,6 +58,19 @@ Cleanup (Cesar approval required): HubSpot `278972733388`, `279209311173`, `2792
 - Class A: first useful **4551 ms**, completion **7638 ms**, excerpt “Hey — I'm here. What do you want to get done?”
 - Class B conv `59120b14-8235-4279-9692-2ef0cbee1120` plan `0a3e4716-397e-47f6-bb41-c261e4865135` pending `executed` / COMPLETED / Observation verified. Status-only: “Yes — that contact was created and verified.” (`used_email=false`, `used_provider_id=false`, 5014 / 8217 ms). Identity: email `gravitrepcmwrite20260924181201@alpha.test.gravitre.app` + record `279246127081` (3150 / 5493 ms). No second WRITE.
 - Class C regression conv `0ee198dd-d7e7-4e00-ba9c-c2daa53b6c2b` plan `595e83aa-c84f-43ee-92ab-b8dd43a8b76b` Observation `24b29190-c657-48c0-b295-e61855a76582` `hubspot.contacts.search` result_count **57**, spoken “This HubSpot account has 57 contacts.” Tools none. GET state `work_artifacts[0].kind=executive_report` exportable, reconstruct `execution_result.entity_id=595e83aa-…`. first useful 6636 ms / completion 8801 ms.
+
+## Listing contact-count table artifact (`f522a717`) 2026-09-25
+
+- Serving SHA `f522a7179707d40cf768b45b4c78dc8ffc466622`
+- CI: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36081750627
+- Railway: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36081750646
+- Conversation: `fb03f3fe-0511-4d6c-8176-8b88952dc0e8`
+- Plan: `cac365d0-6003-4d98-8c94-00be172284c1` `source=listing_f2_read` `terminal_status=completed`
+- Observation: `fd95772b-c79c-4d21-b060-f10b841aa8e9` success, `action_key=hubspot.contacts.search`, `result_count=57`, rows `[{system:HubSpot, object:contacts, count:57, source:hubspot.contacts.search}]`
+- GET `/api/assistant/conversation/{id}/state` `work_artifacts[0].kind=table` exportable; markdown includes `| HubSpot | contacts | 57 | hubspot.contacts.search |`
+- Reconstruct `execution_result.entity_id=cac365d0-…` success true. No invented price.
+- Resume “Show me that table”: HTTP 200, 7115 ms, spoken “This HubSpot account has 57 contacts.”, still **one** Observation, kind remains `table`. No WRITE.
+- Evidence class: **LIVE_API_PROVEN** (not LIVE_UI_PROVEN).
 
 ## PCM confirm → WRITE → verify (`1f548ca8`)
 
