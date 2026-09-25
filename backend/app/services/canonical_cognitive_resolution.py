@@ -361,6 +361,9 @@ async def try_compiled_operational_read_turn(
         message=message,
         task_state=task_state,
         settings=settings,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        client=client,
     )
     if computer:
         return computer

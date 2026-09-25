@@ -149,3 +149,36 @@ async def test_computer_browser_resume_does_not_reopen_browser() -> None:
     assert turn["provider_reinvoked"] is False
     assert turn["writes_started"] is False
     assert "iana.org" in turn["message"]
+
+
+@pytest.mark.asyncio
+async def test_computer_browser_resume_reloads_persisted_state() -> None:
+    stored = {
+        "execution_plan": {
+            "plan_id": "plan-cu-reload",
+            "source": "computer_execution",
+            "terminal_status": "completed",
+            "steps": [],
+        },
+        "durable_deliverable": {
+            "diagnosis": "Step 2 (click_link): Example Domains — https://www.iana.org/help/example-domains"
+        },
+        "work_artifacts": [{"artifact_id": "report:plan-cu-reload", "kind": "research_summary"}],
+    }
+    svc = type("S", (), {})()
+    svc.get_task_state = AsyncMock(return_value=stored)
+    with patch(
+        "app.services.conversation_state_service.get_conversation_state_service",
+        return_value=svc,
+    ):
+        turn = await try_computer_browser_read_turn(
+            message="What was the second page URL?",
+            task_state={},
+            conversation_id="conv-1",
+            org_id="org",
+            client=object(),
+        )
+    assert turn is not None
+    assert turn["execution_path"] == "computer_browser_read_resume"
+    assert "iana.org" in turn["message"]
+    assert turn["provider_reinvoked"] is False

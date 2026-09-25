@@ -3714,6 +3714,7 @@ class AgentIntelligence:
                     connected_integrations=list(connected_early or []),
                     task_state=_early_ts,
                     user_id=user_id,
+                    conversation_id=conversation_id,
                 )
                 if _early_turn and _early_turn.get("stop_pipeline"):
                     async for ev in _emit_compiled_operational_short_circuit(_early_turn):

@@ -105,20 +105,38 @@ async def try_computer_browser_read_turn(
     message: str,
     task_state: dict[str, Any] | None,
     settings: Settings | None = None,
+    conversation_id: str | None = None,
+    org_id: str | None = None,
+    client: Any = None,
 ) -> dict[str, Any] | None:
-    if match_computer_browser_followup(message or "", task_state):
+    state = dict(task_state or {})
+    if match_computer_browser_resume_phrase(message or "") and not match_computer_browser_followup(
+        message or "", state
+    ):
+        if conversation_id and org_id and client is not None:
+            try:
+                from app.services.conversation_state_service import get_conversation_state_service
+
+                loaded = await get_conversation_state_service(settings).get_task_state(
+                    conversation_id, org_id, client=client
+                )
+                if isinstance(loaded, dict) and loaded:
+                    state = loaded
+            except Exception:  # noqa: BLE001
+                pass
+    if match_computer_browser_followup(message or "", state):
         from app.services.durable_work_session import reconstruct_execution_result
 
-        deliv = (task_state or {}).get("durable_deliverable") if isinstance(task_state, dict) else None
-        diagnosis = str((deliv or {}).get("diagnosis") or "") if isinstance(deliv, dict) else ""
-        reconstructed = reconstruct_execution_result(task_state, body=diagnosis)
-        plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
+        deliv = state.get("durable_deliverable") if isinstance(state.get("durable_deliverable"), dict) else None
+        diagnosis = str((deliv or {}).get("diagnosis") or "")
+        reconstructed = reconstruct_execution_result(state, body=diagnosis)
+        plan = ExecutionPlan.from_dict(state.get("execution_plan"))
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": diagnosis
             or str((reconstructed or {}).get("body") or "I still have that browser report."),
-            "task_state": dict(task_state or {}),
+            "task_state": state,
             "workflow_status": "completed",
             "execution_path": "computer_browser_read_resume",
             "execution_result": reconstructed,
