@@ -44,7 +44,7 @@ import type { UIMessage } from "ai"
 import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import { useOptionalGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
-import { GravitreAIRuntimeStatus } from "@/components/gravitre/ai-runtime-status"
+import { GravitreAIRuntimeDetails } from "@/components/gravitre/ai-runtime-details"
 import { GravitreAICompositionSwitch } from "@/components/gravitre/ai-composition-switch"
 import { useCompositionPreference } from "@/hooks/use-composition-preference"
 import { resolveWorkspaceComposition, writeCompositionPreference } from "@/lib/gravitre-ai-composition"
@@ -228,7 +228,13 @@ export function GravitreAIWorkspaceShellBridge({
       {/* Positioned wrapper so the contained voice orb fills the shell body rather
           than the composer strip. */}
       <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
-      <GravitreAIRuntimeStatus state={runtimeState} />
+      <GravitreAIRuntimeDetails
+        state={runtimeState}
+        conversationId={conversationId}
+        messages={messages}
+        executionResult={executionResult}
+        pendingTask={pendingTask}
+      />
       <div className="flex shrink-0 justify-center border-b border-divide px-3 py-1.5 sm:hidden">{compositionSwitch}</div>
       <div
         data-gravitre-ai-composition-body={composition.composition}

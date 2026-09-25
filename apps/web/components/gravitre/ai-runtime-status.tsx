@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { NucleoActivity, NucleoApproval, NucleoError, NucleoHistory, NucleoSuccess } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { AI_RUNTIME_STATE_COPY, type AiRuntimeState } from "@/lib/gravitre-ai-runtime-state"
@@ -42,11 +43,14 @@ function StateIcon({ state }: { state: AiRuntimeState }) {
 export function GravitreAIRuntimeStatus({
   state,
   fixture = false,
+  action,
   className,
 }: {
   state: AiRuntimeState
   /** Dev previews only — adds an explicit FIXTURE marker so it cannot read as production. */
   fixture?: boolean
+  /** Trailing control, e.g. the Details button that opens the runtime inspector. */
+  action?: ReactNode
   className?: string
 }) {
   if (state === "idle") return null
@@ -78,6 +82,7 @@ export function GravitreAIRuntimeStatus({
           Fixture
         </span>
       ) : null}
+      {action ? <span className={cn("shrink-0", !fixture && "ml-auto")}>{action}</span> : null}
     </div>
   )
 }

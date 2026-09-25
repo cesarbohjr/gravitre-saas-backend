@@ -37,7 +37,7 @@ import {
 import type { UIMessage } from "ai"
 import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
-import { GravitreAIRuntimeStatus } from "@/components/gravitre/ai-runtime-status"
+import { GravitreAIRuntimeDetails } from "@/components/gravitre/ai-runtime-details"
 import { deriveAiRuntimeState, isApprovalPanelVisible } from "@/lib/gravitre-ai-runtime-state"
 
 export interface GravitreAIMobileSheetBridgeProps {
@@ -165,7 +165,12 @@ export function GravitreAIMobileSheetBridge({
     >
       {/* Positioned wrapper so the contained orb fills the sheet, not the composer. */}
       <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
-      <GravitreAIRuntimeStatus
+      <GravitreAIRuntimeDetails
+        inspectorSide="bottom"
+        conversationId={conversationId}
+        messages={messages}
+        executionResult={executionResult}
+        pendingTask={pendingTask}
         state={deriveAiRuntimeState({
           status,
           isStreaming,

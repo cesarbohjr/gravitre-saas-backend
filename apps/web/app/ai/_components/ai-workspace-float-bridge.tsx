@@ -45,7 +45,7 @@ import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import { floatContentTiers, useElementWidth } from "@/hooks/use-element-width"
 import { cn } from "@/lib/utils"
 import { useOptionalGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
-import { GravitreAIRuntimeStatus } from "@/components/gravitre/ai-runtime-status"
+import { GravitreAIRuntimeDetails } from "@/components/gravitre/ai-runtime-details"
 import { toLegacyPresentationMode } from "@/lib/gravitre-ai-presentation"
 import { deriveAiRuntimeState } from "@/lib/gravitre-ai-runtime-state"
 
@@ -180,7 +180,13 @@ export function GravitreAIFloatBridge({
       onUndock={choose ? () => choose("floating") : undefined}
       titleAccessory={<GravitreAIContextIndicator className="mt-0.5" />}
     >
-      <GravitreAIRuntimeStatus state={runtimeState} />
+      <GravitreAIRuntimeDetails
+        state={runtimeState}
+        conversationId={conversationId}
+        messages={messages}
+        executionResult={executionResult}
+        pendingTask={pendingTask}
+      />
       <div
         ref={bodyRef}
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
