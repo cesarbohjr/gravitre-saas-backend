@@ -1,4 +1,4 @@
-/** Admin app sidebar items — keep in sync with apps/web/components/gravitre/sidebar-nav-config.ts */
+/** Admin app sidebar items — keep in sync with ADMIN_SIDEBAR_NAV in apps/web/components/gravitre/sidebar-nav-config.ts */
 export type AppNavItem = {
   name: string
   href: string
@@ -8,38 +8,21 @@ export type AppNavItem = {
 }
 
 export const ADMIN_APP_NAV_ITEMS: AppNavItem[] = [
+  { name: "Getting Started", href: "/welcome", expectedPathPrefix: "/welcome", optional: true },
   { name: "Home", href: "/home", expectedPathPrefix: "/home" },
   { name: "Chat", href: "/ai", expectedPathPrefix: "/ai" },
   { name: "Agents", href: "/agents", expectedPathPrefix: "/agents" },
-  { name: "Multi-Agent Run", href: "/multi-agent-run", expectedPathPrefix: "/multi-agent-run" },
   { name: "Assignments", href: "/assignments", expectedPathPrefix: "/assignments" },
   { name: "Goals", href: "/goals", expectedPathPrefix: "/goals" },
   { name: "Marketplace", href: "/marketplace/assets", expectedPathPrefix: "/marketplace" },
   { name: "Workflows", href: "/workflows", expectedPathPrefix: "/workflows" },
-  { name: "Failure Alerts", href: "/workflows/failure-predictions", expectedPathPrefix: "/workflows/failure-predictions" },
-  { name: "Training", href: "/training", expectedPathPrefix: "/training" },
-  { name: "Models", href: "/models", expectedPathPrefix: "/models" },
   { name: "Connectors", href: "/connectors", expectedPathPrefix: "/connectors" },
   { name: "Sources", href: "/sources", expectedPathPrefix: "/sources" },
-  { name: "Runs", href: "/runs", expectedPathPrefix: "/runs" },
+  { name: "Activity", href: "/activity", expectedPathPrefix: "/activity" },
   { name: "Schedules", href: "/schedules", expectedPathPrefix: "/schedules" },
   { name: "Approvals", href: "/approvals", expectedPathPrefix: "/approvals" },
-  { name: "Metrics", href: "/metrics", expectedPathPrefix: "/metrics" },
-  { name: "Insights", href: "/intelligence", expectedPathPrefix: "/intelligence" },
-  { name: "Agent profiles", href: "/intelligence/agents", expectedPathPrefix: "/intelligence/agents" },
-  { name: "Built-in models", href: "/models/built-in", expectedPathPrefix: "/models/built-in" },
-  { name: "Memory", href: "/intelligence/memory", expectedPathPrefix: "/intelligence/memory" },
-  { name: "Reports", href: "/intelligence/reports", expectedPathPrefix: "/intelligence/reports" },
-  {
-    name: "Revenue risk",
-    href: "/intelligence/learning#revenue-risk",
-    expectedPathPrefix: "/intelligence/learning",
-    hash: "#revenue-risk",
-  },
-  { name: "Learning", href: "/intelligence/learning", expectedPathPrefix: "/intelligence/learning" },
-  { name: "Audit trail", href: "/audit", expectedPathPrefix: "/audit" },
-  { name: "Environments", href: "/environments", expectedPathPrefix: "/environments" },
-  { name: "Enterprise", href: "/settings/enterprise", expectedPathPrefix: "/settings/enterprise" },
-  { name: "Federation", href: "/settings/federation", expectedPathPrefix: "/settings/federation" },
+  { name: "Deliverables", href: "/lite/deliverables", expectedPathPrefix: "/lite/deliverables", optional: true },
+  { name: "Intelligence", href: "/intelligence", expectedPathPrefix: "/intelligence" },
+  { name: "Results", href: "/lite/results", expectedPathPrefix: "/lite/results", optional: true },
   { name: "Settings", href: "/settings", expectedPathPrefix: "/settings" },
 ]

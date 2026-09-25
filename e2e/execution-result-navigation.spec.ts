@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("ExecutionResult navigation buttons", () => {
-  test("View in Apollo opens external artifact URL (not connector settings)", async ({ page, context }) => {
+  test("Open in Apollo opens external artifact URL (not connector settings)", async ({ page, context }) => {
     await page.goto("/e2e/execution-result?scenario=apollo_external")
     await expect(page.getByTestId("execution-result-harness")).toBeVisible()
 
-    const viewButton = page.getByRole("link", { name: "View in Apollo" })
+    const viewButton = page.getByRole("link", { name: "Open in Apollo" })
     await expect(viewButton).toBeVisible()
     await expect(viewButton).toHaveAttribute("href", /app\.apollo\.io/)
 
