@@ -167,6 +167,37 @@ def test_normalize_state_keeps_work_artifacts():
     assert reconstructed["artifacts"][0]["kind"] in {"report", "executive_report"}
 
 
+def test_normalize_state_keeps_computer_browser_evidence():
+    from app.services.conversation_state_service import ConversationStateService
+
+    raw = {
+        "execution_plan": {
+            "plan_id": "plan-cu-keep",
+            "source": "computer_execution",
+            "terminal_status": "completed",
+        },
+        "execution_observations": [
+            {
+                "observation_id": "obs-cu-keep",
+                "success": True,
+                "structured": {
+                    "visits": [
+                        {"url": "https://example.com/", "title": "Example Domain", "action": "goto"},
+                    ]
+                },
+            }
+        ],
+        "computer_browser_evidence": {
+            "mode": "playwright_session_read",
+            "visits": [{"url": "https://example.com/", "title": "Example Domain", "action": "goto"}],
+        },
+    }
+    normalized = ConversationStateService._normalize_state(raw)
+    assert normalized["computer_browser_evidence"]["mode"] == "playwright_session_read"
+    assert normalized["computer_browser_evidence"]["visits"][0]["url"] == "https://example.com/"
+    assert normalized["execution_plan"]["source"] == "computer_execution"
+
+
 def test_normalize_state_keeps_provider_result_evidence():
     from app.services.conversation_state_service import ConversationStateService
 

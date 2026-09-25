@@ -35,15 +35,17 @@ _REPLAY = re.compile(r"(?is)\bbrowse again\b")
 _SHOW_BOUND = re.compile(
     r"(?is)\b(show|open)\b.{0,40}\b(report|table|artifact|deliverable|brief|summary)\b"
 )
-_FOLLOWUP = re.compile(
+_ASKS_OBSERVED_PAGE = re.compile(
     r"(?is)\b("
-    r"second page"
-    r"|what (?:was|is) the (?:second |final )?(?:page )?(?:title|url)"
-    r"|what did (?:you|the browser) (?:see|observe)"
-    r"|iana"
-    r"|more information"
-    r"|those pages"
-    r"|that page"
+    r"second page|first page|final page|last page"
+    r"|(?:page|site) (?:url|title|link)"
+    r"|(?:url|title|link) of the (?:second |first |final |last )?page"
+    r"|ended up on"
+    r"|the page we"
+    r"|pages we (?:opened|visited|loaded)"
+    r"|what did (?:you|we|the browser) (?:see|observe|open|load)"
+    r"|those pages|that page"
+    r"|visited urls?"
     r")\b"
 )
 _HUBSPOT = re.compile(r"(?is)\bhubspot\b")
@@ -63,21 +65,75 @@ def match_computer_browser_intent(message: str) -> bool:
 
 def match_computer_browser_resume_phrase(message: str) -> bool:
     text = message or ""
-    if _HUBSPOT.search(text):
+    if _HUBSPOT.search(text) and not re.search(r"(?is)\bdo not (?:use |open |call )?hubspot\b", text):
         return False
     if _WANTS_FRESH.search(text):
         return False
     if _REPLAY.search(text) and not _NEGATED_REPLAY.search(text):
         return False
-    return bool(_SHOW_BOUND.search(text) or _FOLLOWUP.search(text))
+    return bool(_SHOW_BOUND.search(text) or _ASKS_OBSERVED_PAGE.search(text))
+
+
+def visits_from_computer_state(task_state: dict[str, Any] | None) -> list[dict[str, Any]]:
+    state = task_state if isinstance(task_state, dict) else {}
+    evidence = state.get("computer_browser_evidence")
+    if isinstance(evidence, dict):
+        rows = evidence.get("visits")
+        if isinstance(rows, list) and rows:
+            return [row for row in rows if isinstance(row, dict)]
+    observations = state.get("execution_observations") or []
+    for row in reversed(list(observations)):
+        if not isinstance(row, dict):
+            continue
+        blob = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+        visits = blob.get("visits")
+        if isinstance(visits, list) and visits:
+            return [item for item in visits if isinstance(item, dict)]
+        nested_rows = blob.get("rows")
+        if isinstance(nested_rows, list) and nested_rows:
+            return [item for item in nested_rows if isinstance(item, dict)]
+    return []
+
+
+def has_completed_computer_session(task_state: dict[str, Any] | None) -> bool:
+    if visits_from_computer_state(task_state):
+        return True
+    plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
+    return plan is not None and plan.source == "computer_execution"
 
 
 def match_computer_browser_followup(message: str, task_state: dict[str, Any] | None) -> bool:
-    text = message or ""
-    if not match_computer_browser_resume_phrase(text):
+    if not match_computer_browser_resume_phrase(message or ""):
         return False
-    plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
-    return plan is not None and plan.source == "computer_execution"
+    return has_completed_computer_session(task_state)
+
+
+def _pick_visit(message: str, visits: list[dict[str, Any]]) -> dict[str, Any]:
+    text = (message or "").lower()
+    if re.search(r"(?is)\b(first|started|initial)\b", text):
+        return visits[0]
+    if re.search(r"(?is)\b(second|final|last|ended up)\b", text) or len(visits) > 1:
+        return visits[-1]
+    return visits[0]
+
+
+def answer_from_computer_visits(message: str, visits: list[dict[str, Any]]) -> str:
+    """Answer from stored visits only. Never invent a URL or title."""
+    if not visits:
+        return "I still have the browser report, but it does not include page visits."
+    target = _pick_visit(message, visits)
+    title = str(target.get("title") or "").strip()
+    url = str(target.get("url") or "").strip()
+    text = (message or "").lower()
+    wants_url = bool(re.search(r"(?is)\b(url|link|address)\b", text))
+    wants_title = bool(re.search(r"(?is)\btitle\b", text) or "ended up" in text)
+    if wants_url and not wants_title:
+        return url or "That browser visit did not record a URL."
+    if wants_title and not wants_url:
+        return title or "That browser visit did not record a title."
+    if url and title:
+        return f"{title} — {url}"
+    return url or title or _user_summary(visits, success=True, error=None)
 
 
 def _user_summary(visits: list[dict[str, Any]], *, success: bool, error: str | None) -> str:
@@ -127,15 +183,19 @@ async def try_computer_browser_read_turn(
     if match_computer_browser_followup(message or "", state):
         from app.services.durable_work_session import reconstruct_execution_result
 
-        deliv = state.get("durable_deliverable") if isinstance(state.get("durable_deliverable"), dict) else None
-        diagnosis = str((deliv or {}).get("diagnosis") or "")
-        reconstructed = reconstruct_execution_result(state, body=diagnosis)
+        visits = visits_from_computer_state(state)
+        body = answer_from_computer_visits(message or "", visits)
+        if (not visits) or body.startswith("I still have the browser report"):
+            deliv = state.get("durable_deliverable") if isinstance(state.get("durable_deliverable"), dict) else None
+            diagnosis = str((deliv or {}).get("diagnosis") or "").strip()
+            if diagnosis:
+                body = diagnosis
+        reconstructed = reconstruct_execution_result(state, body=body)
         plan = ExecutionPlan.from_dict(state.get("execution_plan"))
         return {
             "stop_pipeline": True,
             "dialogue_mode": "answer",
-            "message": diagnosis
-            or str((reconstructed or {}).get("body") or "I still have that browser report."),
+            "message": body,
             "task_state": state,
             "workflow_status": "completed",
             "execution_path": "computer_browser_read_resume",

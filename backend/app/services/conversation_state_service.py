@@ -74,6 +74,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "capability_route_reason": None,
     "cognitive_resolution_message": None,
     "cognitive_resolution_needs": None,
+    # READ-only Chromium visits must survive get_task_state normalize.
+    "computer_browser_evidence": None,
 }
 
 

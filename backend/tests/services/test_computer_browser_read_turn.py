@@ -50,6 +50,7 @@ def test_followup_requires_computer_plan() -> None:
     assert match_computer_browser_followup("What was the second page URL?", state) is True
     assert match_computer_browser_followup("What was the second page URL? Do not browse again.", state) is True
     assert match_computer_browser_resume_phrase("What was the second page URL? Do not browse again.") is True
+    assert match_computer_browser_resume_phrase("What was the title of the page we ended up on?") is True
     assert match_computer_browser_followup("How many HubSpot contacts?", state) is False
     assert match_computer_browser_followup("What was the second page URL?", {}) is False
 
@@ -181,4 +182,35 @@ async def test_computer_browser_resume_reloads_persisted_state() -> None:
     assert turn is not None
     assert turn["execution_path"] == "computer_browser_read_resume"
     assert "iana.org" in turn["message"]
+    assert turn["provider_reinvoked"] is False
+
+
+@pytest.mark.asyncio
+async def test_computer_browser_resume_answers_url_and_title_from_visits() -> None:
+    from app.services.computer_browser_read_turn import answer_from_computer_visits
+
+    visits = [
+        {"url": "https://example.com/", "title": "Example Domain", "action": "goto"},
+        {"url": "https://www.iana.org/help/example-domains", "title": "Example Domains", "action": "click_link"},
+    ]
+    assert (
+        answer_from_computer_visits("What was the second page URL? Do not browse again.", visits)
+        == "https://www.iana.org/help/example-domains"
+    )
+    assert (
+        answer_from_computer_visits("What was the title of the page we ended up on?", visits)
+        == "Example Domains"
+    )
+    state = {
+        "execution_observations": [
+            {"success": True, "structured": {"visits": visits}},
+        ]
+    }
+    with patch("app.services.computer_browser_read_turn.execute_playwright_browser_read") as mock_exec:
+        turn = await try_computer_browser_read_turn(
+            message="What was the second page URL? Do not browse again.",
+            task_state=state,
+        )
+    mock_exec.assert_not_called()
+    assert turn["message"] == "https://www.iana.org/help/example-domains"
     assert turn["provider_reinvoked"] is False

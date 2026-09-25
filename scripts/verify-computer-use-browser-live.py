@@ -36,6 +36,8 @@ PROMPT = (
     "Do not use HubSpot."
 )
 FOLLOW = "What was the second page URL? Do not browse again."
+TITLE_FOLLOW = "What was the title of the page we ended up on?"
+THANKS = "Thanks, that's enough for now. Do not browse or look anything up."
 
 
 def load_env() -> dict[str, str]:
@@ -169,6 +171,9 @@ def main() -> int:
             timeout=60,
         ).json()
         follow = stream_turn(http, headers, conv, org_id, FOLLOW)
+        title_follow = stream_turn(http, headers, conv, org_id, TITLE_FOLLOW)
+        thanks = stream_turn(http, headers, conv, org_id, THANKS)
+        after_thanks = stream_turn(http, headers, conv, org_id, FOLLOW)
         state_after = http.get(
             f"{BASE}/api/assistant/conversation/{conv}/state",
             headers=json_headers,
@@ -189,6 +194,9 @@ def main() -> int:
         "conversation_id": conv,
         "first_turn": first,
         "follow_up": follow,
+        "title_follow_up": title_follow,
+        "non_browser_turn": thanks,
+        "after_non_browser_follow_up": after_thanks,
         "plan_id": plan.get("plan_id"),
         "plan_source": plan.get("source"),
         "plan_terminal": plan.get("terminal_status"),

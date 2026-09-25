@@ -3247,7 +3247,21 @@ class AgentIntelligence:
             }
 
         if spoken_lite_path and isinstance(early_state, dict):
-            task_state = dict(early_state)
+            from app.services.computer_browser_read_turn import (
+                has_completed_computer_session,
+                match_computer_browser_resume_phrase,
+            )
+
+            if match_computer_browser_resume_phrase(task_text) or has_completed_computer_session(
+                early_state
+            ):
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id or "",
+                    org_id,
+                    client=client,
+                )
+            else:
+                task_state = dict(early_state)
             _mark("task_state_initial")
         else:
             task_state = await get_conversation_state_service(active_settings).get_task_state(
@@ -3321,6 +3335,20 @@ class AgentIntelligence:
                 exc,
             )
         _mark("parameter_ledger")
+        from app.services.computer_browser_read_turn import try_computer_browser_read_turn
+
+        _computer_turn = await try_computer_browser_read_turn(
+            message=task_text,
+            task_state=task_state if isinstance(task_state, dict) else {},
+            settings=active_settings,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            client=client,
+        )
+        if _computer_turn and _computer_turn.get("stop_pipeline"):
+            async for ev in _emit_compiled_operational_short_circuit(_computer_turn):
+                yield ev
+            return
         if spoken_lite_path:
             # Persona is SSE metadata only on LIVE conversational — not in the
             # system prompt. Hardcode to skip nested task_state/dialogue DB.
