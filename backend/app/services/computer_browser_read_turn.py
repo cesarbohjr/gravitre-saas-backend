@@ -29,7 +29,9 @@ _BROWSER_PUBLIC = re.compile(
     r"(?is)(?=.*\b(example\.com|iana\.org)\b)"
     r"(?=.*\b(browser|playwright|navigate|open|visit|browse|follow|click)\b)"
 )
-_WANTS_FRESH = re.compile(r"(?is)\b(refresh|reload|latest|again|rerun|re-run|recheck|browse again)\b")
+_WANTS_FRESH = re.compile(r"(?is)\b(refresh|reload|latest|rerun|re-run|recheck)\b")
+_NEGATED_REPLAY = re.compile(r"(?is)\bdo not (?:browse|open|run) again\b")
+_REPLAY = re.compile(r"(?is)\bbrowse again\b")
 _SHOW_BOUND = re.compile(
     r"(?is)\b(show|open)\b.{0,40}\b(report|table|artifact|deliverable|brief|summary)\b"
 )
@@ -61,7 +63,11 @@ def match_computer_browser_intent(message: str) -> bool:
 
 def match_computer_browser_followup(message: str, task_state: dict[str, Any] | None) -> bool:
     text = message or ""
-    if _HUBSPOT.search(text) or _WANTS_FRESH.search(text):
+    if _HUBSPOT.search(text):
+        return False
+    if _WANTS_FRESH.search(text):
+        return False
+    if _REPLAY.search(text) and not _NEGATED_REPLAY.search(text):
         return False
     plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
     if plan is None or plan.source != "computer_execution":

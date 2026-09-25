@@ -163,15 +163,38 @@ async def browser_agent_playwright_session(
             first["action"] = "goto"
             visits.append(first)
             if follow_link_text:
-                try:
-                    link = page.get_by_role("link", name=re.compile(re.escape(follow_link_text), re.I))
-                    await link.first.click(timeout=15_000)
+                clicked = False
+                last_error = ""
+                follow_used = follow_link_text
+                candidates = [follow_link_text, "Learn more"]
+                for name in candidates:
+                    if not name:
+                        continue
+                    try:
+                        link = page.get_by_role(
+                            "link",
+                            name=re.compile(re.escape(name), re.I),
+                        )
+                        await link.first.click(timeout=8_000)
+                        clicked = True
+                        follow_used = name
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        last_error = str(exc)[:240]
+                if not clicked:
+                    try:
+                        await page.locator('a[href*="iana.org"]').first.click(timeout=15_000)
+                        clicked = True
+                        follow_used = "a[href*=iana.org]"
+                    except Exception as exc:  # noqa: BLE001
+                        last_error = str(exc)[:240]
+                if clicked:
                     await page.wait_for_load_state("domcontentloaded", timeout=45_000)
                     second = await _playwright_page_snapshot(page)
                     second["action"] = "click_link"
-                    second["link_text"] = follow_link_text
+                    second["link_text"] = follow_used
                     visits.append(second)
-                except Exception as exc:  # noqa: BLE001
+                else:
                     visits.append(
                         {
                             "url": str(page.url or ""),
@@ -181,7 +204,7 @@ async def browser_agent_playwright_session(
                             "action": "click_link",
                             "link_text": follow_link_text,
                             "success": False,
-                            "error": str(exc)[:240],
+                            "error": last_error,
                         }
                     )
             await browser.close()

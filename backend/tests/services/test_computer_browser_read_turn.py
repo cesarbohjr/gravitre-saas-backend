@@ -47,6 +47,7 @@ def test_followup_requires_computer_plan() -> None:
         "durable_deliverable": {"diagnosis": "Step 1"},
     }
     assert match_computer_browser_followup("What was the second page URL?", state) is True
+    assert match_computer_browser_followup("What was the second page URL? Do not browse again.", state) is True
     assert match_computer_browser_followup("How many HubSpot contacts?", state) is False
     assert match_computer_browser_followup("What was the second page URL?", {}) is False
 
