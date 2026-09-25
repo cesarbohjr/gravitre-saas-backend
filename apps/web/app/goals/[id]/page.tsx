@@ -118,7 +118,7 @@ export default function GoalDetailPage() {
                             milestone.status === "completed"
                               ? "border-success/30 text-success"
                               : milestone.status === "in_progress"
-                                ? "border-blue-500/30 text-blue-400"
+                                ? "border-blue-500/30 text-blue-600 dark:text-blue-400"
                                 : "border-zinc-500/30 text-zinc-400"
                           )}
                         >

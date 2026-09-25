@@ -225,7 +225,7 @@ export function TimelineItem({
                         className="p-1 rounded hover:bg-red-500/10 transition-colors"
                         title="Delete"
                       >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-400" />
+                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-800 dark:hover:text-red-400" />
                       </button>
                     )}
                   </motion.div>
@@ -245,10 +245,10 @@ export function TimelineItem({
             )}>
               <div className={cn("h-1 w-1 rounded-full", statusStyle.color)} />
               <span className={cn(
-                status === "success" && "text-emerald-400",
-                status === "failed" && "text-red-400",
-                status === "running" && "text-blue-400",
-                status === "pending" && "text-amber-400"
+                status === "success" && "text-emerald-700 dark:text-emerald-400",
+                status === "failed" && "text-red-600 dark:text-red-400",
+                status === "running" && "text-blue-600 dark:text-blue-400",
+                status === "pending" && "text-amber-700 dark:text-amber-400"
               )}>
                 {statusStyle.label}
               </span>

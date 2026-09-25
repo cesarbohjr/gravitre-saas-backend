@@ -492,9 +492,9 @@ export function AnimatedToast({ children, variant = "default", className }: Anim
       className={cn(
         "rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm",
         variant === "default" && "bg-card border-border",
-        variant === "success" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
-        variant === "error" && "bg-red-500/10 border-red-500/30 text-red-400",
-        variant === "warning" && "bg-amber-500/10 border-amber-500/30 text-amber-400",
+        variant === "success" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400",
+        variant === "error" && "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
+        variant === "warning" && "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400",
         className
       )}
     >

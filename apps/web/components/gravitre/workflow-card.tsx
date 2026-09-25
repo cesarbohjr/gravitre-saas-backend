@@ -323,7 +323,7 @@ export function WorkflowCard({
             <div className="flex items-center gap-4">
               {/* Success rate */}
               <div className="flex items-center gap-1.5">
-                <Icon name="chartLine" size="xs" className="text-emerald-400" />
+                <Icon name="chartLine" size="xs" className="text-emerald-700 dark:text-emerald-400" />
                 <span className="text-xs text-muted-foreground">{successRate}</span>
               </div>
               

@@ -35,13 +35,13 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
-    return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
   }
   if (status === "training" || status === "processing" || status === "queued") {
-    return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+    return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
   }
   if (status === "failed") {
-    return "bg-red-500/10 text-red-400 border-red-500/20"
+    return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
   }
   return "bg-secondary text-muted-foreground border-border"
 }
@@ -570,7 +570,7 @@ function TrainingPageContent() {
         />
 
         {loadError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>{loadError}</span>
             <Button
               variant="outline"
@@ -994,7 +994,7 @@ function TrainingPageContent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:border-emerald-500/40 hover:text-emerald-400"
+                          className="hover:border-emerald-500/40 hover:text-emerald-800 dark:hover:text-emerald-400"
                           disabled={busy}
                           onClick={() => {
                             setTrainDatasetId(null)
@@ -1016,7 +1016,7 @@ function TrainingPageContent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:border-blue-500/40 hover:text-blue-400"
+                          className="hover:border-blue-500/40 hover:text-blue-800 dark:hover:text-blue-400"
                           disabled={busy || dataset.record_count < 1}
                           onClick={() => {
                             setRecordDatasetId(null)
@@ -1028,7 +1028,7 @@ function TrainingPageContent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:border-red-500/40 hover:text-red-400"
+                          className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
                           disabled={busy}
                           onClick={() => void handleDeleteDataset(dataset.id)}
                         >
@@ -1132,7 +1132,7 @@ function TrainingPageContent() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="hover:border-red-500/40 hover:text-red-400"
+                            className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
                             disabled={mutatingJobId === job.id}
                             onClick={() => void handleCancelJob(job.id)}
                           >
@@ -1227,7 +1227,7 @@ function TrainingPageContent() {
                     className={cn(
                       "rounded-full border px-2 py-0.5 text-[10px] uppercase",
                       instruction.is_active
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
                         : "bg-secondary text-muted-foreground border-border"
                     )}
                   >
@@ -1239,7 +1239,7 @@ function TrainingPageContent() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="hover:border-blue-500/40 hover:text-blue-400"
+                    className="hover:border-blue-500/40 hover:text-blue-800 dark:hover:text-blue-400"
                     disabled={mutatingInstructionId === instruction.id}
                     onClick={() => void handleToggleInstruction(instruction)}
                   >
@@ -1248,7 +1248,7 @@ function TrainingPageContent() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="hover:border-red-500/40 hover:text-red-400"
+                    className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
                     disabled={mutatingInstructionId === instruction.id}
                     onClick={() => void handleDeleteInstruction(instruction.id)}
                   >

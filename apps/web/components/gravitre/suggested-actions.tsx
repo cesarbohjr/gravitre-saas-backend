@@ -55,22 +55,22 @@ const priorityConfig = {
   critical: {
     bg: "bg-red-500/10",
     border: "border-red-500/30",
-    text: "text-red-400",
-    badge: "bg-red-500/20 text-red-400",
+    text: "text-red-600 dark:text-red-400",
+    badge: "bg-red-500/20 text-red-600 dark:text-red-400",
     glow: "shadow-red-500/20",
   },
   high: {
     bg: "bg-amber-500/10",
     border: "border-amber-500/30",
-    text: "text-amber-400",
-    badge: "bg-amber-500/20 text-amber-400",
+    text: "text-amber-700 dark:text-amber-400",
+    badge: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
     glow: "shadow-amber-500/20",
   },
   medium: {
     bg: "bg-blue-500/10",
     border: "border-blue-500/30",
-    text: "text-blue-400",
-    badge: "bg-blue-500/20 text-blue-400",
+    text: "text-blue-600 dark:text-blue-400",
+    badge: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
     glow: "shadow-blue-500/20",
   },
   low: {
@@ -150,7 +150,7 @@ export function SuggestedActions({
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-secondary/30">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/20">
-            <Zap className="h-3.5 w-3.5 text-amber-400" />
+            <Zap className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
           </div>
           <h3 className="text-sm font-semibold text-foreground">Suggested Actions</h3>
           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -335,7 +335,7 @@ export function SuggestedActions({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
-                <Zap className="h-4 w-4 text-amber-400" />
+                <Zap className="h-4 w-4 text-amber-700 dark:text-amber-400" />
               </div>
               All Suggested Actions
             </DialogTitle>

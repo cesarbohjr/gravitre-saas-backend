@@ -413,7 +413,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
             )}
 
             {testError && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-400">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-600 dark:text-red-400">
                 {testError}
               </div>
             )}
@@ -422,7 +422,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
                 <div className="text-center">
                   <Check className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
-                  <p className="text-sm font-medium text-emerald-400">
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                     {testResult.message ?? "Connection successful"}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">

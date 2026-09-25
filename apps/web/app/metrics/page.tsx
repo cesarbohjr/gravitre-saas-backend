@@ -290,10 +290,10 @@ function MetricCard({
 }) {
   const isPositive = change === undefined ? null : change >= 0
   const colorClasses = {
-    blue: "from-blue-500/20 to-blue-500/5 text-blue-400",
-    emerald: "from-emerald-500/20 to-emerald-500/5 text-emerald-400",
-    amber: "from-amber-500/20 to-amber-500/5 text-amber-400",
-    red: "from-red-500/20 to-red-500/5 text-red-400",
+    blue: "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400",
+    emerald: "from-emerald-500/20 to-emerald-500/5 text-emerald-700 dark:text-emerald-400",
+    amber: "from-amber-500/20 to-amber-500/5 text-amber-700 dark:text-amber-400",
+    red: "from-red-500/20 to-red-500/5 text-red-600 dark:text-red-400",
   }
 
   return (
@@ -319,7 +319,7 @@ function MetricCard({
           {change !== undefined && (
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium",
-              isPositive ? "text-emerald-400" : "text-red-400"
+              isPositive ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
             )}>
               {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
               {isPositive ? "+" : ""}{change}%
@@ -361,9 +361,9 @@ function MetricCard({
 function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: () => void }) {
   const router = useRouter()
   const config = {
-    anomaly: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-    trend: { icon: TrendingUp, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-    optimization: { icon: Sparkles, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    anomaly: { icon: AlertTriangle, color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    trend: { icon: TrendingUp, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+    optimization: { icon: Sparkles, color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
   }
   const cfg = config[insight.type as keyof typeof config]
   const Icon = cfg.icon
@@ -702,8 +702,8 @@ export default function MetricsPage() {
                   <h3 className="text-sm font-medium text-foreground">Latency Distribution</h3>
                   {latencySpikeTime ? (
                     <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10">
-                      <AlertTriangle className="h-3 w-3 text-amber-400" />
-                      <span className="text-[10px] font-medium text-amber-400">
+                      <AlertTriangle className="h-3 w-3 text-amber-700 dark:text-amber-400" />
+                      <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">
                         Spike detected at {latencySpikeTime}
                       </span>
                     </div>

@@ -35,10 +35,11 @@ import {
   NucleoSuccess,
 } from "@/components/icons/nucleo/semantic"
 
-const BRAND = "#16a374"
-const BRAND_SOFT = "#5ec49a"
-const MUTED = "#94a3b8"
-const IDLE = "#cbd5e1"
+const BRAND = "var(--g-brand)"
+const BRAND_SOFT = "var(--g-brand-muted)"
+const MUTED = "var(--muted-foreground)"
+const IDLE = "var(--g-border-strong)"
+const WARNING = "var(--g-warning)"
 
 function formatDuration(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms) || ms < 0) return "—"
@@ -130,7 +131,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
     { label: "Active", value: counts.active, color: BRAND },
     { label: "Executing", value: counts.processing, color: BRAND_SOFT },
     { label: "Idle", value: counts.idle, color: MUTED },
-    { label: "Error", value: counts.error, color: "#f59e0b" },
+    { label: "Error", value: counts.error, color: WARNING },
   ].filter((s) => s.value > 0)
   const total = slices.reduce((sum, s) => sum + s.value, 0) || 1
   const circumference = 2 * Math.PI * 14
@@ -182,7 +183,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
             { label: "Active", value: counts.active, color: BRAND },
             { label: "Executing", value: counts.processing, color: BRAND_SOFT },
             { label: "Idle", value: counts.idle, color: MUTED },
-            { label: "Error", value: counts.error, color: "#f59e0b" },
+            { label: "Error", value: counts.error, color: WARNING },
           ].map((row) => (
             <li key={row.label} className="flex items-center justify-between gap-3 text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
@@ -213,7 +214,7 @@ function RunsBreakdown({ data }: { data: HomeDashboardData }) {
     <GravitreSurface className="h-full">
       <div className="flex items-start justify-between gap-3">
         <h2 className={TYPE.sectionTitle}>
-          {chartData.length > 0 ? "Tasks breakdown" : "Tasks breakdown"}
+          Tasks breakdown
         </h2>
         <Link
           href={APP_ROUTES.runs}

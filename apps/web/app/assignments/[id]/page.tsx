@@ -63,11 +63,11 @@ async function fetchAgentJob(id: string): Promise<AgentJob> {
 }
 
 const typeConfig: Record<string, { icon: string; color: string; label: string; bg: string }> = {
-  email: { icon: "mail", color: "text-blue-400", label: "Email", bg: "bg-blue-500/10" },
-  social: { icon: "share", color: "text-violet-400", label: "Social", bg: "bg-violet-500/10" },
+  email: { icon: "mail", color: "text-blue-600 dark:text-blue-400", label: "Email", bg: "bg-blue-500/10" },
+  social: { icon: "share", color: "text-violet-600 dark:text-violet-400", label: "Social", bg: "bg-violet-500/10" },
   report: { icon: "chart", color: "text-[color:var(--g-brand)]", label: "Report", bg: "bg-[color:var(--g-brand-soft)]" },
-  segment: { icon: "users", color: "text-amber-400", label: "Segment", bg: "bg-amber-500/10" },
-  workflow: { icon: "workflow", color: "text-rose-400", label: "Workflow", bg: "bg-rose-500/10" },
+  segment: { icon: "users", color: "text-amber-700 dark:text-amber-400", label: "Segment", bg: "bg-amber-500/10" },
+  workflow: { icon: "workflow", color: "text-rose-600 dark:text-rose-400", label: "Workflow", bg: "bg-rose-500/10" },
 }
 
 // Live Execution Timeline
@@ -87,7 +87,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
               }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <Icon name="activity" size="sm" className="text-blue-400" />
+              <Icon name="activity" size="sm" className="text-blue-600 dark:text-blue-400" />
             </motion.div>
           </div>
           <div>
@@ -158,7 +158,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   >
-                    <Icon name="spinner" size="sm" className="text-blue-400" />
+                    <Icon name="spinner" size="sm" className="text-blue-600 dark:text-blue-400" />
                   </motion.div>
                 </motion.div>
               )}
@@ -169,7 +169,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
               )}
               {step.status === "error" && (
                 <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center">
-                  <Icon name="warning" size="sm" className="text-red-400" />
+                  <Icon name="warning" size="sm" className="text-red-600 dark:text-red-400" />
                 </div>
               )}
               
@@ -321,7 +321,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8">
         <div className="h-16 w-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
-          <Icon name="warning" size="xl" className="text-red-400" />
+          <Icon name="warning" size="xl" className="text-red-600 dark:text-red-400" />
         </div>
         <h3 className="font-semibold text-foreground mb-2">Task failed</h3>
         <p className="text-sm text-muted-foreground max-w-md">{jobError}</p>
@@ -626,7 +626,7 @@ function AssignmentApprovalDialog({
             <>
               <Button
                 variant="outline"
-                className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                className="border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-800 dark:hover:text-red-300"
                 onClick={() => setRejectMode(true)}
                 disabled={isSubmitting}
               >
@@ -999,7 +999,7 @@ export default function AssignmentDetailPage({
               )}
 
               {approvalStatus === "rejected" && rejectionReason && (
-                <GravitreSurface className="border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400" padded={false}>
+                <GravitreSurface className="border-red-500/30 bg-red-500/5 p-4 text-sm text-red-600 dark:text-red-400" padded={false}>
                   Rejected: {rejectionReason}
                 </GravitreSurface>
               )}

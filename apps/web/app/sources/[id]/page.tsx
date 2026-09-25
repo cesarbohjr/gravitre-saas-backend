@@ -165,7 +165,7 @@ export default function SourceDetailPage() {
           <button onClick={() => router.push("/sources")} className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to Sources
           </button>
-          <p className="text-sm text-red-400">{error instanceof Error ? error.message : "Source not found"}</p>
+          <p className="text-sm text-red-600 dark:text-red-400">{error instanceof Error ? error.message : "Source not found"}</p>
         </div>
       </AppShell>
     )
@@ -250,7 +250,7 @@ export default function SourceDetailPage() {
           </section>
 
           {testMessage ? (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-400">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-400">
               {testMessage}
             </div>
           ) : null}

@@ -36,9 +36,9 @@ import { cn } from "@/lib/utils"
 import { SixQuestionsPanel, type SixQuestionsAnswer } from "@/components/intelligence/six-questions-panel"
 
 const availabilityBadge: Record<string, string> = {
-  platform: "bg-sky-500/10 text-sky-300 border-sky-500/25",
-  connected: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
-  requires_connection: "bg-amber-500/10 text-amber-400 border-amber-500/25",
+  platform: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25",
+  connected: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
+  requires_connection: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25",
 }
 
 function formatMetricKey(key: string): string {
@@ -166,7 +166,7 @@ export function ModelDetailInsights({
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             {typeMeta ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                 <Sparkles className="h-3 w-3" />
                 {typeMeta.label}
               </div>
@@ -237,9 +237,9 @@ export function ModelDetailInsights({
                 >
                   <div className="mb-2 flex justify-center">
                     {done ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                      <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
                     ) : (
-                      <Circle className={cn("h-5 w-5", current ? "text-emerald-400" : "text-muted-foreground/40")} />
+                      <Circle className={cn("h-5 w-5", current ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/40")} />
                     )}
                   </div>
                   <p className="text-xs font-medium">{step.label}</p>
@@ -306,7 +306,7 @@ export function ModelDetailInsights({
                         </Badge>
                       ) : null}
                       {baseModelOption.fineTunable ? (
-                        <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">
+                        <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
                           Fine-tunable
                         </Badge>
                       ) : null}
@@ -463,7 +463,7 @@ export function ModelDetailInsights({
                       <div className="flex items-center gap-2">
                         <span className="font-medium">v{version.version}</span>
                         {isLive ? (
-                          <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-[10px]">
+                          <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px]">
                             Live
                           </Badge>
                         ) : null}
@@ -525,12 +525,12 @@ export function ModelDetailInsights({
                 </Button>
               </div>
               {predictError ? (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-300">
+                <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-600 dark:text-red-300">
                   {predictError}
                 </div>
               ) : null}
               {predictResult ? (
-                <pre className="max-h-48 overflow-auto rounded-lg border border-border/70 bg-background/80 p-3 text-xs text-emerald-300">
+                <pre className="max-h-48 overflow-auto rounded-lg border border-border/70 bg-background/80 p-3 text-xs text-emerald-700 dark:text-emerald-300">
                   {predictResult}
                 </pre>
               ) : null}

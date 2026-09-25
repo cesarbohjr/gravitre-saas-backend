@@ -245,7 +245,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="h-4 w-4 text-violet-400" />
+              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               Starter Workflows
             </CardTitle>
             <CardDescription className="text-xs">

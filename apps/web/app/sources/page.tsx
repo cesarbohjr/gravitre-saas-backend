@@ -377,7 +377,7 @@ function SourceTile({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+                  className="h-7 gap-1.5 text-xs text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/10"
                   onClick={() => void onDelete(source.id)}
                   disabled={isMutating}
                 >
@@ -500,7 +500,7 @@ export default function SourcesPage() {
 
         <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
           {error ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
               <span>{error instanceof Error ? error.message : "Failed to load sources"}</span>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => mutate()}>
                 Retry

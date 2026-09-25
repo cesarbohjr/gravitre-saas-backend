@@ -95,10 +95,10 @@ export function GoalMonitoringPanel({
   
   const getStatusColor = (status: typeof goal.status) => {
     switch (status) {
-      case "active": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-      case "paused": return "bg-amber-500/20 text-amber-400 border-amber-500/30"
-      case "completed": return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-      case "failed": return "bg-red-500/20 text-red-400 border-red-500/30"
+      case "active": return "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+      case "paused": return "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
+      case "completed": return "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+      case "failed": return "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
     }
   }
 
@@ -125,7 +125,7 @@ export function GoalMonitoringPanel({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/20 border border-violet-500/30">
-          <Target className="h-5 w-5 text-violet-400" />
+          <Target className="h-5 w-5 text-violet-600 dark:text-violet-400" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -156,8 +156,8 @@ export function GoalMonitoringPanel({
               <span className="text-xs font-medium text-muted-foreground">Progress</span>
               <div className={cn(
                 "flex items-center gap-1 text-xs",
-                goal.progress.trend === "up" ? "text-emerald-400" :
-                goal.progress.trend === "down" ? "text-red-400" :
+                goal.progress.trend === "up" ? "text-emerald-700 dark:text-emerald-400" :
+                goal.progress.trend === "down" ? "text-red-600 dark:text-red-400" :
                 "text-muted-foreground"
               )}>
                 {goal.progress.trend === "up" && <TrendingUp className="h-3 w-3" />}
@@ -173,10 +173,10 @@ export function GoalMonitoringPanel({
 
           {/* Success Metric */}
           <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-            <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+            <CheckCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="text-xs text-muted-foreground">Success Metric: </span>
-              <span className="text-xs text-emerald-400 font-medium">{goal.successMetric}</span>
+              <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{goal.successMetric}</span>
             </div>
           </div>
 
@@ -205,7 +205,7 @@ export function GoalMonitoringPanel({
                 <span className="text-xs font-medium text-muted-foreground">Recent Deliverables</span>
                 <button 
                   onClick={onViewDeliverables}
-                  className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-0.5"
+                  className="text-[10px] text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 flex items-center gap-0.5"
                 >
                   View all
                   <ArrowUpRight className="h-3 w-3" />
@@ -228,9 +228,9 @@ export function GoalMonitoringPanel({
                         variant="outline" 
                         className={cn(
                           "text-[9px] py-0 h-4",
-                          deliverable.status === "complete" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
-                          deliverable.status === "draft" ? "bg-amber-500/10 text-amber-400 border-amber-500/30" :
-                          "bg-blue-500/10 text-blue-400 border-blue-500/30"
+                          deliverable.status === "complete" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" :
+                          deliverable.status === "draft" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30" :
+                          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
                         )}
                       >
                         {deliverable.status}

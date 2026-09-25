@@ -490,10 +490,10 @@ const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label:
   approval: { icon: Shield, color: "bg-destructive/20 border-destructive/40 text-destructive", label: "Approval" },
   decision: { icon: GitBranch, color: "bg-[color:var(--g-signal-surface)] border-[color:var(--g-signal)]/40 text-[color:var(--g-signal)]", label: "Decision" },
   council: { icon: Users, color: "bg-warning/20 border-warning/40 text-warning", label: "Agent Council" },
-  if: { icon: Split, color: "bg-sky-500/20 border-sky-500/40 text-sky-400", label: "IF" },
+  if: { icon: Split, color: "bg-sky-500/20 border-sky-500/40 text-sky-700 dark:text-sky-400", label: "IF" },
   switch: { icon: GitBranch, color: "bg-indigo-500/20 border-indigo-500/40 text-indigo-400", label: "Switch" },
-  merge: { icon: GitMerge, color: "bg-teal-500/20 border-teal-500/40 text-teal-400", label: "Merge" },
-  loop: { icon: Repeat, color: "bg-cyan-500/20 border-cyan-500/40 text-cyan-400", label: "Loop" },
+  merge: { icon: GitMerge, color: "bg-teal-500/20 border-teal-500/40 text-teal-700 dark:text-teal-400", label: "Merge" },
+  loop: { icon: Repeat, color: "bg-cyan-500/20 border-cyan-500/40 text-cyan-700 dark:text-cyan-400", label: "Loop" },
   }
 
 function getNodeTypeConfig(type: string) {
@@ -731,7 +731,7 @@ function CanvasNode({
               {node.selectedAction && (
                 <>
                   <span className="text-muted-foreground/30">|</span>
-                  <p className="text-[10px] text-blue-400">
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400">
                     {connectorActions[node.vendor || ""]?.actions.find(a => a.id === node.selectedAction)?.name || node.selectedAction}
                   </p>
                 </>
@@ -791,7 +791,7 @@ function CanvasNode({
                   <span className={cn(
                     "px-1.5 py-0.5 rounded font-mono",
                     action.method === "GET" && "bg-success/10 text-success",
-                    action.method === "POST" && "bg-blue-500/10 text-blue-400",
+                    action.method === "POST" && "bg-blue-500/10 text-blue-600 dark:text-blue-400",
                     action.method === "PATCH" && "bg-warning/10 text-warning"
                   )}>
                     {action.method}
@@ -2315,9 +2315,9 @@ node.type === "approval" && "bg-red-500",
             <div className="space-y-2 p-3 rounded-lg border border-border bg-secondary/40">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-blue-400" />
+                  <Zap className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                   <span className="text-xs font-medium text-foreground">Runs as</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">
                     invoke_tool
                   </span>
                 </div>
@@ -2517,7 +2517,7 @@ node.type === "approval" && "bg-red-500",
               {selectedAction && (
                 <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-blue-400" />
+                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <span className="text-sm font-medium">Action Parameters</span>
                   </div>
                   {selectedAction.fields.map((field) => (
@@ -6023,8 +6023,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   <div className="flex items-center gap-2">
                     {executionStatus === "running" && (
                       <>
-                        <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
-                        <span className="text-sm font-medium text-blue-400">Running workflow...</span>
+                        <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                        <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Running workflow...</span>
                       </>
                     )}
                     {executionStatus === "completed" && (

@@ -70,7 +70,7 @@ function ModalStepIndicator({ currentStep }: { currentStep: number }) {
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
                 isActive && "bg-emerald-500 text-white",
-                isComplete && "bg-emerald-500/20 text-emerald-400",
+                isComplete && "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
                 !isActive && !isComplete && "bg-secondary text-muted-foreground",
               )}
             >
@@ -261,7 +261,7 @@ export function NewAssignmentModal({
                   </div>
                 ) : agentsError ? (
                   <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-center">
-                    <Icon name="warning" size="md" className="mx-auto mb-2 text-red-400" />
+                    <Icon name="warning" size="md" className="mx-auto mb-2 text-red-600 dark:text-red-400" />
                     <p className="text-sm text-foreground">Could not load agents</p>
                     <p className="mt-1 text-xs text-muted-foreground">Check your connection and try again.</p>
                     <Button variant="outline" size="sm" className="mt-4" onClick={() => void mutate()}>
@@ -315,7 +315,7 @@ export function NewAssignmentModal({
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold text-foreground">{agent.name}</p>
                           <p className="truncate text-xs text-muted-foreground">{agent.role}</p>
-                          <p className="mt-1 text-[11px] text-emerald-400">{agent.successRate}% success</p>
+                          <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400">{agent.successRate}% success</p>
                         </div>
                         {selectedAgentId === agent.id ? (
                           <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500">
@@ -487,7 +487,7 @@ export function NewAssignmentModal({
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  The assignment will appear at the top of your list as <span className="text-amber-400">Queued</span>.
+                  The assignment will appear at the top of your list as <span className="text-amber-700 dark:text-amber-400">Queued</span>.
                 </p>
               </motion.div>
             ) : null}

@@ -180,9 +180,9 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             >
-              <Loader2 className="h-4 w-4 text-blue-400" />
+              <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </motion.div>
-            <span className="text-sm font-medium text-blue-400">
+            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
               {currentStep?.label}
             </span>
           </motion.div>
@@ -211,9 +211,9 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
                   <div
                     className={`flex h-6 w-6 items-center justify-center rounded-full transition-all ${
                       isCompleted
-                        ? "bg-emerald-500/20 text-emerald-400"
+                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
                         : isCurrent
-                          ? "bg-blue-500/20 text-blue-400"
+                          ? "bg-blue-500/20 text-blue-600 dark:text-blue-400"
                           : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -232,7 +232,7 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
                   <span
                     className={`text-xs transition-colors ${
                       isCompleted
-                        ? "text-emerald-400"
+                        ? "text-emerald-700 dark:text-emerald-400"
                         : isCurrent
                           ? "text-foreground"
                           : "text-muted-foreground"
@@ -244,7 +244,7 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
                     <motion.span
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="ml-auto text-[10px] text-emerald-400/70"
+                      className="ml-auto text-[10px] text-emerald-700/70 dark:text-emerald-400/70"
                     >
                       Done
                     </motion.span>
@@ -309,7 +309,7 @@ export function AIProcessingInline({ isProcessing }: { isProcessing: boolean }) 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex items-center gap-2 text-xs text-blue-400"
+      className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400"
     >
       <motion.div
         animate={{ rotate: 360 }}

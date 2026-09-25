@@ -62,15 +62,15 @@ function SearchResultCard({ result }: { result: SearchResult }) {
     >
       <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/80">
         {result.entity_type === "run" ? (
-          <Zap className="h-4 w-4 text-blue-400" />
+          <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         ) : result.entity_type === "agent" ? (
-          <Bot className="h-4 w-4 text-violet-400" />
+          <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
         ) : result.entity_type === "connector" ? (
-          <Link2 className="h-4 w-4 text-emerald-400" />
+          <Link2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
         ) : result.entity_type === "workflow" ? (
-          <Workflow className="h-4 w-4 text-amber-400" />
+          <Workflow className="h-4 w-4 text-amber-700 dark:text-amber-400" />
         ) : result.entity_type === "source" ? (
-          <Database className="h-4 w-4 text-cyan-400" />
+          <Database className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
         ) : (
           <FileText className="h-4 w-4 text-muted-foreground" />
         )}

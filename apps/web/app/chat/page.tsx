@@ -147,7 +147,7 @@ function statusBadgeClass(status: string): string {
     return "bg-success/10 text-success"
   }
   if (normalized.includes("run")) {
-    return "bg-blue-500/10 text-blue-400"
+    return "bg-blue-500/10 text-blue-600 dark:text-blue-400"
   }
   return "bg-secondary text-muted-foreground"
 }
@@ -199,15 +199,15 @@ function SearchResultRow({
       >
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/80">
           {result.entity_type === "run" ? (
-            <Zap className="h-4 w-4 text-blue-400" />
+            <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           ) : result.entity_type === "agent" ? (
-            <Bot className="h-4 w-4 text-violet-400" />
+            <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           ) : result.entity_type === "connector" ? (
             <Link2 className="h-4 w-4 text-success" />
           ) : result.entity_type === "workflow" ? (
             <Workflow className="h-4 w-4 text-warning" />
           ) : result.entity_type === "source" ? (
-            <Database className="h-4 w-4 text-cyan-400" />
+            <Database className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
           ) : (
             <FileText className="h-4 w-4 text-muted-foreground" />
           )}
@@ -339,11 +339,11 @@ function SearchTypeaheadDropdown({
               <div
                 className={cn(
                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                  item.kind === "agent" && "bg-violet-500/10 text-violet-400",
+                  item.kind === "agent" && "bg-violet-500/10 text-violet-600 dark:text-violet-400",
                   item.kind === "workflow" && "bg-warning/10 text-warning",
                   item.kind === "connector" && "bg-success/10 text-success",
                   item.kind === "history" && "bg-secondary text-muted-foreground",
-                  item.kind === "search" && "bg-blue-500/10 text-blue-400",
+                  item.kind === "search" && "bg-blue-500/10 text-blue-600 dark:text-blue-400",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -740,7 +740,7 @@ export default function ChatPage() {
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
                   <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 flex items-center justify-center mb-6">
-                    <Search className="h-8 w-8 text-blue-400" />
+                    <Search className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">Sign in required</h2>
                   <p className="text-sm text-muted-foreground max-w-md">

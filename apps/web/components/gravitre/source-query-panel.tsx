@@ -70,7 +70,7 @@ export function SourceQueryPanel({ sourceId, suggestions = [] }: SourceQueryPane
         </Button>
       </div>
 
-      {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
       {result ? (
         <div className="mt-4 space-y-3">

@@ -114,7 +114,7 @@ export function NodeRunDebugPanel({
             if (!reasoning && confidence == null) return null
             return (
               <div className="mt-2 rounded-md border border-violet-500/25 bg-violet-500/5 px-2 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-400">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
                   Branch reasoning (Module C)
                 </p>
                 {reasoning ? (

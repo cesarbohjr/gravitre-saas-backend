@@ -609,7 +609,7 @@ function NewAssignmentPageContent() {
                             <Icon 
                               name={source.icon as IconName}
                               size="sm" 
-                              className={selectedSources.includes(source.id) ? "text-blue-400" : "text-muted-foreground"} 
+                              className={selectedSources.includes(source.id) ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"} 
                             />
                           </div>
                           <div className="flex-1">
@@ -619,7 +619,7 @@ function NewAssignmentPageContent() {
                             </p>
                           </div>
                           {selectedSources.includes(source.id) && (
-                            <Icon name="check" size="sm" className="text-blue-400" />
+                            <Icon name="check" size="sm" className="text-blue-600 dark:text-blue-400" />
                           )}
                         </button>
                       ))}
@@ -662,7 +662,7 @@ function NewAssignmentPageContent() {
                           <Icon 
                             name={output.icon as IconName}
                             size="lg" 
-                            className={selectedOutputs.includes(output.id) ? "text-violet-400" : "text-muted-foreground"} 
+                            className={selectedOutputs.includes(output.id) ? "text-violet-600 dark:text-violet-400" : "text-muted-foreground"} 
                           />
                         </div>
                         <div className="text-center">
@@ -714,7 +714,7 @@ function NewAssignmentPageContent() {
                           <Icon 
                             name={dest.icon as IconName}
                             size="sm" 
-                            className={selectedDestinations.includes(dest.id) ? "text-amber-400" : "text-muted-foreground"} 
+                            className={selectedDestinations.includes(dest.id) ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"} 
                           />
                         </div>
                         <div className="flex-1">
@@ -722,7 +722,7 @@ function NewAssignmentPageContent() {
                           <p className="text-xs text-muted-foreground">{dest.description}</p>
                         </div>
                         {selectedDestinations.includes(dest.id) && (
-                          <Icon name="check" size="sm" className="text-amber-400" />
+                          <Icon name="check" size="sm" className="text-amber-700 dark:text-amber-400" />
                         )}
                       </button>
                     ))}
@@ -820,7 +820,7 @@ function NewAssignmentPageContent() {
                           {selectedOutputs.map((id) => {
                             const output = outputTypes.find(o => o.id === id)
                             return output && (
-                              <span key={id} className="px-3 py-1 rounded-lg bg-violet-500/10 text-sm text-violet-400">
+                              <span key={id} className="px-3 py-1 rounded-lg bg-violet-500/10 text-sm text-violet-600 dark:text-violet-400">
                                 {output.name}
                               </span>
                             )
@@ -835,7 +835,7 @@ function NewAssignmentPageContent() {
                           {selectedDestinations.map((id) => {
                             const dest = destinations.find(d => d.id === id)
                             return dest && (
-                              <span key={id} className="px-3 py-1 rounded-lg bg-amber-500/10 text-sm text-amber-400">
+                              <span key={id} className="px-3 py-1 rounded-lg bg-amber-500/10 text-sm text-amber-700 dark:text-amber-400">
                                 {dest.name}
                               </span>
                             )

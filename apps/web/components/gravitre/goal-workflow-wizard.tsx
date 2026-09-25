@@ -112,35 +112,35 @@ const goalCategories: GoalCategory[] = [
     id: "sales",
     label: "Sales & Revenue",
     icon: TrendingUp,
-    color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    color: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
     examples: ["Qualify new leads", "Follow up on opportunities", "Route leads to reps"],
   },
   {
     id: "support",
     label: "Customer Support",
     icon: HelpCircle,
-    color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    color: "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30",
     examples: ["Monitor ticket trends", "Escalate high-priority issues", "Summarize support data"],
   },
   {
     id: "finance",
     label: "Finance & Billing",
     icon: CreditCard,
-    color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    color: "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30",
     examples: ["Reduce overdue invoices", "Process refunds", "Generate billing reports"],
   },
   {
     id: "reporting",
     label: "Reports & Analytics",
     icon: BarChart3,
-    color: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+    color: "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30",
     examples: ["Weekly executive summary", "Monthly performance report", "Trend analysis"],
   },
   {
     id: "operations",
     label: "Operations & Data",
     icon: Database,
-    color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+    color: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border-cyan-500/30",
     examples: ["Sync customer data", "Clean duplicate records", "Archive old data"],
   },
 ]
@@ -414,21 +414,21 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
   const getStepTypeColor = (type: ProposedStep["type"]) => {
     switch (type) {
       case "source": return "bg-slate-500/20 text-slate-400 border-slate-500/30"
-      case "agent": return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-      case "task": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-      case "connector": return "bg-amber-500/20 text-amber-400 border-amber-500/30"
-      case "approval": return "bg-red-500/20 text-red-400 border-red-500/30"
-      case "decision": return "bg-violet-500/20 text-violet-400 border-violet-500/30"
-      case "council": return "bg-amber-500/20 text-amber-400 border-amber-500/30"
+      case "agent": return "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+      case "task": return "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+      case "connector": return "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
+      case "approval": return "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+      case "decision": return "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30"
+      case "council": return "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
       default: return "bg-muted text-muted-foreground"
     }
   }
 
   const getRiskColor = (risk: "low" | "medium" | "high") => {
     switch (risk) {
-      case "low": return "text-emerald-400"
-      case "medium": return "text-amber-400"
-      case "high": return "text-red-400"
+      case "low": return "text-emerald-700 dark:text-emerald-400"
+      case "medium": return "text-amber-700 dark:text-amber-400"
+      case "high": return "text-red-600 dark:text-red-400"
     }
   }
 
@@ -440,7 +440,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30">
-                <Target className="h-5 w-5 text-violet-400" />
+                <Target className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
                 <DialogTitle className="text-lg">Create from Goal</DialogTitle>
@@ -541,9 +541,9 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                           className={cn(
                             "flex-1 py-2 px-3 rounded-lg border text-sm font-medium capitalize transition-all",
                             priority === p
-                              ? p === "low" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
-                                p === "medium" ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
-                                "bg-red-500/20 text-red-400 border-red-500/30"
+                              ? p === "low" ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" :
+                                p === "medium" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30" :
+                                "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
                               : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
                           )}
                         >
@@ -562,7 +562,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                           className={cn(
                             "flex-1 py-2 px-2 rounded-lg border text-xs font-medium capitalize transition-all",
                             frequency === f
-                              ? "bg-violet-500/20 text-violet-400 border-violet-500/30"
+                              ? "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30"
                               : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
                           )}
                         >
@@ -580,7 +580,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                     animate={{ opacity: 1, height: "auto" }}
                     className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20"
                   >
-                    <p className="text-xs text-violet-400 mb-2">Example goals for this category:</p>
+                    <p className="text-xs text-violet-600 dark:text-violet-400 mb-2">Example goals for this category:</p>
                     <div className="flex flex-wrap gap-2">
                       {goalCategories.find(c => c.id === selectedCategory)?.examples.map((ex, i) => (
                         <button
@@ -619,7 +619,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                         className={cn(
                           "py-2.5 px-3 rounded-lg border text-sm font-medium transition-all",
                           selectedDepartment === dept
-                            ? "bg-violet-500/20 text-violet-400 border-violet-500/30"
+                            ? "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30"
                             : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
                         )}
                       >
@@ -656,7 +656,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                         >
                           <div className={cn(
                             "h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold",
-                            isSelected ? "bg-emerald-500/20 text-emerald-400" : "bg-secondary text-muted-foreground"
+                            isSelected ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400" : "bg-secondary text-muted-foreground"
                           )}>
                             {conn.icon}
                           </div>
@@ -664,13 +664,13 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                             <div className="text-sm font-medium text-foreground">{conn.name}</div>
                             <div className="flex items-center gap-1">
                               {conn.connected ? (
-                                <span className="text-[10px] text-emerald-400">Connected</span>
+                                <span className="text-[10px] text-emerald-700 dark:text-emerald-400">Connected</span>
                               ) : (
                                 <span className="text-[10px] text-muted-foreground">Not connected</span>
                               )}
                             </div>
                           </div>
-                          {isSelected && <CheckCircle className="h-4 w-4 text-emerald-400" />}
+                          {isSelected && <CheckCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />}
                         </button>
                       )
                     })}
@@ -713,7 +713,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                     animate={{ rotate: 360 }}
                     transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                   >
-                    <Brain className="h-10 w-10 text-violet-400" />
+                    <Brain className="h-10 w-10 text-violet-600 dark:text-violet-400" />
                   </motion.div>
                 </div>
 
@@ -760,8 +760,8 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                         </div>
                         <span className={cn(
                           "text-sm font-medium",
-                          isComplete ? "text-emerald-400" :
-                          isActive ? "text-violet-400" :
+                          isComplete ? "text-emerald-700 dark:text-emerald-400" :
+                          isActive ? "text-violet-600 dark:text-violet-400" :
                           "text-muted-foreground"
                         )}>
                           {stage.label}
@@ -801,8 +801,8 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 {/* Goal summary */}
                 <div className="p-4 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <Target className="h-4 w-4 text-violet-400" />
-                    <span className="text-xs font-medium text-violet-400 uppercase tracking-wide">Goal</span>
+                    <Target className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    <span className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide">Goal</span>
                   </div>
                   <p className="text-foreground font-medium">{generatedPlan.goalSummary}</p>
                   <div className="flex items-center gap-4 mt-3">
@@ -845,7 +845,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm text-foreground">{stepItem.name}</span>
                               {stepItem.requiresApproval && (
-                                <Badge variant="outline" className="text-[9px] py-0 h-4 bg-red-500/10 text-red-400 border-red-500/30">
+                                <Badge variant="outline" className="text-[9px] py-0 h-4 bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30">
                                   <Lock className="h-2.5 w-2.5 mr-1" />
                                   Approval
                                 </Badge>
@@ -854,13 +854,13 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                             <p className="text-xs text-muted-foreground mt-0.5">{stepItem.description}</p>
                             <div className="flex items-center gap-3 mt-2">
                               {stepItem.agent && (
-                                <span className="text-[10px] text-blue-400 flex items-center gap-1">
+                                <span className="text-[10px] text-blue-600 dark:text-blue-400 flex items-center gap-1">
                                   <Bot className="h-3 w-3" />
                                   {stepItem.agent}
                                 </span>
                               )}
                               {stepItem.connector && (
-                                <span className="text-[10px] text-amber-400 flex items-center gap-1">
+                                <span className="text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
                                   <Plug className="h-3 w-3" />
                                   {stepItem.connector}
                                 </span>
@@ -901,15 +901,15 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                         </div>
                         <span className="text-sm font-medium text-foreground">{conn.name}</span>
                         {conn.connected ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-400" />
+                          <CheckCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
                         ) : (
-                          <AlertCircle className="h-4 w-4 text-amber-400" />
+                          <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
                         )}
                       </div>
                     ))}
                   </div>
                   {generatedPlan.requiredConnectors.some(c => !c.connected) && (
-                    <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 flex items-center gap-1">
                       <AlertTriangle className="h-3 w-3" />
                       Some connectors need to be connected before activation
                     </p>
@@ -920,7 +920,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 {generatedPlan.approvalGates.length > 0 && (
                   <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
                     <div className="flex items-center gap-2 mb-2">
-                      <Shield className="h-4 w-4 text-red-400" />
+                      <Shield className="h-4 w-4 text-red-600 dark:text-red-400" />
                       <span className="text-sm font-medium text-foreground">Human Approval Required</span>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">
@@ -928,7 +928,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                     </p>
                     <div className="space-y-1">
                       {generatedPlan.approvalGates.map((gate) => (
-                        <div key={gate.stepId} className="flex items-center gap-2 text-xs text-red-400">
+                        <div key={gate.stepId} className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
                           <Lock className="h-3 w-3" />
                           {gate.reason}
                         </div>
@@ -940,20 +940,20 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 {/* Suggestions */}
                 <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-blue-400" />
+                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <span className="text-sm font-medium text-foreground">Smart Suggestions</span>
                   </div>
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 text-blue-400" />
+                      <ChevronRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                       Add Slack notification when campaign is scheduled
                     </p>
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 text-blue-400" />
+                      <ChevronRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                       Track email open rate as success metric
                     </p>
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 text-blue-400" />
+                      <ChevronRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                       Use Agent Council for content review decisions
                     </p>
                   </div>

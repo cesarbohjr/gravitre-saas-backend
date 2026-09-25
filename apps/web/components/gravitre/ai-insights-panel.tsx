@@ -60,7 +60,7 @@ interface MesonInsightsPanelProps {
 const severityConfig: Record<string, { label: string; color: string; bg: string; border: string; glow: string; ring: string; icon: IconName }> = {
   critical: {
     label: "Critical",
-    color: "text-red-400",
+    color: "text-red-600 dark:text-red-400",
     bg: "bg-red-500/10",
     border: "border-red-500/30",
     glow: "shadow-[0_0_30px_rgba(239,68,68,0.15)]",
@@ -69,7 +69,7 @@ const severityConfig: Record<string, { label: string; color: string; bg: string;
   },
   high: {
     label: "High",
-    color: "text-orange-400",
+    color: "text-orange-700 dark:text-orange-400",
     bg: "bg-orange-500/10",
     border: "border-orange-500/30",
     glow: "shadow-[0_0_25px_rgba(249,115,22,0.12)]",
@@ -78,7 +78,7 @@ const severityConfig: Record<string, { label: string; color: string; bg: string;
   },
   medium: {
     label: "Medium",
-    color: "text-amber-400",
+    color: "text-amber-700 dark:text-amber-400",
     bg: "bg-amber-500/10",
     border: "border-amber-500/30",
     glow: "shadow-[0_0_20px_rgba(245,158,11,0.1)]",
@@ -87,7 +87,7 @@ const severityConfig: Record<string, { label: string; color: string; bg: string;
   },
   low: {
     label: "Low",
-    color: "text-blue-400",
+    color: "text-blue-600 dark:text-blue-400",
     bg: "bg-blue-500/10",
     border: "border-blue-500/30",
     glow: "shadow-[0_0_15px_rgba(59,130,246,0.08)]",
@@ -100,7 +100,7 @@ const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor:
   summary: {
     icon: "ai",
     iconBg: "bg-gradient-to-br from-red-500/20 to-orange-500/10",
-    iconColor: "text-red-400",
+    iconColor: "text-red-600 dark:text-red-400",
     borderColor: "border-l-red-500",
     headerBg: "bg-red-500/5",
     priority: 0,
@@ -108,7 +108,7 @@ const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor:
   "root-cause": {
     icon: "warning",
     iconBg: "bg-gradient-to-br from-orange-500/20 to-amber-500/10",
-    iconColor: "text-orange-400",
+    iconColor: "text-orange-700 dark:text-orange-400",
     borderColor: "border-l-orange-500",
     headerBg: "bg-orange-500/5",
     priority: 1,
@@ -116,7 +116,7 @@ const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor:
   reasoning: {
     icon: "aiAnalysis",
     iconBg: "bg-gradient-to-br from-orange-500/20 to-amber-500/10",
-    iconColor: "text-orange-400",
+    iconColor: "text-orange-700 dark:text-orange-400",
     borderColor: "border-l-orange-500",
     headerBg: "bg-orange-500/5",
     priority: 2,
@@ -124,7 +124,7 @@ const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor:
   actions: {
     icon: "insight",
     iconBg: "bg-gradient-to-br from-blue-500/20 to-cyan-500/10",
-    iconColor: "text-blue-400",
+    iconColor: "text-blue-600 dark:text-blue-400",
     borderColor: "border-l-blue-500",
     headerBg: "bg-blue-500/5",
     priority: 3,
@@ -132,7 +132,7 @@ const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor:
   prevention: {
     icon: "shield",
     iconBg: "bg-gradient-to-br from-emerald-500/20 to-teal-500/10",
-    iconColor: "text-emerald-400",
+    iconColor: "text-emerald-700 dark:text-emerald-400",
     borderColor: "border-l-emerald-500",
     headerBg: "bg-emerald-500/5",
     priority: 4,
@@ -140,7 +140,7 @@ const sectionConfig: Record<string, { icon: IconName; iconBg: string; iconColor:
   evidence: {
     icon: "file",
     iconBg: "bg-gradient-to-br from-blue-500/20 to-cyan-500/10",
-    iconColor: "text-blue-400",
+    iconColor: "text-blue-600 dark:text-blue-400",
     borderColor: "border-l-blue-500",
     headerBg: "bg-blue-500/5",
     priority: 5,
@@ -155,9 +155,9 @@ function ConfidenceIndicator({
   dataPoints?: number
 }) {
   const getColor = () => {
-    if (value >= 80) return { text: "text-emerald-400", bg: "bg-emerald-500", glow: "shadow-emerald-500/30" }
-    if (value >= 60) return { text: "text-amber-400", bg: "bg-amber-500", glow: "shadow-amber-500/30" }
-    return { text: "text-red-400", bg: "bg-red-500", glow: "shadow-red-500/30" }
+    if (value >= 80) return { text: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500", glow: "shadow-emerald-500/30" }
+    if (value >= 60) return { text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500", glow: "shadow-amber-500/30" }
+    return { text: "text-red-600 dark:text-red-400", bg: "bg-red-500", glow: "shadow-red-500/30" }
   }
 
   const colors = getColor()
@@ -323,9 +323,9 @@ function InsightSectionCard({
   const config = sectionConfig[section.type] || sectionConfig.summary
 
   const priorityColors = {
-    high: "bg-red-500/10 text-red-400 border-red-500/20 ring-1 ring-red-500/10",
-    medium: "bg-amber-500/10 text-amber-400 border-amber-500/20 ring-1 ring-amber-500/10",
-    low: "bg-blue-500/10 text-blue-400 border-blue-500/20 ring-1 ring-blue-500/10",
+    high: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 ring-1 ring-red-500/10",
+    medium: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 ring-1 ring-amber-500/10",
+    low: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 ring-1 ring-blue-500/10",
   }
 
   return (
@@ -366,7 +366,7 @@ function InsightSectionCard({
                 {section.title}
               </h4>
               {isHighlighted && (
-                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-400">
+                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
                   Primary
                 </span>
               )}
@@ -381,7 +381,7 @@ function InsightSectionCard({
         <div className="flex items-center gap-3">
           {section.type === "reasoning" && section.steps && (
             <div className="flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1">
-              <Icon name="success" size="xs" className="text-emerald-400" />
+              <Icon name="success" size="xs" className="text-emerald-700 dark:text-emerald-400" />
               <span className="text-[10px] font-medium text-muted-foreground">
                 {section.steps.filter((s) => s.isCompleted).length}/{section.steps.length}
               </span>
@@ -427,7 +427,7 @@ function InsightSectionCard({
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                          <Icon name="file" size="sm" className="text-blue-400" />
+                          <Icon name="file" size="sm" className="text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
                           <p className="text-xs font-medium text-foreground">{item.source}</p>
@@ -463,7 +463,7 @@ function InsightSectionCard({
                         className={cn(
                           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
                           step.isCompleted
-                            ? "bg-emerald-500/20 text-emerald-400"
+                            ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
                             : "bg-muted text-muted-foreground"
                         )}
                       >
@@ -511,9 +511,9 @@ function InsightSectionCard({
                             name="execution" 
                             size="sm"
                             className={cn(
-                              action.priority === "high" ? "text-red-400" :
-                              action.priority === "medium" ? "text-amber-400" :
-                              "text-blue-400"
+                              action.priority === "high" ? "text-red-600 dark:text-red-400" :
+                              action.priority === "medium" ? "text-amber-700 dark:text-amber-400" :
+                              "text-blue-600 dark:text-blue-400"
                             )} 
                           />
                         </div>
@@ -660,7 +660,7 @@ export function MesonInsightsPanel({
                 "bg-gradient-to-br from-blue-500/20 via-purple-500/10 to-pink-500/10",
                 "ring-1 ring-white/10"
               )}>
-                <Icon name="aiAnalysis" size="xl" className="text-blue-400" emphasis />
+                <Icon name="aiAnalysis" size="xl" className="text-blue-600 dark:text-blue-400" emphasis />
               </div>
               {isGenerating && (
                 <motion.div
@@ -682,7 +682,7 @@ export function MesonInsightsPanel({
                     animate={{ opacity: [1, 0.5, 1] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
                   >
-                    <Icon name="ai" size="xs" className="text-blue-400" emphasis />
+                    <Icon name="ai" size="xs" className="text-blue-600 dark:text-blue-400" emphasis />
                     Analyzing patterns...
                   </motion.span>
                 ) : (
@@ -775,7 +775,7 @@ export function MesonInsightsPanel({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Icon name="aiAnalysis" size="lg" className="text-blue-400" />
+              <Icon name="aiAnalysis" size="lg" className="text-blue-600 dark:text-blue-400" />
               Full AI Analysis
             </DialogTitle>
             <DialogDescription>
@@ -801,13 +801,13 @@ export function MesonInsightsPanel({
                       <p className="text-xs font-medium text-muted-foreground uppercase">Recommended Actions:</p>
                       {section.actions.map((action) => (
                         <div key={action.id} className="flex items-center gap-2 text-sm">
-                          <Check className="h-4 w-4 text-emerald-400" />
+                          <Check className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
                           <span>{displayInsightContent(action.label)}</span>
                           <span className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded-full",
-                            action.priority === "high" ? "bg-red-500/10 text-red-400" :
-                            action.priority === "medium" ? "bg-amber-500/10 text-amber-400" :
-                            "bg-blue-500/10 text-blue-400"
+                            action.priority === "high" ? "bg-red-500/10 text-red-600 dark:text-red-400" :
+                            action.priority === "medium" ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" :
+                            "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                           )}>{action.priority}</span>
                         </div>
                       ))}
@@ -832,7 +832,7 @@ export function MesonInsightsPanel({
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Icon name="shield" size="lg" className="text-emerald-400" />
+              <Icon name="shield" size="lg" className="text-emerald-700 dark:text-emerald-400" />
               Source Verification
             </DialogTitle>
             <DialogDescription>
@@ -849,14 +849,14 @@ export function MesonInsightsPanel({
               <div key={source.name} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                    <Check className="h-4 w-4 text-emerald-400" />
+                    <Check className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">{source.name}</p>
                     <p className="text-xs text-muted-foreground">Last checked {source.timestamp}</p>
                   </div>
                 </div>
-                <span className="text-xs text-emerald-400 font-medium uppercase">{source.status}</span>
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium uppercase">{source.status}</span>
               </div>
             ))}
           </div>
