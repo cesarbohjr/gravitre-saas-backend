@@ -412,7 +412,7 @@ export function WorkflowIntelligenceDrawer({
                     <EmptyState
                       icon={Beaker}
                       title="Predict the run timeline"
-                      body="Run a digital-twin simulation to estimate per-step duration using connector fixtures and LLM latency estimates."
+                      body="Estimate how long each step will take, using sample data from your connectors and past runs. Nothing is executed."
                       actionLabel={isPersisted && nodes.length ? "Estimate step timing" : undefined}
                       onAction={isPersisted && nodes.length ? runSimulation : undefined}
                       disabledHint={
@@ -438,16 +438,10 @@ export function WorkflowIntelligenceDrawer({
                       </div>
                       {simStats && (
                         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-                          <span className="rounded-full border border-border px-2 py-0.5">
-                            Fixtures {simStats.fixtureHits}
-                          </span>
-                          <span className="rounded-full border border-border px-2 py-0.5">
-                            LLM {simStats.llmPredictions}
-                          </span>
+                          <Badge variant="secondary">Sample data {simStats.fixtureHits}</Badge>
+                          <Badge variant="secondary">AI estimates {simStats.llmPredictions}</Badge>
                           {simStats.ragReads > 0 && (
-                            <span className="rounded-full border border-border px-2 py-0.5">
-                              RAG reads {simStats.ragReads}
-                            </span>
+                            <Badge variant="secondary">Knowledge lookups {simStats.ragReads}</Badge>
                           )}
                         </div>
                       )}
@@ -491,7 +485,7 @@ export function WorkflowIntelligenceDrawer({
                                 ) : (
                                   <Cpu className="h-2.5 w-2.5" />
                                 )}
-                                {step.source === "fixture" ? "Fixture" : "LLM"}
+                                {step.source === "fixture" ? "Sample" : "Estimate"}
                               </Badge>
                               <span className="truncate text-[11px] text-muted-foreground">
                                 {step.note}

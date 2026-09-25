@@ -11,7 +11,6 @@ import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
-  GravitreMetric,
   GravitrePageHeader,
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
@@ -40,8 +39,6 @@ import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 import { AgentIdentityGovernanceCard } from "@/components/gravitre/agent-identity-governance-card"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useMotionPrefs } from "@/lib/animations"
-import { TYPE } from "@/lib/design-system"
-
 // Types
 interface Agent {
   id: string
@@ -154,7 +151,7 @@ function AgentIdentityHero({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAge
             isRunning && !reduced && "animate-pulse",
           )}
         />
-        <span className={cn("text-xs font-semibold uppercase tracking-[0.14em]", status.color)}>
+        <span className={cn("text-xs font-medium", status.color)}>
           {status.label}
         </span>
       </div>
@@ -162,39 +159,14 @@ function AgentIdentityHero({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAge
   )
 }
 
-// Skill Bar with Animation
-function SkillBar({ skill, index }: { skill: { name: string; level: number; color: string }; index: number }) {
-  const colorClasses: Record<string, string> = {
-    brand: "bg-[color:var(--g-brand)]",
-    emerald: "bg-[color:var(--g-brand)]",
-    blue: "bg-blue-500",
-    signal: "bg-[color:var(--g-signal)]",
-    amber: "bg-amber-500",
-    rose: "bg-rose-500",
-  }
-
+function PerformanceFact({ label, value }: { label: string; value: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className="group"
-    >
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm font-medium text-foreground">{skill.name}</span>
-        <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-          {skill.level}%
-        </span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[color:var(--g-surface-2)]">
-        <motion.div
-          className={cn("h-full rounded-full", colorClasses[skill.color] ?? colorClasses.brand)}
-          initial={{ width: 0 }}
-          animate={{ width: `${skill.level}%` }}
-          transition={{ duration: 1, delay: 0.2 + index * 0.1, ease: "easeOut" }}
-        />
-      </div>
-    </motion.div>
+    <div className="min-w-[96px]">
+      <dt className="text-xs text-[color:var(--g-text-muted)]">{label}</dt>
+      <dd className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight text-foreground">
+        {value}
+      </dd>
+    </div>
   )
 }
 
@@ -205,65 +177,32 @@ function WorkItem({ work, index }: { work: Agent["recentWork"][0]; index: number
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="group flex cursor-pointer items-center gap-4 border-b border-divide py-3"
+      className="flex items-center gap-3 border-b border-[color:var(--g-border-subtle)] py-3"
     >
-      <div className={cn(
-        "flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--np-radius-md)]",
-        work.status === "completed" ? "bg-[color:var(--g-brand-soft)]" : "bg-warning/10"
-      )}>
-        <Icon 
-          name={work.status === "completed" ? "check" : "clock"} 
-          size="sm" 
-          className={work.status === "completed" ? "text-[color:var(--g-brand)]" : "text-warning"} 
-        />
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]">
+        <Icon name="history" size="sm" className="text-muted-foreground" />
       </div>
-      
-      <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-foreground line-clamp-1">{work.title}</h4>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{work.type}</span>
-          <span className="text-muted-foreground/50">|</span>
-          <span>{work.time}</span>
-        </div>
+      <div className="min-w-0 flex-1">
+        <h4 className="line-clamp-1 text-[13px] font-medium text-foreground">{work.title}</h4>
+        <p className="text-xs text-muted-foreground">
+          {work.type} · {work.time}
+        </p>
       </div>
-
-      {work.confidence > 0 && (
-        <div className="text-right shrink-0">
-          <span className={cn(
-            "text-sm font-semibold",
-            work.confidence >= 90 ? "text-[color:var(--g-brand)]" : "text-warning"
-          )}>
-            {work.confidence}%
-          </span>
-          <p className="text-[10px] text-muted-foreground">confidence</p>
-        </div>
-      )}
-
-      <Icon name="chevronRight" size="sm" className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
     </motion.div>
   )
 }
 
 // System Connection
 function SystemBadge({ system, index }: { system: Agent["systems"][0]; index: number }) {
-  const statusColors = {
-    connected: "bg-[color:var(--status-verified)]",
-    warning: "bg-[color:var(--status-pending)]",
-    error: "bg-[color:var(--status-failed)]",
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.1 }}
-      className="flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2"
+      className="flex items-center gap-2 rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] px-3 py-2"
     >
-      <div className="flex h-6 w-6 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-surface-1)]">
-        <Icon name={system.icon as IconName} size="xs" className="text-muted-foreground" />
-      </div>
-      <span className="text-sm font-medium text-foreground">{system.name}</span>
-      <div className={cn("ml-auto h-2 w-2 rounded-full", statusColors[system.status])} />
+      <Icon name={system.icon as IconName} size="xs" className="text-muted-foreground" />
+      <span className="truncate text-[13px] font-medium text-foreground">{system.name}</span>
     </motion.div>
   )
 }
@@ -323,7 +262,6 @@ export default function AgentProfilePage({
         </div>
 
         <GravitrePageHeader
-          eyebrow="AI Team"
           title={agent.name}
           description={`${agent.role} · ${agent.tagline}`}
           icon={<NucleoWorkflow className="h-5 w-5" />}
@@ -331,15 +269,7 @@ export default function AgentProfilePage({
             <div className="flex flex-wrap items-center gap-2">
               <AskGravitreSummonButton />
               <Button
-                className="gap-2"
-                onClick={() => router.push(`/agents/${agent.id}/chat`)}
-              >
-                <Icon name="chat" size="sm" />
-                Chat with {agent.name}
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-2"
+                variant="ghost"
                 onClick={() => router.push(`/agents/${agent.id}/knowledge`)}
               >
                 <Icon name="database" size="sm" />
@@ -347,11 +277,14 @@ export default function AgentProfilePage({
               </Button>
               <Button
                 variant="outline"
-                className="gap-2"
                 onClick={() => router.push("/assignments/new?agent=" + agent.id)}
               >
                 <Icon name="add" size="sm" />
-                Assign
+                Assign work
+              </Button>
+              <Button onClick={() => router.push(`/agents/${agent.id}/chat`)}>
+                <Icon name="chat" size="sm" />
+                Chat
               </Button>
             </div>
           }
@@ -367,61 +300,52 @@ export default function AgentProfilePage({
           </div>
         </GravitrePageHeader>
 
-        <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
-          <details className="mb-6">
-            <summary className="cursor-pointer list-none border-b border-divide py-2">
-              <p className={TYPE.eyebrow}>Operational totals</p>
-              <p className={cn(TYPE.meta, "mt-0.5")}>
-                After identity — inspect numbers when you need them.
-              </p>
-            </summary>
-          <section className="mb-4 grid grid-cols-2 gap-[var(--np-kpi-gap)] py-4 lg:grid-cols-3">
-            <GravitreMetric
-              label="Tasks completed (operational)"
-              value={agent.stats.tasksCompleted.toLocaleString()}
-            />
-            <GravitreMetric
-              label="Success rate (operational)"
+        <div className="flex-1 px-[var(--np-page-pad-sm)] pb-8 pt-2 sm:px-[var(--np-page-pad)]">
+          <dl className="mb-6 flex flex-wrap gap-x-8 gap-y-3 border-b border-[color:var(--g-border-subtle)] pb-5">
+            <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted.toLocaleString()} />
+            <PerformanceFact
+              label="Success rate"
               value={agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—"}
             />
-            <GravitreMetric label="Avg Response" value={agent.stats.avgResponseTime} />
-            <GravitreMetric
+            <PerformanceFact label="Avg response" value={agent.stats.avgResponseTime} />
+            <PerformanceFact
               label="Workflows using"
               value={agent.stats.hoursActive > 0 ? agent.stats.hoursActive.toLocaleString() : "—"}
             />
-            <GravitreMetric label="Decisions Today" value={agent.stats.decisionsToday.toString()} />
-            <GravitreMetric
-              label="Needs Approval"
-              value={agent.stats.approvalsNeeded.toString()}
-            />
-          </section>
-          <p className="mb-4 text-xs text-[color:var(--g-text-muted)]">{OPERATIONAL_METHODOLOGY_SHORT}</p>
-          </details>
+            <p className="basis-full text-xs text-[color:var(--g-text-muted)]">
+              {OPERATIONAL_METHODOLOGY_SHORT}
+            </p>
+          </dl>
 
-          <nav aria-label="Agent profile" className="mb-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <div
+            role="tablist"
+            aria-label="Agent profile"
+            className="mb-6 flex gap-5 overflow-x-auto border-b border-[color:var(--g-border-default)]"
+          >
             {[
               { id: "overview", label: "Overview" },
               { id: "personality", label: "Personality" },
               { id: "skills", label: "Capabilities" },
               { id: "governance", label: "Governance" },
-              { id: "history", label: "Work History" },
+              { id: "history", label: "Work history" },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={cn(
-                  TYPE.meta,
-                  "underline-offset-4",
+                  "-mb-px h-9 shrink-0 whitespace-nowrap border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   activeTab === tab.id
-                    ? "text-[color:var(--g-text-primary)] underline"
-                    : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 {tab.label}
               </button>
             ))}
-          </nav>
+          </div>
 
           {/* Tab Content */}
           <AnimatePresence mode="wait">
@@ -463,7 +387,7 @@ export default function AgentProfilePage({
 
                 <GravitreSurface>
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="font-semibold text-foreground">Connected Systems</h3>
+                    <h3 className="font-semibold text-foreground">Connected systems</h3>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -484,25 +408,6 @@ export default function AgentProfilePage({
                     )}
                   </div>
                 </GravitreSurface>
-
-                <GravitreSurface className="col-span-2" padded={false}>
-                  <div className="p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Icon name="brain" size="sm" className="text-[color:var(--g-brand)]" />
-                        <span className={TYPE.cardTitle}>Success rate</span>
-                      </div>
-                      <span className="text-sm font-semibold tabular-nums text-foreground">
-                        {agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—"}
-                      </span>
-                    </div>
-                    <p className={TYPE.meta}>
-                      {agent.stats.successRate != null
-                        ? "From agent stats when tasks exist — not a training completion badge."
-                        : "No success rate yet. Completes after the agent has task outcomes."}
-                    </p>
-                  </div>
-                </GravitreSurface>
               </motion.div>
             )}
 
@@ -512,16 +417,26 @@ export default function AgentProfilePage({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="max-w-3xl space-y-4"
+                className="max-w-5xl space-y-6"
               >
-                <GravitreSurface padded={false} className="bg-[color:var(--g-surface-2)] px-4 py-3 text-sm text-muted-foreground">
-                  Current: spoken voice{" "}
-                  {voiceProfileIsConfigured(apiAgent.voiceProfile)
-                    ? "configured"
-                    : "org default"}
-                  {" · "}
-                  response style {responseStyleLabel(apiAgent.responseStyle)}
-                </GravitreSurface>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    How {agent.name} works with your team
+                  </h2>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    Currently using{" "}
+                    <span className="text-foreground">
+                      {voiceProfileIsConfigured(apiAgent.voiceProfile)
+                        ? "its own voice"
+                        : "the organization's default voice"}
+                    </span>{" "}
+                    and a{" "}
+                    <span className="text-foreground">
+                      {responseStyleLabel(apiAgent.responseStyle).toLowerCase()}
+                    </span>{" "}
+                    response style.
+                  </p>
+                </div>
                 <AgentPersonalityEditorCard
                   agent={apiAgent}
                   onSaved={(next) => void mutateAgent(next, { revalidate: false })}
@@ -541,16 +456,6 @@ export default function AgentProfilePage({
                   agent={apiAgent}
                   onSaved={(next) => void mutateAgent(next, { revalidate: false })}
                 />
-                {agent.skills.length > 0 ? (
-                  <GravitreSurface>
-                    <h3 className="mb-6 font-semibold text-foreground">Skill overview</h3>
-                    <div className="space-y-5">
-                      {agent.skills.map((skill, i) => (
-                        <SkillBar key={skill.name} skill={skill} index={i} />
-                      ))}
-                    </div>
-                  </GravitreSurface>
-                ) : null}
               </motion.div>
             )}
 

@@ -33,14 +33,14 @@ export const TYPE = {
   cardTitle:
     "font-sans text-sm font-semibold leading-tight tracking-tight text-[color:var(--g-text-primary)]",
   /**
-   * Small caps label above a title or over a group of controls.
-   * One tracking value everywhere — this was the worst offender.
+   * Label above a title or over a group of controls. Sentence case, no
+   * tracking (master spec §9.1 — uppercase tracking is out).
    */
   eyebrow:
-    "font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]",
-  /** Caps label under a metric. */
+    "font-sans text-xs font-medium text-[color:var(--g-text-muted)]",
+  /** Label under a metric. */
   metricLabel:
-    "font-sans text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]",
+    "font-sans text-xs font-medium text-[color:var(--g-text-muted)]",
   /** Large number in a stat card. */
   metricValue:
     "font-sans text-2xl font-semibold tabular-nums text-[color:var(--g-text-primary)]",
@@ -151,12 +151,11 @@ export const SEMANTIC = {
  * Radius roles. The audit found `rounded-lg`, `rounded-xl`, `rounded-2xl`,
  * `rounded-3xl` and `rounded-full` all used for surfaces of the same rank.
  *
- * The hierarchy is shape-by-role, and it splits "controls" in two:
+ * The hierarchy is shape-by-role (3.0 Plus visual convergence, 2026-09-25):
  *
- *   - Click targets are pills: button, badge, chip, tab trigger.
- *   - Text fields are rounded rectangles: input, textarea, select trigger.
- *     A pill wastes horizontal padding and reads oddly at wide widths, so
- *     `field` is deliberately NOT `control`.
+ *   - Controls and fields share one sharp 8px radius: button, input, select,
+ *     textarea. Pills made every action look equally loud (master spec §6.2).
+ *   - Status/meta labels are 4px tags; only presence dots and avatars are round.
  *   - Containers step up with their size: tile -> card -> panel.
  *
  * These are enforced in the primitives (components/ui/button.tsx, badge.tsx,
@@ -173,14 +172,16 @@ export const SEMANTIC = {
  *      how `sm`/`lg` buttons stayed square while `default` ones were pills.
  */
 export const RADIUS = {
-  /** Click targets: buttons, chips, badges, tab triggers. */
-  control: "rounded-full",
-  /** Text entry: input, textarea, select trigger. Intentionally not a pill. */
-  field: "rounded-md",
+  /** Click targets: buttons, chips, segmented controls. */
+  control: "rounded-[var(--np-radius-md)]",
+  /** Text entry: input, textarea, select trigger. */
+  field: "rounded-[var(--np-radius-md)]",
+  /** Status and meta tags. */
+  tag: "rounded-[4px]",
   /** Cards and list rows. */
-  card: "rounded-xl",
+  card: "rounded-[var(--np-radius-lg)]",
   /** Panels and toolbars that contain cards. */
-  panel: "rounded-2xl",
+  panel: "rounded-[var(--np-radius-lg)]",
   /** Small square affordances: icon tiles, avatars, swatches. */
   tile: "rounded-lg",
 } as const

@@ -12,12 +12,16 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      className={cn('flex flex-col gap-2', className)}
+      className={cn('flex flex-col gap-3', className)}
       {...props}
     />
   )
 }
 
+/**
+ * Underline tabs (SaaSUI / Nodus): navigation reads as navigation, not as a
+ * row of pill buttons competing with the page's primary action.
+ */
 function TabsList({
   className,
   ...props
@@ -26,9 +30,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        // rounded-full so the track hugs its pill triggers — a rounded-lg track
-        // around pill triggers leaves visible dead corners.
-        'bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-full p-[3px]',
+        'text-muted-foreground inline-flex h-9 w-fit items-end justify-start gap-5 border-b border-[color:var(--g-border-default)]',
         className,
       )}
       {...props}
@@ -44,9 +46,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        // rounded-full + px-3: a pill needs slightly more horizontal padding than
-        // a rectangle for the label to sit off the curve.
-        "data-[state=active]:bg-background dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-3 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative -mb-px inline-flex h-9 items-center justify-center gap-1.5 border-b-2 border-transparent px-0.5 text-[13px] font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}

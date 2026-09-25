@@ -44,7 +44,10 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
   it("agent profile uses text sections, not a pill tab strip", () => {
     const src = readFileSync(resolve(webRoot, "app/agents/[id]/page.tsx"), "utf8")
     expect(src).toMatch(/aria-label="Agent profile"/)
-    expect(src).toMatch(/Operational totals/)
+    expect(src).toMatch(/role="tablist"/)
+    expect(src).toMatch(/OPERATIONAL_METHODOLOGY_SHORT/)
+    // Hard-coded / duplicated numbers must not come back as profile metrics.
+    expect(src).not.toMatch(/Needs Approval|Decisions Today|Skill overview|confidence<\/p>/)
     expect(src).not.toMatch(/rounded-\[var\(--np-radius-lg\)\] border border-divide bg-\[color:var\(--g-surface-2\)\] p-1/)
   })
 

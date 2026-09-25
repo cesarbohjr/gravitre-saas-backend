@@ -14,7 +14,7 @@ import Link from "next/link"
 import { useId, useRef, type KeyboardEvent } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { INTERACTION, MOTION, RADIUS } from "@/lib/design-system"
+import { INTERACTION, MOTION } from "@/lib/design-system"
 
 export interface HubTabItem<T extends string = string> {
   id: T
@@ -74,11 +74,7 @@ export function HubTabs<T extends string>({
       className={cn(
         // inline-flex + w-fit: hug the triggers. A block-level flex track
         // stretches full-width on Agents and reads as a wide lozenge.
-        "inline-flex w-fit max-w-full flex-wrap items-center gap-1 border border-border bg-muted/30 p-1",
-        // Pill, matching FilterChip / SegmentedControl / Button. Previously
-        // rounded-lg, which read as a different control family sitting inches
-        // from the pill-shaped filters on the same toolbar.
-        RADIUS.control,
+        "inline-flex w-fit max-w-full flex-wrap items-end gap-5 border-b border-[color:var(--g-border-default)]",
         className,
       )}
       role="tablist"
@@ -94,7 +90,7 @@ export function HubTabs<T extends string>({
             {selected ? (
               <motion.span
                 layoutId={indicatorLayoutId}
-                className={cn("absolute inset-0 bg-background shadow-sm", RADIUS.control)}
+                className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground"
                 transition={reduceMotion ? { duration: 0 } : MOTION.spring}
                 aria-hidden
               />
@@ -103,8 +99,8 @@ export function HubTabs<T extends string>({
             {typeof tab.count === "number" ? (
               <span
                 className={cn(
-                  "relative z-10 rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                  selected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                  "relative z-10 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium tabular-nums",
+                  selected ? "bg-foreground text-background" : "bg-[color:var(--g-surface-3)] text-muted-foreground",
                 )}
               >
                 {tab.count}
@@ -114,13 +110,12 @@ export function HubTabs<T extends string>({
         )
 
         const classes = cn(
-          "relative inline-flex items-center gap-1.5 text-sm font-medium",
-          RADIUS.control,
-          size === "sm" ? "px-2.5 py-1" : "px-3 py-1.5",
+          "relative inline-flex items-center gap-1.5 px-0.5 text-[13px] font-medium",
+          size === "sm" ? "h-8" : "h-9",
           INTERACTION,
           selected
             ? "text-foreground"
-            : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+            : "text-muted-foreground hover:text-foreground",
         )
 
         // Only the selected tab stays in the tab order; arrow keys move between

@@ -5,45 +5,41 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 /**
- * `rounded-full` is the canonical shape for click targets — see RADIUS.control
- * in lib/design-system.ts for the full hierarchy. It lives here in the base
- * variant rather than being passed per call site: the app renders 800+ buttons
- * across ~175 files, so any convention that relies on each page opting in
- * drifts immediately (only 6 files ever did, which is why the app had a mix of
- * pills and rounded rectangles).
+ * Shape and hierarchy live here, not at call sites: the app renders 800+
+ * buttons across ~175 files, so any convention that relies on each page opting
+ * in drifts immediately.
  *
- * Text fields (input, textarea, select trigger) intentionally stay rounded-md —
- * a pill wastes horizontal padding and reads oddly at wide widths.
+ * Hierarchy (master spec §12): `default` is the one primary action per screen
+ * (graphite, inverts in dark), `brand` is reserved for emerald AI/commit moments,
+ * `outline`/`secondary` are secondary, `ghost`/`link` are tertiary toolbar and
+ * inline actions. Shape is a sharp 8px control radius (RADIUS.control), not a pill.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-all duration-150 cursor-pointer active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--np-radius-md)] text-[13px] font-medium leading-none transition-[background-color,color,box-shadow,border-color] duration-150 cursor-pointer active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md',
+          'bg-foreground text-background shadow-[inset_0_1px_0_0_rgb(255_255_255/0.12)] hover:bg-foreground/85',
+        brand:
+          'bg-primary text-primary-foreground hover:bg-[color:var(--g-brand-hover)] dark:hover:bg-primary/85',
         destructive:
-          'bg-destructive text-white shadow-sm hover:bg-destructive/90 hover:shadow-md focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/40',
         outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground hover:shadow-sm dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+          'border border-[color:var(--g-border-default)] bg-background text-foreground hover:border-[color:var(--g-border-strong)] hover:bg-[color:var(--g-surface-2)]',
         secondary:
-          'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 hover:shadow-sm',
+          'bg-secondary text-secondary-foreground hover:bg-[color:var(--g-surface-3)] dark:hover:bg-accent',
         ghost:
-          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
-        link: 'text-primary underline-offset-4 hover:underline',
+          'text-foreground/80 hover:bg-accent hover:text-accent-foreground',
+        link: 'text-foreground underline decoration-[color:var(--g-border-strong)] underline-offset-4 hover:decoration-foreground',
       },
-      // No `rounded-*` in these size variants. They previously re-declared
-      // `rounded-md`, and because cva appends size classes after the base, that
-      // silently overrode the shared radius — so `sm`/`lg` buttons stayed square
-      // while `default` ones were pills. Shape is owned by the base only.
       size: {
-        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        sm: 'h-8 gap-1.5 px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 px-6 has-[>svg]:px-4',
-        // Icon buttons are square boxes, so rounded-full renders a circle.
-        icon: 'size-9',
-        'icon-sm': 'size-8',
-        'icon-lg': 'size-10',
+        default: 'h-8 px-3 has-[>svg]:px-2.5',
+        sm: 'h-7 gap-1 px-2.5 text-xs has-[>svg]:px-2',
+        lg: 'h-9 px-4 text-sm has-[>svg]:px-3.5',
+        icon: 'size-8',
+        'icon-sm': 'size-7',
+        'icon-lg': 'size-9',
       },
     },
     defaultVariants: {

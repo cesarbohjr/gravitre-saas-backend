@@ -9,7 +9,7 @@ export const SURFACE_COPY = {
     title: "Intelligence",
     shortTitle: "Intelligence",
     description:
-      "Business intelligence hub — map, learning, predictions, performance, models, and memory.",
+      "What Gravitre has learned about your business, and the evidence behind it.",
     emptyTitle: "Collecting signals",
     emptyDescription:
       "Outcome events and confidence scores appear here as agents finish work with measurable results.",
@@ -19,7 +19,7 @@ export const SURFACE_COPY = {
     title: "Learning",
     shortTitle: "Learning",
     description:
-      "Business learning from real work — validated insights, relationships, and measured outcomes. Not platform telemetry.",
+      "Insights, relationships, and outcomes Gravitre has confirmed from your team's real work.",
     route: APP_ROUTES.learning,
     step: "Observe",
     stepSummary: "Watch queries, memory, and search quality improve over time.",
@@ -149,7 +149,7 @@ export const SURFACE_COPY = {
       title: "Agents",
       rosterTitle: "AI Team",
       description:
-        "Coworkers by department and function. One Intelligence Core — TEAM default; list and graph remain.",
+        "Your AI coworkers by department. See who is available, what they can do, and what they're working on.",
       profileTitle: "Agent profile",
       profileListHint: "Pick an agent to review measured health, performance, learning, and outcomes.",
       profileEmpty: "Create an agent to see its intelligence profile.",
@@ -180,7 +180,7 @@ export const SURFACE_COPY = {
     },
     ai: {
       title: "Chat",
-      description: "Execute work, chat with context, or search records — routed to the right engine.",
+      description: "Ask, delegate, or search. Gravitre picks the right way to get it done.",
     },
     connectors: {
       title: "Connectors",
@@ -190,7 +190,7 @@ export const SURFACE_COPY = {
     memory: {
       title: "Memory",
       description:
-        "Promoted memories, auto-promotion audit trail, and knowledge graph — org-scoped only.",
+        "What Gravitre remembers for your organization, where it came from, and how it connects.",
       tabPromoted: "Promoted memories",
       tabAuto: "Auto-promotions",
       tabGraph: "Knowledge graph",
@@ -218,7 +218,7 @@ export const SURFACE_COPY = {
     predictive: {
       title: "Predictions",
       description:
-        "Forward-looking business predictions — risks, opportunities, confidence, and evidence. Advisory only; not platform telemetry.",
+        "Risks and opportunities ahead, with confidence and evidence. Predictions are advisory until you act on them.",
     },
     assignments: {
       title: "Assignments",

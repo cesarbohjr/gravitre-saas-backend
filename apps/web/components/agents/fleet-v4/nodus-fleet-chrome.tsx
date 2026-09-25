@@ -84,23 +84,21 @@ export function NodusDepartmentLabel({
 }) {
   const Icon = DEPARTMENT_OUTLINE_ICONS[department]
   return (
-    <div className={cn("relative flex items-center gap-2.5", className)}>
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-white text-black shadow-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
-        <Icon className="size-[15px]" strokeWidth={1.75} aria-hidden />
+    <div className={cn("relative flex items-center gap-2", className)}>
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-[6px] border border-[color:var(--g-border-default)] bg-background text-foreground">
+        <Icon className="size-[13px]" strokeWidth={1.75} aria-hidden />
       </span>
-      <div className="min-w-0">
-        <span
-          className="block whitespace-nowrap text-sm font-medium leading-tight text-[color:var(--g-text-primary)]"
-          title={label}
-        >
-          {label}
+      <span
+        className="whitespace-nowrap text-[13px] font-semibold leading-tight text-[color:var(--g-text-primary)]"
+        title={label}
+      >
+        {label}
+      </span>
+      {count != null ? (
+        <span className="whitespace-nowrap text-xs tabular-nums text-[color:var(--g-text-muted)]">
+          {count}
         </span>
-        {count != null ? (
-          <span className="mt-0.5 block whitespace-nowrap text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
-            {count} agent{count === 1 ? "" : "s"}
-          </span>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   )
 }

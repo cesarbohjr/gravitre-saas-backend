@@ -19,7 +19,7 @@
   --color-gray-300: #eaedf1;
   --color-gray-400: #d7d7d7;
   --color-gray-500: #c0c0c0;
-  --color-gray-600: #8b8b8b;
+  --color-gray-600: #6b6b70;
   /* Nodus --color-brand was #f17463; Gravitre brand green */
   --color-brand: #16a374;
   --color-brand-soft: #e0f3ec;
@@ -93,7 +93,8 @@
   --secondary: #f5f5f5;
   --secondary-foreground: #202020;
   --muted: #f5f5f5;
-  --muted-foreground: #8b8b8b;
+  /* #8b8b8b was 3.5:1 on white (fails WCAG AA for body copy). */
+  --muted-foreground: #66666b;
   /* Accent = the interactive hover/active SURFACE token (shadcn semantics),
      not a decorative brand color. It was electric blue (hue 250, chroma .16 on
      the foreground), which tinted every `hover:bg-accent` / `hover:text-
@@ -199,7 +200,7 @@
   --g-surface-active: color-mix(in srgb, #16a374 6%, var(--g-surface-1));
   --g-text-primary: #202020;
   --g-text-secondary: #343434;
-  --g-text-muted: #8b8b8b;
+  --g-text-muted: #66666b;
   --g-text-disabled: color-mix(in srgb, var(--g-text-muted) 55%, transparent);
   --g-border-subtle: color-mix(in srgb, #eaedf1 85%, transparent);
   --g-border-default: #eaedf1;
@@ -384,27 +385,25 @@
 }
 
 .dark {
-  /* Gravitre Brand: Deep navy/black background (#0B0F14) */
-  --background: oklch(0.08 0.01 250);
-  --foreground: oklch(0.95 0 0);
-  /* Surface: slightly lighter panels (#11161D) */
-  --card: oklch(0.11 0.01 250);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.11 0.01 250);
-  --popover-foreground: oklch(0.95 0 0);
-  /* Primary: Gravitre brand emerald green */
+  /* Graphite, not navy: neutral charcoal ladder with emerald as the only hue. */
+  --background: oklch(0.155 0.002 260);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.19 0.002 260);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.215 0.002 260);
+  --popover-foreground: oklch(0.96 0 0);
   --primary: oklch(0.72 0.14 162);
-  --primary-foreground: oklch(0.14 0.02 162);
-  --secondary: oklch(0.15 0.01 250);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.15 0.01 250);
-  --muted-foreground: oklch(0.60 0 0);
-  --accent: oklch(0.18 0.02 250);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.20 0.01 250);
-  --input: oklch(0.15 0.01 250);
+  --primary-foreground: oklch(0.16 0.02 162);
+  --secondary: oklch(0.235 0.002 260);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.235 0.002 260);
+  --muted-foreground: oklch(0.72 0.004 260);
+  --accent: oklch(0.255 0.003 260);
+  --accent-foreground: oklch(0.96 0 0);
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.28 0.003 260);
+  --input: oklch(0.235 0.002 260);
   --ring: oklch(0.72 0.14 162);
   /* Status colors. Dark-mode fills are lighter than their light-mode
      counterparts, so their foregrounds invert to dark to stay legible. */
@@ -443,13 +442,41 @@
   --elevation-4: 0 24px 56px -12px oklch(0 0 0 / 0.7), inset 0 1px 0 0 oklch(1 0 0 / 0.07);
   --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.07);
   /* Sidebar: Even deeper */
-  --sidebar: oklch(0.06 0.01 250);
-  --sidebar-foreground: oklch(0.95 0 0);
+  /* Nodus ramp + divide tokens are used directly by utilities (text-charcoal-900,
+     bg-gray-100, border-divide), so they must follow the theme too. */
+  --color-charcoal-900: oklch(0.96 0 0);
+  --color-charcoal-800: oklch(0.9 0 0);
+  --color-charcoal-700: oklch(0.84 0 0);
+  --color-gray-100: oklch(0.19 0.002 260);
+  --color-gray-200: oklch(0.215 0.002 260);
+  --color-gray-300: oklch(0.28 0.003 260);
+  --color-gray-400: oklch(0.36 0.003 260);
+  --color-gray-500: oklch(0.5 0.003 260);
+  --color-gray-600: oklch(0.7 0.004 260);
+  --color-brand-soft: color-mix(in oklch, oklch(0.72 0.14 162) 14%, transparent);
+  --brand-soft: var(--color-brand-soft);
+  --divide: var(--border);
+  --dots: oklch(0.3 0.003 260);
+  --line: var(--border);
+  --footer-link: var(--muted-foreground);
+  --canvas: oklch(0.36 0.003 260);
+  --canvas-fill: oklch(0.28 0.003 260);
+  --g-background-muted: var(--muted);
+  --g-border-strong: oklch(0.36 0.003 260);
+  --g-brand-soft: var(--color-brand-soft);
+  --g-brand-surface: color-mix(in oklch, oklch(0.72 0.14 162) 8%, var(--card));
+  --g-brand-border: color-mix(in oklch, oklch(0.72 0.14 162) 30%, var(--border));
+  --g-surface-elevated: var(--popover);
+  --g-highlight-top: inset 0 1px 0 0 oklch(1 0 0 / 0.05);
+  --np-shadow: 0 0 0 1px var(--border);
+  --shadow-aceternity: 0 0 0 1px var(--border);
+  --sidebar: oklch(0.13 0.002 260);
+  --sidebar-foreground: oklch(0.96 0 0);
   --sidebar-primary: oklch(0.72 0.14 162);
-  --sidebar-primary-foreground: oklch(0.14 0.02 162);
-  --sidebar-accent: oklch(0.12 0.01 250);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.16 0.01 250);
+  --sidebar-primary-foreground: oklch(0.16 0.02 162);
+  --sidebar-accent: oklch(0.215 0.002 260);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.24 0.003 260);
   --sidebar-ring: oklch(0.72 0.14 162);
   /* Lifted slightly on the near-black dark canvas so the circle reads as a chip
      rather than dissolving into the background. */

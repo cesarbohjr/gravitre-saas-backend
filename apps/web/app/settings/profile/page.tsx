@@ -434,12 +434,12 @@ export default function ProfilePage() {
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="h-4 w-4 text-[color:var(--g-brand)]" />
-                      <span className="text-xs font-medium uppercase tracking-wider text-[color:var(--g-brand)]">
-                        Meson Insight
+                      <span className="text-xs font-medium text-[color:var(--g-brand)]">
+                        Meson insight
                       </span>
                     </div>
                     <p className="text-sm text-[color:var(--g-text-muted)] leading-relaxed">
-                      Placeholder insight — live Meson stats are not wired on this profile surface.
+                      Meson activity isn&apos;t shown on your profile yet.
                     </p>
                   </div>
                 </div>

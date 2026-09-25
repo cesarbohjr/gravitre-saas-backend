@@ -503,14 +503,14 @@ function getNodeTypeConfig(type: string) {
 // Node state visual config
 const nodeStateConfig: Record<NodeState, { border: string; bg: string; animation: string }> = {
   idle: { border: "", bg: "", animation: "" },
-  running: { border: "border-info shadow-[0_0_15px_rgba(59,130,246,0.4)]", bg: "bg-info/5", animation: "animate-pulse" },
-  success: { border: "border-success shadow-[0_0_10px_rgba(16,185,129,0.3)]", bg: "bg-success/5", animation: "" },
-  error: { border: "border-destructive shadow-[0_0_12px_rgba(239,68,68,0.4)]", bg: "bg-destructive/5", animation: "animate-shake" },
+  running: { border: "border-info", bg: "bg-info/5", animation: "" },
+  success: { border: "border-success/60", bg: "", animation: "" },
+  error: { border: "border-destructive", bg: "bg-destructive/5", animation: "" },
 waiting: { border: "border-warning/50", bg: "bg-warning/5", animation: "opacity-60" },
   evaluating: { border: "border-[color:var(--g-signal)]", bg: "bg-[color:var(--g-signal-surface)]", animation: "animate-pulse" },
-  debating: { border: "border-warning shadow-[0_0_20px_rgba(245,158,11,0.5)]", bg: "bg-warning/10", animation: "animate-pulse" },
-  consensus: { border: "border-success shadow-[0_0_15px_rgba(16,185,129,0.4)]", bg: "bg-success/10", animation: "" },
-  escalated: { border: "border-destructive shadow-[0_0_15px_rgba(239,68,68,0.4)]", bg: "bg-destructive/10", animation: "" },
+  debating: { border: "border-warning", bg: "bg-warning/5", animation: "" },
+  consensus: { border: "border-success/60", bg: "bg-success/5", animation: "" },
+  escalated: { border: "border-destructive", bg: "bg-destructive/5", animation: "" },
   }
 
 // Canvas Node Component - with mobile touch support
@@ -657,18 +657,18 @@ function CanvasNode({
     >
       <div
         className={cn(
-          "group relative rounded-lg border bg-card shadow-lg transition-all duration-300",
+          "group relative rounded-[var(--np-radius-lg)] border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition-[border-color,box-shadow] duration-150",
           // Responsive width - narrower on mobile
           "w-48 p-2.5 md:w-56 md:p-3",
-          isSelected ? "border-info ring-2 ring-info/30" : "border-border hover:border-muted-foreground/50",
+          isSelected ? "border-foreground ring-2 ring-foreground/10" : "border-[color:var(--g-border-default)] hover:border-[color:var(--g-border-strong)]",
           stateConfig.border,
           stateConfig.bg,
-          isHovered && "shadow-xl translate-y-[-2px]"
+          isHovered && "shadow-[0_4px_12px_rgb(0_0_0/0.08)]"
         )}
       >
         {/* Running indicator glow */}
         {node.state === "running" && (
-          <div className="absolute inset-0 rounded-lg bg-blue-500/10 animate-pulse pointer-events-none" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[var(--np-radius-lg)] bg-info/70 motion-safe:animate-pulse" />
         )}
 
         {/* Drag handle - always visible on mobile when selected */}
@@ -700,7 +700,7 @@ function CanvasNode({
         {/* State indicator badge */}
         {node.state && node.state !== "idle" && (
           <div className={cn(
-            "absolute -top-2 left-4 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide",
+            "absolute -top-2 left-3 px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium capitalize",
             node.state === "running" && "bg-info text-info-foreground",
             node.state === "success" && "bg-success text-success-foreground",
             node.state === "error" && "bg-destructive text-destructive-foreground",
@@ -834,10 +834,10 @@ function CanvasNode({
     // Larger touch target on mobile
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-primary bg-primary scale-125"
       : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
+        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -860,10 +860,10 @@ function CanvasNode({
     "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-primary bg-primary scale-125"
       : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
+        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -886,10 +886,10 @@ function CanvasNode({
     "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-primary bg-primary scale-125"
       : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
+        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -912,10 +912,10 @@ function CanvasNode({
     "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
     "h-6 w-6 md:h-4 md:w-4",
     isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+      ? "border-primary bg-primary scale-125"
       : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
+        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
+        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
   )}
   title="Drag to connect"
   />
@@ -1088,7 +1088,7 @@ function DecisionNode({
   className={cn(
   "absolute -top-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-primary bg-primary scale-125"
   : isSelected
   ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
   : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
@@ -1102,7 +1102,7 @@ function DecisionNode({
   className={cn(
   "absolute top-1/2 -right-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-primary bg-primary scale-125"
   : isSelected
   ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
   : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
@@ -1116,7 +1116,7 @@ function DecisionNode({
   className={cn(
   "absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-primary bg-primary scale-125"
   : isSelected
   ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
   : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
@@ -1130,7 +1130,7 @@ function DecisionNode({
   className={cn(
   "absolute top-1/2 -left-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
   isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+  ? "border-primary bg-primary scale-125"
   : isSelected
   ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
   : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
@@ -1651,7 +1651,7 @@ function AgentCouncilNode({
           className={cn(
             "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-primary bg-primary scale-125"
               : isSelected
               ? "border-warning bg-warning/60 hover:scale-125"
               : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
@@ -1665,7 +1665,7 @@ function AgentCouncilNode({
           className={cn(
             "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-primary bg-primary scale-125"
               : isSelected
               ? "border-warning bg-warning/60 hover:scale-125"
               : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
@@ -1679,7 +1679,7 @@ function AgentCouncilNode({
           className={cn(
             "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-primary bg-primary scale-125"
               : isSelected
               ? "border-warning bg-warning/60 hover:scale-125"
               : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
@@ -1693,7 +1693,7 @@ function AgentCouncilNode({
           className={cn(
             "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
             isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
+              ? "border-primary bg-primary scale-125"
               : isSelected
               ? "border-warning bg-warning/60 hover:scale-125"
               : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
@@ -5483,48 +5483,20 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           >
             {traceOverlay ? (
               <div className="pointer-events-none absolute right-4 top-4 z-20 max-w-sm border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] px-3 py-2 text-xs text-foreground">
-                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  TRACE
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">Trace</p>
                 <p className="mt-1">
-                  Orchestration path on this canvas. Duration bars appear only from a real run —
-                  never invented.
+                  The path this workflow takes. Step durations appear after a real run.
                 </p>
               </div>
             ) : null}
             {/* Enhanced grid background with subtle gradient */}
-            <div className="absolute inset-0">
-              {/* Radial gradient overlay for depth */}
-              <div 
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: "radial-gradient(ellipse at center, transparent 0%, hsl(var(--background)) 70%)",
-                }}
-              />
-              {/* Subtle animated gradient orbs */}
-              <div 
-                className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full pointer-events-none opacity-[0.03]"
-                style={{
-                  background: "radial-gradient(circle, hsl(var(--info)) 0%, transparent 70%)",
-                  animation: "pulse 8s ease-in-out infinite",
-                }}
-              />
-              <div 
-                className="absolute bottom-1/4 left-1/4 w-72 h-72 rounded-full pointer-events-none opacity-[0.02]"
-                style={{
-                  background: "radial-gradient(circle, hsl(var(--success)) 0%, transparent 70%)",
-                  animation: "pulse 10s ease-in-out infinite 2s",
-                }}
-              />
-              {/* Grid pattern */}
+            <div className="pointer-events-none absolute inset-0 bg-[color:var(--g-surface-1)]">
               <div
-                className="absolute inset-0 opacity-[0.03]"
+                className="absolute inset-0"
                 style={{
-                  backgroundImage: `
-                    linear-gradient(hsl(var(--foreground)) 1px, transparent 1px),
-                    linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)
-                  `,
-                  backgroundSize: "40px 40px",
+                  backgroundImage:
+                    "radial-gradient(circle, var(--g-border-strong) 1px, transparent 1.2px)",
+                  backgroundSize: "20px 20px",
                 }}
               />
             </div>

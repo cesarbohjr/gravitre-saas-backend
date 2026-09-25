@@ -29,7 +29,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ThemeProvider
       attribute="class"
       defaultTheme="light"
-      forcedTheme="light"
+      storageKey="gravitre-app-theme"
       enableSystem={false}
       disableTransitionOnChange
     >

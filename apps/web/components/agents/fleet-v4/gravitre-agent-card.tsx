@@ -39,9 +39,11 @@ export function GravitreAgentCard({
       draggable={draggable}
       onDragStart={onDragStart}
       className={cn(
-        "group w-full rounded-[var(--np-radius-md)] border border-divide bg-white text-left shadow-[var(--np-shadow)] transition-[border-color,box-shadow] hover:border-[color:var(--g-brand-border)]",
-        compact ? "p-2" : "p-3",
-        selected && "border-[color:var(--g-brand)]/50 ring-2 ring-[color:var(--g-brand)]/40",
+        "group w-full rounded-[var(--np-radius-md)] border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        compact ? "px-2.5 py-2" : "p-3",
+        selected
+          ? "border-[color:var(--g-border-strong)] bg-[color:var(--g-surface-1)] shadow-[inset_2px_0_0_0_var(--g-brand)]"
+          : "border-transparent hover:border-[color:var(--g-border-default)] hover:bg-[color:var(--g-surface-1)]",
         draggable && "cursor-grab active:cursor-grabbing",
         className,
       )}
@@ -60,12 +62,12 @@ export function GravitreAgentCard({
               <p
                 className={cn(
                   "truncate font-medium text-[color:var(--g-text-primary)]",
-                  compact ? "text-xs leading-snug" : "text-sm",
+                  compact ? "text-[13px] leading-snug" : "text-sm",
                 )}
               >
                 {agent.name}
               </p>
-              <p className="truncate text-[10px] text-[color:var(--g-text-muted)] sm:text-xs">
+              <p className="truncate text-xs text-[color:var(--g-text-muted)]">
                 {agent.role}
               </p>
             </div>
@@ -83,17 +85,17 @@ export function GravitreAgentCard({
               <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
                 {agent.tasksToday} tasks today
               </span>
-            ) : (
-              <span className="text-[10px] tabular-nums text-[color:var(--g-text-muted)]">
+            ) : agent.tasksToday > 0 ? (
+              <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
                 {agent.tasksToday} today
               </span>
-            )}
+            ) : null}
           </div>
           {agent.currentActivity ? (
             <p
               className={cn(
                 "truncate text-[color:var(--g-text-primary)]",
-                compact ? "mt-1 text-[10px]" : "mt-2 text-xs",
+                compact ? "mt-1 text-[11px]" : "mt-2 text-xs",
               )}
             >
               {agent.currentActivity}
@@ -101,7 +103,7 @@ export function GravitreAgentCard({
           ) : null}
           {!compact ? (
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-brand)]">
+              <span className="text-[11px] font-medium text-[color:var(--g-text-secondary)]">
                 {agent.departmentLabel}
               </span>
               {agent.successRate != null ? (
@@ -114,11 +116,7 @@ export function GravitreAgentCard({
                 </span>
               )}
             </div>
-          ) : (
-            <p className="mt-1 text-[9px] font-medium uppercase tracking-wide text-[color:var(--g-brand)]">
-              {agent.departmentLabel}
-            </p>
-          )}
+          ) : null}
         </div>
       </div>
     </button>

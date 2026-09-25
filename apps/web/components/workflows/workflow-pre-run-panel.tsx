@@ -192,7 +192,7 @@ export function WorkflowPreRunPanel({
                 <span className="text-xs text-muted-foreground">Add steps in the builder first.</span>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  Uses fixtures / latency models — not a live run.
+                  Estimated from past runs and sample data. Nothing is executed.
                 </span>
               )}
             </div>
@@ -213,9 +213,9 @@ export function WorkflowPreRunPanel({
                 </div>
                 {simStats ? (
                   <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-                    <Badge variant="outline">Fixtures {simStats.fixtureHits}</Badge>
-                    <Badge variant="outline">LLM {simStats.llmPredictions}</Badge>
-                    {simStats.ragReads > 0 ? <Badge variant="outline">RAG {simStats.ragReads}</Badge> : null}
+                    <Badge variant="outline">Sample data {simStats.fixtureHits}</Badge>
+                    <Badge variant="outline">AI estimates {simStats.llmPredictions}</Badge>
+                    {simStats.ragReads > 0 ? <Badge variant="outline">Knowledge lookups {simStats.ragReads}</Badge> : null}
                   </div>
                 ) : null}
                 <ol className="space-y-2">

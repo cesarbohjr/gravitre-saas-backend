@@ -79,8 +79,18 @@ export function AgentPersonalityEditorCard({ agent, onSaved }: AgentPersonalityE
     }
   }
 
+  const savedStyle = normalizeAgentResponseStyle(agent.responseStyle ?? DEFAULT_AGENT_RESPONSE_STYLE)
+  const savedVoice = agent.voiceProfile ?? {
+    tts_model: "eleven_flash_v2_5",
+    turn_sensitivity: "normal",
+    language: "en",
+  }
+  const dirty =
+    responseStyle !== savedStyle ||
+    (showVoiceConfigure && JSON.stringify(voiceProfile) !== JSON.stringify(savedVoice))
+
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card/50 p-6">
+    <div className="space-y-6">
       <AgentPersonalitySection
         voiceProfile={voiceProfile}
         onVoiceProfileChange={setVoiceProfile}
@@ -89,8 +99,24 @@ export function AgentPersonalityEditorCard({ agent, onSaved }: AgentPersonalityE
         department={agent.department}
         showVoiceConfigure={showVoiceConfigure}
       />
-      <div className="flex justify-end">
-        <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+      <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-3 border-t border-[color:var(--g-border-subtle)] bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <span aria-live="polite" className="mr-auto text-xs text-muted-foreground">
+          {dirty ? "Unsaved changes" : "All changes saved"}
+        </span>
+        {dirty ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setVoiceProfile(savedVoice)
+              setResponseStyle(savedStyle)
+            }}
+            disabled={saving}
+          >
+            Discard
+          </Button>
+        ) : null}
+        <Button type="button" onClick={() => void handleSave()} disabled={saving || !dirty}>
           {saving ? "Saving…" : "Save personality"}
         </Button>
       </div>

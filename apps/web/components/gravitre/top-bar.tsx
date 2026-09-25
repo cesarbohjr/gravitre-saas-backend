@@ -8,6 +8,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { organizationsApi } from "@/lib/api"
 import type { Organization } from "@/types/api"
 import { toast } from "sonner"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -64,6 +65,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   const [minimized, setMinimized] = useState(false)
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
+  const { resolvedTheme, setTheme } = useTheme()
 
   useEffect(() => {
     try {
@@ -155,7 +157,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
       : null
 
   // Derive user info from auth context
-  const userEmail = user?.email ?? "john@acmecorp.com"
+  const userEmail = user?.email ?? ""
   const userName = 
     (user?.user_metadata?.full_name as string | undefined) ||
     (user?.user_metadata?.name as string | undefined) ||
@@ -219,8 +221,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
         data-testid="app-top-bar"
         className={cn(
           // Nodus Phase 8: divide border + aceternity elevation on light chrome
-          "flex items-center justify-between border-b border-divide bg-white px-3 shadow-aceternity sm:px-4",
-          chromeQuiet ? "h-10 sm:h-9" : "h-12 sm:h-12",
+          "flex items-center justify-between border-b border-[color:var(--g-border-subtle)] bg-background px-3 sm:px-4",
+          chromeQuiet ? "h-10 sm:h-9" : "h-12 sm:h-11",
         )}
       >
         {/* Left side - Menu + Org + Environment + Page title */}
@@ -371,16 +373,16 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {/* Admin/Lite Mode Toggle */}
           {!chromeQuiet ? (
-          <div className="hidden items-center gap-0.5 rounded-xl border border-divide bg-[color:var(--g-background-muted)] p-0.5 sm:flex">
+          <div className="hidden items-center gap-0.5 rounded-[var(--np-radius-md)] bg-[color:var(--g-background-muted)] p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => switchMode("admin")}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200",
+                    "rounded-[6px] px-2.5 py-1 text-xs font-medium transition-colors duration-150",
                     mode === "admin"
-                      ? "bg-white text-charcoal-900 shadow-aceternity"
-                      : "text-gray-600 hover:text-charcoal-900"
+                      ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)]"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Admin
@@ -395,10 +397,10 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 <button
                   onClick={() => switchMode("lite")}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200",
+                    "rounded-[6px] px-2.5 py-1 text-xs font-medium transition-colors duration-150",
                     mode === "lite"
-                      ? "bg-white text-charcoal-900 shadow-aceternity"
-                      : "text-gray-600 hover:text-charcoal-900"
+                      ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)]"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Lite
@@ -499,7 +501,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                     </div>
                     <div>
                       <p className="text-sm font-medium">Team</p>
-                      <p className="text-[10px] text-muted-foreground">8 members</p>
+                      <p className="text-[10px] text-muted-foreground">Members and roles</p>
                     </div>
                   </Link>
                 </DropdownMenuItem>
@@ -519,6 +521,31 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 </DropdownMenuItem>
               </div>
               
+              <DropdownMenuSeparator className="my-0" />
+
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <span className="text-sm">Appearance</span>
+                <div role="radiogroup" aria-label="Appearance" className="inline-flex items-center gap-0.5 rounded-[var(--np-radius-md)] bg-[color:var(--g-background-muted)] p-0.5">
+                  {(["light", "dark"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      role="radio"
+                      aria-checked={resolvedTheme === option}
+                      onClick={() => setTheme(option)}
+                      className={cn(
+                        "rounded-[6px] px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+                        resolvedTheme === option
+                          ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)]"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <DropdownMenuSeparator className="my-0" />
               
               <div className="p-1.5">

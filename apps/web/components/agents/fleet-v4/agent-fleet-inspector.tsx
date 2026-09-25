@@ -1,8 +1,18 @@
 "use client"
 
 import Link from "next/link"
-import { Database, MessageSquare, Pause, Play, RefreshCw, Settings } from "lucide-react"
+import {
+  ArrowUpRight,
+  Database,
+  MessageSquare,
+  Pause,
+  Play,
+  RefreshCw,
+  Settings,
+  X,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { NucleoHistory } from "@/components/icons/nucleo/semantic"
 import { LEGACY_COLOR_TO_IDENTITY, LEGACY_ICON_TO_ROLE } from "@/lib/agent-identity-bridge"
@@ -10,7 +20,6 @@ import { isAgentAvatarColorId, isAgentIconId } from "@/lib/agent-identity"
 import { AGENT_DEPARTMENT_OPTIONS, normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { normalizeAgentStatus, presentAgentStatus } from "@/lib/agent-runtime-status"
 import { cn } from "@/lib/utils"
-import { TYPE } from "@/lib/design-system"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { IDENTITY_COLOR_TOKENS, ROLE_ICON_REGISTRY, suggestRoleIcon } from "./identity-tokens"
 import type { AgentIdentityColorId, AgentRoleIconId } from "./types"
@@ -29,8 +38,8 @@ function inspectorIdentityColor(agent: AgentFleetInspectorAgent): AgentIdentityC
 }
 
 /**
- * Unified Agents 4.0 inspector body — one content model for sheet + desktop panel.
- * Train lives here only (not on every fleet card). No glow/orb customization.
+ * Unified Agents inspector body — one content model for sheet + desktop panel.
+ * Train lives here only (not on every fleet card).
  */
 
 export type AgentFleetInspectorAgent = {
@@ -69,11 +78,13 @@ export function AgentFleetInspectorBody({
   onStart,
   onStop,
   onDepartmentChange,
+  onClose,
   isMutating,
   successRateDisplay,
 }: {
   agent: AgentFleetInspectorAgent
   layout?: "sheet" | "panel"
+  onClose?: () => void
   onStart?: (agent: AgentFleetInspectorAgent) => Promise<void>
   onStop?: (agent: AgentFleetInspectorAgent) => Promise<void>
   onDepartmentChange?: (agentId: string, department: AgentDepartment) => void
@@ -84,7 +95,6 @@ export function AgentFleetInspectorBody({
   const status = presentAgentStatus(normalized)
   const systems =
     (agent.connectedSystems?.length ? agent.connectedSystems : agent.permissions) ?? []
-  const dense = layout === "sheet"
   const departmentValue = (() => {
     const normalizedDept = normalizeAgentDepartment(agent.department)
     if (AGENT_DEPARTMENT_OPTIONS.includes(normalizedDept)) return normalizedDept
@@ -92,233 +102,240 @@ export function AgentFleetInspectorBody({
     if (normalizedDept === "HR") return "General"
     return "Operations"
   })()
+  const avg = agent.stats.avgResponseTime
+  const showAvg = Boolean(avg) && avg !== "—" && avg !== "-"
 
   return (
-    <div className="flex h-full flex-col">
-      <div className={cn("border-b border-border", dense ? "px-5 py-5" : "p-6")}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <GravitreAgentIdentity
-              icon={inspectorRoleIcon(agent)}
-              identityColor={inspectorIdentityColor(agent)}
-              size={dense ? "md" : "lg"}
-            />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className={cn(TYPE.sectionTitle, "truncate")}>{agent.name}</h2>
-                {onDepartmentChange ? (
-                  <select
-                    aria-label={`Department for ${agent.name}`}
-                    value={departmentValue}
-                    disabled={isMutating}
-                    onChange={(event) => {
-                      onDepartmentChange(agent.id, event.target.value as AgentDepartment)
-                    }}
-                    className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  >
-                    {AGENT_DEPARTMENT_OPTIONS.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className={cn("rounded-full bg-secondary px-2 py-0.5", TYPE.metricLabel)}>
-                    {agent.department}
-                  </span>
-                )}
-                <StatusChip status={normalized} pulse={status.pulse}>
-                  {status.label}
-                </StatusChip>
-              </div>
-              <p className="text-sm text-muted-foreground">{agent.role}</p>
-            </div>
+    <div className="flex h-full flex-col" data-inspector-layout={layout}>
+      <div className="px-5 pt-5 pb-4">
+        <div className={cn("flex items-start gap-3", layout === "sheet" && "pr-8")}>
+          <GravitreAgentIdentity
+            icon={inspectorRoleIcon(agent)}
+            identityColor={inspectorIdentityColor(agent)}
+            size="md"
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
+              {agent.name}
+            </h2>
+            <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{agent.role}</p>
           </div>
-          {!dense ? (
-            <div className="flex shrink-0 items-center gap-2">
-              {agent.status === "active" ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => void onStop?.(agent)}
-                  disabled={isMutating}
-                >
-                  <Pause className="h-3.5 w-3.5" />
-                  Pause
-                </Button>
-              ) : agent.status !== "error" ? (
-                <Button
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => void onStart?.(agent)}
-                  disabled={isMutating}
-                >
-                  <Play className="h-3.5 w-3.5" />
-                  Activate
-                </Button>
-              ) : (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => void onStart?.(agent)}
-                  disabled={isMutating}
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Retry
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" asChild aria-label={`Configure ${agent.name}`}>
-                <Link href={`/agents/${agent.id}`}>
-                  <Settings className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            asChild
+            aria-label={`Open ${agent.name} settings`}
+            className="shrink-0"
+          >
+            <Link href={`/agents/${agent.id}`}>
+              <Settings className="size-4" />
+            </Link>
+          </Button>
+          {onClose ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onClose}
+              aria-label="Close agent details"
+              className="-mr-1 shrink-0"
+            >
+              <X className="size-4" />
+            </Button>
           ) : null}
         </div>
 
         {agent.description ? (
-          <p className="mt-3 text-sm text-muted-foreground">{agent.description}</p>
+          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+            {agent.description}
+          </p>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "rounded-md px-2 py-1 text-xs font-medium",
-              successRateDisplay != null
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : "bg-secondary text-muted-foreground",
-            )}
-          >
-            {successRateDisplay != null ? `${successRateDisplay}% success` : "No tasks yet"}
-          </span>
-          <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
-            {agent.stats.tasksToday} tasks
-          </span>
-          {agent.model ? (
-            <span className="max-w-[140px] truncate rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
-              {agent.model}
-            </span>
-          ) : null}
-          {(agent.knowledgeDocCount ?? 0) > 0 ? (
-            <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
-              {agent.knowledgeDocCount} training docs
-            </span>
-          ) : null}
+        <div className="mt-4 flex items-center gap-2">
+          <Button size="sm" className="flex-1" asChild>
+            <Link href={`/lite/assign?agent=${agent.id}`}>
+              <Play className="size-3.5" />
+              Assign work
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" asChild>
+            <Link href={`/agents/${agent.id}/chat`}>
+              <MessageSquare className="size-3.5" />
+              Chat
+            </Link>
+          </Button>
+          {agent.status === "active" ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void onStop?.(agent)}
+              disabled={isMutating}
+            >
+              <Pause className="size-3.5" />
+              Pause
+            </Button>
+          ) : agent.status !== "error" ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void onStart?.(agent)}
+              disabled={isMutating}
+            >
+              <Play className="size-3.5" />
+              Activate
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => void onStart?.(agent)}
+              disabled={isMutating}
+            >
+              <RefreshCw className="size-3.5" />
+              Retry
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className={cn("grid grid-cols-3 gap-px bg-divide", !dense && "sm:grid-cols-4")}>
-        <StatCell label="Tasks" value={String(agent.stats.tasksToday)} />
-        <StatCell
-          label="Success"
-          value={successRateDisplay != null ? `${successRateDisplay}%` : "—"}
-        />
-        <StatCell label="Flows" value={String(agent.stats.workflowsUsing)} />
-        {!dense ? <StatCell label="Avg" value={agent.stats.avgResponseTime} /> : null}
-      </div>
-
-      <div className={cn("flex-1 space-y-5", dense ? "px-5 py-4" : "p-6")}>
-        {agent.capabilities && agent.capabilities.length > 0 ? (
-          <section>
-            <h3 className={cn(TYPE.eyebrow, "mb-2 block")}>Capabilities</h3>
-            <div className="flex flex-wrap gap-2">
-              {agent.capabilities.map((cap) => (
-                <span
-                  key={cap}
-                  className="rounded-md border border-divide bg-[color:var(--g-surface-2)] px-2.5 py-1 text-xs text-foreground"
+      <div className="flex-1 divide-y divide-[color:var(--g-border-subtle)] border-t border-[color:var(--g-border-subtle)]">
+        <section className="px-5 py-4">
+          <dl className="grid grid-cols-[minmax(104px,auto)_1fr] items-center gap-x-4 gap-y-2.5 text-[13px]">
+            <dt className="text-muted-foreground">Status</dt>
+            <dd>
+              <StatusChip status={normalized} pulse={status.pulse} appearance="plain">
+                {status.label}
+              </StatusChip>
+            </dd>
+            <dt className="text-muted-foreground">Department</dt>
+            <dd>
+              {onDepartmentChange ? (
+                <select
+                  aria-label={`Department for ${agent.name}`}
+                  value={departmentValue}
+                  disabled={isMutating}
+                  onChange={(event) => {
+                    onDepartmentChange(agent.id, event.target.value as AgentDepartment)
+                  }}
+                  className="h-7 rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-background px-2 text-[13px] text-foreground hover:border-[color:var(--g-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
+                  {AGENT_DEPARTMENT_OPTIONS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-foreground">{agent.department}</span>
+              )}
+            </dd>
+            {agent.model ? (
+              <>
+                <dt className="text-muted-foreground">Model</dt>
+                <dd className="truncate text-foreground">{agent.model}</dd>
+              </>
+            ) : null}
+            <dt className="text-muted-foreground">Tasks today</dt>
+            <dd className="tabular-nums text-foreground">{agent.stats.tasksToday}</dd>
+            <dt className="text-muted-foreground">Success rate</dt>
+            <dd className="tabular-nums text-foreground">
+              {successRateDisplay != null ? (
+                `${successRateDisplay}%`
+              ) : (
+                <span className="text-muted-foreground">No completed tasks yet</span>
+              )}
+            </dd>
+            <dt className="text-muted-foreground">Workflows</dt>
+            <dd className="tabular-nums text-foreground">{agent.stats.workflowsUsing}</dd>
+            {showAvg ? (
+              <>
+                <dt className="text-muted-foreground">Avg response</dt>
+                <dd className="tabular-nums text-foreground">{avg}</dd>
+              </>
+            ) : null}
+            {(agent.knowledgeDocCount ?? 0) > 0 ? (
+              <>
+                <dt className="text-muted-foreground">Training docs</dt>
+                <dd className="tabular-nums text-foreground">{agent.knowledgeDocCount}</dd>
+              </>
+            ) : null}
+          </dl>
+        </section>
+
+        {agent.capabilities && agent.capabilities.length > 0 ? (
+          <section className="px-5 py-4">
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground">Capabilities</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {agent.capabilities.map((cap) => (
+                <Badge key={cap} variant="secondary">
                   {cap}
-                </span>
+                </Badge>
               ))}
             </div>
           </section>
         ) : null}
 
         {systems.length > 0 ? (
-          <section>
-            <h3 className={cn(TYPE.eyebrow, "mb-2 block")}>Connected systems</h3>
-            <div className="flex flex-wrap gap-2">
+          <section className="px-5 py-4">
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground">Connected systems</h3>
+            <div className="flex flex-wrap gap-1.5">
               {systems.map((sys) => (
-                <span
-                  key={sys}
-                  className="rounded-md border border-info/20 bg-info/10 px-2.5 py-1 text-xs text-info"
-                >
+                <Badge key={sys} variant="outline">
                   {sys}
-                </span>
+                </Badge>
               ))}
             </div>
           </section>
         ) : null}
 
-        <section>
-          <h3 className={cn(TYPE.eyebrow, "mb-2 block")}>Recent activity</h3>
-          <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <p className="text-sm text-foreground">{agent.lastAction || "No activity yet"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {agent.lastActionTime || "unknown"}
-            </p>
-          </div>
+        <section className="px-5 py-4">
+          <h3 className="mb-2 text-xs font-medium text-muted-foreground">Recent activity</h3>
+          <p className="text-[13px] text-foreground">{agent.lastAction || "No activity yet"}</p>
+          {agent.lastActionTime ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">{agent.lastActionTime}</p>
+          ) : null}
         </section>
       </div>
 
-      <div
-        className={cn(
-          "space-y-3 border-t border-border bg-secondary/30",
-          dense ? "px-5 py-4" : "p-6",
-        )}
+      <nav
+        aria-label={`More for ${agent.name}`}
+        className="grid grid-cols-2 gap-1 border-t border-[color:var(--g-border-subtle)] px-3 py-3"
       >
-        <div className={cn("grid gap-2", dense ? "grid-cols-1" : "grid-cols-3")}>
-          {dense ? (
-            <Button variant="outline" className="w-full gap-1.5" asChild>
-              <Link href={`/agents/${agent.id}/chat`}>
-                <MessageSquare className="h-3.5 w-3.5" />
-                Chat
-              </Link>
-            </Button>
-          ) : null}
-          <Button variant="outline" size="sm" className="gap-1.5" asChild>
-            <Link href={`/agents/${agent.id}?tab=training`}>
-              <NucleoHistory className="h-3.5 w-3.5" />
-              Train
-            </Link>
-          </Button>
-          <Button variant={dense ? "default" : "outline"} size="sm" className="gap-1.5" asChild>
-            <Link href={`/lite/assign?agent=${agent.id}`}>
-              <Play className="h-3.5 w-3.5" />
-              Assign
-            </Link>
-          </Button>
-          {!dense ? (
-            <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link href={`/agents/${agent.id}/memory`}>
-                <Database className="h-3.5 w-3.5" />
-                Memory
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-        <Button variant="outline" className="w-full justify-between" asChild>
-          <Link href={`/agents/${agent.id}`}>
-            View / edit profile
-            <span className="text-muted-foreground">Appearance · settings</span>
-          </Link>
-        </Button>
-        <p className="text-[11px] text-muted-foreground">
-          Training and appearance live in profile/inspector — not on every fleet card. Appearance
-          uses soft tiles only (no glow orbs).
-        </p>
-      </div>
+        <InspectorLink href={`/agents/${agent.id}?tab=training`} icon={<NucleoHistory className="size-3.5" />}>
+          Train
+        </InspectorLink>
+        <InspectorLink href={`/agents/${agent.id}/memory`} icon={<Database className="size-3.5" />}>
+          Memory
+        </InspectorLink>
+        <InspectorLink
+          href={`/agents/${agent.id}`}
+          icon={<ArrowUpRight className="size-3.5" />}
+          className="col-span-2"
+        >
+          Open full profile
+        </InspectorLink>
+      </nav>
     </div>
   )
 }
 
-function StatCell({ label, value }: { label: string; value: string }) {
+function InspectorLink({
+  href,
+  icon,
+  children,
+  className,
+}: {
+  href: string
+  icon: React.ReactNode
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <div className="bg-[color:var(--g-surface-1)] p-3 text-center sm:p-4">
-      <div className="text-lg font-semibold text-foreground sm:text-xl">{value}</div>
-      <div className={TYPE.metricLabel}>{label}</div>
-    </div>
+    <Button variant="ghost" size="sm" className={cn("justify-start text-foreground/80", className)} asChild>
+      <Link href={href}>
+        {icon}
+        {children}
+      </Link>
+    </Button>
   )
 }

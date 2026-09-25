@@ -44,8 +44,8 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "min-w-0 px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5",
-        !className?.includes("border") && "border-b border-divide",
+        "min-w-0 px-[var(--np-page-pad-sm)] pt-4 pb-3 sm:px-[var(--np-page-pad)] sm:pt-5",
+        !className?.includes("border") && "border-b border-[color:var(--g-border-subtle)]",
         className,
       )}
     >
@@ -54,24 +54,14 @@ export function PageHeader({
       <div className="mb-2 flex min-w-0 flex-col justify-between gap-3 sm:mb-2.5 sm:flex-row sm:items-center">
         <div className="flex min-w-0 shrink-0 items-center gap-2.5 sm:max-w-[min(100%,28rem)]">
           {Icon && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
+            <span
               className={cn(
-                "flex shrink-0 items-center justify-center rounded-[var(--np-radius-md)] ring-1",
-                usesBrandTint
-                  ? "bg-[color:var(--g-brand-soft)] ring-[color:var(--g-brand-border)]"
-                  : cn("bg-gradient-to-br ring-border/60", tint),
+                "flex size-8 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-background text-foreground",
+                !usesBrandTint && cn("bg-gradient-to-br", tint),
               )}
-              style={{ width: 36, height: 36, minWidth: 36, minHeight: 36 }}
             >
-              <Icon
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  usesBrandTint ? "text-[color:var(--g-brand)]" : "text-foreground",
-                )}
-              />
-            </motion.div>
+              <Icon className="h-4 w-4 shrink-0" />
+            </span>
           )}
           <div className="min-w-0 space-y-0.5">
             {eyebrow || eyebrowAccessory ? (
@@ -90,7 +80,7 @@ export function PageHeader({
         )}
       </div>
       {description ? (
-        <p className={cn(TYPE.pageLead, "mb-3 max-w-3xl text-pretty")}>{description}</p>
+        <p className={cn(TYPE.pageLead, "-mt-1 mb-3 max-w-2xl text-pretty")}>{description}</p>
       ) : null}
       {children}
     </div>
@@ -136,37 +126,32 @@ export function StatCard({
   // were tuned for dark mode and failed contrast against a 10% tint in light
   // mode. The `--success`/`--warning`/`--info`/`--destructive` tokens already
   // carry per-theme values.
-  const variantStyles = {
-    default: "border-divide bg-[color:var(--g-surface-1)]",
-    success: "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)]",
-    warning: "border-amber-300/50 bg-amber-500/10",
-    info: "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-surface)]",
-    danger: "border-destructive/25 bg-destructive/10",
-  }
-
-  const valueColors = {
-    default: "text-[color:var(--g-text-primary)]",
-    success: "text-[color:var(--g-brand)]",
-    warning: "text-amber-800",
-    info: "text-[color:var(--g-brand-active)]",
-    danger: "text-destructive",
+  // Status is carried by a small marker, not a tinted tile: a row of colored
+  // boxes competes with the page's real attention items.
+  const markerColors = {
+    default: "bg-[color:var(--g-border-strong)]",
+    success: "bg-[color:var(--g-success)]",
+    warning: "bg-[color:var(--g-warning)]",
+    info: "bg-[color:var(--g-signal)]",
+    danger: "bg-destructive",
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "border p-2.5 text-center shadow-[var(--np-shadow)] sm:p-3",
-        "rounded-[var(--np-radius-lg)]",
-        variantStyles[variant],
+        "rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] px-3 py-2.5",
         className
       )}
     >
-      <div className={cn("text-base font-semibold tabular-nums sm:text-lg", valueColors[variant])}>
+      <div className={cn(TYPE.metricLabel, "flex items-center gap-1.5")}>
+        <span aria-hidden className={cn("size-1.5 rounded-full", markerColors[variant])} />
+        {label}
+      </div>
+      <div className="mt-1 text-lg font-semibold tabular-nums text-[color:var(--g-text-primary)] sm:text-xl">
         {value}
       </div>
-      <div className={cn(TYPE.metricLabel, "mt-0.5 text-[color:var(--g-text-muted)]")}>{label}</div>
     </motion.div>
   )
 }

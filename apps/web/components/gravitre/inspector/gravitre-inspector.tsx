@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 
 export const GRAVITRE_INSPECTOR_KINDS = [
   "entity",
+  "agent",
   "evidence",
   "artifact",
   "approval",
@@ -28,12 +29,36 @@ export type GravitreInspectorKind = (typeof GRAVITRE_INSPECTOR_KINDS)[number]
 
 export const GRAVITRE_INSPECTOR_KIND_LABEL: Record<GravitreInspectorKind, string> = {
   entity: "Details",
+  agent: "Agent",
   evidence: "Evidence",
   artifact: "Artifact",
   approval: "Approval",
   task: "Task status",
   error: "Error",
   configuration: "Advanced configuration",
+}
+
+/**
+ * One width ladder for every contextual panel. Narrow by default so the page
+ * stays readable beside it; `immersive` only when the content needs the room.
+ */
+export const GRAVITRE_INSPECTOR_SIZES = {
+  compact: "sm:max-w-[380px]",
+  standard: "sm:max-w-[420px]",
+  wide: "sm:max-w-[560px]",
+  immersive: "sm:max-w-[min(960px,92vw)]",
+} as const
+export type GravitreInspectorSize = keyof typeof GRAVITRE_INSPECTOR_SIZES
+
+export const GRAVITRE_INSPECTOR_DEFAULT_SIZE: Record<GravitreInspectorKind, GravitreInspectorSize> = {
+  entity: "standard",
+  agent: "standard",
+  evidence: "standard",
+  artifact: "wide",
+  approval: "standard",
+  task: "compact",
+  error: "compact",
+  configuration: "wide",
 }
 
 export function GravitreInspector({
@@ -46,6 +71,8 @@ export function GravitreInspector({
   footer,
   returnFocusRef,
   side = "right",
+  size,
+  headerAside,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -57,7 +84,11 @@ export function GravitreInspector({
   /** Where focus lands on close when the opener is not the element that had focus. */
   returnFocusRef?: RefObject<HTMLElement | null>
   side?: "right" | "bottom"
+  size?: GravitreInspectorSize
+  /** Identity mark or status shown beside the title (avatar, state chip). */
+  headerAside?: ReactNode
 }) {
+  const width = GRAVITRE_INSPECTOR_SIZES[size ?? GRAVITRE_INSPECTOR_DEFAULT_SIZE[kind]]
   // Radix only restores focus to a <SheetTrigger>; controlled inspectors opened
   // from arbitrary buttons would otherwise drop focus to <body> on close.
   const openerRef = useRef<HTMLElement | null>(null)
@@ -68,7 +99,7 @@ export function GravitreInspector({
         data-gravitre-inspector={kind}
         className={cn(
           "gap-0 bg-[color:var(--g-surface-1)] p-0",
-          side === "right" ? "w-full sm:max-w-md" : "max-h-[85dvh]",
+          side === "right" ? cn("w-full", width) : "max-h-[85dvh] rounded-t-[var(--np-radius-lg)]",
         )}
         onOpenAutoFocus={() => {
           const active = document.activeElement
@@ -81,17 +112,20 @@ export function GravitreInspector({
           target.focus()
         }}
       >
-        <SheetHeader className="border-b border-divide px-4 py-3 pr-10">
-          <p className={TYPE.eyebrow}>{GRAVITRE_INSPECTOR_KIND_LABEL[kind]}</p>
-          <SheetTitle className="text-sm font-semibold text-[color:var(--g-text-primary)]">{title}</SheetTitle>
-          {description ? (
-            <SheetDescription className="text-xs text-[color:var(--g-text-muted)]">{description}</SheetDescription>
-          ) : (
-            <SheetDescription className="sr-only">{GRAVITRE_INSPECTOR_KIND_LABEL[kind]} for {title}</SheetDescription>
-          )}
+        <SheetHeader className="flex-row items-start gap-3 border-b border-[color:var(--g-border-subtle)] px-5 py-4 pr-12">
+          {headerAside ? <div className="shrink-0">{headerAside}</div> : null}
+          <div className="min-w-0 space-y-0.5">
+            <p className={TYPE.eyebrow}>{GRAVITRE_INSPECTOR_KIND_LABEL[kind]}</p>
+            <SheetTitle className="truncate text-base font-semibold tracking-tight text-[color:var(--g-text-primary)]">{title}</SheetTitle>
+            {description ? (
+              <SheetDescription className="text-[13px] text-[color:var(--g-text-muted)]">{description}</SheetDescription>
+            ) : (
+              <SheetDescription className="sr-only">{GRAVITRE_INSPECTOR_KIND_LABEL[kind]} for {title}</SheetDescription>
+            )}
+          </div>
         </SheetHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">{children}</div>
-        {footer ? <SheetFooter className="border-t border-divide px-4 py-3">{footer}</SheetFooter> : null}
+        <div className="min-h-0 flex-1 divide-y divide-[color:var(--g-border-subtle)] overflow-y-auto [&>*]:px-5 [&>*]:py-4">{children}</div>
+        {footer ? <SheetFooter className="flex-row justify-end gap-2 border-t border-[color:var(--g-border-subtle)] px-5 py-3">{footer}</SheetFooter> : null}
       </SheetContent>
     </Sheet>
   )
@@ -99,8 +133,8 @@ export function GravitreInspector({
 
 export function GravitreInspectorSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-2">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">{title}</h3>
+    <section className="space-y-2.5">
+      <h3 className="text-xs font-medium text-[color:var(--g-text-muted)]">{title}</h3>
       {children}
     </section>
   )
@@ -112,7 +146,7 @@ export function GravitreInspectorFields({
   fields: ReadonlyArray<{ label: string; value: ReactNode; mono?: boolean }>
 }) {
   return (
-    <dl className="grid grid-cols-[minmax(96px,auto)_1fr] gap-x-3 gap-y-1.5 text-xs">
+    <dl className="grid grid-cols-[minmax(104px,auto)_1fr] gap-x-4 gap-y-2 text-[13px]">
       {fields.map((field) => (
         <div key={field.label} className="contents">
           <dt className="text-[color:var(--g-text-muted)]">{field.label}</dt>

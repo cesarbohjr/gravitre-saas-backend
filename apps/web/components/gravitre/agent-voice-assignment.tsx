@@ -22,7 +22,7 @@ import { apiFetch } from "@/lib/fetcher"
 import type { AgentVoiceProfile } from "@/types/api"
 import { toast } from "sonner"
 import { GravitreWave } from "@/components/gravitre/assistant/voice-presentation"
-import { Check, Loader2, Play, Sparkles } from "lucide-react"
+import { Check, ChevronRight, Loader2, Play, Sparkles } from "lucide-react"
 
 type LibraryVoice = {
   voice_id: string
@@ -44,7 +44,7 @@ type Props = {
 /** Quiet metadata chip for tone / energy. Never competes with the voice name. */
 function Trait({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded border border-border/60 bg-muted/40 px-1.5 py-px text-[10px] uppercase tracking-wide text-muted-foreground">
+    <span className="rounded-[4px] bg-[color:var(--g-surface-2)] px-1.5 py-px text-[11px] text-muted-foreground">
       {children}
     </span>
   )
@@ -203,40 +203,30 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
   const selectedHeard = value.voice_id ? heard.includes(value.voice_id) : false
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card", className)}>
-      <div className="border-b border-border/70 px-4 py-3">
-        <Label className="text-sm font-medium">Voice</Label>
-        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-          Pick a library voice or design a custom one. Both are full paths — listen
-          before you confirm.
-        </p>
-      </div>
-
+    <div className={cn("space-y-4", className)}>
       {/* Equal-weight paths: one segmented control, two same-width halves, so
           Custom never reads as a buried advanced toggle. */}
-      <div className="px-4 pt-3">
-        <div className="grid grid-cols-2 gap-0.5 rounded-lg border border-border/70 bg-muted/40 p-0.5">
-          {(["preset", "custom"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              aria-pressed={tab === t}
-              className={cn(
-                "flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors",
-                tab === t
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t === "custom" ? <Sparkles className="h-3.5 w-3.5" /> : null}
-              {t === "preset" ? "Preset library" : "Custom voice"}
-            </button>
-          ))}
-        </div>
+      <div className="inline-grid w-full grid-cols-2 gap-0.5 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] p-0.5 sm:w-auto">
+        {(["preset", "custom"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            aria-pressed={tab === t}
+            className={cn(
+              "flex h-7 items-center justify-center gap-1.5 rounded-[6px] px-3 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              tab === t
+                ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)]"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t === "custom" ? <Sparkles className="size-3.5" /> : null}
+            {t === "preset" ? "Voice library" : "Design a voice"}
+          </button>
+        ))}
       </div>
 
-      <div className="p-4">
+      <div>
         {tab === "preset" ? (
           <div className="space-y-4">
             {loading ? (
@@ -244,7 +234,7 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading library…
               </div>
             ) : (
-              <div className="grid max-h-72 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-2">
+              <div className="grid max-h-80 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-2">
                 {voices.map((v) => {
                   const selected = value.voice_id === v.voice_id
                   const isPreviewing = previewing === v.voice_id
@@ -252,23 +242,23 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
                     <div
                       key={v.voice_id}
                       className={cn(
-                        "flex items-start gap-2 rounded-lg border p-3 transition-colors",
+                        "flex items-start gap-2 rounded-[var(--np-radius-md)] border p-3 transition-colors",
                         selected
-                          ? "border-success/40 bg-success/[0.05]"
-                          : "border-border/60 hover:border-border hover:bg-muted/30",
+                          ? "border-foreground bg-[color:var(--g-surface-1)]"
+                          : "border-[color:var(--g-border-default)] hover:border-[color:var(--g-border-strong)] hover:bg-[color:var(--g-surface-1)]",
                       )}
                     >
                       <button
                         type="button"
-                        className="min-w-0 flex-1 text-left"
+                        className="min-w-0 flex-1 rounded-[4px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         onClick={() => selectPreset(v)}
                         aria-pressed={selected}
                       >
                         <span className="flex items-center gap-1.5">
                           {selected ? (
-                            <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                            <Check className="size-3.5 shrink-0 text-foreground" aria-hidden />
                           ) : null}
-                          <span className="truncate text-sm font-medium text-foreground">
+                          <span className="truncate text-[13px] font-medium text-foreground">
                             {v.name}
                           </span>
                         </span>
@@ -284,9 +274,9 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
                       </button>
                       <Button
                         type="button"
-                        size="icon"
-                        variant="ghost"
-                        className={cn("h-8 w-8 shrink-0", isPreviewing && "text-success")}
+                        size="icon-sm"
+                        variant="outline"
+                        className={cn("shrink-0 rounded-full", isPreviewing && "border-foreground")}
                         disabled={isPreviewing}
                         onClick={() => previewVoice(v.voice_id)}
                         aria-label={`Preview ${v.name}`}
@@ -307,13 +297,18 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
 
             {/* Secondary controls: smaller labels, quiet surface, placed after the
                 voice choice so they never outrank it. */}
-            <div className="grid gap-3 border-t border-border/60 pt-3 sm:grid-cols-2">
+            <details className="group">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-[4px] text-[13px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden />
+                Advanced
+              </summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
-                <Label className="text-[11px] font-normal uppercase tracking-wide text-muted-foreground">
-                  TTS model
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Speech model
                 </Label>
                 <select
-                  className="mt-1 h-8 w-full rounded-md border border-border/70 bg-background px-2 text-xs text-foreground"
+                  className="mt-1 h-8 w-full rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-background px-2 text-[13px] text-foreground hover:border-[color:var(--g-border-strong)]"
                   value={value.tts_model || "eleven_flash_v2_5"}
                   onChange={(e) => onChange({ ...value, tts_model: e.target.value })}
                 >
@@ -323,11 +318,11 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
                 </select>
               </div>
               <div>
-                <Label className="text-[11px] font-normal uppercase tracking-wide text-muted-foreground">
+                <Label className="text-xs font-medium text-muted-foreground">
                   Turn-taking
                 </Label>
                 <select
-                  className="mt-1 h-8 w-full rounded-md border border-border/70 bg-background px-2 text-xs text-foreground"
+                  className="mt-1 h-8 w-full rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-background px-2 text-[13px] text-foreground hover:border-[color:var(--g-border-strong)]"
                   value={value.turn_sensitivity || "normal"}
                   onChange={(e) =>
                     onChange({
@@ -342,6 +337,7 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
                 </select>
               </div>
             </div>
+            </details>
           </div>
         ) : (
           // Custom Voice Design keeps its shipped order: describe → generate →
@@ -432,13 +428,17 @@ export function AgentVoiceAssignment({ value, onChange, department, className }:
       </div>
 
       {/* Footer: human identity + source, plus the calm preview requirement. */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/70 bg-muted/20 px-4 py-2.5">
+      <div
+        aria-live="polite"
+        className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] px-3 py-2.5"
+      >
         {value.voice_id ? (
           <>
             {selectedHeard ? (
-              <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+              <Check className="size-3.5 shrink-0 text-foreground" aria-hidden />
             ) : null}
-            <span className="text-xs font-medium text-foreground">{selectedName}</span>
+            <span className="text-xs text-muted-foreground">Selected</span>
+            <span className="text-[13px] font-medium text-foreground">{selectedName}</span>
             <Trait>{isCustom ? "Custom" : "Preset"}</Trait>
             {selectedHeard ? (
               <span className="text-xs text-muted-foreground">Previewed</span>

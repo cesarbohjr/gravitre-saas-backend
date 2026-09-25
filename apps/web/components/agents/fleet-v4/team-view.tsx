@@ -73,7 +73,7 @@ export function TeamView({
   const empty = groups.filter((g) => g.agents.length === 0)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {filled.map(({ department, agents: rows }) => (
         <section key={department} aria-label={DEPARTMENT_ACCENT[department].label}>
           <DepartmentDropZone
@@ -86,7 +86,7 @@ export function TeamView({
               label={DEPARTMENT_ACCENT[department].label}
               count={rows.length}
             />
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="mt-2 grid gap-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {rows.map((agent) => (
                 <GravitreAgentCard
                   key={agent.id}
@@ -103,11 +103,11 @@ export function TeamView({
       ))}
 
       {empty.length > 0 ? (
-        <div className="space-y-3 border-t border-divide pt-6">
-          <p className="text-[11px] text-[color:var(--g-text-muted)]">
-            Drop a teammate onto an empty department to reassign
+        <div className="space-y-2 border-t border-[color:var(--g-border-subtle)] pt-5">
+          <p className="text-xs text-[color:var(--g-text-muted)]">
+            Empty departments. Drag a teammate here to reassign.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {empty.map(({ department }) => {
               const label = DEPARTMENT_ACCENT[department].label
               return (
@@ -115,10 +115,9 @@ export function TeamView({
                   key={department}
                   department={department}
                   onDropAgent={onDepartmentChange}
-                  className="min-h-[5.5rem] min-w-[16rem] flex-1 border border-dashed border-divide bg-white/90 px-4 py-4 sm:flex-none"
+                  className="min-w-[12rem] flex-1 rounded-[var(--np-radius-md)] border border-dashed border-[color:var(--g-border-default)] px-3 py-2.5 sm:flex-none"
                 >
                   <NodusDepartmentLabel department={department} label={label} count={0} />
-                  <p className="mt-2 text-[10px] text-[color:var(--g-text-muted)]">Drop here</p>
                 </DepartmentDropZone>
               )
             })}

@@ -359,7 +359,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
 
   return (
     <MesonToolbarProvider>
-    <div className="flex h-screen overflow-hidden bg-white text-charcoal-900">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}

@@ -5,23 +5,23 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 /**
- * Badges are mostly quiet labels. Soft colored fills are reserved for
- * important status (`status` / `warning` / `destructive`) — not every tag.
- * Shape stays `rounded-full` (RADIUS.control).
+ * Badges are quiet 4px tags (RADIUS.tag), not pills. Soft colored fills are
+ * reserved for important status (`status` / `warning` / `destructive`); meta
+ * labels carry no border so rows don't fill up with outlined capsules.
  */
 const badgeVariants = cva(
-  'inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
+  'inline-flex h-5 items-center justify-center rounded-[4px] border border-transparent px-1.5 text-[11px] font-medium leading-none w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
   {
     variants: {
       variant: {
         /** Quiet default — category / meta labels */
         default:
-          'border-divide bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)] [a&]:hover:bg-[color:var(--g-surface-3)]',
+          'bg-[color:var(--g-surface-3)] text-[color:var(--g-text-secondary)] [a&]:hover:bg-accent',
         secondary:
-          'border-transparent bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)] [a&]:hover:bg-[color:var(--g-surface-3)]',
-        /** True outline — no soft purple fill */
+          'bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)] [a&]:hover:bg-[color:var(--g-surface-3)]',
+        /** Hairline outline for counts and optional labels */
         outline:
-          'border-divide bg-transparent text-[color:var(--g-text-muted)] [a&]:hover:bg-[color:var(--g-surface-2)] [a&]:hover:text-[color:var(--g-text-primary)]',
+          'border-[color:var(--g-border-default)] bg-transparent text-[color:var(--g-text-muted)] [a&]:hover:bg-[color:var(--g-surface-2)] [a&]:hover:text-[color:var(--g-text-primary)]',
         /** Important status only */
         status:
           'border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]',
