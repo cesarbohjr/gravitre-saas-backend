@@ -44,20 +44,39 @@ export async function openProductPage(page: Page, orgId: string, path = "/assist
 
 const ORG_STORAGE_KEY = "gravitre:selectedOrg"
 
+/** Post-login client redirects can destroy the execution context mid-evaluate; settle and retry. */
+async function afterNavigationSettles(page: Page, run: () => Promise<unknown>, attempts = 4) {
+  for (let attempt = 1; ; attempt++) {
+    await page.waitForLoadState("domcontentloaded").catch(() => undefined)
+    try {
+      await run()
+      return
+    } catch (error) {
+      const destroyed = error instanceof Error && /Execution context was destroyed|navigation/i.test(error.message)
+      if (!destroyed || attempt >= attempts) throw error
+      await page.waitForTimeout(500 * attempt)
+    }
+  }
+}
+
 export async function setSelectedOrg(page: Page, orgId: string, orgName = "E2E Org") {
-  await page.evaluate(
-    ({ key, org }) => {
-      window.localStorage.setItem(key, JSON.stringify(org))
-    },
-    { key: ORG_STORAGE_KEY, org: { id: orgId, name: orgName } },
+  await afterNavigationSettles(page, () =>
+    page.evaluate(
+      ({ key, org }) => {
+        window.localStorage.setItem(key, JSON.stringify(org))
+      },
+      { key: ORG_STORAGE_KEY, org: { id: orgId, name: orgName } },
+    ),
   )
 }
 
 export async function clearTrialBannerDismiss(page: Page) {
-  await page.evaluate(() => {
-    window.sessionStorage.removeItem("gravitre-trial-banner-dismissed")
-    window.sessionStorage.removeItem("gravitre-plan-required")
-  })
+  await afterNavigationSettles(page, () =>
+    page.evaluate(() => {
+      window.sessionStorage.removeItem("gravitre-trial-banner-dismissed")
+      window.sessionStorage.removeItem("gravitre-plan-required")
+    }),
+  )
 }
 
 const WELCOME_DISMISSED_STORAGE_KEY = "gravitre-welcome-dismissed"
@@ -142,10 +161,12 @@ export async function prepareAdminAppSession(
   await loginWithPassword(page, user.email, user.password)
   await setSelectedOrg(page, user.orgId)
   await clearTrialBannerDismiss(page)
-  await page.evaluate((welcomeKey) => {
-    window.localStorage.setItem(welcomeKey, "true")
-    window.localStorage.removeItem("gravitre-nav-expanded")
-  }, WELCOME_DISMISSED_STORAGE_KEY)
+  await afterNavigationSettles(page, () =>
+    page.evaluate((welcomeKey) => {
+      window.localStorage.setItem(welcomeKey, "true")
+      window.localStorage.removeItem("gravitre-nav-expanded")
+    }, WELCOME_DISMISSED_STORAGE_KEY),
+  )
 
   await openProductPage(page, user.orgId, landingPath)
   await skipOnboardingForOrg(page, user.orgId)
