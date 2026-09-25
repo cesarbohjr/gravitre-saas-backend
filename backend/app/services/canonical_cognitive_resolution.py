@@ -191,6 +191,7 @@ def should_skip_unified_live_for_compiled_read(
     from app.services.computer_browser_read_turn import (
         match_computer_browser_followup,
         match_computer_browser_intent,
+        match_computer_browser_resume_phrase,
     )
 
     if (
@@ -198,6 +199,7 @@ def should_skip_unified_live_for_compiled_read(
         or match_cross_system_entity_intent(message or "")
         or match_computer_browser_intent(message or "")
         or match_computer_browser_followup(message or "", task_state)
+        or match_computer_browser_resume_phrase(message or "")
     ):
         return True
     if frame_is_analytics(task_state):

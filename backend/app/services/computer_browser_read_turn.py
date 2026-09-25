@@ -61,7 +61,7 @@ def match_computer_browser_intent(message: str) -> bool:
     return True
 
 
-def match_computer_browser_followup(message: str, task_state: dict[str, Any] | None) -> bool:
+def match_computer_browser_resume_phrase(message: str) -> bool:
     text = message or ""
     if _HUBSPOT.search(text):
         return False
@@ -69,13 +69,15 @@ def match_computer_browser_followup(message: str, task_state: dict[str, Any] | N
         return False
     if _REPLAY.search(text) and not _NEGATED_REPLAY.search(text):
         return False
-    plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
-    if plan is None or plan.source != "computer_execution":
-        return False
-    arts = (task_state or {}).get("work_artifacts") if isinstance(task_state, dict) else None
-    if not arts and not (task_state or {}).get("durable_deliverable"):
-        return False
     return bool(_SHOW_BOUND.search(text) or _FOLLOWUP.search(text))
+
+
+def match_computer_browser_followup(message: str, task_state: dict[str, Any] | None) -> bool:
+    text = message or ""
+    if not match_computer_browser_resume_phrase(text):
+        return False
+    plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
+    return plan is not None and plan.source == "computer_execution"
 
 
 def _user_summary(visits: list[dict[str, Any]], *, success: bool, error: str | None) -> str:

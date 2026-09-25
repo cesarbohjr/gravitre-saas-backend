@@ -7,6 +7,7 @@ import pytest
 from app.services.computer_browser_read_turn import (
     match_computer_browser_followup,
     match_computer_browser_intent,
+    match_computer_browser_resume_phrase,
     try_computer_browser_read_turn,
 )
 from app.services.computer_execution import classify_execution_strategy, observation_from_browser_result
@@ -48,6 +49,7 @@ def test_followup_requires_computer_plan() -> None:
     }
     assert match_computer_browser_followup("What was the second page URL?", state) is True
     assert match_computer_browser_followup("What was the second page URL? Do not browse again.", state) is True
+    assert match_computer_browser_resume_phrase("What was the second page URL? Do not browse again.") is True
     assert match_computer_browser_followup("How many HubSpot contacts?", state) is False
     assert match_computer_browser_followup("What was the second page URL?", {}) is False
 
