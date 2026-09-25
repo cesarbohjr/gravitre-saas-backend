@@ -24,7 +24,7 @@ export default function ModelStudioPage() {
       <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
         <GravitrePageHeader
           title="Model Studio"
-          description="Create, train, evaluate, deploy, and inspect runs. Training is folded in here — not a separate hub tab."
+          description="Create, train, evaluate, and deploy models for your business, and review every run."
           actions={<AskGravitreSummonButton />}
         />
         <IntelligenceShell activeTab="model-studio" loadState="READY">

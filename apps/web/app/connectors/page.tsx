@@ -216,7 +216,7 @@ function ConnectorReadinessBadges({ availability }: { availability?: ConnectorAv
         <span
           key={label}
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+            "inline-flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[10px] font-medium capitalize",
             ok
               ? "border-divide text-[color:var(--g-text-secondary)]"
               : "border-divide/70 text-[color:var(--g-text-muted)] opacity-70",
@@ -499,10 +499,10 @@ function CentralHub({ connectedCount, totalCount }: { connectedCount: number; to
       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700 sm:h-24 sm:w-24">
         <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
         <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)]" />
-        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-white p-2 text-black dark:bg-neutral-900 dark:text-white">
+        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-card p-2 text-foreground">
           <Cable className="mb-0.5 h-5 w-5 text-[color:var(--color-brand)] sm:h-6 sm:w-6" />
           <div className="text-lg font-bold leading-none sm:text-xl">{connectedCount}</div>
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground sm:text-[9px]">
+          <div className="text-[9px] text-muted-foreground sm:text-[10px]">
             of {totalCount}
           </div>
         </div>
@@ -839,7 +839,7 @@ function ConfigureModal({
             </div>
           ) : (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">API Key</label>
+            <label className="text-xs font-medium text-muted-foreground">API key</label>
             <div className="relative">
               <Input
                 type={showApiKey ? "text" : "password"}
@@ -860,7 +860,7 @@ function ConfigureModal({
           )}
           {!isOAuth && (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sync Interval</label>
+            <label className="text-xs font-medium text-muted-foreground">Sync interval</label>
             <select
               value={config.syncInterval || "5m"}
               onChange={(e) => setConfig({ ...config, syncInterval: e.target.value })}
@@ -1462,7 +1462,7 @@ function AddConnectorModal({
                 )}
                 {Object.entries(groupedConnectors).map(([category, connectors]) => (
                   <div key={category}>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    <h4 className="text-xs font-medium text-muted-foreground mb-2">
                       {category}
                     </h4>
                     <div className="grid grid-cols-2 gap-2">

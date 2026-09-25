@@ -62,22 +62,22 @@ const KPI_ICON_STYLES: Record<
 > = {
   "agents.active": {
     icon: <NucleoAgent className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-blue-500/8 text-blue-600/60",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.success_rate": {
     icon: <NucleoSuccess className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-emerald-500/8 text-emerald-600/60",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.avg_duration": {
     icon: <NucleoHistory className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-amber-500/8 text-amber-600/55",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "models.most_used": {
     icon: <NucleoIntelligence className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-[color:var(--g-brand)]/10 text-[color:var(--g-brand)]/60",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
 }

@@ -148,7 +148,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                     <div className="flex shrink-0 items-center gap-1.5">
                       <span
                         className={cn(
-                          "rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+                          "rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium capitalize",
                           action.chatExecutable
                             ? STATUS.verified
                             : action.implemented

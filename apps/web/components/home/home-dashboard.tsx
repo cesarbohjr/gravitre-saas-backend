@@ -30,6 +30,7 @@ import { DASHBOARD_PRESETS, KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
 import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
 import { DashboardWidgetView } from "@/components/home/dashboard-widget-view"
 import { KpiPickerDialog } from "@/components/home/kpi-picker-dialog"
+import { AttentionStrip } from "@/components/home/attention-strip"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
@@ -152,17 +153,10 @@ export function HomeDashboard({
               </>
             ) : (
               <>
-                {data.pendingApprovals > 0 ? (
-                  <Button asChild size="sm" variant="outline" className="h-8">
-                    <Link href={APP_ROUTES.approvals}>
-                      {data.pendingApprovals} approval{data.pendingApprovals === 1 ? "" : "s"}
-                    </Link>
-                  </Button>
-                ) : null}
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="ghost"
                   className="h-8"
                   onClick={() => setEditMode(true)}
                 >
@@ -195,10 +189,14 @@ export function HomeDashboard({
       >
         {editMode ? (
           <p className={cn(TYPE.meta)}>
-            Drag widgets to reorder — the grid reflows automatically. Resize cycles size presets.
-            Layout saves for {roleLabel}.
+            Drag widgets to reorder. Use the size button to cycle widths. Your layout is saved for{" "}
+            {roleLabel}.
           </p>
-        ) : null}
+        ) : (
+          <motion.div variants={item}>
+            <AttentionStrip data={data} className="pb-3" />
+          </motion.div>
+        )}
 
         {/* Desktop / tablet grid */}
         <motion.div

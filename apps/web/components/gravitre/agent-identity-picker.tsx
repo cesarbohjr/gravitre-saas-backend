@@ -54,8 +54,7 @@ export function AgentIdentityPicker({
         <div>
           <p className="text-sm font-medium text-foreground">Agent appearance</p>
           <p className="text-xs text-muted-foreground">
-            Soft curated tiles only — no glow orbs, gradients, or freeform colors. Status stays a
-            separate corner dot.
+            Choose an icon and color so teammates can recognize this agent at a glance.
           </p>
         </div>
       </div>

@@ -389,10 +389,9 @@ function IntelligenceCenterInner() {
         <section className="relative border-b border-divide">
           <div className="relative z-10 mx-auto max-w-[1600px] space-y-4 px-4 py-4 md:px-6 md:py-6">
             <GravitrePageHeader
-              className="border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]"
-              eyebrow="Intelligence"
+              className="border-[color:var(--g-border-subtle)]"
               title={copy.title}
-              description="One shared intelligence coordinating your business — explore the live map, then inspect evidence below."
+              description="How your agents, systems, and knowledge connect. Select anything on the map to see the evidence."
               icon={<NucleoIntelligence className="h-5 w-5" />}
             />
 
@@ -446,17 +445,19 @@ function IntelligenceCenterInner() {
         </section>
 
         {/* Contextual support — closed until asked; map stays the product */}
-        <details className="mx-auto max-w-[1600px] px-4 py-6 md:px-6">
-          <summary className="cursor-pointer list-none">
-            <div className="flex items-center justify-between gap-3 border-b border-divide pb-3">
+        <details className="group/evidence mx-auto max-w-[1600px] px-4 py-6 md:px-6">
+          <summary className="cursor-pointer list-none rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+            <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] pb-3">
               <div>
-                <p className={TYPE.eyebrow}>Evidence</p>
                 <h2 className={TYPE.sectionTitle}>Attention, learnings, and impact</h2>
                 <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                  Open after you pick something on the map — not a second dashboard around the graph.
+                  What needs attention, what Gravitre learned, and the evidence behind it.
                 </p>
               </div>
-              <span className="text-xs text-muted-foreground">Show</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                <span className="group-open/evidence:hidden">Show</span>
+                <span className="hidden group-open/evidence:inline">Hide</span>
+              </span>
             </div>
           </summary>
           <div className="space-y-8 pt-6">
@@ -476,18 +477,19 @@ function IntelligenceCenterInner() {
 
           <WhyGravitrePanel className="relative" data={whyEvidence} isLoading={whyEvidenceLoading} />
 
-          <details className="group">
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-center justify-between gap-3 border-b border-divide pb-3">
+          <details className="group/advanced">
+            <summary className="cursor-pointer list-none rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] pb-3">
                 <div>
-                  <p className={TYPE.eyebrow}>Advanced</p>
-                  <h2 className={TYPE.sectionTitle}>Models, training, routing, and deep tools</h2>
+                  <h2 className={TYPE.sectionTitle}>Models, training, and routing</h2>
                   <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                    Everything that powered the old dashboard layout — still here, no longer the
-                    primary experience.
+                    Model health, simulations, and links to the detailed intelligence tools.
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">Show</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  <span className="group-open/advanced:hidden">Show</span>
+                  <span className="hidden group-open/advanced:inline">Hide</span>
+                </span>
               </div>
             </summary>
             <div className="space-y-6 pt-6">
@@ -500,8 +502,7 @@ function IntelligenceCenterInner() {
                     {SURFACE_COPY.sections.routingTraceHint}
                   </p>
                   <p className={cn(TYPE.meta, "mt-3 border-b border-divide py-3")}>
-                    No live routing trace on this hub. Per-turn traces appear on chat surfaces with
-                    real SSE metadata.
+                    Routing traces appear on each conversation, next to the reply they explain.
                   </p>
                 </section>
                 <section>
@@ -520,7 +521,7 @@ function IntelligenceCenterInner() {
               {ADVANCED_LINK_GROUPS.map((group) => (
                 <section key={group.heading} aria-labelledby={`adv-${group.heading}`}>
                   <div className="mb-2">
-                    <h3 id={`adv-${group.heading}`} className={TYPE.eyebrow}>
+                    <h3 id={`adv-${group.heading}`} className="text-sm font-semibold text-foreground">
                       {group.heading}
                     </h3>
                     <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
@@ -544,11 +545,11 @@ function IntelligenceCenterInner() {
               ))}
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild>
                   <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
                 </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={APP_ROUTES.agents}>Agents hub</Link>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={APP_ROUTES.agents}>AI team</Link>
                 </Button>
               </div>
             </div>

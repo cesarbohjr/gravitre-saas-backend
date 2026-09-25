@@ -254,7 +254,7 @@ function SourceTile({
         <div className="mb-4 flex items-center gap-2">
           <span
             className={cn(
-              "rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
+              "rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium capitalize",
               source.status === "connected" && HIGHLIGHT.brand,
               source.status === "syncing" && HIGHLIGHT.signal,
               source.status === "error" && HIGHLIGHT.danger,
@@ -602,7 +602,7 @@ export default function SourcesPage() {
                       className="w-full min-w-[720px] text-left text-sm"
                       data-testid="sources-table-view"
                     >
-                      <thead className="border-b border-divide bg-[color:var(--g-surface-2)] text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <thead className="border-b border-divide text-xs font-medium text-muted-foreground">
                         <tr>
                           <th className="px-3 py-2 font-medium">Source</th>
                           <th className="px-3 py-2 font-medium">Type</th>

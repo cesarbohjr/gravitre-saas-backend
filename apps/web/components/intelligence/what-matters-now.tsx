@@ -57,13 +57,11 @@ export function WhatMattersNowPanel({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className={TYPE.eyebrow}>Layer 2</p>
           <h2 id="what-matters-now-heading" className={TYPE.sectionTitle}>
             What matters now
           </h2>
           <p className={cn(TYPE.bodyMuted, "mt-1 max-w-2xl")}>
-            Real signals ranked by quality score — never more than a handful, never invented when
-            there&apos;s nothing to show.
+            The few signals most worth your time, ranked by quality. Empty when nothing qualifies.
           </p>
         </div>
       </div>
