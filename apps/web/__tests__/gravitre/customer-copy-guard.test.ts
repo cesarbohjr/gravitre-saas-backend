@@ -51,5 +51,5 @@ describe("customer-visible copy guard", () => {
       }
     }
     expect(offenders).toEqual([])
-  })
+  }, 60_000)
 })

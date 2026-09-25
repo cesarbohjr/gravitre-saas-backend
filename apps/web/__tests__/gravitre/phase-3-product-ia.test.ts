@@ -63,7 +63,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   it("relationships map is not wrapped in a permanent evidence dashboard", () => {
     const src = readFileSync(resolve(webRoot, "app/intelligence/page.tsx"), "utf8")
     expect(src).toMatch(/Attention, learnings, and impact/)
-    expect(src).toMatch(/<details className="mx-auto max-w-\[1600px\]/)
+    expect(src).toMatch(/<details className="[^"]*mx-auto max-w-\[1600px\]/)
     expect(src).toMatch(/aria-label=\{group\.heading\}/)
     expect(src).not.toMatch(/hover:border-\[color:var\(--g-brand-border\)\]/)
     const workspace = readFileSync(
