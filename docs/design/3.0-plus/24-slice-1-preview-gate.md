@@ -7,10 +7,12 @@ Branch `feat/gravitre-3.0-plus-frontend`. Not merged. Not deployed to production
 | Item | Value |
 | --- | --- |
 | Slice 1 foundation commit | `c348f164` (pushed) |
-| Inspector integration commit | this commit (see `git log`) |
+| Inspector integration commit | `6cfa3be7` (pushed) |
 | Preview (foundation) | Vercel deployment `7PGN5nsLcANLVj7m8A3Sr3d15DFp`, SSO-protected, branch alias |
+| Preview (release candidate) | `dpl_5oHdTi15mFMZQqngHLniWEGHJWeE` (`6cfa3be7`, Ready, 2026-09-25T07:21Z), SSO-protected |
 | Web CI (foundation) | [run 36080582337](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36080582337): Web lint+typecheck+build success, Backend pytest success, Integration smoke success, Shared runtime gate success, Dependency audit success, Billing E2E **cancelled** after 20 min (step "Run billing Playwright suite") — not a pass |
-| Live backend | `d04c4e26` (`/health` at 2026-09-25T07:17:38Z). Delta from `f7d13fba` touches no chat router, SSE emission or conversation persistence; contract additions (`work_artifacts[] kind=table`, `computer_browser_read`) are additive |
+| Web CI (release candidate) | [run 36107438501](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36107438501) on `6cfa3be7`: same five jobs success; Billing E2E **cancelled** at its 20-min `timeout-minutes`. That job runs only on `workflow_dispatch` (skipped on every `main` push), so it has no recent baseline — not a pass |
+| Live backend | `d04c4e26` (`/health` at 2026-09-25T07:17:38Z); Railway was deploying `378a45f9` at 07:25Z (public-browser READ matching only). Delta from `f7d13fba` touches no chat router, SSE emission or conversation persistence; contract additions (`work_artifacts[] kind=table`, `computer_browser_read`) are additive |
 | Env change | `FASTAPI_BASE_URL=https://api.gravitre.app` added to Vercel **Preview, this branch only** (authorized in-session). Production env untouched |
 
 ## Signed-in Preview walk — BLOCKED_EXTERNAL
