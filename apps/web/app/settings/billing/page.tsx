@@ -949,7 +949,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                       onClick={() => setTopUpModalOpen(true)}
                       disabled={!voiceOrgEnabled || isProcessing}
                     >
-                      Add Minutes
+                      Add minutes
                     </Button>
                   </div>
 
@@ -1251,7 +1251,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                     onClick={handleExportAll}
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Export All
+                    Export all
                   </Button>
                 </div>
 

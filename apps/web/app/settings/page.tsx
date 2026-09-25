@@ -493,7 +493,7 @@ function SecuritySettings() {
             </Button>
             <Button onClick={handleSaveSso} disabled={isSaving}>
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Save Configuration
+              Save configuration
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -645,7 +645,7 @@ function ApiKeysSettings({ isAdmin }: { isAdmin: boolean }) {
         </Button>
         <Button size="sm" className="gap-2" disabled={!isAdmin || isCreating} onClick={handleCreateKey}>
           {isCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Key className="h-3.5 w-3.5" />}
-          Create New Key
+          Create new key
         </Button>
         {!isAdmin && (
           <span className="text-xs text-muted-foreground">Admin/Owner required</span>
@@ -926,7 +926,7 @@ function TeamSettings({
       </AdaptiveDataView>
       <Button size="sm" className="gap-2" onClick={() => setInviteDialog(true)} disabled={!isAdmin}>
         <Users className="h-3.5 w-3.5" />
-        Invite Member
+        Invite member
       </Button>
 
       {/* Invite Dialog */}
@@ -1044,7 +1044,7 @@ function TeamSettings({
             </Button>
             <Button onClick={() => void handleSaveRole()} disabled={!isAdmin || isSavingRole}>
               {isSavingRole ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Save Changes
+              Save changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1172,7 +1172,7 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
       )}
       <Button size="sm" className="gap-2" disabled={!isAdmin} onClick={() => setAddDialog(true)}>
         <Webhook className="h-3.5 w-3.5" />
-        Add Webhook
+        Add webhook
       </Button>
 
       <Dialog open={addDialog} onOpenChange={setAddDialog}>
@@ -1219,7 +1219,7 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
             <Button variant="outline" onClick={() => setAddDialog(false)}>Cancel</Button>
             <Button onClick={handleAddWebhook} disabled={isAdding || !newUrl || selectedEvents.length === 0}>
               {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Add Webhook
+              Add webhook
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1702,7 +1702,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
           disabled={!isAdmin || isSaving || !newDeptName.trim()}
         >
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-          Add Department
+          Add department
         </Button>
       </div>
     </div>

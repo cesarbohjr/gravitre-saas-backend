@@ -410,7 +410,7 @@ function DecisionCard({
         {/* Badges row */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <EnvironmentBadge environment={approval.environment} />
-          <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium uppercase", config.badge)}>
+          <span className={cn("rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium capitalize", config.badge)}>
             {approval.priority}
           </span>
           <StatusChip status={approval.status}>
@@ -611,7 +611,7 @@ function DetailPanel({
 
         {/* Context Details */}
         <div>
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          <h3 className="mb-3 text-xs font-medium text-muted-foreground">
             Request Details
           </h3>
           <div className="space-y-3">

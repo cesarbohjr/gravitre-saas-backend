@@ -1016,7 +1016,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                   className="gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  Save Draft
+                  Save draft
                 </Button>
                 <Button
                   onClick={handleBuildWorkflow}

@@ -95,7 +95,7 @@ function InstalledInspector({
   return (
     <div className="space-y-4 p-4" data-review-surface="marketplace-ops-inspect">
       <div>
-        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Install</p>
+        <p className="text-xs font-medium text-muted-foreground">Install</p>
         <h2 className="mt-1 text-base font-medium text-foreground">{asset?.title ?? "Installed asset"}</h2>
         <p className="mt-1 text-xs capitalize text-muted-foreground">
           {department.replace(/-/g, " ")}

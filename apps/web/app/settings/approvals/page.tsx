@@ -394,7 +394,7 @@ function ApprovalsContent() {
               className="mt-4 w-full justify-between"
             >
               <Link href="/approvals">
-                Open Decision Queue
+                Open decision queue
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

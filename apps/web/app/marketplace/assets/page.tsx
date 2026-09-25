@@ -458,7 +458,7 @@ function MarketplaceAssetsContent() {
         <div className="space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
           <details>
             <summary className="cursor-pointer list-none border-b border-divide py-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Catalog</p>
+              <p className="text-xs font-medium text-muted-foreground">Catalog</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Counts for the current filters — after search, not a second dashboard.
               </p>

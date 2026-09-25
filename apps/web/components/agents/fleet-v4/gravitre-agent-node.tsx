@@ -49,7 +49,7 @@ export function GravitreAgentNode({
       draggable={draggable}
       onDragStart={onDragStart}
       className={cn(
-        "w-[188px] rounded-[var(--np-radius-md)] border border-divide bg-white px-3 py-2 text-left shadow-[var(--np-shadow)] transition-shadow",
+        "w-[188px] rounded-[var(--np-radius-md)] border border-divide bg-card px-3 py-2 text-left shadow-[var(--np-shadow)] transition-shadow",
         selected && "ring-2 ring-[color:var(--g-brand)]/55",
         executing && "border-[color:var(--g-brand)]/45",
         onSelect && "cursor-pointer",

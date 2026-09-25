@@ -35,6 +35,7 @@ export function GravitreAgentCard({
     <button
       type="button"
       data-fleet-interactive=""
+      data-agent-id={agent.id}
       onClick={() => onSelect?.(agent.id)}
       draggable={draggable}
       onDragStart={onDragStart}

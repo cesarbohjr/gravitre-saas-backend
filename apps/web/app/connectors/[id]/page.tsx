@@ -255,7 +255,7 @@ export default function ConnectorDetailPage() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem>
                     <Download className="h-4 w-4 mr-2" />
-                    Export Logs
+                    Export logs
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -478,7 +478,7 @@ export default function ConnectorDetailPage() {
                 setShowConfigDialog(false)
                 toast.success("Configuration updated")
               }}>
-                Save Changes
+                Save changes
               </Button>
             </DialogFooter>
           </DialogContent>

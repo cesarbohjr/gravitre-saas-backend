@@ -1755,7 +1755,7 @@ function AgentCouncilNode({
         className="flex items-center gap-1 text-[10px] text-warning hover:text-warning bg-warning/10 px-2 py-0.5 rounded-full hover:bg-warning/20 transition-colors"
       >
         <MessageSquare className="h-3 w-3" />
-        View Debate
+        View debate
       </button>
     )}
   </div>
@@ -2451,7 +2451,7 @@ node.type === "approval" && "bg-red-500",
                   <p className="text-[10px] text-muted-foreground mt-1">
                     No connectors loaded yet.{" "}
                     <Link href="/connectors" className="text-info underline-offset-2 hover:underline">
-                      Open Connectors
+                      Open connectors
                     </Link>{" "}
                     to connect Apollo, HubSpot, etc.
                   </p>
@@ -5516,7 +5516,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   </div>
                   <Button onClick={openLibraryPanel} size="lg" className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Add First Step
+                    Add first step
                   </Button>
                 </div>
               </div>
@@ -6150,7 +6150,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       <Link href={`/runs/${lastRunId}`}>
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-success hover:text-success">
                           <ExternalLink className="h-3 w-3 mr-1" />
-                          View Run
+                          View run
                         </Button>
                       </Link>
                     </>
@@ -6467,7 +6467,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 toast.success("Settings updated locally")
               }
             }}>
-              Save Settings
+              Save settings
             </Button>
           </div>
         </DialogContent>
@@ -6506,7 +6506,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 className="gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                Add Node
+                Add node
               </Button>
             </SheetTitle>
             <SheetDescription>
@@ -6605,7 +6605,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   }}
                 >
                   <Plus className="h-4 w-4" />
-                  Add First Node
+                  Add first node
                 </Button>
               </div>
             )}

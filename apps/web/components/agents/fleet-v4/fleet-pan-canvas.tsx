@@ -48,7 +48,7 @@ export function FleetPanCanvas({
         role="region"
         aria-label="Fleet team canvas"
         className={cn(
-          "max-h-[min(72vh,760px)] cursor-grab overflow-auto rounded-[var(--np-radius-lg)] border border-divide bg-white/40",
+          "max-h-[min(72vh,760px)] cursor-grab overflow-auto rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]",
           "scrollbar-thin [scrollbar-color:var(--color-line,theme(colors.neutral.300))_transparent]",
         )}
         onPointerDown={(e) => {

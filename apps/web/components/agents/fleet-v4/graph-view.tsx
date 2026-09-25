@@ -268,7 +268,7 @@ export function GraphView({
                 department={department}
                 onDropAgent={onDepartmentChange}
                 className={cn(
-                  "min-h-[3.25rem] min-w-[7.5rem] border border-divide bg-white px-2.5 py-2 shadow-[var(--np-shadow)]",
+                  "min-h-[3.25rem] min-w-[7.5rem] border border-divide bg-card px-2.5 py-2 shadow-[var(--np-shadow)]",
                   hoverDepartment === department &&
                     "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/50 ring-2 ring-[color:var(--g-brand)]/35",
                 )}
@@ -350,7 +350,7 @@ export function GraphView({
             return (
               <div
                 key={node.id}
-                className="absolute flex w-[160px] items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-white px-3 py-2 shadow-[var(--np-shadow)]"
+                className="absolute flex w-[160px] items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-card px-3 py-2 shadow-[var(--np-shadow)]"
                 style={{ left: pos.x, top: pos.y }}
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-md border border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-200">

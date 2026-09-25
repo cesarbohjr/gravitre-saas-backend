@@ -485,12 +485,9 @@ export default function AssignmentsPage() {
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <ActivityPulse />
-              <Button
-                className="w-full gap-2 shadow-[var(--np-shadow)] sm:w-auto"
-                onClick={openNewAssignment}
-              >
+              <Button className="w-full sm:w-auto" onClick={openNewAssignment}>
                 <Icon name="add" size="sm" />
-                New Assignment
+                New assignment
               </Button>
             </div>
           }
@@ -499,7 +496,7 @@ export default function AssignmentsPage() {
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-6">
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
             <GravitreMetric
-              label="In Progress"
+              label="In progress"
               value={
                 showListSkeleton ? "—" : <AnimatedCounter value={inProgressCount} duration={0.6} />
               }
@@ -515,7 +512,7 @@ export default function AssignmentsPage() {
               icon={<Icon name="check" size="sm" />}
             />
             <GravitreMetric
-              label="Pending Approval"
+              label="Pending approval"
               value={
                 showListSkeleton ? (
                   "—"
@@ -542,10 +539,6 @@ export default function AssignmentsPage() {
             <AssignmentFilterTabs options={filterOptions} value={filter} onChange={setFilter} />
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-9 gap-2">
-                <Icon name="filter" size="sm" />
-                <span className="hidden sm:inline">Filter</span>
-              </Button>
               <SegmentedControl
                 options={ASSIGNMENT_VIEW_MODES}
                 value={viewMode}
@@ -598,12 +591,12 @@ export default function AssignmentsPage() {
               hint={
                 assignmentList.length === 0
                   ? "Assign your first task to an AI agent on your team."
-                  : "Try adjusting your filters or create a new assignment"
+                  : "Try a different filter, or create a new assignment."
               }
               action={
-                <Button onClick={openNewAssignment} className="gap-2">
+                <Button onClick={openNewAssignment}>
                   <Icon name="add" size="sm" />
-                  New Assignment
+                  New assignment
                 </Button>
               }
             />

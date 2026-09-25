@@ -374,7 +374,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
           </div>
           
           {isApproved && (
-            <div className="flex items-center gap-1.5 rounded-full bg-[color:var(--g-brand-soft)] px-2.5 py-1 text-xs font-medium text-[color:var(--g-brand)]">
+            <div className="flex items-center gap-1.5 rounded-[4px] bg-[color:var(--g-brand-soft)] px-1.5 py-0.5 text-xs font-medium text-[color:var(--g-brand)]">
               <Icon name="check" size="xs" />
               Approved
             </div>
@@ -570,7 +570,7 @@ function AssignmentApprovalDialog({
         </div>
 
         <div className="border-t border-divide px-6 py-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="mb-3 text-xs font-medium text-muted-foreground">
             Quality check
           </p>
           <ul className="space-y-2">

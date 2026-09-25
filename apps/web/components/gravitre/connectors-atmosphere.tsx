@@ -11,7 +11,7 @@ export function ConnectorsAtmosphere({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 overflow-hidden bg-white", className)}
+      className={cn("pointer-events-none absolute inset-0 overflow-hidden bg-background", className)}
       data-connectors-atmosphere=""
     >
       <div className="pointer-events-none absolute inset-0 h-full w-full bg-[radial-gradient(var(--color-dots)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]" />

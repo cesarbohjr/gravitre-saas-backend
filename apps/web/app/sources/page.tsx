@@ -492,7 +492,7 @@ export default function SourcesPage() {
               </Button>
               <Button size="sm" onClick={() => setAddModalOpen(true)} disabled={isLoading}>
                 <Plus className="mr-1 h-4 w-4" />
-                Add Source
+                Add source
               </Button>
             </div>
           }

@@ -72,7 +72,7 @@ export function GravitreAgentRow({
               if (next === agent.department) return
               onDepartmentChange(agent.id, next)
             }}
-            className="max-w-[11rem] rounded-md border border-divide bg-white px-2 py-1 text-xs text-[color:var(--g-text-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--g-brand)]"
+            className="max-w-[11rem] rounded-md border border-divide bg-background px-2 py-1 text-xs text-[color:var(--g-text-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--g-brand)]"
           >
             {FLEET_DEPARTMENT_ORDER.map((department) => (
               <option key={department} value={department}>

@@ -303,11 +303,11 @@ function EnvironmentNode({
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2">
               <Shield className="h-3.5 w-3.5" />
-              Manage Access
+              Manage access
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2">
               <ExternalLink className="h-3.5 w-3.5" />
-              Open Dashboard
+              Open dashboard
             </DropdownMenuItem>
             {!environment.isDefault && (
               <>
@@ -428,7 +428,7 @@ export default function EnvironmentsPage() {
               disabled={isLoading || adminLoading || !isAdmin}
             >
               <Plus className="h-3.5 w-3.5" />
-              New Environment
+              New environment
             </Button>
           }
         >

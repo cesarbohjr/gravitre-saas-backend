@@ -243,7 +243,7 @@ export default function ManageOrganizationsPage() {
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Icon name="plus" size="sm" />
-                Create Organization
+                Create organization
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
@@ -285,7 +285,7 @@ export default function ManageOrganizationsPage() {
                     Cancel
                   </Button>
                   <Button onClick={handleCreateOrganization} disabled={isMutating || !newOrgName.trim()}>
-                    Create Organization
+                    Create organization
                   </Button>
                 </DialogFooter>
               </DialogContent>

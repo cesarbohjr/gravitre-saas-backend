@@ -106,7 +106,7 @@ export function AskGravitreComposer({
           onChange={(event) => setInput(event.target.value)}
           placeholder={isMap ? "Ask Gravitre anything about your business…" : "Ask a question…"}
           aria-label="Ask Gravitre"
-          className={isMap ? "h-11 border-[color:var(--g-brand-border)]/40 bg-white/80" : undefined}
+          className={isMap ? "h-11 border-[color:var(--g-brand-border)]/40 bg-background/80" : undefined}
         />
         <Button
           type="submit"

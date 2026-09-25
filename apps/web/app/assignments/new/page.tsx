@@ -273,7 +273,7 @@ function NewAssignmentPageContent() {
                   ) : (
                     <>
                       <Icon name="play" size="sm" />
-                      Run Task
+                      Run task
                     </>
                   )}
                 </Button>

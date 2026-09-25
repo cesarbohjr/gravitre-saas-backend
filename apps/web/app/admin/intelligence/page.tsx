@@ -83,32 +83,32 @@ export default function AdminIntelligencePage() {
         />
 
         <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-6">
-          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto scrollbar-hide rounded-full border border-border/70 bg-secondary/30 p-1 lg:flex-wrap">
-            <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsList className="w-full max-w-full overflow-x-auto scrollbar-hide">
+            <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap">
               {tabs.overview}
             </TabsTrigger>
-            <TabsTrigger value="memory" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="memory" className="shrink-0 whitespace-nowrap">
               {tabs.memory}
             </TabsTrigger>
-            <TabsTrigger value="relationships" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="relationships" className="shrink-0 whitespace-nowrap">
               {tabs.relationships}
             </TabsTrigger>
-            <TabsTrigger value="evaluation" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="evaluation" className="shrink-0 whitespace-nowrap">
               {tabs.evaluation}
             </TabsTrigger>
-            <TabsTrigger value="outcomes" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="outcomes" className="shrink-0 whitespace-nowrap">
               {tabs.outcomes}
             </TabsTrigger>
-            <TabsTrigger value="learning" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="learning" className="shrink-0 whitespace-nowrap">
               {tabs.learning}
             </TabsTrigger>
-            <TabsTrigger value="engine" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="engine" className="shrink-0 whitespace-nowrap">
               {tabs.engine}
             </TabsTrigger>
-            <TabsTrigger value="performance" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="performance" className="shrink-0 whitespace-nowrap">
               {tabs.performance}
             </TabsTrigger>
-            <TabsTrigger value="cognitive" className="shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="cognitive" className="shrink-0 whitespace-nowrap">
               {tabs.cognitive}
             </TabsTrigger>
           </TabsList>

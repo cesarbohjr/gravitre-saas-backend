@@ -163,7 +163,7 @@ export function SuggestedActions({
           className="h-7 text-xs gap-1"
           onClick={() => setShowViewAll(true)}
         >
-          View All
+          View all
           <ArrowUpRight className="h-3 w-3" />
         </Button>
       </div>

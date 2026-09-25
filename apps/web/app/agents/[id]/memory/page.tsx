@@ -416,7 +416,7 @@ export default function AgentMemoryPage({
                 onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
               >
                 <Icon name="add" size="sm" />
-                Add Memory
+                Add memory
               </Button>
             </div>
           }
@@ -505,7 +505,7 @@ export default function AgentMemoryPage({
                   onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
                 >
                   <Icon name="add" size="sm" />
-                  Add Memory
+                  Add memory
                 </Button>
               }
             />

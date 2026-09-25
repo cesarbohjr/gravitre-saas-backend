@@ -48,7 +48,7 @@ function GraphNode({
     >
       <div
         className={cn(
-          "max-w-[9rem] rounded-xl border bg-white px-2.5 py-2 text-center shadow-sm",
+          "max-w-[9rem] rounded-xl border bg-card px-2.5 py-2 text-center shadow-sm",
           isInsight && "max-w-[11rem] border-[color:var(--g-brand-border)] bg-[color:var(--g-intelligence-surface)] px-3 py-2.5",
           node.kind === "signal" && "border-[color:var(--color-brand,#16a374)]/40",
           node.kind === "source" && node.status === "missing" && "border-dashed border-amber-500/50 opacity-70",

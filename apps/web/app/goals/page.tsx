@@ -22,11 +22,11 @@ import { cn } from "@/lib/utils"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
 const statusStyles: Record<string, string> = {
-  draft: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-  active: "bg-success/10 text-success border-success/20",
-  paused: "bg-warning/10 text-warning border-warning/20",
-  completed: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+  draft: "bg-[color:var(--g-surface-2)] text-muted-foreground",
+  active: "bg-success/10 text-success",
+  paused: "bg-warning/10 text-warning",
+  completed: "bg-[color:var(--g-surface-3)] text-foreground",
+  cancelled: "bg-destructive/10 text-destructive",
 }
 
 function formatDate(value?: string | null): string {
@@ -39,19 +39,18 @@ function formatDate(value?: string | null): string {
 function GoalRow({ goal, index }: { goal: GoalRecord; index: number }) {
   const status = goal.status ?? "draft"
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, type: "spring", stiffness: 120, damping: 18 }}
-      whileHover={{ y: -2 }}
+    <motion.li
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: Math.min(index, 8) * 0.03 }}
     >
     <Link
       href={`/goals/${goal.id}`}
-      className="group block rounded-xl border border-border/60 bg-card/40 p-4 transition-all hover:border-primary/40 hover:bg-card/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="group block px-4 py-3.5 transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground line-clamp-2 transition-colors group-hover:text-primary">
+          <p className="line-clamp-2 text-sm font-medium text-foreground">
             {goal.objective}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -70,13 +69,15 @@ function GoalRow({ goal, index }: { goal: GoalRecord; index: number }) {
             ) : null}
           </div>
         </div>
-        <Badge variant="outline" className={cn("shrink-0 capitalize", statusStyles[status] ?? statusStyles.draft)}>
-          {status}
-        </Badge>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <Badge className={cn("capitalize", statusStyles[status] ?? statusStyles.draft)}>
+            {status}
+          </Badge>
+          <span className="text-xs text-muted-foreground">{formatDate(goal.createdAt)}</span>
+        </div>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Created {formatDate(goal.createdAt)}</p>
     </Link>
-    </motion.div>
+    </motion.li>
   )
 }
 
@@ -100,12 +101,11 @@ export default function GoalsPage() {
           icon={<Target className="h-5 w-5" />}
           actions={
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={refreshGoals} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Refresh
+              <Button variant="ghost" size="icon" onClick={refreshGoals} aria-label="Refresh goals">
+                <RefreshCw className="size-4" />
               </Button>
-              <Button size="sm" onClick={() => setWizardOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
+              <Button onClick={() => setWizardOpen(true)}>
+                <Plus className="size-4" />
                 New goal
               </Button>
             </div>
@@ -135,11 +135,11 @@ export default function GoalsPage() {
             }}
           />
         ) : (
-          <div className="space-y-3">
+          <ul className="divide-y divide-[color:var(--g-border-subtle)] overflow-hidden rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-card">
             {goals.map((goal, index) => (
               <GoalRow key={goal.id} goal={goal} index={index} />
             ))}
-          </div>
+          </ul>
         )}
       </div>
 

@@ -251,7 +251,7 @@ export function GoalMonitoringPanel({
               className="flex-1 h-8 gap-1.5 text-xs bg-violet-600 hover:bg-violet-700"
             >
               <Play className="h-3.5 w-3.5" />
-              Run Now
+              Run now
             </Button>
             {goal.status === "active" ? (
               <Button

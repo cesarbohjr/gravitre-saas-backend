@@ -72,7 +72,7 @@ export default function LiteTasksPage() {
         <Link href="/lite/assign">
           <Button className="gap-2">
             <Icon name="plus" size="sm" />
-            New Task
+            New task
           </Button>
         </Link>
       }

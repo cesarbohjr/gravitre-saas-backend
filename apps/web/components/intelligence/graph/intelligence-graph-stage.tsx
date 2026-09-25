@@ -431,7 +431,7 @@ export function IntelligenceGraphStage({
         onPointerUp={interaction.endDrag}
         onPointerLeave={interaction.endDrag}
         className={cn(
-          "relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-white shadow-[var(--np-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+          "relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-card shadow-[var(--np-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
           isFullscreen && "min-h-[100vh] rounded-none border-0",
           !showCanvas && "hidden",
         )}

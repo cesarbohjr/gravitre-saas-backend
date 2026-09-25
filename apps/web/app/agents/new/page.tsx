@@ -716,7 +716,7 @@ export default function NewAgentPage() {
                 ) : (
                   <>
                     <Check className="h-4 w-4" />
-                    Create Team Member
+                    Create team member
                   </>
                 )}
               </Button>
