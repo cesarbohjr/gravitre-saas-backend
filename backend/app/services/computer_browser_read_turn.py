@@ -50,9 +50,13 @@ _BARE_WRITE = re.compile(r"(?is)\b(create|update|delete|submit|purchase|checkout
 
 def match_computer_browser_intent(message: str) -> bool:
     text = message or ""
-    if _HUBSPOT.search(text) or (_BARE_WRITE.search(text) and not _BROWSER_PUBLIC.search(text)):
+    if not _BROWSER_PUBLIC.search(text):
         return False
-    return bool(_BROWSER_PUBLIC.search(text))
+    if _HUBSPOT.search(text) and not re.search(r"(?is)\bdo not (?:use |open |call )?hubspot\b", text):
+        return False
+    if _BARE_WRITE.search(text) and not re.search(r"(?is)\bdo not (?:create|update|delete|submit)\b", text):
+        return False
+    return True
 
 
 def match_computer_browser_followup(message: str, task_state: dict[str, Any] | None) -> bool:

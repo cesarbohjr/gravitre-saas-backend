@@ -18,6 +18,12 @@ def test_hubspot_write_stays_api_native() -> None:
     assert classify_execution_strategy(requires_graphical_ui=True, has_action_spec=False) == "browser_cdp"
     assert match_computer_browser_intent("How many HubSpot contacts are in this account?") is False
     assert match_computer_browser_intent("Create a HubSpot contact named Probe") is False
+    assert (
+        match_computer_browser_intent(
+            "Open https://example.com in a browser. Do not use HubSpot."
+        )
+        is True
+    )
 
 
 def test_example_com_browser_intent() -> None:
