@@ -1984,11 +1984,24 @@ class AgentIntelligence:
                         patch,
                         client=client,
                     )
-                    task_state = await get_conversation_state_service(active_settings).get_task_state(
-                        conversation_id,
-                        org_id,
-                        client=client,
-                    )
+                    # Re-get is a second serial DB hop after the provider READ
+                    # and before first SSE. In-memory patch is the same payload
+                    # listing / computer just persisted.
+                    if _path in {
+                        "listing_f2_read",
+                        "listing_f2_read_resume",
+                        "computer_browser_read",
+                        "computer_browser_read_resume",
+                    }:
+                        task_state = patch
+                    else:
+                        task_state = await get_conversation_state_service(
+                            active_settings
+                        ).get_task_state(
+                            conversation_id,
+                            org_id,
+                            client=client,
+                        )
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("analytics_short_circuit_state_persist_skipped: %s", exc)
             from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
@@ -3328,8 +3341,10 @@ class AgentIntelligence:
             }
             task_state = {**(task_state or {}), **_ledger_updates}
             if conversation_id:
-                # Spoken lite: do not block first token on ledger persist + re-get.
-                if spoken_lite_path:
+                # Spoken lite / compiled READ: do not block first token on
+                # ledger persist + re-get. Listing F2 keeps the in-memory
+                # ingest; Observation persist still happens on short-circuit.
+                if spoken_lite_path or _compiled_read_ingress:
                     asyncio.create_task(
                         get_conversation_state_service(active_settings).update_task_state(
                             conversation_id,

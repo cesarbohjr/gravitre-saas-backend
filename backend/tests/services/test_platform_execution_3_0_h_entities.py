@@ -372,6 +372,9 @@ def test_compiled_read_runs_after_ledger_before_cognitive_kernel() -> None:
     kernel = after.find("run_pre_act")
     assert ledger >= 0
     assert 0 <= compiled < kernel
+    assert "if spoken_lite_path or _compiled_read_ingress:" in text
+    assert '"listing_f2_read"' in text
+    assert '"computer_browser_read"' in text
 
 
 def test_contact_count_compiled_ingress_skips_understand_class() -> None:
