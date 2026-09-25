@@ -359,3 +359,30 @@ def test_ambiguous_display_name_is_not_joined() -> None:
     assert turn is not None
     assert turn["join"] is False
     assert "similar display name" in str(turn["message"]).lower()
+
+
+def test_compiled_read_runs_after_ledger_before_cognitive_kernel() -> None:
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[2] / "app" / "operators" / "agent_intelligence.py"
+    text = src.read_text(encoding="utf-8")
+    ledger = text.find('_mark("parameter_ledger")')
+    after = text[ledger:]
+    compiled = after.find("try_compiled_operational_read_turn")
+    kernel = after.find("run_pre_act")
+    assert ledger >= 0
+    assert 0 <= compiled < kernel
+
+
+def test_contact_count_compiled_ingress_skips_understand_class() -> None:
+    from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+    from app.services.listing_f2_read_turn import listing_f2_intent
+    from app.services.operator_task_intent import looks_like_operator_task
+
+    prompt = (
+        "How many HubSpot contacts are in this isolated test account? "
+        "Read only. Do not create or update anything."
+    )
+    assert listing_f2_intent(prompt) is not None
+    assert looks_like_operator_task(prompt) is False
+    assert should_skip_unified_live_for_compiled_read(prompt, {}, ["hubspot"]) is True

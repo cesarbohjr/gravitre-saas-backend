@@ -1772,6 +1772,7 @@ class AgentIntelligence:
             except Exception:  # noqa: BLE001
                 gateway_state = {}
         _cognitive_resolution = None
+        _compiled_read_ingress = False
         _canonical_task_state: dict[str, Any] = (
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
@@ -3015,6 +3016,9 @@ class AgentIntelligence:
         # enrich / router enrichments when this is not a connector write. Depth is
         # otherwise only set *after* those stages, so TTFT paid ~5–7s of dead work.
         from app.services.chat_intelligence_facade import get_chat_intelligence_facade
+        from app.services.canonical_cognitive_resolution import (
+            should_skip_unified_live_for_compiled_read,
+        )
 
         chat_facade = get_chat_intelligence_facade(active_settings)
         spoken_lite_path = use_spoken_lite_path(
@@ -3022,9 +3026,14 @@ class AgentIntelligence:
             routing_tier=str(routing_control.tier or ""),
             message=task_text,
         )
+        _compiled_read_ingress = should_skip_unified_live_for_compiled_read(
+            task_text,
+            task_state if isinstance(task_state, dict) else _canonical_task_state,
+            list(connected_early or []),
+        )
         _mark("spoken_lite_decided")
 
-        if spoken_lite_path:
+        if spoken_lite_path or _compiled_read_ingress:
             # Defaults only — dialogue_settings are unused on the lite path before
             # LIVE returns; a DB round-trip here was pure critical-path waste.
             dialogue_settings = {
@@ -3038,8 +3047,20 @@ class AgentIntelligence:
                 "constraints": [],
                 "model_attempted": False,
                 "model_ran": False,
-                "domain": {"source": "spoken_lite_skip", "confidence": 0.0, "routing_active": False},
-                "skipped": "spoken_conversational_lite",
+                "domain": {
+                    "source": (
+                        "compiled_read_ingress"
+                        if _compiled_read_ingress
+                        else "spoken_lite_skip"
+                    ),
+                    "confidence": 0.0,
+                    "routing_active": False,
+                },
+                "skipped": (
+                    "compiled_read_ingress"
+                    if _compiled_read_ingress
+                    else "spoken_conversational_lite"
+                ),
             }
             pipeline_classification = {
                 "intent": "informational",
@@ -3047,7 +3068,8 @@ class AgentIntelligence:
                 "classification_confidence": 0.7,
                 "department": (department or "").strip() or None,
                 "routing_tier": routing_control.tier,
-                "spoken_lite": True,
+                "spoken_lite": bool(spoken_lite_path),
+                "compiled_read_ingress": bool(_compiled_read_ingress),
             }
             department_scope = (department or "").strip() or None
             if department_scope:
@@ -3194,7 +3216,7 @@ class AgentIntelligence:
             )
             if isinstance(task_state, dict):
                 task_state = {**task_state, **execution_plan_patch(_execution_plan)}
-            if conversation_id:
+            if conversation_id and not _compiled_read_ingress:
                 try:
                     await get_conversation_state_service(active_settings).update_task_state(
                         conversation_id,
@@ -3349,6 +3371,29 @@ class AgentIntelligence:
             async for ev in _emit_compiled_operational_short_circuit(_computer_turn):
                 yield ev
             return
+        if _compiled_read_ingress:
+            from app.services.canonical_cognitive_resolution import (
+                try_compiled_operational_read_turn as _try_compiled_after_ledger,
+            )
+
+            _early_ts = task_state if isinstance(task_state, dict) else _canonical_task_state
+            if isinstance(_early_ts, dict) and isinstance(_canonical_task_state, dict):
+                _early_ts = {**_canonical_task_state, **_early_ts}
+            _compiled_turn = await _try_compiled_after_ledger(
+                message=task_text,
+                resolution=_cognitive_resolution,
+                org_id=org_id,
+                client=client,
+                settings=active_settings,
+                connected_integrations=list(connected_early or []),
+                task_state=_early_ts if isinstance(_early_ts, dict) else {},
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+            if _compiled_turn and _compiled_turn.get("stop_pipeline"):
+                async for ev in _emit_compiled_operational_short_circuit(_compiled_turn):
+                    yield ev
+                return
         if spoken_lite_path:
             # Persona is SSE metadata only on LIVE conversational — not in the
             # system prompt. Hardcode to skip nested task_state/dialogue DB.
