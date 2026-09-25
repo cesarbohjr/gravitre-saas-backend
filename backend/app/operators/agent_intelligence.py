@@ -3390,6 +3390,22 @@ class AgentIntelligence:
             async for ev in _emit_compiled_operational_short_circuit(_computer_turn):
                 yield ev
             return
+        from app.services.computer_browser_interact_turn import try_computer_browser_interact_turn
+
+        _interact_turn = await try_computer_browser_interact_turn(
+            message=task_text,
+            org_id=org_id,
+            client=client,
+            settings=active_settings,
+            connected_integrations=list(connected_early or []),
+            task_state=task_state if isinstance(task_state, dict) else {},
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        if _interact_turn and _interact_turn.get("stop_pipeline"):
+            async for ev in _emit_compiled_operational_short_circuit(_interact_turn):
+                yield ev
+            return
         if _compiled_read_ingress:
             from app.services.canonical_cognitive_resolution import (
                 try_compiled_operational_read_turn as _try_compiled_after_ledger,

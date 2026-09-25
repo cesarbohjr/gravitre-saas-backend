@@ -423,6 +423,16 @@ async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
     text = (ctx.message or "").strip()
     if not text:
         return GatewayDecision(action="fallthrough", reason="empty")
+    from app.services.conversational_execution_service import CONFIRM_PATTERN
+
+    pending = (ctx.task_state or {}).get("pending_task") if isinstance(ctx.task_state, dict) else None
+    pending_status = str((pending or {}).get("status") or "") if isinstance(pending, dict) else ""
+    if CONFIRM_PATTERN.match(text) and pending_status in {
+        "awaiting_confirm",
+        "awaiting_admin_approval",
+        "awaiting_user_confirmation",
+    }:
+        return GatewayDecision(action="fallthrough", reason="pending_write_confirm")
     hold = _propose_spoken_hold_commit(ctx)
     if hold is not None:
         return GatewayDecision(
