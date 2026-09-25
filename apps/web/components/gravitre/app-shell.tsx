@@ -438,9 +438,9 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Link href="/agents">
-                    <Button size="sm" variant="default">Explore agents</Button>
-                  </Link>
+                  <Button asChild size="sm" variant="default">
+                    <Link href="/agents">Explore agents</Link>
+                  </Button>
                   <button 
                     onClick={handleDismissWelcome} 
                     aria-label="Dismiss welcome banner"

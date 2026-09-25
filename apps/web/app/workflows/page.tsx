@@ -180,12 +180,12 @@ const columns = [
     header: "",
     className: "w-24 text-right",
     render: (item: Workflow) => (
-      <Link href={`/workflows/${item.id}/builder`}>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+      <Button asChild variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+        <Link href={`/workflows/${item.id}/builder`}>
           <Edit className="h-3 w-3" />
           Edit
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     ),
   },
 ]

@@ -243,9 +243,9 @@ export default function AgentProfilePage({
       <AppShell title="Agent">
         <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
           <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
-          <Link href="/agents">
-            <Button variant="outline" size="sm">Back to AI Team</Button>
-          </Link>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/agents">Back to AI Team</Link>
+          </Button>
         </div>
       </AppShell>
     )

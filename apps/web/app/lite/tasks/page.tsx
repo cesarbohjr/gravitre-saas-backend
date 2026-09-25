@@ -69,12 +69,12 @@ export default function LiteTasksPage() {
       loading={loading || isLoading}
       loadingLabel="Loading tasks"
       actions={
-        <Link href="/lite/assign">
-          <Button className="gap-2">
+        <Button asChild className="gap-2">
+          <Link href="/lite/assign">
             <Icon name="plus" size="sm" />
             New task
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       }
       headerChildren={
         <HubTabs
@@ -164,11 +164,11 @@ export default function LiteTasksPage() {
 
                 <div className="shrink-0">
                   {task.status === "completed" && (
-                    <Link href="/lite/deliverables">
-                      <Button size="sm" variant="outline">
+                    <Button asChild size="sm" variant="outline">
+                      <Link href="/lite/deliverables">
                         Deliverables
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                   {(task.status === "processing" || task.status === "pending") && (
                     <Button size="sm" variant="outline" onClick={() => handleCancel(task.id)}>

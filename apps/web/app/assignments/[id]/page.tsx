@@ -849,7 +849,6 @@ export default function AssignmentDetailPage({
       <AppShell title="Assignment">
         <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
           <GravitrePageHeader
-            eyebrow="Work"
             title="Assignment"
             description="Loading…"
             icon={<NavTasks className="h-5 w-5" />}
@@ -867,13 +866,12 @@ export default function AssignmentDetailPage({
       <AppShell title="Assignment">
         <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
           <GravitrePageHeader
-            eyebrow="Work"
             title="Assignment"
             icon={<NavTasks className="h-5 w-5" />}
             actions={
-              <Link href="/assignments">
-                <Button variant="outline" size="sm">Back to Assignments</Button>
-              </Link>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/assignments">Back to assignments</Link>
+              </Button>
             }
           />
           <div className="flex flex-1 items-center justify-center px-[var(--np-page-pad)]">
@@ -882,9 +880,9 @@ export default function AssignmentDetailPage({
               title="Assignment not found"
               hint={loadError instanceof Error ? loadError.message : "This assignment could not be loaded."}
               action={
-                <Link href="/assignments">
-                  <Button variant="outline" size="sm">Back to Assignments</Button>
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/assignments">Back to assignments</Link>
+                </Button>
               }
             />
           </div>
@@ -913,23 +911,22 @@ export default function AssignmentDetailPage({
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           className="shrink-0"
-          eyebrow="Work"
           title={taskTitle}
           description={`${agentName} · ${createdAt} · ${job.status.replace(/_/g, " ")}`}
           icon={<NavTasks className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               {agentId ? (
-                <Link href={`/agents/${agentId}/chat`}>
-                  <Button variant="outline" size="sm" className="text-xs">Chat</Button>
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/agents/${agentId}/chat`}>Chat</Link>
+                </Button>
               ) : null}
-              <Link href="/assignments">
-                <Button variant="outline" size="sm" className="gap-1">
+              <Button asChild variant="ghost" size="sm" className="gap-1">
+                <Link href="/assignments">
                   <Icon name="chevronLeft" size="sm" />
                   Back
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           }
         >

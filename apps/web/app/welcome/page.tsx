@@ -354,12 +354,13 @@ export default function WelcomePage() {
                   {selectedRole?.suggestedPrompt ?? "What should Gravitre help me with first?"}
                 </span>
               </div>
-              <Link
-                href={`${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(selectedRole?.suggestedPrompt ?? "")}`}
-                className="mt-4 inline-flex"
-              >
-                <Button>Open Gravitre AI</Button>
-              </Link>
+              <Button asChild className="mt-4">
+                <Link
+                  href={`${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(selectedRole?.suggestedPrompt ?? "")}`}
+                >
+                  Open Gravitre AI
+                </Link>
+              </Button>
             </StepShell>
           )}
 

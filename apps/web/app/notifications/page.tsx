@@ -242,12 +242,12 @@ export default function NotificationsPage() {
                 <MailOpen className="h-4 w-4" />
                 <span className="hidden sm:inline">Mark all read</span>
               </Button>
-              <Link href="/settings?section=notifications">
-                <Button variant="outline" size="sm" className="gap-2">
+              <Button asChild variant="outline" size="sm" className="gap-2">
+                <Link href="/settings?section=notifications">
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Settings</span>
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </>
           }
         >

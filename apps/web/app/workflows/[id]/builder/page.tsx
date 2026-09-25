@@ -4758,12 +4758,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             <div className="flex items-center gap-1 md:gap-2 shrink-0">
               {/* View last run link */}
               {lastRunId && (
-                <Link href={`/runs/${lastRunId}`}>
-                  <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
+                <Button asChild variant="ghost" size="sm" className="h-8 gap-2 text-xs">
+                  <Link href={`/runs/${lastRunId}`}>
                     <ExternalLink className="h-3 w-3" />
-                    <span className="hidden sm:inline">Last Run</span>
-                  </Button>
-                </Link>
+                    <span className="hidden sm:inline">Last run</span>
+                  </Link>
+                </Button>
               )}
               <Button 
                 variant="outline" 
@@ -6147,12 +6147,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   {executionStatus === "completed" && lastRunId && (
                     <>
                       <div className="w-px h-6 bg-border" />
-                      <Link href={`/runs/${lastRunId}`}>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-success hover:text-success">
+                      <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs text-success hover:text-success">
+                        <Link href={`/runs/${lastRunId}`}>
                           <ExternalLink className="h-3 w-3 mr-1" />
                           View run
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     </>
                   )}
                   
