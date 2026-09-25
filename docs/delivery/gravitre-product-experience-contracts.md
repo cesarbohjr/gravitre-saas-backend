@@ -19,7 +19,7 @@ Pipecat `/api/voice/pipecat/ws` uses the same `conversation_id` as chat. Confirm
 
 ## Artifacts
 
-`work_artifacts[].kind`: `executive_report` \| `table` \| `brief` \| `action_plan` \| `research_summary`. Markdown in `metadata.code`. `exportable: true`. Reconstruct via GET `/api/assistant/conversation/{id}/state` — no provider re-invoke.
+`work_artifacts[].kind`: `executive_report` \| `table` \| `brief` \| `action_plan` \| `research_summary`. Markdown in `metadata.code`. `exportable: true`. Reconstruct via GET `/api/assistant/conversation/{id}/state` — no provider re-invoke. Listing contact-count binds `kind=table` from the provider `total`. Resume phrases (`Show me that table`) must not re-invoke HubSpot.
 
 Browser artifact panel remains **BLOCKED_EXTERNAL** (expired trial). API durability is independent.
 

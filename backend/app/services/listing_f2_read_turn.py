@@ -44,6 +44,10 @@ _CONTACTS = re.compile(
 )
 _BARE_WRITE = re.compile(r"(?is)\b(create|update|delete|enroll)\b")
 _NEGATED_WRITE = re.compile(r"(?is)\bdo not (?:create|update|delete)\b")
+_SHOW_BOUND_ARTIFACT = re.compile(
+    r"(?is)\b(show|open)\b.{0,40}\b(report|table|artifact|deliverable)\b"
+)
+_WANTS_FRESH = re.compile(r"(?is)\b(refresh|reload|latest|again|rerun|re-run|recheck)\b")
 
 
 @dataclass(frozen=True)
@@ -84,7 +88,59 @@ def listing_f2_intent(message: str) -> ListingF2Intent | None:
 
 
 def match_listing_f2_intent(message: str) -> bool:
-    return listing_f2_intent(message) is not None
+    return listing_f2_intent(message) is not None or match_bound_artifact_resume(message)
+
+
+def match_bound_artifact_resume(message: str) -> bool:
+    text = message or ""
+    return bool(_SHOW_BOUND_ARTIFACT.search(text) and not _WANTS_FRESH.search(text))
+
+
+def _listing_artifact_rows(
+    *,
+    intent: ListingF2Intent,
+    action_key: str,
+    count: int,
+    data: Any,
+) -> list[dict[str, Any]]:
+    """Observation-backed table rows only. Never invent counts or prices."""
+    if intent.count_query:
+        object_name = "contacts" if "contact" in action_key else "deals"
+        return [
+            {
+                "system": "HubSpot",
+                "object": object_name,
+                "count": int(count),
+                "source": action_key,
+            }
+        ]
+    payload = data if isinstance(data, dict) else {}
+    results = payload.get("results")
+    if not isinstance(results, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    for row in results[:25]:
+        if not isinstance(row, dict):
+            continue
+        props = row.get("properties") if isinstance(row.get("properties"), dict) else {}
+        if "contact" in action_key:
+            rows.append(
+                {
+                    "id": str(row.get("id") or props.get("hs_object_id") or ""),
+                    "email": str(props.get("email") or row.get("email") or "").strip(),
+                    "firstname": str(props.get("firstname") or "").strip(),
+                    "lastname": str(props.get("lastname") or "").strip(),
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "id": str(row.get("id") or props.get("hs_object_id") or ""),
+                    "name": str(props.get("dealname") or row.get("dealname") or "").strip(),
+                    "stage": str(props.get("dealstage") or row.get("dealstage") or "").strip(),
+                }
+            )
+    return rows
 
 
 def try_listing_f2_read_turn(
@@ -99,9 +155,32 @@ def try_listing_f2_read_turn(
     conversation_id: str | None = None,
 ) -> dict[str, Any] | None:
     intent = listing_f2_intent(message or "")
+    connected = [str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()]
+    stored_arts = (task_state or {}).get("work_artifacts") if isinstance(task_state, dict) else None
+    stored_deliv = (task_state or {}).get("durable_deliverable") if isinstance(task_state, dict) else None
+    if match_bound_artifact_resume(message or "") and (stored_arts or stored_deliv):
+        from app.services.durable_work_session import reconstruct_execution_result
+
+        diagnosis = ""
+        if isinstance(stored_deliv, dict):
+            diagnosis = str(stored_deliv.get("diagnosis") or "")
+        reconstructed = reconstruct_execution_result(task_state, body=diagnosis)
+        plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": diagnosis
+            or str((reconstructed or {}).get("body") or "I still have that finished report."),
+            "task_state": dict(task_state or {}),
+            "workflow_status": "completed",
+            "execution_path": "listing_f2_read_resume",
+            "execution_result": reconstructed,
+            "provider_reinvoked": False,
+            "writes_started": False,
+            "plan_id": plan.plan_id if plan is not None else None,
+        }
     if intent is None:
         return None
-    connected = [str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()]
     if "hubspot" not in set(connected):
         return {
             "stop_pipeline": True,
@@ -267,6 +346,12 @@ def try_listing_f2_read_turn(
             "result_count": count,
             "provider_invoked": True,
             "repaired": repaired_used,
+            "rows": _listing_artifact_rows(
+                intent=intent,
+                action_key=action_key,
+                count=count,
+                data=getattr(invoked, "data", None),
+            ),
         },
     )
     plan = mark_plan_terminal(plan, "completed" if invoked.success else "failed")

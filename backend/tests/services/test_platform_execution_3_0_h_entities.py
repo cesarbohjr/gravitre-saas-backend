@@ -144,6 +144,95 @@ def test_listing_disconnected_hubspot_does_not_fall_through() -> None:
     assert turn["writes_started"] is False
 
 
+def test_listing_contact_count_binds_table_artifact() -> None:
+    from unittest.mock import MagicMock, patch
+
+    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
+    from app.services.tool_types import NormalizedResult
+
+    invoked = NormalizedResult(
+        success=True,
+        action="hubspot.contacts.search",
+        connector_id="hubspot",
+        data={"total": 57, "results": [{"id": "skip-me"}]},
+    )
+    proof = MagicMock(ok=True, error_class=None)
+    obs = MagicMock(observation_id="obs-count-1", success=True)
+    with patch(
+        "app.services.listing_f2_read_turn.invoke_sealed_f1_read",
+        return_value=(invoked, proof, obs),
+    ) as mock_invoke:
+        turn = try_listing_f2_read_turn(
+            message="How many HubSpot contacts are in this account?",
+            org_id="org",
+            client=object(),
+            settings=MagicMock(),
+            connected_integrations=["hubspot"],
+            task_state={},
+        )
+    assert turn is not None
+    assert turn["writes_started"] is False
+    assert turn["execution_path"] == "listing_f2_read"
+    assert turn["message"] == "This HubSpot account has 57 contacts."
+    arts = turn["task_state"]["work_artifacts"]
+    assert arts[-1]["kind"] == "table"
+    assert arts[-1]["metadata"]["exportable"] is True
+    assert "57" in str(arts[-1]["metadata"]["code"])
+    assert "skip-me" not in str(arts[-1]["metadata"]["code"])
+    rows = turn["task_state"]["execution_observations"][-1]["structured"]["rows"]
+    assert rows == [
+        {"system": "HubSpot", "object": "contacts", "count": 57, "source": "hubspot.contacts.search"}
+    ]
+    assert mock_invoke.call_args.kwargs["action_key"] == "hubspot.contacts.search"
+
+
+def test_listing_bound_artifact_resume_does_not_reinvoke() -> None:
+    from unittest.mock import patch
+
+    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
+
+    state = {
+        "execution_plan": {
+            "plan_id": "plan-resume-1",
+            "terminal_status": "completed",
+            "source": "listing_f2_read",
+            "steps": [],
+        },
+        "durable_deliverable": {"diagnosis": "This HubSpot account has 57 contacts."},
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-resume-1",
+                "kind": "table",
+                "title": "HubSpot contacts",
+                "preview": "This HubSpot account has 57 contacts.",
+                "metadata": {
+                    "plan_id": "plan-resume-1",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-count-1"],
+                    "code": "Outcome: completed\nThis HubSpot account has 57 contacts.",
+                    "exportable": True,
+                },
+            }
+        ],
+    }
+    with patch("app.services.listing_f2_read_turn.invoke_sealed_f1_read") as mock_invoke:
+        turn = try_listing_f2_read_turn(
+            message="Show me that table",
+            org_id="org",
+            client=object(),
+            settings=None,
+            connected_integrations=["hubspot"],
+            task_state=state,
+        )
+    mock_invoke.assert_not_called()
+    assert turn is not None
+    assert turn["execution_path"] == "listing_f2_read_resume"
+    assert turn["provider_reinvoked"] is False
+    assert turn["writes_started"] is False
+    assert "57 contacts" in turn["message"]
+    assert turn["execution_result"]["entity_id"] == "plan-resume-1"
+
+
 def test_entity_join_intent_is_not_live_provider_claim() -> None:
     from app.services.entity_join_answer_turn import entity_join_intent
 

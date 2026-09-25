@@ -31,6 +31,8 @@ On listing F2:
 - `execution_path`: `listing_f2_read`
 - `repaired`: boolean when `hubspot.deals.search` was repaired to `hubspot.deals.list`
 - Existing `execution_result` / observation ids unchanged
+- Contact-count and listing success bind `work_artifacts[]` with `kind=table` when Observation `structured.rows` exist. Count queries use one provider-total row (`system`, `object`, `count`, `source`) — not a sample of contacts from `limit: 1`.
+- Follow-up `Show me that table` / `Open the report` uses `execution_path=listing_f2_read_resume`, reconstructs GET `/api/assistant/conversation/{id}/state` `execution_result`, `provider_reinvoked=false`. No second READ or WRITE.
 
 Diagnostic plans may carry `ExecutionPlan.entity_id` and `task_state.business_entity` when an accepted join exists. Do not render that as a live multi-provider census.
 
