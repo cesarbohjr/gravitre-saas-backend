@@ -34,7 +34,7 @@ def test_write_specs_materialize_with_source_rules_and_risk_class() -> None:
         assert spec is not None, key
         assert spec.kind == "write"
         assert spec.governance_classification == "write"
-        assert spec.risk_class in {"external_send", "crm_create"}
+        assert spec.risk_class in {"external_send", "crm_create", "browser_interact"}
         assert spec.parameter_source_rules
         assert spec.spec_revision
         assert is_f1_write_action(key)

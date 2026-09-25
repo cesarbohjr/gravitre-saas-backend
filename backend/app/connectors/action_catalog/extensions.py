@@ -3,10 +3,50 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.connectors.action_catalog.builder import action, build_vendor
 from app.connectors.action_catalog.models import VendorCatalogSpec
 
-# Append org-specific or partner vendors here, or load from DB/MCP in a future release.
-VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = ()
+# shipped=False — not a customer marketplace Enable surface.
+VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (
+    build_vendor(
+        "browser_agent",
+        "Browser agent",
+        "Internal",
+        "https://example.com/",
+        shipped=False,
+        department="operations",
+        v1=(
+            action(
+                "browser_agent",
+                "read",
+                "Read a public web page",
+                tier="v1",
+                kind="read",
+                scope_suffix="read",
+                idempotent=True,
+                description="Read a public HTTPS page when no connector API exists. Use when the user asks to open a public URL in a browser.",
+            ),
+        ),
+        v2=(
+            action(
+                "browser_agent",
+                "interact",
+                "Fill or submit a public browser form",
+                tier="v2",
+                kind="write",
+                scope_suffix="interact",
+                destructive=True,
+                requires_approval=True,
+                description=(
+                    "Fill or submit a public browser form after HMAC confirm. "
+                    "Use when the user asks to fill the httpbin.org public form. "
+                    "Never use for HubSpot or other API-native writes."
+                ),
+            ),
+        ),
+        v3=(),
+    ),
+)
 
 # Runtime per-action schema overrides (partner SDK, MCP, admin API).
 ACTION_SCHEMA_EXTENSIONS: dict[str, dict[str, Any]] = {}

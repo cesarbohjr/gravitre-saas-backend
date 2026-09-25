@@ -3032,6 +3032,7 @@ class AgentIntelligence:
         from app.services.canonical_cognitive_resolution import (
             should_skip_unified_live_for_compiled_read,
         )
+        from app.services.computer_browser_interact_turn import computer_interact_should_compile
 
         chat_facade = get_chat_intelligence_facade(active_settings)
         spoken_lite_path = use_spoken_lite_path(
@@ -3043,6 +3044,9 @@ class AgentIntelligence:
             task_text,
             task_state if isinstance(task_state, dict) else _canonical_task_state,
             list(connected_early or []),
+        ) or computer_interact_should_compile(
+            task_text,
+            task_state if isinstance(task_state, dict) else _canonical_task_state,
         )
         _mark("spoken_lite_decided")
 

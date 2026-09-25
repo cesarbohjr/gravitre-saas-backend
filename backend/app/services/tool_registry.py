@@ -1202,12 +1202,21 @@ class ToolRegistry:
             if not isinstance(actions, list) or not actions:
                 return {"success": False, "tool": tool_name, "error": "Missing required 'actions' array"}
             approval_id = str((args or {}).get("approval_id") or (args or {}).get("approvalId") or "") or None
+            proof = getattr(ctx, "preflight_result", None)
+            hmac_verified = bool(
+                proof is not None
+                and getattr(proof, "ok", False)
+                and str(getattr(proof, "proof_digest", "") or "")
+            )
+            if hmac_verified and not approval_id:
+                approval_id = str(proof.proof_digest)
             try:
                 payload = await browser_agent_interact(
                     url,
                     actions=actions,
                     settings=ctx.settings,
                     approval_id=approval_id,
+                    hmac_verified=hmac_verified,
                 )
             except BrowserAgentError as exc:
                 return {"success": False, "tool": tool_name, "error": str(exc), "error_code": exc.code}

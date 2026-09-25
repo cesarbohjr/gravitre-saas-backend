@@ -16,6 +16,7 @@ F1_WRITE_CATALOG_ACTIONS: frozenset[str] = frozenset(
         "gmail.messages.send",
         "slack.post_message",
         "hubspot.contacts.create",
+        "browser_agent.interact",
     }
 )
 
@@ -28,6 +29,7 @@ NON_AUTO_APPROVE_RISK_CLASSES: frozenset[str] = frozenset(
         "hr",
         "security",
         "crm_create",
+        "browser_interact",
     }
 )
 
@@ -193,6 +195,34 @@ _OVERLAYS: dict[str, dict[str, Any]] = {
         "risk_class": "crm_create",
         "execution_adapter": "hubspot.contacts.create",
         "observation_adapter": "hubspot_contacts_create_observation",
+    },
+    "browser_agent.interact": {
+        "capabilities": ("computer.browser.interact",),
+        "required_parameters": ("url", "actions"),
+        "optional_parameters": (),
+        "parameter_source_rules": (
+            _rule(
+                "url",
+                "USER_EXPLICIT",
+                "TASK_CONTEXT",
+                required_by_api=True,
+                required_from_user=True,
+            ),
+            _rule(
+                "actions",
+                "USER_EXPLICIT",
+                "TASK_CONTEXT",
+                required_by_api=True,
+                required_from_user=True,
+            ),
+        ),
+        "resource_requirements": (),
+        "auth_scope_requirements": (),
+        "availability_requirements": (),
+        "governance_classification": "write",
+        "risk_class": "browser_interact",
+        "execution_adapter": "browser_agent.interact",
+        "observation_adapter": "browser_interact_observation",
     },
 }
 

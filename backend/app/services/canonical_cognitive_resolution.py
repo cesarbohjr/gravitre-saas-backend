@@ -367,6 +367,20 @@ async def try_compiled_operational_read_turn(
     )
     if computer:
         return computer
+    from app.services.computer_browser_interact_turn import try_computer_browser_interact_turn
+
+    interact = await try_computer_browser_interact_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+        user_id=user_id,
+        conversation_id=conversation_id,
+    )
+    if interact:
+        return interact
     from app.services.listing_f2_read_turn import try_listing_f2_read_turn
 
     listing = try_listing_f2_read_turn(

@@ -248,17 +248,20 @@ async def browser_agent_interact(
     actions: list[dict[str, Any]] | None = None,
     settings: Settings | None = None,
     approval_id: str | None = None,
+    hmac_verified: bool = False,
 ) -> dict[str, Any]:
     """Optional Playwright UI automation when native APIs are unavailable (approval-gated)."""
     active = settings or get_settings()
     if not getattr(active, "browser_agent_enabled", True):
         raise BrowserAgentError("Browser agent is disabled for this environment", code="disabled")
-    if not getattr(active, "browser_agent_interact_enabled", False):
+    if hmac_verified and approval_id:
+        pass
+    elif not getattr(active, "browser_agent_interact_enabled", False):
         raise BrowserAgentError(
             "Browser interact is disabled. Set BROWSER_AGENT_INTERACT_ENABLED=true and provide approval_id.",
             code="disabled",
         )
-    if not approval_id:
+    elif not approval_id:
         return {
             "pending_approval": True,
             "message": "browser_agent_interact requires human approval before UI automation.",

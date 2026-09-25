@@ -96,6 +96,10 @@ def should_skip_unified_live_for_compiled_write(
     connected_integrations: list[str] | None,
 ) -> bool:
     """Keep HMAC/PendingAction/process_turn as the owner of governed writes."""
+    from app.services.computer_browser_interact_turn import computer_interact_should_compile
+
+    if computer_interact_should_compile(message, task_state):
+        return True
     if should_resume_frozen_write(message, task_state):
         return True
     if is_confirm_utterance(message):

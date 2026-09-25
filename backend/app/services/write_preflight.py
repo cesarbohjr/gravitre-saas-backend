@@ -138,7 +138,13 @@ def preflight_write_action(
 
     connected = {str(v).lower() for v in (ctx.get("connected_integrations") or []) if str(v).strip()}
     vendor = result.connector_id
-    if connected and vendor not in connected and registry_action_key(spec.id).split(".", 1)[0] not in connected:
+    needs_connector = "connector_connected" in spec.availability_requirements
+    if (
+        needs_connector
+        and connected
+        and vendor not in connected
+        and registry_action_key(spec.id).split(".", 1)[0] not in connected
+    ):
         result.availability_validation = "failed"
         return _blocked(
             error_class="ACTION_UNAVAILABLE",
