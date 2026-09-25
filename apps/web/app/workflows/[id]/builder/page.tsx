@@ -1250,7 +1250,7 @@ function AIReasoningPanel({
       {/* Header - always visible */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/20">
@@ -1285,12 +1285,12 @@ function AIReasoningPanel({
           {/* Confidence meter */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Confidence</span>
+              <span className="text-xs text-muted-foreground">Confidence</span>
               <span className="text-xs font-mono text-success">{reasoning.confidence}%</span>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                className="h-full bg-[color:var(--g-brand)] transition-all"
                 style={{ width: `${reasoning.confidence}%` }}
               />
             </div>
@@ -1298,7 +1298,7 @@ function AIReasoningPanel({
 
           {/* Key factors */}
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Key Factors</p>
+            <p className="text-xs text-muted-foreground mb-2">Key Factors</p>
             <div className="space-y-1.5">
               {reasoning.factors?.map((factor, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
@@ -1312,7 +1312,7 @@ function AIReasoningPanel({
           {/* Rejected paths */}
           {reasoning.rejectedPaths && reasoning.rejectedPaths.length > 0 && (
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Alternatives Considered</p>
+              <p className="text-xs text-muted-foreground mb-2">Alternatives Considered</p>
               <div className="flex flex-wrap gap-1.5">
                 {reasoning.rejectedPaths.map((path, i) => (
                   <span
@@ -1368,7 +1368,7 @@ function DecisionSummaryToast({
 }) {
   return (
     <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in">
-      <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-success/30 shadow-lg max-w-sm">
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-success/30 shadow-md max-w-sm">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/20 shrink-0">
           <Brain className="h-4 w-4 text-success" />
         </div>
@@ -1847,7 +1847,7 @@ function DebateViewDialog({
         <div className="flex-1 overflow-y-auto space-y-6 py-4">
           {/* Debate Timeline */}
           <div className="px-1">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Debate Timeline</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Debate Timeline</h4>
             <div className="flex items-center gap-2">
               {timeline.map((step, idx) => (
                 <div key={idx} className="flex items-center gap-2 flex-1">
@@ -1880,7 +1880,7 @@ function DebateViewDialog({
 
           {/* Agent Contributions */}
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Agent Contributions</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Agent Contributions</h4>
             <div className="grid gap-3">
               {contributions.map((contribution, idx) => {
                 const agent = getAgentById(contribution.agentId) || agents[idx]
@@ -1938,7 +1938,7 @@ function DebateViewDialog({
           {/* Disagreements */}
           {disagreements.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <h4 className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                 Disagreements Detected
               </h4>
@@ -1990,7 +1990,7 @@ function DebateViewDialog({
               )}
               {finalDecision.dissentingOpinions && finalDecision.dissentingOpinions.length > 0 && (
                 <div className="pt-3 border-t border-warning/20">
-                  <p className="text-xs text-warning uppercase tracking-wide mb-2">Dissenting opinions:</p>
+                  <p className="text-xs text-warning mb-2">Dissenting opinions:</p>
                   {finalDecision.dissentingOpinions.map((dissent, i) => {
                     const agent = getAgentById(dissent.agentId)
                     return (
@@ -2063,7 +2063,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-2"
+      className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-2"
     >
       <span>{children}</span>
       <span
@@ -2269,7 +2269,7 @@ function ConfigPanel({
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             )}
             <div className="min-w-0">
-              <p className="font-medium text-xs uppercase tracking-wide mb-0.5">
+              <p className="font-medium text-xs mb-0.5">
                 {readiness.ready ? "Setup complete" : "Setup incomplete"}
               </p>
               <p className="text-[12px] leading-snug opacity-95">{readiness.summary}</p>
@@ -2690,7 +2690,7 @@ node.type === "approval" && "bg-red-500",
   <div className="space-y-4 pt-4 border-t border-border">
   <h4 className="text-sm font-medium text-foreground">Approval Settings</h4>
   <div>
-  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
   Approvers
   </label>
   <Input
@@ -2885,8 +2885,8 @@ node.type === "approval" && "bg-red-500",
       </p>
       {pathConditionsVisible && (
         <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-2 mb-1">
-          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Branch name</span>
-          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">When to take this branch</span>
+          <span className="text-xs text-muted-foreground">Branch name</span>
+          <span className="text-xs text-muted-foreground">When to take this branch</span>
           <span />
         </div>
       )}
@@ -2956,7 +2956,7 @@ node.type === "approval" && "bg-red-500",
           {node.decisionConfig.reasoning.summary}
         </p>
         <div className="space-y-1">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Key factors:</p>
+          <p className="text-xs text-muted-foreground">Key factors:</p>
           {node.decisionConfig.reasoning.factors?.map((factor, i) => (
             <div key={i} className="flex items-center gap-1.5 text-xs text-foreground">
               <CheckCircle className="h-3 w-3 text-success" />
@@ -2990,7 +2990,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Council Objective */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
         Council Objective
       </label>
       <Textarea
@@ -3006,7 +3006,7 @@ node.type === "approval" && "bg-red-500",
     {/* Participating Agents — org/pack agents first (STA-321); mock personas as advanced */}
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <label className="text-xs font-medium text-muted-foreground">
           Participating Agents
         </label>
         <span className="text-[10px] text-warning">
@@ -3087,7 +3087,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Debate Mode */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
         Debate Mode
       </label>
       <div className="grid grid-cols-2 gap-2">
@@ -3118,7 +3118,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Evidence Sources */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
         Evidence Sources
       </label>
       <div className="space-y-1.5">
@@ -3145,7 +3145,7 @@ node.type === "approval" && "bg-red-500",
     {/* Output Options */}
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <label className="text-xs font-medium text-muted-foreground">
           Output Options
         </label>
         <button
@@ -3215,7 +3215,7 @@ node.type === "approval" && "bg-red-500",
         </p>
         {node.councilConfig.finalDecision.keyReasons && (
           <div className="space-y-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Key reasons:</p>
+            <p className="text-xs text-muted-foreground">Key reasons:</p>
             {node.councilConfig.finalDecision.keyReasons.map((reason, i) => (
               <div key={i} className="flex items-center gap-1.5 text-xs text-foreground">
                 <CheckCircle className="h-3 w-3 text-success" />
@@ -3226,7 +3226,7 @@ node.type === "approval" && "bg-red-500",
         )}
         {node.councilConfig.finalDecision.dissentingOpinions && node.councilConfig.finalDecision.dissentingOpinions.length > 0 && (
           <div className="mt-2 pt-2 border-t border-warning/20">
-            <p className="text-[10px] text-warning uppercase tracking-wide mb-1">Dissenting opinions:</p>
+            <p className="text-xs text-warning mb-1">Dissenting opinions:</p>
             {node.councilConfig.finalDecision.dissentingOpinions.map((dissent, i) => (
               <div key={i} className="text-xs text-muted-foreground">
                 {dissent.opinion}
@@ -3241,7 +3241,7 @@ node.type === "approval" && "bg-red-500",
   
   {/* Environment */}
           <div className="pt-4 border-t border-border">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
               Environment
             </label>
             <div className="flex items-center gap-2">
@@ -4862,7 +4862,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           data-review-surface="workflow-intent"
           className="flex-shrink-0 border-b border-border bg-card/80 px-3 py-2 md:px-4"
         >
-          <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="font-sans text-xs font-medium text-muted-foreground">
             Intent
           </p>
           <p className="mt-0.5 text-sm font-medium text-foreground">
@@ -4896,7 +4896,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   <button
   key={tab}
   onClick={() => setActiveLibrary(tab)}
-  className={`px-2.5 py-2.5 text-[10px] font-medium uppercase tracking-wide transition-colors whitespace-nowrap shrink-0 ${
+  className={`px-2.5 py-2.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
   activeLibrary === tab
   ? "text-foreground border-b-2 border-foreground"
   : "text-muted-foreground hover:text-foreground"
@@ -5279,7 +5279,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <span className="text-xs text-[color:var(--g-signal)]">Create custom decision</span>
                   </button>
 
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide pt-3 pb-1">
+                  <p className="text-xs text-muted-foreground pt-3 pb-1">
                     Logic nodes
                   </p>
                   <LibraryItem
@@ -5361,7 +5361,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
 {/* Quick add */}
   <div className="border-t border-border p-3">
-  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Quick Add</p>
+  <p className="text-xs text-muted-foreground mb-2">Quick Add</p>
   <div className="grid grid-cols-5 gap-1">
   <button
   onClick={() => addNode("agent", "New Agent")}
@@ -5505,7 +5505,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             {nodes.length === 0 && !isLoadingGraph && (
               <div className="absolute inset-0 flex items-center justify-center z-10">
                 <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
-                  <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center border border-border">
+                  <div className="h-16 w-16 rounded-lg bg-muted/50 flex items-center justify-center border border-border">
                     <Workflow className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <div>
@@ -6001,7 +6001,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
   {/* Drag-to-connect indicator */}
   {isDraggingConnection && (
-  <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-success/10 border border-success/30 text-success rounded-full px-4 py-2 shadow-lg z-50">
+  <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-success/10 border border-success/30 text-success rounded-full px-4 py-2 shadow-md z-50">
   <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
   <span className="text-sm font-medium">Drop on a node to connect</span>
   </div>
@@ -6170,7 +6170,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             )}
 
             {/* Canvas toolbar */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-lg p-1 shadow-lg">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-lg p-1 shadow-md">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -6214,7 +6214,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <Button
                 onClick={openLibraryPanel}
                 size="sm"
-                className="absolute top-4 left-4 h-9 w-9 p-0 rounded-full shadow-lg"
+                className="absolute top-4 left-4 h-9 w-9 p-0 rounded-full shadow-md"
                 title="Add node"
               >
                 <Plus className="h-4 w-4" />
@@ -6616,7 +6616,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       {/* Mobile Floating Action Bar */}
       {isMobile && (
         <div className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
-          <div className="flex items-center justify-between gap-2 p-2 bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-2xl">
+          <div className="flex items-center justify-between gap-2 p-2 bg-card border border-border rounded-lg shadow-md">
             <Button
               variant="outline"
               size="sm"
