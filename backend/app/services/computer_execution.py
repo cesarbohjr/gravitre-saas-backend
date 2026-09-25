@@ -10,7 +10,12 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from app.config import Settings, get_settings
-from app.services.browser_agent_service import BrowserAgentError, browser_agent_interact, browser_agent_read
+from app.services.browser_agent_service import (
+    BrowserAgentError,
+    browser_agent_interact,
+    browser_agent_playwright_session,
+    browser_agent_read,
+)
 from app.services.execution_plan_service import ExecutionObservation, ExecutionPlan, ExecutionStep
 
 ExecutionStrategy = Literal["api_native", "browser_cdp", "computer_use", "hybrid"]
@@ -53,8 +58,10 @@ def observation_from_browser_result(
             "dom_excerpt": str(result.get("text") or "")[:800],
             "cdp_trace_id": result.get("cdp_trace_id"),
             "approval_id": approval_id or result.get("approval_id"),
-            "strategy": "browser_cdp",
+            "strategy": str(result.get("strategy") or "browser_cdp"),
             "pending_approval": bool(result.get("pending_approval")),
+            "mode": result.get("mode"),
+            "visits": result.get("visits") or [],
         },
         plan_id=plan.plan_id,
         source="computer_execution",
@@ -79,8 +86,42 @@ async def execute_browser_cdp_read(
         raw = await browser_agent_read(url, settings=active)
         raw["success"] = True
         raw["mode"] = "httpx_read"
+        raw["strategy"] = "browser_cdp"
     except BrowserAgentError as exc:
         raw = {"success": False, "url": url, "message": str(exc), "mode": "httpx_read"}
+    return raw, observation_from_browser_result(plan=exec_plan, result=raw)
+
+
+async def execute_playwright_browser_read(
+    url: str,
+    *,
+    follow_link_text: str | None = "More information",
+    plan: ExecutionPlan | None = None,
+    settings: Settings | None = None,
+) -> tuple[dict[str, Any], ExecutionObservation]:
+    """Public-URL READ via Chromium. Not httpx. Interact WRITE stays gated."""
+    active = settings or get_settings()
+    exec_plan = plan or ExecutionPlan(
+        plan_id=str(uuid4()),
+        summary=f"Browse {url}",
+        source="computer_execution",
+        steps=[ExecutionStep(step_id="computer_primary", title="Browser session", kind="read")],
+    )
+    try:
+        raw = await browser_agent_playwright_session(
+            url,
+            follow_link_text=follow_link_text,
+            settings=active,
+        )
+        raw["strategy"] = "browser_cdp"
+    except BrowserAgentError as exc:
+        raw = {
+            "success": False,
+            "url": url,
+            "message": str(exc),
+            "mode": "playwright_session_read",
+            "strategy": "browser_cdp",
+        }
     return raw, observation_from_browser_result(plan=exec_plan, result=raw)
 
 

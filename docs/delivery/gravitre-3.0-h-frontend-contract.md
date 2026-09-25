@@ -34,6 +34,13 @@ On listing F2:
 - Contact-count and listing success bind `work_artifacts[]` with `kind=table` when Observation `structured.rows` exist. Count queries use one provider-total row (`system`, `object`, `count`, `source`) — not a sample of contacts from `limit: 1`.
 - Follow-up `Show me that table` / `Open the report` uses `execution_path=listing_f2_read_resume`, reconstructs GET `/api/assistant/conversation/{id}/state` `execution_result`, `provider_reinvoked=false`. No second READ or WRITE.
 
+On READ-only public browser sessions:
+
+- `execution_path`: `computer_browser_read`
+- `execution_strategy`: `browser_cdp` (Chromium session). `computer_use` remains approval-gated interact and is not this slice.
+- Observation `structured.visits[]`: `{url,title,action,screenshot_digest,dom_excerpt}` from Playwright, not httpx.
+- Resume `What was the second page URL?` / `Show me that report` → `computer_browser_read_resume`, `provider_reinvoked=false`.
+
 Diagnostic plans may carry `ExecutionPlan.entity_id` and `task_state.business_entity` when an accepted join exists. Do not render that as a live multi-provider census.
 
 Do not invent Enable toggles, prices, or Certified badges from these fields.

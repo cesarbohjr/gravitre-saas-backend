@@ -25,7 +25,7 @@ Browser artifact panel remains **BLOCKED_EXTERNAL** (expired trial). API durabil
 
 ## Computer / browser
 
-`classify_execution_strategy`: `api_native` (ActionSpec) \| `browser_cdp` (public URL READ via existing browser agent) \| `computer_use` (Playwright interact, flag + approval) \| `hybrid`. Observation: `{success,url,action,screenshot_digest,dom_excerpt,cdp_trace_id,approval_id}`. No paid CDP vendor started.
+`classify_execution_strategy`: `api_native` (ActionSpec) \| `browser_cdp` (public URL Chromium READ session) \| `computer_use` (Playwright interact, flag + approval) \| `hybrid`. Observation: `{success,url,action,screenshot_digest,dom_excerpt,cdp_trace_id,approval_id,visits[]}`. No paid CDP vendor started. httpx `browser_agent_read` remains the API-gap fetch helper and is not this Computer Use slice.
 
 ## Proactive attention
 

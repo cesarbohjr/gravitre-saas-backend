@@ -188,8 +188,17 @@ def should_skip_unified_live_for_compiled_read(
         return True
     from app.services.listing_f2_read_turn import match_listing_f2_intent
     from app.services.entity_join_answer_turn import match_cross_system_entity_intent
+    from app.services.computer_browser_read_turn import (
+        match_computer_browser_followup,
+        match_computer_browser_intent,
+    )
 
-    if match_listing_f2_intent(message or "") or match_cross_system_entity_intent(message or ""):
+    if (
+        match_listing_f2_intent(message or "")
+        or match_cross_system_entity_intent(message or "")
+        or match_computer_browser_intent(message or "")
+        or match_computer_browser_followup(message or "", task_state)
+    ):
         return True
     if frame_is_analytics(task_state):
         return True
@@ -344,6 +353,15 @@ async def try_compiled_operational_read_turn(
     )
     if diagnostic:
         return diagnostic
+    from app.services.computer_browser_read_turn import try_computer_browser_read_turn
+
+    computer = await try_computer_browser_read_turn(
+        message=message,
+        task_state=task_state,
+        settings=settings,
+    )
+    if computer:
+        return computer
     from app.services.listing_f2_read_turn import try_listing_f2_read_turn
 
     listing = try_listing_f2_read_turn(

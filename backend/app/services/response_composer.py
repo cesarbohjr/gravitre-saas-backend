@@ -557,6 +557,8 @@ async def compose_user_reply(
             "catalog_search_eligible",
             "listing_f2_read",
             "listing_f2_read_resume",
+            "computer_browser_read",
+            "computer_browser_read_resume",
             "entity_join_store",
             "recent_write_observation",
         }

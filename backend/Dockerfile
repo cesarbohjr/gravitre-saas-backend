@@ -14,6 +14,10 @@ COPY requirements.txt requirements-core.txt requirements-extras-data.txt require
 RUN python -m venv /app/.venv \
     && pip install --no-cache-dir -r requirements.txt
 
+# Chromium for READ-only browser_cdp sessions. Not Browserbase/Steel.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN /app/.venv/bin/playwright install --with-deps chromium
+
 COPY . .
 
 ARG GIT_SHA=unknown

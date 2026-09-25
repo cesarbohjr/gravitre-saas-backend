@@ -345,6 +345,31 @@ async def test_listing_f2_skips_composer_llm() -> None:
 
 
 @pytest.mark.asyncio
+async def test_computer_browser_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "I opened a real browser (not an HTTP fetch) and recorded what loaded."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "computer_browser_read",
+            "data": {"text": draft, "execution_path": "computer_browser_read"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "real browser" in text.lower()
+
+
+@pytest.mark.asyncio
 async def test_recent_write_observation_skips_composer_llm() -> None:
     called = False
 

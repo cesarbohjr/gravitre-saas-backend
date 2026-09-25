@@ -1,11 +1,13 @@
 """Browser agent for connector API gaps — read pages and optional UI automation."""
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import re
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
+from uuid import uuid4
 
 import httpx
 
@@ -110,6 +112,110 @@ async def browser_agent_read(
         "content_type": content_type,
         "text": text,
         "mode": "httpx_read",
+    }
+
+
+async def _playwright_page_snapshot(page: Any) -> dict[str, Any]:
+    html = await page.content()
+    text = _extract_text(html)
+    shot = await page.screenshot(type="png")
+    return {
+        "url": str(page.url or ""),
+        "title": str(await page.title() or ""),
+        "dom_excerpt": text[:800],
+        "screenshot_digest": hashlib.sha256(shot).hexdigest(),
+        "text": text[:_MAX_TEXT_CHARS],
+    }
+
+
+async def browser_agent_playwright_session(
+    url: str,
+    *,
+    follow_link_text: str | None = "More information",
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    """READ-only Chromium session: open a public page, optionally follow a public link.
+
+    This is not httpx. Form fill / submit stay on browser_agent_interact + approval.
+    """
+    active = settings or get_settings()
+    if not getattr(active, "browser_agent_enabled", True):
+        raise BrowserAgentError("Browser agent is disabled for this environment", code="disabled")
+    safe_url = _validate_public_url(url)
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError as exc:
+        raise BrowserAgentError(
+            "Playwright is not installed, so I cannot open a real browser session.",
+            code="playwright_missing",
+        ) from exc
+    session_id = str(uuid4())
+    visits: list[dict[str, Any]] = []
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
+            page = await browser.new_page()
+            await page.goto(safe_url, wait_until="domcontentloaded", timeout=45_000)
+            first = await _playwright_page_snapshot(page)
+            first["action"] = "goto"
+            visits.append(first)
+            if follow_link_text:
+                try:
+                    link = page.get_by_role("link", name=re.compile(re.escape(follow_link_text), re.I))
+                    await link.first.click(timeout=15_000)
+                    await page.wait_for_load_state("domcontentloaded", timeout=45_000)
+                    second = await _playwright_page_snapshot(page)
+                    second["action"] = "click_link"
+                    second["link_text"] = follow_link_text
+                    visits.append(second)
+                except Exception as exc:  # noqa: BLE001
+                    visits.append(
+                        {
+                            "url": str(page.url or ""),
+                            "title": "",
+                            "dom_excerpt": "",
+                            "screenshot_digest": None,
+                            "action": "click_link",
+                            "link_text": follow_link_text,
+                            "success": False,
+                            "error": str(exc)[:240],
+                        }
+                    )
+            await browser.close()
+    except BrowserAgentError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("playwright_session_failed url=%s", safe_url[:120])
+        raise BrowserAgentError(
+            f"The browser session could not complete: {exc}",
+            code="playwright_failed",
+        ) from exc
+    last = visits[-1] if visits else {}
+    click_failed = any(row.get("success") is False for row in visits)
+    return {
+        "success": bool(visits) and not click_failed,
+        "url": last.get("url") or safe_url,
+        "title": last.get("title") or visits[0].get("title") if visits else "",
+        "text": last.get("text") or last.get("dom_excerpt") or "",
+        "screenshot_digest": last.get("screenshot_digest"),
+        "cdp_trace_id": session_id,
+        "mode": "playwright_session_read",
+        "strategy": "browser_cdp",
+        "visits": [
+            {
+                "url": row.get("url"),
+                "title": row.get("title"),
+                "action": row.get("action"),
+                "screenshot_digest": row.get("screenshot_digest"),
+                "dom_excerpt": row.get("dom_excerpt"),
+                "link_text": row.get("link_text"),
+                "error": row.get("error"),
+            }
+            for row in visits
+        ],
     }
 
 
