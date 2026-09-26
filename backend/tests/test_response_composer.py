@@ -370,6 +370,31 @@ async def test_computer_browser_skips_composer_llm() -> None:
 
 
 @pytest.mark.asyncio
+async def test_computer_interact_resume_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "isolated@gravitre.test"
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "computer_browser_interact_resume",
+            "data": {"text": draft, "execution_path": "computer_browser_interact_resume"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert text == draft
+
+
+@pytest.mark.asyncio
 async def test_recent_write_observation_skips_composer_llm() -> None:
     called = False
 

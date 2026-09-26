@@ -559,6 +559,9 @@ async def compose_user_reply(
             "listing_f2_read_resume",
             "computer_browser_read",
             "computer_browser_read_resume",
+            "computer_browser_interact_compile",
+            "computer_browser_interact_confirm",
+            "computer_browser_interact_resume",
             "entity_join_store",
             "recent_write_observation",
         }
