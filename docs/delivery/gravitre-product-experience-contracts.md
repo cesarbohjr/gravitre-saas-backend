@@ -21,7 +21,9 @@ Pipecat `/api/voice/pipecat/ws` uses the same `conversation_id` as chat. Confirm
 
 `work_artifacts[].kind`: `executive_report` \| `table` \| `brief` \| `action_plan` \| `research_summary`. Markdown in `metadata.code`. `exportable: true`. Reconstruct via GET `/api/assistant/conversation/{id}/state` — no provider re-invoke. Listing contact-count binds `kind=table` from the provider `total`. Resume phrases (`Show me that table`) must not re-invoke HubSpot.
 
-Browser artifact panel remains **BLOCKED_EXTERNAL** (expired trial). API durability is independent.
+Presentation: Command OS `ChatExecutionPanel` and `GravitreAIWorkCanvas` consume `execution_result.structured.rows` / `work_artifacts[]`. There is no second UI artifact model.
+
+Browser artifact panel LIVE_UI_PROVEN remains **pending** (owner-live frontend authentication blocked). API durability is independent. BLOCKED_EXTERNAL for the expired-trial browser panel is unchanged.
 
 ## Computer / browser
 

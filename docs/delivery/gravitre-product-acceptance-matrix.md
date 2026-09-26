@@ -12,9 +12,9 @@ Do not collapse this table into one PASS.
 | Governed WRITE | LIVE_API_PROVEN / LIVE_VOICE_PROVEN | CI_PROVEN | HTTP spoken_mode `dd576514` contact `278972733388`. PCM `1f548ca8` contact `279209311173` |
 | Repair | LIVE_API_PROVEN | CI_PROVEN | F2 sibling repair |
 | Cross-system entities | LIVE_API_PROVEN | CI_PROVEN | Store join; no silent merge |
-| Finished artifacts | LIVE_API_PROVEN | LIVE_API_PROVEN | Listing contact-count table on `f522a717` conv `fb03f3fe-…` Observation `fd95772b-…` kind=table count 57. Resume “Show me that table” kept one Observation (`provider_reinvoked` false). LIVE_UI_PROVEN: BLOCKED_EXTERNAL (expired trial) |
-| Computer Use | CODE_COMPLETE | CI_PROVEN | Strategy + browser-agent READ. Interact off. No paid CDP. No live headful PASS |
-| Cross-surface continuity | CODE_COMPLETE | LIVE_API_PROVEN | Same conversation/plan/pending/artifacts. Contracts published |
+| Finished artifacts | LIVE_API_PROVEN | LIVE_API_PROVEN | Listing contact-count table on `f522a717` conv `fb03f3fe-…` Observation `fd95772b-…` kind=table count 57. Resume “Show me that table” kept one Observation (`provider_reinvoked` false). Interact table LIVE_API_PROVEN on `b6a9722c` (CI [36226281760](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36226281760)). Canonical presentation contract: `execution_result.structured.rows` in ChatExecutionPanel + WorkCanvas. LIVE_UI_PROVEN: pending (owner-live frontend auth blocked). |
+| Computer Use | LIVE_API_PROVEN | LIVE_API_PROVEN | READ-only Chromium `browser_cdp` on `7ac66c36` conv `1526c728-…` Observation `feaf699f-…` two public pages + research_summary. Follow-up URL/title from persisted visits, obs_count=1, no searchKnowledgeBase. Not HUMAN_EXPERIENCE. Governed interact WRITE **mechanics** CI_PROVEN + LIVE_API_PROVEN on `ecb86dcf`. |
+| Cross-surface continuity | CODE_COMPLETE | LIVE_API_PROVEN | Same conversation/plan/pending/artifacts. Presentation consumes canonical `execution_result`. LIVE_UI_PROVEN pending owner-live frontend auth. |
 | Proactive attention | LIVE_API_PROVEN | LIVE_API_PROVEN | Positive: conv `5cfc0c14-…` `notice_count=2` GA+GSC re-auth, `write_allowed=false` @ `4a1e84e9` `2026-09-24T15:25:22Z` |
 | Latency | PARTIAL | LIVE_API_PROVEN | Class A phrase-bank skip Composer LLM `0b879ec4` first useful 4551 ms / completion 7638 ms (was ~7634 / 10058 on `962d3ef4`). Model request count 0. SLO 5s/8s met on this Class A HTTP spoken_mode probe; remaining floor is loop/SSE (~4.5s canned). Class C 6636 / 8801 ms on `0ee198dd-…` |
 | Human-device voice | HUMAN_EXPERIENCE_PENDING | BLOCKED_EXTERNAL | Manual procedure below |
@@ -71,6 +71,22 @@ Cleanup (Cesar approval required): HubSpot `278972733388`, `279209311173`, `2792
 - Reconstruct `execution_result.entity_id=cac365d0-…` success true. No invented price.
 - Resume “Show me that table”: HTTP 200, 7115 ms, spoken “This HubSpot account has 57 contacts.”, still **one** Observation, kind remains `table`. No WRITE.
 - Evidence class: **LIVE_API_PROVEN** (not LIVE_UI_PROVEN).
+
+## READ-only Computer Use / browser_cdp (`7ac66c36`) 2026-09-25
+
+- Serving SHA `7ac66c362e342cb58108d088a3744b3c78c1a341`
+- Exact-SHA CI: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36116044917 PASS
+- Prior gate `1a0dcfd5` CI https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36110712549 PASS (follow-up spoken was still PARTIAL on that SHA)
+- Isolated org `f07e57c0-1501-4000-8000-c04e57a00001`
+- Conversation: `1526c728-6352-4697-a4a2-1883e7802aee`
+- Plan: `78854d2a-a0aa-4866-93da-e8b6791f34a6` `source=computer_execution` `execution_strategy=browser_cdp` `terminal_status=completed`
+- Observation: `feaf699f-d143-4bc2-bdea-b8b6dbf0d061` success, `mode=playwright_session_read`, two visits (example.com goto, iana.org click_link Learn more)
+- Artifact: `research_summary` exportable. Reconstruct entity `78854d2a-…`
+- Follow-up “What was the second page URL? Do not browse again.” → `https://www.iana.org/help/example-domains` tools none, 3754/6002 ms
+- “What was the title of the page we ended up on?” → `Example Domains` tools none
+- After non-browser “Thanks…” (phrase-bank), same URL follow-up again, still tools none
+- `obs_count_after_followup=1`. No searchKnowledgeBase. No WRITE. No second Chromium session
+- Class: **LIVE_API_PROVEN**. Not HUMAN_EXPERIENCE_PROVEN. Not LIVE_UI_PROVEN. Interact WRITE remains gated.
 
 ## PCM confirm → WRITE → verify (`1f548ca8`)
 

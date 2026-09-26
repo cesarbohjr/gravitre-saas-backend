@@ -559,6 +559,7 @@ async def _execute_confirmed_interact(
             "execution_path": "computer_browser_interact_confirm",
             "verified": success,
             "recorded_at": recorded_at,
+            "rows": field_rows,
         }
     return {
         "stop_pipeline": True,

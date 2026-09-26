@@ -49,6 +49,13 @@ export type ChatArtifact = {
     code?: string | null
     previewFormat?: string | null
     wordCount?: number | null
+    rows?: Array<{ field?: string; value?: string; [key: string]: unknown }> | null
+    plan_id?: string | null
+    observation_ids?: string[] | null
+    exportable?: boolean | null
+    execution_path?: string | null
+    recorded_at?: string | null
+    outcome?: string | null
   } | null
 }
 
@@ -125,6 +132,13 @@ export type ChatExecutionResult = {
     previewFormat?: string | null
     format?: string | null
     title?: string | null
+    rows?: Array<{ field?: string; value?: string; [key: string]: unknown }> | null
+    plan_id?: string | null
+    observation_ids?: string[] | null
+    exportable?: boolean | null
+    execution_path?: string | null
+    recorded_at?: string | null
+    kind?: string | null
   } | null
   what_this_means?: string | null
   recommendation?: PostActionRecommendation | null
@@ -321,6 +335,10 @@ function resultLinkLabel(executionResult: ChatExecutionResult, href?: string | n
   return "View in Gravitre"
 }
 
+function artifactHref(artifact: ChatArtifact): string | null {
+  return artifact.result_url || artifact.resultUrl || null
+}
+
 function resolveExternalUrl(executionResult: ChatExecutionResult, artifact?: ChatArtifact): string | null {
   const candidates = [
     executionResult.external_url,
@@ -339,8 +357,77 @@ function resolveExternalUrl(executionResult: ChatExecutionResult, artifact?: Cha
   return null
 }
 
-function artifactHref(artifact: ChatArtifact): string | null {
-  return artifact.result_url || artifact.resultUrl || null
+export function canonicalArtifactRows(
+  executionResult: ChatExecutionResult,
+): Array<Record<string, string>> {
+  const fromArtifacts = executionResult.artifacts?.flatMap((artifact) => {
+    const nested = artifact.metadata?.rows
+    return Array.isArray(nested) ? nested : []
+  })
+  const raw = executionResult.structured?.rows?.length
+    ? executionResult.structured.rows
+    : fromArtifacts
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((row) => {
+      if (!row || typeof row !== "object") return null
+      const out: Record<string, string> = {}
+      for (const [key, value] of Object.entries(row)) {
+        if (value === null || value === undefined) continue
+        if (typeof value === "object") continue
+        out[key] = String(value)
+      }
+      return Object.keys(out).length ? out : null
+    })
+    .filter((row): row is Record<string, string> => row !== null)
+}
+
+export function CanonicalArtifactTable({
+  rows,
+  planId,
+  observationIds,
+  exportable,
+}: {
+  rows: Array<Record<string, string>>
+  planId?: string | null
+  observationIds?: string[] | null
+  exportable?: boolean | null
+}) {
+  if (!rows.length) return null
+  const columns = Array.from(
+    new Set(rows.flatMap((row) => Object.keys(row))),
+  ).filter((key) => key !== "password")
+  return (
+    <div className="mt-3 overflow-x-auto" data-testid="canonical-artifact-table">
+      <table className="w-full min-w-[16rem] border-collapse text-left text-xs">
+        <thead>
+          <tr className="border-b border-border/70 text-muted-foreground">
+            {columns.map((column) => (
+              <th key={column} className="py-1 pr-3 font-medium">
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={`${row.field || row.system || row.object || index}`} className="border-b border-border/40">
+              {columns.map((column) => (
+                <td key={column} className="py-1 pr-3 text-foreground">
+                  {row[column] || ""}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {planId ? `Plan ${planId}` : "Bound to the current plan"}
+        {observationIds?.length ? ` · Observation ${observationIds[0]}` : ""}
+        {exportable ? " · Exportable from conversation state" : ""}
+      </p>
+    </div>
+  )
 }
 
 function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
@@ -533,6 +620,12 @@ export function ChatExecutionPanel({
             {executionResult.body ? (
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{executionResult.body}</p>
             ) : null}
+            <CanonicalArtifactTable
+              rows={canonicalArtifactRows(executionResult)}
+              planId={executionResult.structured?.plan_id || executionResult.entity_id}
+              observationIds={executionResult.structured?.observation_ids}
+              exportable={executionResult.structured?.exportable}
+            />
             {whatThisMeans ? (
               <p className="mt-2 text-xs text-foreground/90">
                 <span className="font-medium">What this means: </span>

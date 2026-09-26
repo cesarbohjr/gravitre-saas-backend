@@ -137,6 +137,14 @@ async def test_interact_confirm_invokes_playwright_with_hmac() -> None:
     rows = ((obs[-1].get("structured") or {}).get("rows")) or []
     fields = {str(row.get("field")) for row in rows if isinstance(row, dict)}
     assert "custname" in fields
+    payload = confirmed.get("execution_result") or {}
+    assert payload.get("structured", {}).get("rows")
+    assert payload["structured"]["kind"] == "table"
+    assert any(
+        str(row.get("field")) == "custemail"
+        for row in payload["structured"]["rows"]
+        if isinstance(row, dict)
+    )
     assert "custemail" in fields
     assert "target" in fields
     assert "result_url" in fields

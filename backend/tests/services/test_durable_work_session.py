@@ -292,6 +292,44 @@ def test_bind_finished_work_report_from_observations():
     assert again["structured"]["plan_id"] == "plan-art-1"
 
 
+def test_reconstruct_preserves_table_rows_from_artifact_metadata():
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    stored = {
+        "execution_plan": {"plan_id": "plan-table", "terminal_status": "completed", "steps": []},
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-table",
+                "kind": "table",
+                "title": "Submitted public form fields",
+                "preview": "Submitted the public httpbin form.",
+                "metadata": {
+                    "plan_id": "plan-table",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-table"],
+                    "exportable": True,
+                    "rows": [
+                        {"field": "custemail", "value": "isolated@gravitre.test"},
+                        {"field": "custname", "value": "Isolated Probe"},
+                    ],
+                    "code": "| field | value |\n| custemail | isolated@gravitre.test |",
+                },
+            }
+        ],
+    }
+    rebuilt = reconstruct_execution_result(stored)
+    assert rebuilt is not None
+    assert rebuilt["success"] is True
+    kinds = {row["kind"] for row in (rebuilt.get("artifacts") or [])}
+    assert "table" in kinds
+    rows = rebuilt["structured"]["rows"]
+    assert rows[0]["field"] == "custemail"
+    assert rebuilt["structured"]["kind"] == "table"
+    assert rebuilt["structured"]["exportable"] is True
+    assert rebuilt["structured"]["observation_ids"] == ["obs-table"]
+    assert rebuilt["structured"]["provider_reinvoked"] is False
+
+
 def test_bind_finished_work_skips_without_successful_observation():
     from app.services.durable_work_session import bind_finished_work, reconstruct_execution_result
 

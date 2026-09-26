@@ -77,6 +77,41 @@ const SCENARIOS: Record<string, ChatExecutionResult> = {
     body: 'Created contact list "Inline summary only".',
     task_label: "Create contact list",
   },
+  canonical_table: {
+    success: true,
+    entity_type: "report",
+    entity_id: "plan-table-1",
+    title: "Submitted public form fields",
+    body: "Submitted the public httpbin form.",
+    task_label: "Submitted public form fields",
+    artifacts: [
+      {
+        artifact_id: "report:plan-table-1",
+        kind: "table",
+        title: "Submitted public form fields",
+        preview: "Submitted the public httpbin form.",
+        metadata: {
+          plan_id: "plan-table-1",
+          observation_ids: ["obs-table-1"],
+          exportable: true,
+          rows: [
+            { field: "custname", value: "Isolated Probe" },
+            { field: "custemail", value: "isolated@gravitre.test" },
+          ],
+        },
+      },
+    ],
+    structured: {
+      kind: "table",
+      plan_id: "plan-table-1",
+      observation_ids: ["obs-table-1"],
+      exportable: true,
+      rows: [
+        { field: "custname", value: "Isolated Probe" },
+        { field: "custemail", value: "isolated@gravitre.test" },
+      ],
+    },
+  },
   /** Phase 2 — durable hosted file chips (md/docx/csv/pdf/html). */
   hosted_files: {
     success: true,

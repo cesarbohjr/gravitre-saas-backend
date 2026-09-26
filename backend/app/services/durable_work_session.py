@@ -584,6 +584,7 @@ def bind_finished_work(
             "exportable": True,
             "deliverable_kind": kind,
             "bound_to_plan": bool(plan_id),
+            "rows": structured_rows[:25],
         },
     }
     prior = [row for row in (state.get(WORK_ARTIFACTS_KEY) or []) if isinstance(row, dict)]
@@ -623,6 +624,24 @@ def reconstruct_execution_result(
         "cancelled",
         "partial",
     }
+    rows: list[dict[str, Any]] = []
+    maybe_meta_rows = meta.get("rows")
+    if isinstance(maybe_meta_rows, list) and maybe_meta_rows:
+        rows = [item for item in maybe_meta_rows if isinstance(item, dict)]
+    observations = [row for row in (state.get("execution_observations") or []) if isinstance(row, dict)]
+    if not rows:
+        for obs in reversed(observations):
+            blob = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+            maybe = blob.get("rows")
+            if isinstance(maybe, list) and maybe:
+                rows = [item for item in maybe if isinstance(item, dict)]
+                break
+    if not rows:
+        evidence = state.get("computer_browser_evidence")
+        if isinstance(evidence, dict):
+            maybe = evidence.get("submitted_fields")
+            if isinstance(maybe, list):
+                rows = [item for item in maybe if isinstance(item, dict)]
     result = ExecutionResult(
         success=success,
         entity_type="report",
@@ -633,10 +652,18 @@ def reconstruct_execution_result(
         structured={
             "format": "markdown",
             "content": markdown,
+            "code": markdown,
+            "previewFormat": "markdown",
             "title": report.get("title"),
-            "plan_id": meta.get("plan_id"),
+            "plan_id": meta.get("plan_id") or (plan.plan_id if plan is not None else None),
             "outcome": outcome or terminal or ("completed" if success else "failed"),
             "artifacts": artifacts,
+            "rows": rows,
+            "observation_ids": list(meta.get("observation_ids") or [])[:8],
+            "exportable": bool(meta.get("exportable", True)),
+            "execution_path": meta.get("execution_path"),
+            "recorded_at": meta.get("recorded_at"),
+            "kind": report.get("kind"),
             "claim_labels": (
                 (state.get("diagnostic_conclusion") or {}).get("labels")
                 if isinstance(state.get("diagnostic_conclusion"), dict)

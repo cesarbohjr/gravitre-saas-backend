@@ -177,6 +177,9 @@ def test_listing_contact_count_binds_table_artifact() -> None:
     arts = turn["task_state"]["work_artifacts"]
     assert arts[-1]["kind"] == "table"
     assert arts[-1]["metadata"]["exportable"] is True
+    assert arts[-1]["metadata"]["rows"] == [
+        {"system": "HubSpot", "object": "contacts", "count": 57, "source": "hubspot.contacts.search"}
+    ]
     assert "57" in str(arts[-1]["metadata"]["code"])
     assert "skip-me" not in str(arts[-1]["metadata"]["code"])
     rows = turn["task_state"]["execution_observations"][-1]["structured"]["rows"]

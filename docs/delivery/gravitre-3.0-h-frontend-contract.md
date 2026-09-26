@@ -41,6 +41,22 @@ On READ-only public browser sessions:
 - Observation `structured.visits[]`: `{url,title,action,screenshot_digest,dom_excerpt}` from Playwright, not httpx.
 - Resume `What was the second page URL?` / `Show me that report` → `computer_browser_read_resume`, `provider_reinvoked=false`.
 
+On governed public-browser interact (HMAC confirm, Playwright once):
+
+- `execution_path`: `computer_browser_interact_confirm` then `computer_browser_interact_resume`
+- `work_artifacts[].kind`: `table`
+- Observation `structured.rows[]` and `execution_result.structured.rows[]`: `{field,value}` from sealed submitted fields
+- `execution_result.structured` also carries `plan_id`, `observation_ids`, `exportable`, `kind`, `execution_path`
+- Resume (`Show me that table`, field questions) reconstructs GET `/api/assistant/conversation/{id}/state` `execution_result`. No second Playwright run.
+
 Diagnostic plans may carry `ExecutionPlan.entity_id` and `task_state.business_entity` when an accepted join exists. Do not render that as a live multi-provider census.
+
+## Presentation (Command OS + 3.0 Plus)
+
+Consume `execution_result` / `work_artifacts[]` as the only artifact model. Do **not** invent UI-only artifact state.
+
+- `ChatExecutionPanel` and `GravitreAIWorkCanvas` render `structured.rows` as the finished table (generic columns from row keys).
+- Preserve kind, plan identity, Observation linkage, provenance, field/value structure, exportability, resume.
+- LIVE_UI_PROVEN remains **pending** while owner-live frontend acceptance is blocked by authentication. Contract work is not a substitute for that proof.
 
 Do not invent Enable toggles, prices, or Certified badges from these fields.
