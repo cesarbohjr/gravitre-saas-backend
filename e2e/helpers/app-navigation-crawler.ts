@@ -188,7 +188,10 @@ export async function clickAppSidebarItem(options: {
     const finalUrl = page.url()
     const finalPath = normalizePath(finalUrl, origin)
     const finalHash = new URL(finalUrl).hash
-    const content = await mainContentText(page)
+    let content = await mainContentText(page)
+    if (content.length < minContentLength && (await modalAiShell(page).isVisible().catch(() => false))) {
+      content = ((await modalAiShell(page).innerText().catch(() => "")) ?? "").trim()
+    }
 
     let pass = true
     let reason: string | undefined
@@ -235,6 +238,11 @@ export async function clickAppSidebarItem(options: {
   }
 }
 
+/** `/ai` renders the canonical workspace as a fullscreen modal dialog that covers the sidebar. */
+function modalAiShell(page: Page) {
+  return page.locator('[data-gravitre-ai-shell][aria-modal="true"]').first()
+}
+
 export async function crawlAppSidebarNavigation(options: {
   page: Page
   origin: string
@@ -252,6 +260,10 @@ export async function crawlAppSidebarNavigation(options: {
   await ensureSidebarReady(page, 120_000)
 
   for (const item of items) {
+    if (await modalAiShell(page).isVisible().catch(() => false)) {
+      await page.goto(seedPath, { waitUntil: "domcontentloaded" })
+      await ensureSidebarReady(page, 60_000)
+    }
     results.push(
       await clickAppSidebarItem({
         page,
