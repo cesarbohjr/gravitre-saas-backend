@@ -53,6 +53,15 @@ def test_followup_requires_computer_plan() -> None:
     assert match_computer_browser_resume_phrase("What was the title of the page we ended up on?") is True
     assert match_computer_browser_followup("How many HubSpot contacts?", state) is False
     assert match_computer_browser_followup("What was the second page URL?", {}) is False
+    awaiting = {
+        "execution_plan": {
+            "plan_id": "p-interact",
+            "source": "computer_execution",
+            "terminal_status": "awaiting_confirm",
+            "steps": [],
+        }
+    }
+    assert match_computer_browser_followup("What was the second page URL?", awaiting) is False
 
 
 @pytest.mark.asyncio

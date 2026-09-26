@@ -126,3 +126,82 @@ async def test_interact_confirm_invokes_playwright_with_hmac() -> None:
     assert kwargs.get("approval_id")
     obs = (confirmed["task_state"] or {}).get("execution_observations") or []
     assert obs and obs[-1].get("success") is True
+
+
+def test_hmac_interact_confirm_runs_before_intent_gateway_shortcut() -> None:
+    from pathlib import Path
+
+    text = (
+        Path(__file__).resolve().parents[2] / "app" / "operators" / "agent_intelligence.py"
+    ).read_text(encoding="utf-8")
+    first_interact = text.find("try_computer_browser_interact_turn")
+    shortcut = text.find('gateway.action == "shortcut"')
+    emit_def = text.find("async def _emit_compiled_operational_short_circuit")
+    persona_init = text.find('persona = {\n            "persona_key"')
+    assert emit_def >= 0
+    assert 0 <= persona_init < first_interact
+    assert 0 <= first_interact < shortcut
+    assert "computer_browser_interact_confirm" in text
+
+
+@pytest.mark.asyncio
+async def test_gateway_falls_through_hmac_interact_yes() -> None:
+    from app.services.intent_gateway import GatewayContext, evaluate_intent_gateway
+
+    pending = {
+        "pending_task": {
+            "status": "awaiting_confirm",
+            "invoke_action": ACTION_KEY,
+            "params": {"invoke_action": ACTION_KEY},
+        }
+    }
+    decision = await evaluate_intent_gateway(
+        GatewayContext(
+            message="yes",
+            spoken_mode=True,
+            task_state=pending,
+            org_id="org",
+            user_id="user-a",
+            conversation_id="conv-a",
+        )
+    )
+    assert decision.action == "fallthrough"
+    assert decision.reason == "pending_write_confirm"
+
+
+def test_enrich_keeps_interact_hmac_invoke_action() -> None:
+    from app.services.execution_plan_adapters import enrich_task_state_patch
+    from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
+
+    plan = ExecutionPlan(
+        plan_id="plan-int",
+        summary="Fill the public httpbin form after approval",
+        source="computer_execution",
+        steps=[
+            ExecutionStep(
+                step_id="computer_interact",
+                title="Public browser form fill",
+                kind="write",
+                connector_id="browser_agent",
+                action_key=ACTION_KEY,
+            )
+        ],
+    )
+    pending = {
+        "status": "awaiting_confirm",
+        "invoke_action": ACTION_KEY,
+        "params": {
+            "invoke_action": ACTION_KEY,
+            "args": {"url": "https://httpbin.org/forms/post"},
+            "preflight_proof": {"status": "ready", "proof_digest": "abc"},
+        },
+    }
+    out = enrich_task_state_patch(
+        {"execution_plan": plan.as_dict(), "pending_task": pending},
+        current_state={},
+    )
+    stored = out.get("pending_task") or {}
+    params = stored.get("params") if isinstance(stored.get("params"), dict) else {}
+    assert stored.get("status") == "awaiting_confirm"
+    assert params.get("invoke_action") == ACTION_KEY or stored.get("invoke_action") == ACTION_KEY
+    assert computer_interact_should_compile("yes", out) is True

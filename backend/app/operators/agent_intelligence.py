@@ -1798,11 +1798,42 @@ class AgentIntelligence:
                 )
             )
         _mark("intent_gateway")
+        from app.services.assistant_routing_tier import (
+            RoutingControl,
+            classify_routing_tier,
+            default_model_for_tier,
+        )
         from app.services.chat_turn_cancel_service import is_stop_requested as _chat_stop_requested
         from app.services.cognitive_loop_controller import get_cognitive_loop_controller
 
         loop_controller = get_cognitive_loop_controller(active_settings)
         loop_trace = loop_controller.begin(message=task_text, spoken_mode=bool(spoken_mode))
+        classification_confidence = 0.55
+        persona = {
+            "persona_key": (explicit_persona or "friendly_assistant").strip()
+            or "friendly_assistant",
+            "system_prompt_modifier": "",
+        }
+        mode_key = str(mode or "fast")
+        pipeline_tier = mode_to_tier(mode_key)
+        routing_decision = classify_routing_tier(
+            task_text,
+            mode=str(mode or "fast"),
+            parameters={"mode": str(mode or "fast")},
+        )
+        routing_control = RoutingControl(
+            tier=routing_decision.tier,
+            model=routing_decision.model,
+            max_iterations=max(1, routing_decision.max_tool_rounds),
+            pinned_fast=routing_decision.pinned_fast,
+            model_resolver=default_model_for_tier,
+        )
+        routing_sse = {
+            **routing_decision.to_sse(),
+            "routingTier": routing_control.tier,
+            "maxToolRounds": routing_control.max_iterations,
+        }
+        message_id = str(uuid.uuid4())
         loop_controller.mark_perceive(
             loop_trace,
             gateway,
@@ -1992,6 +2023,8 @@ class AgentIntelligence:
                         "listing_f2_read_resume",
                         "computer_browser_read",
                         "computer_browser_read_resume",
+                        "computer_browser_interact_compile",
+                        "computer_browser_interact_confirm",
                     }:
                         task_state = patch
                     else:
@@ -2269,13 +2302,36 @@ class AgentIntelligence:
             )
             return
 
+        from app.services.computer_browser_interact_turn import (
+            computer_interact_should_compile,
+            try_computer_browser_interact_turn,
+        )
+
+        if computer_interact_should_compile(
+            task_text,
+            task_state if isinstance(task_state, dict) else {},
+        ):
+            _confirm_interact = await try_computer_browser_interact_turn(
+                message=task_text,
+                org_id=org_id,
+                client=client,
+                settings=active_settings,
+                connected_integrations=[],
+                task_state=task_state if isinstance(task_state, dict) else {},
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+            if _confirm_interact and _confirm_interact.get("stop_pipeline"):
+                async for ev in _emit_compiled_operational_short_circuit(_confirm_interact):
+                    yield ev
+                return
+
         if (
             gateway.action == "shortcut"
             and (gateway.answer or "").strip()
             and gateway.confidence is not None
             and not loop_trace.operator_task
         ):
-            message_id = str(uuid.uuid4())
             response_text = str(gateway.answer)
             gateway_task_state = gateway_state
             _boot_cognitive_trace(
@@ -2421,40 +2477,8 @@ class AgentIntelligence:
             status_for_stage as _status_for_stage,
         )
 
-        message_id = str(uuid.uuid4())
-        from app.services.computer_browser_interact_turn import (
-            computer_interact_should_compile,
-            try_computer_browser_interact_turn,
-        )
-        from app.services.conversational_execution_service import CONFIRM_PATTERN as _CONFIRM_NOW
-
-        if _CONFIRM_NOW.match((task_text or "").strip()) and conversation_id:
-            try:
-                task_state = await get_conversation_state_service(active_settings).get_task_state(
-                    conversation_id,
-                    org_id,
-                    client=client,
-                )
-            except Exception:  # noqa: BLE001
-                pass
-        if computer_interact_should_compile(
-            task_text,
-            task_state if isinstance(task_state, dict) else {},
-        ):
-            _confirm_interact = await try_computer_browser_interact_turn(
-                message=task_text,
-                org_id=org_id,
-                client=client,
-                settings=active_settings,
-                connected_integrations=[],
-                task_state=task_state if isinstance(task_state, dict) else {},
-                user_id=user_id,
-                conversation_id=conversation_id,
-            )
-            if _confirm_interact and _confirm_interact.get("stop_pipeline"):
-                async for ev in _emit_compiled_operational_short_circuit(_confirm_interact):
-                    yield ev
-                return
+        # message_id assigned before Intent Gateway shortcut so HMAC confirm
+        # can emit without UnboundLocalError on routing/persona closures.
         yield sse_intelligence_metadata(
             message_id=message_id,
             confidence={"score": 0.0, "needs_clarification": False},

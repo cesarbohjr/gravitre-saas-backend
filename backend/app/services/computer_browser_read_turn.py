@@ -99,7 +99,9 @@ def has_completed_computer_session(task_state: dict[str, Any] | None) -> bool:
     if visits_from_computer_state(task_state):
         return True
     plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
-    return plan is not None and plan.source == "computer_execution"
+    if plan is None or plan.source != "computer_execution":
+        return False
+    return str(plan.terminal_status or "") == "completed"
 
 
 def match_computer_browser_followup(message: str, task_state: dict[str, Any] | None) -> bool:
