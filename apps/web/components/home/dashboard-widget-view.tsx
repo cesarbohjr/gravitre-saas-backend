@@ -102,7 +102,7 @@ function MetricNumber({
   return (
     <GravitreMetric
       label={label}
-      value={value}
+      value={metricId === "models.most_used" ? <span className="normal-nums">{value}</span> : value}
       hint={hint}
       href={href}
       warning={warning}
@@ -310,7 +310,7 @@ function WorkflowMonitor({ data }: { data: HomeDashboardData }) {
                     </Link>
                   </GravitreTd>
                   <GravitreTd>
-                    <span className="text-muted-foreground">{agent.model?.trim() || "—"}</span>
+                    <span className="normal-nums text-muted-foreground">{agent.model?.trim() || "—"}</span>
                   </GravitreTd>
                   <GravitreTd>
                     <span className="inline-flex items-center gap-1.5">

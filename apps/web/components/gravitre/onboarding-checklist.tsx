@@ -298,7 +298,7 @@ export function OnboardingChecklist() {
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-        className="fixed bottom-6 right-6 z-50 w-80"
+        className="fixed z-50 max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] max-md:left-[88px] max-md:right-3 md:bottom-6 md:right-6 md:w-80"
       >
         {/* Celebration overlay */}
         {showCelebration && (

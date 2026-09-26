@@ -73,13 +73,16 @@ export function normalizeMetricsOverview(payload: unknown): NormalizedMetricsOve
   const m = payload as Record<string, unknown>
   const changes = (m.changes as Record<string, unknown> | undefined) ?? {}
   const trends = (m.trends as Record<string, unknown> | undefined) ?? {}
+  const totalRuns = num(m.totalRuns ?? m.total_runs)
+  // Overview reports 0 rate/duration with no runs; 0% would read as measured failure.
+  const noRuns = totalRuns === 0
 
   return {
     totalWorkflows: num(m.totalWorkflows ?? m.total_workflows),
     activeWorkflows: num(m.activeWorkflows ?? m.active_workflows),
-    totalRuns: num(m.totalRuns ?? m.total_runs),
-    successRate: num(m.successRate ?? m.success_rate),
-    avgDuration: num(m.avgDuration ?? m.avg_run_duration_ms ?? m.avg_duration),
+    totalRuns,
+    successRate: noRuns ? null : num(m.successRate ?? m.success_rate),
+    avgDuration: noRuns ? null : num(m.avgDuration ?? m.avg_run_duration_ms ?? m.avg_duration),
     avgLatency: num(m.avgLatency ?? m.avg_latency),
     recordsProcessed: num(m.recordsProcessed ?? m.records_processed),
     activeConnectors: num(m.activeConnectors ?? m.active_connectors),
