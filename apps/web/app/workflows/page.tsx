@@ -449,7 +449,7 @@ export default function WorkflowsPage() {
           />
           <details className="px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)]">
             <summary className="cursor-pointer list-none border-b border-divide py-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Totals</p>
+              <p className="text-xs font-medium text-muted-foreground">Totals</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {workflows.length} workflows · {activeCount} active · {runningCount} running — after the list, not instead of it.
               </p>

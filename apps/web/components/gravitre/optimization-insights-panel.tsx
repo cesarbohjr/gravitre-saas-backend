@@ -227,7 +227,7 @@ function RecommendationCard({
               >
                 <div className="pt-3 border-t border-border space-y-3">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Evidence</p>
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Evidence</p>
                     <ul className="space-y-1">
                       {recommendation.evidence.map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-foreground">
@@ -239,13 +239,13 @@ function RecommendationCard({
                   </div>
                   
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Suggested Change</p>
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Suggested Change</p>
                     <p className="text-xs text-foreground">{recommendation.suggestedChange}</p>
                   </div>
                   
                   {recommendation.affectedNodes && (
                     <div>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Affected Steps</p>
+                      <p className="text-xs text-muted-foreground mb-1 font-medium">Affected Steps</p>
                       <div className="flex flex-wrap gap-1">
                         {recommendation.affectedNodes.map((node) => (
                           <Badge key={node} variant="outline" className="text-[10px]">
@@ -333,7 +333,7 @@ function PreviewOptimizationDialog({
             <div className="p-4 rounded-lg bg-secondary/50 border border-border">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current</span>
+                <span className="text-xs font-medium text-muted-foreground">Current</span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
@@ -358,7 +358,7 @@ function PreviewOptimizationDialog({
             <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Proposed</span>
+                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Proposed</span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs">
@@ -386,7 +386,7 @@ function PreviewOptimizationDialog({
           
           {/* Expected impact */}
           <div className="p-4 rounded-lg bg-secondary/30 border border-border">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Expected Impact</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Expected Impact</h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">-24%</div>
@@ -449,7 +449,7 @@ function AIExplanationDialog({
         
         <div className="space-y-4 py-4">
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Why this recommendation?</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Why this recommendation?</h4>
             <p className="text-sm text-foreground">
               Gravitre analyzed 847 workflow runs over the past 30 days and identified a pattern: 
               {recommendation.issue.toLowerCase()} This optimization addresses the root cause by {recommendation.suggestedChange.toLowerCase()}
@@ -457,7 +457,7 @@ function AIExplanationDialog({
           </div>
           
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Supporting Evidence</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Supporting Evidence</h4>
             <ul className="space-y-2">
               {recommendation.evidence.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-foreground">
@@ -469,7 +469,7 @@ function AIExplanationDialog({
           </div>
           
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">What could go wrong?</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">What could go wrong?</h4>
             <ul className="space-y-2">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -605,7 +605,7 @@ export function OptimizationInsightsPanel({
                       <HealthScoreRing score={healthScore} />
                       
                       <div className="flex-1">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-3">
                           Score Dimensions
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
@@ -627,7 +627,7 @@ export function OptimizationInsightsPanel({
                       </div>
                       
                       <div className="w-40">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">
                           7-Day Trend
                         </h4>
                         <div className="h-16">
@@ -655,7 +655,7 @@ export function OptimizationInsightsPanel({
                     {/* Recommendations */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        <h4 className="text-xs font-medium text-muted-foreground">
                           Recommendations
                         </h4>
                         <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1">

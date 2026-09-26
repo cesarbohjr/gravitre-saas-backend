@@ -88,7 +88,7 @@ function CapabilityBlock({
 }) {
   return (
     <div className="rounded-xl border border-border/60 bg-background/50 p-3">
-      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {title}
       </div>

@@ -42,7 +42,7 @@ export function TrustBoundaryVisual({ className }: { className?: string }) {
           <div className="-mt-[14px] flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card shadow-sm">
             <ShieldCheck className="h-4 w-4 text-success" />
           </div>
-          <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="mt-1 text-xs font-medium text-muted-foreground">
             Consent
           </span>
         </div>

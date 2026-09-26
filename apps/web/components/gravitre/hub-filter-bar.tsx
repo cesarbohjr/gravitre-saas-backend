@@ -62,7 +62,7 @@ export function HubFilterField({ label, children, className, compact = false }: 
   if (compact) {
     return (
       <div className={cn("flex min-w-0 items-center gap-1.5", className)}>
-        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">
           {label}
         </span>
         {children}
@@ -72,7 +72,7 @@ export function HubFilterField({ label, children, className, compact = false }: 
 
   return (
     <div className={cn("min-w-[140px]", className)}>
-      <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="mb-1 text-xs font-medium text-muted-foreground">
         {label}
       </p>
       {children}

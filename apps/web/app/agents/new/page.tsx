@@ -585,7 +585,7 @@ export default function NewAgentPage() {
                 <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] divide-y divide-border">
                   {/* Name & Purpose */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name & Purpose</p>
+                    <p className="text-xs font-medium text-muted-foreground">Name & Purpose</p>
                     <div className="mt-3 flex items-start gap-4">
                       {(() => {
                         const AgentIcon = getAgentIcon(agentName)
@@ -603,7 +603,7 @@ export default function NewAgentPage() {
                   </div>
 
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Personality</p>
+                    <p className="text-xs font-medium text-muted-foreground">Personality</p>
                     <ul className="mt-2 space-y-1 text-sm text-foreground">
                       <li>
                         Spoken voice:{" "}
@@ -617,7 +617,7 @@ export default function NewAgentPage() {
 
                   {/* Capabilities */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Capabilities</p>
+                    <p className="text-xs font-medium text-muted-foreground">Capabilities</p>
                     <ul className="mt-2 space-y-1">
                       {capabilityNamesFromIds(selectedCapabilities, customCapabilities).map((name) => (
                           <li key={name} className="flex items-center gap-2 text-sm text-foreground">
@@ -630,7 +630,7 @@ export default function NewAgentPage() {
 
                   {/* Connected Systems */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Connected Systems</p>
+                    <p className="text-xs font-medium text-muted-foreground">Connected Systems</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {selectedSystems.map(id => {
                         const sys = availableSystems.find(s => s.id === id)
@@ -645,7 +645,7 @@ export default function NewAgentPage() {
 
                   {/* Reference Folders */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Reference Folders</p>
+                    <p className="text-xs font-medium text-muted-foreground">Reference Folders</p>
                     {referenceFolders.length > 0 ? (
                       <ul className="mt-2 space-y-2">
                         {referenceFolders.map((folder) => (
@@ -664,7 +664,7 @@ export default function NewAgentPage() {
 
                   {/* Safety Rules */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Safety Rules</p>
+                    <p className="text-xs font-medium text-muted-foreground">Safety Rules</p>
                     <ul className="mt-2 space-y-1">
                       {selectedGuardrails.map(id => {
                         const guard = guardrailOptions.find(g => g.id === id)

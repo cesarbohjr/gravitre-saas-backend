@@ -43,7 +43,7 @@ export function WeekView({
           <div
             key={WEEKDAYS[idx]}
             className={cn(
-              "px-1 pb-1 text-center text-[11px] font-semibold uppercase tracking-[0.14em]",
+              "px-1 pb-1 text-center text-xs font-semibold",
               idx > 4 ? "text-muted-foreground/60" : "text-muted-foreground",
             )}
           >

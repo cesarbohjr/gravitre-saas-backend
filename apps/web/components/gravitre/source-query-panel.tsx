@@ -75,7 +75,7 @@ export function SourceQueryPanel({ sourceId, suggestions = [] }: SourceQueryPane
       {result ? (
         <div className="mt-4 space-y-3">
           <div className="rounded-md border border-border/60 bg-secondary/40 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Generated SQL</p>
+            <p className="text-xs font-semibold text-muted-foreground">Generated SQL</p>
             <pre className="mt-2 overflow-x-auto text-xs text-foreground">{result.sql}</pre>
           </div>
           {result.columns.length > 0 ? (

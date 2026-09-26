@@ -58,7 +58,7 @@ export function AssetVersionHistory({
 
   return (
     <div className="space-y-2">
-      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
         <History className="h-3.5 w-3.5" aria-hidden />
         Version history
       </p>

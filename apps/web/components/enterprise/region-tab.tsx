@@ -131,7 +131,7 @@ export function RegionTab({ isAdmin }: { isAdmin: boolean }) {
           </div>
 
           <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-xs font-semibold text-muted-foreground">
               Storage prefix
             </span>
             <div className="flex items-center gap-2">

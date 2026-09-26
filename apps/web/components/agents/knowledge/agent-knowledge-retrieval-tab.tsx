@@ -64,7 +64,7 @@ export function AgentKnowledgeRetrievalTab({ agentId }: { agentId: string }) {
 
       {result ? (
         <section className="space-y-3">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+          <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">
             Results for &ldquo;{result.query}&rdquo;
           </h2>
           {result.matchCount === 0 ? (

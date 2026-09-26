@@ -85,7 +85,7 @@ export function AgentKnowledgeSourcesTab({
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+        <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">
           Assigned to this agent
         </h2>
         {assigned.length === 0 ? (
@@ -122,7 +122,7 @@ export function AgentKnowledgeSourcesTab({
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+          <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">
             Available organization knowledge
           </h2>
           <Button type="button" variant="outline" size="sm" asChild>

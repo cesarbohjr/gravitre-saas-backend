@@ -245,7 +245,7 @@ export function OverviewLivingMap({
                   : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)]",
               )}
             >
-              <span className="block text-xs font-semibold uppercase tracking-wide">{lens.label}</span>
+              <span className="block text-xs font-semibold">{lens.label}</span>
               <span className={cn(TYPE.meta, "block tabular-nums")}>{stat.value}</span>
             </button>
           )

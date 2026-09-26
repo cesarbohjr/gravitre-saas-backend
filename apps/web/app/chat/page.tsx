@@ -803,7 +803,7 @@ export default function ChatPage() {
                     ))}
                   </div>
 
-                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
+                  <p className="mb-3 text-xs font-medium text-muted-foreground/70">
                     Or try
                   </p>
                   <SearchSuggestionChips
@@ -888,7 +888,7 @@ export default function ChatPage() {
                           <div className="mb-3 flex items-center gap-3">
                             <div className="flex items-center gap-2 shrink-0">
                               <group.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              <h3 className="text-xs font-semibold text-muted-foreground">
                                 {group.label} ({group.items.length})
                               </h3>
                             </div>

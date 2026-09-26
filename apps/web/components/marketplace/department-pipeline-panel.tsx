@@ -150,7 +150,7 @@ export function DepartmentPipelinePanel({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             Department pipeline
           </p>
           <h3 className="text-base font-semibold text-foreground">{pipeline.displayName}</h3>

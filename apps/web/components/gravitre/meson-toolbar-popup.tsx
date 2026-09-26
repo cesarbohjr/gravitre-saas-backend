@@ -118,7 +118,7 @@ function MesonGibeVoice({
 
   return (
     <div className="rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
-      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+      <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400">
         <Sparkles className="h-3 w-3" />
         {source === "gibe" ? "GIBE · Meson's take" : "Meson"}
       </div>
@@ -149,7 +149,7 @@ function MesonQuickLauncher() {
 
   return (
     <div className="mt-3 border-t border-border/60 pt-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
         <NucleoAgent className="h-3 w-3" />
         Quick launcher
       </p>

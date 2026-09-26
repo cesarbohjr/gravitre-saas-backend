@@ -72,7 +72,7 @@ export default function PermissionsMatrixPage() {
                 </p>
               </div>
               <div className="rounded-2xl border border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Roles</p>
+                <p className="text-xs text-muted-foreground font-medium">Roles</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{roles.length}</p>
               </div>
             </motion.div>

@@ -255,7 +255,7 @@ export function MesonPagePanel({
             <div className="mb-2 flex items-center gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">Meson</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">
                   {slideLabel}
                 </p>
               </div>

@@ -99,7 +99,7 @@ export function MobileAgenda({
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-xs font-semibold text-muted-foreground">
               Week of
             </p>
             <p className="truncate text-base font-semibold text-foreground">{weekLabel}</p>

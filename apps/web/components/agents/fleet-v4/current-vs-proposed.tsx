@@ -13,7 +13,7 @@ export function CurrentVsProposed() {
     <div className="grid gap-6 lg:grid-cols-2">
       <section className="space-y-3 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-rose-700 dark:text-rose-300">
+          <p className="text-xs font-medium text-rose-700 dark:text-rose-300">
             Current
           </p>
           <h3 className="text-sm font-semibold">Glow orb constellation</h3>
@@ -57,7 +57,7 @@ export function CurrentVsProposed() {
 
       <section className="space-y-3 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
             Proposed
           </p>
           <h3 className="text-sm font-semibold">Compact symbol tiles</h3>

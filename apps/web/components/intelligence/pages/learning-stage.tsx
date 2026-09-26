@@ -118,7 +118,7 @@ function FilterSelect({
 }) {
   return (
     <label className="flex min-w-[7.5rem] flex-1 flex-col gap-0.5 sm:max-w-[10rem]">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value || null)}

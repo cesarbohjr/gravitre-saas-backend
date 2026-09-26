@@ -180,7 +180,7 @@ export function HipaaTab({ isAdmin }: { isAdmin: boolean }) {
 
           {!data.hipaaReady && data.blockedActionsWhenInactive.length > 0 && (
             <div className="space-y-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-semibold text-muted-foreground">
                 Blocked until HIPAA ready
               </span>
               <div className="flex flex-wrap gap-2">

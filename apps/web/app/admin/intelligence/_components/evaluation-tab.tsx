@@ -26,7 +26,7 @@ const PAGE_SIZE = 12
 function MetricPill({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <span className="inline-flex items-baseline gap-1.5 rounded-md border border-border/60 bg-secondary/40 px-2 py-1">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <span className={cn("text-xs font-semibold tabular-nums", tone ?? "text-foreground")}>{value}</span>
     </span>
   )
@@ -119,7 +119,7 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
                       : "bg-rose-500",
                 )}
               />
-              <span className="relative text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="relative text-xs font-medium text-muted-foreground">
                 Overall quality
               </span>
               <motion.span
@@ -229,7 +229,7 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
                             )}
                           </div>
                           <div className="flex shrink-0 flex-col items-end leading-none">
-                            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            <span className="text-xs font-medium text-muted-foreground">
                               Overall
                             </span>
                             <span className={cn("mt-1 text-lg font-semibold tabular-nums", text)}>

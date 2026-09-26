@@ -129,7 +129,7 @@ export function ScheduleDetailSheet({
                 {item.cron ? (
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Schedule
                       </p>
                       {canEdit ? (

@@ -233,7 +233,7 @@ export function AiExecuteResults({
       steps.length > 0 ? (
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 shadow-sm">
         <div className="border-b border-border bg-secondary/30 px-5 py-3">
-          <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <ArrowRight className="h-3 w-3" />
             Execution Plan
           </h3>

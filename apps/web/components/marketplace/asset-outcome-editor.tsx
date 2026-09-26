@@ -50,7 +50,7 @@ export function AssetOutcomeEditor({
 
   return (
     <div className="space-y-3 rounded-lg border border-dashed border-border/80 bg-muted/20 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold text-muted-foreground">
         Outcome metadata
       </p>
       <p className="text-[11px] text-muted-foreground">

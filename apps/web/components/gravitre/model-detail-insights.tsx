@@ -166,7 +166,7 @@ export function ModelDetailInsights({
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             {typeMeta ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 <Sparkles className="h-3 w-3" />
                 {typeMeta.label}
               </div>
@@ -204,7 +204,7 @@ export function ModelDetailInsights({
       </motion.section>
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="mb-2 text-xs font-semibold text-muted-foreground">
           Quick answers
         </p>
         <SixQuestionsPanel answers={sixQuestionsAnswers} />

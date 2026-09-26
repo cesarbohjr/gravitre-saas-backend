@@ -73,7 +73,7 @@ export function AgentInspector({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+      <p className="text-xs font-medium text-[color:var(--g-text-muted)]">
         {label}
       </p>
       <p className="mt-0.5 text-[color:var(--g-text-primary)]">{value}</p>

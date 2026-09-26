@@ -244,11 +244,11 @@ function ApprovalsContent() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:min-w-[240px]">
             <div className="rounded-2xl border border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Policies</p>
+              <p className="text-xs text-muted-foreground font-medium">Policies</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{policies.length}</p>
             </div>
             <div className="rounded-2xl border border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Active</p>
+              <p className="text-xs text-muted-foreground font-medium">Active</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{enabledCount}</p>
             </div>
           </div>
@@ -276,7 +276,7 @@ function ApprovalsContent() {
 
           <div className="space-y-5">
             <div>
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <label className="text-xs font-medium text-muted-foreground">
                 Name
               </label>
               <Input
@@ -301,7 +301,7 @@ function ApprovalsContent() {
 
             {scopeType === "department" ? (
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <label className="text-xs font-medium text-muted-foreground">
                   Department
                 </label>
                 <select
@@ -321,7 +321,7 @@ function ApprovalsContent() {
 
             {scopeType === "user" ? (
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <label className="text-xs font-medium text-muted-foreground">
                   User
                 </label>
                 <select
@@ -441,7 +441,7 @@ function ApprovalsContent() {
                     <p className="font-medium text-foreground">{policy.name}</p>
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        "rounded-full px-2 py-0.5 text-xs font-semibold",
                         // text-emerald-700 had no dark variant, so it was
                         // near-unreadable on a 10% tint in dark mode.
                         policy.enabled
@@ -511,7 +511,7 @@ function ChipGroup({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <label className="text-xs font-medium text-muted-foreground">
         {label}
       </label>
       <div className="mt-1.5 flex flex-wrap gap-2">

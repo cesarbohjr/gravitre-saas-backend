@@ -267,7 +267,7 @@ function EnvironmentNode({
 
       {/* API Endpoint */}
       <div className="p-5">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">API Endpoint</p>
+        <p className="text-xs text-muted-foreground mb-2 font-medium">API Endpoint</p>
         <div className="flex items-center gap-2">
           <code className="flex-1 text-xs font-mono text-muted-foreground bg-secondary rounded-lg px-3 py-2 truncate">
             {environment.apiUrl}

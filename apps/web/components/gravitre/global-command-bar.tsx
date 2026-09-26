@@ -249,7 +249,7 @@ export function GlobalCommandBar() {
                       {groups.map((group) => (
                         <div key={group.group} className="mb-2">
                           <div className="flex items-center gap-2 px-3 py-1.5">
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]">
+                            <span className="text-xs font-semibold text-[color:var(--g-text-muted)]">
                               {group.group}
                             </span>
                           </div>

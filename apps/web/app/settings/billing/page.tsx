@@ -958,7 +958,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                       buried in a sentence. */}
                   <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
                     <div>
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-xs text-muted-foreground font-medium">
                         Prepaid balance
                       </dt>
                       <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
@@ -966,7 +966,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-xs text-muted-foreground font-medium">
                         Rate
                       </dt>
                       <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
@@ -1480,7 +1480,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                     ))}
                   </ul>
                   {!isCurrent && (
-                    <p className="mt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <p className="mt-3 text-xs font-medium text-muted-foreground">
                       {direction === "downgrade" ? "Downgrade" : "Upgrade"}
                     </p>
                   )}

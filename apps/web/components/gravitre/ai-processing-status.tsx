@@ -257,7 +257,7 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
           {/* Progress Bar */}
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              <span className="text-xs text-muted-foreground font-medium">
                 Progress
               </span>
               <span className="text-xs text-muted-foreground">

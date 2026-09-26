@@ -185,7 +185,7 @@ function FilterSelect({
 }) {
   return (
     <label className="flex min-w-[7.5rem] flex-1 flex-col gap-0.5 sm:max-w-[9.5rem]">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+      <span className="text-xs font-medium text-[color:var(--g-text-muted)]">
         {label}
       </span>
       <select

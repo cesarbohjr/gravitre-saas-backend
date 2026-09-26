@@ -173,7 +173,7 @@ function PayloadSummary({
       <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <TerminalSquare className="h-3 w-3" />
-          <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+          <span className="text-xs font-medium">{label}</span>
         </div>
         <button
           type="button"
@@ -237,7 +237,7 @@ function InvokeToolDetail({ meta }: { meta: InvokeToolMeta }) {
     <div className="rounded-md border border-border bg-muted/30 p-3">
       <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
         <PlugZap className="h-3 w-3" />
-        <span className="text-[10px] font-medium uppercase tracking-wider">Connector result</span>
+        <span className="text-xs font-medium">Connector result</span>
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
         {actionLabel ? (
@@ -423,7 +423,7 @@ function ExecutionStepRow({
                 {connectorActionLabel ? (
                   <p className="text-[11px] text-muted-foreground">{connectorActionLabel}</p>
                 ) : step.stepType ? (
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs text-muted-foreground font-medium">
                     {step.stepType === "invoke_tool" ? "Connector step" : titleCaseStepType(step.stepType)}
                   </p>
                 ) : null}
@@ -547,12 +547,12 @@ function ExecutionStepRow({
                   <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <TerminalSquare className="h-3 w-3" />
-                      <span className="text-[10px] font-medium uppercase tracking-wider">Activity</span>
+                      <span className="text-xs font-medium">Activity</span>
                     </div>
                     {activity.some((row) => row.isStructured) ? (
                       <button
                         type="button"
-                        className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80 hover:text-foreground"
+                        className="text-xs font-medium text-muted-foreground/80 hover:text-foreground"
                         onClick={() => setShowRawActivity((v) => !v)}
                       >
                         {showRawActivity ? "Hide raw" : "Raw data"}
@@ -575,7 +575,7 @@ function ExecutionStepRow({
                           <dl className="space-y-1 text-muted-foreground">
                             {row.facts.map((fact) => (
                               <div key={`${fact.label}-${fact.value}`} className="grid grid-cols-[7.5rem_1fr] gap-2">
-                                <dt className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                                <dt className="text-xs text-muted-foreground/80 font-medium">
                                   {fact.label}
                                 </dt>
                                 <dd className="min-w-0 break-words text-foreground/90">{fact.value}</dd>
@@ -712,7 +712,7 @@ export function ExecutionTimeline({
         return (
           <div key={group.map((s) => s.id).join("-")}>
             {isParallel ? (
-              <div className="border-b border-border bg-info/5 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-info">
+              <div className="border-b border-border bg-info/5 px-4 py-2 text-xs font-medium text-info">
                 Running in parallel
               </div>
             ) : null}

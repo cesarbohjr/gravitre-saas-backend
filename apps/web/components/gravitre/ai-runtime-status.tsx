@@ -78,7 +78,7 @@ export function GravitreAIRuntimeStatus({
       </span>
       <span className="min-w-0 truncate text-[color:var(--g-text-muted)]">{copy.detail}</span>
       {fixture ? (
-        <span className="ml-auto shrink-0 rounded-sm border border-dashed border-[color:var(--g-warning)] px-1 py-px font-mono text-[9px] uppercase tracking-wide text-[color:var(--g-warning)]">
+        <span className="ml-auto shrink-0 rounded-sm border border-dashed border-[color:var(--g-warning)] px-1 py-px font-mono text-xs text-[color:var(--g-warning)] font-medium">
           Fixture
         </span>
       ) : null}

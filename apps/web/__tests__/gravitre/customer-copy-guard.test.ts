@@ -3,8 +3,8 @@ import { join, relative, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const webRoot = resolve(__dirname, "../..")
-const ROOTS = ["app", "components"]
-const EXCLUDED = [/^app[\\/](dev|deck|e2e)[\\/]/, /^components[\\/]marketing[\\/]creative[\\/]/]
+const ROOTS = ["app", "components", "lib"]
+const EXCLUDED = [/^app[\\/](dev|deck|e2e)[\\/]/, /^components[\\/]marketing[\\/]creative[\\/]/, /^lib[\\/]marketing-/]
 
 /** Internal / build-process phrasing that must never reach customer-visible strings. */
 const BANNED = [
@@ -19,6 +19,9 @@ const BANNED = [
   /SSE metadata/i,
   /not a separate hub tab/i,
   /old dashboard layout/i,
+  /not a second dashboard/i,
+  /G-STRUCT/,
+  /\bSlice [0-9]/,
 ]
 
 function walk(dir: string, out: string[] = []): string[] {

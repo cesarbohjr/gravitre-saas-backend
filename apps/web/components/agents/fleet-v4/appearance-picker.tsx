@@ -55,7 +55,7 @@ export function AgentAppearancePicker({
       </div>
 
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+        <p className="mb-2 text-xs font-medium text-[color:var(--g-text-muted)]">
           Icon
         </p>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
@@ -83,7 +83,7 @@ export function AgentAppearancePicker({
       </div>
 
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+        <p className="mb-2 text-xs font-medium text-[color:var(--g-text-muted)]">
           Color
         </p>
         <div className="flex flex-wrap gap-2">

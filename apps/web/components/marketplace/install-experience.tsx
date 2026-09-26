@@ -129,7 +129,7 @@ export function InstallSuccessPanel({
             <Sparkles className="h-5 w-5" aria-hidden />
           </span>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-success/80">
+            <p className="text-xs font-semibold text-success/80">
               Live in your workspace
             </p>
             <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
@@ -266,7 +266,7 @@ export function InstallStepperSheet({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col border-l border-border/60 bg-background/95 sm:max-w-md">
         <SheetHeader className="space-y-2 border-b border-border/50 pb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">
             Install into workspace
           </p>
           <SheetTitle className="text-xl tracking-tight">{asset?.title ?? "Asset"}</SheetTitle>
@@ -276,7 +276,7 @@ export function InstallStepperSheet({
         </SheetHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-1 py-4">
-          <ol className="flex gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <ol className="flex gap-2 text-xs font-semibold text-muted-foreground">
             {(["check", "confirm", "done"] as const).map((id, idx) => (
               <li
                 key={id}

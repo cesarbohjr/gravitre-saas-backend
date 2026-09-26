@@ -83,7 +83,7 @@ export function AiVoiceAgentPicker({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="z-[70] w-72">
-        <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
           Spoken voice
         </DropdownMenuLabel>
         <p className="px-2 pb-1.5 text-[10px] leading-snug text-muted-foreground">

@@ -208,7 +208,7 @@ export function ActivityTracePanel({
                     tone === "waiting" && "border-warning/40",
                   )}
                 >
-                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="block text-xs font-semibold text-muted-foreground">
                     {stage.label}
                   </span>
                   <span className="mt-0.5 block text-xs font-medium text-foreground line-clamp-2">
@@ -252,7 +252,7 @@ export function ActivityTracePanel({
                       aria-hidden
                     />
                     <span className="min-w-0">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span className="block text-xs font-semibold text-muted-foreground">
                         {stage.label}
                       </span>
                     </span>

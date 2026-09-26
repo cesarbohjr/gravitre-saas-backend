@@ -83,7 +83,7 @@ export default function LiteResultsPage() {
       </section>
 
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="text-sm font-semibold text-muted-foreground">
           Results by Workflow
         </h2>
         <MetricProvenanceBadge kind="operational" />
@@ -105,7 +105,7 @@ export default function LiteResultsPage() {
       </div>
 
       <div>
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
           Recent Tasks
         </h2>
         <div className="space-y-2">

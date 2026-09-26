@@ -81,7 +81,7 @@ function ExtensionConnectInner() {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col justify-center gap-4 p-[var(--np-page-pad)] sm:p-6">
       <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] sm:p-6">
-        <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[color:var(--g-text-muted)]">
+        <p className="mb-2 font-mono text-xs font-semibold text-[color:var(--g-text-muted)]">
           Extension
         </p>
         <h1 className="text-xl font-semibold tracking-tight text-[color:var(--g-text-primary)] sm:text-2xl">

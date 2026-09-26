@@ -85,7 +85,7 @@ export function DepartmentLaneHeader({
   const accent = DEPARTMENT_ACCENT[department]
   return (
     <div className="flex items-baseline gap-2 border-b border-divide pb-2">
-      <h3 className={cn("text-xs font-semibold uppercase tracking-wide", accent.accentClass)}>
+      <h3 className={cn("text-xs font-semibold", accent.accentClass)}>
         {accent.label}
       </h3>
       <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">{count}</span>

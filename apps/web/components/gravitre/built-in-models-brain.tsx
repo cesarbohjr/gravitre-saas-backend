@@ -244,7 +244,7 @@ export function BuiltInModelsBrain({
         <div className="flex flex-col border border-divide lg:flex-row">
           <div className="min-w-0 flex-1 overflow-x-auto" data-review-surface="models-queue">
             <table className="min-w-full text-sm">
-              <thead className="border-b border-divide text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+              <thead className="border-b border-divide text-left text-xs text-muted-foreground font-medium">
                 <tr>
                   <th className="px-3 py-2 font-medium">Model</th>
                   <th className="px-3 py-2 font-medium">Domain</th>

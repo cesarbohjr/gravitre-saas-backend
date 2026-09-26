@@ -64,7 +64,7 @@ export function OutcomeAttributionFlow({
         </div>
         {paths.length > 1 ? (
           <label className="flex flex-col gap-0.5 sm:min-w-[12rem]">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               Scope
             </span>
             <select

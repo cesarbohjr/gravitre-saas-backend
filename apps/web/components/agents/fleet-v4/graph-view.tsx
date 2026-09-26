@@ -276,7 +276,7 @@ export function GraphView({
               >
                 <p
                   className={cn(
-                    "text-[10px] font-semibold uppercase tracking-wide",
+                    "text-xs font-semibold",
                     DEPARTMENT_ACCENT[department].accentClass,
                   )}
                 >
@@ -357,7 +357,7 @@ export function GraphView({
                   <Icon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+                  <p className="text-xs font-medium text-[color:var(--g-text-muted)]">
                     {node.kind === "workflow" ? "Workflow" : "Connector"}
                   </p>
                   <p className="truncate text-sm font-medium">{node.label}</p>

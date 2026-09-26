@@ -460,7 +460,7 @@ function MarketplaceAssetsContent() {
             <summary className="cursor-pointer list-none border-b border-divide py-2">
               <p className="text-xs font-medium text-muted-foreground">Catalog</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Counts for the current filters — after search, not a second dashboard.
+                Counts reflect your current search and filters.
               </p>
             </summary>
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-3 sm:grid-cols-3">

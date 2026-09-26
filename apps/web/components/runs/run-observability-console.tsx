@@ -73,7 +73,7 @@ function Stat({
 }) {
   return (
     <div className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
@@ -161,7 +161,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
 
       {data.agentHandoffs.length > 0 ? (
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
             Agent collaboration
           </h3>
           <ul className="space-y-1">
@@ -198,7 +198,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
             Context sources
           </h3>
           {data.contextSources.length === 0 ? (
@@ -217,7 +217,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
           )}
         </div>
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
             Tools called
           </h3>
           {data.toolsCalled.length === 0 ? (
@@ -246,7 +246,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
       </div>
 
       <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
           Replay (public path)
         </h3>
         {data.replay.length === 0 ? (

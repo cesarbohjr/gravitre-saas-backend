@@ -473,7 +473,7 @@ export function NewAssignmentModal({
                   <p className="text-sm text-muted-foreground">{selectedAgent?.role}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card/50 p-4 text-left">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Task</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Task</p>
                   <p className="mt-2 text-sm leading-relaxed text-foreground">{taskBrief.trim()}</p>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full bg-secondary px-2.5 py-1 capitalize text-muted-foreground">

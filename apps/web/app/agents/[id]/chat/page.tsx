@@ -80,7 +80,7 @@ export default function AgentChatPage({
         className="flex min-h-0 flex-1 flex-col px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]"
         data-gravitre-agent-chat-scope={agent.id}
       >
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-[color:var(--g-text-tertiary)]">
+        <p className="text-xs font-medium text-[color:var(--g-text-tertiary)]">
           Talking to this agent
         </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[color:var(--g-text-primary)]">

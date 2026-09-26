@@ -340,7 +340,7 @@ export default function ConnectorDetailPage() {
               Credentials & sync
             </h2>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">API Key</label>
+                  <label className="text-xs text-muted-foreground font-medium">API Key</label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-secondary px-2 py-1.5 rounded font-mono truncate">
                       {connector.config.apiKey
@@ -372,7 +372,7 @@ export default function ConnectorDetailPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Webhook URL</label>
+                  <label className="text-xs text-muted-foreground font-medium">Webhook URL</label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-secondary px-2 py-1.5 rounded font-mono truncate">
                       {connector.config.webhookUrl || "Not configured"}
@@ -390,7 +390,7 @@ export default function ConnectorDetailPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Sync Interval</label>
+                  <label className="text-xs text-muted-foreground font-medium">Sync Interval</label>
                 <p className="text-sm font-medium">Every {connector.config.syncInterval}</p>
               </div>
           </section>

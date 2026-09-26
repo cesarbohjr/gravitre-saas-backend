@@ -17,7 +17,7 @@ function FacetGroup({
   if (!items.length) return null
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
       <ul className="space-y-1">
         <li>
           <button
@@ -71,7 +71,7 @@ export function MarketplaceFacetSidebar({
   return (
     <aside className={cn("w-52 shrink-0 space-y-5", className)}>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Catalog</p>
+        <p className="text-xs font-semibold text-muted-foreground">Catalog</p>
         <p className="text-2xl font-semibold tabular-nums">{totalAssets}</p>
       </div>
       <FacetGroup

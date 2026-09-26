@@ -102,7 +102,7 @@ function SummaryBlock({ title, value }: { title: string; value: Record<string, u
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground font-medium">{title}</p>
         <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setOpen((v) => !v)}>
           {open ? (
             <>
@@ -288,15 +288,15 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
             <div className="mt-3 space-y-4 text-sm">
               <dl className="grid gap-2 sm:grid-cols-2">
                 <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Surface</dt>
+                  <dt className="text-xs text-muted-foreground font-medium">Surface</dt>
                   <dd className="mt-0.5">{surfaceLabel(detail.surface)}</dd>
                 </div>
                 <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">When</dt>
+                  <dt className="text-xs text-muted-foreground font-medium">When</dt>
                   <dd className="mt-0.5">{formatTime(detail.created_at)}</dd>
                 </div>
                 <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <dt className="text-xs text-muted-foreground font-medium">
                     Latency + confidence
                   </dt>
                   <dd className="mt-0.5 text-pretty">
@@ -307,7 +307,7 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Verify</dt>
+                  <dt className="text-xs text-muted-foreground font-medium">Verify</dt>
                   <dd className="mt-0.5">
                     {detail.confidence_summary?.verify_passed === false
                       ? "Failed / blocked"
@@ -319,7 +319,7 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
               </dl>
 
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Steps</p>
+                <p className="text-xs text-muted-foreground font-medium">Steps</p>
                 <div className="mt-2">
                   <StagesTimeline stages={detail.stages} />
                 </div>

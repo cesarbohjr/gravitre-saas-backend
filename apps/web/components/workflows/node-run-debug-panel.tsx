@@ -67,7 +67,7 @@ export function NodeRunDebugPanel({
   return (
     <div className="space-y-4 rounded-lg border border-border bg-secondary/30 p-3">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold text-muted-foreground">
           Run debug
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -83,7 +83,7 @@ export function NodeRunDebugPanel({
 
       {stepOutput && Object.keys(stepOutput).length > 0 ? (
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">
             Step output
           </p>
           {(() => {
@@ -114,7 +114,7 @@ export function NodeRunDebugPanel({
             if (!reasoning && confidence == null) return null
             return (
               <div className="mt-2 rounded-md border border-violet-500/25 bg-violet-500/5 px-2 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
+                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">
                   Branch reasoning (Module C)
                 </p>
                 {reasoning ? (
@@ -140,7 +140,7 @@ export function NodeRunDebugPanel({
         <Skeleton className="h-32 w-full rounded-lg" />
       ) : businessOutcome && !outcomeError ? (
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
             Business outcome (run-level)
           </p>
           <BusinessOutcomeView outcome={businessOutcome} density="timeline" />

@@ -77,7 +77,7 @@ function KpiCard({
     <Card>
       <CardContent className="space-y-2 p-4">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold text-muted-foreground">
             {label}
           </span>
           <Icon className={cn("h-4 w-4", t.icon)} />

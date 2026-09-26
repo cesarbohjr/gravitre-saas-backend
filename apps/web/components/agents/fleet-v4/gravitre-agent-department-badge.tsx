@@ -17,7 +17,7 @@ export function GravitreAgentDepartmentBadge({
   return (
     <span
       className={cn(
-        "text-[10px] font-medium uppercase tracking-wide",
+        "text-xs font-medium",
         meta.accentClass,
         className,
       )}

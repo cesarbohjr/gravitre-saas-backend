@@ -649,7 +649,7 @@ function TrainingPageContent() {
           className="space-y-2 border-b border-divide py-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Job monitor
             </p>
             <Button
@@ -714,7 +714,7 @@ function TrainingPageContent() {
             </div>
 
             <div className="space-y-3 rounded-xl border border-border/50 bg-background/40 p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Dataset type</p>
+              <p className="text-xs font-medium text-muted-foreground">Dataset type</p>
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
                 {DATASET_TYPE_META.map((meta) => {
                   const selected = datasetType === meta.value

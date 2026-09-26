@@ -31,7 +31,7 @@ export function AiWorkSurfacesCallout({
         className,
       )}
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold text-muted-foreground">
         Gravitre AI — one front door
       </p>
       {!compact ? (
@@ -57,7 +57,7 @@ export function AiWorkSurfacesCallout({
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 shrink-0 text-primary" weight="duotone" aria-hidden />
                 <span className="font-medium text-foreground">{surface.title}</span>
-                <span className="rounded bg-muted/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="rounded bg-muted/80 px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
                   {surface.badge}
                 </span>
                 {isCurrent ? (

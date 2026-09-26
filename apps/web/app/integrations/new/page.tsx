@@ -141,7 +141,7 @@ export default function NewIntegrationPage() {
               {type === "webhook" && (
                 <>
                   <div className="pt-2 border-t border-border">
-                    <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <h3 className="mb-3 text-xs font-medium text-muted-foreground">
                       Webhook Configuration
                     </h3>
                   </div>

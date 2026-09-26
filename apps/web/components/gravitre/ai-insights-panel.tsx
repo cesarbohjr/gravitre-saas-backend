@@ -170,7 +170,7 @@ function ConfidenceIndicator({
           <div className="flex cursor-default flex-col items-end gap-1.5">
             <div className="flex items-center gap-2">
               <Icon name="confidence" size="sm" className={colors.text} />
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Confidence</span>
+              <span className="text-xs font-medium text-muted-foreground">Confidence</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="h-2 w-24 overflow-hidden rounded-full bg-secondary/80">
@@ -366,7 +366,7 @@ function InsightSectionCard({
                 {section.title}
               </h4>
               {isHighlighted && (
-                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
+                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-bold text-red-600 dark:text-red-400">
                   Primary
                 </span>
               )}
@@ -414,7 +414,7 @@ function InsightSectionCard({
               {/* Supporting Evidence */}
               {section.type === "evidence" && section.evidence && (
                 <div className="mt-5 space-y-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-3">
                     Data Sources
                   </p>
                   {section.evidence.map((item, i) => (
@@ -443,7 +443,7 @@ function InsightSectionCard({
               {/* Reasoning Steps */}
               {section.type === "reasoning" && section.steps && (
                 <div className="mt-5 space-y-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-3">
                     Analysis Steps
                   </p>
                   {section.steps.map((step, i) => (
@@ -489,7 +489,7 @@ function InsightSectionCard({
               {/* Suggested Actions */}
               {section.type === "actions" && section.actions && (
                 <div className="mt-5 space-y-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-3">
                     Recommended Actions
                   </p>
                   {section.actions.map((action, i) => (
@@ -521,7 +521,7 @@ function InsightSectionCard({
                       </div>
                       <span
                         className={cn(
-                          "rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
+                          "rounded-full border px-2.5 py-1 text-xs font-semibold",
                           priorityColors[action.priority]
                         )}
                       >

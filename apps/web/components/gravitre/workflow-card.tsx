@@ -249,7 +249,7 @@ export function WorkflowCard({
 
             <div className="flex flex-col items-end gap-1">
               {fromMarketplace ? (
-                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                   Marketplace
                 </span>
               ) : null}
@@ -286,7 +286,7 @@ export function WorkflowCard({
           {/* Connected Systems Mini-Icons */}
           {dependencies.length > 0 && !hasDisconnected && (
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Systems:</span>
+              <span className="text-xs text-muted-foreground font-medium">Systems:</span>
               <div className="flex items-center gap-1">
                 {dependencies.slice(0, 4).map((dep, i) => (
                   <Tooltip key={i}>

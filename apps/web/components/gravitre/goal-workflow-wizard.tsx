@@ -802,7 +802,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 <div className="p-4 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                    <span className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide">Goal</span>
+                    <span className="text-xs font-medium text-violet-600 dark:text-violet-400">Goal</span>
                   </div>
                   <p className="text-foreground font-medium">{generatedPlan.goalSummary}</p>
                   <div className="flex items-center gap-4 mt-3">

@@ -52,7 +52,7 @@ export function SixQuestionsPanel({
               isGap ? "border-dashed border-border/60 bg-secondary/10" : "border-border/60 bg-secondary/20",
             )}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-semibold text-muted-foreground">
               {QUESTION_LABEL[question]}
             </p>
             <p

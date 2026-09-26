@@ -464,7 +464,7 @@ export function MesonCopilotPanel({
         {/* Conversational edit (Phase 2) */}
         {canPersist && workflowId ? (
           <section className="border-b border-border p-3">
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Edit with Meson
             </h3>
             <textarea
@@ -561,7 +561,7 @@ export function MesonCopilotPanel({
 
         {crossWorkflowSignals && crossWorkflowSignals.length > 0 ? (
           <section className="border-b border-border p-3">
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Cross-workflow
             </h3>
             <div className="space-y-1.5">
@@ -579,7 +579,7 @@ export function MesonCopilotPanel({
 
         {/* Suggestions */}
         <section className="border-b border-border p-3">
-          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
             Meson suggests
           </h3>
           {loadingSuggestions ? (
@@ -677,7 +677,7 @@ export function MesonCopilotPanel({
         {/* Alerts */}
         <section className="border-b border-border p-3">
           <div className="mb-2 flex items-center gap-2">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Alerts</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">Alerts</h3>
             {visibleAlerts.length > 0 ? (
               <motion.span
                 key={badgeBounce}
@@ -768,7 +768,7 @@ export function MesonCopilotPanel({
         {/* Tips + Insights (rotated per workflow / hour) */}
         <section className="p-3 space-y-4">
           <div>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Tips
             </h3>
             {loadingInsights ? (
@@ -811,7 +811,7 @@ export function MesonCopilotPanel({
           </div>
 
           <div>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Insights
             </h3>
             {loadingInsights ? (

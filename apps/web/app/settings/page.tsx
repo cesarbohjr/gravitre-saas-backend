@@ -105,7 +105,7 @@ function OrganizationSettings({
     <div className="space-y-6">
       {/* Logo Section */}
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <label className="text-xs font-medium text-muted-foreground">
           Organization Logo
         </label>
         <div className="mt-2 flex items-center gap-4">
@@ -130,7 +130,7 @@ function OrganizationSettings({
         </div>
       </div>
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <label className="text-xs font-medium text-muted-foreground">
           Organization Name
         </label>
         <input
@@ -142,7 +142,7 @@ function OrganizationSettings({
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <label className="text-xs font-medium text-muted-foreground">
           Organization Slug
         </label>
         <input
@@ -154,7 +154,7 @@ function OrganizationSettings({
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <label className="text-xs font-medium text-muted-foreground">
           Primary Domain
         </label>
         <input
@@ -710,7 +710,7 @@ function NotificationSettings() {
         <Button variant="outline" size="sm" onClick={() => setSlackDialog(true)}>Configure</Button>
       </div>
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <label className="text-xs font-medium text-muted-foreground">
           Alert Recipients
         </label>
         <input
@@ -873,9 +873,9 @@ function TeamSettings({
         <table className="w-full min-w-[480px]">
           <thead>
             <tr className="border-b border-divide bg-secondary/30">
-              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Member</th>
-              <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Role</th>
-              <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Actions</th>
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Member</th>
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Role</th>
+              <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>

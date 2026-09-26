@@ -40,7 +40,7 @@ export function CoreHubNode({
         ) : null}
         <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-white text-[color:var(--color-brand,#16a374)] dark:bg-neutral-900 dark:text-white">
           <NucleoIntelligence className="size-7 sm:size-8" />
-          <span className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]">
+          <span className="mt-0.5 text-[8px] font-bold text-[color:var(--g-text-muted)]">
             Core
           </span>
         </div>

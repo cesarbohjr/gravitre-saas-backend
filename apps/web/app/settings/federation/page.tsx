@@ -274,7 +274,7 @@ function FederationContent() {
         <section className="lg:col-span-3">
           <div className="mb-4 flex items-center gap-2">
             <Network className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-sm font-semibold text-muted-foreground">
               Partner organizations
             </h2>
           </div>
@@ -341,7 +341,7 @@ function FederationContent() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Send className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h2 className="text-sm font-semibold text-muted-foreground">
                     Cross-org handoffs
                   </h2>
                 </div>
@@ -391,7 +391,7 @@ function FederationContent() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h2 className="text-sm font-semibold text-muted-foreground">
                     Connector grants
                   </h2>
                 </div>
@@ -427,7 +427,7 @@ function FederationContent() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Inbox className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h2 className="text-sm font-semibold text-muted-foreground">
                     Delegated tasks
                   </h2>
                 </div>

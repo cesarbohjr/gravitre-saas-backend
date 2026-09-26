@@ -149,7 +149,7 @@ export function UpgradePrompt({ open, onClose, feature, currentPlan = "node" }: 
 
           {/* Benefits */}
           <div className="p-6 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-xs font-semibold text-muted-foreground">
               What you get
             </p>
             <ul className="space-y-3">

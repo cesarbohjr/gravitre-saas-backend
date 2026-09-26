@@ -209,7 +209,7 @@ function MultiHopPaths({
 
   return (
     <div>
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+      <p className="mb-2 text-xs font-medium text-[color:var(--g-text-muted)]">
         Extended connections (multi-hop)
       </p>
       <ul className="space-y-2">
@@ -281,7 +281,7 @@ export function RelationshipInspector({
       <div className="flex h-full flex-col">
         <div className="flex items-start justify-between gap-2 border-b border-divide px-4 py-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+            <p className="text-xs font-medium text-[color:var(--g-text-muted)]">
               Learned relationship
             </p>
             <p className="mt-0.5 text-sm font-semibold text-[color:var(--g-text-primary)]">{link}</p>
@@ -294,7 +294,7 @@ export function RelationshipInspector({
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <div className="space-y-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-active)] p-3 text-sm">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+            <p className="text-xs font-medium text-[color:var(--g-text-muted)]">
               Why this link
             </p>
             <p className="leading-relaxed text-[color:var(--g-text-secondary)]">
@@ -324,7 +324,7 @@ export function RelationshipInspector({
           </div>
           {altPaths.length > 0 ? (
             <div>
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+              <p className="mb-2 text-xs font-medium text-[color:var(--g-text-muted)]">
                 Indirect paths (loaded graph)
               </p>
               <ul className="space-y-2">
@@ -404,7 +404,7 @@ export function RelationshipInspector({
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-2 border-b border-divide px-4 py-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+          <p className="text-xs font-medium text-[color:var(--g-text-muted)]">
             {ctx.isSeeded ? "Confirmed organization knowledge" : ctx.isCluster ? "Grouped entities" : entityTypeLabel(ctx.entityType)}
           </p>
           <p className="mt-0.5 truncate text-sm font-semibold text-[color:var(--g-text-primary)]">{ctx.label}</p>
@@ -446,7 +446,7 @@ export function RelationshipInspector({
         ) : null}
         {related.length > 0 ? (
           <div>
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+            <p className="mb-2 text-xs font-medium text-[color:var(--g-text-muted)]">
               Connected ({related.length})
             </p>
             <ul className="space-y-2">

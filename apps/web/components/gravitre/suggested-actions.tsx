@@ -211,7 +211,7 @@ export function SuggestedActions({
                         <h4 className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
                           {action.title}
                         </h4>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${config.badge}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${config.badge}`}>
                           {action.priority}
                         </span>
                       </div>
@@ -370,7 +370,7 @@ export function SuggestedActions({
                         <h4 className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
                           {action.title}
                         </h4>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${config.badge}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${config.badge}`}>
                           {action.priority}
                         </span>
                       </div>

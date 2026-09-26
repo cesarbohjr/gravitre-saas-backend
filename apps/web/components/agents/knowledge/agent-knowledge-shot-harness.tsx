@@ -227,7 +227,7 @@ function ShotExpertPacks({ workspace }: { workspace: AgentKnowledgeState }) {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">Recommended</h2>
+        <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">Recommended</h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {recommended.map((pack) => {
             const avail = packAvailabilityLabel(pack)
@@ -247,7 +247,7 @@ function ShotExpertPacks({ workspace }: { workspace: AgentKnowledgeState }) {
         </div>
       </section>
       <section className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">All expert packs</h2>
+        <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">All expert packs</h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {other.map((pack) => {
             const avail = packAvailabilityLabel(pack)

@@ -324,7 +324,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
         {step === 2 && selectedType && (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <label className="text-xs font-medium text-muted-foreground">
                 Source Name
               </label>
               <input
@@ -337,7 +337,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
 
             {selectedType.oauthVendor && linkedConnectors.length > 0 ? (
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <label className="text-xs font-medium text-muted-foreground">
                   Linked Connector *
                 </label>
                 <select
@@ -366,7 +366,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
               field.key === "connector_id" && selectedType.oauthVendor && linkedConnectors.length > 0 ? null : (
               <div key={field.key}>
                 {field.type !== "boolean" && (
-                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <label className="text-xs font-medium text-muted-foreground">
                     {field.label}
                     {field.required ? " *" : ""}
                   </label>
@@ -433,7 +433,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                 </div>
                 {testResult.suggestions?.length ? (
                   <div className="mt-4 border-t border-emerald-500/20 pt-3">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">
                       Suggested questions after connect
                     </p>
                     <ul className="space-y-1 text-xs text-muted-foreground">

@@ -161,7 +161,7 @@ function ScoreRing({ score, grade }: { score: number; grade: IntegrationHealthGr
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-4xl font-semibold tabular-nums text-foreground">{display}</span>
-        <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{gradeLabel(grade)}</span>
+        <span className="text-xs text-muted-foreground font-medium">{gradeLabel(grade)}</span>
       </div>
     </div>
   )
@@ -784,7 +784,7 @@ export function CsDashboardTab() {
               <div key={group.severity} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className={cn("h-1.5 w-1.5 rounded-full", FAILURE_SEVERITY_META[group.severity].dot)} aria-hidden />
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground">
                     {FAILURE_SEVERITY_META[group.severity].label}
                   </span>
                   <span className="text-xs tabular-nums text-muted-foreground/70">{group.items.length}</span>

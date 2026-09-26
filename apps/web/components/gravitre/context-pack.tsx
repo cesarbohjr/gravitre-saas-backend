@@ -53,7 +53,7 @@ export function ContextPack({
             <Icon className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <div>
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               {type}
             </span>
           </div>

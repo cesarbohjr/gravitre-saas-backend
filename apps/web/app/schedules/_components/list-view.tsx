@@ -25,7 +25,7 @@ export function ListView({
       style={scheduleBoardStyle}
     >
       {/* Header */}
-      <div className="hidden shrink-0 border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[1.6fr_0.8fr_1fr_1fr_0.7fr] md:gap-4">
+      <div className="hidden shrink-0 border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-semibold text-muted-foreground md:grid md:grid-cols-[1.6fr_0.8fr_1fr_1fr_0.7fr] md:gap-4">
         <span>Item</span>
         <span>Type</span>
         <span>Next run</span>

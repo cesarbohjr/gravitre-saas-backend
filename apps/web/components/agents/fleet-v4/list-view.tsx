@@ -46,7 +46,7 @@ export function ListView({
             >
               <p
                 className={cn(
-                  "text-[10px] font-semibold uppercase tracking-wide",
+                  "text-xs font-semibold",
                   DEPARTMENT_ACCENT[department].accentClass,
                 )}
               >

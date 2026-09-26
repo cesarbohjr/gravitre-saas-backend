@@ -261,7 +261,7 @@ export default function SourceDetailPage() {
               <h2 className="text-sm font-semibold text-foreground mb-4">Overview</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Connection</p>
+                  <p className="text-xs text-muted-foreground font-medium">Connection</p>
                   <p className="text-sm text-foreground mt-1 font-mono">
                     {source.connectionHost
                       ? `${String(source.connectionHost)}:${String(source.connectionPort ?? "")}`
@@ -271,27 +271,27 @@ export default function SourceDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Database</p>
+                  <p className="text-xs text-muted-foreground font-medium">Database</p>
                   <p className="text-sm text-foreground mt-1 font-mono">
                     {String(source.connectionDatabase ?? "—")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Last Sync</p>
+                  <p className="text-xs text-muted-foreground font-medium">Last Sync</p>
                   <p className="text-sm text-foreground mt-1">{formatRelative(String(source.lastSyncAt ?? ""))}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Sync Frequency</p>
+                  <p className="text-xs text-muted-foreground font-medium">Sync Frequency</p>
                   <p className="text-sm text-foreground mt-1">
                     Every {Math.round(Number(source.syncIntervalSeconds ?? 300) / 60)} minutes
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Tables</p>
+                  <p className="text-xs text-muted-foreground font-medium">Tables</p>
                   <p className="text-sm text-foreground mt-1">{Number(source.tablesCount ?? 0)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Records</p>
+                  <p className="text-xs text-muted-foreground font-medium">Total Records</p>
                   <p className="text-sm text-foreground mt-1">{formatCount(Number(source.recordCount ?? 0))}</p>
                 </div>
               </div>

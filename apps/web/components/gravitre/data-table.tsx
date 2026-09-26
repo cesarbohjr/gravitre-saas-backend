@@ -83,7 +83,7 @@ export function DataTable<T extends { id: string | number }>({
               <th
                 key={column.key}
                 className={cn(
-                  "h-[var(--np-header-h)] px-3 py-0 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground",
+                  "h-[var(--np-header-h)] px-3 py-0 text-left text-xs font-semibold text-muted-foreground",
                   column.className,
                 )}
               >

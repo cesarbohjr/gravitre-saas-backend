@@ -152,7 +152,7 @@ export function AiFindResults({
 
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold text-muted-foreground">
         {results.length} result{results.length === 1 ? "" : "s"}
       </p>
       <div className="space-y-2">

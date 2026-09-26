@@ -938,7 +938,7 @@ function ActivityPageInner() {
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          <p className="text-xs font-semibold text-muted-foreground">
                             Lifecycle timeline
                           </p>
                           {workObjectEvents.length === 0 ? (

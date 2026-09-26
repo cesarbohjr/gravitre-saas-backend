@@ -162,7 +162,7 @@ export function ScheduleItemDialog({
               <div className="space-y-5 px-6 py-5">
                 {item.scheduleType === "once" || item.cron === "@once" ? (
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
-                    <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
                       One-time run
                     </p>
                     <p className="text-sm text-foreground">
@@ -174,7 +174,7 @@ export function ScheduleItemDialog({
                   </div>
                 ) : item.cron ? (
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
-                    <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
                       Recurrence
                     </p>
                     <p className="font-mono text-sm text-foreground">{item.cron}</p>

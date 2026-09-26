@@ -217,7 +217,7 @@ export function AgentCapabilitiesEditor({
                   <span className="block text-sm font-medium text-foreground">
                     {guard.name}
                     {guard.recommended ? (
-                      <span className="ml-2 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                      <span className="ml-2 text-xs font-normal text-muted-foreground font-medium">
                         Recommended
                       </span>
                     ) : null}
