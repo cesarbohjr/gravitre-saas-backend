@@ -2804,23 +2804,24 @@ class AgentIntelligence:
                     early_state = {**early_state, **_canonical_task_state}
                 else:
                     early_state = dict(_canonical_task_state)
-                try:
-                    await get_conversation_state_service(active_settings).update_task_state(
-                        conversation_id,
-                        org_id,
-                        {
-                            "resolution_trace": _canonical_task_state.get("resolution_trace"),
-                            "cognitive_resolution_message": _canonical_task_state.get(
-                                "cognitive_resolution_message"
-                            ),
-                            "cognitive_resolution_needs": _canonical_task_state.get(
-                                "cognitive_resolution_needs"
-                            ),
-                        },
-                        client=client,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("canonical_resolution_persist_skipped: %s", exc)
+                if _cognitive_resolution is not None:
+                    try:
+                        await get_conversation_state_service(active_settings).update_task_state(
+                            conversation_id,
+                            org_id,
+                            {
+                                "resolution_trace": _canonical_task_state.get("resolution_trace"),
+                                "cognitive_resolution_message": _canonical_task_state.get(
+                                    "cognitive_resolution_message"
+                                ),
+                                "cognitive_resolution_needs": _canonical_task_state.get(
+                                    "cognitive_resolution_needs"
+                                ),
+                            },
+                            client=client,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("canonical_resolution_persist_skipped: %s", exc)
             else:
                 _canonical_task_state = _resolution_base
                 if isinstance(early_state, dict):
@@ -3841,12 +3842,18 @@ class AgentIntelligence:
             )
 
             if conversation_id:
-                retrieved_early = retrieve_plan_or_none(
-                    task_text,
-                    org_id=org_id,
-                    connected_integrations=list(connected_early or []),
-                    client=client,
-                    require_pack_install=True,
+                from app.services.catalog_search_turn import match_catalog_search_intent
+
+                retrieved_early = (
+                    None
+                    if match_catalog_search_intent(task_text)
+                    else retrieve_plan_or_none(
+                        task_text,
+                        org_id=org_id,
+                        connected_integrations=list(connected_early or []),
+                        client=client,
+                        require_pack_install=True,
+                    )
                 )
                 if retrieved_early is not None and retrieved_early.block_fabrication:
                     staged = await stage_retrieved_plan_turn(

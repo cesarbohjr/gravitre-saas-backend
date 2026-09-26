@@ -70,6 +70,15 @@ def assess_cognitive_resolution_needs(
             reason="reference_referent",
         )
 
+    from app.services.catalog_search_turn import match_catalog_search_intent
+
+    if match_catalog_search_intent(text):
+        return CognitiveResolutionNeeds(
+            run_semantic=False,
+            run_resource=False,
+            reason="catalog_search",
+        )
+
     if _CHITCHAT_RE.match(text):
         return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="chitchat")
 

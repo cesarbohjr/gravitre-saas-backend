@@ -181,6 +181,18 @@ def test_catalog_search_skips_unified_live():
     )
 
 
+def test_catalog_search_does_not_run_retrieve_plan_before_compiled() -> None:
+    from pathlib import Path
+
+    text = (
+        Path(__file__).resolve().parents[2] / "app" / "operators" / "agent_intelligence.py"
+    ).read_text(encoding="utf-8")
+    marker = "if match_catalog_search_intent(task_text)"
+    retrieve = "else retrieve_plan_or_none("
+    assert marker in text
+    assert retrieve in text
+    assert text.find(marker) < text.find(retrieve)
+
 
 def test_skills_are_versioned_procedures_not_runtime():
     skills = load_jit_procedures(
