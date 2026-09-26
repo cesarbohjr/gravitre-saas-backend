@@ -62,7 +62,7 @@ export function CalendarView({
             key={day}
             className={cn(
               "px-2 py-1.5 text-left text-xs font-medium",
-              idx > 4 ? "text-muted-foreground/60" : "text-muted-foreground",
+              idx > 4 ? "text-muted-foreground" : "text-foreground",
             )}
           >
             {day}
