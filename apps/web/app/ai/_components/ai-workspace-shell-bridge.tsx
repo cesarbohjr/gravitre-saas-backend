@@ -50,6 +50,7 @@ import { useCompositionPreference } from "@/hooks/use-composition-preference"
 import { resolveWorkspaceComposition, writeCompositionPreference } from "@/lib/gravitre-ai-composition"
 import { deriveAiRuntimeState, isApprovalPanelVisible } from "@/lib/gravitre-ai-runtime-state"
 import { AiStartingState } from "./ai-starting-state"
+import { AiMissionSpine, deriveMissionStages } from "./ai-mission-spine"
 
 export interface GravitreAIWorkspaceShellBridgeProps {
   mode: GravitreAIWorkspaceShellMode
@@ -200,6 +201,40 @@ export function GravitreAIWorkspaceShellBridge({
   const compositionSwitch = (
     <GravitreAICompositionSwitch resolved={composition} onChange={writeCompositionPreference} />
   )
+  const isEmpty = messages.length === 0 && !showWaiting && !isStreaming
+  const composerInStart = isEmpty && showTranscript
+  const missionStages = deriveMissionStages({
+    messages,
+    runtimeState,
+    progressSteps: rightPanelProps.progressSteps ?? null,
+    pendingTask,
+    executionResult,
+    hostedFiles: rightPanelProps.hostedFiles ?? null,
+  })
+  const composerBlock = (
+    <div className="mx-auto w-full max-w-[760px] rounded-[8px] border border-[color:var(--g-border-strong)] bg-background p-1.5 transition-[border-color,box-shadow] focus-within:border-[color:var(--g-text-primary)] focus-within:shadow-[0_0_0_1px_var(--g-text-primary)]">
+      <GravitreAIConversationComposer
+        input={input}
+        onInputChange={onInputChange}
+        onSubmit={onSubmit}
+        canSubmit={canSubmit}
+        showSubmit
+        disabled={disabled}
+        isStreaming={composerIsStreaming}
+        onStop={onStop}
+        voiceEntitled={voiceEntitled}
+        placeholder={placeholder}
+        agentLabel={assistantLabel}
+        activityLabel={agentStatusLabel}
+        inputRef={inputRef}
+        onKeyDown={onKeyDown}
+        bordered={false}
+        {...voice}
+        voiceOrbVariant="contained"
+        voiceOrbContainer={orbHost}
+      />
+    </div>
+  )
 
   return (
     <GravitreAIWorkspaceShell
@@ -237,6 +272,9 @@ export function GravitreAIWorkspaceShellBridge({
         pendingTask={pendingTask}
       />
       <div className="flex shrink-0 justify-center border-b border-divide px-3 py-1.5 sm:hidden">{compositionSwitch}</div>
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      {isEmpty ? null : <AiMissionSpine stages={missionStages} />}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div
         data-gravitre-ai-composition-body={composition.composition}
         className={cn(
@@ -251,8 +289,8 @@ export function GravitreAIWorkspaceShellBridge({
         {/* Hidden, not unmounted, in Work view: scroll position and in-flight
             transcript state survive switching back. */}
         <div hidden={!showTranscript} className={cn(showCanvas && "min-h-0 overflow-y-auto px-3 py-3")}>
-          {messages.length === 0 && !showWaiting && !isStreaming ? (
-            <AiStartingState onInputChange={onInputChange} inputRef={inputRef} />
+          {isEmpty ? (
+            <AiStartingState onInputChange={onInputChange} inputRef={inputRef} composer={composerInStart ? composerBlock : null} />
           ) : null}
           <GravitreAIConversationTranscript
             routeKey="/ai"
@@ -283,29 +321,8 @@ export function GravitreAIWorkspaceShellBridge({
           <GravitreAIWorkCanvas executionResult={executionResult} pendingTask={pendingTask} />
         ) : null}
       </div>
-      <div className="shrink-0 px-3 pb-3 pt-1.5">
-        <div className="mx-auto w-full max-w-[760px] rounded-[8px] border border-[color:var(--g-border-strong)] bg-background p-1.5 transition-[border-color,box-shadow] focus-within:border-[color:var(--g-text-primary)] focus-within:shadow-[0_0_0_1px_var(--g-text-primary)]">
-        <GravitreAIConversationComposer
-          input={input}
-          onInputChange={onInputChange}
-          onSubmit={onSubmit}
-          canSubmit={canSubmit}
-          showSubmit
-          disabled={disabled}
-          isStreaming={composerIsStreaming}
-          onStop={onStop}
-          voiceEntitled={voiceEntitled}
-          placeholder={placeholder}
-          agentLabel={assistantLabel}
-          activityLabel={agentStatusLabel}
-          inputRef={inputRef}
-          onKeyDown={onKeyDown}
-          bordered={false}
-          {...voice}
-          voiceOrbVariant="contained"
-          voiceOrbContainer={orbHost}
-        />
-        </div>
+      {composerInStart ? null : <div className="shrink-0 px-3 pb-3 pt-1.5">{composerBlock}</div>}
+      </div>
       </div>
       </div>
     </GravitreAIWorkspaceShell>

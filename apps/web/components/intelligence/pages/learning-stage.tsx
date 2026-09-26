@@ -272,7 +272,7 @@ function MemoryPanel({
 
       <Link
         href={APP_ROUTES.intelligenceMemory}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
       >
         Open full org memory
         <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -344,7 +344,7 @@ function ModelsPanel({
 
       <Link
         href={APP_ROUTES.builtInModels}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
       >
         Open built-in models
         <ArrowRight className="h-3.5 w-3.5" aria-hidden />

@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -389,12 +388,20 @@ function IntelligenceCenterInner() {
       <div className="relative bg-[color:var(--g-canvas)]">
         <IntelligenceSectionRedirect />
 
-        <GravitrePageHeader
-          family="expert"
-          title={copy.title}
-          description="How your agents, systems, and knowledge connect. Select anything on the field to see the evidence."
-          icon={<NucleoIntelligence className="h-[18px] w-[18px]" />}
-          status={
+        {/* Investigation toolbar — identity, hub sections, freshness and journey in one line */}
+        <div
+          data-investigation-toolbar=""
+          className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-2 md:px-5"
+        >
+          <h1 className="flex items-center gap-2 pb-2.5 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+            <NucleoIntelligence className="h-4 w-4" aria-hidden />
+            {copy.title}
+            <span className="sr-only">
+              — how your agents, systems, and knowledge connect. Select anything on the field to see the evidence.
+            </span>
+          </h1>
+          <IntelligenceHubTabs active="overview" className="min-w-0 flex-1" />
+          <div className="flex items-center gap-4 pb-2">
             <IntelligenceFreshnessBar
               loadState={snapshotLoadState}
               generatedAt={generatedAt}
@@ -402,16 +409,17 @@ function IntelligenceCenterInner() {
               onRefresh={() => mutateSnapshot()}
               className="justify-start"
             />
-          }
-          actions={<IntelligenceJourney step={journeyStep} className="hidden md:flex" />}
-        >
-          <IntelligenceHubTabs active="overview" />
-        </GravitrePageHeader>
+            <IntelligenceJourney step={journeyStep} className="hidden lg:flex" />
+          </div>
+        </div>
 
-        {/* Field-primary: insight rail · dominant field · evidence rail */}
+        {/* Field-primary: the field owns the first viewport; insight and evidence rails are edge-attached */}
         <section className="relative border-b border-divide">
-          <div className="relative z-10 mx-auto grid max-w-[1680px] gap-5 px-4 py-4 md:grid-cols-2 md:px-6 md:py-5 xl:grid-cols-[244px_minmax(0,1fr)_264px] xl:gap-6">
-            <aside aria-label="Insight" className="order-2 min-w-0 xl:order-1 xl:pt-1">
+          <div className="relative z-10 grid md:grid-cols-2 xl:h-[calc(100dvh-6.75rem)] xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
+            <aside
+              aria-label="Insight"
+              className="order-2 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 md:border-r xl:order-1 xl:overflow-y-auto xl:border-t-0"
+            >
               <InsightRail
                 signals={signals}
                 signalsLoading={signalsLoading}
@@ -422,7 +430,7 @@ function IntelligenceCenterInner() {
                 }}
               />
             </aside>
-            <div className="order-1 min-w-0 md:col-span-2 xl:order-2 xl:col-span-1">
+            <div className="order-1 min-w-0 px-3 py-3 md:col-span-2 md:px-4 xl:order-2 xl:col-span-1 xl:overflow-y-auto">
             <IntelligenceShell
               chrome="none"
               activeTab="overview"
@@ -471,7 +479,10 @@ function IntelligenceCenterInner() {
               />
             </IntelligenceShell>
             </div>
-            <aside aria-label="Evidence" className="order-3 min-w-0 xl:pt-1">
+            <aside
+              aria-label="Evidence"
+              className="order-3 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 xl:overflow-y-auto xl:border-l xl:border-t-0"
+            >
               <EvidenceRail
                 selected={askSelected}
                 totalEvents={totalEvents}

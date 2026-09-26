@@ -103,7 +103,7 @@ export function InsightRail({
       <section aria-labelledby="insight-learned" className="space-y-1.5">
         <div className="flex items-baseline justify-between gap-2">
           <RailHeading id="insight-learned">Learned</RailHeading>
-          <Link href={APP_ROUTES.learning} className="text-[11.5px] font-medium text-[color:var(--g-brand)] hover:underline">
+          <Link href={APP_ROUTES.learning} className="text-[11.5px] font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]">
             Learning hub
           </Link>
         </div>

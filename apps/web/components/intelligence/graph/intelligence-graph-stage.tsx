@@ -394,7 +394,7 @@ export function IntelligenceGraphStage({
           )}
           <button
             type="button"
-            className="text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+            className="text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
             onClick={() => setMobileExplorerOpen(true)}
           >
             Expand graph explorer
@@ -405,7 +405,7 @@ export function IntelligenceGraphStage({
       {compactViewport && mobileExplorerOpen ? (
         <button
           type="button"
-          className="text-sm font-medium text-[color:var(--g-brand)] hover:underline md:hidden"
+          className="text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)] md:hidden"
           onClick={() => setMobileExplorerOpen(false)}
         >
           Back to relationship paths

@@ -309,7 +309,7 @@ export function ActivityTracePanel({
                         href={active.evidenceUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+                        className="text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
                       >
                         Open evidence
                       </a>

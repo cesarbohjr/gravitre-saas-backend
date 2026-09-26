@@ -109,7 +109,7 @@ export function IntelligenceMapContextPanel({
         </dl>
         <Link
           href={`${APP_ROUTES.agents}/${agent.id}`}
-          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Open agent
           <ArrowRight className="h-3 w-3" aria-hidden />
@@ -147,7 +147,7 @@ export function IntelligenceMapContextPanel({
         </dl>
         <Link
           href={APP_ROUTES.intelligenceReports}
-          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Open department reports
           <ArrowRight className="h-3 w-3" aria-hidden />
@@ -184,7 +184,7 @@ export function IntelligenceMapContextPanel({
       {node.kind === "model" ? (
         <Link
           href={APP_ROUTES.training}
-          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Open training
           <ArrowRight className="h-3 w-3" aria-hidden />
@@ -193,7 +193,7 @@ export function IntelligenceMapContextPanel({
       {node.kind === "entity-type" ? (
         <Link
           href={APP_ROUTES.intelligenceMemory}
-          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Open knowledge memory
           <ArrowRight className="h-3 w-3" aria-hidden />

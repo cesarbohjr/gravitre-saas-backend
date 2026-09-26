@@ -58,7 +58,7 @@ export function WorkforceStrip({ data }: { data: HomeDashboardData }) {
         </h2>
         <Link
           href={APP_ROUTES.agents}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           {data.agentTotal != null ? `All ${data.agentTotal} agents` : "Agents"}
           <ArrowRight className="size-3" aria-hidden />

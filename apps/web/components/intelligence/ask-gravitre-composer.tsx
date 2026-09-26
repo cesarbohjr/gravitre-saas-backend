@@ -128,7 +128,7 @@ export function AskGravitreComposer({
         <button
           type="button"
           onClick={() => summon("", false)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Open Gravitre
           <ArrowRight className="h-3 w-3" />

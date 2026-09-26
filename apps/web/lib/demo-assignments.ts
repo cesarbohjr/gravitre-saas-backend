@@ -26,6 +26,19 @@ export interface DemoAssignment {
   currentStepDetail?: string
   reportContent?: string
   qualityChecks?: Array<{ label: string; status: "pass" | "warn" }>
+  /** ISO timestamp from the job record, when known. */
+  createdAtIso?: string
+  /** Execution evidence reported by the job result; null fields were not reported. */
+  evidence?: {
+    toolCalls: number | null
+    sources: number | null
+    mode: "tools_executed" | "advisory_only" | "degraded" | null
+    verified: boolean | null
+  }
+  /** Why the assignment cannot proceed (job error), when reported. */
+  blocker?: string
+  /** What the agent asked the operator, when it paused for a decision. */
+  approvalPrompt?: string
 }
 
 /** Production assignment shape (legacy name retained for compatibility). */

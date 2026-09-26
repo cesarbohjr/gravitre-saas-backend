@@ -125,7 +125,7 @@ export function WhatGravitreLearnedSection({
         </div>
         <Link
           href={APP_ROUTES.learning}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Full learning hub
           <ArrowRight className="h-3 w-3" aria-hidden />
@@ -145,7 +145,7 @@ export function WhatGravitreLearnedSection({
               {row.id ? (
                 <Link
                   href={buildLearningInsightMapHref(row.id)}
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--g-brand)] hover:underline"
+                  className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
                   data-testid="overview-learning-map-link"
                 >
                   View on intelligence map

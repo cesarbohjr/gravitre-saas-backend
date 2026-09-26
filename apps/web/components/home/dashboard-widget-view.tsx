@@ -143,7 +143,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
         <h2 className={TYPE.sectionTitle}>Agents by status</h2>
         <Link
           href={APP_ROUTES.agents}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
         >
           View agents
           <NucleoArrowRight className="h-3 w-3" />
@@ -218,7 +218,7 @@ function RunsBreakdown({ data }: { data: HomeDashboardData }) {
         </h2>
         <Link
           href={APP_ROUTES.runs}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
         >
           View runs
           <NucleoArrowRight className="h-3 w-3" />
@@ -270,7 +270,7 @@ function WorkflowMonitor({ data }: { data: HomeDashboardData }) {
           </div>
           <Link
             href={APP_ROUTES.agents}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
           >
             View all
             <NucleoArrowRight className="h-3 w-3" />
@@ -538,7 +538,7 @@ function ProgressWidget({
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-medium tracking-wide text-muted-foreground">{title}</p>
         {href ? (
-          <Link href={href} className="text-[11px] text-[color:var(--brand)] hover:underline">
+          <Link href={href} className="text-[11px] text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]">
             Open
           </Link>
         ) : null}
@@ -572,7 +572,7 @@ function ListWidget({
         {href ? (
           <Link
             href={href}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
           >
             View
             <NucleoArrowRight className="h-3 w-3" />

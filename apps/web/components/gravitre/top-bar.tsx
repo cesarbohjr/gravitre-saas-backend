@@ -26,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
+import { ShellOperatingPulse } from "@/components/gravitre/shell-operating-pulse"
 import { cn } from "@/lib/utils"
 import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
 import { Icon } from "@/lib/icons"
@@ -226,8 +227,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
         )}
       >
         {/* Left side - Menu + (mobile) Org + Environment + Page title */}
-        {/* lg+: stop short of the absolutely centred command bar (~450px wide). */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5 lg:max-w-[calc(50%-240px)]">
+        {/* lg+: left and right clusters share the remaining width equally, so the
+            live-state + command group stays centred without overlapping either side. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-2.5">
           {/* Nav toggle — mobile drawer; tablet+ expands icon rail to labels */}
           <Button
             variant="ghost"
@@ -371,12 +373,20 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           ) : null}
         </div>
 
+        {/* Centre — live operating state (xl+) beside the command bar */}
+        <div className="flex shrink-0 items-center gap-2">
+          {!chromeQuiet ? (
+            <ShellOperatingPulse
+              pendingApprovals={pendingApprovals}
+              activeWorkflows={activeWorkflows}
+              className="hidden xl:flex"
+            />
+          ) : null}
+          <GlobalCommandBar />
+        </div>
+
         {/* Right side - Controls */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Global Command Bar — centred command slot on desktop */}
-          <div className="lg:absolute lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2">
-            <GlobalCommandBar />
-          </div>
+        <div className="flex items-center gap-1 sm:gap-1.5 lg:flex-1 lg:justify-end">
 
           {/* Admin/Lite Mode Toggle */}
           {!chromeQuiet ? (

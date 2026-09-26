@@ -1,408 +1,377 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useState, type ReactNode } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
-import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import {
-  GravitreEmpty,
-  GravitreMetric,
-  GravitrePageHeader,
-} from "@/components/gravitre/nodus-product"
-import { AnimatedCounter } from "@/components/gravitre/premium-effects"
+import { LiveStatus } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { Icon } from "@/lib/icons"
-import { NavTasks } from "@/components/icons/nodus-nav/outline"
 import { cn } from "@/lib/utils"
-import { INTERACTION } from "@/lib/design-system"
 import { type DemoAssignment } from "@/lib/demo-assignments"
-import {
-  ASSIGNMENTS_REFRESH_KEY,
-  fetchAssignmentList,
-} from "@/lib/assignments-list"
+import { ASSIGNMENTS_REFRESH_KEY, fetchAssignmentList } from "@/lib/assignments-list"
+import { relativeTime } from "@/lib/agent-job-result"
 import { NewAssignmentModal } from "@/components/gravitre/assignments/new-assignment-modal"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
-import { useMotionPrefs, entranceContainer, reducedEntranceContainer, entranceItem, reducedEntranceItem } from "@/lib/animations"
 import { useAuth } from "@/lib/auth-context"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-import { 
-  Megaphone, 
-  TrendingUp, 
-  Database, 
-  PieChart, 
-  Headphones,
-  RefreshCw,
-  LayoutGrid,
-  Rows3,
-  type LucideIcon 
-} from "lucide-react"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { LayoutGrid, Rows3 } from "lucide-react"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
 
 type Assignment = DemoAssignment
-
-// Agent icon mapping based on role
-const agentIcons: Record<string, LucideIcon> = {
-  "Marketing Agent": Megaphone,
-  "Marketing Operator": Megaphone,
-  "Sales Assistant": TrendingUp,
-  "Data Quality Agent": Database,
-  "Finance Reporter": PieChart,
-  "Support Coordinator": Headphones,
-}
-
-const initialAssignments: Assignment[] = []
+type Phase = Assignment["status"]
 
 const ASSIGNMENTS_REFRESH_MS = 15_000
 
-const statusConfig: Record<string, { label: string; color: string; bgColor: string; dotColor: string; icon: string }> = {
-  running: { label: "Running", color: "text-info", bgColor: "bg-info/10", dotColor: "bg-info", icon: "activity" },
-  completed: { label: "Completed", color: "text-[color:var(--g-brand)]", bgColor: "bg-[color:var(--g-brand-soft)]", dotColor: "bg-[color:var(--g-brand)]", icon: "check" },
-  pending: { label: "Queued", color: "text-amber-700", bgColor: "bg-amber-500/10", dotColor: "bg-amber-500", icon: "clock" },
-  failed: { label: "Failed", color: "text-destructive", bgColor: "bg-destructive/10", dotColor: "bg-destructive", icon: "warning" },
-  needs_approval: { label: "Needs approval", color: "text-violet-700", bgColor: "bg-violet-500/10", dotColor: "bg-violet-500", icon: "shield" },
+/** Execution phases in the order work moves through them; failed is the exception track. */
+const PHASES: Array<{ id: Phase; label: string; empty: string }> = [
+  { id: "pending", label: "Queued", empty: "Nothing waiting to start." },
+  { id: "running", label: "Executing", empty: "No agent is executing work." },
+  { id: "needs_approval", label: "Needs your decision", empty: "No decisions waiting." },
+  { id: "completed", label: "Delivered", empty: "Nothing delivered yet." },
+  { id: "failed", label: "Blocked", empty: "Nothing blocked." },
+]
+
+const PHASE_DOT: Record<Phase, string> = {
+  pending: "bg-muted-foreground/50",
+  running: "bg-[color:var(--g-brand)]",
+  needs_approval: "bg-warning",
+  completed: "bg-[color:var(--g-text-primary)]",
+  failed: "bg-destructive",
 }
 
-function deriveAssignmentProgress(assignment: DemoAssignment): number {
-  if (Number.isFinite(assignment.progress)) {
-    return Math.max(0, Math.min(100, assignment.progress))
-  }
-  const total = assignment.steps.length
-  if (total === 0) return 0
-  const done = assignment.steps.filter((step) => step.status === "done").length
-  const hasRunning = assignment.steps.some((step) => step.status === "running")
-  return Math.round(((done + (hasRunning ? 0.5 : 0)) / total) * 100)
+const VIEW_MODES = [
+  { id: "track" as const, label: "Track view", icon: LayoutGrid },
+  { id: "list" as const, label: "List view", icon: Rows3 },
+] as const
+
+function phaseLabel(status: Phase): string {
+  return PHASES.find((phase) => phase.id === status)?.label ?? status
 }
 
-function getRunningStepLabel(assignment: DemoAssignment): string | null {
+function reportedProgress(assignment: Assignment): number | null {
   if (assignment.status !== "running") return null
-  if (assignment.currentStepDetail?.trim()) return assignment.currentStepDetail.trim()
-  const step = assignment.steps.find((s) => s.status === "running")
-  if (!step) return null
-  const destination = assignment.destination.toLowerCase()
-  if (destination.includes("hubspot")) {
-    return "Fetching campaign data from HubSpot…"
-  }
-  if (destination.includes("salesforce")) {
-    return "Syncing lead data from Salesforce…"
-  }
-  return `Running step: ${step.name}…`
+  return Number.isFinite(assignment.progress) ? Math.max(0, Math.min(100, assignment.progress)) : null
 }
 
-function AssignmentProgressBar({ assignment }: { assignment: DemoAssignment }) {
-  const percent = deriveAssignmentProgress(assignment)
-  const runningLabel = getRunningStepLabel(assignment)
+function evidenceLine(assignment: Assignment): string | null {
+  const e = assignment.evidence
+  if (!e) return null
+  const parts: string[] = []
+  if (e.toolCalls !== null) parts.push(`${e.toolCalls} tool call${e.toolCalls === 1 ? "" : "s"}`)
+  if (e.sources !== null && e.sources > 0) parts.push(`${e.sources} source${e.sources === 1 ? "" : "s"}`)
+  if (e.mode === "advisory_only") parts.push("advisory only")
+  if (e.mode === "degraded") parts.push("degraded run")
+  if (e.verified === true) parts.push("execution verified")
+  return parts.length > 0 ? parts.join(" · ") : null
+}
 
-  const fillClass = cn(
-    "h-full rounded-full transition-[width] duration-300 ease-out",
-    assignment.status === "running" && "bg-info",
-    assignment.status === "completed" && "bg-[color:var(--g-brand)]",
-    assignment.status === "needs_approval" && "bg-violet-500",
-    assignment.status === "failed" && "bg-destructive",
-    assignment.status === "pending" && "bg-amber-500/70",
-  )
-
+function AgentMark({ name }: { name: string }) {
   return (
-    <div className="mb-3">
-      <TooltipProvider delayDuration={150}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              className="relative h-2 w-full cursor-default overflow-hidden rounded-full bg-[color:var(--g-surface-2)]"
-              aria-label={`${percent}% complete`}
-            >
-              <div className={fillClass} style={{ width: `${percent}%` }} />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="top">{percent}% complete</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      {runningLabel ? (
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-info">
-          <RefreshCw className="h-3 w-3 shrink-0 animate-spin" />
-          <span className="line-clamp-1">{runningLabel}</span>
-        </p>
-      ) : null}
-    </div>
+    <span
+      aria-hidden
+      className="flex size-5 shrink-0 items-center justify-center rounded-[4px] border border-[color:var(--g-border-default)] text-[10px] font-semibold text-foreground"
+    >
+      {name.trim().charAt(0).toUpperCase() || "A"}
+    </span>
   )
 }
 
-// Live Activity Pulse
-function ActivityPulse() {
+/** Execute → Deliver (→ Decision) as a compact step track from the job's own steps. */
+function StepTrack({ assignment }: { assignment: Assignment }) {
+  const steps = [...assignment.steps]
+  if (assignment.status === "needs_approval") steps.push({ name: "Decision", status: "running" })
   return (
-    <div className="relative flex items-center gap-2">
-      <div className="relative h-2.5 w-2.5">
-        <div className="absolute inset-0 animate-ping rounded-full bg-[color:var(--g-brand)] opacity-60" />
-        <div className="relative h-full w-full rounded-full bg-[color:var(--g-brand)]" />
-      </div>
-      <span className="text-xs font-medium text-[color:var(--g-brand)]">Live</span>
-    </div>
+    <ol className="flex items-center gap-1" aria-label="Execution steps">
+      {steps.map((step) => (
+        <li key={step.name} className="flex min-w-0 flex-1 flex-col gap-1">
+          <span
+            className={cn(
+              "h-[3px] w-full",
+              step.status === "done" && "bg-[color:var(--g-text-primary)]",
+              step.status === "running" &&
+                (assignment.status === "needs_approval" && step.name === "Decision" ? "bg-warning" : "bg-[color:var(--g-brand)]"),
+              step.status === "pending" && "bg-[color:var(--g-border-default)]",
+              assignment.status === "failed" && step.status !== "done" && "bg-destructive/60",
+            )}
+          />
+          <span className="truncate text-[10.5px] text-muted-foreground">
+            {step.name}
+            <span className="sr-only">: {step.status}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
   )
 }
 
-// Assignment Card with Rich Detail
-function AssignmentCard({
+function MissionItem({
   assignment,
-  onNavigate,
-  onOpenApproval,
+  selected,
+  onActivate,
 }: {
   assignment: Assignment
-  onNavigate: () => void
-  onOpenApproval?: () => void
+  selected: boolean
+  onActivate: () => void
 }) {
-  const status = statusConfig[assignment.status]
-  const { reduced } = useMotionPrefs()
-
+  const progress = reportedProgress(assignment)
+  const evidence = evidenceLine(assignment)
   return (
-    <motion.div
-      layout
-      variants={reduced ? reducedEntranceItem : entranceItem}
-      whileHover={reduced ? undefined : { 
-        y: -6, 
-        scale: 1.01,
-        transition: { duration: 0.15, ease: [0.2, 0, 0, 1] }
-      }}
-      whileTap={reduced ? undefined : { scale: 0.99 }}
-      role="button"
-      tabIndex={0}
-      aria-label={`Open assignment: ${assignment.title}`}
-      onClick={onNavigate}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onNavigate()
-        }
-      }}
-      className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:bg-[color:var(--g-surface-2)] sm:p-5",
-        INTERACTION,
-      )}
-    >
-      {/* Status indicator line */}
-      <div className={cn(
-        "absolute left-0 right-0 top-0 h-0.5",
-        assignment.status === "running" && "bg-info",
-        assignment.status === "completed" && "bg-[color:var(--g-brand)]",
-        assignment.status === "pending" && "bg-amber-500",
-        assignment.status === "failed" && "bg-destructive",
-        assignment.status === "needs_approval" && "bg-violet-500",
-      )} />
-
-      <div className="flex items-start gap-3 sm:gap-4">
-        {/* Agent Avatar */}
-        <div className="relative shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)] sm:h-12 sm:w-12">
-            <assignment.agent.icon className="h-5 w-5 sm:h-6 sm:w-6" />
-          </div>
-          {assignment.status === "running" && (
-            <motion.div
-              className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-info"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              <Icon name="activity" size="xs" className="text-white" />
-            </motion.div>
-          )}
+    <li>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-pressed={selected}
+        aria-label={`${assignment.title} — ${phaseLabel(assignment.status)}`}
+        data-assignment-id={assignment.id}
+        onClick={onActivate}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            onActivate()
+          }
+        }}
+        className={cn(
+          "group relative flex cursor-pointer flex-col gap-2 px-3 py-3 transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          selected && "bg-[color:var(--g-surface-1)] shadow-[inset_2px_0_0_var(--g-text-primary)]",
+        )}
+      >
+        <p className="line-clamp-2 text-[13px] font-medium leading-snug text-foreground">{assignment.title}</p>
+        <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
+          <AgentMark name={assignment.agent.name} />
+          <span className="truncate">{assignment.agent.name}</span>
+          {assignment.createdAt ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="shrink-0 tabular-nums">{relativeTime(assignment.createdAt)}</span>
+            </>
+          ) : null}
         </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <div>
-              <h3 className="font-semibold text-foreground group-hover:text-foreground/90 transition-colors line-clamp-1">
-                {assignment.title}
-              </h3>
-              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                {assignment.brief}
-              </p>
-            </div>
-            <div className={cn(
-              "shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-              status.bgColor, status.color
-            )}>
-              <div className={cn("h-1.5 w-1.5 rounded-full", status.dotColor, assignment.status === "running" && "animate-pulse")} />
-              {status.label}
-            </div>
-          </div>
-
-          <AssignmentProgressBar assignment={assignment} />
-
-          {/* Meta Row */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Icon name="user" size="xs" />
-              <span>{assignment.agent.name}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Icon name="clock" size="xs" />
-              <span>{assignment.createdAt}</span>
-            </div>
-            {assignment.confidence && assignment.status !== "running" && (
-              <div className="flex items-center gap-1.5 ml-auto">
-                <span className={cn(
-                  "font-medium",
-                  assignment.confidence >= 90 ? "text-[color:var(--g-brand)]" : 
-                  assignment.confidence >= 70 ? "text-amber-600" : "text-destructive"
-                )}>
-                  {assignment.confidence}% confident
-                </span>
-              </div>
-            )}
-            {assignment.status === "needs_approval" && onOpenApproval ? (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onOpenApproval()
-                }}
-                className="ml-auto text-xs font-medium text-violet-600 underline-offset-2 hover:underline"
-              >
-                Approval
-              </button>
+        <StepTrack assignment={assignment} />
+        {assignment.status === "running" && (assignment.currentStepDetail || progress !== null) ? (
+          <p className="text-[11.5px] text-foreground">
+            {assignment.currentStepDetail?.trim()}
+            {progress !== null ? (
+              <span className="ml-1 tabular-nums text-muted-foreground">{progress}% reported</span>
             ) : null}
-          </div>
-        </div>
+          </p>
+        ) : null}
+        {assignment.status === "needs_approval" ? (
+          <p className="line-clamp-2 text-[11.5px] text-foreground">
+            {assignment.approvalPrompt ?? "The agent paused for your decision before continuing."}
+          </p>
+        ) : null}
+        {assignment.status === "failed" && assignment.blocker ? (
+          <p className="line-clamp-2 text-[11.5px] text-destructive">{assignment.blocker}</p>
+        ) : null}
+        {evidence ? <p className="text-[11px] text-muted-foreground">{evidence}</p> : null}
       </div>
-
-      {/* Hover reveal: Quick Actions */}
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          aria-label={`View ${assignment.title}`}
-          onClick={(event) => {
-            event.stopPropagation()
-            onNavigate()
-          }}
-        >
-          <Icon name="eye" size="sm" />
-        </Button>
-      </div>
-    </motion.div>
+    </li>
   )
 }
 
-function AssignmentListSkeleton() {
+function PhaseLane({
+  phase,
+  items,
+  selectedId,
+  onActivate,
+}: {
+  phase: (typeof PHASES)[number]
+  items: Assignment[]
+  selectedId: string | null
+  onActivate: (assignment: Assignment) => void
+}) {
+  const emphasis = phase.id === "needs_approval" && items.length > 0
   return (
-    <div className="grid grid-cols-1 gap-4">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
-          <div className="flex items-start gap-4">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-[var(--np-radius-md)]" />
-            <div className="flex-1 space-y-3">
-              <Skeleton className="h-4 w-2/5" />
-              <Skeleton className="h-3 w-3/5" />
-              <Skeleton className="h-2 w-full rounded-full" />
-              <Skeleton className="h-3 w-1/3" />
-            </div>
+    <section
+      aria-labelledby={`phase-${phase.id}`}
+      data-assignment-phase={phase.id}
+      className={cn(
+        "flex min-h-0 min-w-0 flex-col",
+        emphasis && "bg-[color:var(--g-surface-1)]",
+        phase.id === "failed" && "bg-[color:var(--g-background-muted)]",
+      )}
+    >
+      <header
+        className={cn(
+          "flex items-center justify-between gap-2 border-b px-3 py-2.5",
+          emphasis ? "border-[color:var(--g-text-primary)]" : "border-[color:var(--g-border-subtle)]",
+        )}
+      >
+        <h2 id={`phase-${phase.id}`} className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+          <span aria-hidden className={cn("size-1.5 rounded-full", PHASE_DOT[phase.id])} />
+          {phase.label}
+        </h2>
+        <span className="text-[12px] tabular-nums text-muted-foreground">{items.length}</span>
+      </header>
+      {items.length === 0 ? (
+        <p className="px-3 py-3 text-xs text-muted-foreground">{phase.empty}</p>
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y divide-[color:var(--g-border-subtle)] overflow-y-auto">
+          {items.map((assignment) => (
+            <MissionItem
+              key={assignment.id}
+              assignment={assignment}
+              selected={assignment.id === selectedId}
+              onActivate={() => onActivate(assignment)}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** Selected assignment read as objective → plan → agent → execution → evidence. */
+function MissionInspector({ assignment }: { assignment: Assignment | null }) {
+  if (!assignment) {
+    return (
+      <div className="px-4 py-4">
+        <p className="text-[13px] font-medium text-foreground">Select an assignment</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Its objective, plan, agent, execution state and evidence appear here.
+        </p>
+      </div>
+    )
+  }
+  const evidence = evidenceLine(assignment)
+  const progress = reportedProgress(assignment)
+  const rows: Array<{ label: string; body: ReactNode }> = [
+    { label: "Objective", body: <p className="text-[13px] leading-relaxed text-foreground">{assignment.brief}</p> },
+    {
+      label: "Plan",
+      body: (
+        <ol className="space-y-1">
+          {assignment.steps.map((step) => (
+            <li key={step.name} className="flex items-center justify-between gap-2 text-[12.5px]">
+              <span className="text-foreground">{step.name}</span>
+              <span className="text-muted-foreground">{step.status === "done" ? "Done" : step.status === "running" ? "In progress" : "Not started"}</span>
+            </li>
+          ))}
+        </ol>
+      ),
+    },
+    {
+      label: "Agent",
+      body: (
+        <span className="flex items-center gap-2 text-[12.5px] text-foreground">
+          <AgentMark name={assignment.agent.name} />
+          {assignment.agent.name}
+        </span>
+      ),
+    },
+    {
+      label: "Execution",
+      body: (
+        <div className="space-y-1 text-[12.5px]">
+          <p className="flex items-center gap-2 text-foreground">
+            <span aria-hidden className={cn("size-1.5 rounded-full", PHASE_DOT[assignment.status])} />
+            {phaseLabel(assignment.status)}
+            {progress !== null ? <span className="tabular-nums text-muted-foreground">· {progress}% reported</span> : null}
+          </p>
+          {assignment.currentStepDetail ? <p className="text-muted-foreground">{assignment.currentStepDetail}</p> : null}
+          {assignment.status === "needs_approval" && assignment.approvalPrompt ? (
+            <p className="text-foreground">{assignment.approvalPrompt}</p>
+          ) : null}
+          {assignment.blocker ? <p className="text-destructive">{assignment.blocker}</p> : null}
+        </div>
+      ),
+    },
+    {
+      label: "Evidence",
+      body: <p className="text-[12.5px] text-muted-foreground">{evidence ?? "No execution evidence reported for this job."}</p>,
+    },
+  ]
+  return (
+    <div className="flex min-h-0 flex-col">
+      <div className="border-b border-[color:var(--g-border-subtle)] px-4 py-3">
+        <p className="line-clamp-3 text-[14px] font-semibold leading-snug text-foreground">{assignment.title}</p>
+        <p className="mt-1 text-[11.5px] text-muted-foreground">
+          {assignment.createdAt ? `Created ${relativeTime(assignment.createdAt)}` : null}
+          {assignment.completedAt ? ` · finished ${relativeTime(assignment.completedAt)}` : null}
+        </p>
+      </div>
+      <dl className="min-h-0 flex-1 divide-y divide-[color:var(--g-border-subtle)] overflow-y-auto">
+        {rows.map((row) => (
+          <div key={row.label} className="px-4 py-3">
+            <dt className="mb-1.5 text-[11.5px] font-medium text-muted-foreground">{row.label}</dt>
+            <dd>{row.body}</dd>
           </div>
+        ))}
+      </dl>
+      <div className="flex flex-wrap gap-2 border-t border-[color:var(--g-border-subtle)] px-4 py-3">
+        {assignment.status === "needs_approval" ? (
+          <Button size="sm" asChild>
+            <Link href={`/assignments/${assignment.id}?approval=1`}>Decide</Link>
+          </Button>
+        ) : null}
+        <Button size="sm" variant={assignment.status === "needs_approval" ? "outline" : "default"} asChild>
+          <Link href={`/assignments/${assignment.id}`}>Open assignment</Link>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function MissionListRow({ assignment, onOpen }: { assignment: Assignment; onOpen: () => void }) {
+  const evidence = evidenceLine(assignment)
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="grid w-full grid-cols-1 gap-1 px-[var(--np-page-pad-sm)] py-3 text-left transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-[var(--np-page-pad)] md:grid-cols-[minmax(0,1fr)_160px_150px_110px] md:items-center md:gap-4"
+      >
+        <span className="min-w-0">
+          <span className="line-clamp-1 text-[13px] font-medium text-foreground">{assignment.title}</span>
+          {assignment.status === "failed" && assignment.blocker ? (
+            <span className="line-clamp-1 text-[11.5px] text-destructive">{assignment.blocker}</span>
+          ) : evidence ? (
+            <span className="line-clamp-1 text-[11.5px] text-muted-foreground">{evidence}</span>
+          ) : null}
+        </span>
+        <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+          <AgentMark name={assignment.agent.name} />
+          <span className="truncate">{assignment.agent.name}</span>
+        </span>
+        <span className="flex items-center gap-1.5 text-[12px] text-foreground">
+          <span aria-hidden className={cn("size-1.5 rounded-full", PHASE_DOT[assignment.status])} />
+          {phaseLabel(assignment.status)}
+        </span>
+        <span className="text-[12px] tabular-nums text-muted-foreground md:text-right">
+          {assignment.createdAt ? relativeTime(assignment.createdAt) : ""}
+        </span>
+      </button>
+    </li>
+  )
+}
+
+function TrackSkeleton() {
+  return (
+    <div className="grid flex-1 grid-cols-1 divide-x divide-[color:var(--g-border-subtle)] md:grid-cols-5">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index} className="space-y-3 p-3">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-16 w-full rounded-[var(--np-radius-sm)]" />
+          <Skeleton className="h-16 w-full rounded-[var(--np-radius-sm)]" />
         </div>
       ))}
     </div>
   )
 }
 
-type FilterAccent = "default" | "blue" | "violet" | "emerald" | "amber" | "red"
-
-type AssignmentFilterOption = {
-  id: string
-  label: string
-  count: number
-  accent: FilterAccent
-  showAttentionDot?: boolean
-}
-
-const filterAccentStyles: Record<FilterAccent, string> = {
-  default: "bg-[color:var(--g-surface-1)] border-divide shadow-[var(--np-shadow)]",
-  blue: "bg-info/10 border-info/25 shadow-[var(--np-shadow)]",
-  violet: "bg-violet-500/10 border-violet-500/25 shadow-[var(--np-shadow)]",
-  emerald: "bg-[color:var(--g-brand-soft)] border-[color:var(--g-brand-border)] shadow-[var(--np-shadow)]",
-  amber: "bg-amber-500/10 border-amber-500/25 shadow-[var(--np-shadow)]",
-  red: "bg-destructive/10 border-destructive/25 shadow-[var(--np-shadow)]",
-}
-
-function AssignmentFilterTabs({
-  options,
-  value,
-  onChange,
-}: {
-  options: AssignmentFilterOption[]
-  value: string
-  onChange: (id: string) => void
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Filter assignments by status"
-      className="flex items-center gap-1 overflow-x-auto rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1 scrollbar-none"
-    >
-      {options.map((option) => {
-        const isActive = value === option.id
-        return (
-          <button
-            key={option.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(option.id)}
-            className={cn(
-              "relative z-10 flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--np-radius-md)] px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-4 sm:py-2 sm:text-sm",
-              isActive ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {isActive ? (
-              <motion.span
-                layoutId="assignment-filter-active"
-                className={cn("absolute inset-0 rounded-[var(--np-radius-md)] border", filterAccentStyles[option.accent])}
-                transition={{ type: "spring", stiffness: 500, damping: 38 }}
-              />
-            ) : null}
-            <span className="relative z-10 flex items-center gap-1.5">
-              {option.showAttentionDot ? (
-                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
-                </span>
-              ) : null}
-              {option.label}
-            </span>
-            <span
-              className={cn(
-                "relative z-10 rounded-[var(--np-radius-sm)] px-1 py-0.5 text-[10px] tabular-nums sm:px-1.5 sm:text-xs",
-                isActive ? "bg-[color:var(--g-surface-2)] text-foreground" : "text-muted-foreground",
-              )}
-            >
-              <AnimatedCounter value={option.count} duration={0.45} />
-            </span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-/** Options for the list/board switcher, declared once outside render. */
-const ASSIGNMENT_VIEW_MODES = [
-  { id: "list" as const, label: "List view", icon: Rows3 },
-  { id: "kanban" as const, label: "Board view", icon: LayoutGrid },
-] as const
-
 export default function AssignmentsPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { reduced } = useMotionPrefs()
   const [localAssignments, setLocalAssignments] = useState<Assignment[]>([])
-  const [filter, setFilter] = useState<string>("all")
-  const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
+  const [viewMode, setViewMode] = useState<"track" | "list">("track")
+  const [mobilePhase, setMobilePhase] = useState<Phase | "all">("all")
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [newAssignmentOpen, setNewAssignmentOpen] = useState(false)
 
   const {
@@ -410,205 +379,201 @@ export default function AssignmentsPage() {
     error: assignmentsError,
     isLoading: assignmentsLoading,
     mutate: refreshAssignments,
-  } = useSWR<DemoAssignment[]>(
-    user ? ASSIGNMENTS_REFRESH_KEY : null,
-    fetchAssignmentList,
-    {
-      revalidateOnFocus: true,
-      refreshInterval: ASSIGNMENTS_REFRESH_MS,
-    },
-  )
+  } = useSWR<DemoAssignment[]>(user ? ASSIGNMENTS_REFRESH_KEY : null, fetchAssignmentList, {
+    revalidateOnFocus: true,
+    refreshInterval: ASSIGNMENTS_REFRESH_MS,
+  })
 
   const assignmentList = useMemo(() => {
-    const base = !user
-      ? initialAssignments
-      : fetchedAssignments ?? (assignmentsLoading ? [] : initialAssignments)
+    const base = fetchedAssignments ?? []
     const seen = new Set(base.map((item) => item.id))
     const locals = localAssignments.filter((item) => !seen.has(item.id))
     return [...locals, ...base]
-  }, [user, fetchedAssignments, assignmentsLoading, localAssignments])
+  }, [fetchedAssignments, localAssignments])
+
+  const byPhase = useMemo(() => {
+    const groups = new Map<Phase, Assignment[]>(PHASES.map((phase) => [phase.id, []]))
+    for (const assignment of assignmentList) groups.get(assignment.status)?.push(assignment)
+    return groups
+  }, [assignmentList])
+
+  const selected = assignmentList.find((item) => item.id === selectedId) ?? null
+  usePublishGravitreAISelection(
+    selected ? { kind: "assignment", id: selected.id, label: selected.title } : null,
+  )
 
   const openNewAssignment = useCallback(() => setNewAssignmentOpen(true), [])
   useWorkPageShortcut("new", openNewAssignment)
-  
-  const filteredAssignments = filter === "all" 
-    ? assignmentList 
-    : assignmentList.filter(a => a.status === filter)
 
-  const inProgressCount = assignmentList.filter((a) => a.status === "running").length
-  const completedCount = assignmentList.filter((a) => a.status === "completed").length
-  const pendingApprovalCount = assignmentList.filter((a) => a.status === "needs_approval").length
-  const queuedCount = assignmentList.filter((a) => a.status === "pending").length
-
-  const filterOptions = useMemo<AssignmentFilterOption[]>(() => {
-    const countByStatus = (status: DemoAssignment["status"]) =>
-      assignmentList.filter((a) => a.status === status).length
-    const failedCount = countByStatus("failed")
-
-    return [
-      { id: "all", label: "All", count: assignmentList.length, accent: "default" },
-      { id: "running", label: "Running", count: countByStatus("running"), accent: "blue" },
-      {
-        id: "needs_approval",
-        label: "Needs approval",
-        count: countByStatus("needs_approval"),
-        accent: "violet",
-      },
-      { id: "completed", label: "Completed", count: countByStatus("completed"), accent: "emerald" },
-      { id: "pending", label: "Queued", count: countByStatus("pending"), accent: "amber" },
-      {
-        id: "failed",
-        label: "Failed",
-        count: failedCount,
-        accent: "red",
-        showAttentionDot: failedCount > 0,
-      },
-    ]
-  }, [assignmentList])
+  const openAssignment = (assignment: Assignment) => router.push(`/assignments/${assignment.id}`)
+  const activate = (assignment: Assignment) => {
+    // Wide screens inspect in place; narrower screens have no inspector, so open the detail.
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches) {
+      setSelectedId(assignment.id)
+      return
+    }
+    openAssignment(assignment)
+  }
 
   const handleAssignmentCreated = (assignment: DemoAssignment) => {
     setLocalAssignments((current) => [assignment, ...current.filter((item) => item.id !== assignment.id)])
-    setFilter("all")
     void refreshAssignments()
   }
 
-  const showListSkeleton = Boolean(user) && assignmentsLoading && !fetchedAssignments
+  const showSkeleton = Boolean(user) && assignmentsLoading && !fetchedAssignments
+  const count = (phase: Phase) => byPhase.get(phase)?.length ?? 0
+  const statusParts = [
+    `${count("running")} executing`,
+    `${count("needs_approval")} waiting on you`,
+    count("failed") > 0 ? `${count("failed")} blocked` : null,
+    `${count("completed")} delivered`,
+  ].filter(Boolean)
+  const statusTone = count("needs_approval") > 0 || count("failed") > 0 ? "attention" : count("running") > 0 ? "live" : "idle"
+  const mobileList = mobilePhase === "all" ? assignmentList : byPhase.get(mobilePhase) ?? []
 
   return (
-    <AppShell title={SURFACE_COPY.pages.assignments.title}>
+    <AppShell title={SURFACE_COPY.pages.assignments.title} fillViewport>
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
-        <GravitrePageHeader
-          eyebrow="Work"
-          title={SURFACE_COPY.pages.assignments.title}
-          description={SURFACE_COPY.pages.assignments.description}
-          icon={<NavTasks className="h-5 w-5" />}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <ActivityPulse />
-              <Button className="w-full sm:w-auto" onClick={openNewAssignment}>
-                <Icon name="add" size="sm" />
-                New assignment
-              </Button>
-            </div>
-          }
-        />
-
-        <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-6">
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric
-              label="In progress"
-              value={
-                showListSkeleton ? "—" : <AnimatedCounter value={inProgressCount} duration={0.6} />
-              }
-              hint={inProgressCount > 0 ? "Running now" : "None running"}
-              icon={<Icon name="activity" size="sm" />}
-            />
-            <GravitreMetric
-              label="Completed"
-              value={
-                showListSkeleton ? "—" : <AnimatedCounter value={completedCount} duration={0.75} />
-              }
-              hint="Finished assignments"
-              icon={<Icon name="check" size="sm" />}
-            />
-            <GravitreMetric
-              label="Pending approval"
-              value={
-                showListSkeleton ? (
-                  "—"
-                ) : (
-                  <AnimatedCounter value={pendingApprovalCount} duration={0.85} />
-                )
-              }
-              hint={pendingApprovalCount > 0 ? "Needs review" : "None waiting"}
-              warning={pendingApprovalCount > 0}
-              icon={<Icon name="shield" size="sm" />}
-            />
-            <GravitreMetric
-              label="Queued"
-              value={
-                showListSkeleton ? "—" : <AnimatedCounter value={queuedCount} duration={0.95} />
-              }
-              hint="Waiting to start"
-              icon={<Icon name="clock" size="sm" />}
-            />
-          </section>
-
-          {/* Filter Bar */}
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center sm:gap-0">
-            <AssignmentFilterTabs options={filterOptions} value={filter} onChange={setFilter} />
-
-            <div className="flex items-center gap-2">
-              <SegmentedControl
-                options={ASSIGNMENT_VIEW_MODES}
-                value={viewMode}
-                onChange={setViewMode}
-                ariaLabel="Assignment view mode"
-                iconOnly
-                className="bg-secondary/50"
-              />
+        {/* Operating command strip */}
+        <div className="flex flex-col gap-3 border-b border-[color:var(--g-border-default)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] md:flex-row md:items-center md:gap-6">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">
+              {SURFACE_COPY.pages.assignments.title}
+            </h1>
+            <div className="mt-0.5">
+              <LiveStatus tone={statusTone}>
+                {showSkeleton ? "Loading assignments…" : statusParts.join(" · ")}
+              </LiveStatus>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AskGravitreSummonButton selected={selected ? { kind: "assignment", id: selected.id, label: selected.title } : null} />
+            <SegmentedControl
+              options={VIEW_MODES}
+              value={viewMode}
+              onChange={setViewMode}
+              ariaLabel="Assignment view mode"
+              iconOnly
+              className="hidden md:inline-flex"
+            />
+            <Button className="w-full sm:w-auto" onClick={openNewAssignment}>
+              <Icon name="add" size="sm" />
+              New assignment
+            </Button>
+          </div>
+        </div>
 
-          {/* Assignment List */}
-          {assignmentsError && !showListSkeleton ? (
+        {assignmentsError && !showSkeleton ? (
+          <div className="px-[var(--np-page-pad-sm)] pt-3 sm:px-[var(--np-page-pad)]">
             <WorkSectionErrorCard
               title="Could not load assignments"
               message="Your assignments list could not be refreshed. Showing the last loaded data if available."
               onRetry={() => void refreshAssignments()}
             />
-          ) : null}
+          </div>
+        ) : null}
 
-          {showListSkeleton ? (
-            <AssignmentListSkeleton />
-          ) : (
-          <AnimatePresence mode="popLayout">
-            <motion.div
-              layout
-              className="grid grid-cols-1 gap-4"
-              variants={reduced ? reducedEntranceContainer : entranceContainer}
-              initial="initial"
-              animate="animate"
-            >
-              {filteredAssignments.map((assignment) => (
-                <AssignmentCard
-                  key={assignment.id}
-                  assignment={assignment}
-                  onNavigate={() => router.push(`/assignments/${assignment.id}`)}
-                  onOpenApproval={() =>
-                    router.push(`/assignments/${assignment.id}?approval=1`)
-                  }
-                />
-              ))}
-            </motion.div>
-          </AnimatePresence>
-          )}
-
-          {!showListSkeleton && filteredAssignments.length === 0 && (
-            <GravitreEmpty
-              icon={<Icon name="tasks" size="lg" />}
-              title={assignmentList.length === 0 ? "No assignments yet" : "No assignments found"}
-              hint={
-                assignmentList.length === 0
-                  ? "Assign your first task to an AI agent on your team."
-                  : "Try a different filter, or create a new assignment."
-              }
-              action={
-                <Button onClick={openNewAssignment}>
+        {showSkeleton ? (
+          <TrackSkeleton />
+        ) : (
+          <>
+            {assignmentList.length === 0 ? (
+              <div
+                data-assignments-empty=""
+                className="flex flex-col gap-2 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] py-3 sm:flex-row sm:items-center sm:justify-between sm:px-[var(--np-page-pad)]"
+              >
+                <div>
+                  <p className="text-[13px] font-medium text-foreground">No assignments yet</p>
+                  <p className="text-xs text-muted-foreground">
+                    Give an agent an objective. It moves through these phases — queued, executing, your decision, delivered — with its evidence.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={openNewAssignment}>
                   <Icon name="add" size="sm" />
-                  New assignment
+                  Assign the first objective
                 </Button>
-              }
-            />
-          )}
-        </div>
+              </div>
+            ) : null}
+            {/* Phones: phase filter + mission list */}
+            <div className="flex min-h-0 flex-1 flex-col md:hidden">
+              <div role="tablist" aria-label="Filter by phase" className="flex overflow-x-auto border-b border-[color:var(--g-border-subtle)] px-2 scrollbar-none">
+                {([{ id: "all" as const, label: "All" }, ...PHASES] as Array<{ id: Phase | "all"; label: string }>).map((phase) => {
+                  const n = phase.id === "all" ? assignmentList.length : count(phase.id)
+                  return (
+                    <button
+                      key={phase.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={mobilePhase === phase.id}
+                      onClick={() => setMobilePhase(phase.id)}
+                      className={cn(
+                        "relative shrink-0 px-3 py-2.5 text-[13px] font-medium",
+                        mobilePhase === phase.id
+                          ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[color:var(--g-text-primary)]"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {phase.label}
+                      <span className="ml-1 tabular-nums text-muted-foreground">{n}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <ul className="min-h-0 flex-1 divide-y divide-[color:var(--g-border-subtle)] overflow-y-auto pb-24">
+                {mobileList.length === 0 ? (
+                  <li className="px-4 py-4 text-xs text-muted-foreground">Nothing in this phase.</li>
+                ) : (
+                  mobileList.map((assignment) => (
+                    <MissionListRow key={assignment.id} assignment={assignment} onOpen={() => openAssignment(assignment)} />
+                  ))
+                )}
+              </ul>
+            </div>
+
+            {/* Tablet and desktop */}
+            <div className="hidden min-h-0 flex-1 md:flex">
+              {viewMode === "track" ? (
+                <div
+                  data-assignments-track=""
+                  className="grid min-h-0 min-w-0 flex-1 auto-cols-[minmax(196px,1fr)] grid-flow-col divide-x divide-[color:var(--g-border-subtle)] overflow-x-auto"
+                >
+                  {PHASES.map((phase) => (
+                    <PhaseLane
+                      key={phase.id}
+                      phase={phase}
+                      items={byPhase.get(phase.id) ?? []}
+                      selectedId={selectedId}
+                      onActivate={activate}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+                  <div className="sticky top-0 z-10 hidden grid-cols-[minmax(0,1fr)_160px_150px_110px] gap-4 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] px-[var(--np-page-pad)] py-2 text-[11.5px] font-medium text-muted-foreground md:grid">
+                    <span>Objective</span>
+                    <span>Agent</span>
+                    <span>Phase</span>
+                    <span className="text-right">Created</span>
+                  </div>
+                  <ul className="divide-y divide-[color:var(--g-border-subtle)] pb-24">
+                    {assignmentList.map((assignment) => (
+                      <MissionListRow key={assignment.id} assignment={assignment} onOpen={() => activate(assignment)} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <aside
+                aria-label="Assignment inspector"
+                className="hidden w-[340px] shrink-0 flex-col border-l border-[color:var(--g-border-default)] bg-background xl:flex"
+              >
+                <MissionInspector assignment={selected} />
+              </aside>
+            </div>
+          </>
+        )}
       </div>
 
-      <NewAssignmentModal
-        open={newAssignmentOpen}
-        onOpenChange={setNewAssignmentOpen}
-        onCreated={handleAssignmentCreated}
-      />
+      <NewAssignmentModal open={newAssignmentOpen} onOpenChange={setNewAssignmentOpen} onCreated={handleAssignmentCreated} />
     </AppShell>
   )
 }

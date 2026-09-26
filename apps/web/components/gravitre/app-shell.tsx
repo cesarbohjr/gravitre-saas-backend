@@ -88,11 +88,9 @@ const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
 
 function readNavExpandedPreference(): boolean {
   if (typeof window === "undefined") return false
-  // Unset: labelled navigation on wide desktops (grouped wayfinding is part of the
-  // operating shell), icon rail below 1280px. An explicit pin/unpin always wins.
-  const stored = localStorage.getItem(NAV_EXPANDED_STORAGE_KEY)
-  if (stored === null) return window.matchMedia("(min-width: 1280px)").matches
-  return stored === "true"
+  // Unset: icon rail at every width so the work owns the viewport; labelled
+  // navigation is an explicit pin. An explicit pin/unpin always wins.
+  return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
 }
 
 export function AppShell({ children, title, fillViewport = false }: AppShellProps) {
@@ -383,8 +381,6 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
             data-gravitre-workspace-panel=""
             className={cn(
               "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background",
-              "md:mb-2 md:mr-2 md:rounded-[var(--g-workspace-radius)] md:shadow-[var(--g-workspace-shadow)]",
-              hideTopBar && "md:mt-2",
             )}
           >
           {showTrialExpiredBanner && (

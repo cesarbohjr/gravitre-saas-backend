@@ -125,8 +125,8 @@ export function GravitrePageHeader({
 /** Pulsing live dot + text for operating status lines. */
 export function LiveStatus({ children, tone = "live" }: { children: ReactNode; tone?: "live" | "idle" | "attention" }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
-      <span className="relative flex h-2 w-2" aria-hidden>
+    <span className="inline-flex items-start gap-2">
+      <span className="relative mt-[0.5lh] flex h-2 w-2 shrink-0 -translate-y-1/2" aria-hidden>
         {tone === "live" ? (
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--g-brand)] opacity-40 motion-reduce:animate-none" />
         ) : null}
@@ -139,7 +139,7 @@ export function LiveStatus({ children, tone = "live" }: { children: ReactNode; t
           )}
         />
       </span>
-      {children}
+      <span className="min-w-0">{children}</span>
     </span>
   )
 }

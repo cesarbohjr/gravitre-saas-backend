@@ -21,7 +21,7 @@ export function AskGravitreSummonButton({
       type="button"
       data-ask-gravitre-summon=""
       className={cn(
-        "h-8 shrink-0 text-xs font-medium text-[color:var(--g-brand)] hover:underline",
+        "h-8 shrink-0 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]",
         className,
       )}
       onClick={() =>

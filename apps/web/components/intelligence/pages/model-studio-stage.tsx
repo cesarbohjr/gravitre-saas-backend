@@ -169,7 +169,7 @@ export function ModelStudioStage({
           )}
           <Link
             href={APP_ROUTES.training}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
           >
             Open full training workspace
             <ArrowRight className="h-3.5 w-3.5" />
@@ -251,7 +251,7 @@ export function ModelStudioStage({
           )}
           <Link
             href={APP_ROUTES.training}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
           >
             Open full run history
             <ArrowRight className="h-3.5 w-3.5" />

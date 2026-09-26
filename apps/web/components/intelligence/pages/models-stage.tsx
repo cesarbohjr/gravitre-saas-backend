@@ -88,7 +88,7 @@ export function ModelsStage({
 
       <p className={cn(TYPE.meta, "text-pretty")}>
         Create, evaluate, deploy, and inspect runs in{" "}
-        <Link href={APP_ROUTES.intelligenceModelStudio} className="font-medium text-[color:var(--g-brand)] hover:underline">
+        <Link href={APP_ROUTES.intelligenceModelStudio} className="font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]">
           Model Studio
         </Link>
         , where you can also train them.

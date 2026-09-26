@@ -256,7 +256,7 @@ export function OverviewLivingMap({
 
       <div
         className={cn(
-          "relative flex flex-1 gap-0 overflow-hidden rounded-[16px] bg-[color:var(--g-surface-1)] ring-1 ring-[color:var(--g-border-subtle)]",
+          "relative flex flex-1 gap-0 overflow-hidden rounded-[var(--np-radius-sm)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]",
           "min-h-[64vh]",
           isMobile && "flex-col",
         )}

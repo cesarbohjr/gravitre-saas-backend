@@ -116,7 +116,7 @@ export function WhatMattersNowPanel({
       <div className="mt-4 flex justify-end">
         <Link
           href="/ai?prompt=What%20needs%20attention%3F"
-          className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--g-brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Ask Gravitre for more detail
           <ArrowRight className="h-3 w-3" aria-hidden />
