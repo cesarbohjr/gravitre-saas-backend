@@ -226,7 +226,7 @@ export function HomeDashboard({
         )}
 
         {!editMode && placed.length > 0 ? (
-          <h2 className="-mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Operations</h2>
+          <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">Operations</h2>
         ) : null}
 
         {/* Desktop / tablet grid */}

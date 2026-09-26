@@ -39,6 +39,7 @@ import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre
 import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import { GravitreAIRuntimeDetails } from "@/components/gravitre/ai-runtime-details"
 import { deriveAiRuntimeState, isApprovalPanelVisible } from "@/lib/gravitre-ai-runtime-state"
+import { AiStartingState } from "./ai-starting-state"
 
 export interface GravitreAIMobileSheetBridgeProps {
   mode: GravitreAIMobileSheetMode
@@ -185,6 +186,9 @@ export function GravitreAIMobileSheetBridge({
       />
       <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={setTranscriptScroller} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {messages.length === 0 && !showWaiting && !isStreaming ? (
+          <AiStartingState onInputChange={onInputChange} inputRef={inputRef} />
+        ) : null}
         <GravitreAIConversationTranscript
           routeKey="/ai"
           messages={messages}

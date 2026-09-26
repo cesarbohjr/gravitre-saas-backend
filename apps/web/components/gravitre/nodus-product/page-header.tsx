@@ -94,8 +94,8 @@ export function GravitrePageHeader({
         className,
       )}
     >
-      <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-end">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex min-w-0 flex-col justify-between gap-3 lg:flex-row lg:items-end">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           {icon ? (
             <div
               className={cn(
@@ -123,7 +123,7 @@ export function GravitrePageHeader({
           </div>
         </div>
         {actions ? (
-          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">{actions}</div>
+          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 lg:w-auto lg:justify-end">{actions}</div>
         ) : null}
       </div>
       {children ? <div className="mt-3">{children}</div> : null}

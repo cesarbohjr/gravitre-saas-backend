@@ -1,6 +1,7 @@
 "use client"
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { relativeTime } from "@/lib/agent-job-result"
 import { GravitreAgentDepartmentBadge } from "./gravitre-agent-department-badge"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { GravitreAgentStatus } from "./gravitre-agent-status"
@@ -44,7 +45,7 @@ export function AgentInspector({
 
             <div className="mt-6 space-y-5 text-sm">
               <Field label="Current activity" value={agent.currentActivity ?? "Idle"} />
-              <Field label="Last action" value={agent.lastActiveLabel} />
+              <Field label="Last action" value={relativeTime(agent.lastActiveLabel)} />
               <Field label="Model" value={agent.model} />
               <Field label="Tasks today" value={String(agent.tasksToday)} />
               <Field

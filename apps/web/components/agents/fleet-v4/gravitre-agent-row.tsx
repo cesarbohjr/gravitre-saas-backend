@@ -2,6 +2,7 @@
 
 import type { DragEvent, MouseEvent } from "react"
 import { cn } from "@/lib/utils"
+import { relativeTime } from "@/lib/agent-job-result"
 import { DEPARTMENT_ACCENT } from "./identity-tokens"
 import { FLEET_DEPARTMENT_ORDER, setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
@@ -105,7 +106,7 @@ export function GravitreAgentRow({
         {agent.model}
       </td>
       <td className="h-12 border-b border-divide/70 px-4 text-sm text-[color:var(--g-text-muted)]">
-        {agent.lastActiveLabel}
+        {relativeTime(agent.lastActiveLabel)}
       </td>
       <td className="h-12 border-b border-divide/70 px-4 text-right text-xs font-medium text-[color:var(--g-brand)]">
         Open

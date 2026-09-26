@@ -2,6 +2,7 @@
 
 import type { DragEvent } from "react"
 import { cn } from "@/lib/utils"
+import { relativeTime } from "@/lib/agent-job-result"
 import { setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
@@ -85,7 +86,7 @@ export function GravitreAgentCard({
           <span>{agent.tasksToday} tasks today</span>
           <span className="truncate">
             {agent.successRate != null ? `${agent.successRate}% · ` : ""}
-            {agent.lastActiveLabel}
+            {relativeTime(agent.lastActiveLabel)}
           </span>
         </div>
       </button>
@@ -170,11 +171,11 @@ export function GravitreAgentCard({
               </span>
               {agent.successRate != null ? (
                 <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
-                  {agent.successRate}% · {agent.lastActiveLabel}
+                  {agent.successRate}% · {relativeTime(agent.lastActiveLabel)}
                 </span>
               ) : (
                 <span className="text-[11px] tabular-nums text-[color:var(--g-text-muted)]">
-                  {agent.lastActiveLabel}
+                  {relativeTime(agent.lastActiveLabel)}
                 </span>
               )}
             </div>

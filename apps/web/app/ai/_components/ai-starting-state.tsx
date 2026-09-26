@@ -29,7 +29,8 @@ export function AiStartingState({
 }) {
   const workspace = useOptionalGravitreAIWorkspace()
   const selected = workspace?.pageContext.selected ?? null
-  const origin = workspace?.pageContext.pathname ? routeContextLabel(workspace.pageContext.pathname) : null
+  const originPath = workspace?.pageContext.pathname
+  const origin = originPath && !originPath.startsWith("/ai") ? routeContextLabel(originPath) : null
   const { data: approvals } = useSWR<{ approvals?: Array<{ status?: string }> }>("/api/approvals", apiFetcher, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
