@@ -68,7 +68,7 @@ def _frozen_form_args() -> dict[str, Any]:
         "actions": [
             {"type": "fill", "selector": "input[name='custname']", "value": "Gravitre isolated test"},
             {"type": "fill", "selector": "input[name='custemail']", "value": "isolated@gravitre.test"},
-            {"type": "click", "selector": "input[type='submit'], button[type='submit']"},
+            {"type": "click", "selector": "text=Submit order"},
         ],
     }
 
@@ -363,7 +363,7 @@ async def _execute_confirmed_interact(
         **observations_patch([obs]),
         "pending_task": {
             **safe_normalize_stored_dict(task_state.get("pending_task")),
-            "status": "executed",
+            "status": "executed" if success else "failed",
         },
         "pending_action": {"status": "executed", "action": ACTION_KEY, "write_allowed": False},
         "computer_browser_evidence": {

@@ -61,6 +61,12 @@ async def test_interact_compile_stages_hmac_pending_without_submit() -> None:
     assert params.get("invoke_action") == ACTION_KEY
     digest = (params.get("preflight_proof") or {}).get("proof_digest")
     assert digest
+    args = params.get("args") or {}
+    click = next(
+        (row for row in (args.get("actions") or []) if isinstance(row, dict) and row.get("type") == "click"),
+        {},
+    )
+    assert "Submit order" in str(click.get("selector") or "")
     assert computer_interact_should_compile("yes", turn["task_state"]) is True
 
 
