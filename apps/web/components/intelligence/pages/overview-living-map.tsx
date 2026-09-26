@@ -82,7 +82,7 @@ export function OverviewLivingMap({
 }) {
   const reducedMotion = useReducedMotion()
   const isMobile = useGravitreMobileViewport()
-  const [viewMode, setViewMode] = useState<OverviewViewMode>("matrix")
+  const [viewMode, setViewMode] = useState<OverviewViewMode>("field")
   const [streamOpen, setStreamOpen] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("main")
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
@@ -142,15 +142,15 @@ export function OverviewLivingMap({
 
   return (
     <div className={cn("space-y-3", className)} data-testid="intelligence-i1-i2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <NucleoIntelligence size={22} className="mt-0.5 shrink-0" />
-          <div>
-            <p className={TYPE.eyebrow}>
-              Intelligence · {viewMode === "matrix" ? "Matrix lens" : "Field topology"}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <NucleoIntelligence size={18} className="shrink-0 text-[color:var(--g-intelligence)]" />
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
+              {LENS_QUESTIONS[activeLens]}
             </p>
-            <p className={cn(TYPE.meta, "mt-0.5 max-w-xl")}>{LENS_QUESTIONS[activeLens]}</p>
-            <p className={cn(TYPE.meta, "mt-1 text-muted-foreground")}>
+            <p className={cn(TYPE.meta, "tabular-nums")}>
+              {viewMode === "matrix" ? "Matrix lens" : "Field topology"} ·{" "}
               {mapLoading
                 ? "Loading…"
                 : `${knownEntities ?? "—"} entities · ${knownRels ?? "—"} relationships · ${instanceNodes} on the map`}
@@ -167,20 +167,22 @@ export function OverviewLivingMap({
             <Button
               type="button"
               size="sm"
-              variant={viewMode === "matrix" ? "secondary" : "ghost"}
+              variant={viewMode === "field" ? "secondary" : "ghost"}
               className="h-8"
-              onClick={() => setViewMode("matrix")}
+              aria-pressed={viewMode === "field"}
+              onClick={() => setViewMode("field")}
             >
-              Matrix
+              Field
             </Button>
             <Button
               type="button"
               size="sm"
-              variant={viewMode === "field" ? "secondary" : "ghost"}
+              variant={viewMode === "matrix" ? "secondary" : "ghost"}
               className="h-8"
-              onClick={() => setViewMode("field")}
+              aria-pressed={viewMode === "matrix"}
+              onClick={() => setViewMode("matrix")}
             >
-              Field
+              Matrix
             </Button>
           </div>
           <Button
@@ -252,7 +254,13 @@ export function OverviewLivingMap({
         })}
       </div>
 
-      <div className={cn("relative flex flex-1 gap-0", "min-h-[56vh]", isMobile && "flex-col")}>
+      <div
+        className={cn(
+          "relative flex flex-1 gap-0 overflow-hidden rounded-[16px] bg-[color:var(--g-surface-1)] ring-1 ring-[color:var(--g-border-subtle)]",
+          "min-h-[64vh]",
+          isMobile && "flex-col",
+        )}
+      >
         {(!isMobile || mobilePanel === "changes") && (
           <IntelligenceChangeStream
             open={streamVisible}
@@ -268,10 +276,10 @@ export function OverviewLivingMap({
         )}
 
         {(!isMobile || mobilePanel === "main") && (
-          <div className="relative min-h-[56vh] min-w-0 flex-1">
+          <div className="relative min-h-[64vh] min-w-0 flex-1">
             {mapLoading ? (
               <div
-                className="relative z-30 flex min-h-[56vh] items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]"
+                className="relative z-30 flex min-h-[64vh] items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]"
                 aria-live="polite"
                 aria-busy="true"
                 data-testid="intel-field-loading"
@@ -281,7 +289,7 @@ export function OverviewLivingMap({
             ) : null}
 
             {isError ? (
-              <div className="flex min-h-[56vh] flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="flex min-h-[64vh] flex-col items-center justify-center gap-3 p-6 text-center">
                 <p className={TYPE.sectionTitle}>Unable to load intelligence</p>
                 <p className={cn(TYPE.bodyMuted, "max-w-sm")}>
                   Page-context failed. Retry the same org-scoped contract — no invented graph.
@@ -320,7 +328,7 @@ export function OverviewLivingMap({
                   if (key) onLensChange(lens)
                 }}
                 onOpenFieldView={openFieldFromMatrix}
-                className="min-h-[56vh] p-2"
+                className="min-h-[64vh] p-2"
               />
             ) : null}
 
@@ -338,7 +346,7 @@ export function OverviewLivingMap({
                 dimNodeIds={dimNodeIds}
                 focusNodeIds={mergedFocus}
                 cacheKey={cacheKey}
-                className="min-h-[56vh]"
+                className="min-h-[64vh]"
               />
             ) : null}
           </div>

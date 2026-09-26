@@ -20,6 +20,7 @@ import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitre
 import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { familyHidesTopBar, resolvePageFamily } from "@/lib/page-family"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
@@ -87,10 +88,10 @@ const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
 
 function readNavExpandedPreference(): boolean {
   if (typeof window === "undefined") return false
-  // Default to the minimized icon-only rail when unset; users who explicitly
-  // expand it keep that choice via localStorage.
+  // Unset: labelled navigation on wide desktops (grouped wayfinding is part of the
+  // operating shell), icon rail below 1280px. An explicit pin/unpin always wins.
   const stored = localStorage.getItem(NAV_EXPANDED_STORAGE_KEY)
-  if (stored === null) return false
+  if (stored === null) return window.matchMedia("(min-width: 1280px)").matches
   return stored === "true"
 }
 
@@ -130,6 +131,8 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
     pathname !== "/assignments" &&
     !pathname.startsWith("/assignments/new")
   const useCompactTopBar = isImmersiveChat || isAssignmentDetail
+  const pageFamily = resolvePageFamily(pathname)
+  const hideTopBar = familyHidesTopBar(pathname)
   const { user, loading } = useAuth()
 
   useGlobalWorkShortcuts()
@@ -361,16 +364,29 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
 
   return (
     <MesonToolbarProvider>
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div
+      className="flex h-screen overflow-hidden bg-[color:var(--g-chrome)] text-foreground"
+      data-page-family={pageFamily}
+    >
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          navExpanded={navExpanded}
+          navExpanded={navExpanded && pageFamily !== "immersive"}
           onToggleExpanded={handleMenuClick}
         />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar title={title} onMenuClick={handleMenuClick} compact={useCompactTopBar} />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className={cn("shrink-0", hideTopBar && "md:hidden")}>
+            <TopBar title={title} onMenuClick={handleMenuClick} compact={useCompactTopBar || hideTopBar} />
+          </div>
 
+          <div
+            data-gravitre-workspace-panel=""
+            className={cn(
+              "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background",
+              "md:mb-2 md:mr-2 md:rounded-[var(--g-workspace-radius)] md:shadow-[var(--g-workspace-shadow)]",
+              hideTopBar && "md:mt-2",
+            )}
+          >
           {showTrialExpiredBanner && (
             <TrialExpiredBanner
               message={trialExpiredBannerMessage(planRequired)}
@@ -475,6 +491,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
           >
             {children}
           </main>
+          </div>
           <MobileBottomNav />
         </div>
       

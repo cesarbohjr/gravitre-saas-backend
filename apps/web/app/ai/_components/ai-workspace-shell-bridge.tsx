@@ -49,6 +49,7 @@ import { GravitreAICompositionSwitch } from "@/components/gravitre/ai-compositio
 import { useCompositionPreference } from "@/hooks/use-composition-preference"
 import { resolveWorkspaceComposition, writeCompositionPreference } from "@/lib/gravitre-ai-composition"
 import { deriveAiRuntimeState, isApprovalPanelVisible } from "@/lib/gravitre-ai-runtime-state"
+import { AiStartingState } from "./ai-starting-state"
 
 export interface GravitreAIWorkspaceShellBridgeProps {
   mode: GravitreAIWorkspaceShellMode
@@ -250,6 +251,9 @@ export function GravitreAIWorkspaceShellBridge({
         {/* Hidden, not unmounted, in Work view: scroll position and in-flight
             transcript state survive switching back. */}
         <div hidden={!showTranscript} className={cn(showCanvas && "min-h-0 overflow-y-auto px-3 py-3")}>
+          {messages.length === 0 && !showWaiting && !isStreaming ? (
+            <AiStartingState onInputChange={onInputChange} inputRef={inputRef} />
+          ) : null}
           <GravitreAIConversationTranscript
             routeKey="/ai"
             messages={messages}
@@ -279,7 +283,8 @@ export function GravitreAIWorkspaceShellBridge({
           <GravitreAIWorkCanvas executionResult={executionResult} pendingTask={pendingTask} />
         ) : null}
       </div>
-      <div className="shrink-0 border-t border-divide p-2.5">
+      <div className="shrink-0 px-3 pb-3 pt-1.5">
+        <div className="mx-auto w-full max-w-[760px] rounded-[14px] border border-[color:var(--g-border-default)] bg-background p-1.5 shadow-[0_8px_24px_-16px_rgb(16_24_40/0.25)]">
         <GravitreAIConversationComposer
           input={input}
           onInputChange={onInputChange}
@@ -300,6 +305,7 @@ export function GravitreAIWorkspaceShellBridge({
           voiceOrbVariant="contained"
           voiceOrbContainer={orbHost}
         />
+        </div>
       </div>
       </div>
     </GravitreAIWorkspaceShell>

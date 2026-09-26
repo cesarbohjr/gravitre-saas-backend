@@ -149,13 +149,13 @@ export function GravitreAIWorkspaceShell({
       aria-modal={isFullscreen ? true : undefined}
       aria-label="Gravitre AI workspace"
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-divide px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
+      <div className="flex min-h-12 shrink-0 items-center justify-between border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[color:var(--g-brand)] text-white shadow-sm">
             <NucleoChat width={NUCLEO_SIZE.default} height={NUCLEO_SIZE.default} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
+            <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-[color:var(--g-text-primary)]">Gravitre AI</p>
             {titleAccessory}
           </div>
           <span
@@ -221,7 +221,7 @@ export function GravitreAIWorkspaceShell({
           ConversationSidebar's own transition with an abrupt unmount.
         */}
         {leftPanel}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">{children}</div>
         {/*
           GravitreAIRightPanel is new (Phase 3) and has no pre-existing
           collapse contract to preserve, so a simple mount/unmount collapse

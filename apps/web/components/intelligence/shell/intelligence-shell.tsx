@@ -25,6 +25,7 @@ export function IntelligenceShell({
   onRefresh,
   className,
   bodyClassName,
+  chrome = "full",
 }: {
   activeTab?: IntelligenceHubTab
   children: ReactNode
@@ -36,22 +37,29 @@ export function IntelligenceShell({
   onRefresh?: () => void
   className?: string
   bodyClassName?: string
+  /** "none" when the page header already carries hub tabs and freshness. */
+  chrome?: "full" | "none"
 }) {
   const reduceMotion = useReducedMotion()
 
   return (
     <div className={cn("space-y-4", className)}>
-      <IntelligenceHubTabs active={activeTab} className="flex-wrap" />
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <IntelligenceFreshnessBar
-          loadState={loadState}
-          generatedAt={generatedAt}
-          isValidating={isValidating}
-          onRefresh={onRefresh}
-        />
-        {filters ? <div className="flex flex-wrap items-center gap-2">{filters}</div> : null}
-      </div>
+      {chrome === "full" ? (
+        <div className="flex flex-col gap-2 border-b border-[color:var(--g-border-subtle)] sm:flex-row sm:items-end sm:justify-between">
+          <IntelligenceHubTabs active={activeTab} />
+          <div className="flex flex-wrap items-center gap-2 pb-2">
+            <IntelligenceFreshnessBar
+              loadState={loadState}
+              generatedAt={generatedAt}
+              isValidating={isValidating}
+              onRefresh={onRefresh}
+            />
+            {filters}
+          </div>
+        </div>
+      ) : filters ? (
+        <div className="flex flex-wrap items-center gap-2">{filters}</div>
+      ) : null}
 
       {commandBar}
 

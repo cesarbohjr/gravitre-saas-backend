@@ -5,7 +5,15 @@ import { DepartmentDropZone } from "./department-drop-zone"
 import { FLEET_DEPARTMENT_ORDER } from "./fleet-department-dnd"
 import { GravitreAgentCard } from "./gravitre-agent-card"
 import { NodusDepartmentLabel } from "./nodus-fleet-chrome"
-import type { AgentDepartmentId, FleetAgent } from "./types"
+import type { AgentDepartmentId, AgentRuntimeState, FleetAgent } from "./types"
+
+const WORKING_STATES = new Set<AgentRuntimeState>([
+  "thinking",
+  "retrieving",
+  "planning",
+  "executing",
+  "delegating",
+])
 
 function groupByDepartment(agents: FleetAgent[]) {
   const map = new Map<AgentDepartmentId, FleetAgent[]>()
@@ -73,34 +81,44 @@ export function TeamView({
   const empty = groups.filter((g) => g.agents.length === 0)
 
   return (
-    <div className="space-y-6">
-      {filled.map(({ department, agents: rows }) => (
-        <section key={department} aria-label={DEPARTMENT_ACCENT[department].label}>
-          <DepartmentDropZone
-            department={department}
-            onDropAgent={showEmptyDepartments ? onDepartmentChange : undefined}
-            className="rounded-md"
-          >
-            <NodusDepartmentLabel
+    <div className="space-y-4">
+      {filled.map(({ department, agents: rows }) => {
+        const working = rows.filter((a) => WORKING_STATES.has(a.runtimeState)).length
+        const blocked = rows.filter((a) => a.runtimeState === "failed" || a.runtimeState === "blocked").length
+        return (
+          <section key={department} aria-label={DEPARTMENT_ACCENT[department].label}>
+            <DepartmentDropZone
               department={department}
-              label={DEPARTMENT_ACCENT[department].label}
-              count={rows.length}
-            />
-            <div className="mt-2 grid gap-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {rows.map((agent) => (
-                <GravitreAgentCard
-                  key={agent.id}
-                  agent={agent}
-                  selected={selectedId === agent.id}
-                  onSelect={onSelect}
-                  draggable={Boolean(onDepartmentChange) && showEmptyDepartments}
-                  compact
+              onDropAgent={showEmptyDepartments ? onDepartmentChange : undefined}
+              className="rounded-[14px] bg-[color:var(--g-rail-bg)] p-2.5 sm:p-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-2.5">
+                <NodusDepartmentLabel
+                  department={department}
+                  label={DEPARTMENT_ACCENT[department].label}
+                  count={rows.length}
                 />
-              ))}
-            </div>
-          </DepartmentDropZone>
-        </section>
-      ))}
+                <p className="text-[11.5px] tabular-nums text-[color:var(--g-text-muted)]">
+                  {working > 0 ? <span className="font-medium text-[color:var(--g-brand)]">{working} working</span> : "No one working"}
+                  {blocked > 0 ? <span className="text-destructive"> · {blocked} blocked</span> : null}
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {rows.map((agent) => (
+                  <GravitreAgentCard
+                    key={agent.id}
+                    agent={agent}
+                    selected={selectedId === agent.id}
+                    onSelect={onSelect}
+                    draggable={Boolean(onDepartmentChange) && showEmptyDepartments}
+                    surface
+                  />
+                ))}
+              </div>
+            </DepartmentDropZone>
+          </section>
+        )
+      })}
 
       {empty.length > 0 ? (
         <div className="space-y-2 border-t border-[color:var(--g-border-subtle)] pt-5">

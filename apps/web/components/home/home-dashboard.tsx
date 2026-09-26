@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product/page-header"
+import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product/page-header"
+import { BusinessStateRail, WorkforceStrip, dashboardStatusLine } from "@/components/home/dashboard-operating"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { NucleoActivity, NucleoClose } from "@/components/icons/nucleo/semantic"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -33,6 +34,18 @@ import { KpiPickerDialog } from "@/components/home/kpi-picker-dialog"
 import { AttentionStrip } from "@/components/home/attention-strip"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
+
+/** Widgets with their own composition; everything else is a number and joins the state rail. */
+const RICH_WIDGETS = new Set([
+  "agents.by_status",
+  "runs.breakdown",
+  "agents.monitor",
+  "gibe.learning_query",
+  "gibe.learning_workflow",
+  "gibe.revenue_risks",
+  "gibe.predictive",
+])
+const NUMBER_VIZ = new Set(["number", "number_trend", "status", "sparkline"])
 
 type HomeDashboardProps = {
   roleId: WelcomeRoleId
@@ -84,7 +97,21 @@ export function HomeDashboard({
   const showQuickActions =
     (showRoleQuickActions || showGettingStarted) && quickActions.length > 0 && !editMode
 
-  const placed = useMemo(() => packWidgets(widgets), [widgets])
+  const { railWidgets, boardWidgets } = useMemo(() => {
+    const rail: DashboardWidget[] = []
+    const board: DashboardWidget[] = []
+    for (const widget of [...widgets].sort((a, b) => a.order - b.order)) {
+      if (widget.metricId === "agents.monitor") continue
+      if (!RICH_WIDGETS.has(widget.metricId) && NUMBER_VIZ.has(widget.visualization)) rail.push(widget)
+      else board.push(widget)
+    }
+    return { railWidgets: rail, boardWidgets: board }
+  }, [widgets])
+  const placed = useMemo(
+    () => packWidgets(editMode ? widgets : boardWidgets),
+    [editMode, widgets, boardWidgets],
+  )
+  const status = dashboardStatusLine(data)
 
   const onDrop = (targetOrder: number) => {
     if (!dragId) return
@@ -97,7 +124,9 @@ export function HomeDashboard({
     <div className="relative w-full overflow-x-hidden bg-[color:var(--g-canvas)]">
       <GravitrePageHeader
         title="Dashboard"
+        family="operating"
         icon={<NucleoActivity className="h-5 w-5" />}
+        status={<LiveStatus tone={status.tone}>{status.text}</LiveStatus>}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <AskGravitreSummonButton />
@@ -162,19 +191,6 @@ export function HomeDashboard({
                 >
                   Customize
                 </Button>
-                {showQuickActions
-                  ? quickActions.slice(0, 2).map((action) => (
-                      <Button
-                        key={action.href}
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 text-muted-foreground"
-                      >
-                        <Link href={action.href}>{action.label}</Link>
-                      </Button>
-                    ))
-                  : null}
               </>
             )}
           </div>
@@ -185,18 +201,33 @@ export function HomeDashboard({
         variants={reduced ? undefined : container}
         initial="initial"
         animate="animate"
-        className="relative z-10 mx-auto max-w-[1400px] space-y-3 px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:pb-6"
+        className="relative z-10 mx-auto max-w-[1400px] px-[var(--np-page-pad-sm)] pb-6 pt-1 sm:px-[var(--np-page-pad)] sm:pb-8"
       >
+        <div
+          className={cn(
+            !editMode && "grid gap-6 lg:grid-cols-[minmax(0,1fr)_296px] xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-8",
+          )}
+        >
+        <div className="min-w-0 space-y-6">
         {editMode ? (
           <p className={cn(TYPE.meta)}>
             Drag widgets to reorder. Use the size button to cycle widths. Your layout is saved for{" "}
             {roleLabel}.
           </p>
         ) : (
-          <motion.div variants={item}>
-            <AttentionStrip data={data} className="pb-3" />
-          </motion.div>
+          <>
+            <motion.div variants={item}>
+              <AttentionStrip data={data} />
+            </motion.div>
+            <motion.div variants={item}>
+              <WorkforceStrip data={data} />
+            </motion.div>
+          </>
         )}
+
+        {!editMode && placed.length > 0 ? (
+          <h2 className="-mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Operations</h2>
+        ) : null}
 
         {/* Desktop / tablet grid */}
         <motion.div
@@ -338,6 +369,17 @@ export function HomeDashboard({
             .
           </motion.p>
         ) : null}
+        </div>
+        {!editMode ? (
+          <motion.div variants={item} className="min-w-0">
+            <BusinessStateRail
+              data={data}
+              widgets={railWidgets}
+              quickActions={showQuickActions ? quickActions : []}
+            />
+          </motion.div>
+        ) : null}
+        </div>
       </motion.div>
 
       <KpiPickerDialog

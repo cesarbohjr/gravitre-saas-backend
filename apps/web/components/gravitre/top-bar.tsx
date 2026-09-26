@@ -220,13 +220,13 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
       <header
         data-testid="app-top-bar"
         className={cn(
-          // Nodus Phase 8: divide border + aceternity elevation on light chrome
-          "flex items-center justify-between border-b border-[color:var(--g-border-subtle)] bg-background px-3 sm:px-4",
-          chromeQuiet ? "h-10 sm:h-9" : "h-12 sm:h-11",
+          // 3.0 Plus: command chrome on the shell tone — page context left, command centre, account right.
+          "relative flex items-center justify-between bg-[color:var(--g-chrome)] px-3 sm:px-4 md:pl-1 md:pr-3",
+          chromeQuiet ? "h-10 sm:h-10" : "h-12",
         )}
       >
-        {/* Left side - Menu + Org + Environment + Page title */}
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        {/* Left side - Menu + (mobile) Org + Environment + Page title */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
           {/* Nav toggle — mobile drawer; tablet+ expands icon rail to labels */}
           <Button
             variant="ghost"
@@ -260,7 +260,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 gap-2 px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-xs"
+                className="h-11 gap-2 px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-xs md:hidden"
                 aria-label={`Organization: ${org}. Switch organization`}
               >
                 <Icon name="company" size="md" className="text-muted-foreground sm:hidden" />
@@ -305,15 +305,15 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <span className="text-muted-foreground/40 hidden sm:inline">/</span>
+          <span className="text-muted-foreground/40 hidden sm:inline md:hidden">/</span>
 
-          {/* Environment Selector */}
+          {/* Environment Selector — md+ lives in the sidebar workspace switcher */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-2 px-2 text-xs hidden sm:flex hover:bg-accent"
+                className="h-8 gap-2 px-2 text-xs hidden sm:flex md:hidden hover:bg-accent"
               >
                 <Icon 
                   name={environment === "production" ? "production" : "staging"} 
@@ -338,7 +338,6 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {title && !chromeQuiet ? (
             <>
-              <span className="text-muted-foreground/40 hidden md:inline">/</span>
               {/* On phones the org chip collapses to an icon, so the page title
                   is the only text label — show it there too, at a legible size. */}
               <span
@@ -348,7 +347,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 {title}
               </span>
               <span
-                className="hidden max-w-[240px] truncate text-sm font-medium text-foreground md:block"
+                className="hidden max-w-[280px] truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground md:block"
                 aria-current="page"
               >
                 {title}
@@ -368,8 +367,10 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
         {/* Right side - Controls */}
         <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Global Command Bar */}
-          <GlobalCommandBar />
+          {/* Global Command Bar — centred command slot on desktop */}
+          <div className="lg:absolute lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2">
+            <GlobalCommandBar />
+          </div>
 
           {/* Admin/Lite Mode Toggle */}
           {!chromeQuiet ? (

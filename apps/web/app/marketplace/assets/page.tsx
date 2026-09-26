@@ -8,7 +8,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
   GravitreMetric,
-  GravitrePageHeader,
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
@@ -16,17 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
-import { TYPE } from "@/lib/design-system"
+import { HUB_TABS, TYPE } from "@/lib/design-system"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -77,6 +67,14 @@ const PRICE_FILTERS = [
 
 type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
 
+const TYPE_ICON: Record<string, typeof Package> = {
+  ai_agent: Bot,
+  workflow: Workflow,
+  knowledge_pack: Database,
+  department_pack: Package,
+  connector_config: Plug,
+}
+
 /** Single-line summary of an asset's connector setup, shown on catalog cards. */
 function capitalizeFirst(value: string): string {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : value
@@ -120,11 +118,10 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
 
 function AssetCardSkeleton() {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-divide py-3">
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-3 w-56" />
-      </div>
+    <div className="space-y-3 rounded-[14px] border border-[color:var(--g-border-subtle)] p-4">
+      <Skeleton className="size-10 rounded-[10px]" />
+      <Skeleton className="h-4 w-40" />
+      <Skeleton className="h-3 w-56" />
       <Skeleton className="h-8 w-24" />
     </div>
   )
@@ -150,24 +147,46 @@ function AssetCard({
   const needsPurchase = assetRequiresPurchase(asset)
   const showPrimaryAction = isAdmin && !asset.installed
 
+  const TypeIcon = TYPE_ICON[asset.assetType] ?? Package
+
   return (
-    <article className="border-b border-divide py-3 last:border-b-0" data-testid="marketplace-pack-row">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => onOpenDetail(asset)}
-          className="min-w-0 flex-1 text-left"
-        >
-          <h3 className="truncate text-sm font-medium text-foreground">{asset.title}</h3>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {capitalizeFirst((asset.department ?? asset.assetType).replace(/_/g, " "))}
-            <span className="mx-1.5 text-border">·</span>
-            {connectorSummary(asset)}
-          </p>
-        </button>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+    <article
+      className="group flex h-full flex-col rounded-[14px] border border-[color:var(--g-border-default)] bg-card p-4 transition-[border-color,box-shadow] hover:border-[color:var(--g-border-strong)] hover:shadow-sm"
+      data-testid="marketplace-pack-row"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
+          <TypeIcon className="size-5" aria-hidden />
+        </span>
+        <div className="flex items-center gap-1.5">
           <PriceBadge asset={asset} />
-          <AssetSaveButton slug={asset.slug} assetId={asset.id} size="icon" variant="outline" />
+          <AssetSaveButton slug={asset.slug} assetId={asset.id} size="icon" variant="ghost" />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onOpenDetail(asset)}
+        className="mt-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <h3 className="line-clamp-2 text-[14px] font-semibold leading-snug text-foreground">{asset.title}</h3>
+        <p className="mt-1 truncate text-xs capitalize text-muted-foreground">
+          {(asset.department ?? asset.assetType).replace(/_/g, " ")}
+        </p>
+        {asset.description ? (
+          <p className="mt-2 line-clamp-2 text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
+        ) : null}
+      </button>
+      <p
+        className={cn(
+          "mt-3 flex items-center gap-1.5 text-[11.5px]",
+          ready ? "text-muted-foreground" : "text-warning",
+        )}
+      >
+        <Plug className="size-3.5 shrink-0" aria-hidden />
+        {capitalizeFirst(connectorSummary(asset))}
+      </p>
+      <div className="min-h-3 flex-1" aria-hidden />
+      <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--g-border-subtle)] pt-3">
           {showPrimaryAction ? (
             <Button
               size="sm"
@@ -190,10 +209,9 @@ function AssetCard({
               {busy === `clone:${asset.id}` ? "Cloning…" : "Clone"}
             </Button>
           ) : null}
-        </div>
       </div>
       <details className="mt-2">
-        <summary className="cursor-pointer text-xs text-muted-foreground">More about this pack</summary>
+        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">More about this pack</summary>
         <div className="mt-2 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <EntitlementBadge asset={asset} />
@@ -213,9 +231,6 @@ function AssetCard({
               </span>
             ) : null}
           </div>
-          {asset.description ? (
-            <p className="text-sm text-muted-foreground">{asset.description}</p>
-          ) : null}
           {(asset.tags ?? []).length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {(asset.tags ?? []).map((tag) => (
@@ -428,107 +443,42 @@ function MarketplaceAssetsContent() {
       {/* shrink-0 keeps AppShell's flex-col <main> from compressing the catalog
          so the grid can scroll with the page instead of clipping. */}
       <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-testid="marketplace-catalog-b">
-        <GravitrePageHeader
-          eyebrow="Gravitre Marketplace"
-          title="Install packs into your workspace"
-          description="One click provisions agents, workflows, and knowledge — then we notify you with deep links to open them."
-          icon={<Package className="h-5 w-5" />}
-          actions={
-            <div className="flex flex-col items-start gap-3 sm:items-end">
+        {/* Discovery hero: identity, search, and asset type as the primary axis */}
+        <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
+          <div className="mx-auto max-w-[1240px]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <p className={TYPE.eyebrow}>Gravitre Marketplace</p>
+                <h1 className="mt-1 text-balance text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] text-[color:var(--g-text-primary)] sm:text-[32px]">
+                  Install packs into your workspace
+                </h1>
+                <p className={cn(TYPE.pageLead, "mt-2")}>
+                  One click provisions agents, workflows, and knowledge — then we notify you with deep links to open them.
+                </p>
+              </div>
               <div className="flex flex-wrap items-center gap-3">
                 <AskGravitreSummonButton />
-                <Button asChild size="sm">
+                <Button asChild size="sm" variant="outline">
                   <Link href="/marketplace/installed">
                     View installed
                     <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
                   </Link>
                 </Button>
               </div>
-              <nav className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--g-text-muted)] sm:justify-end">
-                <Link href="/marketplace/submit" className="transition-colors hover:text-foreground">
-                  Partner submissions
-                </Link>
-                <Link href="/marketplace/connectors" className="transition-colors hover:text-foreground">
-                  Partner connectors
-                </Link>
-                <Link href="/connectors" className="transition-colors hover:text-foreground">
-                  Connectors
-                </Link>
-              </nav>
-            </div>
-          }
-        />
-
-        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
-          <details>
-            <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
-              <p className="text-xs font-medium text-muted-foreground">Catalog</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Counts reflect your current search and filters.
-              </p>
-            </summary>
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-3 sm:grid-cols-3">
-            <GravitreMetric
-              label="Catalog packs"
-              value={categories ? (categories.totalAssets ?? 0).toLocaleString() : "—"}
-              hint="Published assets"
-              icon={<Package className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="In view"
-              value={isLoading ? "—" : visibleAssets.length}
-              hint={activeDepartmentLabel ? activeDepartmentLabel : "Current filters"}
-            />
-            <GravitreMetric
-              label="Installed (view)"
-              value={isLoading ? "—" : visibleAssets.filter((a) => a.installed).length}
-              hint="Among loaded results"
-            />
-          </section>
-          </details>
-
-          {/* Toolbar: search + department + price, then type as text */}
-          <div className="space-y-3 border-b border-divide pb-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search marketplace…"
-                  className="rounded-[var(--np-radius-md)] pl-9"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Select
-                  value={departmentFilter ?? "all"}
-                  onValueChange={(value) => setDepartmentFilter(value === "all" ? null : value)}
-                >
-                  <SelectTrigger className="w-full rounded-[var(--np-radius-md)] sm:w-[200px]" aria-label="Filter by department">
-                    <SelectValue placeholder="All departments" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Departments</SelectLabel>
-                      <SelectItem value="all">All departments ({categories?.totalAssets ?? 0})</SelectItem>
-                      {departmentFacets.map((facet) => (
-                        <SelectItem key={facet.key} value={facet.key} className="capitalize">
-                          {facet.key.replace(/_/g, " ")} ({facet.count})
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <SegmentedControl
-                  options={PRICE_FILTERS}
-                  value={priceFilter}
-                  onChange={setPriceFilter}
-                  ariaLabel="Filter by price"
-                />
-              </div>
             </div>
 
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-t border-divide pt-3">
+            <div className="relative mt-5 max-w-2xl">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search agents, workflows, knowledge and packs…"
+                aria-label="Search marketplace"
+                className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
+              />
+            </div>
+
+            <div role="group" aria-label="Asset type" className={cn(HUB_TABS.nav, "mt-6")}>
               {TYPE_FILTERS.map((filter) => {
                 const count =
                   filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
@@ -536,23 +486,101 @@ function MarketplaceAssetsContent() {
                   <button
                     key={filter.id}
                     type="button"
+                    aria-pressed={typeFilter === filter.id}
                     onClick={() => setTypeFilter(filter.id)}
-                    className={cn(
-                      TYPE.meta,
-                      "underline-offset-4",
-                      typeFilter === filter.id
-                        ? "text-[color:var(--g-text-primary)] underline"
-                        : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-                    )}
+                    className={cn(HUB_TABS.link, typeFilter === filter.id ? HUB_TABS.active : HUB_TABS.idle)}
                   >
                     {filter.label}
-                    {typeof count === "number" ? ` (${count})` : ""}
+                    {typeof count === "number" ? (
+                      <span className="ml-1 tabular-nums text-[color:var(--g-text-muted)]">{count}</span>
+                    ) : null}
                   </button>
                 )
               })}
             </div>
           </div>
+        </section>
 
+        <div className="mx-auto grid max-w-[1240px] gap-6 px-[var(--np-page-pad-sm)] py-5 sm:px-[var(--np-page-pad)] lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
+          <aside className="min-w-0 space-y-5 lg:sticky lg:top-4 lg:self-start" aria-label="Refine">
+            <nav aria-label="Departments" className="space-y-0.5">
+              <p className="px-2 pb-1 text-[12px] font-semibold text-foreground">Departments</p>
+              <div className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+                {[{ key: null as string | null, count: categories?.totalAssets ?? 0 }, ...departmentFacets].map((facet) => {
+                  const active = departmentFilter === facet.key
+                  return (
+                    <button
+                      key={facet.key ?? "all"}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setDepartmentFilter(facet.key)}
+                      className={cn(
+                        "flex shrink-0 items-center justify-between gap-3 rounded-[8px] px-2 py-1.5 text-left text-[13px] capitalize transition-colors",
+                        active
+                          ? "bg-[color:var(--g-brand-soft)] font-medium text-[color:var(--g-text-primary)]"
+                          : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-1)] hover:text-[color:var(--g-text-primary)]",
+                      )}
+                    >
+                      <span className="truncate">{facet.key ? facet.key.replace(/_/g, " ") : "All departments"}</span>
+                      <span className="text-[11.5px] tabular-nums text-[color:var(--g-text-muted)]">{facet.count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </nav>
+            <div className="space-y-1.5 px-2">
+              <p className="text-[12px] font-semibold text-foreground">Price</p>
+              <SegmentedControl
+                options={PRICE_FILTERS}
+                value={priceFilter}
+                onChange={setPriceFilter}
+                ariaLabel="Filter by price"
+              />
+            </div>
+            <nav aria-label="More marketplace" className="hidden space-y-0.5 lg:block">
+              <p className="px-2 pb-1 text-[12px] font-semibold text-foreground">More</p>
+              {[
+                { href: "/marketplace/submit", label: "Partner submissions" },
+                { href: "/marketplace/connectors", label: "Partner connectors" },
+                { href: "/connectors", label: "Connectors" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block rounded-[8px] px-2 py-1.5 text-[13px] text-[color:var(--g-text-muted)] transition-colors hover:bg-[color:var(--g-surface-1)] hover:text-foreground"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+            <details className="hidden px-2 lg:block">
+              <summary className="g-disclosure cursor-pointer py-1">
+                <p className="text-xs font-medium text-muted-foreground">Catalog</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Counts reflect your current search and filters.
+                </p>
+              </summary>
+              <section className="grid gap-2 py-2">
+                <GravitreMetric
+                  label="Catalog packs"
+                  value={categories ? (categories.totalAssets ?? 0).toLocaleString() : "—"}
+                  hint="Published assets"
+                />
+                <GravitreMetric
+                  label="In view"
+                  value={isLoading ? "—" : visibleAssets.length}
+                  hint={activeDepartmentLabel ? activeDepartmentLabel : "Current filters"}
+                />
+                <GravitreMetric
+                  label="Installed (view)"
+                  value={isLoading ? "—" : visibleAssets.filter((a) => a.installed).length}
+                  hint="Among loaded results"
+                />
+              </section>
+            </details>
+          </aside>
+
+          <div className="min-w-0 space-y-4">
           {/* Result meta + clear */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
@@ -578,8 +606,8 @@ function MarketplaceAssetsContent() {
           </div>
 
           {isLoading ? (
-            <div data-review-surface="marketplace-discovery">
-              {Array.from({ length: 8 }).map((_, index) => (
+            <div data-review-surface="marketplace-discovery" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
                 <AssetCardSkeleton key={index} />
               ))}
             </div>
@@ -596,8 +624,10 @@ function MarketplaceAssetsContent() {
             <GravitreEmpty title={emptyMessage} hint="Adjust filters or clear search to see more packs." />
           ) : (
             <div className="space-y-8">
-              <section data-review-surface="marketplace-discovery">
-                <p className={TYPE.eyebrow}>Discovery</p>
+              <section data-review-surface="marketplace-discovery" aria-labelledby="marketplace-discovery-heading">
+                <h2 id="marketplace-discovery-heading" className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+                  Available to install
+                </h2>
                 <p className={cn(TYPE.meta, "mt-0.5")}>
                   Packs not yet installed in this workspace.
                 </p>
@@ -607,7 +637,7 @@ function MarketplaceAssetsContent() {
                   </p>
                 ) : (
                   <div
-                    className="mt-2 divide-y divide-divide border-y border-divide"
+                    className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
                     data-testid="marketplace-scan-list"
                   >
                     {discoveryAssets.map((asset) => (
@@ -626,7 +656,7 @@ function MarketplaceAssetsContent() {
               </section>
               {installedInView.length > 0 ? (
                 <section data-review-surface="marketplace-ops">
-                  <p className={TYPE.eyebrow}>Installed (ops)</p>
+                  <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">Installed in this workspace</h2>
                   <p className={cn(TYPE.meta, "mt-0.5")}>
                     Already in this workspace. Open the installed list to manage.
                   </p>
@@ -647,6 +677,7 @@ function MarketplaceAssetsContent() {
               ) : null}
             </div>
           )}
+          </div>
         </div>
       </div>
 

@@ -4681,21 +4681,20 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           </div>
         ) : null}
         {/* Top toolbar */}
-        <div className="flex-shrink-0 border-b border-border bg-card px-3 md:px-4 py-2 md:py-3">
+        <div className="flex-shrink-0 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-2 md:px-3 py-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <Link
                 href="/workflows"
-                className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-muted-foreground transition-colors hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground"
                 title="Back to workflows"
+                aria-label="Back to workflows"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
               
               {/* Breadcrumb */}
               <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>Gravitre Labs</span>
-                <ChevronRight className="h-3 w-3" />
                 <Link href="/workflows" className="hover:text-foreground transition-colors">Workflows</Link>
                 <ChevronRight className="h-3 w-3" />
               </div>
@@ -4703,11 +4702,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
-                    className="flex items-center gap-2 min-w-0 hover:text-foreground transition-colors group"
+                    className="flex items-center gap-2 min-w-0 rounded-[9px] px-1.5 py-1 hover:bg-[color:var(--g-chrome-hover)] transition-colors group"
                     title="Switch workflow"
                   >
-                    <Workflow className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px]">{workflowMeta.name}</span>
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
+                      <Workflow className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="text-[15px] font-semibold tracking-[-0.01em] text-foreground truncate max-w-[140px] sm:max-w-[260px]">{workflowMeta.name}</span>
                     <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </button>
                 </DropdownMenuTrigger>
@@ -4870,22 +4871,24 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
         <div
           data-review-surface="workflow-intent"
-          className="flex-shrink-0 border-b border-border bg-card/80 px-3 py-2 md:px-4"
+          className="flex-shrink-0 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-3 pb-2 pt-0 md:px-4"
         >
-          <p className="font-sans text-xs font-medium text-muted-foreground">
-            Intent
-          </p>
-          <p className="mt-0.5 text-sm font-medium text-foreground">
-            {(workflowMeta.description || "").trim() ||
-              "Name the outcome this workflow should produce — then orchestrate it on the canvas."}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Select a node to inspect its configuration.
+          <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 pl-0 md:pl-10">
+            <span className="rounded-full bg-[color:var(--g-intelligence-soft)] px-2 py-0.5 font-sans text-[11px] font-medium text-[color:var(--g-intelligence)]">
+              Intent
+            </span>
+            <span className="min-w-0 text-[13px] font-medium text-foreground">
+              {(workflowMeta.description || "").trim() ||
+                "Name the outcome this workflow should produce — then orchestrate it on the canvas."}
+            </span>
+            <span className="hidden text-xs text-muted-foreground md:inline">
+              Select a node to inspect its configuration.
+            </span>
           </p>
         </div>
 
         {/* Main content */}
-        <div className="flex flex-1 min-h-0 flex-col md:flex-row">
+        <div className="flex flex-1 min-h-0 flex-col md:flex-row md:bg-[color:var(--g-chrome)]">
           {/* Left library panel - conditionally shown */}
           {libraryPanelOpen && (
           <div 
@@ -5462,7 +5465,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             ref={canvasRef}
             data-trace-overlay={traceOverlay ? "on" : "off"}
             className={cn(
-              "flex-1 relative overflow-auto bg-background touch-pan-x touch-pan-y",
+              "flex-1 relative overflow-auto bg-background touch-pan-x touch-pan-y md:m-2 md:rounded-[14px] md:shadow-[var(--g-workspace-shadow)]",
               isDraggingConnection && "cursor-crosshair",
               traceOverlay && "ring-1 ring-inset ring-[color:var(--g-signal)]/40",
             )}
@@ -6180,7 +6183,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             )}
 
             {/* Canvas toolbar */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-lg p-1 shadow-md">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-[12px] border border-[color:var(--g-border-default)] bg-background/95 p-1 shadow-[0_12px_32px_-16px_rgb(16_24_40/0.35)] backdrop-blur">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -6212,10 +6215,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 className="h-8 px-3 gap-1.5 text-xs"
                 aria-pressed={traceOverlay}
                 onClick={() => setTraceOverlay((on) => !on)}
-                title="TRACE overlay"
+                title="Trace overlay"
               >
                 <Activity className="h-3.5 w-3.5" />
-                TRACE
+                Trace
               </Button>
             </div>
 

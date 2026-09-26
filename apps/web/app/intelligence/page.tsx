@@ -38,6 +38,9 @@ import {
   type GravitreAISelectedEntity,
 } from "@/components/gravitre/ai-workspace-provider"
 import { OverviewLivingMap } from "@/components/intelligence/pages/overview-living-map"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceFreshnessBar } from "@/components/intelligence/shell/intelligence-freshness-bar"
+import { EvidenceRail, InsightRail, IntelligenceJourney } from "@/components/intelligence/journey-rails"
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
 import {
@@ -380,22 +383,48 @@ function IntelligenceCenterInner() {
   const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
+  const journeyStep: 0 | 1 | 2 = !askSelected ? 0 : askSelected.kind === "relationship" ? 2 : 1
   return (
     <AppShell title={copy.title}>
       <div className="relative bg-[color:var(--g-canvas)]">
         <IntelligenceSectionRedirect />
 
-        {/* Dominant map zone — the product, not a card among cards */}
-        <section className="relative border-b border-divide">
-          <div className="relative z-10 mx-auto max-w-[1600px] space-y-4 px-4 py-4 md:px-6 md:py-6">
-            <GravitrePageHeader
-              className="border-[color:var(--g-border-subtle)]"
-              title={copy.title}
-              description="How your agents, systems, and knowledge connect. Select anything on the map to see the evidence."
-              icon={<NucleoIntelligence className="h-5 w-5" />}
+        <GravitrePageHeader
+          family="expert"
+          title={copy.title}
+          description="How your agents, systems, and knowledge connect. Select anything on the field to see the evidence."
+          icon={<NucleoIntelligence className="h-[18px] w-[18px]" />}
+          status={
+            <IntelligenceFreshnessBar
+              loadState={snapshotLoadState}
+              generatedAt={generatedAt}
+              isValidating={snapshotValidating}
+              onRefresh={() => mutateSnapshot()}
+              className="justify-start"
             />
+          }
+          actions={<IntelligenceJourney step={journeyStep} className="hidden md:flex" />}
+        >
+          <IntelligenceHubTabs active="overview" />
+        </GravitrePageHeader>
 
+        {/* Field-primary: insight rail · dominant field · evidence rail */}
+        <section className="relative border-b border-divide">
+          <div className="relative z-10 mx-auto grid max-w-[1680px] gap-5 px-4 py-4 md:grid-cols-2 md:px-6 md:py-5 xl:grid-cols-[244px_minmax(0,1fr)_264px] xl:gap-6">
+            <aside aria-label="Insight" className="order-2 min-w-0 xl:order-1 xl:pt-1">
+              <InsightRail
+                signals={signals}
+                signalsLoading={signalsLoading}
+                learnings={displayLearnings}
+                onSelectSignal={(signal) => {
+                  setMapSelection({ kind: "signal", signal })
+                  setActiveLens("predicts")
+                }}
+              />
+            </aside>
+            <div className="order-1 min-w-0 md:col-span-2 xl:order-2 xl:col-span-1">
             <IntelligenceShell
+              chrome="none"
               activeTab="overview"
               loadState={snapshotLoadState}
               generatedAt={generatedAt}
@@ -441,6 +470,16 @@ function IntelligenceCenterInner() {
                 cacheKey={`overview:${activeLens}`}
               />
             </IntelligenceShell>
+            </div>
+            <aside aria-label="Evidence" className="order-3 min-w-0 xl:pt-1">
+              <EvidenceRail
+                selected={askSelected}
+                totalEvents={totalEvents}
+                avgConfidence={avgConfidence}
+                entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}
+                relationshipCount={canonicalMetrics?.knowledge?.knownRelationships ?? null}
+              />
+            </aside>
           </div>
         </section>
 

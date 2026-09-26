@@ -8,6 +8,9 @@
  */
 
 import { useCallback } from "react"
+import useSWR from "swr"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { ADMIN_SIDEBAR_NAV, isSidebarItemActive } from "@/components/gravitre/sidebar-nav-config"
 import { NucleoChat } from "@/components/icons/nucleo/semantic"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { GravitreOrb } from "@/components/gravitre/assistant/voice-presentation"
@@ -67,6 +70,19 @@ export function mayShowGravitreAIHelper(args: {
   return shouldShowGravitreAIHelper(args.pathname)
 }
 
+/** The navigation destination the user is on, so the dock says what it will act on. */
+export function routeContextLabel(pathname: string): string | null {
+  const path = pathname.split("?")[0] ?? ""
+  for (const group of ADMIN_SIDEBAR_NAV) {
+    for (const item of group.items) {
+      if (item.liteWork || item.name === "Getting Started") continue
+      if (isSidebarItemActive(path, item.href)) return item.name
+    }
+  }
+  if (path.startsWith("/marketplace")) return "Marketplace"
+  return null
+}
+
 function helperOrbSpeaker(presence: GravitreHelperPresence): "user" | "agent" {
   if (presence === "listening") return "user"
   return "agent"
@@ -84,6 +100,14 @@ export function GravitreAIHelper() {
     agentScope,
   } = useGravitreAIWorkspace()
   const { user, loading } = useAuth()
+  const { data: approvalsData } = useSWR<{ approvals?: Array<{ status?: string }> }>(
+    user?.id ? "/api/approvals" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30_000 },
+  )
+  const pendingApprovals =
+    approvalsData?.approvals?.filter((entry) => entry.status === "pending").length ?? 0
+  const routeLabel = routeContextLabel(pageContext.pathname)
   const focusOnMount = useCallback(
     (node: HTMLButtonElement | null) => {
       if (node && takeHelperFocusRequest()) node.focus()
@@ -124,6 +148,7 @@ export function GravitreAIHelper() {
   // end so a screen reader also hears whether voice is live — the status dot conveys
   // that visually only.
   const accessibleName = `Open AI Chat — ${copy.label}`
+  const onBuilder = isWorkflowBuilderPath(pageContext.pathname)
 
   return (
     <Tooltip>
@@ -133,12 +158,20 @@ export function GravitreAIHelper() {
           type="button"
           onClick={handleOpen}
           data-gravitre-ai-helper=""
+          data-gravitre-ai-dock={onBuilder ? "canvas" : "workspace"}
           className={cn(
-            "fixed left-5 z-40 flex items-center gap-2.5 rounded-full border border-divide",
+            "fixed left-5 z-40 flex items-center gap-2.5 rounded-full border border-[color:var(--g-border-default)]",
             "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
-            "md:left-[calc(var(--np-sidebar-rail)+12px)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]",
-            "bg-[color:var(--g-surface-1)] px-3 py-2 shadow-[var(--np-shadow)] transition-colors",
-            "hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
+            onBuilder
+              ? "md:left-[calc(var(--np-sidebar-rail)+12px)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]"
+              : cn(
+                  // Operating layer: a context dock centred on the workspace panel,
+                  // not a support bubble parked in a corner.
+                  "md:left-[calc(50%+var(--np-sidebar-rail)/2)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(50%+var(--np-sidebar)/2)]",
+                  "md:-translate-x-1/2 md:w-[min(460px,calc(100vw-var(--np-sidebar)-64px))] md:rounded-[14px] md:py-1.5 md:pl-1.5 md:pr-2",
+                ),
+            "bg-[color:var(--g-surface-1)] px-3 py-2 shadow-[0_10px_32px_-14px_rgb(16_24_40/0.35),0_0_0_1px_var(--g-border-subtle)] backdrop-blur transition-colors",
+            "hover:border-[color:var(--g-brand-border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
           )}
           aria-label={accessibleName}
           aria-expanded={false}
@@ -151,7 +184,7 @@ export function GravitreAIHelper() {
                 amplitude={presence === "listening" ? 0.55 : 0.35}
               />
             ) : (
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--g-brand)] to-emerald-700 text-white">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--g-brand)] to-emerald-700 text-white md:rounded-[10px]">
                 {/* A conversation bubble, not the abstract agent glyph: the control
                     has to read as "AI Chat" at a glance. */}
                 <NucleoChat className="h-4 w-4" />
@@ -169,20 +202,34 @@ export function GravitreAIHelper() {
           <span
             data-gravitre-ai-helper-label=""
             className={cn(
-              "hidden flex-col items-start pr-1",
-              isWorkflowBuilderPath(pageContext.pathname) ? "xl:flex" : "sm:flex",
+              "hidden min-w-0 flex-col items-start pr-1",
+              onBuilder ? "xl:flex" : "sm:flex md:flex-1",
             )}
           >
-            <span className="text-xs font-semibold text-[color:var(--g-text-primary)]">
-              Gravitre AI
+            <span className="text-xs font-semibold text-[color:var(--g-text-primary)] md:text-[13px]">
+              {onBuilder ? "Gravitre AI" : "Ask Gravitre"}
             </span>
-            <span className={cn("max-w-[180px] truncate text-[11px] font-medium", copy.tone)}>
+            <span className={cn("max-w-[180px] truncate text-[11px] font-medium md:max-w-[240px]", copy.tone)}>
               {helperStatus}
             </span>
           </span>
+          {onBuilder ? null : (
+            <span className="hidden shrink-0 items-center gap-1.5 md:flex" aria-hidden>
+              {pendingApprovals > 0 ? (
+                <span className="rounded-md bg-[color:var(--g-signal-soft)] px-1.5 py-0.5 text-[11px] font-medium text-[color:var(--g-signal)]">
+                  {pendingApprovals} to approve
+                </span>
+              ) : null}
+              {routeLabel ? (
+                <span className="rounded-md border border-[color:var(--g-border-default)] px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {routeLabel}
+                </span>
+              ) : null}
+            </span>
+          )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right">AI Chat</TooltipContent>
+      <TooltipContent side="top">AI Chat</TooltipContent>
     </Tooltip>
   )
 }

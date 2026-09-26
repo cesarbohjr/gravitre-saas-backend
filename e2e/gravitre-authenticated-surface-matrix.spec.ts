@@ -79,9 +79,14 @@ test.describe("Authenticated product surface matrix", () => {
     await expect(page).not.toHaveURL(/\/login/)
     const rail = page.getByTestId("nav-rail-b")
     await expect(rail).toBeVisible({ timeout: 60_000 })
-    await expect(rail).toHaveAttribute("data-nav-expanded", "false")
     const pin = page.getByTestId("nav-pin-labels")
     await expect(pin).toBeVisible({ timeout: 30_000 })
+    // Labels default open at >=1280px and collapsed below; the pin toggles either way.
+    const initial = await rail.getAttribute("data-nav-expanded")
+    if (initial === "true") {
+      await pin.click({ force: true })
+      await expect(rail).toHaveAttribute("data-nav-expanded", "false")
+    }
     await pin.click({ force: true })
     await expect(rail).toHaveAttribute("data-nav-expanded", "true")
     await expect(page.getByTestId("sidebar-link-activity")).toBeVisible()

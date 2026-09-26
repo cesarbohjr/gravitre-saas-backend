@@ -10,6 +10,7 @@ import {
   GravitreEmpty,
   GravitrePageHeader,
   GravitreSurface,
+  LiveStatus,
 } from "@/components/gravitre/nodus-product"
 import { StatusChip } from "@/components/gravitre/visual"
 import { Button } from "@/components/ui/button"
@@ -611,6 +612,19 @@ export default function AgentsPage() {
     await handleDepartmentChange(agentId, fleetId)
   }
   
+  const workforce = useMemo(() => {
+    let working = 0
+    let active = 0
+    let errored = 0
+    for (const agent of agents) {
+      const status = normalizeAgentStatus(agent.status)
+      if (agentStatusIsLiveWork(status)) working += 1
+      if (status === "active" || status === "processing") active += 1
+      if (status === "error") errored += 1
+    }
+    return { working, active, errored }
+  }, [agents])
+
   const filteredAgents = useMemo(() => {
     if (!normalizedSearchQuery) return agents
     return agents.filter((agent) => agentMatchesQuery(agent, normalizedSearchQuery))
@@ -788,13 +802,14 @@ export default function AgentsPage() {
   <AppShell title={SURFACE_COPY.pages.agents.title}>
     <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)] lg:flex-row">
   {/* Left - Agent roster */}
-  <div className="relative z-10 flex flex-1 flex-col border-divide lg:border-r">
-          <div className="relative z-10 space-y-3 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]">
-            <Suspense fallback={null}>
-              <AgentsHubTabs active="roster" />
-            </Suspense>
-            {!chromeCollapsed ? <AgentSurfaceSwitch surface="operate" /> : null}
-          </div>
+  <div className="relative z-10 flex min-w-0 flex-1 flex-col border-divide lg:border-r">
+          {chromeCollapsed ? (
+            <div className="relative z-10 px-[var(--np-page-pad-sm)] pt-3 sm:px-[var(--np-page-pad)]">
+              <Suspense fallback={null}>
+                <AgentsHubTabs active="roster" />
+              </Suspense>
+            </div>
+          ) : null}
 
           {chromeCollapsed ? (
             <div className="flex flex-wrap items-center gap-2 border-b border-divide px-[var(--np-page-pad-sm)] py-2 sm:px-[var(--np-page-pad)]">
@@ -811,12 +826,25 @@ export default function AgentsPage() {
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description={SURFACE_COPY.pages.agents.description}
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
+                status={
+                  agents.length > 0 ? (
+                    <LiveStatus tone={workforce.errored > 0 ? "attention" : workforce.working > 0 ? "live" : "idle"}>
+                      {`${workforce.working} working · ${workforce.active} on duty · ${agents.length} teammates`}
+                      {workforce.errored > 0 ? ` · ${workforce.errored} need attention` : ""}
+                    </LiveStatus>
+                  ) : null
+                }
                 actions={
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {rosterActions}
                   </div>
                 }
-              />
+              >
+                <Suspense fallback={null}>
+                  <AgentsHubTabs active="roster" />
+                </Suspense>
+                <AgentSurfaceSwitch surface="operate" />
+              </GravitrePageHeader>
 
               <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-2.5 sm:px-[var(--np-page-pad)]">
                 <FleetControls

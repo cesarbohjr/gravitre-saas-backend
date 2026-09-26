@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/tooltip"
 import { resolveSidebarNavIcon } from "@/components/gravitre/nodus-product/sidebar-nucleo"
 import { cycleNavFocus } from "@/lib/nav-rail-focus"
+import { WorkspaceSwitcher } from "@/components/gravitre/workspace-switcher"
 
 const sectionColors = SIDEBAR_SECTION_COLORS
 
@@ -39,8 +40,17 @@ function sidebarLinkTestId(name: string): string {
     .replace(/^-|-$/g, "")
 }
 
-function sentenceCase(label: string): string {
-  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()
+/** Job-based group names; the config keys stay stable for callers and tests. */
+const GROUP_LABELS: Record<string, string> = {
+  WORK: "Operate",
+  BUILD: "Build",
+  ACTIVITY: "Monitor",
+  INSIGHTS: "Know",
+  SETTINGS: "Configure",
+}
+
+function groupLabel(group: string): string {
+  return GROUP_LABELS[group] ?? group.charAt(0).toUpperCase() + group.slice(1).toLowerCase()
 }
 
 interface SidebarProps {
@@ -159,8 +169,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
         data-testid="nav-rail-b"
         data-nav-expanded={navExpanded ? "true" : "false"}
         className={cn(
-          // Nodus Phase 8: gray rail, white content canvas, divide borders
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-[color:var(--g-border-subtle)] bg-sidebar transition-[width,transform] duration-300 ease-in-out",
+          // 3.0 Plus: navigation sits on the shell chrome; the workspace panel carries the edge.
+          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] transition-[width,transform] duration-300 ease-in-out md:border-r-0",
           // Mobile: slide-out drawer (Nodus labeled rail ~220px)
           "w-[var(--np-sidebar)]",
           isOpen ? "translate-x-0" : "-translate-x-full",
@@ -239,6 +249,10 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
           </Button>
         </div>
 
+        <div className={cn("shrink-0 px-2 pb-2", navExpanded ? "md:px-2" : "md:px-1.5")}>
+          <WorkspaceSwitcher collapsed={!isMobile && !navExpanded} />
+        </div>
+
         {/* Navigation */}
         {/* `min-h-0` is required: without it a `flex-1` child refuses to shrink
             below its content height, so the nav overflows its track and squeezes
@@ -254,22 +268,22 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
             const isCollapsed = collapsedSections.includes(group.group)
 
             return (
-              <div key={group.group} className="mb-0.5">
-                {/* Section Divider */}
-                {groupIndex > 0 && (
-                  <div className="mx-2 my-2 h-px bg-sidebar-border md:hidden" />
-                )}
+              <div key={group.group} className={cn(groupIndex > 0 && "mt-3", !navExpanded && groupIndex > 0 && "md:mt-2")}>
+                {/* Rail: a hairline stands in for the group label */}
+                {groupIndex > 0 && !navExpanded ? (
+                  <div className="mx-3 mb-2 hidden h-px bg-[color:var(--g-border-default)] md:block" aria-hidden />
+                ) : null}
 
                 {/* Section Header — labels when nav expanded (desktop) or mobile drawer */}
                 <button
                   onClick={() => toggleSection(group.group)}
                   className={cn(
-                    "hidden w-full items-center justify-between px-2 py-1 group rounded-md hover:bg-sidebar-accent/30 transition-colors",
+                    "hidden w-full items-center justify-between px-2.5 pb-1 pt-0.5 group rounded-md transition-colors",
                     navExpanded ? "md:flex" : "md:hidden",
                   )}
                 >
-                  <span className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                    {sentenceCase(group.group)}
+                  <span className="text-[11px] font-medium tracking-[0.01em] text-muted-foreground/90 transition-colors group-hover:text-foreground">
+                    {groupLabel(group.group)}
                   </span>
                   <Icon
                     name="caretDown"
@@ -280,9 +294,9 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                     )}
                   />
                 </button>
-                <div className="flex w-full items-center justify-between px-2 py-1 md:hidden">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {sentenceCase(group.group)}
+                <div className="flex w-full items-center justify-between px-2.5 pb-1 md:hidden">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {groupLabel(group.group)}
                   </span>
                 </div>
 
@@ -305,23 +319,21 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                       const showTooltip = !isMobile && !navExpanded
                       const NavIcon = resolveSidebarNavIcon(item.icon)
                       const itemClassName = cn(
-                        "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
+                        "group relative flex items-center gap-2.5 rounded-[9px] text-[13px] font-medium transition-all duration-150 px-2.5 py-[7px]",
                         navExpanded
-                          ? "md:justify-start md:px-2.5 md:py-1.5"
-                          : "md:justify-center md:px-0 md:py-2.5",
+                          ? "md:justify-start md:px-2.5 md:py-[7px]"
+                          : "md:mx-auto md:h-10 md:w-10 md:justify-center md:px-0 md:py-0",
                         lockedFullSeat
                           ? "cursor-not-allowed text-muted-foreground/50"
                           : isActive
                             ? cn(
                                 colors.activeBg,
-                                "text-foreground",
-                                navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
-                                colors.activeBorder,
+                                "font-semibold text-foreground",
+                                // Brand tick marks the one active destination.
+                                "before:absolute before:left-[-6px] before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[color:var(--g-brand)]",
+                                !navExpanded && "md:before:left-[-9px]",
                               )
-                            : cn(
-                                "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                                navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
-                              ),
+                            : "text-muted-foreground hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground",
                       )
                       const inner = (
                                 <>

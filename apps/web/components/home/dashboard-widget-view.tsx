@@ -346,7 +346,7 @@ function WorkflowMonitor({ data }: { data: HomeDashboardData }) {
   )
 }
 
-function resolveKpiValue(
+export function resolveKpiValue(
   metricId: string,
   data: HomeDashboardData,
 ): { value: string; hint?: string; href?: string; warning?: boolean; empty?: boolean } {

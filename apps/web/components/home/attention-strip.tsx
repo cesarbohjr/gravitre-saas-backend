@@ -26,6 +26,18 @@ const TONE_CLASS = {
   risk: "text-warning",
 } as const
 
+const TONE_BAR = {
+  approval: "before:bg-[color:var(--g-signal)]",
+  error: "before:bg-destructive",
+  risk: "before:bg-warning",
+} as const
+
+const TONE_ACTION = {
+  approval: "Review",
+  error: "Open team",
+  risk: "Investigate",
+} as const
+
 /** Attention-first lead for the Dashboard. Only items backed by loaded data are listed. */
 export function buildAttentionItems(data: HomeDashboardData): AttentionItem[] {
   const items: AttentionItem[] = []
@@ -65,36 +77,55 @@ export function AttentionStrip({ data, className }: { data: HomeDashboardData; c
   const items = buildAttentionItems(data)
 
   return (
-    <section aria-labelledby="dashboard-attention" className={cn("space-y-2", className)}>
-      <h2 id="dashboard-attention" className="text-sm font-semibold text-foreground">
-        Needs your attention
-      </h2>
+    <section aria-labelledby="dashboard-attention" className={cn("space-y-2.5", className)}>
+      <div className="flex items-baseline gap-2">
+        <h2 id="dashboard-attention" className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+          Needs your attention
+        </h2>
+        {items.length > 0 ? (
+          <span className="rounded-full bg-[color:var(--g-signal-soft)] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[color:var(--g-signal)]">
+            {items.length}
+          </span>
+        ) : null}
+      </div>
       {items.length === 0 ? (
-        <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
-          <CheckCircle2 className="size-4 text-[color:var(--g-brand)]" aria-hidden />
-          Nothing needs you right now.
-        </p>
+        <div className="flex items-center gap-3 rounded-[12px] border border-dashed border-[color:var(--g-border-default)] px-4 py-4">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--g-brand-soft)]">
+            <CheckCircle2 className="size-4 text-[color:var(--g-brand)]" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[13px] font-medium text-foreground">Nothing needs you right now.</span>
+            <span className="block text-xs text-muted-foreground">
+              Approvals, agent errors and revenue signals surface here as they happen.
+            </span>
+          </span>
+        </div>
       ) : (
-        <ul className="divide-y divide-[color:var(--g-border-subtle)] rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-card">
+        <ul className="space-y-2">
           {items.map((item) => {
             const Icon = TONE_ICON[item.tone]
             return (
               <li key={item.id}>
                 <Link
                   href={item.href}
-                  className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  className={cn(
+                    "group relative flex items-center gap-3 overflow-hidden rounded-[12px] border border-[color:var(--g-border-default)] bg-card py-3 pl-5 pr-3 transition-[border-color,box-shadow] hover:border-[color:var(--g-border-strong)] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "before:absolute before:inset-y-0 before:left-0 before:w-[3px]",
+                    TONE_BAR[item.tone],
+                  )}
                 >
-                  <Icon className={cn("mt-0.5 size-4 shrink-0", TONE_CLASS[item.tone])} aria-hidden />
+                  <Icon className={cn("size-[18px] shrink-0", TONE_CLASS[item.tone])} aria-hidden />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-foreground">{item.title}</span>
+                    <span className="block text-[14px] font-medium text-foreground">{item.title}</span>
                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                       {item.detail}
                     </span>
                   </span>
-                  <ArrowRight
-                    className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
+                  <span className="hidden shrink-0 items-center gap-1 rounded-[8px] border border-[color:var(--g-border-default)] px-2.5 py-1 text-xs font-medium text-foreground transition-colors group-hover:bg-[color:var(--g-surface-1)] sm:inline-flex">
+                    {TONE_ACTION[item.tone]}
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 text-muted-foreground sm:hidden" aria-hidden />
                 </Link>
               </li>
             )

@@ -1,5 +1,5 @@
 export { GravitreMetric, GravitreSurface } from "./metric"
-export { GravitrePageHeader } from "./page-header"
+export { GravitrePageHeader, LiveStatus } from "./page-header"
 export {
   GravitreTableShell,
   GravitreTable,

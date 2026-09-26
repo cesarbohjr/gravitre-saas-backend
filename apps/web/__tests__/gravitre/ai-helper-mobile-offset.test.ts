@@ -99,9 +99,20 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     expect(button.className).toContain("md:bottom-5")
   })
 
-  it("clears the pinned sidebar rail from md up, collapsed or expanded", async () => {
+  it("docks centred on the workspace panel from md up, collapsed or expanded rail", async () => {
     await renderHelper()
     const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.getAttribute("data-gravitre-ai-dock")).toBe("workspace")
+    expect(button.className).toContain("md:left-[calc(50%+var(--np-sidebar-rail)/2)]")
+    expect(button.className).toContain("md:[:root:has([data-nav-expanded=true])_&]:left-[calc(50%+var(--np-sidebar)/2)]")
+    expect(button.className).toContain("md:-translate-x-1/2")
+  })
+
+  it("keeps the corner anchor clear of the rail on the Workflow Builder canvas", async () => {
+    pathnameState.value = "/workflows/wf-1/builder"
+    await renderHelper()
+    const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.getAttribute("data-gravitre-ai-dock")).toBe("canvas")
     expect(button.className).toContain("md:left-[calc(var(--np-sidebar-rail)+12px)]")
     expect(button.className).toContain("md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]")
   })
