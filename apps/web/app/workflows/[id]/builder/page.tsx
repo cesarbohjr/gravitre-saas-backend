@@ -4749,11 +4749,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <StatusBadge variant="muted">{workflowMeta.status}</StatusBadge>
+              <StatusBadge variant="muted" className="hidden sm:inline-flex">{workflowMeta.status}</StatusBadge>
               <EnvironmentBadge
                 environment={
                   workflowMeta.environment === "production" ? "production" : "staging"
                 }
+                className="hidden sm:inline-flex"
               />
               <span className="hidden md:inline text-xs text-muted-foreground">{workflowMeta.version || "v1"}</span>
               
