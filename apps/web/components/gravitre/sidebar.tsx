@@ -282,7 +282,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                     navExpanded ? "md:flex" : "md:hidden",
                   )}
                 >
-                  <span className="text-[11px] font-medium tracking-[0.01em] text-muted-foreground/90 transition-colors group-hover:text-foreground">
+                  <span className="text-[11px] font-medium tracking-[0.01em] text-muted-foreground transition-colors group-hover:text-foreground">
                     {groupLabel(group.group)}
                   </span>
                   <Icon
@@ -395,6 +395,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                               <Link
                                 href={item.href}
                                 data-testid={`sidebar-link-${sidebarLinkTestId(item.name)}`}
+                                aria-label={navExpanded ? undefined : item.name}
                                 onClick={onClose}
                                 className={itemClassName}
                               >

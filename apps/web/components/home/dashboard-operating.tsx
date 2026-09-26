@@ -162,31 +162,26 @@ export function BusinessStateRail({
               const def = KPI_BY_ID[widget.metricId]
               const resolved = resolveKpiValue(widget.metricId, data)
               const label = widget.title ?? def?.name ?? widget.metricId
-              const row = (
-                <>
-                  <dt className="min-w-0 truncate text-[12.5px] text-muted-foreground">{label}</dt>
-                  <dd
-                    className={cn(
-                      "shrink-0 text-[15px] font-semibold tabular-nums text-foreground",
-                      resolved.warning && "text-warning",
-                      resolved.empty && "text-muted-foreground",
-                    )}
-                  >
-                    {resolved.value}
-                  </dd>
-                </>
+              const valueClass = cn(
+                "shrink-0 text-[15px] font-semibold tabular-nums text-foreground",
+                resolved.warning && "text-warning",
+                resolved.empty && "text-muted-foreground",
               )
-              return resolved.href ? (
-                <Link
-                  key={widget.id}
-                  href={resolved.href}
-                  className="-mx-2 flex items-center justify-between gap-3 rounded-[8px] px-2 py-2 transition-colors hover:bg-[color:var(--g-surface-1)]"
-                >
-                  {row}
-                </Link>
-              ) : (
-                <div key={widget.id} className="flex items-center justify-between gap-3 py-2">
-                  {row}
+              return (
+                <div key={widget.id} className="relative flex items-center justify-between gap-3 py-2">
+                  <dt className="min-w-0 truncate text-[12.5px] text-muted-foreground">
+                    {resolved.href ? (
+                      <Link
+                        href={resolved.href}
+                        className="rounded-[4px] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring after:absolute after:inset-0"
+                      >
+                        {label}
+                      </Link>
+                    ) : (
+                      label
+                    )}
+                  </dt>
+                  <dd className={valueClass}>{resolved.value}</dd>
                 </div>
               )
             })}
