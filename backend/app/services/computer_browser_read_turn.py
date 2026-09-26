@@ -98,10 +98,8 @@ def visits_from_computer_state(task_state: dict[str, Any] | None) -> list[dict[s
 def has_completed_computer_session(task_state: dict[str, Any] | None) -> bool:
     if visits_from_computer_state(task_state):
         return True
-    plan = ExecutionPlan.from_dict((task_state or {}).get("execution_plan"))
-    if plan is None or plan.source != "computer_execution":
-        return False
-    return str(plan.terminal_status or "") == "completed"
+    evidence = (task_state or {}).get("computer_browser_evidence") if isinstance(task_state, dict) else None
+    return isinstance(evidence, dict) and str(evidence.get("mode") or "") == "playwright_session_read"
 
 
 def match_computer_browser_followup(message: str, task_state: dict[str, Any] | None) -> bool:

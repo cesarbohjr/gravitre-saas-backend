@@ -22,6 +22,8 @@ from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.read_preflight import PreflightResult
 from app.services.tool_types import ToolContext, ToolValidationError
 
+from datetime import datetime, timezone
+
 ACTION_KEY = "browser_agent.interact"
 _PUBLIC_FORM_URL = "https://httpbin.org/forms/post"
 _HUBSPOT = re.compile(r"(?is)\bhubspot\b")
@@ -29,6 +31,20 @@ _INTERACT = re.compile(
     r"(?is)(?=.*\bhttpbin\.org\b)(?=.*\b(fill|submit|form|post)\b)"
 )
 _BARE_API_WRITE = re.compile(r"(?is)\b(create a hubspot|update a hubspot|gmail|send an email)\b")
+_SECRET_FIELD = re.compile(r"(?i)(password|passwd|secret|token|ssn|api[_-]?key|authorization)")
+_NAME_IN_SELECTOR = re.compile(r"""name\s*=\s*['"]([^'"]+)['"]""", re.I)
+_WANTS_FRESH = re.compile(r"(?is)\b(refresh|reload|latest|rerun|re-run|recheck|fill again)\b")
+_SHOW_ARTIFACT = re.compile(
+    r"(?is)\b(show|open)\b.{0,40}\b(report|table|artifact|deliverable|brief|summary|form)\b"
+)
+_ASKS_SUBMITTED = re.compile(
+    r"(?is)\b("
+    r"email|name|custname|custemail|submitted|field"
+    r"|what (?:did we|was) (?:submit|fill|post)"
+    r"|which (?:email|name)"
+    r"|form result|result url|endpoint"
+    r")\b"
+)
 
 
 def match_computer_browser_interact(message: str) -> bool:
@@ -54,12 +70,137 @@ def computer_interact_pending_params(task_state: dict[str, Any] | None) -> dict[
     return params if isinstance(params, dict) else None
 
 
+def _field_from_selector(selector: str) -> str:
+    match = _NAME_IN_SELECTOR.search(selector or "")
+    if match:
+        return str(match.group(1) or "").strip()
+    return str(selector or "").strip()[:80]
+
+
+def submitted_field_rows(
+    *,
+    args: dict[str, Any] | None,
+    result_url: str | None,
+    outcome: str,
+    recorded_at: str,
+) -> list[dict[str, Any]]:
+    """Only sealed fill values. Never invent fields or keep secrets."""
+    actions = (args or {}).get("actions") if isinstance(args, dict) else None
+    rows: list[dict[str, Any]] = []
+    if isinstance(actions, list):
+        for step in actions:
+            if not isinstance(step, dict):
+                continue
+            if str(step.get("type") or "").lower() not in {"fill", "type"}:
+                continue
+            field = _field_from_selector(str(step.get("selector") or ""))
+            if not field or _SECRET_FIELD.search(field):
+                continue
+            value = str(step.get("value") or "")
+            if _SECRET_FIELD.search(value):
+                continue
+            rows.append({"field": field, "value": value})
+    target = str((args or {}).get("url") or "").strip()
+    if target:
+        rows.append({"field": "target", "value": target})
+    if result_url:
+        rows.append({"field": "result_url", "value": str(result_url)})
+    rows.append({"field": "outcome", "value": outcome})
+    rows.append({"field": "recorded_at", "value": recorded_at})
+    return rows
+
+
+def has_interact_artifact(task_state: dict[str, Any] | None) -> bool:
+    state = task_state if isinstance(task_state, dict) else {}
+    evidence = state.get("computer_browser_evidence")
+    if isinstance(evidence, dict) and str(evidence.get("mode") or "") == "playwright_interact":
+        return True
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    invoke = str(pending.get("invoke_action") or "")
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    if str(params.get("invoke_action") or invoke) == ACTION_KEY and str(pending.get("status") or "") in {
+        "executed",
+        "failed",
+        "completed",
+    }:
+        return True
+    for art in state.get("work_artifacts") or []:
+        if not isinstance(art, dict):
+            continue
+        title = str(art.get("title") or "").lower()
+        if "form" in title or "submitted" in title:
+            return True
+        meta = art.get("metadata") if isinstance(art.get("metadata"), dict) else {}
+        if str(meta.get("execution_path") or "") == "computer_browser_interact_confirm":
+            return True
+    return False
+
+
+def match_computer_interact_followup(message: str, task_state: dict[str, Any] | None) -> bool:
+    text = message or ""
+    if _HUBSPOT.search(text) and not re.search(r"(?is)\bdo not (?:use |open |call )?hubspot\b", text):
+        return False
+    if _WANTS_FRESH.search(text):
+        return False
+    if not (_SHOW_ARTIFACT.search(text) or _ASKS_SUBMITTED.search(text)):
+        return False
+    return has_interact_artifact(task_state)
+
+
 def computer_interact_should_compile(message: str, task_state: dict[str, Any] | None) -> bool:
     if match_computer_browser_interact(message or ""):
         return True
     if CONFIRM_PATTERN.match((message or "").strip()) and computer_interact_pending_params(task_state):
         return True
+    if match_computer_interact_followup(message or "", task_state):
+        return True
     return False
+
+
+def _rows_from_interact_state(task_state: dict[str, Any] | None) -> list[dict[str, Any]]:
+    state = task_state if isinstance(task_state, dict) else {}
+    evidence = state.get("computer_browser_evidence")
+    if isinstance(evidence, dict):
+        rows = evidence.get("submitted_fields")
+        if isinstance(rows, list) and rows:
+            return [row for row in rows if isinstance(row, dict) and row.get("field")]
+    for obs in reversed(list(state.get("execution_observations") or [])):
+        if not isinstance(obs, dict):
+            continue
+        blob = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+        rows = blob.get("rows")
+        if isinstance(rows, list) and rows:
+            return [row for row in rows if isinstance(row, dict) and row.get("field")]
+    return []
+
+
+def answer_from_interact_artifact(message: str, task_state: dict[str, Any] | None) -> str:
+    """Answer only from persisted submitted fields. Never invent a value."""
+    rows = _rows_from_interact_state(task_state)
+    by_field = {
+        str(row.get("field") or "").strip().lower(): str(row.get("value") or "")
+        for row in rows
+        if str(row.get("field") or "").strip()
+    }
+    text = (message or "").lower()
+    if re.search(r"(?is)\bemail\b", text) and "custemail" in by_field:
+        return by_field["custemail"]
+    if re.search(r"(?is)\bname\b", text) and "custname" in by_field:
+        return by_field["custname"]
+    if re.search(r"(?is)\b(url|endpoint|page)\b", text):
+        return by_field.get("result_url") or by_field.get("target") or "That form result did not record a URL."
+    if rows:
+        lines = ["Submitted public form fields:"]
+        for row in rows:
+            lines.append(f"- {row.get('field')}: {row.get('value')}")
+        return "\n".join(lines)
+    arts = (task_state or {}).get("work_artifacts") if isinstance(task_state, dict) else None
+    if isinstance(arts, list) and arts:
+        meta = arts[-1].get("metadata") if isinstance(arts[-1], dict) else {}
+        code = str((meta or {}).get("code") or "").strip()
+        if code:
+            return code
+    return "I still have the form task, but it does not include submitted field values."
 
 
 def _frozen_form_args() -> dict[str, Any]:
@@ -119,6 +260,24 @@ async def try_computer_browser_interact_turn(
             user_id=user_id,
             conversation_id=conversation_id,
         )
+    if match_computer_interact_followup(message or "", state):
+        from app.services.durable_work_session import reconstruct_execution_result
+
+        body = answer_from_interact_artifact(message or "", state)
+        reconstructed = reconstruct_execution_result(state, body=body)
+        plan = ExecutionPlan.from_dict(state.get("execution_plan"))
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": body,
+            "task_state": state,
+            "workflow_status": "completed",
+            "execution_path": "computer_browser_interact_resume",
+            "execution_result": reconstructed,
+            "provider_reinvoked": False,
+            "writes_started": False,
+            "plan_id": plan.plan_id if plan is not None else None,
+        }
     if not match_computer_browser_interact(message or ""):
         return None
     return _compile_interact(
@@ -352,11 +511,27 @@ async def _execute_confirmed_interact(
     )
     success = bool(obs.success)
     plan = mark_plan_terminal(plan, "completed" if success else "failed")
+    result_url = str(raw.get("url") or url or "")
+    recorded_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    outcome = "completed" if success else "failed"
+    field_rows = submitted_field_rows(
+        args=args if isinstance(args, dict) else {},
+        result_url=result_url or None,
+        outcome=outcome,
+        recorded_at=recorded_at,
+    )
+    structured = dict(obs.structured)
+    structured["rows"] = field_rows
+    structured["plan_id"] = plan.plan_id
+    structured["observation_id"] = obs.observation_id
+    structured["verified"] = success
+    obs.structured = structured
     summary = (
-        f"Submitted the public httpbin form. Current URL: {raw.get('url') or url}."
+        f"Submitted the public httpbin form. Current URL: {result_url}."
         if success
         else str(raw.get("message") or "The public form fill did not complete.")
     )
+    obs.summary = summary[:500]
     merged = {
         **task_state,
         **execution_plan_patch(plan),
@@ -369,11 +544,22 @@ async def _execute_confirmed_interact(
         "computer_browser_evidence": {
             "strategy": "browser_cdp",
             "mode": raw.get("mode"),
-            "url": raw.get("url"),
+            "url": result_url,
             "steps": raw.get("steps") or [],
+            "submitted_fields": field_rows,
+            "recorded_at": recorded_at,
         },
     }
-    merged = bind_finished_work(merged, body=summary, title="Public browser form result")
+    merged = bind_finished_work(merged, body=summary, title="Submitted public form fields")
+    arts = merged.get("work_artifacts")
+    if isinstance(arts, list) and arts and isinstance(arts[-1], dict):
+        meta = arts[-1].get("metadata") if isinstance(arts[-1].get("metadata"), dict) else {}
+        arts[-1]["metadata"] = {
+            **meta,
+            "execution_path": "computer_browser_interact_confirm",
+            "verified": success,
+            "recorded_at": recorded_at,
+        }
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",

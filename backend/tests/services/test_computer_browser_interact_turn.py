@@ -132,6 +132,41 @@ async def test_interact_confirm_invokes_playwright_with_hmac() -> None:
     assert kwargs.get("approval_id")
     obs = (confirmed["task_state"] or {}).get("execution_observations") or []
     assert obs and obs[-1].get("success") is True
+    arts = (confirmed["task_state"] or {}).get("work_artifacts") or []
+    assert arts and arts[-1].get("kind") == "table"
+    rows = ((obs[-1].get("structured") or {}).get("rows")) or []
+    fields = {str(row.get("field")) for row in rows if isinstance(row, dict)}
+    assert "custname" in fields
+    assert "custemail" in fields
+    assert "target" in fields
+    assert "result_url" in fields
+    assert "password" not in fields
+    follow = await try_computer_browser_interact_turn(
+        message="What email was submitted? Do not fill or browse again.",
+        org_id="org-1",
+        client=object(),
+        settings=MagicMock(),
+        connected_integrations=["hubspot"],
+        task_state=confirmed["task_state"],
+    )
+    assert follow is not None
+    assert follow["execution_path"] == "computer_browser_interact_resume"
+    assert follow["provider_reinvoked"] is False
+    assert follow["writes_started"] is False
+    assert follow["plan_id"] == confirmed["plan_id"]
+    assert follow["message"] == "isolated@gravitre.test"
+    assert len((follow["task_state"] or {}).get("execution_observations") or []) == len(obs)
+    table = await try_computer_browser_interact_turn(
+        message="Show me that table. Do not submit again.",
+        org_id="org-1",
+        client=object(),
+        settings=MagicMock(),
+        connected_integrations=[],
+        task_state=confirmed["task_state"],
+    )
+    assert table is not None
+    assert "custemail" in str(table.get("message") or "")
+    assert table["provider_reinvoked"] is False
 
 
 @pytest.mark.asyncio

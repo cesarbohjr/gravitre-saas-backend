@@ -44,7 +44,10 @@ def test_followup_requires_computer_plan() -> None:
             "terminal_status": "completed",
             "steps": [],
         },
-        "work_artifacts": [{"artifact_id": "report:p-browser", "kind": "research_summary"}],
+        "computer_browser_evidence": {
+            "mode": "playwright_session_read",
+            "visits": [{"title": "Example Domain", "url": "https://example.com/", "action": "goto"}],
+        },
         "durable_deliverable": {"diagnosis": "Step 1"},
     }
     assert match_computer_browser_followup("What was the second page URL?", state) is True
@@ -133,6 +136,17 @@ async def test_computer_browser_resume_does_not_reopen_browser() -> None:
         "durable_deliverable": {
             "diagnosis": "Step 2 (click_link): Example Domains — https://www.iana.org/help/example-domains"
         },
+        "computer_browser_evidence": {
+            "mode": "playwright_session_read",
+            "visits": [
+                {"title": "Example Domain", "url": "https://example.com/", "action": "goto"},
+                {
+                    "title": "Example Domains",
+                    "url": "https://www.iana.org/help/example-domains",
+                    "action": "click_link",
+                },
+            ],
+        },
         "work_artifacts": [
             {
                 "artifact_id": "report:plan-cu-resume",
@@ -172,6 +186,17 @@ async def test_computer_browser_resume_reloads_persisted_state() -> None:
         },
         "durable_deliverable": {
             "diagnosis": "Step 2 (click_link): Example Domains — https://www.iana.org/help/example-domains"
+        },
+        "computer_browser_evidence": {
+            "mode": "playwright_session_read",
+            "visits": [
+                {"title": "Example Domain", "url": "https://example.com/", "action": "goto"},
+                {
+                    "title": "Example Domains",
+                    "url": "https://www.iana.org/help/example-domains",
+                    "action": "click_link",
+                },
+            ],
         },
         "work_artifacts": [{"artifact_id": "report:plan-cu-reload", "kind": "research_summary"}],
     }
