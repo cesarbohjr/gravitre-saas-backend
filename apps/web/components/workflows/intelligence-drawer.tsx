@@ -326,7 +326,7 @@ export function WorkflowIntelligenceDrawer({
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold leading-tight text-foreground">
-                    Workflow Intelligence
+                    Workflow intelligence
                   </h2>
                   <p className="text-xs text-muted-foreground">Predict before you ship</p>
                 </div>

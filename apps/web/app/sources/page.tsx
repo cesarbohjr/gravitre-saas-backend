@@ -568,7 +568,7 @@ export default function SourcesPage() {
               icon={Database}
               title="No data sources yet"
               description="Connect your first data source to ground your agents in real business data."
-              action={{ label: "Add Data Source", onClick: () => setAddModalOpen(true) }}
+              action={{ label: "Add data source", onClick: () => setAddModalOpen(true) }}
             />
           ) : null}
 

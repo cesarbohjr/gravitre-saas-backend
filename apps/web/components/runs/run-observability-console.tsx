@@ -232,7 +232,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
                   <span className="truncate font-medium">{tool.tool || tool.action || "tool"}</span>
                   <span
                     className={cn(
-                      "shrink-0 text-[10px] uppercase",
+                      "shrink-0 text-xs font-medium",
                       tool.status === "failed" ? "text-destructive" : "text-muted-foreground",
                     )}
                   >
@@ -273,7 +273,7 @@ export function RunObservabilityConsole({ runId }: { runId: string }) {
                   key={`${kind}-${idx}`}
                   className="flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide px-2 py-1 text-xs"
                 >
-                  <span className="w-16 shrink-0 text-[10px] uppercase text-muted-foreground">
+                  <span className="w-16 shrink-0 text-xs font-medium text-muted-foreground">
                     {kind}
                   </span>
                   <span className="truncate text-foreground">{label}</span>

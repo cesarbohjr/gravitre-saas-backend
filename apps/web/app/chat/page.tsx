@@ -79,7 +79,7 @@ const SEARCH_GROUP_CONFIG: Array<{
   label: string
   icon: LucideIcon
 }> = [
-  { key: "run", label: "Workflow Runs", icon: Zap },
+  { key: "run", label: "Workflow runs", icon: Zap },
   { key: "workflow", label: "Workflows", icon: Workflow },
   { key: "agent", label: "Agents", icon: Bot },
   { key: "connector", label: "Connectors", icon: Link2 },
@@ -704,7 +704,7 @@ export default function ChatPage() {
   )
 
   return (
-    <AppShell title="Universal Search">
+    <AppShell title="Universal search">
       <div className="flex h-full flex-col md:flex-row">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="border-b border-border px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-card to-secondary/20">
@@ -714,7 +714,7 @@ export default function ChatPage() {
                   <Search className="h-4 w-4 md:h-5 md:w-5 text-success" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-base md:text-lg font-semibold text-foreground">Universal Search</h1>
+                  <h1 className="text-base md:text-lg font-semibold text-foreground">Universal search</h1>
                   <p className="text-xs md:text-sm text-muted-foreground text-pretty">
                     Find workflows, runs, agents, and docs — returns links to records, not chat replies
                   </p>
@@ -920,7 +920,7 @@ export default function ChatPage() {
           <div className="p-4 border-b border-border flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-              <h2 className="text-sm font-semibold text-foreground truncate">Recent Searches</h2>
+              <h2 className="text-sm font-semibold text-foreground truncate">Recent searches</h2>
               {recentHistory.length > 0 && (
                 <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
                   {recentHistory.length}

@@ -478,7 +478,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                       <Icon name="user" size="sm" className="text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Edit Profile</p>
+                      <p className="text-sm font-medium">Edit profile</p>
                       <p className="text-[10px] text-muted-foreground">Manage your personal info</p>
                     </div>
                   </Link>

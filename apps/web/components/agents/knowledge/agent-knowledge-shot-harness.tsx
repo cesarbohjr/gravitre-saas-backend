@@ -24,7 +24,7 @@ const SHOT_PACKS = [
   },
   {
     pack_id: "pack.support-macros",
-    label: "Support Macros",
+    label: "Support macros",
     department: "Support",
     recommended: false,
     ingestible: true,
@@ -191,7 +191,7 @@ export function AgentKnowledgeShotHarness() {
         {(
           [
             { id: "sources", label: "Sources" },
-            { id: "expert-packs", label: "Expert Packs" },
+            { id: "expert-packs", label: "Expert packs" },
           ] as const
         ).map((tab) => (
           <button

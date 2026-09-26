@@ -325,7 +325,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
           <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Source Name
+                Source name
               </label>
               <input
                 type="text"
@@ -400,7 +400,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                 </p>
                 <Button onClick={() => void handleTest()} className="gap-2">
                   <Activity className="h-4 w-4" />
-                  Test Connection
+                  Test connection
                 </Button>
               </div>
             )}
@@ -452,7 +452,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
               </Button>
               {!testResult && !testing ? (
                 <Button variant="outline" onClick={() => void handleTest()}>
-                  Retry Test
+                  Retry test
                 </Button>
               ) : null}
               <Button

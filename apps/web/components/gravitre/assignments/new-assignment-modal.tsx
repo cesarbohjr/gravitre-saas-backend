@@ -233,7 +233,7 @@ export function NewAssignmentModal({
         <DialogHeader className="space-y-4 border-b border-border px-6 py-5 text-left">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <DialogTitle className="text-lg">New Assignment</DialogTitle>
+              <DialogTitle className="text-lg">New assignment</DialogTitle>
               <DialogDescription>{MODAL_STEPS[step - 1].description}</DialogDescription>
             </div>
             <ModalStepIndicator currentStep={step} />
@@ -531,7 +531,7 @@ export function NewAssignmentModal({
                 ) : (
                   <>
                     <Icon name="check" size="sm" />
-                    Assign Task
+                    Assign task
                   </>
                 )}
               </Button>

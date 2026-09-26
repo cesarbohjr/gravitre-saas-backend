@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { CHIP, HIGHLIGHT, type HighlightTone } from "@/lib/design-system"
+import { statusLabel } from "@/components/gravitre/status-badge"
 
 /**
  * Compact Nodus soft-pill badge. Never use for invented TRAINED/certified claims —
@@ -27,7 +28,7 @@ export function GravitreBadge({
 
   return (
     <span className={cn(CHIP.compact, HIGHLIGHT[highlightTone], className)}>
-      {children}
+      {statusLabel(children)}
     </span>
   )
 }

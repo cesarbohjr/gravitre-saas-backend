@@ -88,7 +88,7 @@ export default function AgentChatPage({
         </h1>
         <p className="mt-1 max-w-xl text-sm text-[color:var(--g-text-secondary)]">
           {agent.role ? `${agent.role}. ` : ""}
-          Gravitre AI is scoped to this agent — same workspace, not a separate chat product.
+          Gravitre AI is scoped to this agent in your workspace.
         </p>
         {canonicalPresentation === "minimized" ? (
           <div className="mt-4">

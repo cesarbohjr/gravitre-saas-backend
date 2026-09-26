@@ -174,7 +174,7 @@ export function FleetPrototypeShell({
             type="button"
             className="h-9 rounded-md bg-foreground px-3 text-xs font-medium text-background"
           >
-            New Agent
+            New agent
           </button>
           <button
             type="button"

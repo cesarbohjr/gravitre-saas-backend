@@ -107,7 +107,7 @@ export const connectorDepartmentTokens = {
     accent: "bg-amber-500",
   },
   support: {
-    label: "Customer Support",
+    label: "Customer support",
     bg: "bg-rose-50 dark:bg-rose-950/30",
     border: "border-rose-200 dark:border-rose-900/60",
     text: "text-rose-700 dark:text-rose-300",

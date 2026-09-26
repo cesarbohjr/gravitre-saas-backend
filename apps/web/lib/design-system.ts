@@ -95,6 +95,13 @@ export const PAGE_FAMILY = {
 
 export type PageFamilyId = keyof typeof PAGE_FAMILY
 
+/**
+ * Full-width hub page body. The first child is the shared page header (which owns
+ * its own page padding); later sections inset to the same page gutter.
+ */
+export const PAGE_FRAME =
+  "min-w-0 space-y-6 pb-8 [&>*:not(:first-child)]:mx-[var(--np-page-pad-sm)] sm:[&>*:not(:first-child)]:mx-[var(--np-page-pad)]"
+
 /** Window Manager chrome tokens (presentation-only). */
 export const WINDOW_CHROME = {
   frame:
@@ -317,7 +324,7 @@ export type HighlightTone = keyof typeof HIGHLIGHT
 /** Shared geometry for highlight / status pills. */
 export const CHIP = {
   base: "inline-flex w-fit max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
-  compact: "inline-flex w-fit max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+  compact: "inline-flex w-fit max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
   /** Status column: colored dot + graphite label (no fill). */
   plain: "inline-flex w-fit max-w-full items-center gap-1.5 text-sm font-medium text-[color:var(--g-text-primary)]",
 } as const

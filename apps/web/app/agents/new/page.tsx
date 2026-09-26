@@ -233,11 +233,11 @@ export default function NewAgentPage() {
   }
 
   return (
-    <AppShell title="Add Team Member">
+    <AppShell title="Add team member">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           eyebrow="AI Team"
-          title="Add Team Member"
+          title="Add team member"
           description="Configure purpose, skills, apps, and limits for a new agent."
           icon={<NucleoWorkflow className="h-5 w-5" />}
           actions={
@@ -366,7 +366,7 @@ export default function NewAgentPage() {
 
                   {/* Model Selection */}
                   <div>
-                    <label className="text-sm font-medium text-foreground">Default Model</label>
+                    <label className="text-sm font-medium text-foreground">Default model</label>
                     <p className="mt-0.5 text-xs text-muted-foreground mb-2">
                       Choose the AI model that powers this agent&apos;s reasoning
                     </p>
@@ -630,7 +630,7 @@ export default function NewAgentPage() {
 
                   {/* Connected Systems */}
                   <div className="p-5">
-                    <p className="text-xs font-medium text-muted-foreground">Connected Systems</p>
+                    <p className="text-xs font-medium text-muted-foreground">Connected systems</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {selectedSystems.map(id => {
                         const sys = availableSystems.find(s => s.id === id)
@@ -645,7 +645,7 @@ export default function NewAgentPage() {
 
                   {/* Reference Folders */}
                   <div className="p-5">
-                    <p className="text-xs font-medium text-muted-foreground">Reference Folders</p>
+                    <p className="text-xs font-medium text-muted-foreground">Reference folders</p>
                     {referenceFolders.length > 0 ? (
                       <ul className="mt-2 space-y-2">
                         {referenceFolders.map((folder) => (
@@ -664,7 +664,7 @@ export default function NewAgentPage() {
 
                   {/* Safety Rules */}
                   <div className="p-5">
-                    <p className="text-xs font-medium text-muted-foreground">Safety Rules</p>
+                    <p className="text-xs font-medium text-muted-foreground">Safety rules</p>
                     <ul className="mt-2 space-y-1">
                       {selectedGuardrails.map(id => {
                         const guard = guardrailOptions.find(g => g.id === id)

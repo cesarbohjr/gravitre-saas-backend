@@ -14,11 +14,24 @@ const EXCLUDED = [
   /gravitre-command-os/,
   /chat-execution-panel/,
   /meson-wizard/,
-  /settings[\\/]profile[\\/]/,
   /organization-logo/,
+  /fleet-prototype-shell/,
 ]
 const UPPERCASE = /(?<![\w-:])uppercase(?![\w-])/
-const TRACKED = /(?<![\w-])tracking-(?:wide|wider|widest|\[0?\.\d+em\])(?![\w-])/
+const TITLE_CASE_TEXT = />\s*([A-Z][a-z]+(?: [A-Z][a-z]+)+)\s*</g
+const PROPER_NAMES = [
+  /^John Doe$/,
+  /^Sarah Chen$/,
+  /^Acme\b/,
+  /^(United States|European Union|Pacific Time)$/,
+  /^Gravitre (Certified|Marketplace|Labs|Desktop|Lite)$/,
+  /^Stripe Connect$/,
+  /^Model Studio$/,
+  /^Agent Council$/,
+  /^Intelligence Core$/,
+  /^(Gravitre|Meson|Slack|Stripe|Google|Microsoft|Apollo|Salesforce) [A-Z][a-z]+$/,
+  /\b(Gravitre|Meson|Agent Council)\b/,
+]
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -30,16 +43,34 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe("shared micro-label system", () => {
-  it("uses sentence-case labels instead of uppercase tracked micro-labels on product surfaces", () => {
+  it("uses sentence-case labels instead of uppercase micro-labels on product surfaces", () => {
     const offenders: string[] = []
     for (const root of ROOTS) {
       for (const file of walk(join(webRoot, root))) {
         const rel = relative(webRoot, file)
         if (EXCLUDED.some((re) => re.test(rel))) continue
         const src = readFileSync(file, "utf8")
-        for (const match of src.matchAll(/(["'`])([^"'`\n]*)\1/g)) {
+        for (const match of src.matchAll(/(["'`])([^"'`]*)\1/g)) {
           const body = match[2]
-          if (UPPERCASE.test(body) && TRACKED.test(body)) offenders.push(`${rel}: ${body}`)
+          if (/[<>{}();=]/.test(body)) continue
+          if (UPPERCASE.test(body)) offenders.push(`${rel}: ${body.trim().slice(0, 80)}`)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+  }, 60_000)
+
+  it("renders visible JSX labels in sentence case (master spec 9.1)", () => {
+    const offenders: string[] = []
+    for (const root of ROOTS) {
+      for (const file of walk(join(webRoot, root))) {
+        const rel = relative(webRoot, file)
+        if (EXCLUDED.some((re) => re.test(rel))) continue
+        const src = readFileSync(file, "utf8")
+        for (const match of src.matchAll(TITLE_CASE_TEXT)) {
+          const text = match[1]
+          if (PROPER_NAMES.some((re) => re.test(text))) continue
+          offenders.push(`${rel}: ${text}`)
         }
       }
     }

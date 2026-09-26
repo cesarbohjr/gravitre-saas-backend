@@ -559,11 +559,11 @@ function ConnectorNode({
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
           <RefreshCw className={cn("h-3.5 w-3.5 mr-2", isSyncing && "animate-spin")} />
-          Sync Now
+          Sync now
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => void onTestConnection(connector.id)}>
           <Wifi className="h-3.5 w-3.5 mr-2" />
-          Test Connection
+          Test connection
         </DropdownMenuItem>
         {connectorNeedsOAuthReconnect(connector) && onReconnect && (
           <DropdownMenuItem onClick={() => void onReconnect(connector)}>
@@ -922,7 +922,7 @@ function DeleteModal({
               <AlertTriangle className="h-5 w-5 text-destructive" />
             </div>
             <div>
-              <DialogTitle>Remove Connector</DialogTitle>
+              <DialogTitle>Remove connector</DialogTitle>
               <DialogDescription>This cannot be undone</DialogDescription>
             </div>
           </div>
@@ -1480,22 +1480,22 @@ function AddConnectorModal({
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{connector.type}</span>
                               {connector.certified && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-success/10 text-success">
+                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
                                   Certified
                                 </span>
                               )}
                               {!connector.partner && isPartnerGatedConnector(connector) && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-warning/10 text-warning">
+                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-warning/10 text-warning">
                                   Partner
                                 </span>
                               )}
                               {!connector.partner && isShippedConnector(connector) && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-success/10 text-success">
+                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
                                   Available
                                 </span>
                               )}
                               <span className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
+                                "text-xs px-1.5 py-0.5 rounded font-medium",
                                 isPartnerGatedConnector(connector)
                                   ? "bg-warning/10 text-warning"
                                   : !connector.partner && !isShippedConnector(connector)
@@ -1542,7 +1542,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 uppercase font-medium">OAuth</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">OAuth</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1792,7 +1792,7 @@ function AddConnectorModal({
               <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <Link2 className="h-4 w-4 text-[color:var(--g-signal)]" />
-                  Webhook Endpoint
+                  Webhook endpoint
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -1817,7 +1817,7 @@ function AddConnectorModal({
 
               {/* Instructions */}
               <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                <h4 className="text-sm font-medium text-foreground">Setup Instructions</h4>
+                <h4 className="text-sm font-medium text-foreground">Setup instructions</h4>
                 <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside">
                   <li>Go to your {selectedType} settings or admin panel</li>
                   <li>Navigate to Webhooks or Integrations section</li>
@@ -1830,7 +1830,7 @@ function AddConnectorModal({
               {/* Connector Name & Environment */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Connector Name</label>
+                  <label className="text-sm font-medium text-foreground">Connector name</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -1884,7 +1884,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-warning/10 text-warning uppercase font-medium">API Key</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-warning/10 text-warning font-medium">API Key</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1903,7 +1903,7 @@ function AddConnectorModal({
               {/* Configuration Form */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Connector Name</label>
+                  <label className="text-sm font-medium text-foreground">Connector name</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -2066,7 +2066,7 @@ function AddConnectorModal({
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Optional Auth Token</label>
+                      <label className="text-sm font-medium text-foreground">Optional auth token</label>
                       <Input
                         type="password"
                         value={twilioAuthToken}
@@ -2228,7 +2228,7 @@ function AddConnectorModal({
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  Verify Connection
+                  Verify connection
                 </>
               )}
             </Button>
@@ -2985,7 +2985,7 @@ function ConnectorsPageContent() {
               ) : null}
               <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Connector</span>
+                <span className="hidden sm:inline">Add connector</span>
               </Button>
             </div>
           }
@@ -3129,7 +3129,7 @@ function ConnectorsPageContent() {
           <summary className="cursor-pointer list-none border-b border-divide px-4 py-2 md:px-6">
             <p className={TYPE.eyebrow}>Health totals</p>
             <p className={cn(TYPE.meta, "mt-0.5")}>
-              Counts from the last refresh — after discovery and management, not instead of them.
+              Counts from the last refresh.
             </p>
           </summary>
         <div className="border-b border-border bg-secondary/30 px-4 md:px-6 py-3">

@@ -239,13 +239,13 @@ function RecommendationCard({
                   </div>
                   
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1 font-medium">Suggested Change</p>
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Suggested change</p>
                     <p className="text-xs text-foreground">{recommendation.suggestedChange}</p>
                   </div>
                   
                   {recommendation.affectedNodes && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1 font-medium">Affected Steps</p>
+                      <p className="text-xs text-muted-foreground mb-1 font-medium">Affected steps</p>
                       <div className="flex flex-wrap gap-1">
                         {recommendation.affectedNodes.map((node) => (
                           <Badge key={node} variant="outline" className="text-[10px]">
@@ -314,7 +314,7 @@ function PreviewOptimizationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5 text-primary" />
-            Preview Optimization
+            Preview optimization
           </DialogTitle>
           <DialogDescription>
             Review the proposed changes before applying them to your workflow.
@@ -340,7 +340,7 @@ function PreviewOptimizationDialog({
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
                     <span className="text-[10px] text-blue-600 dark:text-blue-400">1</span>
                   </div>
-                  Data Enrichment
+                  Data enrichment
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
@@ -365,14 +365,14 @@ function PreviewOptimizationDialog({
                   <div className="h-6 w-6 rounded bg-emerald-500/20 flex items-center justify-center">
                     <Sparkles className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />
                   </div>
-                  <span className="text-emerald-700 dark:text-emerald-400">Data Validation</span>
+                  <span className="text-emerald-700 dark:text-emerald-400">Data validation</span>
                   <Badge className="ml-auto text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">NEW</Badge>
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
                     <span className="text-[10px] text-blue-600 dark:text-blue-400">2</span>
                   </div>
-                  Data Enrichment
+                  Data enrichment
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
@@ -386,15 +386,15 @@ function PreviewOptimizationDialog({
           
           {/* Expected impact */}
           <div className="p-4 rounded-lg bg-secondary/30 border border-border">
-            <h4 className="text-xs font-medium text-muted-foreground mb-3">Expected Impact</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Expected impact</h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">-24%</div>
-                <div className="text-[10px] text-muted-foreground">Failed Runs</div>
+                <div className="text-[10px] text-muted-foreground">Failed runs</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">+6</div>
-                <div className="text-[10px] text-muted-foreground">Health Score</div>
+                <div className="text-[10px] text-muted-foreground">Health score</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">87%</div>
@@ -407,7 +407,7 @@ function PreviewOptimizationDialog({
         <div className="flex items-center gap-2 pt-4 border-t border-border">
           <Button variant="default" className="flex-1 gap-2" onClick={onApply}>
             <CheckCircle className="h-4 w-4" />
-            Apply Optimization
+            Apply optimization
           </Button>
           <Button variant="outline" className="gap-2" onClick={onSaveAsNew}>
             <GitBranch className="h-4 w-4" />
@@ -457,7 +457,7 @@ function AIExplanationDialog({
           </div>
           
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-2">Supporting Evidence</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Supporting evidence</h4>
             <ul className="space-y-2">
               {recommendation.evidence.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-foreground">
@@ -542,7 +542,7 @@ export function OptimizationInsightsPanel({
               <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-foreground">Optimization Insights</h3>
+              <h3 className="font-semibold text-sm text-foreground">Optimization insights</h3>
               <p className="text-xs text-muted-foreground">
                 {mockRecommendations.length} recommendations available
               </p>
@@ -606,7 +606,7 @@ export function OptimizationInsightsPanel({
                       
                       <div className="flex-1">
                         <h4 className="text-xs font-medium text-muted-foreground mb-3">
-                          Score Dimensions
+                          Score dimensions
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
                           {mockDimensions.map((dim) => (
@@ -776,10 +776,10 @@ export function OptimizationInsightsPanel({
                       <div className="flex items-center gap-2">
                         <Button variant="default" size="sm" className="h-7 text-xs gap-1">
                           <CheckCircle className="h-3 w-3" />
-                          Promote Winner
+                          Promote winner
                         </Button>
                         <Button variant="outline" size="sm" className="h-7 text-xs">
-                          End Test
+                          End test
                         </Button>
                         <span className="text-[10px] text-muted-foreground ml-auto">
                           Started 3 days ago • 242 total runs

@@ -71,7 +71,7 @@ const stepTransition = { type: "spring" as const, stiffness: 360, damping: 32 }
 
 const steps = [
   { id: 1, title: "Agent", description: "Optional — change which AI agent to assign" },
-  { id: 2, title: "Task Brief", description: "Describe what you need done" },
+  { id: 2, title: "Task brief", description: "Describe what you need done" },
   { id: 3, title: "Context", description: "Select data sources" },
   { id: 4, title: "Outputs", description: "Choose deliverables" },
   { id: 5, title: "Destination", description: "Where to send results" },
@@ -234,12 +234,12 @@ function NewAssignmentPageContent() {
   }
 
   return (
-    <AppShell title="New Assignment">
+    <AppShell title="New assignment">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           className="shrink-0"
           eyebrow="Work"
-          title="New Assignment"
+          title="New assignment"
           description="Create a new task for your agent"
           icon={<NavTasks className="h-5 w-5" />}
           actions={
@@ -561,7 +561,7 @@ function NewAssignmentPageContent() {
                           <Icon name="brain" size="md" className="text-[color:var(--g-brand)]" />
                         </div>
                         <div>
-                          <p className="font-semibold text-foreground">Use Training Knowledge</p>
+                          <p className="font-semibold text-foreground">Use training knowledge</p>
                           <p className="text-sm text-muted-foreground">
                             Apply everything the agent has learned about your business
                           </p>
@@ -585,7 +585,7 @@ function NewAssignmentPageContent() {
                   {/* Data Sources */}
                   <GravitreSurface padded={false} className="overflow-hidden">
                     <div className="border-b border-divide px-6 py-4">
-                      <h3 className="font-semibold text-foreground">Data Sources</h3>
+                      <h3 className="font-semibold text-foreground">Data sources</h3>
                       <p className="text-sm text-muted-foreground">Select systems to pull data from</p>
                     </div>
                     <div className="p-6 grid grid-cols-2 gap-3">
@@ -736,7 +736,7 @@ function NewAssignmentPageContent() {
                           <Icon name="shield" size="sm" className="text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">Require Approval Before Sending</p>
+                          <p className="font-medium text-foreground">Require approval before sending</p>
                           <p className="text-sm text-muted-foreground">
                             Review and approve outputs before they are delivered
                           </p>
@@ -774,7 +774,7 @@ function NewAssignmentPageContent() {
                   {/* Summary Card */}
                   <GravitreSurface padded={false} className="overflow-hidden">
                     <div className="border-b border-divide bg-[color:var(--g-surface-2)] px-6 py-4">
-                      <h3 className="font-semibold text-foreground">Assignment Summary</h3>
+                      <h3 className="font-semibold text-foreground">Assignment summary</h3>
                     </div>
                     <div className="divide-y divide-border">
                       {/* Agent */}
@@ -793,7 +793,7 @@ function NewAssignmentPageContent() {
                       
                       {/* Task */}
                       <div className="px-6 py-4">
-                        <span className="text-sm text-muted-foreground block mb-2">Task Brief</span>
+                        <span className="text-sm text-muted-foreground block mb-2">Task brief</span>
                         <p className="text-sm text-foreground">{taskBrief || "No task description"}</p>
                       </div>
 
@@ -804,7 +804,7 @@ function NewAssignmentPageContent() {
                       
                       {/* Context */}
                       <div className="px-6 py-4 flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Training Knowledge</span>
+                        <span className="text-sm text-muted-foreground">Training knowledge</span>
                         <span className={cn(
                           "text-sm font-medium",
                           useTrainingKnowledge ? "text-[color:var(--g-brand)]" : "text-muted-foreground"
@@ -845,7 +845,7 @@ function NewAssignmentPageContent() {
                       
                       {/* Approval */}
                       <div className="px-6 py-4 flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Approval Required</span>
+                        <span className="text-sm text-muted-foreground">Approval required</span>
                         <span className={cn(
                           "text-sm font-medium",
                           requireApproval ? "text-[color:var(--g-brand)]" : "text-amber-600"
@@ -883,7 +883,7 @@ function NewAssignmentPageContent() {
 
 export default function NewAssignmentPage() {
   return (
-    <Suspense fallback={<AppShell title="New Assignment"><div /></AppShell>}>
+    <Suspense fallback={<AppShell title="New assignment"><div /></AppShell>}>
       <NewAssignmentPageContent />
     </Suspense>
   )

@@ -62,7 +62,7 @@ function LiteAssignContent() {
 
   if (!loading && !isLoading && !user) {
     return (
-      <LitePageShell title="Assign Work" description="Sign in to continue." icon={Send}>
+      <LitePageShell title="Assign work" description="Sign in to continue." icon={Send}>
         <p className="text-sm text-muted-foreground">Sign in required.</p>
       </LitePageShell>
     )
@@ -70,7 +70,7 @@ function LiteAssignContent() {
 
   return (
     <LitePageShell
-      title="Assign Work"
+      title="Assign work"
       description="Pick a workflow and send work to your AI team."
       icon={Send}
       loading={loading || isLoading}
@@ -114,7 +114,7 @@ function LiteAssignContent() {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium">Task Notes</p>
+          <p className="mb-2 text-sm font-medium">Task notes</p>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
 
@@ -145,7 +145,7 @@ export default function LiteAssignPage() {
   return (
     <Suspense
       fallback={
-        <LitePageShell title="Assign Work" icon={Send} loading loadingLabel="Loading">
+        <LitePageShell title="Assign work" icon={Send} loading loadingLabel="Loading">
           <span className="sr-only">Loading</span>
         </LitePageShell>
       }

@@ -117,7 +117,7 @@ const goalCategories: GoalCategory[] = [
   },
   {
     id: "support",
-    label: "Customer Support",
+    label: "Customer support",
     icon: HelpCircle,
     color: "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30",
     examples: ["Monitor ticket trends", "Escalate high-priority issues", "Summarize support data"],
@@ -505,7 +505,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 {/* Category selection */}
                 <div>
                   <label className="text-sm font-medium text-foreground mb-3 block">
-                    Goal Category
+                    Goal category
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {goalCategories.map((cat) => {
@@ -823,7 +823,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
 
                 {/* Proposed steps */}
                 <div>
-                  <h4 className="text-sm font-medium text-foreground mb-3">Proposed Workflow Steps</h4>
+                  <h4 className="text-sm font-medium text-foreground mb-3">Proposed workflow steps</h4>
                   <div className="space-y-2">
                     {generatedPlan.steps.map((stepItem, idx) => {
                       const StepIcon = getStepTypeIcon(stepItem.type)
@@ -884,7 +884,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
 
                 {/* Required connectors */}
                 <div>
-                  <h4 className="text-sm font-medium text-foreground mb-3">Required Connectors</h4>
+                  <h4 className="text-sm font-medium text-foreground mb-3">Required connectors</h4>
                   <div className="flex flex-wrap gap-2">
                     {generatedPlan.requiredConnectors.map((conn) => (
                       <div
@@ -921,7 +921,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                   <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Shield className="h-4 w-4 text-red-600 dark:text-red-400" />
-                      <span className="text-sm font-medium text-foreground">Human Approval Required</span>
+                      <span className="text-sm font-medium text-foreground">Human approval required</span>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">
                       This workflow includes steps that require human confirmation before execution:
@@ -941,7 +941,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-foreground">Smart Suggestions</span>
+                    <span className="text-sm font-medium text-foreground">Smart suggestions</span>
                   </div>
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
@@ -995,7 +995,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 className="gap-2 bg-violet-600 hover:bg-violet-700"
               >
                 <Sparkles className="h-4 w-4" />
-                Generate Plan
+                Generate plan
               </Button>
             )}
             {step === 4 && (
@@ -1023,7 +1023,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                   className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                 >
                   <Play className="h-4 w-4" />
-                  Build Workflow
+                  Build workflow
                 </Button>
               </>
             )}

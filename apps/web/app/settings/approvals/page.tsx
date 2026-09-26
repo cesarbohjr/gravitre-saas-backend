@@ -383,7 +383,7 @@ function ApprovalsContent() {
           <div className="rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand)] p-5 text-white shadow-[var(--np-shadow)]">
             <div className="mb-3 flex items-center gap-2">
               <Inbox className="h-4 w-4" />
-              <h3 className="text-sm font-semibold">Decision Queue</h3>
+              <h3 className="text-sm font-semibold">Decision queue</h3>
             </div>
             <p className="text-sm leading-relaxed text-white/80">
               Review pending approvals from operators and agents in one place.

@@ -1,5 +1,6 @@
 "use client"
 
+import { PAGE_FRAME } from "@/lib/design-system"
 import { useState } from "react"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -69,7 +70,7 @@ export default function AdminIntelligencePage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      <div className={PAGE_FRAME}>
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}

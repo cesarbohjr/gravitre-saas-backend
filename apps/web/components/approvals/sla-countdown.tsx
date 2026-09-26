@@ -42,7 +42,7 @@ export function ApprovalSlaCountdown({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium uppercase tabular-nums",
+        "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium tabular-nums",
         breached
           ? "bg-destructive/10 text-destructive border border-destructive/20"
           : "bg-amber-500/10 text-amber-600 border border-amber-500/20",

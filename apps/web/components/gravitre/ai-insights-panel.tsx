@@ -415,7 +415,7 @@ function InsightSectionCard({
               {section.type === "evidence" && section.evidence && (
                 <div className="mt-5 space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground mb-3">
-                    Data Sources
+                    Data sources
                   </p>
                   {section.evidence.map((item, i) => (
                     <motion.div
@@ -444,7 +444,7 @@ function InsightSectionCard({
               {section.type === "reasoning" && section.steps && (
                 <div className="mt-5 space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground mb-3">
-                    Analysis Steps
+                    Analysis steps
                   </p>
                   {section.steps.map((step, i) => (
                     <motion.div
@@ -490,7 +490,7 @@ function InsightSectionCard({
               {section.type === "actions" && section.actions && (
                 <div className="mt-5 space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground mb-3">
-                    Recommended Actions
+                    Recommended actions
                   </p>
                   {section.actions.map((action, i) => (
                     <motion.div
@@ -776,7 +776,7 @@ export function MesonInsightsPanel({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Icon name="aiAnalysis" size="lg" className="text-blue-600 dark:text-blue-400" />
-              Full AI Analysis
+              Full AI analysis
             </DialogTitle>
             <DialogDescription>
               Complete analysis breakdown with all findings and recommendations.
@@ -798,7 +798,7 @@ export function MesonInsightsPanel({
                   </p>
                   {section.actions && (
                     <div className="pl-10 space-y-2 mt-3">
-                      <p className="text-xs font-medium text-muted-foreground uppercase">Recommended Actions:</p>
+                      <p className="text-xs font-medium text-muted-foreground">Recommended Actions:</p>
                       {section.actions.map((action) => (
                         <div key={action.id} className="flex items-center gap-2 text-sm">
                           <Check className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
@@ -833,7 +833,7 @@ export function MesonInsightsPanel({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Icon name="shield" size="lg" className="text-emerald-700 dark:text-emerald-400" />
-              Source Verification
+              Source verification
             </DialogTitle>
             <DialogDescription>
               All data sources used in this analysis have been verified.
@@ -856,7 +856,7 @@ export function MesonInsightsPanel({
                     <p className="text-xs text-muted-foreground">Last checked {source.timestamp}</p>
                   </div>
                 </div>
-                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium uppercase">{source.status}</span>
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">{source.status}</span>
               </div>
             ))}
           </div>

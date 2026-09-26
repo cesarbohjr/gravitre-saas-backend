@@ -53,7 +53,7 @@ export default function LiteTasksPage() {
 
   if (!loading && !isLoading && !user) {
     return (
-      <LitePageShell title="My Tasks" description="Sign in to continue." icon={ListTodo}>
+      <LitePageShell title="My tasks" description="Sign in to continue." icon={ListTodo}>
         <p className="text-sm text-muted-foreground">Sign in required.</p>
       </LitePageShell>
     )
@@ -63,7 +63,7 @@ export default function LiteTasksPage() {
 
   return (
     <LitePageShell
-      title="My Tasks"
+      title="My tasks"
       description="Track your AI team's progress."
       icon={ListTodo}
       loading={loading || isLoading}

@@ -106,7 +106,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm font-medium">
                 <Sparkles className="h-4 w-4 text-emerald-500" />
-                Action Readiness
+                Action readiness
               </CardTitle>
               {actions.length > 0 ? (
                 <span className="text-xs text-muted-foreground">
@@ -193,7 +193,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm font-medium">
                 <WorkflowIcon className="h-4 w-4 text-sky-500" />
-                Used in Workflows
+                Used in workflows
               </CardTitle>
               <span className="text-xs text-muted-foreground">
                 {linkedWorkflows.length} {linkedWorkflows.length === 1 ? "workflow" : "workflows"}
@@ -246,7 +246,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
               <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-              Starter Workflows
+              Starter workflows
             </CardTitle>
             <CardDescription className="text-xs">
               Prebuilt {catalog.displayName} workflows you can install in one click
@@ -263,7 +263,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                     <p className="text-sm font-medium text-foreground">{demo.name}</p>
                     <span
                       className={cn(
-                        "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase",
+                        "shrink-0 rounded px-1.5 py-0.5 text-xs font-medium",
                         demo.riskLevel === "high"
                           ? STATUS.rejected
                           : demo.riskLevel === "medium"

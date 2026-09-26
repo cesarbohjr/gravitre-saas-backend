@@ -120,23 +120,23 @@ export function CommandPalette({
         <CommandGroup heading="Quick actions">
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAi))}>
             <Sparkles className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-            <span>Start Chat</span>
+            <span>Start chat</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAiChat))}>
             <Bot className="mr-2 h-4 w-4 text-teal-700 dark:text-teal-400" />
-            <span>Workspace Chat</span>
+            <span>Workspace chat</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/agents/new"))}>
             <Plus className="mr-2 h-4 w-4" />
-            <span>Create Agent</span>
+            <span>Create agent</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/workflows"))}>
             <Play className="mr-2 h-4 w-4" />
-            <span>Run Workflow</span>
+            <span>Run workflow</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.approvals))}>
             <CheckCircle className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
-            <span>View Approvals</span>
+            <span>View approvals</span>
           </CommandItem>
         </CommandGroup>
 
@@ -145,7 +145,7 @@ export function CommandPalette({
         <CommandGroup heading="Search">
           <CommandItem onSelect={() => runCommand(openUniversalSearch)}>
             <Search className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-            <span>Universal Search</span>
+            <span>Universal search</span>
             <span className="ml-2 text-xs text-muted-foreground">Find records — not chat</span>
             <CommandShortcut>⌘K</CommandShortcut>
           </CommandItem>
@@ -174,13 +174,13 @@ export function CommandPalette({
             onSelect={() => runCommand(() => router.push("/goals"))}
           >
             <BarChart3 className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span>Show Goal Progress</span>
+            <span>Show goal progress</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => {})}
           >
             <RotateCcw className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
-            <span>Regenerate Plan</span>
+            <span>Regenerate plan</span>
           </CommandItem>
         </CommandGroup>
 
@@ -219,7 +219,7 @@ export function CommandPalette({
             })}
           >
             <Lightbulb className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
-            <span>Show Optimization Insights</span>
+            <span>Show optimization insights</span>
             <CommandShortcut>O</CommandShortcut>
           </CommandItem>
           <CommandItem
@@ -228,11 +228,11 @@ export function CommandPalette({
             })}
           >
             <Eye className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span>Preview Recommended Changes</span>
+            <span>Preview recommended changes</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <TrendingUp className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-            <span>Apply Top Optimization</span>
+            <span>Apply top optimization</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => {
@@ -248,15 +248,15 @@ export function CommandPalette({
             })}
           >
             <History className="mr-2 h-4 w-4 text-cyan-700 dark:text-cyan-400" />
-            <span>Compare Workflow Versions</span>
+            <span>Compare workflow versions</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <RotateCcw className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
-            <span>Roll Back Workflow</span>
+            <span>Roll back workflow</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <Activity className="mr-2 h-4 w-4 text-pink-400" />
-            <span>View Agent Performance</span>
+            <span>View agent performance</span>
           </CommandItem>
         </CommandGroup>
 
@@ -268,28 +268,28 @@ export function CommandPalette({
             onSelect={() => runCommand(() => router.push("/workflows/new/builder"))}
           >
             <Plus className="mr-2 h-4 w-4" />
-            <span>New Workflow</span>
+            <span>New workflow</span>
             <CommandShortcut>N</CommandShortcut>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push("/workflows"))}
           >
             <Workflow className="mr-2 h-4 w-4" />
-            <span>View All Workflows</span>
+            <span>View all workflows</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push(`${APP_ROUTES.activity}?tab=failures`))}
           >
             <ShieldAlert className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
-            <span>Failure Alerts</span>
+            <span>Failure alerts</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <Shield className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
-            <span>Add Approval Gate</span>
+            <span>Add approval gate</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <GitBranch className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
-            <span>Add Decision Node</span>
+            <span>Add decision node</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
             <Users className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
@@ -311,7 +311,7 @@ export function CommandPalette({
             onSelect={() => runCommand(() => router.push(APP_ROUTES.welcome))}
           >
             <Rocket className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-            <span>Getting Started</span>
+            <span>Getting started</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAi))}
@@ -323,7 +323,7 @@ export function CommandPalette({
             onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAiChat))}
           >
             <Bot className="mr-2 h-4 w-4 text-teal-700 dark:text-teal-400" />
-            <span>Workspace Chat</span>
+            <span>Workspace chat</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.marketplace))}
@@ -341,7 +341,7 @@ export function CommandPalette({
             onSelect={() => runCommand(() => router.push(APP_ROUTES.revenueRisk))}
           >
             <ShieldAlert className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
-            <span>Revenue Risk Radar</span>
+            <span>Revenue risk radar</span>
           </CommandItem>
 
           <CommandItem
@@ -360,7 +360,7 @@ export function CommandPalette({
             onSelect={() => runCommand(() => router.push("/sources"))}
           >
             <Database className="mr-2 h-4 w-4" />
-            <span>Data Sources</span>
+            <span>Data sources</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push("/deliverables"))}
@@ -382,11 +382,11 @@ export function CommandPalette({
         <CommandGroup heading="Actions">
           <CommandItem onSelect={() => runCommand(() => {})}>
             <Plug className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
-            <span>Add Missing Connector</span>
+            <span>Add missing connector</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/deliverables"))}>
             <FileText className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-            <span>Open Goal Deliverables</span>
+            <span>Open goal deliverables</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push("/settings"))}

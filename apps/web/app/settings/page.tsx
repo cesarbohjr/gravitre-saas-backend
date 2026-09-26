@@ -106,7 +106,7 @@ function OrganizationSettings({
       {/* Logo Section */}
       <div>
         <label className="text-xs font-medium text-muted-foreground">
-          Organization Logo
+          Organization logo
         </label>
         <div className="mt-2 flex items-center gap-4">
           <div className="flex h-16 w-32 items-center justify-center rounded-lg border border-border bg-secondary p-2">
@@ -121,7 +121,7 @@ function OrganizationSettings({
           <div className="flex flex-col gap-2">
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setUploadDialog(true)}>
               <Upload className="h-3.5 w-3.5" />
-              Upload Logo
+              Upload logo
             </Button>
             <p className="text-xs text-muted-foreground">
               PNG, SVG or JPG (max 2MB)
@@ -131,7 +131,7 @@ function OrganizationSettings({
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground">
-          Organization Name
+          Organization name
         </label>
         <input
           type="text"
@@ -143,7 +143,7 @@ function OrganizationSettings({
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground">
-          Organization Slug
+          Organization slug
         </label>
         <input
           type="text"
@@ -155,7 +155,7 @@ function OrganizationSettings({
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground">
-          Primary Domain
+          Primary domain
         </label>
         <input
           type="text"
@@ -174,14 +174,14 @@ function OrganizationSettings({
       <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Upload Organization Logo</DialogTitle>
+            <DialogTitle>Upload organization logo</DialogTitle>
             <DialogDescription>Choose an image file to use as your organization logo.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground mb-2">Drag and drop your logo here, or click to browse</p>
-              <Button variant="outline" size="sm">Choose File</Button>
+              <Button variant="outline" size="sm">Choose file</Button>
             </div>
           </div>
           <DialogFooter>
@@ -357,7 +357,7 @@ function SecuritySettings() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleCopyMetadataUrl} disabled={!ssoConfig}>
-            Copy Metadata URL
+            Copy metadata URL
           </Button>
           <Button
             variant="outline"
@@ -412,7 +412,7 @@ function SecuritySettings() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Provider Type</label>
+              <label className="text-xs font-medium text-muted-foreground">Provider type</label>
               <select
                 className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm text-foreground"
                 value={providerType}
@@ -425,7 +425,7 @@ function SecuritySettings() {
             {providerType === "saml" ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase">Entity ID</label>
+                  <label className="text-xs font-medium text-muted-foreground">Entity ID</label>
                   <Input
                     placeholder="https://your-idp.com/entity"
                     className="bg-secondary border-border"
@@ -434,7 +434,7 @@ function SecuritySettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase">SSO URL</label>
+                  <label className="text-xs font-medium text-muted-foreground">SSO URL</label>
                   <Input
                     placeholder="https://your-idp.com/sso"
                     className="bg-secondary border-border"
@@ -443,7 +443,7 @@ function SecuritySettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase">X.509 Certificate</label>
+                  <label className="text-xs font-medium text-muted-foreground">X.509 Certificate</label>
                   <textarea
                     className="w-full h-28 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground resize-none"
                     placeholder="-----BEGIN CERTIFICATE-----"
@@ -455,7 +455,7 @@ function SecuritySettings() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase">Issuer URL</label>
+                  <label className="text-xs font-medium text-muted-foreground">Issuer URL</label>
                   <Input
                     placeholder="https://your-idp.com"
                     className="bg-secondary border-border"
@@ -464,7 +464,7 @@ function SecuritySettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase">Client ID</label>
+                  <label className="text-xs font-medium text-muted-foreground">Client ID</label>
                   <Input
                     placeholder="OIDC client id"
                     className="bg-secondary border-border"
@@ -473,7 +473,7 @@ function SecuritySettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase">Client Secret</label>
+                  <label className="text-xs font-medium text-muted-foreground">Client secret</label>
                   <Input
                     type="password"
                     placeholder="OIDC client secret"
@@ -533,12 +533,12 @@ function SecuritySettings() {
       <Dialog open={ipDialog} onOpenChange={setIpDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Configure IP Allowlist</DialogTitle>
+            <DialogTitle>Configure IP allowlist</DialogTitle>
             <DialogDescription>Only allow access from specific IP addresses or ranges.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">IP Addresses (one per line)</label>
+              <label className="text-xs font-medium text-muted-foreground">IP Addresses (one per line)</label>
               <textarea 
                 className="w-full h-32 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground resize-none"
                 placeholder="192.168.1.0/24&#10;10.0.0.0/8&#10;203.0.113.50"
@@ -547,7 +547,7 @@ function SecuritySettings() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIpDialog(false)}>Cancel</Button>
-            <Button onClick={() => setIpDialog(false)}>Save Allowlist</Button>
+            <Button onClick={() => setIpDialog(false)}>Save allowlist</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -641,7 +641,7 @@ function ApiKeysSettings({ isAdmin }: { isAdmin: boolean }) {
           onClick={() => apiKeys[0] && handleRotateKey(apiKeys[0].id)}
         >
           <RefreshCw className={cn("h-3.5 w-3.5", rotatingKeyId && "animate-spin")} />
-          Rotate Key
+          Rotate key
         </Button>
         <Button size="sm" className="gap-2" disabled={!isAdmin || isCreating} onClick={handleCreateKey}>
           {isCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Key className="h-3.5 w-3.5" />}
@@ -688,7 +688,7 @@ function NotificationSettings() {
         <div className="flex items-center gap-3">
           <Mail className="h-5 w-5 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium text-foreground">Email Notifications</p>
+            <p className="text-sm font-medium text-foreground">Email notifications</p>
             <p className="text-xs text-muted-foreground">Receive alerts via email</p>
           </div>
         </div>
@@ -703,7 +703,7 @@ function NotificationSettings() {
         <div className="flex items-center gap-3">
           <Bell className="h-5 w-5 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium text-foreground">Slack Notifications</p>
+            <p className="text-sm font-medium text-foreground">Slack notifications</p>
             <p className="text-xs text-muted-foreground">Send alerts to Slack channel</p>
           </div>
         </div>
@@ -711,7 +711,7 @@ function NotificationSettings() {
       </div>
       <div>
         <label className="text-xs font-medium text-muted-foreground">
-          Alert Recipients
+          Alert recipients
         </label>
         <input
           type="text"
@@ -729,20 +729,20 @@ function NotificationSettings() {
       <Dialog open={slackDialog} onOpenChange={setSlackDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Configure Slack Notifications</DialogTitle>
+            <DialogTitle>Configure Slack notifications</DialogTitle>
             <DialogDescription>Connect your Slack workspace to receive alerts.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Webhook URL</label>
+              <label className="text-xs font-medium text-muted-foreground">Webhook URL</label>
               <Input placeholder="https://hooks.slack.com/services/..." className="bg-secondary border-border" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Channel</label>
+              <label className="text-xs font-medium text-muted-foreground">Channel</label>
               <Input placeholder="#alerts" className="bg-secondary border-border" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Alert Types</label>
+              <label className="text-xs font-medium text-muted-foreground">Alert types</label>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" defaultChecked className="rounded" /> Workflow failures
@@ -758,7 +758,7 @@ function NotificationSettings() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSlackDialog(false)}>Cancel</Button>
-            <Button onClick={() => setSlackDialog(false)}>Save Configuration</Button>
+            <Button onClick={() => setSlackDialog(false)}>Save configuration</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -933,12 +933,12 @@ function TeamSettings({
       <Dialog open={inviteDialog} onOpenChange={setInviteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite Team Member</DialogTitle>
+            <DialogTitle>Invite team member</DialogTitle>
             <DialogDescription>Send an invitation to join your organization.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Email Address</label>
+              <label className="text-xs font-medium text-muted-foreground">Email address</label>
               <Input 
                 type="email"
                 value={inviteEmail}
@@ -948,7 +948,7 @@ function TeamSettings({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Role</label>
+              <label className="text-xs font-medium text-muted-foreground">Role</label>
               <select 
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
@@ -983,7 +983,7 @@ function TeamSettings({
       <Dialog open={!!editDialog} onOpenChange={() => setEditDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Team Member</DialogTitle>
+            <DialogTitle>Edit team member</DialogTitle>
             <DialogDescription>
               Update role or remove {editDialog?.name || "this member"} from the team. Title and
               department come from their profile.
@@ -1012,7 +1012,7 @@ function TeamSettings({
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Role</label>
+              <label className="text-xs font-medium text-muted-foreground">Role</label>
               <select
                 value={editRole}
                 onChange={(event) => setEditRole(event.target.value)}
@@ -1178,12 +1178,12 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
       <Dialog open={addDialog} onOpenChange={setAddDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Webhook</DialogTitle>
+            <DialogTitle>Add webhook</DialogTitle>
             <DialogDescription>Configure a new outbound webhook endpoint.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Webhook URL</label>
+              <label className="text-xs font-medium text-muted-foreground">Webhook URL</label>
               <Input
                 type="url"
                 value={newUrl}
@@ -1193,7 +1193,7 @@ function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase">Events to Subscribe</label>
+              <label className="text-xs font-medium text-muted-foreground">Events to subscribe</label>
               <div className="space-y-2">
                 {availableEvents.map((event) => (
                   <label key={event} className="flex items-center gap-2 text-sm">
@@ -1249,7 +1249,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       {/* Workspace Default */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-sm font-medium text-foreground">Workspace Default Model</h3>
+          <h3 className="text-sm font-medium text-foreground">Workspace default model</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             The default model used across your workspace when no override is specified
           </p>
@@ -1270,7 +1270,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       {/* Use Case Defaults */}
       <div className="space-y-4 pt-6 border-t border-divide">
         <div>
-          <h3 className="text-sm font-medium text-foreground">Default by Use Case</h3>
+          <h3 className="text-sm font-medium text-foreground">Default by use case</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Set preferred models for specific types of AI tasks
           </p>
@@ -1303,7 +1303,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
                 <Users className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">Agent Default</p>
+                <p className="text-sm font-medium text-foreground">Agent default</p>
                 <p className="text-xs text-muted-foreground">New agents inherit this model</p>
               </div>
             </div>
@@ -1319,7 +1319,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       {/* Fallback Model */}
       <div className="space-y-4 pt-6 border-t border-divide">
         <div>
-          <h3 className="text-sm font-medium text-foreground">Fallback Model</h3>
+          <h3 className="text-sm font-medium text-foreground">Fallback model</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Used when the primary model is unavailable or rate-limited
           </p>
@@ -1333,7 +1333,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       {/* Model Policies */}
       <div className="space-y-4 pt-6 border-t border-divide">
         <div>
-          <h3 className="text-sm font-medium text-foreground">Model Policies</h3>
+          <h3 className="text-sm font-medium text-foreground">Model policies</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Control how models can be used in your workspace
           </p>
@@ -1525,7 +1525,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="space-y-6">
       <div className="border-b border-divide py-3">
-        <p className="text-sm font-medium text-foreground">Gravitre Lite Seats</p>
+        <p className="text-sm font-medium text-foreground">Gravitre Lite seats</p>
         <p className="text-xs text-muted-foreground mt-1">
           Included: {summary?.included_display ?? (summary?.unlimited ? "Unlimited" : String(summary?.included ?? 0))}
           {" | "}Allocated: {summary?.allocated ?? 0}
@@ -1678,7 +1678,7 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
       </div>
 
       <div className="space-y-3 border-b border-divide py-3">
-        <p className="text-sm font-medium text-foreground">Add Department</p>
+        <p className="text-sm font-medium text-foreground">Add department</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input
             value={newDeptName}
@@ -1912,7 +1912,7 @@ function BillingUsageSettings() {
               : undefined
           }
         />
-        <SoftUsageMeter label="Workflow Runs" used={totals.workflow_runs} unit="runs" />
+        <SoftUsageMeter label="Workflow runs" used={totals.workflow_runs} unit="runs" />
         <SoftUsageMeter label="API Calls" used={totals.api_calls} unit="calls" />
         <SoftUsageMeter
           label="AI Credits"
@@ -1923,7 +1923,7 @@ function BillingUsageSettings() {
         />
         {showResearch ? (
           <SoftUsageMeter
-            label="Research Lookups"
+            label="Research lookups"
             used={researchUsed}
             included={researchIncluded}
             unit="lookups"

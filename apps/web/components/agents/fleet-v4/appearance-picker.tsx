@@ -32,8 +32,7 @@ export function AgentAppearancePicker({
           Agent appearance
         </h3>
           <p className="mt-1 text-xs text-[color:var(--g-text-muted)]">
-            Soft curated icons + soft identity colors only — no glow discs, gradients, or freeform
-            hex. Status stays separate. Suggested for “{roleHint}”:{" "}
+            Pick an icon and identity color. Suggested for “{roleHint}”:{" "}
             {ROLE_ICON_REGISTRY[suggested].label}.
           </p>
       </div>

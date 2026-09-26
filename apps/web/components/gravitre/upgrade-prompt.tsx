@@ -37,7 +37,7 @@ const featureDetails = {
     ]
   },
   agents: {
-    title: "More Agents",
+    title: "More agents",
     icon: Sparkles,
     description: "Scale your AI workforce with additional agent capacity.",
     color: "blue",
@@ -51,7 +51,7 @@ const featureDetails = {
     ]
   },
   outputs: {
-    title: "More Outputs",
+    title: "More outputs",
     icon: Zap,
     description: "Increase your monthly output capacity for more work.",
     color: "emerald",
@@ -65,7 +65,7 @@ const featureDetails = {
     ]
   },
   integrations: {
-    title: "Advanced Integrations",
+    title: "Advanced integrations",
     icon: Crown,
     description: "Connect to enterprise tools and advanced data sources.",
     color: "amber",

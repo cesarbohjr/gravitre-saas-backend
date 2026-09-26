@@ -333,7 +333,7 @@ export function HomeDashboard({
           <motion.p variants={item} className={TYPE.meta}>
             Resume setup from{" "}
             <Link href={APP_ROUTES.welcome} className="underline underline-offset-2 hover:text-foreground">
-              Getting Started
+              Getting started
             </Link>
             .
           </motion.p>

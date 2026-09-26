@@ -91,7 +91,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
             </motion.div>
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Execution Progress</h3>
+            <h3 className="font-semibold text-foreground">Execution progress</h3>
             <p className="text-xs text-muted-foreground">{completedSteps} of {steps.length} steps complete</p>
           </div>
         </div>
@@ -335,7 +335,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
         <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center mb-4">
           <Icon name="eye" size="xl" className="text-muted-foreground" />
         </div>
-        <h3 className="font-semibold text-foreground mb-2">Select a Deliverable</h3>
+        <h3 className="font-semibold text-foreground mb-2">Select a deliverable</h3>
         <p className="text-sm text-muted-foreground max-w-xs">
           Click on any deliverable to preview its content and approve for publishing
         </p>
@@ -1015,7 +1015,7 @@ export default function AssignmentDetailPage({
                   {readyCount > 0 && approvedCount < readyCount && (
                     <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={handleApproveAll}>
                       <Icon name="check" size="xs" />
-                      Approve All
+                      Approve all
                     </Button>
                   )}
                 </div>

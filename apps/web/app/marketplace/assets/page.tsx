@@ -624,7 +624,7 @@ function MarketplaceAssetsContent() {
                 <section data-review-surface="marketplace-ops">
                   <p className={TYPE.eyebrow}>Installed (ops)</p>
                   <p className={cn(TYPE.meta, "mt-0.5")}>
-                    Already in this workspace — not a second shop. Open the installed list to manage.
+                    Already in this workspace. Open the installed list to manage.
                   </p>
                   <ul className="mt-3 divide-y divide-divide border-y border-divide">
                     {installedInView.map((asset) => (

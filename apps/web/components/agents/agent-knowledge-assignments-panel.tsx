@@ -141,12 +141,12 @@ export function AgentKnowledgeAssignmentsPanel({ agentId }: AgentKnowledgeAssign
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="font-medium text-foreground">{assignment.label}</h4>
-                  <span className="rounded border px-2 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+                  <span className="rounded border px-2 py-0.5 text-xs font-medium text-muted-foreground">
                     {assignment.sourceType}
                   </span>
                   <span
                     className={cn(
-                      "rounded border px-2 py-0.5 text-[10px] font-medium uppercase",
+                      "rounded border px-2 py-0.5 text-xs font-medium",
                       freshnessClass(assignment.freshnessStatus)
                     )}
                   >

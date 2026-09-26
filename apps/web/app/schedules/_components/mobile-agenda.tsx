@@ -149,7 +149,7 @@ export function MobileAgenda({
               >
                 <span
                   className={cn(
-                    "text-[11px] font-medium uppercase",
+                    "text-xs font-medium",
                     selected ? "text-primary-foreground/80" : "text-muted-foreground",
                   )}
                 >

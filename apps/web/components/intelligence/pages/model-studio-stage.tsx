@@ -72,8 +72,7 @@ export function ModelStudioStage({
         <div>
           <p className={TYPE.eyebrow}>Workspace</p>
           <p className={cn(TYPE.meta, "mt-0.5")}>
-            Intent first, then training. Train and Runs use the existing training system — not a
-            separate hub tab.
+            Describe what the model should do, then train, evaluate, and deploy it.
           </p>
         </div>
         <nav aria-label="Model Studio action" className="flex flex-wrap items-baseline gap-x-4 gap-y-1">

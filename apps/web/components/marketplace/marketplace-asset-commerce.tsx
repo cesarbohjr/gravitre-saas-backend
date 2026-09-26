@@ -109,7 +109,7 @@ export function ConnectorChecklist({
                 <span className={cn("truncate", !item.connected && item.required && "font-medium")}>
                   {item.label || item.connectorType}
                   {item.required ? (
-                    <span className="ml-1 text-[10px] font-semibold uppercase text-destructive">Required</span>
+                    <span className="ml-1 text-xs font-semibold text-destructive">Required</span>
                   ) : (
                     <span className="ml-1 text-[10px] text-muted-foreground">Optional</span>
                   )}

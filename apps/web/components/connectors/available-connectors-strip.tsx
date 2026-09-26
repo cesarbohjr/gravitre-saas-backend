@@ -82,7 +82,7 @@ export function AvailableConnectorsStrip({
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           <h2 className="text-sm font-semibold text-foreground">Discovery</h2>
           <p className="text-xs text-muted-foreground">
-            Available systems as compact logos. Connect from here — not an app-store catalog.
+            Available systems. Connect one from here.
           </p>
         </div>
         {showBrowseAll && (

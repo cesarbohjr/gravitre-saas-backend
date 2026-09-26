@@ -58,14 +58,14 @@ export default function NewIntegrationPage() {
 
   if (!isAdmin) {
     return (
-      <AppShell title="New Integration">
+      <AppShell title="New integration">
         <div className="p-6">
           <Link
             href="/integrations"
             className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Integrations
+            Back to integrations
           </Link>
 
           <div className="rounded-lg border border-border bg-card p-8 text-center">
@@ -82,7 +82,7 @@ export default function NewIntegrationPage() {
   }
 
   return (
-    <AppShell title="New Integration">
+    <AppShell title="New integration">
       <div className="p-6">
         {/* Header */}
         <div className="mb-6">
@@ -91,11 +91,11 @@ export default function NewIntegrationPage() {
             className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Integrations
+            Back to integrations
           </Link>
 
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-foreground">New Integration</h1>
+            <h1 className="text-xl font-semibold text-foreground">New integration</h1>
             <EnvironmentBadge environment="production" />
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function NewIntegrationPage() {
         <form onSubmit={handleSubmit} className="max-w-xl">
           <div className="rounded-lg border border-border bg-card">
             <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold text-foreground">Integration Details</h2>
+              <h2 className="text-sm font-semibold text-foreground">Integration details</h2>
             </div>
             <div className="p-4 space-y-4">
               {/* Name */}
@@ -142,13 +142,13 @@ export default function NewIntegrationPage() {
                 <>
                   <div className="pt-2 border-t border-border">
                     <h3 className="mb-3 text-xs font-medium text-muted-foreground">
-                      Webhook Configuration
+                      Webhook configuration
                     </h3>
                   </div>
 
                   <div>
                     <label className="mb-1.5 block text-sm text-muted-foreground">
-                      Allowed Hosts
+                      Allowed hosts
                     </label>
                     <Input
                       value={allowedHosts}
@@ -163,7 +163,7 @@ export default function NewIntegrationPage() {
 
                   <div>
                     <label className="mb-1.5 block text-sm text-muted-foreground">
-                      Default Path
+                      Default path
                     </label>
                     <Input
                       value={defaultPath}
@@ -201,7 +201,7 @@ export default function NewIntegrationPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="mb-1.5 block text-sm text-muted-foreground">
-                        Retry Count
+                        Retry count
                       </label>
                       <Input
                         type="number"

@@ -84,7 +84,7 @@ export default function LiteResultsPage() {
 
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-muted-foreground">
-          Results by Workflow
+          Results by workflow
         </h2>
         <MetricProvenanceBadge kind="operational" />
       </div>
@@ -106,7 +106,7 @@ export default function LiteResultsPage() {
 
       <div>
         <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
-          Recent Tasks
+          Recent tasks
         </h2>
         <div className="space-y-2">
           {(data?.recent ?? []).map((task) => (

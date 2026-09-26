@@ -707,7 +707,7 @@ function TrainingPageContent() {
             className="space-y-4 border-b border-divide pb-6"
           >
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-foreground">Training Datasets</h2>
+              <h2 className="text-lg font-semibold text-foreground">Training datasets</h2>
               <p className="text-sm text-muted-foreground">
                 Pick a type, add teaching material, then run a job when you have enough records.
               </p>
@@ -802,7 +802,7 @@ function TrainingPageContent() {
                         </div>
                         <span
                           className={cn(
-                            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase",
+                            "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
                             statusClasses(dataset.status)
                           )}
                         >
@@ -1059,7 +1059,7 @@ function TrainingPageContent() {
             className="space-y-4 border-b border-divide pb-6"
           >
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-foreground">Training Jobs</h2>
+              <h2 className="text-lg font-semibold text-foreground">Training jobs</h2>
               <p className="text-sm text-muted-foreground">
                 Fine-tune runs started from a dataset. When a job completes, assign the model under Fine-tunes.
               </p>
@@ -1103,7 +1103,7 @@ function TrainingPageContent() {
                         </div>
                         <span
                           className={cn(
-                            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase",
+                            "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
                             statusClasses(job.status)
                           )}
                         >
@@ -1163,7 +1163,7 @@ function TrainingPageContent() {
           className="space-y-4 border-b border-divide pb-6"
         >
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">Custom Instructions</h2>
+            <h2 className="text-lg font-semibold text-foreground">Custom instructions</h2>
             <p className="text-sm text-muted-foreground">
               Live prompt guidance injected into agent chats when enabled. Use this for tone, escalation rules, and
               standing policies without waiting for a fine-tune.
@@ -1225,7 +1225,7 @@ function TrainingPageContent() {
                   </div>
                   <span
                     className={cn(
-                      "rounded-full border px-2 py-0.5 text-[10px] uppercase",
+                      "rounded-full border px-2 py-0.5 text-xs font-medium",
                       instruction.is_active
                         ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
                         : "bg-secondary text-muted-foreground border-border"

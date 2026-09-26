@@ -18,6 +18,7 @@ import { NucleoHistory } from "@/components/icons/nucleo/semantic"
 import { LEGACY_COLOR_TO_IDENTITY, LEGACY_ICON_TO_ROLE } from "@/lib/agent-identity-bridge"
 import { isAgentAvatarColorId, isAgentIconId } from "@/lib/agent-identity"
 import { AGENT_DEPARTMENT_OPTIONS, normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
+import { relativeTime } from "@/lib/agent-job-result"
 import { normalizeAgentStatus, presentAgentStatus } from "@/lib/agent-runtime-status"
 import { cn } from "@/lib/utils"
 import { GravitreAgentIdentity } from "./gravitre-agent-identity"
@@ -292,7 +293,7 @@ export function AgentFleetInspectorBody({
           <h3 className="mb-2 text-xs font-medium text-muted-foreground">Recent activity</h3>
           <p className="text-[13px] text-foreground">{agent.lastAction || "No activity yet"}</p>
           {agent.lastActionTime ? (
-            <p className="mt-0.5 text-xs text-muted-foreground">{agent.lastActionTime}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{relativeTime(agent.lastActionTime)}</p>
           ) : null}
         </section>
       </div>

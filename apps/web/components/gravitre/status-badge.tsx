@@ -53,6 +53,15 @@ const variantToTone: Partial<Record<BadgeVariant, StatusTone>> = {
   muted: "idle",
 }
 
+/** Raw status values (`needs_approval`, `ACTIVE`) render as sentence case. */
+export function statusLabel(children: React.ReactNode): React.ReactNode {
+  if (typeof children !== "string" || !/^[A-Za-z_\- ]+$/.test(children)) return children
+  const words = children.replace(/[_-]+/g, " ").trim()
+  if (!words) return children
+  const lower = words === words.toUpperCase() || words === words.toLowerCase() ? words.toLowerCase() : words
+  return lower.charAt(0).toUpperCase() + lower.slice(1)
+}
+
 export function StatusBadge({
   variant = "default",
   tone,
@@ -73,7 +82,7 @@ export function StatusBadge({
       ) : dot ? (
         <span className={cn("h-1.5 w-1.5 rounded-full", dotClass)} />
       ) : null}
-      {children}
+      {statusLabel(children)}
     </span>
   )
 }

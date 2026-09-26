@@ -99,6 +99,13 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     expect(button.className).toContain("md:bottom-5")
   })
 
+  it("stacks above MobileBottomNav (z-30) but below modal sheets and dialogs (z-50)", async () => {
+    await renderHelper()
+    const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.className).toContain("z-40")
+    expect(button.className).not.toMatch(/z-\[(?:[5-9]\d|\d{3,})\]/)
+  })
+
   it("the mobile offset (56px bar + 12px gap = 68px+) is strictly greater than MobileBottomNav's own height (56px) — no overlap by construction", () => {
     const mobileBottomNavHeightPx = 56 // h-14, confirmed in mobile-bottom-nav.tsx
     const helperGapPx = 12

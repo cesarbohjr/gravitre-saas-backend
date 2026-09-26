@@ -31,7 +31,7 @@ export function EnvironmentBadge({ environment, className, showIcon = false }: E
           )}
         />
       )}
-      {environment}
+      {environment === "production" ? "Production" : "Staging"}
     </span>
   )
 }

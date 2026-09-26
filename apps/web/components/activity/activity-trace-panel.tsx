@@ -141,7 +141,7 @@ export function ActivityTracePanel({
   if (stages.length === 0) {
     return (
       <div className={cn("rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-canvas)] p-4", className)} data-testid="activity-trace-empty">
-        <p className={TYPE.eyebrow}>TRACE</p>
+        <p className={TYPE.eyebrow}>Trace</p>
         <p className={cn(TYPE.bodyMuted, "mt-2 text-sm")}>
           No recorded TRACE stages on this outcome. Do not invent a waterfall.
         </p>

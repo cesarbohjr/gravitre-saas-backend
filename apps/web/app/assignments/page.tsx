@@ -68,7 +68,7 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
   completed: { label: "Completed", color: "text-[color:var(--g-brand)]", bgColor: "bg-[color:var(--g-brand-soft)]", dotColor: "bg-[color:var(--g-brand)]", icon: "check" },
   pending: { label: "Queued", color: "text-amber-700", bgColor: "bg-amber-500/10", dotColor: "bg-amber-500", icon: "clock" },
   failed: { label: "Failed", color: "text-destructive", bgColor: "bg-destructive/10", dotColor: "bg-destructive", icon: "warning" },
-  needs_approval: { label: "Needs Approval", color: "text-violet-700", bgColor: "bg-violet-500/10", dotColor: "bg-violet-500", icon: "shield" },
+  needs_approval: { label: "Needs approval", color: "text-violet-700", bgColor: "bg-violet-500/10", dotColor: "bg-violet-500", icon: "shield" },
 }
 
 function deriveAssignmentProgress(assignment: DemoAssignment): number {
@@ -450,7 +450,7 @@ export default function AssignmentsPage() {
       { id: "running", label: "Running", count: countByStatus("running"), accent: "blue" },
       {
         id: "needs_approval",
-        label: "Needs Approval",
+        label: "Needs approval",
         count: countByStatus("needs_approval"),
         accent: "violet",
       },

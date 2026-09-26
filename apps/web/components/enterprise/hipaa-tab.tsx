@@ -221,7 +221,7 @@ export function HipaaTab({ isAdmin }: { isAdmin: boolean }) {
       <Dialog open={baaDialogOpen} onOpenChange={setBaaDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Accept Business Associate Agreement</DialogTitle>
+            <DialogTitle>Accept business associate agreement</DialogTitle>
             <DialogDescription className="space-y-2 pt-1">
               <span className="block">
                 By accepting version <strong className="text-foreground">{data.requiredBaaVersion}</strong>,

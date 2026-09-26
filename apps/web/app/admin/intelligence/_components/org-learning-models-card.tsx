@@ -176,7 +176,7 @@ export function OrgLearningModelsCard({ enabled }: { enabled: boolean }) {
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-foreground">{model.label}</span>
-                    <Badge variant="outline" className="text-[10px] uppercase">
+                    <Badge variant="outline" className="text-xs font-medium">
                       {model.version}
                     </Badge>
                   </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { PAGE_FRAME } from "@/lib/design-system"
 import { useCallback, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
@@ -94,7 +95,7 @@ export default function GoalsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl space-y-6 p-6">
+      <div className={PAGE_FRAME}>
         <GravitrePageHeader
           title={SURFACE_COPY.pages.goals.title}
           description={SURFACE_COPY.pages.goals.description}

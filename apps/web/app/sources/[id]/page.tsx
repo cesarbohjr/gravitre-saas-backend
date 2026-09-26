@@ -163,7 +163,7 @@ export default function SourceDetailPage() {
       <AppShell title="Source">
         <div className="p-6">
           <button onClick={() => router.push("/sources")} className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to Sources
+            <ArrowLeft className="h-4 w-4" /> Back to sources
           </button>
           <p className="text-sm text-red-600 dark:text-red-400">{error instanceof Error ? error.message : "Source not found"}</p>
         </div>
@@ -277,11 +277,11 @@ export default function SourceDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium">Last Sync</p>
+                  <p className="text-xs text-muted-foreground font-medium">Last sync</p>
                   <p className="text-sm text-foreground mt-1">{formatRelative(String(source.lastSyncAt ?? ""))}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium">Sync Frequency</p>
+                  <p className="text-xs text-muted-foreground font-medium">Sync frequency</p>
                   <p className="text-sm text-foreground mt-1">
                     Every {Math.round(Number(source.syncIntervalSeconds ?? 300) / 60)} minutes
                   </p>
@@ -291,7 +291,7 @@ export default function SourceDetailPage() {
                   <p className="text-sm text-foreground mt-1">{Number(source.tablesCount ?? 0)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium">Total Records</p>
+                  <p className="text-xs text-muted-foreground font-medium">Total records</p>
                   <p className="text-sm text-foreground mt-1">{formatCount(Number(source.recordCount ?? 0))}</p>
                 </div>
               </div>
@@ -301,7 +301,7 @@ export default function SourceDetailPage() {
 
             <div className="rounded-lg border border-border bg-card p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-foreground">Schema Preview</h2>
+                <h2 className="text-sm font-semibold text-foreground">Schema preview</h2>
                 <span className="text-xs text-muted-foreground">{schemaTables.length} tables</span>
               </div>
               <AdaptiveDataView className="border-0">
@@ -335,7 +335,7 @@ export default function SourceDetailPage() {
             </div>
 
             <div className="rounded-lg border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-4">Sync History</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Sync history</h2>
               <div className="space-y-2">
                 {history.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No sync history yet.</p>
@@ -374,7 +374,7 @@ export default function SourceDetailPage() {
 
           <div className="space-y-6">
             <div className="rounded-lg border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-4">Quick Stats</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Quick stats</h2>
               <div className="space-y-4 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Created</span>
@@ -428,7 +428,7 @@ export default function SourceDetailPage() {
                   onClick={() => setDeleteModalOpen(true)}
                 >
                   <Trash2 className="h-4 w-4" />
-                  Remove Source
+                  Remove source
                 </Button>
               </div>
             </div>
@@ -440,14 +440,14 @@ export default function SourceDetailPage() {
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Source</DialogTitle>
+            <DialogTitle>Remove source</DialogTitle>
             <DialogDescription>
               This will disconnect {name} from Gravitre. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => void handleDelete()}>Remove Source</Button>
+            <Button variant="destructive" onClick={() => void handleDelete()}>Remove source</Button>
           </div>
         </DialogContent>
       </Dialog>

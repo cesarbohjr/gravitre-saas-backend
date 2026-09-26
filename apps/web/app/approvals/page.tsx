@@ -612,7 +612,7 @@ function DetailPanel({
         {/* Context Details */}
         <div>
           <h3 className="mb-3 text-xs font-medium text-muted-foreground">
-            Request Details
+            Request details
           </h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between py-2 border-b border-border/50">
@@ -879,7 +879,7 @@ function ApprovalsContent() {
             <GravitrePageHeader
               className="border-0"
               eyebrow="Governance"
-              title="Decision Queue"
+              title="Decision queue"
               description={
                 queueTab === "pending"
                   ? `${pendingApprovals.length} pending request${pendingApprovals.length !== 1 ? "s" : ""}`
@@ -898,18 +898,19 @@ function ApprovalsContent() {
               }
             />
             <div className="px-3 sm:px-4 pb-3 sm:pb-4">
-            <div className="mb-3 flex gap-1 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1">
+            <div className="mb-3 flex h-9 items-end gap-5 border-b border-[color:var(--g-border-default)]">
               <button
                 type="button"
                 onClick={() => {
                   setQueueTab("pending")
                   setSelectedId(null)
                 }}
+                aria-pressed={queueTab === "pending"}
                 className={cn(
-                  "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition",
+                  "relative -mb-px inline-flex h-9 items-center border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   queueTab === "pending"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 Pending
@@ -920,11 +921,12 @@ function ApprovalsContent() {
                   setQueueTab("history")
                   setSelectedId(null)
                 }}
+                aria-pressed={queueTab === "history"}
                 className={cn(
-                  "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition",
+                  "relative -mb-px inline-flex h-9 items-center border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   queueTab === "history"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 Past

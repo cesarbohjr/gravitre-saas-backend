@@ -23,7 +23,7 @@ export function GuardrailsBox({
     >
       <div className="mb-3 flex items-center gap-2">
         <Icon name="shield" size="sm" className="text-warning" emphasis />
-        <h4 className="text-sm font-medium text-foreground">Safety Rules</h4>
+        <h4 className="text-sm font-medium text-foreground">Safety rules</h4>
       </div>
 
       <div className="space-y-3">
@@ -50,7 +50,7 @@ export function GuardrailsBox({
           <div>
             <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Icon name="warning" size="xs" />
-              <span>Needs Approval</span>
+              <span>Needs approval</span>
             </div>
             <ul className="space-y-1">
               {approvalRules.map((rule, i) => (
@@ -67,7 +67,7 @@ export function GuardrailsBox({
           <div>
             <div className="mb-2 flex items-center gap-1.5 text-xs text-destructive">
               <Icon name="lock" size="xs" />
-              <span>Admin Only</span>
+              <span>Admin only</span>
             </div>
             <ul className="space-y-1">
               {adminRestrictions.map((restriction, i) => (

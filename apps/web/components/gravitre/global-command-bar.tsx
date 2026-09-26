@@ -35,7 +35,7 @@ const navigationItems: CommandItem[] = [
   {
     id: "nav-assistant",
     type: "navigation",
-    title: "Workspace Chat",
+    title: "Workspace chat",
     subtitle: "Multi-turn chat with tools",
     icon: "chat",
     href: `${APP_ROUTES.gravitreAi}?mode=chat`,
@@ -44,7 +44,7 @@ const navigationItems: CommandItem[] = [
   {
     id: "nav-search",
     type: "navigation",
-    title: "Universal Search",
+    title: "Universal search",
     subtitle: "Find workflows, runs, and docs",
     icon: "search",
     href: "/search",
@@ -54,12 +54,12 @@ const navigationItems: CommandItem[] = [
   { id: "nav-workflows", type: "navigation", title: "Workflows", subtitle: "Automation flows", icon: "automations", href: "/workflows", keywords: ["flow", "pipeline"], requiresFullSeat: true },
   { id: "nav-connectors", type: "navigation", title: "Connectors", subtitle: "Integrations", icon: "apps", href: "/connectors", keywords: ["api", "integration"], requiresFullSeat: true },
   { id: "nav-sources", type: "navigation", title: "Sources", subtitle: "Data sources", icon: "data", href: "/sources", keywords: ["data", "database"], requiresFullSeat: true },
-  { id: "nav-assign", type: "navigation", title: "Assign Work", subtitle: "Run department workflows", icon: "send", href: "/lite/assign", keywords: ["assign", "lite", "work"] },
-  { id: "nav-tasks", type: "navigation", title: "My Tasks", subtitle: "Assigned work", icon: "listTodo", href: "/lite/tasks", keywords: ["tasks", "lite"] },
+  { id: "nav-assign", type: "navigation", title: "Assign work", subtitle: "Run department workflows", icon: "send", href: "/lite/assign", keywords: ["assign", "lite", "work"] },
+  { id: "nav-tasks", type: "navigation", title: "My tasks", subtitle: "Assigned work", icon: "listTodo", href: "/lite/tasks", keywords: ["tasks", "lite"] },
   { id: "nav-activity", type: "navigation", title: "Activity", subtitle: "Completed work and failure alerts", icon: "run", href: "/activity", keywords: ["execute", "history", "runs", "outcomes"] },
   { id: "nav-approvals", type: "navigation", title: "Approvals", subtitle: "Pending reviews", icon: "approvals", href: "/approvals", keywords: ["review", "approve"] },
   { id: "nav-intelligence", type: "navigation", title: "Intelligence", subtitle: "Health, ROI, learning, models", icon: "dashboard", href: "/intelligence", keywords: ["monitor", "stats", "metrics", "insights"] },
-  { id: "nav-audit", type: "navigation", title: "Audit Log", subtitle: "Compliance export", icon: "history", href: "/audit", keywords: ["log", "history", "compliance"] },
+  { id: "nav-audit", type: "navigation", title: "Audit log", subtitle: "Compliance export", icon: "history", href: "/audit", keywords: ["log", "history", "compliance"] },
   { id: "nav-settings", type: "navigation", title: "Settings", subtitle: "Personal, organization, admin", icon: "settings", href: "/settings", keywords: ["config", "preferences", "enterprise", "federation", "environments"] },
 ]
 

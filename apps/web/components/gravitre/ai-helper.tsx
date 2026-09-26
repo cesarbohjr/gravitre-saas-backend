@@ -129,7 +129,7 @@ export function GravitreAIHelper() {
           onClick={handleOpen}
           data-gravitre-ai-helper=""
           className={cn(
-            "fixed left-5 z-[85] flex items-center gap-2.5 rounded-full border border-divide",
+            "fixed left-5 z-40 flex items-center gap-2.5 rounded-full border border-divide",
             "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
             "bg-[color:var(--g-surface-1)] px-3 py-2 shadow-[var(--np-shadow)] transition-colors",
             "hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",

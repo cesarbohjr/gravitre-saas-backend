@@ -441,7 +441,7 @@ export default function WorkflowsPage() {
               <Button size="sm" className={cn("gap-2", RADIUS.control)} asChild>
                 <Link href="/workflows/new/builder">
                   <Icon name="add" size="sm" />
-                  <span className="hidden sm:inline">New Workflow</span>
+                  <span className="hidden sm:inline">New workflow</span>
                 </Link>
               </Button>
             </>
@@ -451,7 +451,7 @@ export default function WorkflowsPage() {
             <summary className="cursor-pointer list-none border-b border-divide py-2">
               <p className="text-xs font-medium text-muted-foreground">Totals</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {workflows.length} workflows · {activeCount} active · {runningCount} running — after the list, not instead of it.
+                {workflows.length} workflows · {activeCount} active · {runningCount} running
               </p>
             </summary>
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-3 lg:grid-cols-4">
@@ -509,7 +509,7 @@ export default function WorkflowsPage() {
               icon={NucleoWorkflow}
               title="No workflows yet"
               description="Create your first workflow to automate work across your systems."
-              action={{ label: "New Workflow", onClick: () => router.push("/workflows/new/builder") }}
+              action={{ label: "New workflow", onClick: () => router.push("/workflows/new/builder") }}
             />
           )}
 

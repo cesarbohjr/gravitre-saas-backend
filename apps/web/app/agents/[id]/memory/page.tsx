@@ -399,7 +399,7 @@ export default function AgentMemoryPage({
   }
 
   return (
-    <AppShell title="Agent Memory">
+    <AppShell title="Agent memory">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           eyebrow="AI Team"
@@ -424,10 +424,10 @@ export default function AgentMemoryPage({
 
         <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
           <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric label="Total Memories" value={stats.total} />
-            <GravitreMetric label="Avg Confidence" value={`${stats.avgConfidence}%`} />
-            <GravitreMetric label="Total Usage" value={stats.totalUsage} />
-            <GravitreMetric label="Protected Rules" value={stats.protected} />
+            <GravitreMetric label="Total memories" value={stats.total} />
+            <GravitreMetric label="Avg confidence" value={`${stats.avgConfidence}%`} />
+            <GravitreMetric label="Total usage" value={stats.totalUsage} />
+            <GravitreMetric label="Protected rules" value={stats.protected} />
           </section>
 
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

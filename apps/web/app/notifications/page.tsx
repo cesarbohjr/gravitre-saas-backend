@@ -48,13 +48,13 @@ const typeConfig = {
     icon: CheckCircle2,
     color: "text-success",
     bg: "bg-success/10",
-    label: "Run Complete",
+    label: "Run complete",
   },
   run_failed: {
     icon: AlertTriangle,
     color: "text-destructive",
     bg: "bg-destructive/10",
-    label: "Run Failed",
+    label: "Run failed",
   },
   mention: {
     icon: AtSign,
@@ -66,7 +66,7 @@ const typeConfig = {
     icon: UserPlus,
     color: "text-cyan-500",
     bg: "bg-cyan-500/10",
-    label: "Team Invite",
+    label: "Team invite",
   },
   system: {
     icon: Rocket,
@@ -78,19 +78,19 @@ const typeConfig = {
     icon: CheckCircle2,
     color: "text-success",
     bg: "bg-success/10",
-    label: "Agent Created",
+    label: "Agent created",
   },
   workflow_created: {
     icon: CheckCircle2,
     color: "text-success",
     bg: "bg-success/10",
-    label: "Workflow Created",
+    label: "Workflow created",
   },
   task_completed: {
     icon: CheckCircle2,
     color: "text-success",
     bg: "bg-success/10",
-    label: "Task Complete",
+    label: "Task complete",
   },
 }
 

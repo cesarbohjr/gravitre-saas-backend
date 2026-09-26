@@ -61,7 +61,7 @@ export function AiWorkSurfacesCallout({
                   {surface.badge}
                 </span>
                 {isCurrent ? (
-                  <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                  <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                     Here
                   </span>
                 ) : null}

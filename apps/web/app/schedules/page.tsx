@@ -6,7 +6,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
-import { RADIUS } from "@/lib/design-system"
+import { PAGE_FRAME, RADIUS } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { RefreshCw, CalendarClock, Plus } from "lucide-react"
@@ -52,11 +52,11 @@ export default function SchedulesPage() {
 
   return (
     <AppShell title="Schedules">
-      <div className="mx-auto w-full min-w-0 max-w-7xl p-4 sm:p-6">
+      <div className={PAGE_FRAME}>
         {/* Shared PageHeader rather than a bespoke title block, so the type
             scale, icon tile and action row match every other hub page. */}
         <GravitrePageHeader
-          className="mb-5 min-w-0 border-0 px-0"
+          className="min-w-0"
           eyebrow="Operations"
           title="Schedules"
           description="All workflow schedules, task runs and training jobs across your organization."

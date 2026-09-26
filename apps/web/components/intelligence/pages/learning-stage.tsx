@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils"
 import { ArrowRight, Brain, Cpu } from "@phosphor-icons/react"
 
 const SEGMENTS: { id: LearningSegment; label: string }[] = [
-  { id: "recent", label: "Learned Recently" },
+  { id: "recent", label: "Learned recently" },
   { id: "relationships", label: "Relationships" },
   { id: "memory", label: "Memory" },
   { id: "models", label: "Models" },

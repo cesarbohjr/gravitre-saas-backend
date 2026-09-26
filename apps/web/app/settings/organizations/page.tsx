@@ -248,14 +248,14 @@ export default function ManageOrganizationsPage() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Create Organization</DialogTitle>
+                <DialogTitle>Create organization</DialogTitle>
                 <DialogDescription>
                   Create a new organization to collaborate with your team
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="org-name">Organization Name</Label>
+                    <Label htmlFor="org-name">Organization name</Label>
                     <Input
                       id="org-name"
                       placeholder="Acme Inc"
@@ -411,7 +411,7 @@ export default function ManageOrganizationsPage() {
       <Dialog open={showMembersDialog} onOpenChange={setShowMembersDialog}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Manage Members</DialogTitle>
+            <DialogTitle>Manage members</DialogTitle>
             <DialogDescription>
               Invite and manage members in {membersDialogOrg?.name ?? "organization"}.
             </DialogDescription>
@@ -484,7 +484,7 @@ export default function ManageOrganizationsPage() {
                         void handleUpdateMemberRole(member, member.role === "admin" ? "member" : "admin")
                       }
                     >
-                      Toggle Role
+                      Toggle role
                     </Button>
                     <Button
                       variant="ghost"

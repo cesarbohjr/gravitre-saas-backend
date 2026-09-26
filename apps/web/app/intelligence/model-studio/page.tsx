@@ -1,5 +1,6 @@
 "use client"
 
+import { PAGE_FRAME } from "@/lib/design-system"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
@@ -21,7 +22,7 @@ export default function ModelStudioPage() {
 
   return (
     <AppShell title="Model Studio">
-      <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
+      <div className={PAGE_FRAME}>
         <GravitrePageHeader
           title="Model Studio"
           description="Create, train, evaluate, and deploy models for your business, and review every run."

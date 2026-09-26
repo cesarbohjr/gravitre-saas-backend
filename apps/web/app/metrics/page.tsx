@@ -584,7 +584,7 @@ export default function MetricsPage() {
             {/* Top Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
               <MetricCard
-                title="Total Runs"
+                title="Total runs"
                 value={overview.totalRuns.toLocaleString()}
                 change={overview.changes?.totalRuns}
                 trend={overview.trends?.totalRuns}
@@ -592,7 +592,7 @@ export default function MetricsPage() {
                 accentColor="blue"
               />
               <MetricCard
-                title="Success Rate"
+                title="Success rate"
                 value={`${overview.successRate.toFixed(1)}%`}
                 change={overview.changes?.successRate}
                 trend={overview.trends?.successRate}
@@ -600,7 +600,7 @@ export default function MetricsPage() {
                 accentColor="emerald"
               />
               <MetricCard
-                title="Records Processed"
+                title="Records processed"
                 value={formatRecordsCount(overview.recordsProcessed)}
                 change={overview.changes?.recordsProcessed}
                 trend={overview.trends?.recordsProcessed}
@@ -608,7 +608,7 @@ export default function MetricsPage() {
                 accentColor="blue"
               />
               <MetricCard
-                title="Avg Latency"
+                title="Avg latency"
                 value={`${Math.round(overview.avgLatency)}ms`}
                 change={overview.changes?.avgLatency}
                 trend={overview.trends?.avgLatency}
@@ -616,7 +616,7 @@ export default function MetricsPage() {
                 accentColor={overview.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
               />
               <MetricCard
-                title="Active Connectors"
+                title="Active connectors"
                 value={`${overview.activeConnectors}/${overview.totalConnectors}`}
                 icon={Activity}
                 accentColor="blue"
@@ -628,7 +628,7 @@ export default function MetricsPage() {
               {/* Run Volume Chart */}
               <div className="lg:col-span-2 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
                 <div className="flex items-center justify-between border-b border-divide px-4 py-3">
-                  <h3 className="text-sm font-medium text-foreground">Execution Volume</h3>
+                  <h3 className="text-sm font-medium text-foreground">Execution volume</h3>
                   <div className="flex items-center gap-4 text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -684,7 +684,7 @@ export default function MetricsPage() {
               <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
                 <div className="flex items-center gap-2 border-b border-divide px-4 py-3">
                   <Sparkles className="h-4 w-4 text-[color:var(--g-brand)]" />
-                  <h3 className="text-sm font-medium text-foreground">Meson Insights</h3>
+                  <h3 className="text-sm font-medium text-foreground">Meson insights</h3>
                 </div>
                 <div className="p-3 space-y-2 max-h-[280px] overflow-auto">
                   {insights.map((insight) => (
@@ -699,7 +699,7 @@ export default function MetricsPage() {
               {/* Latency Chart with anomaly markers */}
               <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
                 <div className="flex items-center justify-between border-b border-divide px-4 py-3">
-                  <h3 className="text-sm font-medium text-foreground">Latency Distribution</h3>
+                  <h3 className="text-sm font-medium text-foreground">Latency distribution</h3>
                   {latencySpikeTime ? (
                     <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10">
                       <AlertTriangle className="h-3 w-3 text-amber-700 dark:text-amber-400" />
@@ -752,7 +752,7 @@ export default function MetricsPage() {
               {/* Throughput with target line */}
               <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
                 <div className="border-b border-divide px-4 py-3">
-                  <h3 className="text-sm font-medium text-foreground">Weekly Throughput</h3>
+                  <h3 className="text-sm font-medium text-foreground">Weekly throughput</h3>
                 </div>
                 <div className="p-4">
                   <ResponsiveContainer width="100%" height={200}>

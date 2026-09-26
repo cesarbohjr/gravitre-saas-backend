@@ -195,9 +195,9 @@ export default function ProfilePage() {
   const activityStats = [
     // Three unrelated metrics, so the categorical --chart-* ramp rather than
     // health tones (an amber session count doesn't mean anything is wrong).
-    { label: "Workflows Created", value: "47", icon: Zap, color: "text-chart-2" },
-    { label: "Approvals Made", value: "156", icon: Check, color: "text-chart-1" },
-    { label: "Active Sessions", value: "3", icon: Activity, color: "text-chart-3" },
+    { label: "Workflows created", value: "47", icon: Zap, color: "text-chart-2" },
+    { label: "Approvals made", value: "156", icon: Check, color: "text-chart-1" },
+    { label: "Active sessions", value: "3", icon: Activity, color: "text-chart-3" },
   ]
 
   if (loading) {
@@ -239,7 +239,7 @@ export default function ProfilePage() {
                 )}
               >
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                Back to Settings
+                Back to settings
               </Link>
 
               {/* Profile Card */}
@@ -288,7 +288,7 @@ export default function ProfilePage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-semibold text-foreground">Update Profile Photo</h3>
+                        <h3 className="text-lg font-semibold text-foreground">Update profile photo</h3>
                         <button 
                           onClick={() => setShowAvatarModal(false)}
                           className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
@@ -399,8 +399,8 @@ export default function ProfilePage() {
                 "lg:col-span-1 space-y-4 transition-all duration-500 delay-200",
                 mounted ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-8"
               )}>
-                <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Activity Overview
+                <h2 className="text-xs font-medium text-muted-foreground">
+                  Activity overview
                 </h2>
                 {activityStats.map((stat, i) => (
                   <div 
@@ -456,12 +456,12 @@ export default function ProfilePage() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                       <User className="h-4 w-4 text-primary" />
                     </div>
-                    <h2 className="text-sm font-semibold text-foreground">Personal Information</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Personal information</h2>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <InputField
-                      label="First Name"
+                      label="First name"
                       value={profile.firstName}
                       onChange={(v) => handleChange("firstName", v)}
                       icon={User}
@@ -470,7 +470,7 @@ export default function ProfilePage() {
                       onBlur={() => setActiveField(null)}
                     />
                     <InputField
-                      label="Last Name"
+                      label="Last name"
                       value={profile.lastName}
                       onChange={(v) => handleChange("lastName", v)}
                       icon={User}
@@ -482,7 +482,7 @@ export default function ProfilePage() {
 
                   <div className="mt-4">
                     <InputField
-                      label="Email Address"
+                      label="Email address"
                       value={profile.email}
                       onChange={(v) => handleChange("email", v)}
                       icon={Mail}
@@ -495,7 +495,7 @@ export default function ProfilePage() {
 
                   <div className="mt-4">
                     <InputField
-                      label="Phone Number"
+                      label="Phone number"
                       value={profile.phone}
                       onChange={(v) => handleChange("phone", v)}
                       icon={Phone}
@@ -513,12 +513,12 @@ export default function ProfilePage() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                       <Building2 className="h-4 w-4 text-primary" />
                     </div>
-                    <h2 className="text-sm font-semibold text-foreground">Work Information</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Work information</h2>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <InputField
-                      label="Job Title"
+                      label="Job title"
                       value={profile.jobTitle}
                       onChange={(v) => handleChange("jobTitle", v)}
                       icon={Building2}
@@ -550,7 +550,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="mt-4">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    <label className="text-xs font-medium text-muted-foreground">
                       Timezone
                     </label>
                     <select 
@@ -576,7 +576,7 @@ export default function ProfilePage() {
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                       <Sparkles className="h-4 w-4 text-primary" />
                     </div>
-                    <h2 className="text-sm font-semibold text-foreground">About You</h2>
+                    <h2 className="text-sm font-semibold text-foreground">About you</h2>
                   </div>
                   
                   <div className="relative group">
@@ -645,7 +645,7 @@ export default function ProfilePage() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                         <Activity className="h-4 w-4 text-primary" />
                       </div>
-                      <h2 className="text-sm font-semibold text-foreground">Active Sessions</h2>
+                      <h2 className="text-sm font-semibold text-foreground">Active sessions</h2>
                     </div>
                     <Button variant="outline" onClick={() => void handleRevokeAllSessions()} disabled={isRevokingAll} className="gap-2">
                       {isRevokingAll && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -710,7 +710,7 @@ function InputField({
   const fieldId = useId()
   return (
     <div className="group">
-      <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <label htmlFor={fieldId} className="text-xs font-medium text-muted-foreground">
         {label}
       </label>
       <div className={cn(

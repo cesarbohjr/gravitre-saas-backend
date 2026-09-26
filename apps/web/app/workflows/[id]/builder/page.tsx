@@ -1144,7 +1144,7 @@ function DecisionNode({
           <p className="text-sm font-medium text-foreground truncate">{node.name}</p>
           <p className="text-[10px] text-[color:var(--g-signal)] flex items-center justify-center gap-1">
             <GitBranch className="h-3 w-3" />
-            Decision Node
+            Decision node
           </p>
           {node.description && (
             <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{node.description}</p>
@@ -1298,7 +1298,7 @@ function AIReasoningPanel({
 
           {/* Key factors */}
           <div>
-            <p className="text-xs text-muted-foreground mb-2">Key Factors</p>
+            <p className="text-xs text-muted-foreground mb-2">Key factors</p>
             <div className="space-y-1.5">
               {reasoning.factors?.map((factor, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
@@ -1312,7 +1312,7 @@ function AIReasoningPanel({
           {/* Rejected paths */}
           {reasoning.rejectedPaths && reasoning.rejectedPaths.length > 0 && (
             <div>
-              <p className="text-xs text-muted-foreground mb-2">Alternatives Considered</p>
+              <p className="text-xs text-muted-foreground mb-2">Alternatives considered</p>
               <div className="flex flex-wrap gap-1.5">
                 {reasoning.rejectedPaths.map((path, i) => (
                   <span
@@ -1847,7 +1847,7 @@ function DebateViewDialog({
         <div className="flex-1 overflow-y-auto space-y-6 py-4">
           {/* Debate Timeline */}
           <div className="px-1">
-            <h4 className="text-xs font-medium text-muted-foreground mb-3">Debate Timeline</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Debate timeline</h4>
             <div className="flex items-center gap-2">
               {timeline.map((step, idx) => (
                 <div key={idx} className="flex items-center gap-2 flex-1">
@@ -1880,7 +1880,7 @@ function DebateViewDialog({
 
           {/* Agent Contributions */}
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground mb-3">Agent Contributions</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Agent contributions</h4>
             <div className="grid gap-3">
               {contributions.map((contribution, idx) => {
                 const agent = getAgentById(contribution.agentId) || agents[idx]
@@ -1940,7 +1940,7 @@ function DebateViewDialog({
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                Disagreements Detected
+                Disagreements detected
               </h4>
               <div className="space-y-2">
                 {disagreements.map((disagreement, idx) => {
@@ -1967,7 +1967,7 @@ function DebateViewDialog({
             <div className="p-4 rounded-lg bg-success/5 border border-success/30">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle className="h-5 w-5 text-success" />
-                <h4 className="font-medium text-foreground">Final Decision</h4>
+                <h4 className="font-medium text-foreground">Final decision</h4>
                 <Badge variant="outline" className="ml-auto bg-success/10 text-success border-success/30">
                   {finalDecision.confidence}% confidence
                 </Badge>
@@ -2014,7 +2014,7 @@ function DebateViewDialog({
               onClick={onAcceptDecision}
             >
               <CheckCircle className="h-4 w-4" />
-              Accept Recommendation
+              Accept recommendation
             </Button>
             <Button 
               variant="outline" 
@@ -2030,7 +2030,7 @@ function DebateViewDialog({
               onClick={onRequestMoreEvidence}
             >
               <FileSearch className="h-4 w-4" />
-              More Evidence
+              More evidence
             </Button>
           </div>
         )}
@@ -2518,7 +2518,7 @@ node.type === "approval" && "bg-red-500",
                 <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium">Action Parameters</span>
+                    <span className="text-sm font-medium">Action parameters</span>
                   </div>
                   {selectedAction.fields.map((field) => (
                     <DynamicFormField
@@ -2555,7 +2555,7 @@ node.type === "approval" && "bg-red-500",
           {/* Type-specific config */}
           {node.type === "agent" && (
             <div className="space-y-4 pt-4 border-t border-border">
-              <h4 className="text-sm font-medium text-foreground">Agent Settings</h4>
+              <h4 className="text-sm font-medium text-foreground">Agent settings</h4>
               <div>
                 <FieldLabel required>Existing agent</FieldLabel>
                 {orgAgents.length === 0 ? (
@@ -2649,7 +2649,7 @@ node.type === "approval" && "bg-red-500",
 
           {node.type === "task" && (
             <div className="space-y-4 pt-4 border-t border-border">
-              <h4 className="text-sm font-medium text-foreground">Task Settings</h4>
+              <h4 className="text-sm font-medium text-foreground">Task settings</h4>
               <div>
                 <FieldLabel required>Instructions</FieldLabel>
                 <textarea
@@ -2671,7 +2671,7 @@ node.type === "approval" && "bg-red-500",
                 </p>
               </div>
               <div>
-                <FieldLabel>Model Override</FieldLabel>
+                <FieldLabel>Model override</FieldLabel>
                 <p className="text-[10px] text-muted-foreground mb-1.5">
                   Optionally override the agent&apos;s default model for this step
                 </p>
@@ -2688,7 +2688,7 @@ node.type === "approval" && "bg-red-500",
 
 {node.type === "approval" && (
   <div className="space-y-4 pt-4 border-t border-border">
-  <h4 className="text-sm font-medium text-foreground">Approval Settings</h4>
+  <h4 className="text-sm font-medium text-foreground">Approval settings</h4>
   <div>
   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
   Approvers
@@ -2718,7 +2718,7 @@ node.type === "approval" && "bg-red-500",
         <GitBranch className="h-4 w-4 text-[color:var(--g-signal)]" />
       </div>
       <div>
-        <h4 className="text-sm font-medium text-foreground">Decision Configuration</h4>
+        <h4 className="text-sm font-medium text-foreground">Decision configuration</h4>
         <p className="text-[10px] text-muted-foreground">Configure branching to the next steps</p>
       </div>
     </div>
@@ -2755,7 +2755,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Decision Objective */}
     <div>
-      <FieldLabel required={decisionStrategy !== "rule-based"}>Decision Objective</FieldLabel>
+      <FieldLabel required={decisionStrategy !== "rule-based"}>Decision objective</FieldLabel>
       <Textarea
         value={node.decisionConfig?.objective || ""}
         onChange={(e) => onUpdate({ 
@@ -2768,7 +2768,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Decision Strategy */}
     <div>
-      <FieldLabel required>Decision Strategy</FieldLabel>
+      <FieldLabel required>Decision strategy</FieldLabel>
       <div className="grid grid-cols-3 gap-2">
         {(["rule-based", "ai-assisted", "hybrid"] as const).map((strategy) => (
           <button
@@ -2797,7 +2797,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Input Data Sources */}
     <div>
-      <FieldLabel>Input Data Sources</FieldLabel>
+      <FieldLabel>Input data sources</FieldLabel>
       <p className="text-[10px] text-muted-foreground mb-1.5">
         Optional notes for the operator — not connected to live CRM yet. Prefer “Previous node outputs”.
       </p>
@@ -2983,7 +2983,7 @@ node.type === "approval" && "bg-red-500",
         <Users className="h-4 w-4 text-warning" />
       </div>
       <div>
-        <h4 className="text-sm font-medium text-foreground">Council Configuration</h4>
+        <h4 className="text-sm font-medium text-foreground">Council configuration</h4>
         <p className="text-[10px] text-muted-foreground">Configure multi-agent collaboration</p>
       </div>
     </div>
@@ -2991,7 +2991,7 @@ node.type === "approval" && "bg-red-500",
     {/* Council Objective */}
     <div>
       <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-        Council Objective
+        Council objective
       </label>
       <Textarea
         value={node.councilConfig?.objective || ""}
@@ -3007,7 +3007,7 @@ node.type === "approval" && "bg-red-500",
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-xs font-medium text-muted-foreground">
-          Participating Agents
+          Participating agents
         </label>
         <span className="text-[10px] text-warning">
           {node.councilConfig?.participatingAgents?.length || 0} selected
@@ -3088,14 +3088,14 @@ node.type === "approval" && "bg-red-500",
     {/* Debate Mode */}
     <div>
       <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-        Debate Mode
+        Debate mode
       </label>
       <div className="grid grid-cols-2 gap-2">
         {([
-          { id: "consensus", label: "Consensus Required", desc: "All must agree" },
-          { id: "majority", label: "Majority Vote", desc: "Most votes wins" },
-          { id: "lead-decides", label: "Lead Agent Decides", desc: "One agent leads" },
-          { id: "human-approval", label: "Human Approval", desc: "User must confirm" },
+          { id: "consensus", label: "Consensus required", desc: "All must agree" },
+          { id: "majority", label: "Majority vote", desc: "Most votes wins" },
+          { id: "lead-decides", label: "Lead agent decides", desc: "One agent leads" },
+          { id: "human-approval", label: "Human approval", desc: "User must confirm" },
         ] as const).map((mode) => (
           <button
             key={mode.id}
@@ -3119,7 +3119,7 @@ node.type === "approval" && "bg-red-500",
     {/* Evidence Sources */}
     <div>
       <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-        Evidence Sources
+        Evidence sources
       </label>
       <div className="space-y-1.5">
         {["Previous node outputs", "CRM data", "Billing data", "Support tickets", "Knowledge base", "Documents"].map((source) => (
@@ -3146,7 +3146,7 @@ node.type === "approval" && "bg-red-500",
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-xs font-medium text-muted-foreground">
-          Output Options
+          Output options
         </label>
         <button
           onClick={() => {
@@ -3202,7 +3202,7 @@ node.type === "approval" && "bg-red-500",
       <div className="p-3 rounded-lg bg-success/5 border border-success/20">
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle className="h-4 w-4 text-success" />
-          <span className="text-xs font-medium text-success">Council Decision</span>
+          <span className="text-xs font-medium text-success">Council decision</span>
           <span className="ml-auto text-[10px] text-success bg-success/20 px-1.5 py-0.5 rounded">
             {node.councilConfig.finalDecision.confidence}% confidence
           </span>
@@ -3362,7 +3362,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const MESON_PANEL_KEY = "gravitre:mesonPanelOpen"
   const [mesonPanelOpen, setMesonPanelOpen] = useState(() => {
     if (typeof window === "undefined") return true
-    return window.localStorage.getItem(MESON_PANEL_KEY) !== "0"
+    const stored = window.localStorage.getItem(MESON_PANEL_KEY)
+    if (stored !== null) return stored !== "0"
+    return window.matchMedia("(min-width: 768px)").matches
   })
   const prevNodeCountRef = useRef(0)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
@@ -3976,8 +3978,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 strategy: "ai-assisted",
               },
               outputPaths: [
-                { id: "path-a", label: "Primary Path" },
-                { id: "path-b", label: "Alternate Path" },
+                { id: "path-a", label: "Primary path" },
+                { id: "path-b", label: "Alternate path" },
               ],
             },
           ])
@@ -3999,9 +4001,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 inputSources: ["Previous node outputs", "CRM data"],
               },
               outputPaths: [
-                { id: "high", label: "High Value", condition: "score > 80" },
-                { id: "medium", label: "Medium Value", condition: "score 40-80" },
-                { id: "low", label: "Low Value", condition: "score < 40", isDefault: true },
+                { id: "high", label: "High value", condition: "score > 80" },
+                { id: "medium", label: "Medium value", condition: "score 40-80" },
+                { id: "low", label: "Low value", condition: "score < 40", isDefault: true },
               ],
             },
           ])
@@ -4238,7 +4240,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Awaiting approval", {
           description: `Run paused at an approval gate · ${runId}`,
           action: {
-            label: "View Run",
+            label: "View run",
             onClick: () => router.push(`/runs/${runId}`),
           },
         })
@@ -4249,7 +4251,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Pending approval", {
           description: `This run is waiting in the Decision Queue · ${runId}`,
           action: {
-            label: "Open Approvals",
+            label: "Open approvals",
             onClick: () => router.push(`/approvals?id=${runId}`),
           },
         })
@@ -4260,7 +4262,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Workflow paused", {
           description: `Run ID: ${runId}`,
           action: {
-            label: "View Run",
+            label: "View run",
             onClick: () => router.push(`/runs/${runId}`),
           },
         })
@@ -4298,7 +4300,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       toast.success("Workflow executed successfully", {
         description: `Run ID: ${runId}`,
         action: {
-          label: "View Run",
+          label: "View run",
           onClick: () => router.push(`/runs/${runId}`),
         },
       })
@@ -4326,7 +4328,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Awaiting approval", {
           description: "Your run was saved and queued for review.",
           action: {
-            label: "Open Approvals",
+            label: "Open approvals",
             onClick: () => router.push(`/approvals?id=${response.run_id}`),
           },
         })
@@ -4445,7 +4447,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       
       // Simulate AI decision reasoning
       const outputPaths = currentNode.outputPaths || [
-        { id: "default", label: "Default Path" }
+        { id: "default", label: "Default path" }
       ]
       const randomPathIndex = Math.floor(Math.random() * outputPaths.length)
       const chosenPath = outputPaths[randomPathIndex]
@@ -4649,7 +4651,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => router.push("/workflows")}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Workflows
+                  Back to workflows
                 </Button>
                 <Button onClick={() => window.location.reload()}>
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -4678,7 +4680,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <Link
                 href="/workflows"
                 className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                title="Back to Workflows"
+                title="Back to workflows"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
@@ -4703,7 +4705,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent Workflows</div>
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent workflows</div>
                   <DropdownMenuSeparator />
                   {recentWorkflows.length === 0 ? (
                     <div className="px-2 py-2 text-xs text-muted-foreground">
@@ -4729,13 +4731,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   <DropdownMenuItem asChild>
                     <Link href="/workflows" className="flex items-center gap-2 text-info">
                       <LayoutGrid className="h-3.5 w-3.5" />
-                      <span>View All Workflows</span>
+                      <span>View all workflows</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/workflows/new/builder" className="flex items-center gap-2 text-success">
                       <Plus className="h-3.5 w-3.5" />
-                      <span>Create New Workflow</span>
+                      <span>Create new workflow</span>
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -4870,7 +4872,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               "Name the outcome this workflow should produce — then orchestrate it on the canvas."}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Select a node to inspect configuration. Ask does not hide setup.
+            Select a node to inspect its configuration.
           </p>
         </div>
 
@@ -5001,7 +5003,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           outputOptions: [
                             { id: "approve", label: "Approve" },
                             { id: "reject", label: "Reject" },
-                            { id: "escalate", label: "Escalate to Human" },
+                            { id: "escalate", label: "Escalate to human" },
                           ],
                         },
                       }
@@ -5156,9 +5158,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           inputSources: ["CRM data", "Engagement metrics"],
                         },
                         outputPaths: [
-                          { id: "high", label: "High Value", condition: "score > 80" },
-                          { id: "medium", label: "Medium Value", condition: "score 40-80" },
-                          { id: "low", label: "Low Value", condition: "score < 40", isDefault: true },
+                          { id: "high", label: "High value", condition: "score > 80" },
+                          { id: "medium", label: "Medium value", condition: "score 40-80" },
+                          { id: "low", label: "Low value", condition: "score < 40", isDefault: true },
                         ],
                       }
                       setNodes((prev) => [...prev, newNode])
@@ -5212,9 +5214,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           strategy: "hybrid",
                         },
                         outputPaths: [
-                          { id: "sales", label: "Sales Team" },
-                          { id: "support", label: "Support Team" },
-                          { id: "billing", label: "Billing Team" },
+                          { id: "sales", label: "Sales team" },
+                          { id: "support", label: "Support team" },
+                          { id: "billing", label: "Billing team" },
                           { id: "other", label: "General", isDefault: true },
                         ],
                       }
@@ -5243,7 +5245,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                         outputPaths: [
                           { id: "email", label: "Email" },
                           { id: "sms", label: "SMS" },
-                          { id: "call", label: "Phone Call" },
+                          { id: "call", label: "Phone call" },
                         ],
                       }
                       setNodes((prev) => [...prev, newNode])
@@ -5361,7 +5363,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
 {/* Quick add */}
   <div className="border-t border-border p-3">
-  <p className="text-xs text-muted-foreground mb-2">Quick Add</p>
+  <p className="text-xs text-muted-foreground mb-2">Quick add</p>
   <div className="grid grid-cols-5 gap-1">
   <button
   onClick={() => addNode("agent", "New Agent")}
@@ -5420,7 +5422,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           outputOptions: [
             { id: "approve", label: "Approve" },
             { id: "reject", label: "Reject" },
-            { id: "escalate", label: "Escalate to Human" },
+            { id: "escalate", label: "Escalate to human" },
           ],
         },
       }
@@ -6358,7 +6360,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Workflow Settings</DialogTitle>
+            <DialogTitle>Workflow settings</DialogTitle>
             <DialogDescription>
               Configure settings for this workflow.
             </DialogDescription>
@@ -6366,7 +6368,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           <div className="space-y-6 py-4">
             {/* Workflow Name */}
             <div className="space-y-2">
-              <Label htmlFor="workflow-name">Workflow Name</Label>
+              <Label htmlFor="workflow-name">Workflow name</Label>
               <Input 
                 id="workflow-name" 
                 value={settingsName}
@@ -6415,7 +6417,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Enable Notifications</Label>
+                  <Label>Enable notifications</Label>
                   <p className="text-xs text-muted-foreground">Get notified when workflow fails</p>
                 </div>
                 <Switch defaultChecked />
@@ -6431,7 +6433,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Require Approval</Label>
+                  <Label>Require approval</Label>
                   <p className="text-xs text-muted-foreground">Require manual approval before execution</p>
                 </div>
                 <Switch />
@@ -6496,7 +6498,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
           <SheetHeader className="pb-4">
             <SheetTitle className="flex items-center justify-between">
-              <span>Workflow Nodes ({nodes.length})</span>
+              <span>Workflow nodes ({nodes.length})</span>
               <Button
                 size="sm"
                 onClick={() => {
@@ -6624,7 +6626,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               onClick={() => setShowMobileNodeList(true)}
             >
               <LayoutGrid className="h-4 w-4" />
-              <span className="font-medium">{nodes.length} Nodes</span>
+              <span className="font-medium">{nodes.length} {nodes.length === 1 ? "node" : "nodes"}</span>
             </Button>
             <Button
               size="sm"

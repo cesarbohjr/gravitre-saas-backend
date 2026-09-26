@@ -786,7 +786,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                       onClick={() => setUpgradeModalOpen(true)}
                     >
                       <TrendingUp className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5" />
-                      Upgrade Plan
+                      Upgrade plan
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -795,7 +795,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                       disabled={!planKnown || !autoRenewEnabled}
                       onClick={() => setCancelModalOpen(true)}
                     >
-                      Cancel Subscription
+                      Cancel subscription
                     </Button>
                   </div>
                 </div>
@@ -844,7 +844,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-foreground">Current Usage</h2>
+                  <h2 className="text-sm font-semibold text-foreground">Current usage</h2>
                 </div>
                 <span className="text-xs text-muted-foreground">
                   {subscription?.current_period_end
@@ -1177,7 +1177,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
               )}>
                 <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Shield className="h-4 w-4 text-muted-foreground" />
-                  Payment Method
+                  Payment method
                 </h2>
                 
                 <div className="group relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-5 transition-all duration-300 hover:shadow-lg hover:shadow-black/5">
@@ -1213,14 +1213,14 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                     onClick={() => setUpdateCardModalOpen(true)}
                   >
                     <CreditCard className="h-3.5 w-3.5" />
-                    Update Card
+                    Update card
                     <ChevronRight className="h-3 w-3 ml-auto transition-transform group-hover:translate-x-1" />
                   </Button>
                 </div>
 
                 {/* Billing address quick link */}
                 <div className="mt-4 p-4 rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)]">
-                  <p className="text-xs text-muted-foreground mb-2">Billing Address</p>
+                  <p className="text-xs text-muted-foreground mb-2">Billing address</p>
                   <p className="text-sm text-foreground">{billingAddress.street}</p>
                   <p className="text-sm text-foreground">{billingAddress.city}, {billingAddress.state} {billingAddress.zip}</p>
                   <Button 
@@ -1242,7 +1242,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    Billing History
+                    Billing history
                   </h2>
                   <Button 
                     variant="ghost" 
@@ -1339,7 +1339,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
       <Dialog open={topUpModalOpen} onOpenChange={setTopUpModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Voice Minutes</DialogTitle>
+            <DialogTitle>Add voice minutes</DialogTitle>
             <DialogDescription>
               Pick a pack. You&apos;ll confirm the payment on Stripe, and minutes credit as soon
               as it succeeds.
@@ -1422,7 +1422,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
       <Dialog open={upgradeModalOpen} onOpenChange={setUpgradeModalOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Upgrade Your Plan</DialogTitle>
+            <DialogTitle>Upgrade your plan</DialogTitle>
             <DialogDescription>
               Choose a plan that best fits your needs. You can upgrade or downgrade at any time.
             </DialogDescription>
@@ -1496,7 +1496,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
               onClick={() => selectedPlan && handleUpgrade(selectedPlan)}
               disabled={!selectedPlan}
             >
-              Upgrade Plan
+              Upgrade plan
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1506,7 +1506,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
       <AlertDialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
+            <AlertDialogTitle>Cancel subscription</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to cancel your subscription? You will lose access to all premium
               features at the end of your current billing period
@@ -1521,7 +1521,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+            <AlertDialogCancel>Keep subscription</AlertDialogCancel>
             <AlertDialogAction 
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={handleCancelSubscription}
@@ -1544,14 +1544,14 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
       <Dialog open={updateCardModalOpen} onOpenChange={setUpdateCardModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Update Payment Method</DialogTitle>
+            <DialogTitle>Update payment method</DialogTitle>
             <DialogDescription>
               Enter your new card details below. Your card will be charged for future billing cycles.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="cardName">Name on Card</Label>
+              <Label htmlFor="cardName">Name on card</Label>
               <Input
                 id="cardName"
                 placeholder="John Doe"
@@ -1560,7 +1560,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cardNumber">Card Number</Label>
+              <Label htmlFor="cardNumber">Card number</Label>
               <Input
                 id="cardNumber"
                 placeholder="4242 4242 4242 4242"
@@ -1571,7 +1571,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="expiry">Expiry Date</Label>
+                <Label htmlFor="expiry">Expiry date</Label>
                 <Input
                   id="expiry"
                   placeholder="MM/YY"
@@ -1617,14 +1617,14 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
       <Dialog open={editAddressModalOpen} onOpenChange={setEditAddressModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Billing Address</DialogTitle>
+            <DialogTitle>Edit billing address</DialogTitle>
             <DialogDescription>
               Update your billing address for invoices and receipts.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="street">Street Address</Label>
+              <Label htmlFor="street">Street address</Label>
               <Input
                 id="street"
                 value={billingAddress.street}

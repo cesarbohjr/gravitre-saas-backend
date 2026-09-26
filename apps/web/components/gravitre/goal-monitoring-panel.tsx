@@ -185,14 +185,14 @@ export function GoalMonitoringPanel({
             <div className="p-2.5 rounded-lg bg-secondary/30 border border-border">
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
                 <Clock className="h-3 w-3" />
-                Last Run
+                Last run
               </div>
               <span className="text-sm font-medium text-foreground">{goal.lastRun || "Never"}</span>
             </div>
             <div className="p-2.5 rounded-lg bg-secondary/30 border border-border">
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
                 <Calendar className="h-3 w-3" />
-                Next Run
+                Next run
               </div>
               <span className="text-sm font-medium text-foreground">{goal.nextRun || "Not scheduled"}</span>
             </div>
@@ -202,7 +202,7 @@ export function GoalMonitoringPanel({
           {goal.deliverables.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">Recent Deliverables</span>
+                <span className="text-xs font-medium text-muted-foreground">Recent deliverables</span>
                 <button 
                   onClick={onViewDeliverables}
                   className="text-[10px] text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 flex items-center gap-0.5"

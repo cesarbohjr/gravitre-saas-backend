@@ -255,7 +255,7 @@ export function WorkflowCard({
               ) : null}
               {/* Environment badge */}
               <div className={`
-                flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide
+                flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium
                 ${environment === "production" 
                   ? "bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)] ring-1 ring-[color:var(--g-emerald)]/20" 
                   : "bg-[color:var(--g-approval)]/10 text-[color:var(--g-approval)] ring-1 ring-[color:var(--g-approval)]/20"
@@ -265,7 +265,7 @@ export function WorkflowCard({
                   name={environment === "production" ? "production" : "staging"} 
                   size="xs" 
                 />
-                {environment === "production" ? "PROD" : "STG"}
+                {environment === "production" ? "Production" : "Staging"}
               </div>
             </div>
           </div>

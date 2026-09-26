@@ -36,7 +36,7 @@ export function HealthTab({ agent, enabled }: { agent: Agent; enabled: boolean }
       
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Execution Mode</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">Execution mode</CardTitle>
         </CardHeader>
         <CardContent>
           <ExecutionModeBadge source={{ execution_mode: "advisory_only" }} showMeta />
@@ -45,7 +45,7 @@ export function HealthTab({ agent, enabled }: { agent: Agent; enabled: boolean }
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Connected Tools</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">Connected tools</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{toolsCount}</div>
@@ -54,7 +54,7 @@ export function HealthTab({ agent, enabled }: { agent: Agent; enabled: boolean }
 
       <Card className="sm:col-span-2 lg:col-span-3">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Last Task</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">Last task</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-foreground">{agent.lastAction || "No recent activity"}</p>

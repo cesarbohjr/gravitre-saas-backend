@@ -448,7 +448,7 @@ export function MesonCopilotPanel({
       className={cn(
         "relative w-[280px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden",
       )}
-      aria-label="Meson AI Copilot"
+      aria-label="Meson AI copilot"
     >
       <div className="relative flex items-center justify-between border-b border-border px-3 py-2.5">
         <div className="flex items-center gap-2">

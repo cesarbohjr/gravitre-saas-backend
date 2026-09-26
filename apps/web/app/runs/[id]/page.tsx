@@ -631,7 +631,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Activity
+              Back to activity
             </Link>
             <span className="text-border">·</span>
             <code className="font-mono text-xs text-muted-foreground">{id}</code>
@@ -755,7 +755,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <details>
             <summary className="cursor-pointer list-none border-b border-divide py-2">
               <p className={TYPE.eyebrow}>Run metrics</p>
-              <p className={cn(TYPE.meta, "mt-0.5")}>Duration and counts — after the outcome, not instead of it.</p>
+              <p className={cn(TYPE.meta, "mt-0.5")}>Duration and counts for this run.</p>
             </summary>
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-4 lg:grid-cols-4">
             <GravitreMetric label="Duration" value={run.duration} icon={<Clock className="h-4 w-4" />} />
@@ -983,7 +983,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             data-review-surface="run-trace"
           >
             <summary className="cursor-pointer list-none border-b border-divide py-2">
-              <p className={TYPE.eyebrow}>TRACE</p>
+              <p className={TYPE.eyebrow}>Trace</p>
               <p className={cn(TYPE.meta, "mt-0.5")}>
                 Drill-down into this run’s recorded steps. No invented waterfall.
               </p>
@@ -991,7 +991,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             <div className="space-y-4 pt-4">
           <GravitreSurface padded={false}>
             <div className="border-b border-divide p-4">
-              <h2 className="text-sm font-semibold text-foreground">Execution Flow</h2>
+              <h2 className="text-sm font-semibold text-foreground">Execution flow</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Steps in execution order with status
               </p>
@@ -1055,7 +1055,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
           <GravitreSurface padded={false}>
             <div className="border-b border-divide p-4">
-              <h2 className="text-sm font-semibold text-foreground">Execution Timeline</h2>
+              <h2 className="text-sm font-semibold text-foreground">Execution timeline</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Full step trace with payloads, logs, and connector details. Expand steps for raw
                 data.
