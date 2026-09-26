@@ -240,3 +240,29 @@ def requires_write_approval_always(action_key: str, *, risk_class: str | None = 
 
 def registry_write_action_key(action_key: str) -> str:
     return registry_action_key(action_key)
+
+
+def internal_f1_write_spec(action_key: str) -> Any:
+    """HMAC ActionSpec that is not a customer catalog vendor row."""
+    key = catalog_action_key(action_key)
+    if key != "browser_agent.interact":
+        return None
+    from app.connectors.action_catalog.f1_read_slice import materialize_action_spec
+    from app.connectors.action_catalog.models import ActionSpec
+
+    return materialize_action_spec(
+        ActionSpec(
+            id="browser_agent.interact",
+            name="Fill or submit a public browser form",
+            description=(
+                "Fill or submit a public browser form after HMAC confirm. "
+                "Use when the user asks to fill the httpbin.org public form. "
+                "Never use for HubSpot or other API-native writes."
+            ),
+            tier="v2",
+            kind="write",
+            scopes=("browser_agent:interact", "browser_agent:*"),
+            destructive=True,
+            requires_approval=True,
+        )
+    )

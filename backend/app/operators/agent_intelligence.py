@@ -2422,6 +2422,39 @@ class AgentIntelligence:
         )
 
         message_id = str(uuid.uuid4())
+        from app.services.computer_browser_interact_turn import (
+            computer_interact_should_compile,
+            try_computer_browser_interact_turn,
+        )
+        from app.services.conversational_execution_service import CONFIRM_PATTERN as _CONFIRM_NOW
+
+        if _CONFIRM_NOW.match((task_text or "").strip()) and conversation_id:
+            try:
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id,
+                    org_id,
+                    client=client,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+        if computer_interact_should_compile(
+            task_text,
+            task_state if isinstance(task_state, dict) else {},
+        ):
+            _confirm_interact = await try_computer_browser_interact_turn(
+                message=task_text,
+                org_id=org_id,
+                client=client,
+                settings=active_settings,
+                connected_integrations=[],
+                task_state=task_state if isinstance(task_state, dict) else {},
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+            if _confirm_interact and _confirm_interact.get("stop_pipeline"):
+                async for ev in _emit_compiled_operational_short_circuit(_confirm_interact):
+                    yield ev
+                return
         yield sse_intelligence_metadata(
             message_id=message_id,
             confidence={"score": 0.0, "needs_clarification": False},

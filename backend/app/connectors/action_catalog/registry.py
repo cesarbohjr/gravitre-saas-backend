@@ -171,10 +171,11 @@ def get_action_spec(action_key: str) -> ActionSpec | None:
         return None
     vendor = key.split(".", 1)[0]
     spec = get_vendor_spec(vendor)
-    if not spec:
-        return None
-    for action in spec.all_actions():
-        if action.id.lower() == key:
-            # Same object as all_catalog_action_specs() — F1 single materialized owner.
-            return action
-    return None
+    if spec:
+        for action in spec.all_actions():
+            if action.id.lower() == key:
+                # Same object as all_catalog_action_specs() — F1 single materialized owner.
+                return action
+    from app.connectors.action_catalog.f1_write_slice import internal_f1_write_spec
+
+    return internal_f1_write_spec(key)

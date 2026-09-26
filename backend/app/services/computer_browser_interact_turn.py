@@ -18,6 +18,7 @@ from app.services.execution_plan_service import (
     mark_plan_terminal,
     observations_patch,
 )
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.read_preflight import PreflightResult
 from app.services.tool_types import ToolContext, ToolValidationError
 
@@ -86,7 +87,7 @@ def _proof_from_pending(raw: dict[str, Any] | None) -> PreflightResult | None:
         action_key=str(raw.get("action_key") or ACTION_KEY),
         connector_id=str(raw.get("connector_id") or "browser_agent"),
         resource=raw.get("resource") if isinstance(raw.get("resource"), dict) else None,
-        compiled_parameters=dict(raw.get("compiled_parameters") or {}),
+        compiled_parameters=safe_normalize_stored_dict(raw.get("compiled_parameters")),
         org_id=str(raw.get("org_id") or ""),
         spec_revision=str(raw.get("spec_revision") or ""),
         proof_digest=digest,
@@ -197,25 +198,33 @@ def _compile_interact(
             "writes_started": False,
             "provider_reinvoked": False,
         }
-    pending_task = {
-        "status": "awaiting_confirm",
-        "type": "connector_action",
-        "invoke_action": ACTION_KEY,
-        "kind": "write",
-        "params": {
+    from app.services.spoken_write_approval import stamp_pending_write_binding
+
+    pending_task = stamp_pending_write_binding(
+        {
+            "status": "awaiting_confirm",
+            "type": "connector_action",
             "invoke_action": ACTION_KEY,
-            "integration": "browser_agent",
             "kind": "write",
-            "requires_approval": True,
-            "args": dict(proof.compiled_parameters),
-            "preflight_proof": {
-                **proof.as_dict(),
-                "org_id": proof.org_id,
-                "proof_digest": proof.proof_digest,
-                "spec_revision": proof.spec_revision,
+            "params": {
+                "invoke_action": ACTION_KEY,
+                "integration": "browser_agent",
+                "kind": "write",
+                "requires_approval": True,
+                "args": dict(proof.compiled_parameters),
+                "preflight_proof": {
+                    **proof.as_dict(),
+                    "org_id": proof.org_id,
+                    "proof_digest": proof.proof_digest,
+                    "spec_revision": proof.spec_revision,
+                },
             },
         },
-    }
+        org_id=org_id,
+        actor_id=user_id,
+        conversation_id=conversation_id,
+        invoke_action=ACTION_KEY,
+    )
     plan = mark_plan_terminal(plan, "awaiting_confirm")
     return {
         "stop_pipeline": True,
@@ -228,11 +237,6 @@ def _compile_interact(
             **task_state,
             **execution_plan_patch(plan),
             "pending_task": pending_task,
-            "pending_action": {
-                "status": "awaiting_user_confirmation",
-                "action": ACTION_KEY,
-                "write_allowed": False,
-            },
         },
         "workflow_status": "awaiting_confirm",
         "execution_path": "computer_browser_interact_compile",
@@ -260,7 +264,7 @@ async def _execute_confirmed_interact(
     from app.services.write_preflight import enforce_invoke_write_preflight
 
     proof = _proof_from_pending(pending_params.get("preflight_proof"))
-    args = dict(pending_params.get("args") or {})
+    args = safe_normalize_stored_dict(pending_params.get("args"))
     if proof is None:
         return {
             "stop_pipeline": True,
@@ -335,7 +339,10 @@ async def _execute_confirmed_interact(
         **task_state,
         **execution_plan_patch(plan),
         **observations_patch([obs]),
-        "pending_task": {**dict(task_state.get("pending_task") or {}), "status": "executed"},
+        "pending_task": {
+            **safe_normalize_stored_dict(task_state.get("pending_task")),
+            "status": "executed",
+        },
         "pending_action": {"status": "executed", "action": ACTION_KEY, "write_allowed": False},
         "computer_browser_evidence": {
             "strategy": "browser_cdp",
