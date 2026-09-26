@@ -279,39 +279,73 @@ async def browser_agent_interact(
         ) from exc
 
     results: list[dict[str, Any]] = []
-    async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=True)
-        page = await browser.new_page()
-        await page.goto(safe_url, wait_until="domcontentloaded", timeout=45_000)
-        for index, step in enumerate(steps):
-            action_type = str(step.get("type") or step.get("action") or "").lower()
-            selector = str(step.get("selector") or "")
-            value = step.get("value")
-            if action_type == "click" and selector:
-                await page.click(selector, timeout=15_000)
-                results.append({"step": index, "action": "click", "selector": selector, "ok": True})
-            elif action_type in {"fill", "type"} and selector:
-                await page.fill(selector, str(value or ""))
-                results.append({"step": index, "action": "fill", "selector": selector, "ok": True})
-            elif action_type == "wait":
-                ms = int(step.get("ms") or step.get("milliseconds") or 1000)
-                await page.wait_for_timeout(ms)
-                results.append({"step": index, "action": "wait", "ms": ms, "ok": True})
-            else:
-                results.append(
-                    {
-                        "step": index,
-                        "action": action_type or "unknown",
-                        "ok": False,
-                        "error": "Unsupported action — use click, fill, or wait",
-                    }
-                )
-        snapshot_text = _extract_text(await page.content())
-        await browser.close()
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto(safe_url, wait_until="domcontentloaded", timeout=45_000)
+            for index, step in enumerate(steps):
+                action_type = str(step.get("type") or step.get("action") or "").lower()
+                selector = str(step.get("selector") or "")
+                value = step.get("value")
+                try:
+                    if action_type == "click" and selector:
+                        await page.locator(selector).first.click(timeout=15_000)
+                        try:
+                            await page.wait_for_load_state("domcontentloaded", timeout=15_000)
+                        except Exception:  # noqa: BLE001
+                            pass
+                        results.append(
+                            {
+                                "step": index,
+                                "action": "click",
+                                "selector": selector,
+                                "ok": True,
+                                "url": str(page.url or safe_url),
+                            }
+                        )
+                    elif action_type in {"fill", "type"} and selector:
+                        await page.locator(selector).first.fill(str(value or ""), timeout=15_000)
+                        results.append({"step": index, "action": "fill", "selector": selector, "ok": True})
+                    elif action_type == "wait":
+                        ms = int(step.get("ms") or step.get("milliseconds") or 1000)
+                        await page.wait_for_timeout(ms)
+                        results.append({"step": index, "action": "wait", "ms": ms, "ok": True})
+                    else:
+                        results.append(
+                            {
+                                "step": index,
+                                "action": action_type or "unknown",
+                                "ok": False,
+                                "error": "Unsupported action — use click, fill, or wait",
+                            }
+                        )
+                except Exception as step_exc:  # noqa: BLE001
+                    results.append(
+                        {
+                            "step": index,
+                            "action": action_type or "unknown",
+                            "selector": selector,
+                            "ok": False,
+                            "error": str(step_exc)[:240],
+                        }
+                    )
+            snapshot_text = _extract_text(await page.content())
+            final_url = str(page.url or safe_url)
+            await browser.close()
+    except BrowserAgentError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("playwright_interact_failed url=%s", safe_url[:120])
+        raise BrowserAgentError(
+            f"The browser form fill could not complete: {exc}",
+            code="playwright_failed",
+        ) from exc
     return {
-        "url": safe_url,
+        "url": final_url,
         "approval_id": approval_id,
         "steps": results,
         "text": snapshot_text[:_MAX_TEXT_CHARS],
         "mode": "playwright_interact",
+        "success": bool(results) and all(row.get("ok") is not False for row in results),
     }

@@ -68,7 +68,7 @@ def _frozen_form_args() -> dict[str, Any]:
         "actions": [
             {"type": "fill", "selector": "input[name='custname']", "value": "Gravitre isolated test"},
             {"type": "fill", "selector": "input[name='custemail']", "value": "isolated@gravitre.test"},
-            {"type": "click", "selector": "input[type='submit']"},
+            {"type": "click", "selector": "input[type='submit'], button[type='submit']"},
         ],
     }
 
@@ -257,7 +257,7 @@ async def _execute_confirmed_interact(
     user_id: str | None,
     conversation_id: str | None,
 ) -> dict[str, Any]:
-    from app.services.browser_agent_service import browser_agent_interact
+    from app.services.browser_agent_service import BrowserAgentError, browser_agent_interact
     from app.services.computer_execution import observation_from_browser_result
     from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
     from app.services.sealed_read_execution import attributable_read_actor_id
@@ -303,13 +303,31 @@ async def _execute_confirmed_interact(
         }
     url = str(sealed.get("url") or "")
     actions = sealed.get("actions")
-    raw = await browser_agent_interact(
-        url,
-        actions=actions if isinstance(actions, list) else [],
-        settings=settings or get_settings(),
-        approval_id=str(proof.proof_digest),
-        hmac_verified=True,
-    )
+    try:
+        raw = await browser_agent_interact(
+            url,
+            actions=actions if isinstance(actions, list) else [],
+            settings=settings or get_settings(),
+            approval_id=str(proof.proof_digest),
+            hmac_verified=True,
+        )
+    except BrowserAgentError as exc:
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": str(exc) or "The public form fill did not complete. Nothing further was submitted.",
+            "task_state": {
+                **task_state,
+                "pending_task": {
+                    **safe_normalize_stored_dict(task_state.get("pending_task")),
+                    "status": "failed",
+                },
+            },
+            "workflow_status": "failed",
+            "execution_path": "computer_browser_interact_confirm",
+            "writes_started": True,
+            "provider_reinvoked": True,
+        }
     plan = ExecutionPlan.from_dict(task_state.get("execution_plan")) or ExecutionPlan(
         plan_id=str(proof.plan_id or uuid4()),
         summary="Public browser form fill",
@@ -325,7 +343,11 @@ async def _execute_confirmed_interact(
     )
     obs = observation_from_browser_result(
         plan=plan,
-        result={**raw, "strategy": "browser_cdp", "success": not raw.get("pending_approval")},
+        result={
+            **raw,
+            "strategy": "browser_cdp",
+            "success": bool(raw.get("success", not raw.get("pending_approval"))),
+        },
         approval_id=str(proof.proof_digest),
     )
     success = bool(obs.success)

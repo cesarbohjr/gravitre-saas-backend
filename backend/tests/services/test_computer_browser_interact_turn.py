@@ -128,6 +128,43 @@ async def test_interact_confirm_invokes_playwright_with_hmac() -> None:
     assert obs and obs[-1].get("success") is True
 
 
+@pytest.mark.asyncio
+async def test_interact_confirm_surfaces_playwright_failure() -> None:
+    from app.services.browser_agent_service import BrowserAgentError
+
+    _refresh_catalog()
+    compiled = await try_computer_browser_interact_turn(
+        message="Fill the httpbin.org form and submit. Do not use HubSpot.",
+        org_id="org-1",
+        client=object(),
+        settings=MagicMock(),
+        connected_integrations=["hubspot"],
+        task_state={},
+        user_id="11111111-1111-4111-8111-111111111111",
+    )
+    assert compiled is not None
+    with patch(
+        "app.services.browser_agent_service.browser_agent_interact",
+        new_callable=AsyncMock,
+        side_effect=BrowserAgentError("selector timed out", code="playwright_failed"),
+    ):
+        confirmed = await try_computer_browser_interact_turn(
+            message="yes",
+            org_id="org-1",
+            client=object(),
+            settings=MagicMock(),
+            connected_integrations=["hubspot"],
+            task_state=compiled["task_state"],
+            user_id="11111111-1111-4111-8111-111111111111",
+        )
+    assert confirmed is not None
+    assert confirmed["stop_pipeline"] is True
+    assert confirmed["workflow_status"] == "failed"
+    assert "selector timed out" in str(confirmed.get("message") or "")
+    pending = (confirmed["task_state"] or {}).get("pending_task") or {}
+    assert pending.get("status") == "failed"
+
+
 def test_hmac_interact_confirm_runs_before_intent_gateway_shortcut() -> None:
     from pathlib import Path
 
