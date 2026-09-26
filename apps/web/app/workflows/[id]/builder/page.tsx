@@ -4771,7 +4771,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 <Button asChild variant="ghost" size="sm" className="h-8 gap-2 text-xs">
                   <Link href={`/runs/${lastRunId}`}>
                     <ExternalLink className="h-3 w-3" />
-                    <span className="hidden sm:inline">Last run</span>
+                    <span className="sr-only lg:not-sr-only">Last run</span>
                   </Link>
                 </Button>
               )}
@@ -4786,7 +4786,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 }}
               >
                 <Settings className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Settings</span>
+                <span className="sr-only lg:not-sr-only">Settings</span>
               </Button>
               <Button
                 variant={mesonPanelOpen ? "secondary" : "outline"}
@@ -4796,7 +4796,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 aria-expanded={mesonPanelOpen}
               >
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Meson</span>
+                <span className="sr-only lg:not-sr-only">Meson</span>
                 {!mesonPanelOpen && nodes.length > 0 ? (
                   <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2" aria-hidden="true">
                     <span className="absolute inline-flex h-full w-full rounded-full bg-primary/70 motion-safe:animate-ping" />
@@ -4813,7 +4813,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 aria-expanded={intelligenceOpen}
               >
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Intelligence</span>
+                <span className="sr-only lg:not-sr-only">Intelligence</span>
               </Button>
               <Button 
                 variant="outline" 
@@ -4833,7 +4833,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 ) : (
                   <Save className="h-3.5 w-3.5" />
                 )}
-                <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
+                <span className="sr-only lg:not-sr-only">{isSaving ? "Saving..." : "Save"}</span>
                 {connectorBlockingIssues.length > 0 && (
                   <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning/20 px-1 text-[10px] font-medium text-warning">
                     {connectorBlockingIssues.length}
@@ -4848,7 +4848,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 disabled={isSaving || isLoadingGraph || isRunning}
               >
                 <FileSearch className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Preview</span>
+                <span className="sr-only lg:not-sr-only">Preview</span>
               </Button>
               <Button 
                 size="sm" 
@@ -4862,7 +4862,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 ) : (
                   <Play className="h-3.5 w-3.5" />
                 )}
-                <span className="hidden sm:inline">{isRunning ? "Starting..." : "Run"}</span>
+                <span className="sr-only sm:not-sr-only">{isRunning ? "Starting..." : "Run"}</span>
               </Button>
             </div>
           </div>

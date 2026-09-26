@@ -28,6 +28,11 @@ import {
  * `shouldShowMesonToolbar`'s `/ai` check exactly (same reasoning: `/ai`
  * already is the full chat surface).
  */
+/** The builder's bottom toolbar and Meson panel leave no room for the labelled pill below xl. */
+export function isWorkflowBuilderPath(pathname: string): boolean {
+  return /^\/workflows\/[^/]+\/builder(\/|$)/.test(pathname.split("?")[0] ?? "")
+}
+
 export function shouldShowGravitreAIHelper(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
   return path !== "/ai" && !path.startsWith("/ai/")
@@ -161,7 +166,13 @@ export function GravitreAIHelper() {
               aria-hidden
             />
           </span>
-          <span className="hidden flex-col items-start pr-1 sm:flex">
+          <span
+            data-gravitre-ai-helper-label=""
+            className={cn(
+              "hidden flex-col items-start pr-1",
+              isWorkflowBuilderPath(pageContext.pathname) ? "xl:flex" : "sm:flex",
+            )}
+          >
             <span className="text-xs font-semibold text-[color:var(--g-text-primary)]">
               Gravitre AI
             </span>

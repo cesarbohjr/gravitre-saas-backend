@@ -125,7 +125,7 @@ function AgentIdentityHero({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAge
 
   return (
     <div className="relative">
-      <AgentIdentityAvatar agent={apiAgent} size="xl" />
+      <AgentIdentityAvatar agent={apiAgent} size="xl" showStatusDot={false} />
 
       {isRunning && !reduced ? (
         <motion.div

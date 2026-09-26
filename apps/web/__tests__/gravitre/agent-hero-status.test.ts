@@ -8,6 +8,6 @@ describe("agent detail identity hero", () => {
   it("shows status once, through the anchored chip, not also as an avatar dot", () => {
     const hero = page.slice(page.indexOf("function AgentIdentityHero"), page.indexOf("function AgentIdentityHero") + 2000)
     expect(hero).toContain("status.label")
-    expect(hero).not.toContain("showStatusDot")
+    expect(hero).toMatch(/<AgentIdentityAvatar[^>]*showStatusDot=\{false\}/)
   })
 })

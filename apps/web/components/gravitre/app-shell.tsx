@@ -468,7 +468,8 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
                   )
                 : cn(
                     "overflow-y-auto overflow-x-hidden",
-                    pathname.includes("/builder") ? "pb-4" : "pb-20 md:pb-4",
+                    // Clears the fixed AI launcher (and the mobile bottom nav) at scroll end.
+                    pathname.includes("/builder") ? "pb-4" : "pb-32 md:pb-24",
                   ),
             )}
           >
