@@ -2105,6 +2105,8 @@ class AgentIntelligence:
                 response_text,
                 kind=compose_kind,
                 extra=compose_extra,
+                existing_text_id=spoken_progress_text_id,
+                close=True,
                 trace_state=task_state if isinstance(task_state, dict) else None,
             )
             _mark("composer_complete")
@@ -3435,8 +3437,32 @@ class AgentIntelligence:
                 exc,
             )
         _mark("parameter_ledger")
-        from app.services.computer_browser_read_turn import try_computer_browser_read_turn
+        from app.services.computer_browser_read_turn import (
+            match_computer_browser_followup,
+            match_computer_browser_intent,
+            match_computer_browser_resume_phrase,
+            try_computer_browser_read_turn,
+        )
 
+        _computer_state = task_state if isinstance(task_state, dict) else {}
+        if (
+            match_computer_browser_intent(task_text)
+            and not match_computer_browser_followup(task_text, _computer_state)
+            and not match_computer_browser_resume_phrase(task_text)
+        ):
+            _mark("browser_session_start")
+            from app.services.response_composer import events_for_text
+
+            _browser_progress = (
+                "I'm opening a real browser session now. I'll report the pages after they load."
+            )
+            spoken_progress_text_id, progress_events = events_for_text(
+                _browser_progress,
+                existing_text_id=spoken_progress_text_id,
+                close=False,
+            )
+            for ev in progress_events:
+                yield ev
         _computer_turn = await try_computer_browser_read_turn(
             message=task_text,
             task_state=task_state if isinstance(task_state, dict) else {},

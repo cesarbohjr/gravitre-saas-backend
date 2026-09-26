@@ -1,0 +1,122 @@
+{
+  "generated_at": "2026-09-26T22:43:51.273420+00:00",
+  "proof_class": "BROWSER_CDP_PLAYWRIGHT",
+  "physical_mic": false,
+  "paid_cdp": false,
+  "health_sha": "158c43eb9e65d66e0329b7d51410518a34f07323",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "9f60b1d3-bb7f-47b8-816f-c1c9eb222332",
+  "first_turn": {
+    "http_status": 200,
+    "first_useful_text_ms": 13893,
+    "completion_ms": 17025,
+    "assistant_excerpt": "I opened a real browser (not an HTTP fetch) and recorded what loaded.\nStep 1 (goto): Example Domain \u2014 https://example.com/\nStep 2 (click_link): Example Domains \u2014 https://www.iana.org/help/example-domains",
+    "tools": [],
+    "used_httpx_claim": false,
+    "create_claim": false
+  },
+  "follow_up": {
+    "http_status": 200,
+    "first_useful_text_ms": 2507,
+    "completion_ms": 5561,
+    "assistant_excerpt": "https://www.iana.org/help/example-domains",
+    "tools": [],
+    "used_httpx_claim": false,
+    "create_claim": false
+  },
+  "title_follow_up": {
+    "http_status": 200,
+    "first_useful_text_ms": 1985,
+    "completion_ms": 3836,
+    "assistant_excerpt": "Example Domains",
+    "tools": [],
+    "used_httpx_claim": false,
+    "create_claim": false
+  },
+  "non_browser_turn": {
+    "http_status": 200,
+    "first_useful_text_ms": 2734,
+    "completion_ms": 4480,
+    "assistant_excerpt": "Hey \u2014 I'm here. What do you want to get done?",
+    "tools": [],
+    "used_httpx_claim": false,
+    "create_claim": false
+  },
+  "after_non_browser_follow_up": {
+    "http_status": 200,
+    "first_useful_text_ms": 1797,
+    "completion_ms": 3691,
+    "assistant_excerpt": "https://www.iana.org/help/example-domains",
+    "tools": [],
+    "used_httpx_claim": false,
+    "create_claim": false
+  },
+  "plan_id": "3ffd0981-ce3c-4292-b63b-87eb49ec78e3",
+  "plan_source": "computer_execution",
+  "plan_terminal": "completed",
+  "execution_strategy": "browser_cdp",
+  "obs_id": "bfeb0446-2d82-4a4b-b281-3878ac5c383e",
+  "obs_success": true,
+  "obs_structured": {
+    "url": "https://www.iana.org/help/example-domains",
+    "mode": "playwright_session_read",
+    "rows": [
+      {
+        "url": "https://example.com/",
+        "step": "1",
+        "title": "Example Domain",
+        "action": "goto"
+      },
+      {
+        "url": "https://www.iana.org/help/example-domains",
+        "step": "2",
+        "title": "Example Domains",
+        "action": "click_link"
+      }
+    ],
+    "action": "playwright_session_read",
+    "visits": [
+      {
+        "url": "https://example.com/",
+        "error": null,
+        "title": "Example Domain",
+        "action": "goto",
+        "link_text": null,
+        "dom_excerpt": "Example Domain Example Domain This domain is for use in documentation examples without needing permission. Avoid use in operations. Learn more",
+        "screenshot_digest": "6cc928b05a53a95e6adfc303397a58a426b32b638810d93edbf1fb9dc2a833c0"
+      },
+      {
+        "url": "https://www.iana.org/help/example-domains",
+        "error": null,
+        "title": "Example Domains",
+        "action": "click_link",
+        "link_text": "Learn more",
+        "dom_excerpt": "Example Domains Domains Protocols Numbers About Instructions and Guides Example Domains As described in RFC 2606 and RFC 6761 , a number of domains such as example.com and example.org are maintained for documentation purposes. These domains may be used as illustrative examples in documents without prior coordination with us. They are not available for registration or transfer. We provide a web service on the example domain hosts to provide basic information on the purpose of the domain. These web services are provided as best effort, but are not designed to support production applications. While incidental traffic for incorrectly configured applications is expected, please do not design applications that require the example domains to have operating HTTP service. Further Reading IANA-manag",
+        "screenshot_digest": "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a"
+      }
+    ],
+    "success": true,
+    "strategy": "browser_cdp",
+    "approval_id": null,
+    "dom_excerpt": "Example Domains Domains Protocols Numbers About Instructions and Guides Example Domains As described in RFC 2606 and RFC 6761 , a number of domains such as example.com and example.org are maintained for documentation purposes. These domains may be used as illustrative examples in documents without prior coordination with us. They are not available for registration or transfer. We provide a web service on the example domain hosts to provide basic information on the purpose of the domain. These web services are provided as best effort, but are not designed to support production applications. While incidental traffic for incorrectly configured applications is expected, please do not design applications that require the example domains to have operating HTTP service. Further Reading IANA-manag",
+    "cdp_trace_id": "c7e90b9d-7f49-4d97-b9fb-ccf121f59d4d",
+    "pending_approval": false,
+    "screenshot_digest": "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a"
+  },
+  "artifact_kind": "research_summary",
+  "artifact_exportable": true,
+  "obs_count_after_followup": 1,
+  "reconstruct_entity": "3ffd0981-ce3c-4292-b63b-87eb49ec78e3",
+  "current_sha_baseline": {
+    "health_sha": "158c43eb9e65d66e0329b7d51410518a34f07323",
+    "first_useful_text_ms": 13893,
+    "completion_ms": 17025,
+    "server_critical_path_ms": 9750,
+    "dominant_stage": "PROVIDER",
+    "dominant_checkpoint": "observation",
+    "dominant_ms": 9417,
+    "composer_used_model": false,
+    "ingress_to_observation_ms": 333,
+    "first_business_result_is_after_playwright": true
+  }
+}

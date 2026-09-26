@@ -248,3 +248,17 @@ async def test_computer_browser_resume_answers_url_and_title_from_visits() -> No
     mock_exec.assert_not_called()
     assert turn["message"] == "https://www.iana.org/help/example-domains"
     assert turn["provider_reinvoked"] is False
+
+
+def test_browser_progress_streams_before_playwright_await() -> None:
+    from pathlib import Path
+
+    text = (
+        Path(__file__).resolve().parents[2] / "app" / "operators" / "agent_intelligence.py"
+    ).read_text(encoding="utf-8")
+    start = text.find('_mark("browser_session_start")')
+    await_read = text.find("_computer_turn = await try_computer_browser_read_turn(")
+    assert start > 0
+    assert await_read > start
+    assert "I'm opening a real browser session now" in text
+

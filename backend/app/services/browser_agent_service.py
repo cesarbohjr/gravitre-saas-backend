@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import re
+import time
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
@@ -151,18 +152,28 @@ async def browser_agent_playwright_session(
         ) from exc
     session_id = str(uuid4())
     visits: list[dict[str, Any]] = []
+    launch_ms = 0
+    goto_ms = 0
+    follow_ms = 0
+    session_ms = 0
     try:
+        t_session = time.perf_counter()
         async with async_playwright() as playwright:
+            t_launch = time.perf_counter()
             browser = await playwright.chromium.launch(
                 headless=True,
                 args=["--no-sandbox", "--disable-dev-shm-usage"],
             )
             page = await browser.new_page()
+            launch_ms = int((time.perf_counter() - t_launch) * 1000)
+            t_goto = time.perf_counter()
             await page.goto(safe_url, wait_until="domcontentloaded", timeout=45_000)
             first = await _playwright_page_snapshot(page)
+            goto_ms = int((time.perf_counter() - t_goto) * 1000)
             first["action"] = "goto"
             visits.append(first)
             if follow_link_text:
+                t_follow = time.perf_counter()
                 clicked = False
                 last_error = ""
                 follow_used = follow_link_text
@@ -207,7 +218,9 @@ async def browser_agent_playwright_session(
                             "error": last_error,
                         }
                     )
+                follow_ms = int((time.perf_counter() - t_follow) * 1000)
             await browser.close()
+        session_ms = int((time.perf_counter() - t_session) * 1000)
     except BrowserAgentError:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -227,6 +240,10 @@ async def browser_agent_playwright_session(
         "cdp_trace_id": session_id,
         "mode": "playwright_session_read",
         "strategy": "browser_cdp",
+        "chromium_launch_ms": launch_ms,
+        "first_goto_ms": goto_ms,
+        "follow_link_ms": follow_ms,
+        "playwright_session_ms": session_ms,
         "visits": [
             {
                 "url": row.get("url"),
