@@ -58,7 +58,7 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
 
   test("J1 — Login → Home dashboard and nav", async ({ page }) => {
     await expect(page).toHaveURL(/\/home/)
-    await expect(page.locator("aside nav")).toBeVisible()
+    await expect(page.locator('aside nav[aria-label="Primary"]')).toBeVisible()
     await expect(page.getByRole("heading", { name: /home/i }).first()).toBeVisible({ timeout: 60_000 })
     test.info().annotations.push({
       type: "journey",

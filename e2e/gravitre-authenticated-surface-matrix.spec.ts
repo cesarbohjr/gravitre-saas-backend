@@ -181,7 +181,7 @@ test.describe("Authenticated product surface matrix", () => {
     await page.goto("/settings")
     await expect(page).not.toHaveURL(/\/login/)
     // AppShell title may not be an h1; prove settings section nav mounted.
-    await expect(page.locator("aside nav").first()).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('aside nav[aria-label="Primary"]').first()).toBeVisible({ timeout: 60_000 })
     await expect(page.getByRole("navigation", { name: "Settings sections" })).toBeVisible({
       timeout: 60_000,
     })

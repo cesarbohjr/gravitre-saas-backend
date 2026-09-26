@@ -150,7 +150,7 @@ export async function waitForAppShellReady(page: Page, timeout = 120_000) {
     await bootSpinner.first().waitFor({ state: "hidden", timeout }).catch(() => undefined)
   }
 
-  await page.locator("aside nav").waitFor({ state: "visible", timeout })
+  await page.locator('aside nav[aria-label="Primary"]').waitFor({ state: "visible", timeout })
 }
 
 export async function prepareAdminAppSession(
@@ -172,7 +172,7 @@ export async function prepareAdminAppSession(
   await skipOnboardingForOrg(page, user.orgId)
   await dismissOnboardingChecklistForOrg(page)
 
-  const sidebar = page.locator("aside nav")
+  const sidebar = page.locator('aside nav[aria-label="Primary"]')
   if (!(await sidebar.isVisible().catch(() => false))) {
     await waitForAppShellReady(page, 60_000)
   }

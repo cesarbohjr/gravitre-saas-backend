@@ -71,7 +71,7 @@ async function mainContentText(page: Page): Promise<string> {
 }
 
 async function ensureSidebarReady(page: Page, timeout = 15_000) {
-  const sidebarNav = page.locator("aside nav")
+  const sidebarNav = page.locator('aside nav[aria-label="Primary"]')
   await sidebarNav.waitFor({ state: "visible", timeout })
   return sidebarNav
 }
