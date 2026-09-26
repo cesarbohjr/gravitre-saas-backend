@@ -350,9 +350,10 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               >
                 {title}
               </span>
-              <span className="hidden text-muted-foreground/50 md:inline" aria-hidden>/</span>
+              {/* md–lg the page H1 carries the name; the crumb returns where the path has room. */}
+              <span className="hidden text-muted-foreground/50 md:inline lg:hidden 2xl:inline" aria-hidden>/</span>
               <span
-                className="hidden max-w-[280px] truncate pl-1 text-[13px] font-semibold text-foreground md:block"
+                className="hidden max-w-[280px] truncate pl-1 text-[13px] font-semibold text-foreground md:block lg:hidden 2xl:block"
                 aria-current="page"
               >
                 {title}
