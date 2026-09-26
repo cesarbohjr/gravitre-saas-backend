@@ -76,4 +76,36 @@ describe("shared micro-label system", () => {
     }
     expect(offenders).toEqual([])
   }, 60_000)
+
+  it("gives bordered metric disclosures the shared g-disclosure open/closed cue", () => {
+    const offenders: string[] = []
+    for (const root of ROOTS) {
+      for (const file of walk(join(webRoot, root))) {
+        const rel = relative(webRoot, file)
+        if (EXCLUDED.some((re) => re.test(rel))) continue
+        const src = readFileSync(file, "utf8")
+        for (const match of src.matchAll(/<summary className="([^"]*)"/g)) {
+          const cls = match[1].split(/\s+/)
+          if (cls.includes("border-b") && !cls.includes("g-disclosure")) offenders.push(`${rel}: ${match[1]}`)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+  }, 60_000)
+
+  it("keeps table column headers in sentence case", () => {
+    const offenders: string[] = []
+    for (const root of ROOTS) {
+      for (const file of walk(join(webRoot, root))) {
+        const rel = relative(webRoot, file)
+        if (EXCLUDED.some((re) => re.test(rel))) continue
+        const src = readFileSync(file, "utf8")
+        for (const match of src.matchAll(/header:\s*"([A-Z][a-z]+(?: [A-Z][a-z]+)+)"/g)) {
+          if (PROPER_NAMES.some((re) => re.test(match[1]))) continue
+          offenders.push(`${rel}: ${match[1]}`)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+  }, 60_000)
 })

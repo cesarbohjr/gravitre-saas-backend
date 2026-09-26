@@ -1214,6 +1214,33 @@ html.chat-immersive body {
   font-weight: 600;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
+/* Collapsed secondary-metrics disclosure: the chevron after the label is the only
+   open/closed cue, since the native marker is hidden. */
+.g-disclosure {
+  list-style: none;
+}
+.g-disclosure::-webkit-details-marker {
+  display: none;
+}
+.g-disclosure > :first-child::after {
+  content: "";
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-left: 0.5rem;
+  border-right: 1.5px solid var(--muted-foreground);
+  border-bottom: 1.5px solid var(--muted-foreground);
+  transform: translateY(-2px) rotate(-45deg);
+  transition: transform 150ms ease;
+}
+details[open] > .g-disclosure > :first-child::after {
+  transform: translateY(-3px) rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-disclosure > :first-child::after {
+    transition: none;
+  }
+}
 
 /* 3.0 Plus Slice 1 — docked AI workspace reserves page width on md+ so the page
    beside it stays readable and clickable. Below md the workspace is a sheet. */

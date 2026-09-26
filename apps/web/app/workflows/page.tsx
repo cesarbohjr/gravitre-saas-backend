@@ -153,7 +153,7 @@ const columns = [
   },
   {
     key: "lastRun",
-    header: "Last Run",
+    header: "Last run",
     className: "w-32",
     render: (item: Workflow) => (
       <span className="text-muted-foreground">{item.lastRun}</span>
@@ -161,7 +161,7 @@ const columns = [
   },
   {
     key: "successRate",
-    header: "Success Rate",
+    header: "Success rate",
     className: "w-28 text-right",
     render: (item: Workflow) => (
       <span className="text-muted-foreground">{item.successRate}</span>
@@ -448,7 +448,7 @@ export default function WorkflowsPage() {
           }
           />
           <details className="px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)]">
-            <summary className="cursor-pointer list-none border-b border-divide py-2">
+            <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
               <p className="text-xs font-medium text-muted-foreground">Totals</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {workflows.length} workflows · {activeCount} active · {runningCount} running

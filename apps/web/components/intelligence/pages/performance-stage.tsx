@@ -118,7 +118,7 @@ export function PerformanceStage({
       ) : null}
 
       <details>
-        <summary className="cursor-pointer list-none border-b border-divide py-2">
+        <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
           <p className={TYPE.eyebrow}>Metrics</p>
           <p className={cn(TYPE.meta, "mt-0.5")}>Totals for the selected view.</p>
         </summary>
@@ -207,7 +207,7 @@ export function PerformanceStage({
       </details>
 
       <details>
-        <summary className="cursor-pointer list-none border-b border-divide py-2">
+        <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
           <p className={TYPE.eyebrow}>Instrumentation</p>
           <p className={cn(TYPE.meta, "mt-0.5")}>
             Pipeline and waterfall stay subordinate. This window has no per-span duration

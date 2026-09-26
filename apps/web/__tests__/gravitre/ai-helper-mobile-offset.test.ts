@@ -99,6 +99,13 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     expect(button.className).toContain("md:bottom-5")
   })
 
+  it("clears the pinned sidebar rail from md up, collapsed or expanded", async () => {
+    await renderHelper()
+    const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.className).toContain("md:left-[calc(var(--np-sidebar-rail)+12px)]")
+    expect(button.className).toContain("md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]")
+  })
+
   it("stacks above MobileBottomNav (z-30) but below modal sheets and dialogs (z-50)", async () => {
     await renderHelper()
     const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement

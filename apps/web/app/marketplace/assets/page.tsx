@@ -78,6 +78,10 @@ const PRICE_FILTERS = [
 type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
 
 /** Single-line summary of an asset's connector setup, shown on catalog cards. */
+function capitalizeFirst(value: string): string {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value
+}
+
 function connectorSummary(asset: MarketplaceAssetSummary): string {
   const total = asset.connectorChecklist?.length ?? 0
   if (total === 0) return "No setup required"
@@ -155,8 +159,8 @@ function AssetCard({
           className="min-w-0 flex-1 text-left"
         >
           <h3 className="truncate text-sm font-medium text-foreground">{asset.title}</h3>
-          <p className="mt-0.5 truncate text-xs capitalize text-muted-foreground">
-            {(asset.department ?? asset.assetType).replace(/_/g, " ")}
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {capitalizeFirst((asset.department ?? asset.assetType).replace(/_/g, " "))}
             <span className="mx-1.5 text-border">·</span>
             {connectorSummary(asset)}
           </p>
@@ -457,7 +461,7 @@ function MarketplaceAssetsContent() {
 
         <div className="space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
           <details>
-            <summary className="cursor-pointer list-none border-b border-divide py-2">
+            <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
               <p className="text-xs font-medium text-muted-foreground">Catalog</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Counts reflect your current search and filters.
@@ -595,7 +599,7 @@ function MarketplaceAssetsContent() {
               <section data-review-surface="marketplace-discovery">
                 <p className={TYPE.eyebrow}>Discovery</p>
                 <p className={cn(TYPE.meta, "mt-0.5")}>
-                  Catalog prices are authorized commerce. Install from the list. Installed packs stay on the ops list.
+                  Packs not yet installed in this workspace.
                 </p>
                 {discoveryAssets.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">

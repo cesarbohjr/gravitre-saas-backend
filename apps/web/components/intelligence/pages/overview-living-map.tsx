@@ -153,7 +153,7 @@ export function OverviewLivingMap({
             <p className={cn(TYPE.meta, "mt-1 text-muted-foreground")}>
               {mapLoading
                 ? "Loading…"
-                : `${knownEntities ?? "—"} entities · ${knownRels ?? "—"} relationships · ${instanceNodes} displayable field nodes`}
+                : `${knownEntities ?? "—"} entities · ${knownRels ?? "—"} relationships · ${instanceNodes} on the map`}
             </p>
           </div>
         </div>
@@ -299,8 +299,8 @@ export function OverviewLivingMap({
                 </p>
                 <p className={cn(TYPE.bodyMuted, "mt-2 max-w-md")}>
                   {isEmpty
-                    ? "Connect sources and sync CRM so org_entity_relationships can resolve entity ids."
-                    : `${knownRels} relationship rows are counted, but endpoint entity ids are not displayable as field nodes. Do not invent nodes.`}
+                    ? "Connect sources and sync your CRM to map how your entities relate."
+                    : `${knownRels} relationships are recorded, but their entities can't be placed on the map yet.`}
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button type="button" size="sm" asChild>

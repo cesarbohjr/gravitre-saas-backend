@@ -3126,7 +3126,7 @@ function ConnectorsPageContent() {
         {!chromeCollapsed ? (
         <>
         <details>
-          <summary className="cursor-pointer list-none border-b border-divide px-4 py-2 md:px-6">
+          <summary className="g-disclosure cursor-pointer border-b border-divide px-4 py-2 md:px-6">
             <p className={TYPE.eyebrow}>Health totals</p>
             <p className={cn(TYPE.meta, "mt-0.5")}>
               Counts from the last refresh.

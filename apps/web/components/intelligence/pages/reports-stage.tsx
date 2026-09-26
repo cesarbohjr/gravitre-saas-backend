@@ -194,7 +194,7 @@ export function ReportsStage({
         predictions.length === 0 ? (
           <EmptyState
             title="No predictions in this snapshot"
-            description="Prediction reports use the canonical snapshot — they do not invent rows."
+            description="Predictions appear here when a snapshot includes them."
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">

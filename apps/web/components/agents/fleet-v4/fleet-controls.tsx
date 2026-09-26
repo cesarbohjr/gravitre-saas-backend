@@ -111,13 +111,15 @@ export function FleetControls({
             Clear filters
           </button>
         ) : null}
-        <span className="ml-auto hidden text-[11px] text-[color:var(--g-text-muted)] xl:inline">
-          Edges: parent · swarm · connectors
-        </span>
+        {view === "graph" ? (
+          <span className="ml-auto hidden text-[11px] text-[color:var(--g-text-muted)] xl:inline">
+            Edges: parent · swarm · connectors
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
-        {searchSlot ? <div className="min-w-[12rem] flex-[2_1_14rem]">{searchSlot}</div> : null}
+        {searchSlot ? <div className="w-full min-w-[12rem] sm:w-auto sm:flex-[2_1_14rem]">{searchSlot}</div> : null}
         <FilterSelect
           label="Department"
           value={filters.department}

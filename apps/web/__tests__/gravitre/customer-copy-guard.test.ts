@@ -27,6 +27,12 @@ const BANNED = [
   /never blended/i,
   /Intent first, then training/,
   /Ask does not hide setup/i,
+  /authorized commerce/i,
+  /\bDo not invent\b/,
+  /they do not invent rows/,
+  /org_entity_relationships can/,
+  /displayable field nodes/,
+  /stay on the ops list/i,
   /G-STRUCT/,
   /\bSlice [0-9]/,
 ]

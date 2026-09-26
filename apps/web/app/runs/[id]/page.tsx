@@ -753,7 +753,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           ) : null}
 
           <details>
-            <summary className="cursor-pointer list-none border-b border-divide py-2">
+            <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
               <p className={TYPE.eyebrow}>Run metrics</p>
               <p className={cn(TYPE.meta, "mt-0.5")}>Duration and counts for this run.</p>
             </summary>
@@ -982,7 +982,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             onToggle={(event) => setTraceOpen((event.target as HTMLDetailsElement).open)}
             data-review-surface="run-trace"
           >
-            <summary className="cursor-pointer list-none border-b border-divide py-2">
+            <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
               <p className={TYPE.eyebrow}>Trace</p>
               <p className={cn(TYPE.meta, "mt-0.5")}>
                 Drill-down into this run’s recorded steps. No invented waterfall.
