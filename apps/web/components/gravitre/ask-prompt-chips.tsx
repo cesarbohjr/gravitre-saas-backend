@@ -1,6 +1,6 @@
 "use client"
 
-import { Sparkles } from "lucide-react"
+import { CornerDownRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 
@@ -40,11 +40,11 @@ export function AskPromptChips({
             className={cn(
               "group inline-flex max-w-full items-center gap-1.5 text-left text-[12.5px] text-[color:var(--g-text-primary)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               layout === "wrap"
-                ? "rounded-full border border-[color:var(--g-border-default)] bg-background px-3 py-1.5 hover:border-[color:var(--g-intelligence)]/40 hover:bg-[color:var(--g-surface-1)]"
-                : "w-full rounded-[8px] px-2 py-1.5 hover:bg-[color:var(--g-surface-1)]",
+                ? "rounded-[var(--np-radius-sm)] border border-[color:var(--g-border-default)] bg-background px-2.5 py-1.5 hover:border-[color:var(--g-border-strong)] hover:bg-[color:var(--g-surface-1)]"
+                : "w-full rounded-[var(--np-radius-sm)] px-1 py-1.5 hover:bg-[color:var(--g-surface-1)]",
             )}
           >
-            <Sparkles className="size-3.5 shrink-0 text-[color:var(--g-intelligence)]" aria-hidden />
+            <CornerDownRight className="size-3.5 shrink-0 text-[color:var(--g-text-muted)] transition-colors group-hover:text-[color:var(--g-brand)]" aria-hidden />
             <span className="truncate">{prompt}</span>
           </button>
         </li>

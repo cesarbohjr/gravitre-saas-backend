@@ -226,7 +226,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
         )}
       >
         {/* Left side - Menu + (mobile) Org + Environment + Page title */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
+        {/* lg+: stop short of the absolutely centred command bar (~450px wide). */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5 lg:max-w-[calc(50%-240px)]">
           {/* Nav toggle — mobile drawer; tablet+ expands icon rail to labels */}
           <Button
             variant="ghost"
