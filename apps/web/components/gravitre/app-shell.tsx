@@ -116,13 +116,15 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
   const isImmersiveChat =
     pathname === "/ai" ||
     pathname.startsWith("/ai/") ||
-    (pathname.startsWith("/agents/") && pathname.endsWith("/chat")) ||
-    pathname === "/connectors"
+    (pathname.startsWith("/agents/") && pathname.endsWith("/chat"))
+  /** Full-height hub with its own scroll region; keeps the standard top bar. */
+  const isFullHeightHub = pathname === "/connectors"
+  const locksDocumentScroll = isImmersiveChat || isFullHeightHub
   useEffect(() => {
-    if (!isImmersiveChat) return
+    if (!locksDocumentScroll) return
     document.documentElement.classList.add("chat-immersive")
     return () => document.documentElement.classList.remove("chat-immersive")
-  }, [isImmersiveChat])
+  }, [locksDocumentScroll])
   const isAssignmentDetail =
     pathname.startsWith("/assignments/") &&
     pathname !== "/assignments" &&
@@ -459,7 +461,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
               // flex rows, charts) from forcing the whole viewport wider than
               // the screen on mobile. Wide data views own their own x-scroll.
               "flex min-h-0 min-w-0 flex-1 flex-col",
-              isImmersiveChat || fillViewport
+              locksDocumentScroll || fillViewport
                 ? cn(
                     "overflow-hidden",
                     pathname.includes("/builder") ? "pb-0" : "pb-16 md:pb-0",

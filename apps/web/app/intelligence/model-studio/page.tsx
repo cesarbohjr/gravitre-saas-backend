@@ -2,6 +2,7 @@
 
 import { PAGE_FRAME } from "@/lib/design-system"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
@@ -26,6 +27,7 @@ export default function ModelStudioPage() {
         <GravitrePageHeader
           title="Model Studio"
           description="Create, train, evaluate, and deploy models for your business, and review every run."
+          icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={<AskGravitreSummonButton />}
         />
         <IntelligenceShell activeTab="model-studio" loadState="READY">

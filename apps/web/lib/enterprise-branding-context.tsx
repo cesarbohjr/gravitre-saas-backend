@@ -58,35 +58,67 @@ function normalizeHex(hex: string): string | null {
   return `#${value.toLowerCase()}`
 }
 
-/** Relative luminance to pick a readable foreground (black/white) on the brand color. */
-function readableForeground(hex: string): string {
-  const normalized = normalizeHex(hex)
-  if (!normalized) return "oklch(0.99 0 0)"
+function relativeLuminance(normalized: string): number {
   const r = parseInt(normalized.slice(1, 3), 16) / 255
   const g = parseInt(normalized.slice(3, 5), 16) / 255
   const b = parseInt(normalized.slice(5, 7), 16) / 255
   const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
-  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
-  return luminance > 0.5 ? "oklch(0.15 0 0)" : "oklch(0.99 0 0)"
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+/** Relative luminance to pick a readable foreground (black/white) on the brand color. */
+function readableForeground(hex: string): string {
+  const normalized = normalizeHex(hex)
+  if (!normalized) return "oklch(0.99 0 0)"
+  return relativeLuminance(normalized) > 0.5 ? "oklch(0.15 0 0)" : "oklch(0.99 0 0)"
+}
+
+/** WCAG 3:1 non-text contrast against the dark theme's near-black surfaces. */
+export function brandColorReadableOnDark(hex: string): boolean {
+  const normalized = normalizeHex(hex)
+  if (!normalized) return false
+  return (relativeLuminance(normalized) + 0.05) / 0.053 >= 3
 }
 
 const BRAND_VARS = ["--primary", "--ring", "--sidebar-primary", "--sidebar-ring", "--info", "--chart-1"]
+const BRAND_STYLE_ID = "gravitre-enterprise-brand"
+
+/**
+ * Brand variables live in a scoped stylesheet rather than inline on <html>, so a dark
+ * brand color never overrides the dark theme's primary with an unreadable value.
+ */
+export function brandColorCss(color: string | null): string | null {
+  if (!color) return null
+  const normalized = normalizeHex(color)
+  if (!normalized) return null
+  const fg = readableForeground(normalized)
+  const decls = [
+    ...BRAND_VARS.map((v) => `${v}: ${normalized};`),
+    `--primary-foreground: ${fg};`,
+    `--sidebar-primary-foreground: ${fg};`,
+  ].join(" ")
+  const light = `:root:not(.dark) { ${decls} }`
+  return brandColorReadableOnDark(normalized) ? `${light} .dark { ${decls} }` : light
+}
 
 function applyBrandColor(color: string | null) {
   if (typeof document === "undefined") return
   const root = document.documentElement
-  if (!color) {
-    BRAND_VARS.forEach((v) => root.style.removeProperty(v))
-    root.style.removeProperty("--primary-foreground")
-    root.style.removeProperty("--sidebar-primary-foreground")
+  BRAND_VARS.forEach((v) => root.style.removeProperty(v))
+  root.style.removeProperty("--primary-foreground")
+  root.style.removeProperty("--sidebar-primary-foreground")
+  const css = brandColorCss(color)
+  let tag = document.getElementById(BRAND_STYLE_ID) as HTMLStyleElement | null
+  if (!css) {
+    tag?.remove()
     return
   }
-  const normalized = normalizeHex(color)
-  if (!normalized) return
-  const fg = readableForeground(normalized)
-  BRAND_VARS.forEach((v) => root.style.setProperty(v, normalized))
-  root.style.setProperty("--primary-foreground", fg)
-  root.style.setProperty("--sidebar-primary-foreground", fg)
+  if (!tag) {
+    tag = document.createElement("style")
+    tag.id = BRAND_STYLE_ID
+    document.head.appendChild(tag)
+  }
+  tag.textContent = css
 }
 
 export function EnterpriseBrandingProvider({ children }: { children: ReactNode }) {

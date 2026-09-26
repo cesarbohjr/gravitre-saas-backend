@@ -100,7 +100,7 @@ export type PageFamilyId = keyof typeof PAGE_FAMILY
  * its own page padding); later sections inset to the same page gutter.
  */
 export const PAGE_FRAME =
-  "min-w-0 space-y-6 pb-8 [&>*:not(:first-child)]:mx-[var(--np-page-pad-sm)] sm:[&>*:not(:first-child)]:mx-[var(--np-page-pad)]"
+  "min-w-0 space-y-6 px-[var(--np-page-pad-sm)] pb-8 sm:px-[var(--np-page-pad)] [&>*:first-child]:-mx-[var(--np-page-pad-sm)] sm:[&>*:first-child]:-mx-[var(--np-page-pad)]"
 
 /** Window Manager chrome tokens (presentation-only). */
 export const WINDOW_CHROME = {

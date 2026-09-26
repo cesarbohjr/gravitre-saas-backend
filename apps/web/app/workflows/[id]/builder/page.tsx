@@ -3605,13 +3605,20 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     })
   }, [])
 
+  const graphSeededRef = useRef(false)
   useEffect(() => {
-    if (nodes.length > prevNodeCountRef.current) {
+    // The saved graph arriving is not the user adding a step; only later additions open Meson.
+    if (!graphSeededRef.current) {
+      if (nodes.length > 0 || !isLoadingGraph) graphSeededRef.current = true
+      prevNodeCountRef.current = nodes.length
+      return
+    }
+    if (nodes.length > prevNodeCountRef.current && window.matchMedia("(min-width: 768px)").matches) {
       setMesonPanelOpen(true)
       window.localStorage.setItem(MESON_PANEL_KEY, "1")
     }
     prevNodeCountRef.current = nodes.length
-  }, [nodes.length])
+  }, [nodes.length, isLoadingGraph])
 
   // Get selected node object
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null
