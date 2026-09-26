@@ -50,7 +50,7 @@ export function DayView({
 
   return (
     <div
-      className="flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 p-2 sm:p-3"
+      className="flex w-full min-w-0 flex-col overflow-hidden rounded-[var(--np-radius-lg)] border border-border bg-muted/30 p-2 sm:p-3"
       style={scheduleBoardStyle}
     >
       <div className="mb-2 flex shrink-0 items-center justify-between px-1">

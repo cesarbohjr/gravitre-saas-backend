@@ -74,16 +74,20 @@
      tone; the working surface is a raised, inset workspace panel. */
   --g-chrome: #f2f3f1;
   --g-chrome-hover: #e8eae7;
-  --g-workspace-radius: 14px;
+  --g-workspace-radius: 10px;
+  /* Graphite frame: navigation and command chrome are the instrument; the
+     workspace inside stays light. */
+  --g-frame: oklch(0.145 0.003 260);
+  --g-frame-rule: oklch(0.25 0.003 260);
   --g-workspace-shadow: 0 0 0 1px #e3e6e2, 0 1px 2px rgb(16 24 40 / 0.04), 0 12px 32px -18px rgb(16 24 40 / 0.14);
   --g-rail-bg: #fafbfa;
   /* P12 desktop densify — ops panes, not marketing canvas */
   --np-page-pad: 16px;
   --np-page-pad-sm: 12px;
   --np-kpi-gap: 12px;
-  --np-radius-sm: 6px;
-  --np-radius-md: 8px;
-  --np-radius-lg: 12px;
+  --np-radius-sm: 4px;
+  --np-radius-md: 6px;
+  --np-radius-lg: 8px;
   --np-row-h: 36px;
   --np-header-h: 36px;
   --np-nav-icon: 16px;
@@ -141,7 +145,7 @@
   --workflow-decision: var(--g-signal);
   --workflow-decision-mid: var(--g-signal);
   --workflow-line-dim: var(--muted-foreground);
-  --radius: 0.625rem;
+  --radius: 0.375rem;
   /* Premium elevation scale (light) — soft, layered, low-spread shadows */
   --elevation-1: 0 1px 2px -1px oklch(0.18 0.02 160 / 0.08), 0 1px 3px oklch(0.18 0.02 160 / 0.06);
   --elevation-2: 0 2px 4px -2px oklch(0.18 0.02 160 / 0.08), 0 4px 12px -2px oklch(0.18 0.02 160 / 0.08);
@@ -309,11 +313,13 @@
   --g-type-display-tracking: -0.03em;
   --g-type-label-tracking: 0.14em;
   /* Radius (aligned with design-system RADIUS) */
-  --g-radius-control: 9999px;
+  /* Sharp-technical geometry: small radii on working surfaces; the larger
+     panel radius is reserved for elevated / conversational surfaces. */
+  --g-radius-control: 0.375rem;
   --g-radius-field: 0.375rem;
-  --g-radius-tile: 0.5rem;
-  --g-radius-card: 0.75rem;
-  --g-radius-panel: 1rem;
+  --g-radius-tile: 0.375rem;
+  --g-radius-card: 0.5rem;
+  --g-radius-panel: 0.625rem;
   /* Space scale */
   --g-space-1: 0.25rem;
   --g-space-2: 0.5rem;

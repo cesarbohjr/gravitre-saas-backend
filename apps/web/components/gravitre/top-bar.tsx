@@ -220,8 +220,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
       <header
         data-testid="app-top-bar"
         className={cn(
-          // 3.0 Plus: command chrome on the shell tone — page context left, command centre, account right.
-          "relative flex items-center justify-between bg-[color:var(--g-chrome)] px-3 sm:px-4 md:pl-1 md:pr-3",
+          // Graphite command frame: workspace → environment → page left, command centre, account right.
+          "dark relative flex items-center justify-between bg-[color:var(--g-frame)] px-3 text-foreground sm:px-4 md:pl-1 md:pr-3",
           chromeQuiet ? "h-10 sm:h-10" : "h-12",
         )}
       >
@@ -260,12 +260,12 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 gap-2 px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-xs md:hidden"
+                className="h-11 gap-1.5 rounded-[4px] px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-[13px]"
                 aria-label={`Organization: ${org}. Switch organization`}
+                data-testid="workspace-identity"
               >
                 <Icon name="company" size="md" className="text-muted-foreground sm:hidden" />
-                <Icon name="company" size="sm" className="hidden text-muted-foreground sm:block" />
-                <span className="hidden sm:inline">{org}</span>
+                <span className="hidden max-w-[180px] truncate font-semibold sm:inline">{org}</span>
                 <Icon name="caretDown" size="sm" className="text-muted-foreground sm:hidden" />
                 <Icon
                   name="caretDown"
@@ -305,20 +305,23 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <span className="text-muted-foreground/40 hidden sm:inline md:hidden">/</span>
+          <span className="hidden text-muted-foreground/50 sm:inline" aria-hidden>/</span>
 
-          {/* Environment Selector — md+ lives in the sidebar workspace switcher */}
+          {/* Environment — part of the workspace path, not a separate control cluster */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-2 px-2 text-xs hidden sm:flex md:hidden hover:bg-accent"
+                className="hidden h-8 gap-1.5 rounded-[4px] px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground sm:flex"
+                aria-label={`Environment: ${environment}. Switch environment`}
               >
-                <Icon 
-                  name={environment === "production" ? "production" : "staging"} 
-                  size="sm"
-                  className={environment === "production" ? "text-success" : "text-warning"}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    environment === "production" ? "bg-[color:var(--g-brand)]" : "bg-warning",
+                  )}
                 />
                 <span className="capitalize">{environment}</span>
                 <Icon name="caretDown" size="xs" className="text-muted-foreground" />
@@ -346,8 +349,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               >
                 {title}
               </span>
+              <span className="hidden text-muted-foreground/50 md:inline" aria-hidden>/</span>
               <span
-                className="hidden max-w-[280px] truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground md:block"
+                className="hidden max-w-[280px] truncate pl-1 text-[13px] font-semibold text-foreground md:block"
                 aria-current="page"
               >
                 {title}
@@ -374,15 +378,15 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {/* Admin/Lite Mode Toggle */}
           {!chromeQuiet ? (
-          <div className="hidden items-center gap-0.5 rounded-[var(--np-radius-md)] bg-[color:var(--g-background-muted)] p-0.5 sm:flex">
+          <div className="hidden items-center gap-px rounded-[4px] border border-[color:var(--g-frame-rule)] p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => switchMode("admin")}
                   className={cn(
-                    "rounded-[6px] px-2.5 py-1 text-xs font-medium transition-colors duration-150",
+                    "rounded-[2px] px-2 py-0.5 text-xs font-medium transition-colors duration-150",
                     mode === "admin"
-                      ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)]"
+                      ? "bg-white/[0.12] text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -398,9 +402,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 <button
                   onClick={() => switchMode("lite")}
                   className={cn(
-                    "rounded-[6px] px-2.5 py-1 text-xs font-medium transition-colors duration-150",
+                    "rounded-[2px] px-2 py-0.5 text-xs font-medium transition-colors duration-150",
                     mode === "lite"
-                      ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)]"
+                      ? "bg-white/[0.12] text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -423,11 +427,11 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           {/* User Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="group relative h-11 w-11 rounded-full p-0 hover:bg-accent sm:h-8 sm:w-8" aria-label="Account menu">
+              <Button variant="ghost" size="icon" className="group relative h-11 w-11 rounded-full p-0 hover:bg-accent sm:h-8 sm:w-8" aria-label="Account menu" data-testid="account-identity">
                 <UserAccountAvatar
                   useCurrentUser
                   size="md"
-                  className="relative ring-1 ring-border transition-colors group-hover:ring-primary/40 sm:h-8 sm:w-8"
+                  className="relative ring-1 ring-[color:var(--g-frame-rule)] transition-colors group-hover:ring-foreground/40 sm:h-7 sm:w-7"
                 />
               </Button>
             </DropdownMenuTrigger>

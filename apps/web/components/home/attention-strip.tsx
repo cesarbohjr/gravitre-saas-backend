@@ -83,14 +83,14 @@ export function AttentionStrip({ data, className }: { data: HomeDashboardData; c
           Needs your attention
         </h2>
         {items.length > 0 ? (
-          <span className="rounded-full bg-[color:var(--g-signal-soft)] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[color:var(--g-signal)]">
+          <span className="text-[13px] font-semibold tabular-nums text-[color:var(--g-signal)]">
             {items.length}
           </span>
         ) : null}
       </div>
       {items.length === 0 ? (
-        <div className="flex items-center gap-3 rounded-[12px] border border-dashed border-[color:var(--g-border-default)] px-4 py-4">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--g-brand-soft)]">
+        <div className="flex items-center gap-3 border-y border-[color:var(--g-border-subtle)] px-1 py-4">
+          <span className="flex size-8 shrink-0 items-center justify-center">
             <CheckCircle2 className="size-4 text-[color:var(--g-brand)]" aria-hidden />
           </span>
           <span className="min-w-0">
@@ -101,7 +101,7 @@ export function AttentionStrip({ data, className }: { data: HomeDashboardData; c
           </span>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-default)]">
           {items.map((item) => {
             const Icon = TONE_ICON[item.tone]
             return (
@@ -109,8 +109,8 @@ export function AttentionStrip({ data, className }: { data: HomeDashboardData; c
                 <Link
                   href={item.href}
                   className={cn(
-                    "group relative flex items-center gap-3 overflow-hidden rounded-[12px] border border-[color:var(--g-border-default)] bg-card py-3 pl-5 pr-3 transition-[border-color,box-shadow] hover:border-[color:var(--g-border-strong)] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    "before:absolute before:inset-y-0 before:left-0 before:w-[3px]",
+                    "group relative flex items-center gap-3 overflow-hidden py-3 pl-5 pr-2 transition-colors hover:bg-[color:var(--g-background-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    "before:absolute before:inset-y-2 before:left-0 before:w-[2px]",
                     TONE_BAR[item.tone],
                   )}
                 >
@@ -121,7 +121,7 @@ export function AttentionStrip({ data, className }: { data: HomeDashboardData; c
                       {item.detail}
                     </span>
                   </span>
-                  <span className="hidden shrink-0 items-center gap-1 rounded-[8px] border border-[color:var(--g-border-default)] px-2.5 py-1 text-xs font-medium text-foreground transition-colors group-hover:bg-[color:var(--g-surface-1)] sm:inline-flex">
+                  <span className="hidden shrink-0 items-center gap-1 rounded-[var(--np-radius-sm)] border border-[color:var(--g-border-default)] px-2.5 py-1 text-xs font-medium text-foreground transition-colors group-hover:bg-[color:var(--g-surface-1)] sm:inline-flex">
                     {TONE_ACTION[item.tone]}
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
                   </span>

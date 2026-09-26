@@ -29,8 +29,6 @@ import {
 } from "@/components/ui/tooltip"
 import { resolveSidebarNavIcon } from "@/components/gravitre/nodus-product/sidebar-nucleo"
 import { cycleNavFocus } from "@/lib/nav-rail-focus"
-import { WorkspaceSwitcher } from "@/components/gravitre/workspace-switcher"
-
 const sectionColors = SIDEBAR_SECTION_COLORS
 
 function sidebarLinkTestId(name: string): string {
@@ -169,8 +167,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
         data-testid="nav-rail-b"
         data-nav-expanded={navExpanded ? "true" : "false"}
         className={cn(
-          // 3.0 Plus: navigation sits on the shell chrome; the workspace panel carries the edge.
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] transition-[width,transform] duration-300 ease-in-out md:border-r-0",
+          // Graphite instrument frame: scoped dark tokens so nested controls theme with it.
+          "dark fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-[color:var(--g-frame-rule)] bg-[color:var(--g-frame)] text-foreground transition-[width,transform] duration-300 ease-in-out md:border-r-0",
           // Mobile: slide-out drawer (Nodus labeled rail ~220px)
           "w-[var(--np-sidebar)]",
           isOpen ? "translate-x-0" : "-translate-x-full",
@@ -249,11 +247,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
           </Button>
         </div>
 
-        <div className={cn("shrink-0 px-2 pb-2", navExpanded ? "md:px-2" : "md:px-1.5")}>
-          <WorkspaceSwitcher collapsed={!isMobile && !navExpanded} />
-        </div>
-
-        {/* Navigation */}
+       {/* Navigation */}
         {/* `min-h-0` is required: without it a `flex-1` child refuses to shrink
             below its content height, so the nav overflows its track and squeezes
             the footer instead of scrolling internally. */}
@@ -271,7 +265,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
               <div key={group.group} className={cn(groupIndex > 0 && "mt-3", !navExpanded && groupIndex > 0 && "md:mt-2")}>
                 {/* Rail: a hairline stands in for the group label */}
                 {groupIndex > 0 && !navExpanded ? (
-                  <div className="mx-3 mb-2 hidden h-px bg-[color:var(--g-border-default)] md:block" aria-hidden />
+                  <div className="mx-3 mb-2 hidden h-px bg-[color:var(--g-frame-rule)] md:block" aria-hidden />
                 ) : null}
 
                 {/* Section Header — labels when nav expanded (desktop) or mobile drawer */}
@@ -319,7 +313,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                       const showTooltip = !isMobile && !navExpanded
                       const NavIcon = resolveSidebarNavIcon(item.icon)
                       const itemClassName = cn(
-                        "group relative flex items-center gap-2.5 rounded-[9px] text-[13px] font-medium transition-all duration-150 px-2.5 py-[7px]",
+                        "group relative flex items-center gap-2.5 rounded-[6px] text-[13px] font-medium transition-all duration-150 px-2.5 py-[7px]",
                         navExpanded
                           ? "md:justify-start md:px-2.5 md:py-[7px]"
                           : "md:mx-auto md:h-10 md:w-10 md:justify-center md:px-0 md:py-0",
@@ -434,7 +428,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
         </nav>
 
         {/* Footer */}
-        <div className="hidden shrink-0 border-t border-[color:var(--g-border-subtle)] px-2 py-2 md:block">
+        <div className="hidden shrink-0 border-t border-[color:var(--g-frame-rule)] px-2 py-2 md:block">
           <div className={cn("flex items-center", navExpanded ? "justify-end" : "justify-center")}>
             <Tooltip>
               <TooltipTrigger asChild>

@@ -21,8 +21,8 @@ const MAX_CHIPS = 3
 /**
  * Desktop month grid.
  *
- * Rendered as discrete rounded day cards on a tinted board (rather than a
- * hairline table) so each day reads as a droppable surface, and so weekends /
+ * Rendered as a ruled grid (hairline gaps over a border-tone board) so the
+ * month reads as one instrument; each cell is still a droppable surface and weekends /
  * out-of-month days can recede without extra borders. Phones get
  * `MobileAgenda` instead — see that file for why.
  */
@@ -53,15 +53,15 @@ export function CalendarView({
 
   return (
     <div
-      className="flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 p-2 sm:p-3"
+      className="flex w-full min-w-0 flex-col overflow-hidden border border-[color:var(--g-border-default)] bg-background"
       style={scheduleBoardStyle}
     >
-      <div className="mb-2 grid shrink-0 grid-cols-7 gap-2">
+      <div className="grid shrink-0 grid-cols-7 border-b border-[color:var(--g-border-default)]">
         {WEEKDAYS.map((day, idx) => (
           <div
             key={day}
             className={cn(
-              "px-1 pb-1 text-center text-xs font-semibold",
+              "px-2 py-1.5 text-left text-xs font-medium",
               idx > 4 ? "text-muted-foreground/60" : "text-muted-foreground",
             )}
           >
@@ -72,7 +72,7 @@ export function CalendarView({
 
       {/* Fixed 6×7 board — empty months keep the same footprint as busy ones. */}
       <div
-        className="grid min-h-0 flex-1 grid-cols-7 gap-2"
+        className="grid min-h-0 flex-1 grid-cols-7 gap-px bg-[color:var(--g-border-subtle)]"
         style={{ gridTemplateRows: "repeat(6, minmax(0, 1fr))" }}
       >
         {days.map((day, idx) => {
@@ -109,22 +109,22 @@ export function CalendarView({
                 setDropDayKey(null)
               }}
               className={cn(
-                "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border p-2 transition-colors",
+                "flex h-full min-h-0 flex-col overflow-hidden p-1.5 transition-colors",
                 inMonth
                   ? isWeekend
-                    ? "border-border/60 bg-card/70"
-                    : "border-border/60 bg-card"
-                  : "border-transparent bg-card/30",
-                isToday && "border-primary/40 ring-1 ring-primary/20",
-                isDropTarget && "border-primary bg-primary/5 ring-2 ring-primary/25",
+                    ? "bg-[color:var(--g-rail-bg)]"
+                    : "bg-background"
+                  : "bg-[color:var(--g-rail-bg)]",
+                isToday && "shadow-[inset_0_2px_0_var(--g-text-primary)]",
+                isDropTarget && "bg-[color:var(--g-brand)]/5 shadow-[inset_0_0_0_2px_var(--g-brand)]",
               )}
             >
               <div className="mb-1.5 flex shrink-0 items-center justify-between">
                 <span
                   className={cn(
-                    "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm tabular-nums",
+                    "inline-flex h-6 min-w-6 items-center justify-center rounded-[3px] px-1 text-[13px] tabular-nums",
                     isToday
-                      ? "bg-primary font-semibold text-primary-foreground"
+                      ? "bg-[color:var(--g-text-primary)] font-semibold text-background"
                       : inMonth
                         ? "font-medium text-foreground"
                         : "text-muted-foreground/50",
@@ -133,7 +133,7 @@ export function CalendarView({
                   {day.getDate()}
                 </span>
                 {dayOccurrences.length > 0 && (
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                  <span className="pr-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
                     {dayOccurrences.length}
                   </span>
                 )}
@@ -164,18 +164,17 @@ export function CalendarView({
                         delay: Math.min(idx * 0.004 + chipIdx * 0.03, 0.25),
                         ease: "easeOut",
                       }}
-                      whileHover={{ y: -1 }}
                       whileTap={{ scale: 0.98 }}
                       className={cn(
-                        "flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left text-xs",
+                        "flex w-full items-center gap-1.5 rounded-[3px] px-1.5 py-1 text-left text-xs",
                         selected && "ring-2 ring-ring ring-offset-1 ring-offset-card",
                         draggable && "cursor-grab active:cursor-grabbing",
                         draggingKey === occurrence.key && "opacity-60",
                         !inMonth && "opacity-60",
                       )}
                       style={{
-                        backgroundColor: `color-mix(in oklab, ${color} 14%, transparent)`,
-                        borderLeft: `3px solid ${color}`,
+                        backgroundColor: `color-mix(in oklab, ${color} 9%, transparent)`,
+                        borderLeft: `2px solid ${color}`,
                       }}
                     >
                       <span className="truncate font-medium text-foreground">
@@ -192,7 +191,7 @@ export function CalendarView({
                   <button
                     type="button"
                     onClick={() => onOpen(dayOccurrences[MAX_CHIPS])}
-                    className="w-full rounded-lg px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className="w-full rounded-[3px] px-1.5 py-0.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     +{dayOccurrences.length - MAX_CHIPS} more
                   </button>

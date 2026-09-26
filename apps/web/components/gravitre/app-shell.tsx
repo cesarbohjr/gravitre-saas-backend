@@ -365,7 +365,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
   return (
     <MesonToolbarProvider>
     <div
-      className="flex h-screen overflow-hidden bg-[color:var(--g-chrome)] text-foreground"
+      className="flex h-screen overflow-hidden bg-[color:var(--g-frame)] text-foreground"
       data-page-family={pageFamily}
     >
         <Sidebar
@@ -401,12 +401,12 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
             const urgent = days !== null && days <= 3
             const warning = days !== null && days <= 7
             const bannerClass = urgent
-              ? "border-destructive/30 bg-destructive/10 text-foreground"
+              ? "border-l-destructive"
               : warning
-                ? "border-warning/30 bg-warning/10 text-foreground"
-                : "border-success/30 bg-success/10 text-foreground"
+                ? "border-l-warning"
+                : "border-l-[color:var(--g-brand)]"
             return (
-            <div className={cn("border-b px-4 py-2 text-sm flex items-center justify-between", bannerClass)} data-testid="active-trial-banner">
+            <div className={cn("flex min-h-9 items-center justify-between border-b border-l-2 border-[color:var(--g-border-subtle)] bg-background px-4 py-1.5 text-[13px] text-foreground", bannerClass)} data-testid="active-trial-banner">
               <span>
                 You&apos;re on a 7-day free trial of Node.
                 {days !== null && ` ${days} day${days === 1 ? "" : "s"} left.`}

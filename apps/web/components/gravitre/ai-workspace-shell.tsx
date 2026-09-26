@@ -149,18 +149,18 @@ export function GravitreAIWorkspaceShell({
       aria-modal={isFullscreen ? true : undefined}
       aria-label="Gravitre AI workspace"
     >
-      <div className="flex min-h-12 shrink-0 items-center justify-between border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-3 py-2">
+      <div className="dark flex min-h-12 shrink-0 items-center justify-between border-b border-[color:var(--g-frame-rule)] bg-[color:var(--g-frame)] px-3 py-2 text-foreground">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[color:var(--g-brand)] text-white shadow-sm">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] border border-[color:var(--g-frame-rule)] bg-white/[0.04] text-foreground">
             <NucleoChat width={NUCLEO_SIZE.default} height={NUCLEO_SIZE.default} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-[color:var(--g-text-primary)]">Gravitre AI</p>
+            <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-foreground">Gravitre AI</p>
             {titleAccessory}
           </div>
           <span
             className={cn(
-              "ml-1 hidden shrink-0 items-center gap-1 rounded-full bg-[color:var(--g-surface-2)] px-1.5 py-0.5 text-[10px] font-medium sm:flex",
+              "ml-1 hidden shrink-0 items-center gap-1.5 rounded-[3px] border border-[color:var(--g-frame-rule)] px-1.5 py-0.5 text-[11px] font-medium sm:flex",
               copy.tone,
             )}
           >

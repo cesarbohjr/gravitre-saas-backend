@@ -67,9 +67,9 @@ export function WorkforceStrip({ data }: { data: HomeDashboardData }) {
       {shown.length === 0 ? (
         <Link
           href={`${APP_ROUTES.agents}/new`}
-          className="flex items-center gap-3 rounded-[12px] border border-dashed border-[color:var(--g-border-default)] px-4 py-4 text-left transition-colors hover:bg-[color:var(--g-surface-1)]"
+          className="flex items-center gap-3 rounded-[var(--np-radius-md)] border border-dashed border-[color:var(--g-border-default)] px-4 py-4 text-left transition-colors hover:bg-[color:var(--g-surface-1)]"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[9px] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] border border-[color:var(--g-border-default)] text-foreground">
             <Plus className="size-4" aria-hidden />
           </span>
           <span className="min-w-0">
@@ -88,7 +88,7 @@ export function WorkforceStrip({ data }: { data: HomeDashboardData }) {
               <li key={agent.id} className="min-w-0">
                 <Link
                   href={`${APP_ROUTES.agents}/${agent.id}`}
-                  className="group flex h-full min-w-0 flex-col gap-2.5 rounded-[12px] border border-[color:var(--g-border-default)] bg-card p-3 transition-[border-color,box-shadow] hover:border-[color:var(--g-border-strong)] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group flex h-full min-w-0 flex-col gap-2.5 rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-card p-3 transition-[border-color,box-shadow] hover:border-[color:var(--g-border-strong)] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <AgentIdentityAvatar agent={agent} size="sm" />
@@ -150,7 +150,7 @@ export function BusinessStateRail({
 }) {
   return (
     <aside className="space-y-5 lg:sticky lg:top-4" aria-label="Business state">
-      <section aria-labelledby="dashboard-state" className="rounded-[14px] bg-[color:var(--g-rail-bg)] p-4 ring-1 ring-[color:var(--g-border-subtle)]">
+      <section aria-labelledby="dashboard-state" className="border-t-2 border-[color:var(--g-text-primary)] pt-3">
         <h2 id="dashboard-state" className="text-[13px] font-semibold text-foreground">
           Business state
         </h2>
@@ -163,7 +163,7 @@ export function BusinessStateRail({
               const resolved = resolveKpiValue(widget.metricId, data)
               const label = widget.title ?? def?.name ?? widget.metricId
               const valueClass = cn(
-                "shrink-0 text-[15px] font-semibold tabular-nums text-foreground",
+                "shrink-0 text-base font-semibold tabular-nums tracking-[-0.01em] text-foreground",
                 resolved.warning && "text-warning",
                 resolved.empty && "text-muted-foreground",
               )

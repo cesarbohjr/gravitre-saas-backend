@@ -16,23 +16,21 @@ export function TrialExpiredBanner({
 }: TrialExpiredBannerProps) {
   return (
     <div
-      className="border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-foreground"
+      className="flex min-h-9 items-center gap-3 border-b border-l-2 border-[color:var(--g-border-subtle)] border-l-destructive bg-background px-4 py-1.5 text-[13px] text-foreground"
       role="alert"
       aria-live="polite"
       data-testid="trial-expired-banner"
     >
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-        <span>{message}</span>
-        {onUpgradeClick ? (
-          <Button size="sm" variant="default" onClick={onUpgradeClick}>
-            Upgrade now
-          </Button>
-        ) : (
-          <Button size="sm" variant="default" asChild>
-            <Link href={upgradeUrl}>Upgrade now</Link>
-          </Button>
-        )}
-      </div>
+      <span className="min-w-0 flex-1 truncate">{message}</span>
+      {onUpgradeClick ? (
+        <Button size="sm" variant="default" className="h-7 shrink-0 rounded-[4px] px-3 text-xs" onClick={onUpgradeClick}>
+          Upgrade now
+        </Button>
+      ) : (
+        <Button size="sm" variant="default" className="h-7 shrink-0 rounded-[4px] px-3 text-xs" asChild>
+          <Link href={upgradeUrl}>Upgrade now</Link>
+        </Button>
+      )}
     </div>
   )
 }

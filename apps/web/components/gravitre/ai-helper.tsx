@@ -160,7 +160,7 @@ export function GravitreAIHelper() {
           data-gravitre-ai-helper=""
           data-gravitre-ai-dock={onBuilder ? "canvas" : "workspace"}
           className={cn(
-            "fixed left-5 z-40 flex items-center gap-2.5 rounded-full border border-[color:var(--g-border-default)]",
+            "dark fixed left-5 z-40 flex items-center gap-2.5 rounded-[8px] border border-[color:var(--g-frame-rule)] text-foreground",
             "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
             onBuilder
               ? "md:left-[calc(var(--np-sidebar-rail)+12px)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]"
@@ -168,23 +168,24 @@ export function GravitreAIHelper() {
                   // Operating layer: a context dock centred on the workspace panel,
                   // not a support bubble parked in a corner.
                   "md:left-[calc(50%+var(--np-sidebar-rail)/2)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(50%+var(--np-sidebar)/2)]",
-                  "md:-translate-x-1/2 md:w-[min(460px,calc(100vw-var(--np-sidebar)-64px))] md:rounded-[14px] md:py-1.5 md:pl-1.5 md:pr-2",
+                  "md:-translate-x-1/2 md:w-[min(460px,calc(100vw-var(--np-sidebar)-64px))] md:py-1.5 md:pl-1.5 md:pr-2",
                 ),
-            "bg-[color:var(--g-surface-1)] px-3 py-2 shadow-[0_10px_32px_-14px_rgb(16_24_40/0.35),0_0_0_1px_var(--g-border-subtle)] backdrop-blur transition-colors",
-            "hover:border-[color:var(--g-brand-border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
+            // Ink command dock: part of the graphite frame, not a floating support bubble.
+            "bg-[color:var(--g-frame)] px-2 py-1.5 shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] transition-colors",
+            "hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
           )}
           aria-label={accessibleName}
           aria-expanded={false}
         >
-          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center">
+          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center">
             {orbActive ? (
               <GravitreOrb
                 speaker={helperOrbSpeaker(presence)}
-                className="!h-9 !w-9"
+                className="!h-8 !w-8"
                 amplitude={presence === "listening" ? 0.55 : 0.35}
               />
             ) : (
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--g-brand)] to-emerald-700 text-white md:rounded-[10px]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-[color:var(--g-frame-rule)] bg-white/[0.04] text-foreground">
                 {/* A conversation bubble, not the abstract agent glyph: the control
                     has to read as "AI Chat" at a glance. */}
                 <NucleoChat className="h-4 w-4" />
@@ -192,7 +193,7 @@ export function GravitreAIHelper() {
             )}
             <span
               className={cn(
-                "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[color:var(--g-surface-1)]",
+                "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[color:var(--g-frame)]",
                 GRAVITRE_HELPER_PRESENCE_DOT[presence],
                 (presence === "thinking" || presence === "executing") && "animate-pulse",
               )}
@@ -206,7 +207,7 @@ export function GravitreAIHelper() {
               onBuilder ? "xl:flex" : "sm:flex md:flex-1",
             )}
           >
-            <span className="text-xs font-semibold text-[color:var(--g-text-primary)] md:text-[13px]">
+            <span className="text-xs font-semibold text-foreground md:text-[13px]">
               {onBuilder ? "Gravitre AI" : "Ask Gravitre"}
             </span>
             <span className={cn("max-w-[180px] truncate text-[11px] font-medium md:max-w-[240px]", copy.tone)}>
@@ -216,12 +217,12 @@ export function GravitreAIHelper() {
           {onBuilder ? null : (
             <span className="hidden shrink-0 items-center gap-1.5 md:flex" aria-hidden>
               {pendingApprovals > 0 ? (
-                <span className="rounded-md bg-[color:var(--g-signal-soft)] px-1.5 py-0.5 text-[11px] font-medium text-[color:var(--g-signal)]">
+                <span className="rounded-[3px] bg-[color:var(--g-signal)]/20 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-foreground">
                   {pendingApprovals} to approve
                 </span>
               ) : null}
               {routeLabel ? (
-                <span className="rounded-md border border-[color:var(--g-border-default)] px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <span className="rounded-[3px] border border-[color:var(--g-frame-rule)] px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                   {routeLabel}
                 </span>
               ) : null}

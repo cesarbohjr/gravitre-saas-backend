@@ -270,16 +270,14 @@ export function MesonToolbarTrigger() {
             size="icon"
             onClick={togglePanel}
             className={cn(
-              "relative rounded-full p-0 hover:bg-violet-500/10",
+              "relative rounded-[4px] p-0 text-muted-foreground hover:bg-accent hover:text-foreground",
               TOUCH_ICON_BUTTON,
-              panelOpen && "bg-violet-500/10 ring-1 ring-violet-500/30",
+              panelOpen && "bg-accent text-foreground",
             )}
             aria-expanded={panelOpen}
             aria-label={panelOpen ? "Hide Meson tips" : "Show Meson tips"}
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm sm:h-7 sm:w-7">
-              <Blocks className="h-4 w-4 text-white sm:h-3.5 sm:w-3.5" />
-            </span>
+            <Blocks className="h-4 w-4" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">

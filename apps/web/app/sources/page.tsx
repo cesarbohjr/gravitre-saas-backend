@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
-import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
 import { sourceTypeVendorKey } from "@/lib/brand-vendor"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -22,8 +22,7 @@ import {
   Clock,
   ChevronDown,
 } from "lucide-react"
-import { NucleoConnector } from "@/components/icons/nucleo/semantic"
-import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { ApiError, fetcher as apiFetcher, PlanRequiredApiError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { sourcesApi } from "@/lib/api"
 import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
@@ -41,6 +40,7 @@ interface Source {
   status: "connected" | "disconnected" | "error" | "syncing"
   environment: "production" | "staging"
   lastSync: string
+  lastSyncAt: number | null
   tables: number
   records: string
   description: string
@@ -98,6 +98,9 @@ function normalizeSource(input: Record<string, unknown>): Source {
       ? recordsFromString
       : 0
   const environment = String(input.environment ?? "production")
+  const rawLastSync =
+    (input.lastSync as string | null) ?? (input.last_sync as string | null) ?? (input.lastSyncAt as string | null)
+  const lastSyncMs = rawLastSync ? new Date(rawLastSync).getTime() : Number.NaN
   return {
     id: String(input.id ?? ""),
     name: String(input.name ?? "source"),
@@ -111,11 +114,8 @@ function normalizeSource(input: Record<string, unknown>): Source {
         ? status
         : "connected",
     environment: environment === "staging" ? "staging" : "production",
-    lastSync: formatRelativeSync(
-      (input.lastSync as string | null) ??
-        (input.last_sync as string | null) ??
-        (input.lastSyncAt as string | null)
-    ),
+    lastSync: formatRelativeSync(rawLastSync),
+    lastSyncAt: Number.isFinite(lastSyncMs) ? lastSyncMs : null,
     tables: Number(input.tables ?? input.tablesCount ?? input.tables_count ?? 0),
     records: formatCompactCount(effectiveRecordCount),
     description: String(input.description ?? `${type} data source`),
@@ -212,10 +212,9 @@ function SourceTile({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
-      whileHover={{ y: -2 }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
       className={cn(
         "group relative overflow-hidden rounded-[var(--np-radius-lg)] border transition-all duration-300",
         source.status === "error"
@@ -271,26 +270,26 @@ function SourceTile({
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="text-center p-2 rounded-lg bg-secondary/50">
-            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+          <div className="border-l border-divide pl-3 text-left">
+            <div className="mb-1 flex items-center gap-1 text-muted-foreground">
               <Table2 className="h-3 w-3" />
             </div>
             <p className="text-sm font-semibold text-foreground">{source.tables}</p>
-            <p className="text-[9px] text-muted-foreground">tables</p>
+            <p className="text-[11px] text-muted-foreground">tables</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-secondary/50">
-            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+          <div className="border-l border-divide pl-3 text-left">
+            <div className="mb-1 flex items-center gap-1 text-muted-foreground">
               <Database className="h-3 w-3" />
             </div>
             <p className="text-sm font-semibold text-foreground">{source.records}</p>
-            <p className="text-[9px] text-muted-foreground">records</p>
+            <p className="text-[11px] text-muted-foreground">records</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-secondary/50">
-            <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+          <div className="border-l border-divide pl-3 text-left">
+            <div className="mb-1 flex items-center gap-1 text-muted-foreground">
               <Workflow className="h-3 w-3" />
             </div>
             <p className="text-sm font-semibold text-foreground">{source.workflowsUsing}</p>
-            <p className="text-[9px] text-muted-foreground">workflows</p>
+            <p className="text-[11px] text-muted-foreground">workflows</p>
           </div>
         </div>
 
@@ -301,7 +300,7 @@ function SourceTile({
               {source.topTables.slice(0, 3).map((table) => (
                 <span 
                   key={table}
-                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary text-muted-foreground"
+                  className="rounded-[3px] border border-divide px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
                 >
                   {table}
                 </span>
@@ -477,13 +476,41 @@ export default function SourcesPage() {
   }, 0)
   const totalTables = sources.reduce((a, s) => a + s.tables, 0)
 
+  const needsAttention = sources.filter((s) => s.status === "error" || s.status === "disconnected")
+  const recentIngestion = [...sources]
+    .filter((s) => s.lastSyncAt !== null || s.status === "syncing")
+    .sort((a, b) => (b.lastSyncAt ?? Number.MAX_SAFE_INTEGER) - (a.lastSyncAt ?? Number.MAX_SAFE_INTEGER))
+    .slice(0, 5)
+  // The shell's trial/plan strip already carries entitlement errors; repeating it inline is noise.
+  const showInlineError =
+    Boolean(error) && !(error instanceof PlanRequiredApiError) && !(error instanceof ApiError && error.status === 402)
+
   return (
     <AppShell title={SOURCES_TITLE}>
       <div data-testid="sources-hub-b">
         <GravitrePageHeader
           title={SOURCES_TITLE}
           description={SOURCES_DESCRIPTION}
-          icon={<NucleoConnector className="h-5 w-5" />}
+          status={
+            sources.length > 0 ? (
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="sources-health-line">
+                <LiveStatus tone={errorCount > 0 ? "attention" : "live"}>
+                  <span>
+                    <span className="font-semibold tabular-nums text-[color:var(--g-text-primary)]">{connectedCount}</span>
+                    {" of "}
+                    <span className="tabular-nums">{sources.length}</span> connected
+                  </span>
+                </LiveStatus>
+                <span className={cn(errorCount > 0 && "font-medium text-destructive")}>
+                  <span className="tabular-nums">{errorCount}</span> {errorCount === 1 ? "error" : "errors"}
+                </span>
+                <span>
+                  <span className="tabular-nums">{formatCompactCount(totalRecords)}</span> records ·{" "}
+                  <span className="tabular-nums">{totalTables}</span> tables
+                </span>
+              </span>
+            ) : null
+          }
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
@@ -498,175 +525,234 @@ export default function SourcesPage() {
           }
         />
 
-        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
-          {error ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
-              <span>{error instanceof Error ? error.message : "Failed to load sources"}</span>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => mutate()}>
-                Retry
-              </Button>
-            </div>
-          ) : null}
+        <div className="grid gap-8 px-[var(--np-page-pad-sm)] pb-8 pt-2 sm:px-[var(--np-page-pad)] lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="min-w-0 space-y-6">
+            {showInlineError ? (
+              <div className="flex items-center justify-between gap-3 border-l-2 border-destructive bg-background py-1.5 pl-3 text-[13px] text-foreground">
+                <span>{error instanceof Error ? error.message : "Failed to load sources"}</span>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => mutate()}>
+                  Retry
+                </Button>
+              </div>
+            ) : null}
 
-          <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
-            <GravitreMetric label="Connected" value={connectedCount} hint="Connected or syncing" />
-            <GravitreMetric
-              label="Records"
-              value={formatCompactCount(totalRecords)}
-              hint="Across listed sources"
-            />
-            <GravitreMetric label="Tables" value={totalTables} hint="Schema table count" />
-            <GravitreMetric
-              label="Errors"
-              value={errorCount}
-              hint="Sources needing attention"
-              warning={errorCount > 0}
-            />
-          </section>
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                  selectedCategory === null
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground",
-                )}
-              >
-                All
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                    selectedCategory === cat
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {categoryLabels[cat]}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[color:var(--g-border-default)]">
+              <div className="-mb-px flex flex-wrap items-center gap-5" role="tablist" aria-label="Source category">
+                {[null, ...categories].map((cat) => {
+                  const active = selectedCategory === cat
+                  return (
+                    <button
+                      key={cat ?? "all"}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={cn(
+                        "border-b-2 pb-2 text-[13px] font-medium transition-colors",
+                        active
+                          ? "border-[color:var(--g-text-primary)] text-[color:var(--g-text-primary)]"
+                          : "border-transparent text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {cat ? categoryLabels[cat] : "All sources"}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="pb-2">
+                <DataFreshness
+                  updatedAt={data ? Date.now() : null}
+                  isRefreshing={isValidating}
+                  onRefresh={() => mutate()}
+                />
+              </div>
             </div>
-            <DataFreshness
-              updatedAt={data ? Date.now() : null}
-              isRefreshing={isValidating}
-              onRefresh={() => mutate()}
-            />
+
+            {isLoading && sources.length === 0 ? (
+              <div className="h-40 animate-pulse rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)]" />
+            ) : null}
+
+            {!isLoading && !error && sources.length === 0 ? (
+              <EmptyState
+                icon={Database}
+                title="No data sources yet"
+                description="Connect your first data source to ground your agents in real business data."
+                action={{ label: "Add data source", onClick: () => setAddModalOpen(true) }}
+              />
+            ) : null}
+
+            {!isLoading &&
+            sources.length > 0 &&
+            categories.filter((cat) => selectedCategory === null || cat === selectedCategory).length === 0 ? (
+              <NoResultsState onClear={() => setSelectedCategory(null)} />
+            ) : null}
+
+            <AnimatePresence mode="wait">
+              {categories
+                .filter((cat) => selectedCategory === null || cat === selectedCategory)
+                .map((category, catIndex) => (
+                  <motion.section
+                    key={category}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ delay: catIndex * 0.04 }}
+                  >
+                    <div className="mb-2 flex items-baseline gap-3">
+                      <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">{categoryLabels[category]}</h2>
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {groupedSources[category].length} source{groupedSources[category].length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto border-y border-[color:var(--g-border-default)]">
+                      <table className="w-full min-w-[720px] text-left text-sm" data-testid="sources-table-view">
+                        <thead className="border-b border-divide text-xs font-medium text-muted-foreground">
+                          <tr>
+                            <th className="py-2 pl-1 pr-3 font-medium">Source</th>
+                            <th className="px-3 py-2 font-medium">Type</th>
+                            <th className="px-3 py-2 font-medium">Status</th>
+                            <th className="px-3 py-2 text-right font-medium">Tables</th>
+                            <th className="px-3 py-2 text-right font-medium">Records</th>
+                            <th className="px-3 py-2 text-right font-medium">Workflows</th>
+                            <th className="px-3 py-2 font-medium">Last sync</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupedSources[category].map((source) => {
+                            const selected = expandedSource === source.id
+                            return (
+                              <tr
+                                key={source.id}
+                                className={cn(
+                                  "cursor-pointer border-b border-divide last:border-0",
+                                  selected ? "bg-[color:var(--g-surface-active)]" : "hover:bg-[color:var(--g-surface-2)]",
+                                )}
+                                onClick={() => setExpandedSource(selected ? null : source.id)}
+                              >
+                                <td className="py-2.5 pl-1 pr-3 font-medium text-foreground">{source.name}</td>
+                                <td className="px-3 py-2.5 text-muted-foreground">{source.type}</td>
+                                <td className="px-3 py-2.5 capitalize text-foreground">
+                                  <span className="inline-flex items-center gap-2">
+                                    {source.status === "syncing" ? (
+                                      <span
+                                        className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--g-signal)] motion-safe:animate-pulse"
+                                        data-source-ingest="syncing"
+                                        aria-hidden
+                                      />
+                                    ) : (
+                                      <span
+                                        className={cn(
+                                          "inline-block h-1.5 w-1.5 rounded-full",
+                                          source.status === "connected" && "bg-[color:var(--g-brand)]",
+                                          source.status === "error" && "bg-destructive",
+                                          source.status === "disconnected" && "bg-muted-foreground/50",
+                                        )}
+                                        aria-hidden
+                                      />
+                                    )}
+                                    {source.status}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-right tabular-nums">{source.tables}</td>
+                                <td className="px-3 py-2.5 text-right tabular-nums">{source.records}</td>
+                                <td className="px-3 py-2.5 text-right tabular-nums">{source.workflowsUsing}</td>
+                                <td className="px-3 py-2.5 text-muted-foreground">{source.lastSync}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {groupedSources[category]
+                      .filter((source) => source.id === expandedSource)
+                      .map((source) => (
+                        <div key={`${source.id}-inspect`} className="mt-3 max-w-xl">
+                          <SourceTile
+                            source={source}
+                            index={0}
+                            isExpanded
+                            onToggle={() => setExpandedSource(null)}
+                            onSync={handleSync}
+                            onDelete={handleDelete}
+                            isMutating={mutatingSourceId === source.id}
+                          />
+                        </div>
+                      ))}
+                  </motion.section>
+                ))}
+            </AnimatePresence>
           </div>
 
-          {isLoading && sources.length === 0 ? (
-            <div className="h-40 animate-pulse rounded-lg border border-divide bg-[color:var(--g-surface-2)]" />
-          ) : null}
+          <aside className="space-y-7 lg:border-l lg:border-[color:var(--g-border-default)] lg:pl-6" aria-label="Source operations">
+            <section data-testid="sources-needs-attention">
+              <h2 className="text-[13px] font-semibold text-foreground">Needs attention</h2>
+              {sources.length === 0 ? (
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  {error ? "Source data unavailable." : "No sources connected yet."}
+                </p>
+              ) : needsAttention.length === 0 ? (
+                <p className="mt-2 flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--g-brand)]" aria-hidden />
+                  No sources need attention.
+                </p>
+              ) : (
+                <ul className="mt-2 divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-subtle)]">
+                  {needsAttention.map((source) => (
+                    <li key={source.id}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSource(source.id)}
+                        className="flex w-full items-center justify-between gap-3 py-2 text-left text-[13px] hover:text-foreground"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              source.status === "error" ? "bg-destructive" : "bg-muted-foreground/50",
+                            )}
+                            aria-hidden
+                          />
+                          <span className="truncate font-medium text-foreground">{source.name}</span>
+                        </span>
+                        <span className="shrink-0 text-xs capitalize text-muted-foreground">{source.status}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-          {!isLoading && !error && sources.length === 0 ? (
-            <EmptyState
-              icon={Database}
-              title="No data sources yet"
-              description="Connect your first data source to ground your agents in real business data."
-              action={{ label: "Add data source", onClick: () => setAddModalOpen(true) }}
-            />
-          ) : null}
+            <section data-testid="sources-recent-ingestion">
+              <h2 className="text-[13px] font-semibold text-foreground">Recent ingestion</h2>
+              {recentIngestion.length === 0 ? (
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  {error ? "Source data unavailable." : "No syncs recorded yet."}
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2">
+                  {recentIngestion.map((source) => (
+                    <li key={source.id} className="flex items-baseline justify-between gap-3 text-[13px]">
+                      <span className="truncate text-foreground">{source.name}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {source.status === "syncing" ? "Syncing now" : source.lastSync}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-          {!isLoading &&
-          sources.length > 0 &&
-          categories.filter((cat) => selectedCategory === null || cat === selectedCategory).length === 0 ? (
-            <NoResultsState onClear={() => setSelectedCategory(null)} />
-          ) : null}
-
-          <AnimatePresence mode="wait">
-            {categories
-              .filter((cat) => selectedCategory === null || cat === selectedCategory)
-              .map((category, catIndex) => (
-                <motion.div
-                  key={category}
-                  className="mb-10"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ delay: catIndex * 0.05 }}
-                >
-                  <div className="mb-4 flex items-center gap-3">
-                    <h2 className="text-base font-semibold text-foreground">{categoryLabels[category]}</h2>
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-                      {groupedSources[category].length} source
-                      {groupedSources[category].length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="overflow-x-auto rounded-lg border border-divide">
-                    <table
-                      className="w-full min-w-[720px] text-left text-sm"
-                      data-testid="sources-table-view"
-                    >
-                      <thead className="border-b border-divide text-xs font-medium text-muted-foreground">
-                        <tr>
-                          <th className="px-3 py-2 font-medium">Source</th>
-                          <th className="px-3 py-2 font-medium">Type</th>
-                          <th className="px-3 py-2 font-medium">Status</th>
-                          <th className="px-3 py-2 font-medium">Tables</th>
-                          <th className="px-3 py-2 font-medium">Records</th>
-                          <th className="px-3 py-2 font-medium">Workflows</th>
-                          <th className="px-3 py-2 font-medium">Last sync</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groupedSources[category].map((source) => {
-                          const selected = expandedSource === source.id
-                          return (
-                            <tr
-                              key={source.id}
-                              className={cn(
-                                "cursor-pointer border-b border-divide last:border-0",
-                                selected ? "bg-[color:var(--g-surface-active)]" : "hover:bg-[color:var(--g-surface-2)]",
-                              )}
-                              onClick={() => setExpandedSource(selected ? null : source.id)}
-                            >
-                              <td className="px-3 py-2 font-medium text-foreground">{source.name}</td>
-                              <td className="px-3 py-2 text-muted-foreground">{source.type}</td>
-                              <td className="px-3 py-2 capitalize text-muted-foreground">
-                                <span className="inline-flex items-center gap-2">
-                                  {source.status === "syncing" ? (
-                                    <span
-                                      className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--g-signal)] motion-safe:animate-pulse"
-                                      data-source-ingest="syncing"
-                                      aria-hidden
-                                    />
-                                  ) : null}
-                                  {source.status}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 tabular-nums">{source.tables}</td>
-                              <td className="px-3 py-2 tabular-nums">{source.records}</td>
-                              <td className="px-3 py-2 tabular-nums">{source.workflowsUsing}</td>
-                              <td className="px-3 py-2 text-muted-foreground">{source.lastSync}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {groupedSources[category]
-                    .filter((source) => source.id === expandedSource)
-                    .map((source) => (
-                      <div key={`${source.id}-inspect`} className="mt-3 max-w-xl">
-                        <SourceTile
-                          source={source}
-                          index={0}
-                          isExpanded
-                          onToggle={() => setExpandedSource(null)}
-                          onSync={handleSync}
-                          onDelete={handleDelete}
-                          isMutating={mutatingSourceId === source.id}
-                        />
-                      </div>
-                    ))}
-                </motion.div>
-              ))}
-          </AnimatePresence>
+            <section className="border-t border-[color:var(--g-border-default)] pt-5">
+              <h2 className="text-[13px] font-semibold text-foreground">Connect a system</h2>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                Databases and warehouses your agents and workflows can query.
+              </p>
+              <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => setAddModalOpen(true)} disabled={isLoading}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add source
+              </Button>
+            </section>
+          </aside>
         </div>
       </div>
 

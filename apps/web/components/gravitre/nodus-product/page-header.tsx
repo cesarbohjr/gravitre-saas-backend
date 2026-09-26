@@ -56,7 +56,7 @@ export function GravitrePageHeader({
         <div className="flex min-w-0 flex-col justify-between gap-2.5 pb-2.5 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-2.5">
             {icon ? (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-[color:var(--g-border-default)] bg-background text-[color:var(--g-brand)]">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center text-[color:var(--g-text-primary)] [&_svg]:h-[18px] [&_svg]:w-[18px]">
                 {icon}
               </div>
             ) : null}
@@ -94,26 +94,17 @@ export function GravitrePageHeader({
         className,
       )}
     >
+      {/* Title-led intro: no icon tile — the type carries the authority. */}
       <div className="flex min-w-0 flex-col justify-between gap-3 lg:flex-row lg:items-end">
         <div className="flex min-w-0 flex-1 items-start gap-3">
-          {icon ? (
-            <div
-              className={cn(
-                "mt-0.5 flex shrink-0 items-center justify-center rounded-[10px] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-                operating ? "h-10 w-10" : "h-9 w-9",
-              )}
-            >
-              {icon}
-            </div>
-          ) : null}
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0 space-y-1.5">
             {eyebrow ? <p className={TYPE.eyebrow}>{eyebrow}</p> : null}
             <h1
               className={cn(
                 "font-sans font-semibold text-[color:var(--g-text-primary)]",
                 operating
-                  ? "text-[24px] leading-[1.15] tracking-[-0.02em] sm:text-[28px]"
-                  : "text-xl tracking-tight sm:text-2xl",
+                  ? "text-[28px] leading-[1.08] tracking-[-0.03em] sm:text-[34px]"
+                  : "text-[24px] leading-[1.12] tracking-[-0.025em] sm:text-[28px]",
               )}
             >
               {title}

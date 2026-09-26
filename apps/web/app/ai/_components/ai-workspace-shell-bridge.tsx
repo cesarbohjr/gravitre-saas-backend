@@ -284,7 +284,7 @@ export function GravitreAIWorkspaceShellBridge({
         ) : null}
       </div>
       <div className="shrink-0 px-3 pb-3 pt-1.5">
-        <div className="mx-auto w-full max-w-[760px] rounded-[14px] border border-[color:var(--g-border-default)] bg-background p-1.5 shadow-[0_8px_24px_-16px_rgb(16_24_40/0.25)]">
+        <div className="mx-auto w-full max-w-[760px] rounded-[8px] border border-[color:var(--g-border-strong)] bg-background p-1.5 transition-[border-color,box-shadow] focus-within:border-[color:var(--g-text-primary)] focus-within:shadow-[0_0_0_1px_var(--g-text-primary)]">
         <GravitreAIConversationComposer
           input={input}
           onInputChange={onInputChange}
