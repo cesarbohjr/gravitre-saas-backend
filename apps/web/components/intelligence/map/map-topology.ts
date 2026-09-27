@@ -326,7 +326,7 @@ export function refineLayoutWithForces(
       const dx = to.x - from.x
       const dy = to.y - from.y
       const dist = Math.max(Math.hypot(dx, dy), 1)
-      const pull = (dist - 95) * 0.04
+      const pull = (dist - EDGE_REST_LENGTH) * 0.04
       const fx = (dx / dist) * pull
       const fy = (dy / dist) * pull
       displacement.get(fromId)!.dx += fx
@@ -344,11 +344,21 @@ export function refineLayoutWithForces(
       pos.y += delta.dy * damp
       pos.x += (center.cx - pos.x) * 0.002
       pos.y += (center.cy - pos.y) * 0.002
+      const fromCore = Math.hypot(pos.x - center.cx, pos.y - center.cy)
+      if (fromCore < CORE_KEEP_OUT) {
+        const angle = fromCore > 0.5 ? Math.atan2(pos.y - center.cy, pos.x - center.cx) : ids.indexOf(id)
+        pos.x = center.cx + CORE_KEEP_OUT * Math.cos(angle)
+        pos.y = center.cy + CORE_KEEP_OUT * Math.sin(angle)
+      }
     })
   }
 
   return next
 }
+
+// Viewbox units; node cards are fixed-size, so these hold them apart when the field renders narrow.
+const EDGE_REST_LENGTH = 150
+const CORE_KEEP_OUT = 120
 
 const KIND_RING_RADIUS: Partial<Record<MapNodeKind, number>> = {
   agent: 145,
@@ -391,14 +401,18 @@ export function layoutSemanticGraphNodes(
       return a.label.localeCompare(b.label)
     })
 
+  let ringsPlaced = 0
   const placeKindRing = (kind: MapNodeKind, radius: number, phase = 0) => {
-    const ringNodes = sortByConnectivity(byKind.get(kind) ?? [])
+    const ringNodes = sortByConnectivity(byKind.get(kind) ?? []).filter((node) => !positions.has(node.id))
     if (ringNodes.length === 0) return
+    // Rings start at 12 o'clock; offset each successive ring so sparse rings don't stack there.
+    const ringPhase = phase + ringsPlaced * 2.39996
+    ringsPlaced += 1
     const coords = radialLayout(ringNodes.length, { cx: center.cx, cy: center.cy, radius })
     ringNodes.forEach((node, i) => {
       const base = coords[i]
       if (!base) return
-      const angle = Math.atan2(base.y - center.cy, base.x - center.cx) + phase
+      const angle = Math.atan2(base.y - center.cy, base.x - center.cx) + ringPhase
       const jitter = ((i % 3) - 1) * 11
       positions.set(node.id, {
         x: center.cx + (radius + jitter) * Math.cos(angle),

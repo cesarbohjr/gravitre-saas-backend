@@ -15,6 +15,7 @@ import { intelligenceApi } from "@/lib/api"
 import { APP_ROUTES, LEGACY_APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { readNumber } from "@/lib/intelligence/helpers"
+import { useIntelligenceCoreState } from "@/lib/intelligence/use-core-state"
 import { summarizeTrainingReadiness } from "@/components/intelligence/training-readiness-strip"
 import { cn } from "@/lib/utils"
 import { Brain, Lightning, PottedPlant, Pulse, Target } from "@phosphor-icons/react"
@@ -25,11 +26,7 @@ export function useIntelligencePillarsData(enabled: boolean) {
     () => intelligenceApi.knowledgeGraph(),
     { revalidateOnFocus: false },
   )
-  const coreState = useSWR(
-    enabled ? ["intelligence/core-state", 24] : null,
-    () => intelligenceApi.coreState({ windowHours: 24 }),
-    { revalidateOnFocus: false, refreshInterval: 20_000 },
-  )
+  const coreState = useIntelligenceCoreState(enabled, 24)
   const businessImpact = useSWR(
     enabled ? "intelligence/overview/business-impact" : null,
     () => intelligenceApi.businessImpact(),

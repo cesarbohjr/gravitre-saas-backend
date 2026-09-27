@@ -940,6 +940,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
           tool_call_count: 3,
           rag_sources: [{}, {}, {}, {}],
           execution_verified: true,
+          summary: "Six accounts show rising escalation volume this week; two are within 60 days of renewal.",
         },
       },
       {
@@ -1249,5 +1250,65 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     ],
     scope_note: "Fixture scope for visual capture only.",
+  },
+
+  // Intelligence field (/e2e/shots/intelligence-field). Same fictional entities and
+  // relationships as the fixtures above — no additional graph content.
+  "/api/intelligence/page-context": {
+    snapshot: {
+      generatedAt: T(5),
+      tenantId: DEMO_ORG_ID,
+      timeWindowHours: 24,
+      coreState: "active",
+      agents: [
+        {
+          id: "agent_lead_triage",
+          name: "Lead triage agent",
+          department: "Operations",
+          businessLabel: "Lead triage agent",
+          configuredStatus: "active",
+          executionStatus: "idle",
+          isConfiguredActive: true,
+          isCurrentlyRunning: false,
+        },
+      ],
+      predictions: [],
+      learnings: [],
+      knowledgeEntityTypes: ["agent", "department", "glossary_term"],
+      metrics: {
+        knowledge: { knownEntities: 4, knownRelationships: 3 },
+        learning: {},
+        predictions: {},
+        execution: {},
+        outcomes: {},
+      },
+      qualityFlags: [],
+      departments: [],
+    },
+    graph: {
+      nodes: [
+        { id: "core:gravitre", type: "core", businessLabel: "Gravitre" },
+        { id: "dept:dept_ops", type: "domain", businessLabel: "Operations", status: "active" },
+        { id: "agent:agent_lead_triage", type: "agent", businessLabel: "Lead triage agent", status: "active", metadata: { isConfiguredActive: true } },
+        { id: "entity:term_northwind", type: "entity", businessLabel: "Northwind Logistics", metadata: { instance: true, entityType: "glossary_term" } },
+        { id: "entity:term_revops", type: "entity", businessLabel: "RevOps playbook", metadata: { instance: true, entityType: "glossary_term" } },
+      ],
+      edges: [
+        { id: "rel_fixture_01", type: "RELATED_TO", fromId: "entity:term_northwind", toId: "dept:dept_ops" },
+        { id: "rel_fixture_02", type: "USED_BY", fromId: "entity:term_revops", toId: "agent:agent_lead_triage" },
+        { id: "rel_fixture_03", type: "READ_FROM", fromId: "agent:agent_lead_triage", toId: "entity:term_northwind" },
+      ],
+    },
+    activeLens: "knows",
+    availableLenses: ["knows", "learns", "predicts", "acts", "improves"],
+    metrics: {
+      knowledge: { knownEntities: 4, knownRelationships: 3 },
+      learning: {},
+      predictions: {},
+      execution: {},
+      outcomes: {},
+    },
+    qualityFlags: [],
+    suggestedQuestions: [],
   },
 }

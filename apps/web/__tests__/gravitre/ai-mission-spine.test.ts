@@ -1,21 +1,22 @@
 import { describe, expect, it } from "vitest"
 import type { UIMessage } from "ai"
 import { deriveMissionStages } from "@/app/ai/_components/ai-mission-spine"
+import type { ChatExecutionResult } from "@/components/gravitre/assistant/chat-execution-panel"
 
-const user = (text: string): UIMessage => ({ id: "u1", role: "user", parts: [{ type: "text", text }] }) as UIMessage
-const assistant = (text: string): UIMessage =>
-  ({ id: "a1", role: "assistant", parts: [{ type: "text", text }] }) as UIMessage
+const user = (text: string, id = "u1"): UIMessage => ({ id, role: "user", parts: [{ type: "text", text }] }) as UIMessage
+const assistant = (text: string, id = "a1"): UIMessage =>
+  ({ id, role: "assistant", parts: [{ type: "text", text }] }) as UIMessage
 
 function states(stages: ReturnType<typeof deriveMissionStages>) {
   return Object.fromEntries(stages.map((stage) => [stage.id, stage.state]))
 }
 
 describe("AI mission stages", () => {
-  it("waits on the objective before any message", () => {
+  it("shows every stage as not started before any message", () => {
     const stages = deriveMissionStages({ messages: [], runtimeState: "idle" })
     expect(stages.map((stage) => stage.id)).toEqual(["objective", "plan", "work", "artifact", "approval", "result"])
     expect(states(stages)).toEqual({
-      objective: "current",
+      objective: "pending",
       plan: "pending",
       work: "pending",
       artifact: "pending",
@@ -24,28 +25,56 @@ describe("AI mission stages", () => {
     })
   })
 
-  it("shows work in progress while streaming without claiming a plan or result", () => {
-    const stages = deriveMissionStages({ messages: [user("Summarize renewals")], runtimeState: "streaming" })
-    expect(stages[0].detail).toBe("Summarize renewals")
-    expect(states(stages)).toMatchObject({ objective: "done", plan: "pending", work: "current", result: "pending" })
+  it("is waiting after submit, before the first response", () => {
+    const stages = deriveMissionStages({ messages: [user("Summarize renewals")], runtimeState: "generating" })
+    expect(stages[0]).toMatchObject({ state: "complete", detail: "Summarize renewals" })
+    expect(states(stages)).toMatchObject({ plan: "pending", work: "waiting", result: "waiting" })
   })
 
-  it("flags approval and failure only from runtime signals", () => {
+  it("is active while the reply streams", () => {
+    const stages = deriveMissionStages({ messages: [user("x"), assistant("partial")], runtimeState: "streaming" })
+    expect(states(stages)).toMatchObject({ work: "active", result: "waiting" })
+  })
+
+  it("requires approval, or is blocked when queued for an approver", () => {
     const waiting = deriveMissionStages({
       messages: [user("Send the email"), assistant("Ready")],
       runtimeState: "needs_approval",
       progressSteps: ["Draft", "Send"],
     })
-    expect(states(waiting)).toMatchObject({ plan: "done", approval: "attention", work: "done" })
+    expect(states(waiting)).toMatchObject({ plan: "complete", work: "complete", approval: "approval", result: "waiting" })
 
-    const failed = deriveMissionStages({ messages: [user("x"), assistant("y")], runtimeState: "failed" })
-    expect(states(failed).result).toBe("failed")
+    const queued = deriveMissionStages({ messages: [user("x"), assistant("y")], runtimeState: "blocked" })
+    expect(states(queued)).toMatchObject({ approval: "blocked", result: "waiting" })
   })
 
-  it("marks the result answered once a completed reply exists", () => {
-    const done = deriveMissionStages({ messages: [user("x"), assistant("y")], runtimeState: "completed" })
-    expect(done.find((stage) => stage.id === "result")).toMatchObject({ state: "done", detail: "Answered" })
-    const settled = deriveMissionStages({ messages: [user("x"), assistant("y")], runtimeState: "idle" })
-    expect(states(settled).result).toBe("done")
+  it("marks the result available only when an answer or delivery exists", () => {
+    const answered = deriveMissionStages({ messages: [user("x"), assistant("y")], runtimeState: "idle" })
+    expect(answered.find((stage) => stage.id === "result")).toMatchObject({ state: "available", detail: "Answer ready" })
+
+    const delivered = deriveMissionStages({
+      messages: [user("x"), assistant("y")],
+      runtimeState: "completed",
+      executionResult: { success: true, title: "12 reminders sent", artifacts: [{}] } as unknown as ChatExecutionResult,
+    })
+    expect(states(delivered)).toMatchObject({ artifact: "available", approval: "complete", result: "available" })
+    expect(delivered.find((stage) => stage.id === "result")?.detail).toBe("12 reminders sent")
+  })
+
+  it("reports failure and partial runs without claiming a result", () => {
+    const failed = deriveMissionStages({ messages: [user("x"), assistant("y")], runtimeState: "failed" })
+    expect(states(failed)).toMatchObject({ work: "failed", result: "failed" })
+
+    const partial = deriveMissionStages({ messages: [user("x"), assistant("y")], runtimeState: "partial" })
+    expect(states(partial)).toMatchObject({ work: "blocked", result: "blocked" })
+  })
+
+  it("tracks the latest turn, not an earlier reply", () => {
+    const stages = deriveMissionStages({
+      messages: [user("first"), assistant("done"), user("second", "u2")],
+      runtimeState: "generating",
+    })
+    expect(stages[0].detail).toBe("first")
+    expect(states(stages).work).toBe("waiting")
   })
 })

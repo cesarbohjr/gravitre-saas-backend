@@ -1,12 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, ArrowRight, Lightbulb, MousePointerClick } from "lucide-react"
+import { AlertTriangle, ArrowDownLeft, ArrowRight, ArrowUpRight, Lightbulb, MousePointerClick } from "lucide-react"
 import { AskPromptChips } from "@/components/gravitre/ask-prompt-chips"
 import type { GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { readString } from "@/lib/intelligence/helpers"
 import { buildLearningInsightMapHref } from "@/lib/intelligence/learning-map-focus"
+import type { SelectionRelation } from "@/lib/intelligence/selection-relations"
 import { cn } from "@/lib/utils"
 
 type SignalRow = Record<string, unknown>
@@ -137,12 +138,21 @@ export function InsightRail({
 /** Right rail — evidence for the current selection, then measured outcomes. */
 export function EvidenceRail({
   selected,
+  relations = [],
+  onSelectRelated,
+  onOpenDetails,
+  onClear,
   totalEvents,
   avgConfidence,
   entityCount,
   relationshipCount,
 }: {
   selected: GravitreAISelectedEntity | null
+  /** Edges recorded on the canonical graph for the selection. */
+  relations?: SelectionRelation[]
+  onSelectRelated?: (nodeId: string) => void
+  onOpenDetails?: () => void
+  onClear?: () => void
   totalEvents: number
   avgConfidence: number | null | undefined
   entityCount: number | null
@@ -151,11 +161,67 @@ export function EvidenceRail({
   return (
     <div className="space-y-5" data-testid="intel-evidence-rail">
       <section aria-labelledby="evidence-selection" className="space-y-2">
-        <RailHeading id="evidence-selection">Evidence</RailHeading>
+        <div className="flex items-baseline justify-between gap-2">
+          <RailHeading id="evidence-selection">Evidence</RailHeading>
+          {selected && onClear ? (
+            <button
+              type="button"
+              onClick={onClear}
+              className="text-[11.5px] font-medium text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
         {selected ? (
-          <div className="space-y-2 rounded-[12px] bg-[color:var(--g-intelligence-soft)] p-3">
-            <p className="text-[11px] font-medium capitalize text-[color:var(--g-intelligence)]">{selected.kind}</p>
-            <p className="line-clamp-2 text-[13px] font-semibold text-foreground">{selected.label}</p>
+          <div className="space-y-3" data-evidence-selected={selected.id}>
+            <div className="rounded-[10px] bg-[color:var(--g-intelligence-soft)] p-3">
+              <p className="text-[11px] font-medium capitalize text-[color:var(--g-intelligence)]">{selected.kind}</p>
+              <p className="line-clamp-2 text-[13px] font-semibold text-foreground">{selected.label}</p>
+              {onOpenDetails ? (
+                <button
+                  type="button"
+                  onClick={onOpenDetails}
+                  className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:underline"
+                >
+                  Open details
+                  <ArrowRight className="size-3" aria-hidden />
+                </button>
+              ) : null}
+            </div>
+
+            <div className="space-y-1" data-evidence-relations="">
+              <p className="text-[11.5px] font-medium text-muted-foreground">
+                Relationships · {relations.length}
+              </p>
+              {relations.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No relationships recorded for this yet.</p>
+              ) : (
+                <ul className="-mx-2">
+                  {relations.map((relation) => (
+                    <li key={`${relation.edgeId}-${relation.direction}`}>
+                      <button
+                        type="button"
+                        disabled={!onSelectRelated}
+                        onClick={() => onSelectRelated?.(relation.otherId)}
+                        className="group flex w-full items-start gap-2 rounded-[8px] px-2 py-1.5 text-left transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
+                      >
+                        {relation.direction === "out" ? (
+                          <ArrowUpRight className="mt-0.5 size-3.5 shrink-0 text-[color:var(--g-intelligence)]" aria-hidden />
+                        ) : (
+                          <ArrowDownLeft className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                        )}
+                        <span className="min-w-0 text-[12.5px] leading-snug">
+                          <span className="text-muted-foreground">{relation.verb} </span>
+                          <span className="font-medium text-foreground">{relation.otherLabel}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <AskPromptChips
               layout="stack"
               className="-mx-2"

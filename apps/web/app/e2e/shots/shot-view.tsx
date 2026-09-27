@@ -8,6 +8,7 @@ import ApprovalsPage from "@/app/approvals/page"
 import AssignmentsPage from "@/app/assignments/page"
 import ConnectorsPage from "@/app/connectors/page"
 import HomePage from "@/app/home/page"
+import IntelligencePage from "@/app/intelligence/page"
 import WorkflowsPage from "@/app/workflows/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
@@ -30,6 +31,7 @@ export const SHOT_SURFACES = {
   assignments: AssignmentsPage,
   connectors: ConnectorsPage,
   home: HomePage,
+  "intelligence-field": IntelligencePage,
   workflows: WorkflowsPage,
   proof: AiWorkspaceProofPage,
   "agent-chat": AgentChatProofPage,

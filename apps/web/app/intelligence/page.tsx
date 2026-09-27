@@ -56,6 +56,7 @@ import {
   type CanonicalGraphNode,
 } from "@/lib/intelligence/canonical-graph-topology"
 import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-focus"
+import { relationsForSelection, selectionForMapNode } from "@/lib/intelligence/selection-relations"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
@@ -133,6 +134,18 @@ function selectedEntityFromMapSelection(selection: IntelligenceMapSelection): Gr
   return { kind: "relationship", id: selection.edgeId, label: selection.label }
 }
 
+function useMinWidth(px: number): boolean {
+  const [matches, setMatches] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia(`(min-width: ${px}px)`)
+    const update = () => setMatches(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [px])
+  return matches
+}
+
 function IntelligenceCenterInner() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
@@ -152,6 +165,10 @@ function IntelligenceCenterInner() {
   const [orgReady, setOrgReady] = useState(false)
   const askSelected = useMemo(() => selectedEntityFromMapSelection(mapSelection), [mapSelection])
   usePublishGravitreAISelection(askSelected)
+  // At xl the evidence rail sits beside the field, so it inspects the selection; the drawer opens on request.
+  const railInspects = useMinWidth(1280)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+  useEffect(() => setInspectorOpen(false), [mapSelection])
 
   useEffect(() => {
     if (!user) {
@@ -335,6 +352,25 @@ function IntelligenceCenterInner() {
     applyMapVisualization,
   ])
 
+  const selectionRelations = useMemo(
+    () => relationsForSelection(mapSelection, pageContext?.graph),
+    [mapSelection, pageContext?.graph],
+  )
+
+  const selectRelatedNode = useCallback(
+    (nodeId: string) => {
+      const mapNode = resolveCanonicalGraphMapNode(
+        nodeId,
+        { nodes: (pageContext?.graph?.nodes ?? []) as CanonicalGraphNode[] },
+        mapAgents,
+      )
+      if (!mapNode) return
+      setMapSelection(selectionForMapNode(mapNode))
+      setMapHighlightIds([nodeId])
+    },
+    [pageContext?.graph?.nodes, mapAgents],
+  )
+
   if (!user) {
     return (
       <AppShell title={copy.title}>
@@ -476,6 +512,8 @@ function IntelligenceCenterInner() {
                   window.scrollTo({ top: 0, behavior: "smooth" })
                 }}
                 cacheKey={`overview:${activeLens}`}
+                inspectorOpen={!railInspects || inspectorOpen}
+                onInspectorClose={railInspects ? () => setInspectorOpen(false) : undefined}
               />
             </IntelligenceShell>
             </div>
@@ -485,6 +523,10 @@ function IntelligenceCenterInner() {
             >
               <EvidenceRail
                 selected={askSelected}
+                relations={selectionRelations}
+                onSelectRelated={selectRelatedNode}
+                onOpenDetails={railInspects ? () => setInspectorOpen(true) : undefined}
+                onClear={() => setMapSelection(null)}
                 totalEvents={totalEvents}
                 avgConfidence={avgConfidence}
                 entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}

@@ -45,6 +45,21 @@ const PHASE_DOT: Record<Phase, string> = {
   failed: "bg-destructive",
 }
 
+const PHASE_WASH: Partial<Record<Phase, string>> = {
+  needs_approval: "bg-warning/[0.045]",
+  failed: "bg-destructive/[0.035]",
+}
+
+/** Populated decision/blocked phases get the most room; empty phases compress. */
+function phaseColumnTemplate(byPhase: Map<Phase, Assignment[]>): string {
+  return PHASES.map((phase) => {
+    const n = byPhase.get(phase.id)?.length ?? 0
+    if (n === 0) return "minmax(132px,0.55fr)"
+    if (phase.id === "needs_approval" || phase.id === "failed") return "minmax(208px,1.25fr)"
+    return "minmax(184px,1fr)"
+  }).join(" ")
+}
+
 const VIEW_MODES = [
   { id: "track" as const, label: "Track view", icon: LayoutGrid },
   { id: "list" as const, label: "List view", icon: Rows3 },
@@ -137,11 +152,11 @@ function MissionItem({
           }
         }}
         className={cn(
-          "group relative flex cursor-pointer flex-col gap-2 px-3 py-3 transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-          selected && "bg-[color:var(--g-surface-1)] shadow-[inset_2px_0_0_var(--g-text-primary)]",
+          "group relative flex cursor-pointer flex-col gap-2 rounded-[6px] bg-background px-3 py-2.5 shadow-[0_0_0_1px_var(--g-border-subtle)] transition-shadow hover:shadow-[0_0_0_1px_var(--g-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          selected && "shadow-[0_0_0_1.5px_var(--g-text-primary)] hover:shadow-[0_0_0_1.5px_var(--g-text-primary)]",
         )}
       >
-        <p className="line-clamp-2 text-[13px] font-medium leading-snug text-foreground">{assignment.title}</p>
+        <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">{assignment.title}</p>
         <div className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <AgentMark name={assignment.agent.name} />
           <span className="truncate">{assignment.agent.name}</span>
@@ -154,20 +169,45 @@ function MissionItem({
         </div>
         <StepTrack assignment={assignment} />
         {assignment.status === "running" && (assignment.currentStepDetail || progress !== null) ? (
-          <p className="text-[11.5px] text-foreground">
-            {assignment.currentStepDetail?.trim()}
-            {progress !== null ? (
-              <span className="ml-1 tabular-nums text-muted-foreground">{progress}% reported</span>
-            ) : null}
+          <p className="flex items-start gap-1.5 text-[11.5px] text-foreground">
+            <span aria-hidden className="relative mt-1 flex size-1.5 shrink-0">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[color:var(--g-brand)] opacity-60 motion-reduce:animate-none" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-[color:var(--g-brand)]" />
+            </span>
+            <span>
+              {assignment.currentStepDetail?.trim()}
+              {progress !== null ? (
+                <span className="ml-1 tabular-nums text-muted-foreground">{progress}% reported</span>
+              ) : null}
+            </span>
           </p>
         ) : null}
         {assignment.status === "needs_approval" ? (
-          <p className="line-clamp-2 text-[11.5px] text-foreground">
-            {assignment.approvalPrompt ?? "The agent paused for your decision before continuing."}
-          </p>
+          <div className="rounded-[4px] border-l-[3px] border-warning bg-warning/10 px-2 py-1.5">
+            <p className="line-clamp-3 text-[11.5px] text-foreground">
+              {assignment.approvalPrompt ?? "The agent paused for your decision before continuing."}
+            </p>
+            <Link
+              href={`/assignments/${assignment.id}?approval=1`}
+              onClick={(event) => event.stopPropagation()}
+              className="mt-1 inline-flex text-[11.5px] font-semibold text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Decide →
+            </Link>
+          </div>
         ) : null}
-        {assignment.status === "failed" && assignment.blocker ? (
-          <p className="line-clamp-2 text-[11.5px] text-destructive">{assignment.blocker}</p>
+        {assignment.status === "failed" ? (
+          <div className="rounded-[4px] border-l-[3px] border-destructive bg-destructive/[0.07] px-2 py-1.5">
+            <p className="line-clamp-3 text-[11.5px] text-foreground">
+              {assignment.blocker ?? "The job stopped without reporting a reason."}
+            </p>
+          </div>
+        ) : null}
+        {assignment.status === "completed" && assignment.resultSummary ? (
+          <p className="line-clamp-2 text-[11.5px] text-foreground">
+            <span className="font-medium">Result · </span>
+            {assignment.resultSummary}
+          </p>
         ) : null}
         {evidence ? <p className="text-[11px] text-muted-foreground">{evidence}</p> : null}
       </div>
@@ -186,33 +226,30 @@ function PhaseLane({
   selectedId: string | null
   onActivate: (assignment: Assignment) => void
 }) {
-  const emphasis = phase.id === "needs_approval" && items.length > 0
+  const populated = items.length > 0
   return (
     <section
       aria-labelledby={`phase-${phase.id}`}
       data-assignment-phase={phase.id}
       className={cn(
-        "flex min-h-0 min-w-0 flex-col",
-        emphasis && "bg-[color:var(--g-surface-1)]",
-        phase.id === "failed" && "bg-[color:var(--g-background-muted)]",
+        "relative flex min-h-0 min-w-0 flex-col",
+        populated && PHASE_WASH[phase.id],
       )}
     >
-      <header
-        className={cn(
-          "flex items-center justify-between gap-2 border-b px-3 py-2.5",
-          emphasis ? "border-[color:var(--g-text-primary)]" : "border-[color:var(--g-border-subtle)]",
-        )}
-      >
+      <span aria-hidden className={cn("absolute inset-x-0 top-0 h-[2px]", populated ? PHASE_DOT[phase.id] : "bg-transparent")} />
+      <header className="flex items-center justify-between gap-2 px-3 pb-2 pt-3">
         <h2 id={`phase-${phase.id}`} className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
           <span aria-hidden className={cn("size-1.5 rounded-full", PHASE_DOT[phase.id])} />
           {phase.label}
         </h2>
-        <span className="text-[12px] tabular-nums text-muted-foreground">{items.length}</span>
+        <span className={cn("text-[12px] font-semibold tabular-nums", populated ? "text-foreground" : "text-muted-foreground")}>
+          {items.length}
+        </span>
       </header>
       {items.length === 0 ? (
-        <p className="px-3 py-3 text-xs text-muted-foreground">{phase.empty}</p>
+        <p className="px-3 py-2 text-xs text-muted-foreground">{phase.empty}</p>
       ) : (
-        <ul className="min-h-0 flex-1 divide-y divide-[color:var(--g-border-subtle)] overflow-y-auto">
+        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 pb-3 pt-0.5">
           {items.map((assignment) => (
             <MissionItem
               key={assignment.id}
@@ -282,6 +319,9 @@ function MissionInspector({ assignment }: { assignment: Assignment | null }) {
         </div>
       ),
     },
+    ...(assignment.resultSummary
+      ? [{ label: "Result", body: <p className="text-[12.5px] leading-relaxed text-foreground">{assignment.resultSummary}</p> }]
+      : []),
     {
       label: "Evidence",
       body: <p className="text-[12.5px] text-muted-foreground">{evidence ?? "No execution evidence reported for this job."}</p>,
@@ -331,6 +371,10 @@ function MissionListRow({ assignment, onOpen }: { assignment: Assignment; onOpen
           <span className="line-clamp-1 text-[13px] font-medium text-foreground">{assignment.title}</span>
           {assignment.status === "failed" && assignment.blocker ? (
             <span className="line-clamp-1 text-[11.5px] text-destructive">{assignment.blocker}</span>
+          ) : assignment.status === "needs_approval" ? (
+            <span className="line-clamp-1 text-[11.5px] text-foreground">
+              {assignment.approvalPrompt ?? "Waiting for your decision"}
+            </span>
           ) : evidence ? (
             <span className="line-clamp-1 text-[11.5px] text-muted-foreground">{evidence}</span>
           ) : null}
@@ -398,6 +442,14 @@ export default function AssignmentsPage() {
   }, [assignmentList])
 
   const selected = assignmentList.find((item) => item.id === selectedId) ?? null
+  // Until the operator picks one, the inspector shows what most needs them.
+  const inspected =
+    selected ??
+    byPhase.get("needs_approval")?.[0] ??
+    byPhase.get("failed")?.[0] ??
+    byPhase.get("running")?.[0] ??
+    assignmentList[0] ??
+    null
   usePublishGravitreAISelection(
     selected ? { kind: "assignment", id: selected.id, label: selected.title } : null,
   )
@@ -535,14 +587,15 @@ export default function AssignmentsPage() {
               {viewMode === "track" ? (
                 <div
                   data-assignments-track=""
-                  className="grid min-h-0 min-w-0 flex-1 auto-cols-[minmax(196px,1fr)] grid-flow-col divide-x divide-[color:var(--g-border-subtle)] overflow-x-auto"
+                  className="grid min-h-0 min-w-0 flex-1 grid-rows-1 divide-x divide-[color:var(--g-border-subtle)] overflow-x-auto"
+                  style={{ gridTemplateColumns: phaseColumnTemplate(byPhase) }}
                 >
                   {PHASES.map((phase) => (
                     <PhaseLane
                       key={phase.id}
                       phase={phase}
                       items={byPhase.get(phase.id) ?? []}
-                      selectedId={selectedId}
+                      selectedId={inspected?.id ?? null}
                       onActivate={activate}
                     />
                   ))}
@@ -566,7 +619,7 @@ export default function AssignmentsPage() {
                 aria-label="Assignment inspector"
                 className="hidden w-[340px] shrink-0 flex-col border-l border-[color:var(--g-border-default)] bg-background xl:flex"
               >
-                <MissionInspector assignment={selected} />
+                <MissionInspector assignment={inspected} />
               </aside>
             </div>
           </>

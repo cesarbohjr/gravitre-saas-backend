@@ -39,6 +39,8 @@ export interface DemoAssignment {
   blocker?: string
   /** What the agent asked the operator, when it paused for a decision. */
   approvalPrompt?: string
+  /** The job's own summary of what it delivered, when reported. */
+  resultSummary?: string
 }
 
 /** Production assignment shape (legacy name retained for compatibility). */

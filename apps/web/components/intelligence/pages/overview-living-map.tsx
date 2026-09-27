@@ -59,8 +59,13 @@ export function OverviewLivingMap({
   whyEvidence,
   onAskAbout,
   cacheKey,
+  inspectorOpen = true,
+  onInspectorClose,
   className,
 }: {
+  /** When false the selection stays on the field but the inspector drawer is not shown. */
+  inspectorOpen?: boolean
+  onInspectorClose?: () => void
   activeLens: IntelligenceMapLens
   onLensChange: (lens: IntelligenceMapLens) => void
   lensMetrics: IntelligenceLensMetrics
@@ -354,8 +359,11 @@ export function OverviewLivingMap({
       </div>
 
       <IntelligenceInspectorDrawer
-        selection={selection}
-        onSelectionChange={onSelectionChange}
+        selection={inspectorOpen ? selection : null}
+        onSelectionChange={(next) => {
+          if (next === null && onInspectorClose) onInspectorClose()
+          else onSelectionChange(next)
+        }}
         pageContext={pageContext}
         whyData={whyEvidence}
         onAskAbout={onAskAbout}

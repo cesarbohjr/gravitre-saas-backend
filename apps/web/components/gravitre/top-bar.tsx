@@ -326,7 +326,10 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                     environment === "production" ? "bg-[color:var(--g-brand)]" : "bg-warning",
                   )}
                 />
-                <span className="capitalize">{environment}</span>
+                {/* Production compresses to its dot on narrow frames; staging always names itself. */}
+                <span className={cn("capitalize", environment === "production" && "hidden xl:inline")}>
+                  {environment}
+                </span>
                 <Icon name="caretDown" size="xs" className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
@@ -390,7 +393,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {/* Admin/Lite Mode Toggle */}
           {!chromeQuiet ? (
-          <div className="hidden items-center gap-px rounded-[4px] border border-[color:var(--g-frame-rule)] p-0.5 sm:flex">
+          <div className="mr-1 hidden items-center gap-px rounded-[4px] bg-white/[0.04] p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -435,6 +438,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {/* Notifications */}
           <NotificationCenter />
+
+          <span aria-hidden className="mx-1 hidden h-5 w-px bg-[color:var(--g-frame-rule)] sm:block" />
 
           {/* User Avatar */}
           <DropdownMenu>

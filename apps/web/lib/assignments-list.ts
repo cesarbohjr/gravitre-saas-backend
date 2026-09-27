@@ -64,6 +64,18 @@ function countOrNull(value: unknown): number | null {
   return null
 }
 
+export function resultSummaryFor(
+  status: DemoAssignment["status"],
+  summary: string | undefined,
+  title: string,
+  brief?: string,
+): string | undefined {
+  if (status !== "completed" && status !== "needs_approval") return undefined
+  const text = summary ? readableAssignmentText(summary).trim() : ""
+  if (!text || text === title || text === brief || text === "Agent task") return undefined
+  return text
+}
+
 function mapJobToAssignment(job: AgentJob): DemoAssignment {
   const result = job.result
   const brief = readableAssignmentText(
@@ -123,6 +135,7 @@ function mapJobToAssignment(job: AgentJob): DemoAssignment {
     },
     blocker: job.error?.trim() || result?.error?.trim() || undefined,
     approvalPrompt: result?.human_input_prompt?.trim() || undefined,
+    resultSummary: resultSummaryFor(status, result?.summary, title, brief),
   }
 }
 
