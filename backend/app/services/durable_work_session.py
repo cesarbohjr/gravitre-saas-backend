@@ -636,12 +636,29 @@ def reconstruct_execution_result(
             if isinstance(maybe, list) and maybe:
                 rows = [item for item in maybe if isinstance(item, dict)]
                 break
+    evidence = state.get("computer_browser_evidence") if isinstance(state.get("computer_browser_evidence"), dict) else {}
+    visits = [item for item in (evidence.get("visits") or []) if isinstance(item, dict)] if evidence else []
+    screenshot_digest = str(evidence.get("screenshot_digest") or "").strip() or None if evidence else None
+    if not screenshot_digest:
+        for visit in reversed(visits):
+            digest = str(visit.get("screenshot_digest") or "").strip()
+            if digest:
+                screenshot_digest = digest
+                break
     if not rows:
-        evidence = state.get("computer_browser_evidence")
-        if isinstance(evidence, dict):
-            maybe = evidence.get("submitted_fields")
-            if isinstance(maybe, list):
-                rows = [item for item in maybe if isinstance(item, dict)]
+        maybe = evidence.get("submitted_fields") if evidence else None
+        if isinstance(maybe, list):
+            rows = [item for item in maybe if isinstance(item, dict)]
+    if not rows and visits:
+        rows = [
+            {
+                "step": str(index),
+                "title": str(row.get("title") or ""),
+                "url": str(row.get("url") or ""),
+                "action": str(row.get("action") or ""),
+            }
+            for index, row in enumerate(visits, start=1)
+        ]
     result = ExecutionResult(
         success=success,
         entity_type="report",
@@ -661,9 +678,18 @@ def reconstruct_execution_result(
             "rows": rows,
             "observation_ids": list(meta.get("observation_ids") or [])[:8],
             "exportable": bool(meta.get("exportable", True)),
-            "execution_path": meta.get("execution_path"),
+            "execution_path": meta.get("execution_path")
+            or (
+                "computer_browser_read"
+                if plan is not None and plan.source == "computer_execution"
+                else "catalog_search_eligible"
+                if plan is not None and plan.source == "catalog_search"
+                else None
+            ),
             "recorded_at": meta.get("recorded_at"),
             "kind": report.get("kind"),
+            "visits": visits,
+            "screenshot_digest": screenshot_digest,
             "claim_labels": (
                 (state.get("diagnostic_conclusion") or {}).get("labels")
                 if isinstance(state.get("diagnostic_conclusion"), dict)

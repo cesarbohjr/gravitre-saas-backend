@@ -2002,7 +2002,7 @@ class AgentIntelligence:
             if (
                 conversation_id
                 and isinstance(task_state, dict)
-                and _path not in {"catalog_search_eligible", "recent_write_observation"}
+                and _path not in {"recent_write_observation"}
             ):
                 try:
                     patch = {
@@ -2022,6 +2022,7 @@ class AgentIntelligence:
                     if _path in {
                         "listing_f2_read",
                         "listing_f2_read_resume",
+                        "catalog_search_eligible",
                         "computer_browser_read",
                         "computer_browser_read_resume",
                         "computer_browser_interact_compile",

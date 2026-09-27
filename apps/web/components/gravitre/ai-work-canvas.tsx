@@ -79,6 +79,8 @@ export function GravitreAIWorkCanvas({
         planId={planId}
         observationIds={observationIds}
         exportable={exportable}
+        screenshotDigest={executionResult?.structured?.screenshot_digest}
+        executionPath={executionResult?.structured?.execution_path}
       />
       {!rows.length && markdown ? (
         <div className="mt-3">

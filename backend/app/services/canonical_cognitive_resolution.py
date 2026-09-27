@@ -355,6 +355,7 @@ async def try_compiled_operational_read_turn(
         message=message,
         connected_integrations=connected_integrations,
         capability_id=None,
+        task_state=task_state,
     )
     if catalog:
         return catalog

@@ -39,6 +39,7 @@ On READ-only public browser sessions:
 - `execution_path`: `computer_browser_read`
 - `execution_strategy`: `browser_cdp` (Chromium session). `computer_use` remains approval-gated interact and is not this slice.
 - Observation `structured.visits[]`: `{url,title,action,screenshot_digest,dom_excerpt}` from Playwright, not httpx.
+- GET `/state` `execution_result.structured` also carries `visits[]` and `screenshot_digest` (digest only — no screenshot bytes).
 - Resume `What was the second page URL?` / `Show me that report` → `computer_browser_read_resume`, `provider_reinvoked=false`.
 
 On governed public-browser interact (HMAC confirm, Playwright once):
@@ -57,6 +58,7 @@ Consume `execution_result` / `work_artifacts[]` as the only artifact model. Do *
 
 - `ChatExecutionPanel` and `GravitreAIWorkCanvas` render `structured.rows` as the finished table (generic columns from row keys).
 - Preserve kind, plan identity, Observation linkage, provenance, field/value structure, exportability, resume.
-- LIVE_UI_PROVEN remains **pending** while owner-live frontend acceptance is blocked by authentication. Contract work is not a substitute for that proof.
+- Catalog search binds `work_artifacts[]` / `execution_result` (`execution_path=catalog_search_eligible`, no provider invoke). Conversation state persist uses the in-memory patch (no extra re-get).
+- Owner-live AI workspace LIVE_UI_PROVEN remains **pending** (owner authentication blocked). Presentation support without owner login: Command OS harness `/e2e/execution-result?scenario=computer_browser_read` and `catalog_search` (Playwright e2e, `PLAYWRIGHT_E2E=1`). That is not a substitute for owner-live `/ai`.
 
 Do not invent Enable toggles, prices, or Certified badges from these fields.

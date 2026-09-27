@@ -276,6 +276,11 @@ async def try_computer_browser_read_turn(
         },
     }
     merged = bind_finished_work(merged, body=summary, title="Public web research summary")
+    for art in merged.get("work_artifacts") or []:
+        if isinstance(art, dict):
+            meta = art.get("metadata") if isinstance(art.get("metadata"), dict) else {}
+            meta["execution_path"] = "computer_browser_read"
+            art["metadata"] = meta
     stage_timings["observation_bind_ms"] = int((time.perf_counter() - t_persist) * 1000)
     evidence = merged.get("computer_browser_evidence")
     if isinstance(evidence, dict):

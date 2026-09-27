@@ -77,7 +77,7 @@ const SCENARIOS: Record<string, ChatExecutionResult> = {
     body: 'Created contact list "Inline summary only".',
     task_label: "Create contact list",
   },
-  canonical_table: {
+    canonical_table: {
     success: true,
     entity_type: "report",
     entity_id: "plan-table-1",
@@ -109,6 +109,105 @@ const SCENARIOS: Record<string, ChatExecutionResult> = {
       rows: [
         { field: "custname", value: "Isolated Probe" },
         { field: "custemail", value: "isolated@gravitre.test" },
+      ],
+    },
+  },
+  computer_browser_read: {
+    success: true,
+    entity_type: "report",
+    entity_id: "plan-cu-read-1",
+    title: "Public web research summary",
+    body: "I opened a real browser (not an HTTP fetch) and recorded what loaded.",
+    task_label: "Public web research summary",
+    artifacts: [
+      {
+        artifact_id: "report:plan-cu-read-1",
+        kind: "research_summary",
+        title: "Public web research summary",
+        preview: "I opened a real browser (not an HTTP fetch) and recorded what loaded.",
+        metadata: {
+          plan_id: "plan-cu-read-1",
+          observation_ids: ["obs-cu-read-1"],
+          exportable: true,
+          execution_path: "computer_browser_read",
+          rows: [
+            { step: "1", title: "Example Domain", url: "https://example.com/", action: "goto" },
+            {
+              step: "2",
+              title: "Example Domains",
+              url: "https://www.iana.org/help/example-domains",
+              action: "click_link",
+            },
+          ],
+        },
+      },
+    ],
+    structured: {
+      kind: "research_summary",
+      plan_id: "plan-cu-read-1",
+      observation_ids: ["obs-cu-read-1"],
+      exportable: true,
+      execution_path: "computer_browser_read",
+      screenshot_digest: "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a",
+      rows: [
+        { step: "1", title: "Example Domain", url: "https://example.com/", action: "goto" },
+        {
+          step: "2",
+          title: "Example Domains",
+          url: "https://www.iana.org/help/example-domains",
+          action: "click_link",
+        },
+      ],
+      visits: [
+        {
+          url: "https://example.com/",
+          title: "Example Domain",
+          action: "goto",
+          screenshot_digest: "6cc928b05a53a95e6adfc303397a58a426b32b638810d93edbf1fb9dc2a833c0",
+        },
+        {
+          url: "https://www.iana.org/help/example-domains",
+          title: "Example Domains",
+          action: "click_link",
+          screenshot_digest: "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a",
+        },
+      ],
+    },
+  },
+  catalog_search: {
+    success: true,
+    entity_type: "report",
+    entity_id: "plan-catalog-1",
+    title: "Eligible connected actions",
+    body: "Here are connected READ actions that match that search. This is a catalog lookup, not a live provider run.",
+    task_label: "Eligible connected actions",
+    artifacts: [
+      {
+        artifact_id: "report:plan-catalog-1",
+        kind: "table",
+        title: "Eligible connected actions",
+        preview: "Here are connected READ actions that match that search.",
+        metadata: {
+          plan_id: "plan-catalog-1",
+          observation_ids: ["obs-catalog-1"],
+          exportable: true,
+          execution_path: "catalog_search_eligible",
+          rows: [
+            { action: "List HubSpot contacts", vendor: "hubspot", gate: "READ, connected" },
+            { action: "List HubSpot deals", vendor: "hubspot", gate: "READ, connected" },
+          ],
+        },
+      },
+    ],
+    structured: {
+      kind: "table",
+      plan_id: "plan-catalog-1",
+      observation_ids: ["obs-catalog-1"],
+      exportable: true,
+      execution_path: "catalog_search_eligible",
+      rows: [
+        { action: "List HubSpot contacts", vendor: "hubspot", gate: "READ, connected" },
+        { action: "List HubSpot deals", vendor: "hubspot", gate: "READ, connected" },
       ],
     },
   },

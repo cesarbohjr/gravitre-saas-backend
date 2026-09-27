@@ -249,5 +249,12 @@
     "after_thanks_first_useful_ms": 2295,
     "httpx": false,
     "meets_5s_8s_band": true
+  },
+  "real_world_write": {
+    "status": "BLOCKED_NO_AUTHORIZED_TARGET",
+    "httpbin_mechanics": "CLOSED_DO_NOT_REPEAT",
+    "customer_or_prod_business_data": "NOT_AUTHORIZED",
+    "interact_matcher": "httpbin.org forms only",
+    "reason": "No authorized isolated non-destructive reversible non-httpbin WRITE target is available. Do not invent a public form or mutate HubSpot/customer records."
   }
 }

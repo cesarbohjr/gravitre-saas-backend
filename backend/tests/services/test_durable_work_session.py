@@ -330,6 +330,58 @@ def test_reconstruct_preserves_table_rows_from_artifact_metadata():
     assert rebuilt["structured"]["provider_reinvoked"] is False
 
 
+def test_reconstruct_computer_browser_visits_and_screenshot_digest():
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    stored = {
+        "execution_plan": {
+            "plan_id": "plan-cu-read",
+            "source": "computer_execution",
+            "terminal_status": "completed",
+            "steps": [],
+        },
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-cu-read",
+                "kind": "research_summary",
+                "title": "Public web research summary",
+                "preview": "Opened a real browser.",
+                "metadata": {
+                    "plan_id": "plan-cu-read",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-cu"],
+                    "exportable": True,
+                    "execution_path": "computer_browser_read",
+                },
+            }
+        ],
+        "computer_browser_evidence": {
+            "screenshot_digest": "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a",
+            "visits": [
+                {
+                    "url": "https://example.com/",
+                    "title": "Example Domain",
+                    "action": "goto",
+                    "screenshot_digest": "6cc928b05a53a95e6adfc303397a58a426b32b638810d93edbf1fb9dc2a833c0",
+                },
+                {
+                    "url": "https://www.iana.org/help/example-domains",
+                    "title": "Example Domains",
+                    "action": "click_link",
+                    "screenshot_digest": "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a",
+                },
+            ],
+        },
+    }
+    rebuilt = reconstruct_execution_result(stored)
+    assert rebuilt is not None
+    assert rebuilt["structured"]["execution_path"] == "computer_browser_read"
+    assert rebuilt["structured"]["screenshot_digest"].startswith("5f844380")
+    assert rebuilt["structured"]["rows"][1]["url"] == "https://www.iana.org/help/example-domains"
+    assert rebuilt["structured"]["visits"][0]["title"] == "Example Domain"
+    assert rebuilt["structured"]["provider_reinvoked"] is False
+
+
 def test_bind_finished_work_skips_without_successful_observation():
     from app.services.durable_work_session import bind_finished_work, reconstruct_execution_result
 

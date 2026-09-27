@@ -142,6 +142,11 @@ def test_catalog_search_intent_excludes_disconnected_github():
     assert all(not str(i).startswith("github.") for i in turn["eligible_action_ids"])
     assert turn["github_excluded"] is True
     assert turn["writes_started"] is False
+    assert turn["provider_reinvoked"] is False
+    assert turn["execution_result"] is not None
+    assert (turn["task_state"] or {}).get("work_artifacts")
+    assert turn["execution_result"]["structured"]["execution_path"] == "catalog_search_eligible"
+    assert turn["execution_result"]["structured"]["provider_reinvoked"] is False
     assert "github" in str(turn["message"]).lower()
     assert "approval required" not in str(turn["message"]).lower() or "WRITE" not in str(turn["message"])
 

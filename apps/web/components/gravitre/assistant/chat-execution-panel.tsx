@@ -139,6 +139,14 @@ export type ChatExecutionResult = {
     execution_path?: string | null
     recorded_at?: string | null
     kind?: string | null
+    visits?: Array<{
+      url?: string
+      title?: string
+      action?: string
+      screenshot_digest?: string | null
+      [key: string]: unknown
+    }> | null
+    screenshot_digest?: string | null
   } | null
   what_this_means?: string | null
   recommendation?: PostActionRecommendation | null
@@ -364,9 +372,20 @@ export function canonicalArtifactRows(
     const nested = artifact.metadata?.rows
     return Array.isArray(nested) ? nested : []
   })
+  const visitSource = executionResult.structured?.visits
+  const fromVisits = Array.isArray(visitSource)
+    ? visitSource.map((visit, index) => ({
+        step: String(index + 1),
+        title: String(visit.title || ""),
+        url: String(visit.url || ""),
+        action: String(visit.action || ""),
+      }))
+    : []
   const raw = executionResult.structured?.rows?.length
     ? executionResult.structured.rows
-    : fromArtifacts
+    : fromArtifacts?.length
+      ? fromArtifacts
+      : fromVisits
   if (!Array.isArray(raw)) return []
   return raw
     .map((row) => {
@@ -387,16 +406,21 @@ export function CanonicalArtifactTable({
   planId,
   observationIds,
   exportable,
+  screenshotDigest,
+  executionPath,
 }: {
   rows: Array<Record<string, string>>
   planId?: string | null
   observationIds?: string[] | null
   exportable?: boolean | null
+  screenshotDigest?: string | null
+  executionPath?: string | null
 }) {
   if (!rows.length) return null
   const columns = Array.from(
     new Set(rows.flatMap((row) => Object.keys(row))),
   ).filter((key) => key !== "password")
+  const digest = (screenshotDigest || "").trim()
   return (
     <div className="mt-3 overflow-x-auto" data-testid="canonical-artifact-table">
       <table className="w-full min-w-[16rem] border-collapse text-left text-xs">
@@ -411,7 +435,7 @@ export function CanonicalArtifactTable({
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`${row.field || row.system || row.object || index}`} className="border-b border-border/40">
+            <tr key={`${row.field || row.system || row.object || row.action || index}`} className="border-b border-border/40">
               {columns.map((column) => (
                 <td key={column} className="py-1 pr-3 text-foreground">
                   {row[column] || ""}
@@ -425,7 +449,18 @@ export function CanonicalArtifactTable({
         {planId ? `Plan ${planId}` : "Bound to the current plan"}
         {observationIds?.length ? ` · Observation ${observationIds[0]}` : ""}
         {exportable ? " · Exportable from conversation state" : ""}
+        {executionPath ? (
+          <>
+            {" · "}
+            <span data-testid="canonical-execution-path">{executionPath}</span>
+          </>
+        ) : null}
       </p>
+      {digest ? (
+        <p className="mt-1 text-[11px] text-muted-foreground" data-testid="canonical-screenshot-digest">
+          Browser screenshot digest {digest.slice(0, 16)}…
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -625,6 +660,8 @@ export function ChatExecutionPanel({
               planId={executionResult.structured?.plan_id || executionResult.entity_id}
               observationIds={executionResult.structured?.observation_ids}
               exportable={executionResult.structured?.exportable}
+              screenshotDigest={executionResult.structured?.screenshot_digest}
+              executionPath={executionResult.structured?.execution_path}
             />
             {whatThisMeans ? (
               <p className="mt-2 text-xs text-foreground/90">

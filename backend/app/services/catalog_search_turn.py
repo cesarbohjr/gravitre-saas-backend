@@ -3,7 +3,16 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from uuid import uuid4
 
+from app.services.execution_plan_service import (
+    ExecutionObservation,
+    ExecutionPlan,
+    ExecutionStep,
+    execution_plan_patch,
+    mark_plan_terminal,
+    observations_patch,
+)
 from app.services.jit_tool_discovery import (
     HARD_CAP_ELIGIBLE,
     MAX_ELIGIBLE_TOOLS,
@@ -34,6 +43,7 @@ def try_catalog_search_turn(
     message: str,
     connected_integrations: list[str] | None,
     capability_id: str | None = None,
+    task_state: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     if not match_catalog_search_intent(message or ""):
         return None
@@ -52,6 +62,7 @@ def try_catalog_search_turn(
     mentioned_github = bool(re.search(r"\bgithub\b", message or "", re.I))
     github_excluded = mentioned_github and "github" not in set(connected)
     lines = []
+    table_rows: list[dict[str, Any]] = []
     writes = 0
     for row in found[:16]:
         label = str(row.name or "").strip() or row.action_id
@@ -63,6 +74,13 @@ def try_catalog_search_turn(
         else:
             gate = f"{row.kind} READ, connected"
         lines.append(f"- {label} ({row.vendor}; {gate})")
+        table_rows.append(
+            {
+                "action": label,
+                "vendor": str(row.vendor or ""),
+                "gate": gate,
+            }
+        )
     intro = (
         "Here are connected actions that match that search. This is a catalog lookup, not a live provider run."
         if include_writes
@@ -78,12 +96,61 @@ def try_catalog_search_turn(
     if github_excluded:
         body_bits.append("GitHub is not connected on this org, so GitHub issue tools are not eligible.")
     body = "\n\n".join(body_bits)
+    plan = mark_plan_terminal(
+        ExecutionPlan(
+            plan_id=str(uuid4()),
+            summary="Catalog search of eligible ActionSpecs",
+            objective=str(message or "")[:240],
+            steps=[
+                ExecutionStep(
+                    step_id="catalog_primary",
+                    title="search catalog",
+                    kind="read",
+                )
+            ],
+            source="catalog_search",
+            execution_strategy="api_native",
+        ),
+        "completed",
+    )
+    obs = ExecutionObservation(
+        step_id="catalog_primary",
+        connector_id="gravitre",
+        success=True,
+        summary=body.split("\n", 1)[0][:500],
+        structured={
+            "rows": table_rows,
+            "eligible_count": len(found),
+            "writes_listed": writes,
+            "writes_started": False,
+            "execution_path": "catalog_search_eligible",
+            "provider_invoked": False,
+        },
+        observation_id=str(uuid4()),
+        plan_id=plan.plan_id,
+        source="catalog_search",
+    )
+    from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
+
+    merged = {
+        **(task_state or {}),
+        **execution_plan_patch(plan),
+        **observations_patch([obs]),
+    }
+    merged = bind_finished_work(merged, body=body, title="Eligible connected actions")
+    for art in merged.get("work_artifacts") or []:
+        if isinstance(art, dict):
+            meta = art.get("metadata") if isinstance(art.get("metadata"), dict) else {}
+            meta["execution_path"] = "catalog_search_eligible"
+            art["metadata"] = meta
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
         "message": body,
+        "task_state": merged,
         "workflow_status": "completed",
         "execution_path": "catalog_search_eligible",
+        "execution_result": execution_result_from_finished_work(merged, body=body, success=True),
         "eligible_action_ids": names,
         "eligible_count": len(found),
         "hard_cap": HARD_CAP_ELIGIBLE,
@@ -91,4 +158,6 @@ def try_catalog_search_turn(
         "writes_started": False,
         "writes_listed": writes,
         "include_writes": include_writes,
+        "provider_reinvoked": False,
+        "plan_id": plan.plan_id,
     }
