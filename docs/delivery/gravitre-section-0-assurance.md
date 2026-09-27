@@ -48,6 +48,7 @@ GitHub Actions:
 | `4ee5cb17…` | CI Backend (pytest) | **1 failed / 6730 passed** (`map_stage("observation")`) | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36306935027 |
 | `68ee4a86…` | CI Backend (pytest) | **1 failed** (envelope test vs committed Class C JSON SHA) | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36308264729 |
 | `dc0f9625…` | CI (Backend pytest **success**) | **success** | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36326968254 |
+| `aad39518…` | CI (complete core evidence pack) | **success** | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36345743529 |
 
 **Clean hold baseline:** SHA `dc0f9625a8157ee20312a4fa44663d396b3e9958`. CI https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36326968254 — Backend (pytest) success. `map_stage("observation")` is `PROVIDER`. Envelope lock reads committed live JSON (`0b879ec4` or `c29f12cb`). Not a product change. Closed slices not re-probed.
 
@@ -112,7 +113,7 @@ Do not collapse to one SHA.
 
 | Role | SHA |
 |---|---|
-| Current hold tree | `856ec34c0d80c450d958fe959a41a1d9173067e9` (evidence pack; checkpoint `dc0f9625`; observation alias `68ee4a86`) |
+| Current hold tree | `aad395188bb6672e8e6f58ae52f3ea09abe908ad` (evidence pack `856ec34c`; checkpoint `dc0f9625`; observation alias `68ee4a86`) |
 | CU latency LIVE | `bcff57021460cdf27da8cc5e88083b49d19d205c` |
 | Catalog search LIVE | `158c43eb9e65d66e0329b7d51410518a34f07323` |
 | Class C READ LIVE | `c29f12cb451fe75db6f657c0534dab8f3a36f201` |
@@ -311,4 +312,4 @@ No category A runtime, B tests, or D config in the dirty tree.
 
 Frontend branch `feat/gravitre-3.0-plus-frontend` was not merged.
 
-Evidence-pack SHA: `856ec34c0d80c450d958fe959a41a1d9173067e9`. Exact GitHub CI for the **final** core SHA (this file’s commit if it moved) is recorded after that run completes. Do not treat `dc0f9625` run `36326968254` as this pack’s CI.
+Evidence-pack SHA: `856ec34c0d80c450d958fe959a41a1d9173067e9`. Pin SHA: `aad395188bb6672e8e6f58ae52f3ea09abe908ad`. Exact CI for `aad39518`: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36345743529 — Backend pytest, Integration Smoke, text/voice gate, Dependency audit **success**. Billing E2E skipped. Do not treat `dc0f9625` run `36326968254` as this pack’s CI.
