@@ -291,3 +291,27 @@ def test_enrich_keeps_interact_hmac_invoke_action() -> None:
     assert stored.get("status") == "awaiting_confirm"
     assert params.get("invoke_action") == ACTION_KEY or stored.get("invoke_action") == ACTION_KEY
     assert computer_interact_should_compile("yes", out) is True
+
+
+def test_interact_write_stays_httpbin_only_until_authorized_target() -> None:
+    """Hold: no synthetic WRITE target, no extra public-form matcher."""
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "app"
+        / "services"
+        / "computer_browser_interact_turn.py"
+    ).read_text(encoding="utf-8")
+    assert '_PUBLIC_FORM_URL = "https://httpbin.org/forms/post"' in source
+    assert source.count("_PUBLIC_FORM_URL") >= 1
+    assert "https://httpbin.org/forms/post" in source
+    assert match_computer_browser_interact(
+        "Fill the httpbin.org form and submit. Do not use HubSpot."
+    )
+    assert match_computer_browser_interact(
+        "Fill https://example.com and submit the form. Do not use HubSpot."
+    ) is False
+    assert match_computer_browser_interact(
+        "Post a comment on iana.org. Do not use HubSpot."
+    ) is False

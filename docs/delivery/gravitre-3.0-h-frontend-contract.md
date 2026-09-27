@@ -60,6 +60,6 @@ Consume `execution_result` / `work_artifacts[]` as the only artifact model. Do *
 - `ChatExecutionPanel` and `GravitreAIWorkCanvas` render `structured.rows` as the finished table (generic columns from row keys).
 - Preserve kind, plan identity, Observation linkage, provenance, field/value structure, exportability, resume.
 - Catalog search binds `work_artifacts[]` / `execution_result` (`execution_path=catalog_search_eligible`, no provider invoke). Conversation state persist uses the in-memory patch (no extra re-get).
-- Owner-live AI workspace LIVE_UI_PROVEN remains **pending** (owner authentication blocked). Presentation support without owner login: Command OS harness `/e2e/execution-result?scenario=computer_browser_read` and `catalog_search` (Playwright e2e, `PLAYWRIGHT_E2E=1`). That is not a substitute for owner-live `/ai`.
+- Owner-live Plus/UI = **PENDING**. Command OS harness `/e2e/execution-result?scenario=computer_browser_read` and `catalog_search` is proven in harness only and is **not** LIVE_UI_PROVEN.
 
 Do not invent Enable toggles, prices, or Certified badges from these fields.

@@ -256,5 +256,21 @@
     "customer_or_prod_business_data": "NOT_AUTHORIZED",
     "interact_matcher": "httpbin.org forms only",
     "reason": "No authorized isolated non-destructive reversible non-httpbin WRITE target is available. Do not invent a public form or mutate HubSpot/customer records."
+  },
+  "hold_at_acceptance_gates": {
+    "recorded_at": "2026-09-27",
+    "physical_mic": "HUMAN_EXPERIENCE_PENDING",
+    "owner_live_plus_ui": "PENDING",
+    "real_world_computer_use_write": "BLOCKED_NO_AUTHORIZED_TARGET",
+    "command_os_harness_presentation": "HARNESS_ONLY_NOT_LIVE_UI_PROVEN",
+    "closed_latency_slices_preserve": [
+      "class_c_governed_provider_read",
+      "catalog_search",
+      "computer_use_first_navigation",
+      "persisted_computer_use_follow_up"
+    ],
+    "synthetic_write_target": "DO_NOT_CREATE",
+    "httpbin_mechanics_proof": "DO_NOT_REPEAT",
+    "customer_or_prod_business_data": "DO_NOT_TOUCH"
   }
 }

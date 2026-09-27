@@ -23,11 +23,17 @@ Pipecat `/api/voice/pipecat/ws` uses the same `conversation_id` as chat. Confirm
 
 Presentation: Command OS `ChatExecutionPanel` and `GravitreAIWorkCanvas` consume `execution_result.structured.rows` / `work_artifacts[]`. There is no second UI artifact model.
 
-Browser artifact panel LIVE_UI_PROVEN remains **pending** (owner-live frontend authentication blocked). API durability is independent. Harness presentation for Computer Use READ visits and catalog tables is exercised at `/e2e/execution-result` without owner login. BLOCKED_EXTERNAL for the expired-trial browser panel is unchanged.
+Browser artifact panel LIVE_UI_PROVEN remains **PENDING** (owner-live frontend authentication). Command OS harness presentation at `/e2e/execution-result` is **harness-only** and is not LIVE_UI_PROVEN. BLOCKED_EXTERNAL for the expired-trial browser panel is unchanged.
 
 ## Computer / browser
 
 `classify_execution_strategy`: `api_native` (ActionSpec) \| `browser_cdp` (public URL Chromium READ session) \| `computer_use` (Playwright interact, flag + approval) \| `hybrid`. Observation: `{success,url,action,screenshot_digest,dom_excerpt,cdp_trace_id,approval_id,visits[]}`. No paid CDP vendor started. httpx `browser_agent_read` remains the API-gap fetch helper and is not this Computer Use slice.
+
+Real-world Computer Use WRITE: **BLOCKED_NO_AUTHORIZED_TARGET**. Do not invent a synthetic form or repeat httpbin.
+
+## Hold
+
+Physical mic = HUMAN_EXPERIENCE_PENDING. Owner-live Plus/UI = PENDING. Closed latency and artifact slices stay closed.
 
 ## Proactive attention
 
