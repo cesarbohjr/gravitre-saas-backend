@@ -20,6 +20,21 @@ import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-
 import { IntegrationSuggestionEvidenceBanner } from "@/components/workflows/integration-suggestion-evidence-banner"
 import { NodeRunDebugPanel } from "@/components/workflows/node-run-debug-panel"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
+import { useBuilderSeed } from "@/components/workflows/builder-seed-context"
+import {
+  NodeHandle,
+  NodeHandles,
+  NodeMark,
+  NodeSelectionEdge,
+  agentStepRole,
+  handleDotClass,
+  nodeAnchor,
+  nodeCenter,
+  nodeFootprint,
+  nodeSurfaceClass,
+  type NodeAnchorSide,
+  type NodeConnectState,
+} from "@/components/workflows/builder-node-chrome"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
   BuilderInspector,
@@ -538,6 +553,7 @@ function CanvasNode({
   onConnectionDragStart,
   onConnectionDrop,
   isDraggingConnection,
+  connectState = "idle",
   isMobile,
   reliabilityMessage,
   }: {
@@ -551,11 +567,17 @@ function CanvasNode({
   onConnectionDragStart?: (nodeId: string, e: React.MouseEvent | React.TouchEvent) => void
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
+  connectState?: NodeConnectState
   isMobile?: boolean
   reliabilityMessage?: string | null
   }) {
   const config = getNodeTypeConfig(node.type)
-  const Icon = config.icon
+  const agentRole = node.type === "agent" ? agentStepRole(node.config, node.name) : null
+  const Icon = agentRole?.Icon ?? config.icon
+  const actionName = node.selectedAction
+    ? connectorActions[node.vendor || ""]?.actions.find((a) => a.id === node.selectedAction)?.name || node.selectedAction
+    : null
+  const typeDetail = agentRole?.label ?? actionName
   const [isDragging, setIsDragging] = useState(false)
   const [isInteracting, setIsInteracting] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -656,12 +678,14 @@ function CanvasNode({
   return (
     <div
       className={cn(
-        "absolute cursor-pointer transition-all duration-150 touch-none select-none",
+        "group/node absolute cursor-pointer transition-all duration-150 touch-none select-none",
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30",
         stateConfig.animation
       )}
       data-canvas-node={node.id}
+      data-node-type={node.type}
+      data-selected={isSelected ? "true" : undefined}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
@@ -671,28 +695,19 @@ function CanvasNode({
     >
       <div
         className={cn(
-          "group relative rounded-[var(--np-radius-lg)] border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition-[border-color,box-shadow] duration-150",
+          "group relative rounded-[var(--np-radius-lg)] border shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-[border-color,background-color] duration-150",
           // Responsive width - narrower on mobile
           "w-48 p-2.5 md:w-56 md:p-3",
-          isSelected ? "border-[color:var(--g-brand)] ring-2 ring-[color:var(--g-brand)]/15" : "border-[color:var(--g-border-default)] hover:border-[color:var(--g-border-strong)]",
+          nodeSurfaceClass(isSelected),
           stateConfig.border,
           stateConfig.bg,
         )}
       >
+        {isSelected ? <NodeSelectionEdge /> : null}
         {/* Running indicator glow */}
         {node.state === "running" && (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[var(--np-radius-lg)] bg-info/70 motion-safe:animate-pulse" />
         )}
-
-        {/* Drag handle - always visible on mobile when selected */}
-        <div className={cn(
-          "absolute -left-2 top-1/2 -translate-y-1/2 transition-opacity",
-          showControls ? "opacity-100" : "opacity-0"
-        )}>
-          <div className="bg-secondary rounded-md p-1">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
 
         {/* Delete button - larger touch target on mobile, visible when selected */}
         <button
@@ -703,7 +718,7 @@ function CanvasNode({
           aria-label="Delete step"
           title="Delete step"
           className={cn(
-            "absolute -right-2.5 -top-2.5 rounded-full bg-destructive text-destructive-foreground transition-all flex items-center justify-center shadow-lg",
+            "absolute -right-2.5 -top-2.5 flex items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground transition-all hover:border-destructive hover:text-destructive",
             // Larger on mobile (44px) for touch, smaller on desktop
             "h-8 w-8 md:h-6 md:w-6",
             showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
@@ -731,30 +746,13 @@ function CanvasNode({
 
         {/* Node header */}
         <div className="flex items-start gap-2.5 mb-2">
-          <div className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-all",
-            config.color,
-            node.state === "running" && "animate-pulse"
-          )}>
-{node.vendor ? (
-  <ConnectorIcon vendor={node.vendor} size="xs" showStatusIndicator={false} />
-  ) : (
-  <Icon className="h-4 w-4" />
-  )}
-          </div>
+          <NodeMark vendor={node.vendor} icon={Icon} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{node.name}</p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-[10px] text-muted-foreground">{config.label}</p>
-              {node.selectedAction && (
-                <>
-                  <span className="text-muted-foreground/30">|</span>
-                  <p className="text-[10px] text-[color:var(--info)]">
-                    {connectorActions[node.vendor || ""]?.actions.find(a => a.id === node.selectedAction)?.name || node.selectedAction}
-                  </p>
-                </>
-              )}
-            </div>
+            <p className="text-sm font-medium leading-5 text-foreground truncate">{node.name}</p>
+            <p className="truncate text-[11px] leading-4 text-muted-foreground" data-node-type-label>
+              {config.label}
+              {typeDetail ? <span> · {typeDetail}</span> : null}
+            </p>
             {(() => {
               const actionMeta = node.vendor
                 ? connectorActions[node.vendor]?.actions.find((a) => a.id === node.selectedAction)
@@ -825,113 +823,15 @@ function CanvasNode({
           </div>
         )}
 
-{/* Connection handles - all 4 sides - Drag from these to connect */}
-  {/* Mobile-friendly: larger touch targets (44px touch area, visible indicator) */}
-  {/* Left handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    // Larger touch target on mobile
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-primary bg-primary scale-125"
-      : isSelected
-        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
-        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Right handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-primary bg-primary scale-125"
-      : isSelected
-        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
-        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Top handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-primary bg-primary scale-125"
-      : isSelected
-        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
-        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Bottom handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-primary bg-primary scale-125"
-      : isSelected
-        ? "border-foreground bg-background hover:scale-125 hover:bg-foreground"
-        : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
+        <NodeHandles
+          nodeId={node.id}
+          nodeName={node.name}
+          selected={isSelected}
+          connectState={connectState}
+          isDraggingConnection={isDraggingConnection}
+          onConnectionDragStart={onConnectionDragStart}
+          onConnectionDrop={onConnectionDrop}
+        />
       </div>
     </div>
   )
@@ -949,6 +849,7 @@ function DecisionNode({
   onConnectionDragStart,
   onConnectionDrop,
   isDraggingConnection,
+  connectState = "idle",
   }: {
   node: WorkflowNode
   isSelected: boolean
@@ -960,6 +861,7 @@ function DecisionNode({
   onConnectionDragStart?: (nodeId: string, e: React.MouseEvent) => void
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
+  connectState?: NodeConnectState
   }) {
   const [isDragging, setIsDragging] = useState(false)
   const [isMouseDown, setIsMouseDown] = useState(false)
@@ -1027,12 +929,14 @@ function DecisionNode({
   return (
     <div
       className={cn(
-        "absolute cursor-pointer transition-all duration-150",
+        "group/node absolute cursor-pointer transition-all duration-150",
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30",
         stateConfig.animation
       )}
       data-canvas-node={node.id}
+      data-node-type="decision"
+      data-selected={isSelected ? "true" : undefined}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
@@ -1041,6 +945,17 @@ function DecisionNode({
     >
       {/* Diamond shape container */}
       <div className="relative w-48 flex flex-col items-center">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          aria-label="Delete step"
+          title="Delete step"
+          className="absolute right-0 top-0 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground opacity-0 transition-opacity hover:border-destructive hover:text-destructive focus-visible:opacity-100 group-hover/node:opacity-100"
+        >
+          <X className="h-3 w-3" />
+        </button>
         {/* Evaluating/Running indicator */}
         {isEvaluating && (
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-[5px] border border-[color:var(--g-border-default)] bg-card">
@@ -1062,13 +977,10 @@ function DecisionNode({
         {/* Diamond shape */}
         <div
           className={cn(
-            "relative w-32 h-32 transform rotate-45 rounded-lg border transition-all duration-300",
-            isSelected
-              ? "border-[color:var(--g-brand)] ring-2 ring-[color:var(--g-brand)]/15"
-              : "border-[color:var(--g-border-strong)] hover:border-foreground/40",
+            "relative w-32 h-32 transform rotate-45 rounded-lg border transition-[border-color,background-color] duration-150",
+            nodeSurfaceClass(isSelected),
             stateConfig.border || "",
-            stateConfig.bg || "bg-card",
-            isHovered && !isDragging && "scale-105",
+            stateConfig.bg || "",
           )}
         >
           {/* Inner content - counter-rotate to be upright */}
@@ -1083,84 +995,34 @@ function DecisionNode({
             </div>
           </div>
 
-          {/* Delete button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-            aria-label="Delete step"
-            title="Delete step"
-            className="absolute -right-3 -top-3 -rotate-45 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity flex items-center justify-center z-10"
-          >
-            <X className="h-3 w-3" />
-          </button>
-
-{/* Connection handles - on diamond corners - Drag to connect */}
-  {/* Top corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute -top-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-primary bg-primary scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Right corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute top-1/2 -right-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-primary bg-primary scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Bottom corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-primary bg-primary scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Left corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute top-1/2 -left-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-primary bg-primary scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
+          {/* Corners of the rotated square are the diamond's tips */}
+          {(["-top-2.5 -left-2.5", "-top-2.5 -right-2.5", "-bottom-2.5 -right-2.5", "-bottom-2.5 -left-2.5"] as const).map((position) => (
+            <div
+              key={position}
+              role="button"
+              tabIndex={0}
+              aria-label={`Connect from ${node.name}`}
+              data-connect-state={connectState}
+              onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
+              onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+              title={connectState === "invalid" ? "Already connected" : "Drag to connect"}
+              className={cn(
+                "group/handle absolute z-10 flex h-5 w-5 items-center justify-center rounded-full outline-none",
+                position,
+                connectState === "invalid" ? "cursor-not-allowed" : "cursor-crosshair",
+              )}
+            >
+              <span aria-hidden className={handleDotClass(connectState, isSelected)} />
+            </div>
+          ))}
         </div>
 
         {/* Node label below diamond */}
         <div className="mt-4 text-center max-w-[180px]">
           <p className="text-sm font-medium text-foreground truncate">{node.name}</p>
-          <p className="text-[10px] text-[color:var(--g-signal)] flex items-center justify-center gap-1">
-            <GitBranch className="h-3 w-3" />
-            Decision node
+          <p className="text-[11px] text-muted-foreground" data-node-type-label>
+            Decision
+            {node.outputPaths?.length ? <span> · {node.outputPaths.length} paths</span> : null}
           </p>
           {node.description && (
             <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{node.description}</p>
@@ -1484,7 +1346,17 @@ function DynamicFormField({
   )
 }
 
-// Agent Council Node Component - Multi-agent collaboration
+// Agent Council Node Component - Multi-agent collaboration.
+// Rectangular group node in the same family as every other step; the group
+// is carried by one glyph, a participant count and an inner participant row.
+const COUNCIL_METHOD_LABEL: Record<NonNullable<CouncilConfig["debateMode"]>, string> = {
+  consensus: "Consensus required",
+  majority: "Majority vote",
+  "lead-decides": "Lead agent decides",
+  "human-approval": "Human approval",
+  "risk-escalation": "Risk escalation",
+}
+
 function AgentCouncilNode({
   node,
   isSelected,
@@ -1497,6 +1369,7 @@ function AgentCouncilNode({
   onConnectionDragStart,
   onConnectionDrop,
   isDraggingConnection,
+  connectState = "idle",
   }: {
   node: WorkflowNode
   isSelected: boolean
@@ -1509,31 +1382,23 @@ function AgentCouncilNode({
   onConnectionDragStart?: (nodeId: string, e: React.MouseEvent) => void
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
+  connectState?: NodeConnectState
   }) {
   const [isDragging, setIsDragging] = useState(false)
   const [isMouseDown, setIsMouseDown] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const dragStartRef = useRef({ x: 0, y: 0, nodeX: 0, nodeY: 0 })
   const hasDraggedRef = useRef(false)
-  
+
   const agents = node.councilConfig?.participatingAgents || []
   const isDebating = node.state === "debating"
   const hasConsensus = node.state === "consensus"
   const isEscalated = node.state === "escalated"
-  
-  const stateColors = {
-    idle: { ring: "border-[color:var(--g-border-strong)]", bg: "bg-[color:var(--g-surface-1)]", glow: "" },
-    debating: { ring: "border-[color:var(--g-brand)] motion-safe:animate-pulse", bg: "bg-[color:var(--g-brand)]/[0.06]", glow: "" },
-    consensus: { ring: "border-success", bg: "bg-success/10", glow: "" },
-    escalated: { ring: "border-destructive", bg: "bg-destructive/10", glow: "" },
-    running: { ring: "border-[color:var(--g-brand)] motion-safe:animate-pulse", bg: "bg-[color:var(--g-brand)]/[0.06]", glow: "" },
-    success: { ring: "border-success", bg: "bg-success/10", glow: "" },
-    error: { ring: "border-destructive", bg: "bg-destructive/10", glow: "" },
-    waiting: { ring: "border-warning/50", bg: "bg-warning/5", glow: "" },
-    evaluating: { ring: "border-[color:var(--g-signal)]", bg: "bg-[color:var(--g-signal-surface)]", glow: "" },
-  }
-  const stateConfig = stateColors[node.state || "idle"]
-  
+  const stateConfig = nodeStateConfig[node.state || "idle"]
+  const method = node.councilConfig?.debateMode ? COUNCIL_METHOD_LABEL[node.councilConfig.debateMode] : null
+  const evidenceCount = node.councilConfig?.evidenceSources?.length ?? 0
+  const visibleAgents = agents.slice(0, 3)
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -1546,20 +1411,20 @@ function AgentCouncilNode({
       nodeY: node.position.y,
     }
   }
-  
+
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     onShowDetails()
   }
-  
+
   useEffect(() => {
     if (!isMouseDown) return
-    
+
     const handleGlobalMouseMove = (e: MouseEvent) => {
       const dx = e.clientX - dragStartRef.current.x
       const dy = e.clientY - dragStartRef.current.y
-      
+
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
         hasDraggedRef.current = true
         setIsDragging(true)
@@ -1568,7 +1433,7 @@ function AgentCouncilNode({
         onDrag({ x: newX, y: newY })
       }
     }
-    
+
     const handleGlobalMouseUp = () => {
       if (!hasDraggedRef.current) {
         onSelect()
@@ -1577,145 +1442,45 @@ function AgentCouncilNode({
       setIsMouseDown(false)
       hasDraggedRef.current = false
     }
-    
+
     window.addEventListener("mousemove", handleGlobalMouseMove)
     window.addEventListener("mouseup", handleGlobalMouseUp)
-    
+
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove)
       window.removeEventListener("mouseup", handleGlobalMouseUp)
     }
   }, [isMouseDown, onDrag, onSelect, node.id])
-  
-  // Agent avatar colors based on role
-  const getAgentColor = (index: number) => {
-    const colors = ["bg-[color:var(--g-frame)]", "bg-foreground/70"]
-    return colors[index % colors.length]
-  }
-  
+
   return (
     <div
       className={cn(
-        "absolute cursor-pointer transition-all duration-150 group",
+        "group/node absolute cursor-pointer select-none transition-all duration-150",
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30"
       )}
       data-canvas-node={node.id}
+      data-node-type="council"
+      data-selected={isSelected ? "true" : undefined}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Circular council container */}
-      <div className={cn(
-        "relative w-48 h-48 rounded-full border transition-all duration-300",
-        stateConfig.ring,
-        stateConfig.bg,
-        stateConfig.glow,
-        isSelected && "ring-2 ring-[color:var(--g-brand)] ring-offset-2 ring-offset-background"
-      )}>
-        {/* Orbital ring animation */}
-        <div className={cn(
-          "absolute inset-2 rounded-full border border-dashed border-[color:var(--g-border-strong)]",
-          isDebating && "animate-spin"
-        )} style={{ animationDuration: "8s" }} />
-        
-        {/* Center icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className={cn(
-            "w-16 h-16 rounded-full flex items-center justify-center",
-            "border border-[color:var(--g-border-strong)] bg-background"
-          )}>
-            <Users className="h-7 w-7 text-foreground" />
-          </div>
-        </div>
-        
-        {/* Agent avatars in orbital positions */}
-        {agents.slice(0, 6).map((agent, index) => {
-          const angle = (index * 360 / Math.min(agents.length, 6)) - 90
-          const radius = 70
-          const x = Math.cos(angle * Math.PI / 180) * radius
-          const y = Math.sin(angle * Math.PI / 180) * radius
-          
-          return (
-            <div
-              key={agent.id}
-              className={cn(
-                "absolute w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all duration-300",
-                getAgentColor(index),
-                isDebating && "animate-pulse"
-              )}
-              style={{
-                left: `calc(50% + ${x}px - 20px)`,
-                top: `calc(50% + ${y}px - 20px)`,
-              }}
-              title={`${agent.name} - ${agent.role}`}
-            >
-              {agent.name.charAt(0)}
-            </div>
-          )
-        })}
-        
-        {/* Connection handles */}
-        {/* Top */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-primary bg-primary scale-125"
-              : isSelected
-              ? "border-foreground bg-foreground/60 hover:scale-125"
-              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        {/* Right */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-primary bg-primary scale-125"
-              : isSelected
-              ? "border-foreground bg-foreground/60 hover:scale-125"
-              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        {/* Bottom */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-primary bg-primary scale-125"
-              : isSelected
-              ? "border-foreground bg-foreground/60 hover:scale-125"
-              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        {/* Left */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-primary bg-primary scale-125"
-              : isSelected
-              ? "border-foreground bg-foreground/60 hover:scale-125"
-              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        
-        {/* Delete button on hover */}
+      <div
+        className={cn(
+          "relative w-64 rounded-[var(--np-radius-lg)] border p-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-[border-color,background-color] duration-150",
+          nodeSurfaceClass(isSelected),
+          stateConfig.border,
+          stateConfig.bg,
+        )}
+      >
+        {isSelected ? <NodeSelectionEdge /> : null}
+        {isDebating || node.state === "running" ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[var(--np-radius-lg)] bg-[color:var(--g-brand)] motion-safe:animate-pulse" />
+        ) : null}
+
         {isHovered && (
           <button
             onClick={(e) => {
@@ -1724,57 +1489,92 @@ function AgentCouncilNode({
             }}
             aria-label="Delete step"
             title="Delete step"
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 transition-colors z-20"
+            className="absolute -right-2.5 -top-2.5 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
           >
             <X className="h-3 w-3" />
           </button>
         )}
-      </div>
-      
-      {/* Node label below */}
-      <div className="mt-2 text-center max-w-48">
-        <div className="font-medium text-sm text-foreground">{node.name}</div>
-        <div className="flex items-center justify-center gap-1 mt-0.5">
-          <Users className="h-3 w-3 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Agent Council</span>
+
+        {/* Header: group glyph, title, type · participant count */}
+        <div className="flex items-start gap-2.5">
+          <NodeMark icon={Users} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium leading-5 text-foreground">{node.name}</p>
+            <p className="truncate text-[11px] leading-4 text-muted-foreground" data-node-type-label>
+              Agent Council · {agents.length} {agents.length === 1 ? "agent" : "agents"}
+            </p>
+          </div>
+          {isDebating || hasConsensus || isEscalated ? (
+            <span
+              className={cn(
+                "shrink-0 rounded-[4px] border px-1.5 py-0.5 text-[10px] font-medium",
+                isDebating && "border-[color:var(--g-brand-border)] text-foreground",
+                hasConsensus && "border-success/30 text-success",
+                isEscalated && "border-destructive/30 text-destructive",
+              )}
+            >
+              {isDebating ? "Evaluating" : hasConsensus ? "Consensus" : "Escalated"}
+            </span>
+          ) : null}
         </div>
-        {node.description && (
-          <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{node.description}</div>
+
+        {/* Participants: one row of role micro-icons behind a hairline division */}
+        {agents.length > 0 ? (
+          <ul
+            className="mt-2.5 grid grid-cols-3 gap-1.5 border-t border-[color:var(--g-border-default)] pt-2"
+            aria-label={`${agents.length} participating agents`}
+          >
+            {visibleAgents.map((agent, index) => {
+              const role = agentStepRole({ role: agent.role }, agent.name)
+              const RoleIcon = role.Icon
+              const overflow = index === visibleAgents.length - 1 ? agents.length - visibleAgents.length : 0
+              return (
+                <li key={agent.id} className="flex min-w-0 items-center gap-1 text-[11px] text-[color:var(--g-text-secondary)]" title={`${agent.name} · ${agent.role}`}>
+                  <RoleIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+                  <span className="truncate">{agent.name.split(" ")[0]}</span>
+                  {overflow > 0 ? <span className="shrink-0 text-muted-foreground">+{overflow}</span> : null}
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p className="mt-2.5 border-t border-[color:var(--g-border-default)] pt-2 text-[11px] text-muted-foreground">
+            No agents assigned
+          </p>
         )}
-        {/* State indicator */}
-        {isDebating && (
-          <Badge variant="outline" className="mt-1 border-[color:var(--g-brand-border)] text-[10px] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
-            Council evaluating...
-          </Badge>
-        )}
-        {hasConsensus && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-success/10 text-success border-success/30">
-            Consensus reached
-          </Badge>
-        )}
-        {isEscalated && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-destructive/10 text-destructive border-destructive/30">
-            Escalated to human
-          </Badge>
-        )}
-{/* Agent count and View Debate button */}
-  <div className="flex items-center justify-center gap-2 mt-1.5">
-    {agents.length > 0 && (
-      <span className="text-[10px] text-muted-foreground">{agents.length} agents</span>
-    )}
-    {(isDebating || hasConsensus || isEscalated) && onViewDebate && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onViewDebate()
-        }}
-        className="flex items-center gap-1 rounded-full border border-[color:var(--g-border-strong)] px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-[color:var(--g-surface-1)]"
-      >
-        <MessageSquare className="h-3 w-3" />
-        View debate
-      </button>
-    )}
-  </div>
+
+        {/* Coordination metadata */}
+        {method || evidenceCount > 0 || ((isDebating || hasConsensus || isEscalated) && onViewDebate) ? (
+          <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+            <span className="truncate">
+              {[method, evidenceCount > 0 ? `${evidenceCount} evidence ${evidenceCount === 1 ? "source" : "sources"}` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+            {(isDebating || hasConsensus || isEscalated) && onViewDebate ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onViewDebate()
+                }}
+                className="flex shrink-0 items-center gap-1 rounded-[4px] border border-[color:var(--g-border-strong)] px-1.5 py-0.5 text-[10px] text-foreground transition-colors hover:bg-[color:var(--g-surface-2)]"
+              >
+                <MessageSquare className="h-3 w-3" aria-hidden />
+                View debate
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <NodeHandles
+          nodeId={node.id}
+          nodeName={node.name}
+          selected={isSelected}
+          connectState={connectState}
+          isDraggingConnection={isDraggingConnection}
+          onConnectionDragStart={onConnectionDragStart as ((nodeId: string, e: React.MouseEvent | React.TouchEvent) => void) | undefined}
+          onConnectionDrop={onConnectionDrop}
+        />
       </div>
     </div>
   )
@@ -3402,7 +3202,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [lastRunId, setLastRunId] = useState<string | null>(null)
   
-  const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes)
+  const seedOverride = useBuilderSeed()
+  const [nodes, setNodes] = useState<WorkflowNode[]>(() => seedOverride ?? initialNodes)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [traceOverlay, setTraceOverlay] = useState(false)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
@@ -3695,6 +3496,44 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     if (!nodeAData || !nodeBData) return false
     return nodeAData.connections.includes(nodeB) || nodeBData.connections.includes(nodeA)
   }, [nodes])
+
+  // Visual connect state per node while a connection is being dragged.
+  const connectStateFor = useCallback((nodeId: string): NodeConnectState => {
+    if (!isDraggingConnection || !dragSourceNodeId) return "idle"
+    if (nodeId === dragSourceNodeId) return "source"
+    return areNodesConnected(dragSourceNodeId, nodeId) ? "invalid" : "valid"
+  }, [isDraggingConnection, dragSourceNodeId, areNodesConnected])
+
+  // Rendered node footprints so edges meet the real handle centres.
+  const [nodeSizes, setNodeSizes] = useState<Record<string, { w: number; h: number }>>({})
+  const nodeIdsKey = nodes.map((n) => `${n.id}:${n.type}`).join("|")
+  useEffect(() => {
+    const root = canvasRef.current
+    if (!root || typeof ResizeObserver === "undefined") return
+    const measure = () => {
+      const next: Record<string, { w: number; h: number }> = {}
+      root.querySelectorAll<HTMLElement>("[data-canvas-node]").forEach((el) => {
+        const id = el.dataset.canvasNode
+        if (id) next[id] = { w: el.offsetWidth, h: el.offsetHeight }
+      })
+      setNodeSizes((prev) => {
+        const keys = Object.keys(next)
+        const same =
+          keys.length === Object.keys(prev).length &&
+          keys.every((k) => prev[k]?.w === next[k].w && prev[k]?.h === next[k].h)
+        return same ? prev : next
+      })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    root.querySelectorAll<HTMLElement>("[data-canvas-node]").forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [nodeIdsKey])
+  const footprintOf = useCallback(
+    (node: WorkflowNode) =>
+      node.type === "decision" ? nodeFootprint("decision") : nodeSizes[node.id] ?? nodeFootprint(node.type),
+    [nodeSizes],
+  )
 
   // Handle node click - implements the click-to-select-then-click-to-connect pattern
 // Simplified click - just select/deselect nodes
@@ -5712,7 +5551,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               </div>
             ) : null}
             {/* Enhanced grid background with subtle gradient */}
-            <div className="pointer-events-none absolute inset-0 bg-[color:var(--g-surface-1)]">
+            <div className="pointer-events-none absolute inset-0 bg-[color:var(--g-canvas)]">
               <div
                 className="absolute inset-0"
                 style={{
@@ -5794,10 +5633,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               </defs>
               
               {connections.map((conn, i) => {
-                const nodeWidth = conn.from.type === "decision" ? 128 : 224
-                const nodeHeight = conn.from.type === "decision" ? 128 : 80
-                const toNodeWidth = conn.to.type === "decision" ? 128 : 224
-                const toNodeHeight = conn.to.type === "decision" ? 128 : 80
+                const fromSize = footprintOf(conn.from)
+                const toSize = footprintOf(conn.to)
                 
                 // Check if this is a decision node connection
                 const isDecisionSource = conn.from.type === "decision"
@@ -5819,15 +5656,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 const isChosenPath = chosenPathId && outputPath?.id === chosenPathId
                 const isDimmedPath = isDecisionSource && chosenPathId && !isChosenPath
                 
-                // Calculate center positions
-                const fromCenterX = conn.from.position.x + nodeWidth / 2
-                const fromCenterY = conn.from.position.y + nodeHeight / 2
-                const toCenterX = conn.to.position.x + toNodeWidth / 2
-                const toCenterY = conn.to.position.y + toNodeHeight / 2
-                
-                // Determine connection direction based on relative position
-                const dx = toCenterX - fromCenterX
-                const dy = toCenterY - fromCenterY
+                // Direction from true node centres
+                const fromCenter = nodeCenter(conn.from.type, conn.from.position, fromSize)
+                const toCenter = nodeCenter(conn.to.type, conn.to.position, toSize)
+                const dx = toCenter.x - fromCenter.x
+                const dy = toCenter.y - fromCenter.y
                 const isHorizontal = Math.abs(dx) > Math.abs(dy)
                 
                 // Get state-based coloring
@@ -5850,89 +5683,22 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 }
                 const animationDuration = isActive ? "1.5s" : "3s"
                 
-                let fromX: number, fromY: number, toX: number, toY: number
+                // Edges run handle-centre to handle-centre on the facing sides.
+                const fromSide: NodeAnchorSide = isHorizontal ? (dx > 0 ? "right" : "left") : (dy > 0 ? "bottom" : "top")
+                const toSide: NodeAnchorSide = isHorizontal ? (dx > 0 ? "left" : "right") : (dy > 0 ? "top" : "bottom")
+                const fromPt = nodeAnchor(conn.from.type, conn.from.position, fromSize, fromSide)
+                const toPt = nodeAnchor(conn.to.type, conn.to.position, toSize, toSide)
+                const fromX = fromPt.x
+                const fromY = fromPt.y
+                const toX = toPt.x
+                const toY = toPt.y
                 let pathD: string
-                
-                // For decision nodes, offset multiple output paths
-                const pathYOffset = isDecisionSource && totalPaths > 1 
-                  ? (pathIndex - (totalPaths - 1) / 2) * 25 
-                  : 0
-                
                 if (isHorizontal) {
-                  // Horizontal connection (left-right)
-                  if (dx > 0) {
-                    // To is to the right of From
-                    if (isDecisionSource) {
-                      // Decision node uses diamond shape - exit from right corner
-                      fromX = conn.from.position.x + nodeWidth + 10
-                      fromY = conn.from.position.y + nodeHeight / 2 + pathYOffset
-                    } else {
-                      fromX = conn.from.position.x + nodeWidth + 7
-                      fromY = conn.from.position.y + nodeHeight / 2
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x - 10
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    } else {
-                      toX = conn.to.position.x - 7
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    }
-                  } else {
-                    // To is to the left of From
-                    if (isDecisionSource) {
-                      fromX = conn.from.position.x - 10
-                      fromY = conn.from.position.y + nodeHeight / 2 + pathYOffset
-                    } else {
-                      fromX = conn.from.position.x - 7
-                      fromY = conn.from.position.y + nodeHeight / 2
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x + toNodeWidth + 10
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    } else {
-                      toX = conn.to.position.x + toNodeWidth + 7
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    }
-                  }
                   const controlOffset = Math.max(Math.abs(toX - fromX) * 0.4, 50)
                   const ctrl1X = dx > 0 ? fromX + controlOffset : fromX - controlOffset
                   const ctrl2X = dx > 0 ? toX - controlOffset : toX + controlOffset
                   pathD = `M ${fromX} ${fromY} C ${ctrl1X} ${fromY}, ${ctrl2X} ${toY}, ${toX} ${toY}`
                 } else {
-                  // Vertical connection (top-bottom)
-                  if (dy > 0) {
-                    // To is below From
-                    if (isDecisionSource) {
-                      fromX = conn.from.position.x + nodeWidth / 2 + pathYOffset
-                      fromY = conn.from.position.y + nodeHeight + 10
-                    } else {
-                      fromX = conn.from.position.x + nodeWidth / 2
-                      fromY = conn.from.position.y + nodeHeight + 7
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y - 10
-                    } else {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y - 7
-                    }
-                  } else {
-                    // To is above From
-                    if (isDecisionSource) {
-                      fromX = conn.from.position.x + nodeWidth / 2 + pathYOffset
-                      fromY = conn.from.position.y - 10
-                    } else {
-                      fromX = conn.from.position.x + nodeWidth / 2
-                      fromY = conn.from.position.y - 7
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y + toNodeHeight + 10
-                    } else {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y + toNodeHeight + 7
-                    }
-                  }
                   const controlOffset = Math.max(Math.abs(toY - fromY) * 0.4, 50)
                   const ctrl1Y = dy > 0 ? fromY + controlOffset : fromY - controlOffset
                   const ctrl2Y = dy > 0 ? toY - controlOffset : toY + controlOffset
@@ -5988,7 +5754,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <path
                       d={pathD}
                       stroke={strokeColor}
-                      strokeWidth={isDecisionSource ? "3" : "2.5"}
+                      strokeWidth={isDecisionSource ? "2" : "1.5"}
+                      className="transition-[stroke-width] duration-150 group-hover:[stroke-width:2.25]"
                     fill="none"
                     opacity={
                       traceOverlay
@@ -6024,11 +5791,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                         </circle>
                       </>
                     )}
-                    {/* Connection endpoint dots with glow */}
-                    <circle cx={fromX} cy={fromY} r={isDecisionSource ? "6" : "5"} fill={dotColor} opacity={isDimmedPath ? "0.4" : "0.9"} />
-                    <circle cx={toX} cy={toY} r="5" fill={dotColor} opacity={isDimmedPath ? "0.4" : "0.9"} />
-                    <circle cx={fromX} cy={fromY} r="3" fill="white" opacity={isDimmedPath ? "0.2" : "0.5"} />
-                    <circle cx={toX} cy={toY} r="3" fill="white" opacity={isDimmedPath ? "0.2" : "0.5"} />
+                    {/* Endpoints sit on the handle centres */}
+                    <circle cx={fromX} cy={fromY} r="3" fill={dotColor} opacity={isDimmedPath ? "0.4" : "1"} />
+                    <circle cx={toX} cy={toY} r="3" fill={dotColor} opacity={isDimmedPath ? "0.4" : "1"} />
                     
 {/* Disconnect affordance: appears on edge hover so idle edges read as flow, not delete buttons. */}
   <g 
@@ -6134,6 +5899,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   onConnectionDragStart={handleConnectionDragStart}
   onConnectionDrop={handleConnectionDrop}
   isDraggingConnection={isDraggingConnection}
+  connectState={connectStateFor(node.id)}
   />
   ) : node.type === "council" ? (
   <AgentCouncilNode
@@ -6155,6 +5921,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   onConnectionDragStart={handleConnectionDragStart}
   onConnectionDrop={handleConnectionDrop}
   isDraggingConnection={isDraggingConnection}
+  connectState={connectStateFor(node.id)}
   />
   ) : (
   <CanvasNode
@@ -6169,6 +5936,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       onConnectionDragStart={handleConnectionDragStart}
       onConnectionDrop={handleConnectionDrop}
       isDraggingConnection={isDraggingConnection}
+      connectState={connectStateFor(node.id)}
       isMobile={isMobile}
       reliabilityMessage={
         reliabilityByLabel.get(node.name.toLowerCase())
@@ -6183,57 +5951,25 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   {isDraggingConnection && dragSourceNodeId && dragMousePosition && (() => {
     const sourceNode = nodes.find(n => n.id === dragSourceNodeId)
     if (!sourceNode) return null
-    const nodeWidth = sourceNode.type === "decision" ? 128 : 224
-    const nodeHeight = sourceNode.type === "decision" ? 128 : 80
-    const startX = sourceNode.position.x + nodeWidth / 2
-    const startY = sourceNode.position.y + nodeHeight / 2
+    const { x: startX, y: startY } = nodeCenter(sourceNode.type, sourceNode.position, footprintOf(sourceNode))
     return (
       <svg 
         className="absolute inset-0 pointer-events-none" 
         style={{ overflow: "visible", width: "100%", height: "100%", zIndex: 100 }}
       >
-        <defs>
-          <linearGradient id="dragLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="1" />
-            <stop offset="100%" stopColor="var(--workflow-line-active-mid)" stopOpacity="0.5" />
-          </linearGradient>
-        </defs>
-        {/* Glow effect */}
+        {/* Flat dashed preview: no glow, no motion */}
         <line
           x1={startX}
           y1={startY}
           x2={dragMousePosition.x}
           y2={dragMousePosition.y}
-          stroke="var(--workflow-line-active)"
-          strokeWidth="6"
-          opacity="0.3"
+          stroke="var(--signal-500)"
+          strokeWidth="1.5"
           strokeLinecap="round"
+          strokeDasharray="6 4"
         />
-        {/* Main line */}
-        <line
-          x1={startX}
-          y1={startY}
-          x2={dragMousePosition.x}
-          y2={dragMousePosition.y}
-          stroke="url(#dragLineGradient)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray="8 4"
-        >
-          <animate
-            attributeName="stroke-dashoffset"
-            from="0"
-            to="-24"
-            dur="0.5s"
-            repeatCount="indefinite"
-          />
-        </line>
-        {/* Start point */}
-        <circle cx={startX} cy={startY} r="6" fill="var(--workflow-line-active)" />
-        <circle cx={startX} cy={startY} r="3" fill="white" opacity="0.6" />
-        {/* End point (cursor) */}
-        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="8" fill="var(--workflow-line-active)" opacity="0.3" />
-        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="4" fill="var(--workflow-line-active)" />
+        <circle cx={startX} cy={startY} r="3" fill="var(--signal-500)" />
+        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="3" fill="var(--signal-500)" />
       </svg>
     )
   })()}

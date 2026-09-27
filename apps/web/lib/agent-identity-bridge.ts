@@ -30,7 +30,7 @@ export const LEGACY_ICON_TO_ROLE: Record<AgentIconId, AgentRoleIconId> = {
   headphones: "support",
   bot: "general",
   brain: "knowledge",
-  zap: "ops",
+  zap: "automation",
   users: "recruiting",
   shield: "security",
   sparkles: "general",

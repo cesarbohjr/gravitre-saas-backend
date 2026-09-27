@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { NucleoConnector } from "@/components/icons/nucleo/semantic"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { ArrowLeft, Search } from "lucide-react"
 
 function formatPrice(cents?: number, currency = "usd") {
@@ -126,7 +127,10 @@ export default function FederatedConnectorsPage() {
                           <p className="mt-1 text-sm text-muted-foreground">{asset.description}</p>
                         ) : null}
                         {asset.vendor ? (
-                          <p className="mt-1 text-xs text-muted-foreground">Vendor: {asset.vendor}</p>
+                          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <ProviderLogo provider={asset.vendor} size="sm" decorative />
+                            Vendor: {asset.vendor}
+                          </p>
                         ) : null}
                       </div>
                       <div className="flex flex-wrap gap-2">

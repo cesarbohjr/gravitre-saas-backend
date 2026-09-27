@@ -1,0 +1,88 @@
+import type { CanvasWorkflowNode } from "@/lib/workflows/builder-persistence"
+
+/**
+ * Capture-harness graph: every node family the builder renders (source, agent,
+ * task, council, approval, connector) laid out inside a 1440px canvas.
+ * Fixture only — never loaded by a product route.
+ */
+export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
+  {
+    id: "node-1",
+    type: "source",
+    name: "Salesforce CRM",
+    description: "Pull customer records",
+    config: { connector: "salesforce", table: "contacts" },
+    position: { x: 40, y: 70 },
+    connections: ["node-2"],
+    state: "idle",
+    vendor: "salesforce",
+    selectedAction: "fetch_records",
+    dataLabel: "customer_records",
+  },
+  {
+    id: "node-2",
+    type: "agent",
+    name: "Data Validator",
+    description: "Validate and clean records",
+    config: { model: "gpt-5.5", temperature: 0.3, role: "Data quality" },
+    position: { x: 320, y: 70 },
+    connections: ["node-3"],
+    state: "idle",
+    dataLabel: "validated_data",
+  },
+  {
+    id: "node-3",
+    type: "task",
+    name: "Enrich with metadata",
+    description: "Add company info and scoring",
+    config: { instruction: "Enrich customer records with company data" },
+    position: { x: 600, y: 70 },
+    connections: ["node-6"],
+    state: "idle",
+    dataLabel: "enriched_records",
+  },
+  {
+    id: "node-6",
+    type: "council",
+    name: "Revenue Council",
+    description: "Agree on account priority",
+    config: {},
+    position: { x: 568, y: 320 },
+    connections: ["node-4"],
+    state: "idle",
+    councilConfig: {
+      objective: "Agree on account priority before sync",
+      debateMode: "consensus",
+      evidenceSources: ["CRM data", "Enrichment"],
+      participatingAgents: [
+        { id: "analyst", name: "Research Analyst", role: "Research", expertise: "Account research", confidenceStyle: "analytical" },
+        { id: "validator", name: "Data Validator", role: "Data quality", expertise: "Record accuracy", confidenceStyle: "cautious" },
+        { id: "revops", name: "RevOps Reviewer", role: "Revenue operations", expertise: "Pipeline fit", confidenceStyle: "fast" },
+      ],
+    },
+  },
+  {
+    id: "node-4",
+    type: "approval",
+    name: "Quality Gate",
+    description: "Review before production",
+    config: { approvers: ["admin"], autoApprove: false },
+    position: { x: 320, y: 320 },
+    connections: ["node-5"],
+    state: "idle",
+    dataLabel: "approved_batch",
+  },
+  {
+    id: "node-5",
+    type: "connector",
+    name: "PostgreSQL",
+    description: "Write to data warehouse",
+    config: { connector: "postgresql", schema: "customers" },
+    position: { x: 40, y: 320 },
+    connections: [],
+    state: "idle",
+    vendor: "postgresql",
+    selectedAction: "insert",
+    dataLabel: "sync_complete",
+  },
+]

@@ -32,11 +32,11 @@ const SIZE_TO_TILE: Record<AgentIdentityAvatarSize, IdentitySize> = {
 
 const FRAME: Record<AgentIdentityAvatarSize, string> = {
   xs: "h-6 w-6 rounded-[5px]",
-  sm: "h-9 w-9 rounded-[var(--np-radius-sm,6px)]",
-  md: "h-11 w-11 rounded-[var(--np-radius-md,8px)]",
-  lg: "h-14 w-14 rounded-[var(--np-radius-md,8px)]",
-  xl: "h-16 w-16 rounded-[var(--np-radius-md,8px)]",
-  orb: "h-14 w-14 rounded-[var(--np-radius-md,8px)]",
+  sm: "h-8 w-8 rounded-[var(--np-radius-sm,6px)]",
+  md: "h-9 w-9 rounded-[var(--np-radius-md,8px)]",
+  lg: "h-12 w-12 rounded-[var(--np-radius-md,8px)]",
+  xl: "h-14 w-14 rounded-[var(--np-radius-md,8px)]",
+  orb: "h-12 w-12 rounded-[var(--np-radius-md,8px)]",
 }
 
 export interface AgentIdentityAvatarProps {

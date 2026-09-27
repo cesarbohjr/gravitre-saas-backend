@@ -102,6 +102,7 @@ export default function MarketplaceSavedPage() {
                           <CategoryIconChip
                             assetType={asset.assetType as AssetCategory}
                             department={asset.department}
+                            title={asset.title}
                             size="sm"
                           />
                           <div className="min-w-0">

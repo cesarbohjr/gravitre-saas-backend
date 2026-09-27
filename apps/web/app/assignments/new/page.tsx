@@ -1,6 +1,8 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import type { AgentIdentityInput } from "@/lib/agent-identity"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -27,6 +29,7 @@ interface AssignableAgent {
   name: string
   role: string
   gradient: string
+  identity: AgentIdentityInput
   trainingProgress: number
 }
 
@@ -112,6 +115,14 @@ function NewAssignmentPageContent() {
         name: item.name,
         role: item.role || item.description || "Agent",
         gradient: avatarGradient(item.personality?.color ?? ""),
+        identity: {
+          name: item.name,
+          role: item.role,
+          icon: item.icon,
+          avatarColor: item.avatarColor,
+          avatarUrl: item.avatarUrl,
+          personality: item.personality,
+        },
         trainingProgress: Number.isFinite(successRate) ? Math.round(successRate) : 0,
       }
     })
@@ -352,12 +363,7 @@ function NewAssignmentPageContent() {
           {agent && (
             <div className="border-t border-divide p-6">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-                  agent.gradient
-                )}>
-                  <Icon name="ai" size="sm" className="text-white" />
-                </div>
+                <AgentIdentityAvatar agent={agent.identity} size="md" showStatusDot={false} />
                 <div>
                   <p className="text-sm font-medium text-foreground">{agent.name}</p>
                   <p className="text-xs text-muted-foreground">{agent.role}</p>
@@ -416,12 +422,7 @@ function NewAssignmentPageContent() {
                           aria-hidden
                         />
                       )}
-                      <div className={cn(
-                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-                        a.gradient
-                      )}>
-                        <Icon name="ai" size="lg" className="text-white" />
-                      </div>
+                      <AgentIdentityAvatar agent={a.identity} size="lg" showStatusDot={false} />
                       <div className="flex-1">
                         <p className="font-semibold text-foreground">{a.name}</p>
                         <p className="text-sm text-muted-foreground">{a.role}</p>
@@ -781,12 +782,7 @@ function NewAssignmentPageContent() {
                       <div className="px-6 py-4 flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Agent</span>
                         <div className="flex items-center gap-2">
-                          <div className={cn(
-                            "flex h-6 w-6 items-center justify-center rounded-[var(--np-radius-sm)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-                            agent?.gradient
-                          )}>
-                            <Icon name="ai" size="xs" className="text-white" />
-                          </div>
+                          <AgentIdentityAvatar agent={agent?.identity ?? { name: "Agent" }} size="sm" showStatusDot={false} />
                           <span className="text-sm font-medium text-foreground">{agent?.name}</span>
                         </div>
                       </div>

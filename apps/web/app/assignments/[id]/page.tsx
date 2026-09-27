@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, use, useMemo, useEffect } from "react"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
@@ -708,7 +709,6 @@ export default function AssignmentDetailPage({
   )
 
   const agentName = handoff?.agent_name || "Agent"
-  const agentInitials = agentName.slice(0, 2).toUpperCase()
   const agentId = handoff?.agent_id
   const createdAt = relativeTime(job?.createdAt)
   const confidencePercent = Math.round(
@@ -927,9 +927,7 @@ export default function AssignmentDetailPage({
           }
         >
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] text-sm font-bold text-[color:var(--g-brand)]">
-              {agentInitials}
-            </div>
+            <AgentIdentityAvatar agent={{ name: agentName }} size="md" showStatusDot={false} />
             {taskBrief && taskBrief !== taskTitle ? (
               <p className="max-w-xl text-xs text-muted-foreground line-clamp-2">{taskBrief}</p>
             ) : null}

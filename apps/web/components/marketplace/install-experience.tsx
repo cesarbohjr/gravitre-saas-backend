@@ -35,7 +35,7 @@ import {
   ArrowRight,
   Bot,
   CheckCircle2,
-  Database,
+  BookOpen,
   ExternalLink,
   Loader2,
   Package,
@@ -69,7 +69,7 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
 
 function linkIcon(entityType: string) {
   if (entityType === "workflow") return Workflow
-  if (entityType === "rag_source") return Database
+  if (entityType === "rag_source") return BookOpen
   if (entityType === "operator" || entityType === "agent") return Bot
   return Package
 }

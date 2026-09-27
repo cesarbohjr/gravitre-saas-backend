@@ -54,6 +54,7 @@ export { ActionProposal } from "./action-proposal"
 export { IconButton } from "./icon-button"
 export { VendorLogo } from "./vendor-logo"
 export { ConnectorIcon, ConnectorIconGrid, ConnectorFallbackIcon, hasConnectorBrandLogo } from "./connector-icon"
+export { ProviderLogo } from "./provider-logo"
 
 // Avatar Components
 export { AgentAvatar, UserAvatar, ChatMessage } from "./chat-avatars"

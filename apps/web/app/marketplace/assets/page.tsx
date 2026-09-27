@@ -22,9 +22,9 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { cn } from "@/lib/utils"
 import {
+  BookOpen,
   Bot,
   ChevronRight,
-  Database,
   Loader2,
   Package,
   Plug,
@@ -50,11 +50,13 @@ import {
   isFreeAsset,
 } from "@/components/marketplace/marketplace-asset-commerce"
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
+import { getCategoryIcon } from "@/lib/marketplace-category-icons"
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
   { id: "ai_agent", label: "Agents", icon: Bot },
   { id: "workflow", label: "Workflows", icon: Workflow },
-  { id: "knowledge_pack", label: "Knowledge", icon: Database },
+  { id: "knowledge_pack", label: "Knowledge", icon: BookOpen },
   { id: "department_pack", label: "Department packs", icon: Package },
   { id: "connector_config", label: "Partner connectors", icon: Plug },
 ] as const
@@ -67,12 +69,15 @@ const PRICE_FILTERS = [
 
 type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
 
-const TYPE_ICON: Record<string, typeof Package> = {
-  ai_agent: Bot,
-  workflow: Workflow,
-  knowledge_pack: Database,
-  department_pack: Package,
-  connector_config: Plug,
+/** Asset mark: vendor logo for partner connectors, role/kind glyph otherwise. */
+function AssetMark({ asset }: { asset: MarketplaceAssetSummary }) {
+  if (asset.assetType === "connector_config") {
+    const vendor = asset.vendor || asset.connectorChecklist?.[0]?.connectorType
+    if (vendor) return <ProviderLogo provider={vendor} size="sm" className="mt-0.5 shrink-0" />
+    return <Plug className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-label="Partner connector" />
+  }
+  const { icon: Icon, label } = getCategoryIcon(asset.assetType, asset.department, asset.title)
+  return <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-label={label} role="img" />
 }
 
 /** Single-line summary of an asset's connector setup, shown on catalog cards. */
@@ -171,7 +176,6 @@ function AssetCard({
   const needsPurchase = assetRequiresPurchase(asset)
   const showPrimaryAction = isAdmin && !asset.installed
 
-  const TypeIcon = TYPE_ICON[asset.assetType] ?? Package
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
 
@@ -181,7 +185,7 @@ function AssetCard({
       data-testid="marketplace-pack-row"
     >
       <div className="flex min-w-0 gap-3">
-        <TypeIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <AssetMark asset={asset} />
         <div className="min-w-0">
           <button
             type="button"
@@ -209,6 +213,8 @@ function AssetCard({
           <ul className="mt-1 space-y-0.5 text-[12.5px]" aria-label={capitalizeFirst(connectorSummary(asset))}>
             {systems.slice(0, 3).map((item) => (
               <li key={item.connectorType} className="flex items-center gap-1.5">
+                <ProviderLogo provider={item.connectorType} label={item.label} size="sm" decorative className="shrink-0" />
+                <span className="truncate text-foreground">{item.label}</span>
                 <span
                   aria-hidden
                   className={cn(
@@ -216,7 +222,6 @@ function AssetCard({
                     item.connected ? "bg-[color:var(--g-brand)]" : item.required ? "bg-warning" : "bg-muted-foreground/40",
                   )}
                 />
-                <span className="truncate text-foreground">{item.label}</span>
                 <span className="shrink-0 text-muted-foreground">
                   {item.connected ? "connected" : item.required ? "required" : "optional"}
                 </span>

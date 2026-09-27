@@ -1,18 +1,27 @@
 import type { ComponentType, SVGProps } from "react"
 import {
-  NucleoApproval,
-  NucleoActivity,
-  NucleoChat,
-  NucleoConnector,
-  NucleoHistory,
-  NucleoRun,
-  NucleoSearch,
-  NucleoVoice,
-  NucleoWorkflow,
-} from "@/components/icons/nucleo/semantic"
+  Activity,
+  BookOpen,
+  Bot,
+  Calculator,
+  ChartColumn,
+  Combine,
+  Database,
+  Gauge,
+  Headset,
+  HeartHandshake,
+  Megaphone,
+  Repeat,
+  ShieldCheck,
+  SquareTerminal,
+  Target,
+  Telescope,
+  UserSearch,
+  Workflow,
+} from "lucide-react"
 import type { AgentIdentityColorId, AgentRoleIconId, AgentDepartmentId } from "./types"
 
-type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
+type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string; strokeWidth?: number | string }>
 
 /**
  * Solid Nodus tiles — crisp icon ink, no washed /90 surfaces.
@@ -67,27 +76,31 @@ export const IDENTITY_COLOR_TOKENS: Record<
 }
 
 /**
- * Role → Nucleo function mark. No AiOutline24, sparkle, brain, or wand
- * as generic AI identity.
+ * Canonical role → Lucide glyph. One glyph per role so a roster reads by
+ * function; no sparkle, brain or wand as generic AI identity.
  */
 export const ROLE_ICON_REGISTRY: Record<
   AgentRoleIconId,
-  { label: string; category: string; Icon: IconComponent; source: "nucleo" | "nodus-nav" }
+  { label: string; category: string; Icon: IconComponent; source: "lucide" }
 > = {
-  sales: { label: "Sales", category: "Sales", Icon: NucleoRun, source: "nucleo" },
-  support: { label: "Support", category: "Support", Icon: NucleoVoice, source: "nucleo" },
-  finance: { label: "Finance", category: "Finance", Icon: NucleoActivity, source: "nucleo" },
-  ops: { label: "Operations", category: "Operations", Icon: NucleoWorkflow, source: "nucleo" },
-  research: { label: "Research", category: "Research", Icon: NucleoSearch, source: "nucleo" },
-  analytics: { label: "Analytics", category: "Analytics", Icon: NucleoActivity, source: "nucleo" },
-  reliability: { label: "Reliability", category: "Engineering", Icon: NucleoActivity, source: "nucleo" },
-  security: { label: "Security", category: "Security", Icon: NucleoApproval, source: "nucleo" },
-  recruiting: { label: "Recruiting", category: "Recruiting", Icon: NucleoChat, source: "nucleo" },
-  marketing: { label: "Marketing", category: "Marketing", Icon: NucleoRun, source: "nucleo" },
-  knowledge: { label: "Knowledge", category: "Knowledge", Icon: NucleoHistory, source: "nucleo" },
-  workflow: { label: "Workflow", category: "Workflow", Icon: NucleoWorkflow, source: "nucleo" },
-  data: { label: "Data", category: "Data", Icon: NucleoConnector, source: "nucleo" },
-  general: { label: "General", category: "Operations", Icon: NucleoWorkflow, source: "nucleo" },
+  sales: { label: "Sales", category: "Sales", Icon: Target, source: "lucide" },
+  marketing: { label: "Marketing", category: "Marketing", Icon: Megaphone, source: "lucide" },
+  support: { label: "Support", category: "Support", Icon: Headset, source: "lucide" },
+  customer_success: { label: "Customer Success", category: "Customer Success", Icon: HeartHandshake, source: "lucide" },
+  research: { label: "Research", category: "Research", Icon: Telescope, source: "lucide" },
+  data: { label: "Data", category: "Data", Icon: Database, source: "lucide" },
+  analytics: { label: "Analytics", category: "Analytics", Icon: ChartColumn, source: "lucide" },
+  finance: { label: "Finance", category: "Finance", Icon: Calculator, source: "lucide" },
+  ops: { label: "Operations", category: "Operations", Icon: Gauge, source: "lucide" },
+  revops: { label: "RevOps", category: "Revenue Operations", Icon: Combine, source: "lucide" },
+  security: { label: "Security", category: "Security", Icon: ShieldCheck, source: "lucide" },
+  developer: { label: "Developer", category: "Engineering", Icon: SquareTerminal, source: "lucide" },
+  reliability: { label: "Reliability", category: "Engineering", Icon: Activity, source: "lucide" },
+  knowledge: { label: "Knowledge", category: "Knowledge", Icon: BookOpen, source: "lucide" },
+  automation: { label: "Automation", category: "Automation", Icon: Repeat, source: "lucide" },
+  workflow: { label: "Workflow", category: "Workflow", Icon: Workflow, source: "lucide" },
+  recruiting: { label: "Recruiting", category: "People", Icon: UserSearch, source: "lucide" },
+  general: { label: "General", category: "General", Icon: Bot, source: "lucide" },
 }
 
 export const DEPARTMENT_ACCENT: Record<
@@ -111,18 +124,23 @@ export const DEPARTMENT_ACCENT: Record<
 /** Suggest icon from role / name text — function marks, not cartoon AI. */
 export function suggestRoleIcon(role: string, name = "", department = ""): AgentRoleIconId {
   const text = `${role} ${name} ${department}`.toLowerCase()
-  if (/secur|compliance|risk|vulnerab/.test(text)) return "security"
+  // Order matters: specific compound roles before the generic words they contain.
+  if (/secur|compliance|risk|vulnerab|access review/.test(text)) return "security"
+  if (/revops|revenue op|sales op|gtm op/.test(text)) return "revops"
+  if (/customer success|churn|renewal|onboarding|\bcs\b/.test(text)) return "customer_success"
   if (/reliab|infra|platform|sre|uptime|pulse/.test(text)) return "reliability"
-  if (/cash|finance|invoice|billing|forecast/.test(text)) return "finance"
-  if (/enrich|pipeline|sales|lead|revenue|deal/.test(text)) return "sales"
-  if (/churn|support|ticket|customer success|cs\b/.test(text)) return "support"
-  if (/recruit|talent|hiring|people ops/.test(text)) return "recruiting"
-  if (/market|campaign|content/.test(text)) return "marketing"
+  if (/develop|engineer|code|devops|github|deploy/.test(text)) return "developer"
+  if (/cash|finance|invoice|billing|forecast|accounting/.test(text)) return "finance"
+  if (/research|investigat|competitive intel/.test(text)) return "research"
+  if (/enrich|pipeline|sales|lead|deal|prospect/.test(text)) return "sales"
+  if (/support|ticket|helpdesk|service desk/.test(text)) return "support"
+  if (/recruit|talent|hiring|people ops|\bhr\b|human resource/.test(text)) return "recruiting"
+  if (/market|campaign|content|seo/.test(text)) return "marketing"
   if (/visib|analytic|insight|dashboard|report/.test(text)) return "analytics"
-  if (/research|account research|investigate/.test(text)) return "research"
+  if (/automat|trigger|schedul/.test(text)) return "automation"
   if (/workflow|orchestr|meson/.test(text)) return "workflow"
-  if (/data|crm|hubspot|database/.test(text)) return "data"
+  if (/data|crm|hubspot|database|quality/.test(text)) return "data"
   if (/gibe|knowledge|reasoning|core ai|general intelligence/.test(text)) return "knowledge"
-  if (/ops|operations|runbook/.test(text)) return "ops"
+  if (/ops|operations|runbook|\bmsp\b/.test(text)) return "ops"
   return "general"
 }

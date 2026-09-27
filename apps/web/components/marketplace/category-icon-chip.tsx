@@ -1,61 +1,43 @@
 import { getCategoryIcon, type AssetCategory } from "@/lib/marketplace-category-icons"
-import { departmentGradient } from "@/lib/department-gradient"
 import { cn } from "@/lib/utils"
 
 interface CategoryIconChipProps {
   assetType: AssetCategory
   department?: string | null
-  // sm = 32px, md = 40px (matches the marketplace card icon footprint),
-  // lg = 56px. Radius mirrors the card's existing `rounded-lg` chip.
+  title?: string
   size?: "sm" | "md" | "lg"
   className?: string
 }
 
-const SIZE_MAP = { sm: 32, md: 40, lg: 56 } as const
+const SIZE_MAP = {
+  sm: { box: "h-8 w-8", icon: 16 },
+  md: { box: "h-9 w-9", icon: 18 },
+  lg: { box: "h-12 w-12", icon: 22 },
+} as const
 
+/** Neutral asset mark: the same role glyphs and tile as agent identity. */
 export function CategoryIconChip({
   assetType,
   department,
+  title,
   size = "md",
   className,
 }: CategoryIconChipProps) {
-  const config = getCategoryIcon(assetType, department)
+  const config = getCategoryIcon(assetType, department, title)
   const Icon = config.icon
-  const px = SIZE_MAP[size]
-  const iconPx = Math.round(px * 0.5)
-
-  // Department packs render as a vivid gradient orb so they share the exact
-  // color language of the Agents grid (same departmentGradient source).
-  if (assetType === "department_pack") {
-    const { gradient, glow } = departmentGradient(department)
-    return (
-      <div
-        className={cn(
-          "relative flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br shadow-md",
-          gradient,
-          glow,
-          className,
-        )}
-        style={{ width: px, height: px }}
-      >
-        {/* Glossy top highlight for depth, matching the agent orbs */}
-        <span className="absolute inset-[2px] rounded-full bg-gradient-to-br from-white/25 to-transparent" aria-hidden />
-        <Icon size={iconPx} weight="fill" className="relative z-10 text-white" aria-hidden />
-      </div>
-    )
-  }
+  const dims = SIZE_MAP[size]
 
   return (
     <div
+      role="img"
+      aria-label={config.label}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg",
-        config.chipBg,
-        config.chipBgDark,
+        "flex shrink-0 items-center justify-center rounded-[var(--np-radius-md,6px)] border border-border bg-muted/60 dark:bg-[var(--graphite-800)]",
+        dims.box,
         className,
       )}
-      style={{ width: px, height: px }}
     >
-      <Icon size={iconPx} weight="duotone" className={config.iconColor} aria-hidden />
+      <Icon size={dims.icon} strokeWidth={1.75} className="text-[color:var(--g-text-secondary)]" aria-hidden />
     </div>
   )
 }

@@ -4,7 +4,8 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { CheckCircle2, ChevronDown, Plug } from "lucide-react"
+import { CheckCircle2, ChevronDown } from "lucide-react"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import type {
   MarketplaceAssetSummary,
   MarketplaceConnectorChecklistItem,
@@ -101,11 +102,10 @@ export function ConnectorChecklist({
           <li key={item.connectorType} className="space-y-1 text-sm">
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
+                <ProviderLogo provider={item.connectorType} label={item.label} size="sm" decorative className="shrink-0" />
                 {item.connected ? (
-                  <CheckCircle2 className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-                ) : (
-                  <Plug className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-                )}
+                  <CheckCircle2 className={cn("h-3.5 w-3.5 shrink-0", checklistTone(item))} aria-label="Connected" />
+                ) : null}
                 <span className={cn("truncate", !item.connected && item.required && "font-medium")}>
                   {item.label || item.connectorType}
                   {item.required ? (

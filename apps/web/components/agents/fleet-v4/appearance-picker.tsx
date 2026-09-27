@@ -48,7 +48,7 @@ export function AgentAppearancePicker({
         <div>
           <p className="text-sm font-medium">{ROLE_ICON_REGISTRY[icon].label}</p>
           <p className="text-xs text-[color:var(--g-text-muted)]">
-            {IDENTITY_COLOR_TOKENS[color].label} · {ROLE_ICON_REGISTRY[icon].source}
+            {IDENTITY_COLOR_TOKENS[color].label} · {ROLE_ICON_REGISTRY[icon].category}
           </p>
         </div>
       </div>

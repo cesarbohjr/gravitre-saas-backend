@@ -1,21 +1,20 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { NUCLEO_SIZE } from "@/lib/design-system"
 import { IDENTITY_COLOR_TOKENS, ROLE_ICON_REGISTRY } from "./identity-tokens"
 import type { AgentIdentityColorId, AgentRoleIconId, AgentRuntimeState, IdentitySize } from "./types"
 import { GravitreAgentStatusDot } from "./gravitre-agent-status"
 
 const TILE_SIZE: Record<IdentitySize, string> = {
-  sm: "h-9 w-9 rounded-[var(--np-radius-sm,6px)]",
-  md: "h-11 w-11 rounded-[var(--np-radius-md,8px)]",
-  lg: "h-14 w-14 rounded-[var(--np-radius-md,8px)]",
+  sm: "h-8 w-8 rounded-[var(--np-radius-sm,6px)]",
+  md: "h-9 w-9 rounded-[var(--np-radius-md,8px)]",
+  lg: "h-12 w-12 rounded-[var(--np-radius-md,8px)]",
 }
 
 const ICON_PX: Record<IdentitySize, number> = {
-  sm: NUCLEO_SIZE.row,
-  md: NUCLEO_SIZE.secondary,
-  lg: NUCLEO_SIZE.identity,
+  sm: 16,
+  md: 18,
+  lg: 22,
 }
 
 export interface GravitreAgentIconProps {
@@ -28,7 +27,10 @@ export interface GravitreAgentIconProps {
   elevated?: boolean
 }
 
-/** Compact symbol tile — no glow discs, no saturated orbs. */
+/**
+ * Uniform neutral tile for every agent; only the role glyph differs. The
+ * user-chosen identity colour is kept as the glyph ink, not a tile fill.
+ */
 export function GravitreAgentIcon({
   icon,
   identityColor,
@@ -45,16 +47,15 @@ export function GravitreAgentIcon({
   return (
     <span
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center border transition-shadow",
+        "relative inline-flex shrink-0 items-center justify-center border border-border bg-muted/60 transition-shadow dark:bg-[var(--graphite-800)]",
         TILE_SIZE[size],
-        color.surfaceClass,
-        color.borderClass,
         elevated && "shadow-[var(--np-shadow)]",
         className,
       )}
       aria-hidden
+      data-agent-role={icon}
     >
-      <Icon size={ICON_PX[size]} className={color.iconClass} />
+      <Icon size={ICON_PX[size]} strokeWidth={1.75} className={color.iconClass} />
       {showStatusDot && runtimeState ? (
         <span className="absolute -bottom-0.5 -right-0.5">
           <GravitreAgentStatusDot state={runtimeState} />

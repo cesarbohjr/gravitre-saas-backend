@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { BuilderInspector, BuilderRunTrace, type InspectorMode } from "@/components/workflows/builder-chrome"
+import { BuilderNodeBoard, ProviderLogoBoard, RoleMatrixBoard } from "./identity-board"
 
 const SWATCHES: { group: string; items: { name: string; hex: string; role: string }[] }[] = [
   {
@@ -257,80 +258,22 @@ function SampleTable() {
   )
 }
 
-function SampleNode({
-  icon: Icon,
-  name,
-  type,
-  selected,
-  state,
-}: {
-  icon: typeof Bot
-  name: string
-  type: string
-  selected?: boolean
-  state?: { label: string; dot: string }
-}) {
-  return (
-    <div
-      className={cn(
-        "relative w-56 rounded-[var(--np-radius-lg)] border bg-card p-3",
-        selected
-          ? "border-[color:var(--g-brand)] ring-2 ring-[color:var(--g-brand)]/15"
-          : "border-[color:var(--g-border-default)]",
-      )}
-    >
-      {state ? (
-        <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1.5 rounded-[4px] border border-[color:var(--g-border-default)] bg-card px-1.5 py-0.5 text-[11px] font-medium text-foreground">
-          <span aria-hidden className={cn("size-1.5 rounded-full", state.dot)} />
-          {state.label}
-        </span>
-      ) : null}
-      <div className="flex items-start gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] text-foreground">
-          <Icon className="h-4 w-4" />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-foreground">{name}</span>
-          <span className="block text-[11px] text-muted-foreground">{type}</span>
-        </span>
-      </div>
-    </div>
-  )
-}
-
 function Nodes() {
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      <div>
-        <p className="mb-3 text-[13px] font-medium text-foreground">Workflow nodes</p>
-        <div
-          className="flex flex-wrap gap-x-6 gap-y-8 rounded-[8px] border border-[color:var(--g-border-subtle)] p-6"
-          style={{ backgroundImage: "radial-gradient(circle, var(--g-border-strong) 1px, transparent 1px)", backgroundSize: "20px 20px" }}
-        >
-          <SampleNode icon={Bot} name="Placeholder agent" type="Agent" selected />
-          <SampleNode icon={Plug} name="Placeholder connector" type="Connector" state={{ label: "Running", dot: "bg-[color:var(--info)]" }} />
-          <SampleNode icon={ShieldCheck} name="Placeholder approval" type="Approval" state={{ label: "Waiting", dot: "bg-[color:var(--g-approval)]" }} />
-          <SampleNode icon={FileText} name="Placeholder output" type="Task" state={{ label: "Success", dot: "bg-[color:var(--g-brand)]" }} />
+    <div>
+      <p className="mb-3 text-[13px] font-medium text-foreground">Graph node (intelligence)</p>
+      <div className="flex flex-wrap items-center gap-6 rounded-[8px] border border-[color:var(--g-border-subtle)] p-6">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--g-intelligence)]" />
+          <span className="text-[13px] text-foreground">Placeholder entity</span>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Replica of the builder&apos;s node classes (the canvas node is private to the builder route).
-        </p>
-      </div>
-      <div>
-        <p className="mb-3 text-[13px] font-medium text-foreground">Graph node (intelligence)</p>
-        <div className="flex flex-wrap items-center gap-6 rounded-[8px] border border-[color:var(--g-border-subtle)] p-6">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--g-intelligence)]" />
-            <span className="text-[13px] text-foreground">Placeholder entity</span>
-          </div>
-          <span className="h-px w-16 bg-[color:var(--g-intelligence)]/50" />
-          <div className="rounded-[6px] border border-[color:var(--g-intelligence)]/40 bg-[color:var(--g-intelligence-soft)] px-2.5 py-1.5">
-            <span className="block text-[13px] font-medium text-foreground">Evidence</span>
-            <span className={TYPE.mono}>src_0142</span>
-          </div>
+        <span className="h-px w-16 bg-[color:var(--g-intelligence)]/50" />
+        <div className="rounded-[6px] border border-[color:var(--g-intelligence)]/40 bg-[color:var(--g-intelligence-soft)] px-2.5 py-1.5">
+          <span className="block text-[13px] font-medium text-foreground">Evidence</span>
+          <span className={TYPE.mono}>src_0142</span>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Ion marks relationships and evidence only; it is never a second brand color.</p>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">Ion marks relationships and evidence only; it is never a second brand color.</p>
     </div>
   )
 }
@@ -441,7 +384,16 @@ function Board() {
       <Section title="Table">
         <SampleTable />
       </Section>
-      <Section title="Workflow and graph nodes">
+      <Section title="Connector and provider logos" note="ProviderLogo + canonical registry, light and dark.">
+        <ProviderLogoBoard />
+      </Section>
+      <Section title="Agent role icons" note="GravitreAgentIcon: one neutral tile, the role glyph is the only difference.">
+        <RoleMatrixBoard />
+      </Section>
+      <Section title="Builder nodes, handles and edges" note="Production builder-node-chrome primitives.">
+        <BuilderNodeBoard />
+      </Section>
+      <Section title="Graph node">
         <Nodes />
       </Section>
       <Section title="Selected, approval, artifact">

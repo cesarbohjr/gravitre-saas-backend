@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Icon } from "@/lib/icons"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import type { AgentIdentityInput } from "@/lib/agent-identity"
 import { agentsApi, marketplaceApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { hoverLift, pressScale } from "@/lib/animations"
@@ -49,6 +51,7 @@ interface AssignableAgent {
   name: string
   role: string
   gradient: string
+  identity: AgentIdentityInput
   successRate: number
 }
 
@@ -133,6 +136,14 @@ export function NewAssignmentModal({
         name: item.name,
         role: item.role || item.description || "Agent",
         gradient: avatarGradient(item.personality?.color ?? ""),
+        identity: {
+          name: item.name,
+          role: item.role,
+          icon: item.icon,
+          avatarColor: item.avatarColor,
+          avatarUrl: item.avatarUrl,
+          personality: item.personality,
+        },
         successRate: Number.isFinite(successRate) ? Math.round(successRate) : 0,
       }
     })
@@ -304,14 +315,7 @@ export function NewAssignmentModal({
                             transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
                           />
                         ) : null}
-                        <div
-                          className={cn(
-                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white",
-                            agent.gradient,
-                          )}
-                        >
-                          <Icon name="ai" size="md" />
-                        </div>
+                        <AgentIdentityAvatar agent={agent.identity} size="lg" showStatusDot={false} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold text-foreground">{agent.name}</p>
                           <p className="truncate text-xs text-muted-foreground">{agent.role}</p>
@@ -345,14 +349,7 @@ export function NewAssignmentModal({
                 ) : selectedAgent ? (
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3">
                     <div className="min-w-0 flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white",
-                          selectedAgent.gradient,
-                        )}
-                      >
-                        <Icon name="ai" size="sm" />
-                      </div>
+                      <AgentIdentityAvatar agent={selectedAgent.identity} size="md" showStatusDot={false} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
                           {agentAutoResolved ? "Auto-selected" : "Assigned to"} {selectedAgent.name}
@@ -457,15 +454,8 @@ export function NewAssignmentModal({
                 transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 32 }}
                 className="mx-auto max-w-md space-y-5 text-center"
               >
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ring-1 ring-emerald-500/20">
-                  <div
-                    className={cn(
-                      "flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br text-white",
-                      selectedAgent?.gradient,
-                    )}
-                  >
-                    <Icon name="ai" size="lg" />
-                  </div>
+                <div className="mx-auto flex w-fit">
+                  <AgentIdentityAvatar agent={selectedAgent?.identity ?? { name: "Agent" }} size="xl" showStatusDot={false} />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Assigning to</p>

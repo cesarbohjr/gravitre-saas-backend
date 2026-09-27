@@ -17,13 +17,8 @@ import {
   Shield,
   Check,
   AlertTriangle,
-  Megaphone,
-  TrendingUp,
-  PieChart,
-  Headphones,
-  Bot,
-  type LucideIcon,
 } from "lucide-react"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
@@ -85,26 +80,6 @@ const availableSystems = AGENT_SYSTEM_OPTIONS.map((system) => ({
   connected: !["postgresql", "microsoft365"].includes(system.id),
 }))
 const guardrailOptions = AGENT_GUARDRAIL_OPTIONS
-
-// Map agent names to icons
-const agentIconMap: Record<string, LucideIcon> = {
-  "Marketing Operator": Megaphone,
-  "Sales Assistant": TrendingUp,
-  "Data Quality Agent": Database,
-  "Finance Reporter": PieChart,
-  "Support Coordinator": Headphones,
-}
-
-function getAgentIcon(agentName: string): LucideIcon {
-  // Check for partial matches
-  const lowerName = agentName.toLowerCase()
-  if (lowerName.includes("marketing")) return Megaphone
-  if (lowerName.includes("sales")) return TrendingUp
-  if (lowerName.includes("data") || lowerName.includes("quality")) return Database
-  if (lowerName.includes("finance") || lowerName.includes("report")) return PieChart
-  if (lowerName.includes("support") || lowerName.includes("customer")) return Headphones
-  return agentIconMap[agentName] || Bot
-}
 
 export default function NewAgentPage() {
   const router = useRouter()
@@ -587,14 +562,11 @@ export default function NewAgentPage() {
                   <div className="p-5">
                     <p className="text-xs font-medium text-muted-foreground">Name & Purpose</p>
                     <div className="mt-3 flex items-start gap-4">
-                      {(() => {
-                        const AgentIcon = getAgentIcon(agentName)
-                        return (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--g-brand)]">
-                            <AgentIcon className="h-7 w-7 text-white" />
-                          </div>
-                        )
-                      })()}
+                      <AgentIdentityAvatar
+                        agent={{ name: agentName, icon: selectedIcon, avatarColor: selectedColor, role: agentPurpose }}
+                        size="lg"
+                        showStatusDot={false}
+                      />
                       <div>
                         <p className="text-lg font-semibold text-foreground">{agentName || "Unnamed Agent"}</p>
                         <p className="mt-1 text-sm text-muted-foreground">{agentPurpose || "No description provided"}</p>
