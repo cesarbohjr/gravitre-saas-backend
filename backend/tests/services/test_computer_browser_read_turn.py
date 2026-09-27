@@ -261,4 +261,10 @@ def test_browser_progress_streams_before_playwright_await() -> None:
     assert start > 0
     assert await_read > start
     assert "I'm opening a real browser session now" in text
+    assert "_public_read_chromium" in (
+        Path(__file__).resolve().parents[2] / "app" / "services" / "browser_agent_service.py"
+    ).read_text(encoding="utf-8")
+    assert "new_context(accept_downloads=False)" in (
+        Path(__file__).resolve().parents[2] / "app" / "services" / "browser_agent_service.py"
+    ).read_text(encoding="utf-8")
 

@@ -1,6 +1,7 @@
 """Browser agent for connector API gaps — read pages and optional UI automation."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import ipaddress
 import re
@@ -116,17 +117,59 @@ async def browser_agent_read(
     }
 
 
-async def _playwright_page_snapshot(page: Any) -> dict[str, Any]:
-    html = await page.content()
-    text = _extract_text(html)
-    shot = await page.screenshot(type="png")
+async def _playwright_page_snapshot(page: Any, *, take_screenshot: bool = True) -> dict[str, Any]:
+    stages: dict[str, int] = {}
+    t0 = time.perf_counter()
+    url = str(page.url or "")
+    title = str(await page.title() or "")
+    stages["title_ms"] = int((time.perf_counter() - t0) * 1000)
+    t1 = time.perf_counter()
+    try:
+        text = str(await page.inner_text("body") or "")
+    except Exception:  # noqa: BLE001
+        html = await page.content()
+        text = _extract_text(html)
+    stages["dom_text_ms"] = int((time.perf_counter() - t1) * 1000)
+    shot_digest = None
+    if take_screenshot:
+        t2 = time.perf_counter()
+        shot = await page.screenshot(type="png")
+        shot_digest = hashlib.sha256(shot).hexdigest()
+        stages["screenshot_ms"] = int((time.perf_counter() - t2) * 1000)
     return {
-        "url": str(page.url or ""),
-        "title": str(await page.title() or ""),
+        "url": url,
+        "title": title,
         "dom_excerpt": text[:800],
-        "screenshot_digest": hashlib.sha256(shot).hexdigest(),
+        "screenshot_digest": shot_digest,
         "text": text[:_MAX_TEXT_CHARS],
+        "stage_ms": stages,
     }
+
+
+_playwright_driver: Any = None
+_public_chromium: Any = None
+_public_chromium_lock = asyncio.Lock()
+
+
+async def _public_read_chromium() -> Any:
+    """Process-local Chromium for public READ. Isolated context per task — no auth reuse."""
+    global _playwright_driver, _public_chromium
+    async with _public_chromium_lock:
+        if _public_chromium is not None:
+            try:
+                if _public_chromium.is_connected():
+                    return _public_chromium
+            except Exception:  # noqa: BLE001
+                _public_chromium = None
+        from playwright.async_api import async_playwright
+
+        if _playwright_driver is None:
+            _playwright_driver = await async_playwright().start()
+        _public_chromium = await _playwright_driver.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-dev-shm-usage"],
+        )
+        return _public_chromium
 
 
 async def browser_agent_playwright_session(
@@ -152,83 +195,106 @@ async def browser_agent_playwright_session(
         ) from exc
     session_id = str(uuid4())
     visits: list[dict[str, Any]] = []
-    launch_ms = 0
-    goto_ms = 0
-    follow_ms = 0
-    session_ms = 0
+    stages: dict[str, int] = {}
+    t_session = time.perf_counter()
+    context = None
     try:
-        t_session = time.perf_counter()
-        async with async_playwright() as playwright:
-            t_launch = time.perf_counter()
-            browser = await playwright.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
-            )
-            page = await browser.new_page()
-            launch_ms = int((time.perf_counter() - t_launch) * 1000)
-            t_goto = time.perf_counter()
-            await page.goto(safe_url, wait_until="domcontentloaded", timeout=45_000)
-            first = await _playwright_page_snapshot(page)
-            goto_ms = int((time.perf_counter() - t_goto) * 1000)
-            first["action"] = "goto"
-            visits.append(first)
-            if follow_link_text:
-                t_follow = time.perf_counter()
-                clicked = False
-                last_error = ""
-                follow_used = follow_link_text
-                candidates = [follow_link_text, "Learn more"]
-                for name in candidates:
-                    if not name:
-                        continue
-                    try:
-                        link = page.get_by_role(
-                            "link",
-                            name=re.compile(re.escape(name), re.I),
-                        )
-                        await link.first.click(timeout=8_000)
-                        clicked = True
-                        follow_used = name
-                        break
-                    except Exception as exc:  # noqa: BLE001
-                        last_error = str(exc)[:240]
-                if not clicked:
-                    try:
-                        await page.locator('a[href*="iana.org"]').first.click(timeout=15_000)
-                        clicked = True
-                        follow_used = "a[href*=iana.org]"
-                    except Exception as exc:  # noqa: BLE001
-                        last_error = str(exc)[:240]
-                if clicked:
-                    await page.wait_for_load_state("domcontentloaded", timeout=45_000)
-                    second = await _playwright_page_snapshot(page)
-                    second["action"] = "click_link"
-                    second["link_text"] = follow_used
-                    visits.append(second)
-                else:
-                    visits.append(
-                        {
-                            "url": str(page.url or ""),
-                            "title": "",
-                            "dom_excerpt": "",
-                            "screenshot_digest": None,
-                            "action": "click_link",
-                            "link_text": follow_link_text,
-                            "success": False,
-                            "error": last_error,
-                        }
+        t0 = time.perf_counter()
+        browser = await _public_read_chromium()
+        stages["chromium_acquire_ms"] = int((time.perf_counter() - t0) * 1000)
+        t0 = time.perf_counter()
+        context = await browser.new_context(accept_downloads=False)
+        stages["context_create_ms"] = int((time.perf_counter() - t0) * 1000)
+        t0 = time.perf_counter()
+        page = await context.new_page()
+        stages["page_create_ms"] = int((time.perf_counter() - t0) * 1000)
+        t0 = time.perf_counter()
+        await page.goto(safe_url, wait_until="domcontentloaded", timeout=45_000)
+        stages["first_goto_dcl_ms"] = int((time.perf_counter() - t0) * 1000)
+        first = await _playwright_page_snapshot(page)
+        first_ms = first.get("stage_ms") if isinstance(first.get("stage_ms"), dict) else {}
+        stages["first_title_ms"] = int(first_ms.get("title_ms") or 0)
+        stages["first_dom_text_ms"] = int(first_ms.get("dom_text_ms") or 0)
+        stages["first_screenshot_ms"] = int(first_ms.get("screenshot_ms") or 0)
+        first["action"] = "goto"
+        visits.append(first)
+        if follow_link_text:
+            t0 = time.perf_counter()
+            clicked = False
+            last_error = ""
+            follow_used = follow_link_text
+            candidates = [follow_link_text, "Learn more"]
+            for name in candidates:
+                if not name:
+                    continue
+                try:
+                    link = page.get_by_role(
+                        "link",
+                        name=re.compile(re.escape(name), re.I),
                     )
-                follow_ms = int((time.perf_counter() - t_follow) * 1000)
-            await browser.close()
-        session_ms = int((time.perf_counter() - t_session) * 1000)
+                    await link.first.click(timeout=8_000)
+                    clicked = True
+                    follow_used = name
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    last_error = str(exc)[:240]
+            if not clicked:
+                try:
+                    await page.locator('a[href*="iana.org"]').first.click(timeout=15_000)
+                    clicked = True
+                    follow_used = "a[href*=iana.org]"
+                except Exception as extra:  # noqa: BLE001
+                    last_error = str(extra)[:240]
+            stages["click_ms"] = int((time.perf_counter() - t0) * 1000)
+            if clicked:
+                t0 = time.perf_counter()
+                await page.wait_for_load_state("domcontentloaded", timeout=45_000)
+                stages["second_dcl_ms"] = int((time.perf_counter() - t0) * 1000)
+                second = await _playwright_page_snapshot(page)
+                second_ms = second.get("stage_ms") if isinstance(second.get("stage_ms"), dict) else {}
+                stages["second_title_ms"] = int(second_ms.get("title_ms") or 0)
+                stages["second_dom_text_ms"] = int(second_ms.get("dom_text_ms") or 0)
+                stages["second_screenshot_ms"] = int(second_ms.get("screenshot_ms") or 0)
+                second["action"] = "click_link"
+                second["link_text"] = follow_used
+                visits.append(second)
+            else:
+                visits.append(
+                    {
+                        "url": str(page.url or ""),
+                        "title": "",
+                        "dom_excerpt": "",
+                        "screenshot_digest": None,
+                        "action": "click_link",
+                        "link_text": follow_link_text,
+                        "success": False,
+                        "error": last_error,
+                    }
+                )
+        t0 = time.perf_counter()
+        await context.close()
+        context = None
+        stages["context_close_ms"] = int((time.perf_counter() - t0) * 1000)
     except BrowserAgentError:
+        if context is not None:
+            try:
+                await context.close()
+            except Exception:  # noqa: BLE001
+                pass
         raise
-    except Exception as exc:  # noqa: BLE001
+    except Exception as extra:  # noqa: BLE001
+        if context is not None:
+            try:
+                await context.close()
+            except Exception:  # noqa: BLE001
+                pass
         logger.exception("playwright_session_failed url=%s", safe_url[:120])
         raise BrowserAgentError(
-            f"The browser session could not complete: {exc}",
+            f"The browser session could not complete: {extra}",
             code="playwright_failed",
-        ) from exc
+        ) from extra
+    session_ms = int((time.perf_counter() - t_session) * 1000)
+    stages["playwright_session_ms"] = session_ms
     last = visits[-1] if visits else {}
     click_failed = any(row.get("success") is False for row in visits)
     return {
@@ -240,10 +306,14 @@ async def browser_agent_playwright_session(
         "cdp_trace_id": session_id,
         "mode": "playwright_session_read",
         "strategy": "browser_cdp",
-        "chromium_launch_ms": launch_ms,
-        "first_goto_ms": goto_ms,
-        "follow_link_ms": follow_ms,
+        "chromium_launch_ms": stages.get("chromium_acquire_ms"),
+        "first_goto_ms": stages.get("first_goto_dcl_ms"),
+        "follow_link_ms": (stages.get("click_ms") or 0)
+        + (stages.get("second_dcl_ms") or 0)
+        + (stages.get("second_dom_text_ms") or 0)
+        + (stages.get("second_screenshot_ms") or 0),
         "playwright_session_ms": session_ms,
+        "stage_timings": stages,
         "visits": [
             {
                 "url": row.get("url"),

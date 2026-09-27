@@ -66,6 +66,7 @@ def observation_from_browser_result(
             "first_goto_ms": result.get("first_goto_ms"),
             "follow_link_ms": result.get("follow_link_ms"),
             "playwright_session_ms": result.get("playwright_session_ms"),
+            "stage_timings": result.get("stage_timings") or {},
         },
         plan_id=plan.plan_id,
         source="computer_execution",

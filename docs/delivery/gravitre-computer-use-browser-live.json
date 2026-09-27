@@ -117,6 +117,10 @@
     "dominant_ms": 9417,
     "composer_used_model": false,
     "ingress_to_observation_ms": 333,
-    "first_business_result_is_after_playwright": true
+    "first_business_result_is_after_playwright": true,
+    "progress_sse_sha": "f8abdf14",
+    "progress_sse_class": "UX_PROGRESS_NOT_BROWSER_WALL_TIME",
+    "follow_up_first_useful_ms": 2507,
+    "title_follow_up_first_useful_ms": 1985
   }
 }

@@ -268,6 +268,7 @@ async def try_computer_browser_read_turn(
             "cdp_trace_id": raw.get("cdp_trace_id"),
             "screenshot_digest": raw.get("screenshot_digest"),
             "visits": visits,
+            "stage_timings": raw.get("stage_timings") or {},
         },
     }
     merged = bind_finished_work(merged, body=summary, title="Public web research summary")
