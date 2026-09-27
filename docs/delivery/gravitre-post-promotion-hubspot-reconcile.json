@@ -1,0 +1,203 @@
+{
+  "inspected_at": "2026-09-27T20:51:25.165477+00:00",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "hubspot_connectors": [
+    {
+      "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+      "name": "hubspot-isolated-smoke",
+      "type": "hubspot",
+      "vendor": "hubspot",
+      "status": "healthy",
+      "environment": "production",
+      "created_at": "2026-07-23T08:57:12.767784+00:00",
+      "updated_at": "2026-09-27T20:51:01.194794+00:00",
+      "config_public": {
+        "auth_type": "oauth",
+        "oauth_provider": "hubspot",
+        "oauth_connected_at": 1784191831,
+        "oauth_reconnected_at": 1784191831,
+        "oauth_environment": "production",
+        "hub_id": 343328749,
+        "hub_domain": "gravitre.app",
+        "dataRegion": "us"
+      },
+      "has_oauth_blob": true,
+      "has_access_token": true,
+      "has_refresh_token": true,
+      "expires_at": 1790543034,
+      "seconds_to_expiry": 749,
+      "token_needs_refresh_local": false,
+      "scope_count": 0
+    }
+  ],
+  "other_connectors_count": 11,
+  "other_connectors": [
+    {
+      "id": "d9c39a7f-dea3-454c-81aa-946860a64a4c",
+      "vendor": "quickbooks",
+      "status": "pending_auth",
+      "environment": "production"
+    },
+    {
+      "id": "44c14c7d-656f-4cd3-9463-3dcfa0b18a75",
+      "vendor": "gmail",
+      "status": "pending_auth",
+      "environment": "production"
+    },
+    {
+      "id": "d4fb0fcf-7b92-40e2-8139-75d8e24c7972",
+      "vendor": "google_ads",
+      "status": "healthy",
+      "environment": "production"
+    },
+    {
+      "id": "4d7fcc34-83a4-40c4-af31-97f5b1576163",
+      "vendor": "google_search_console",
+      "status": "pending_auth",
+      "environment": "production"
+    },
+    {
+      "id": "10b20a26-5de9-4d72-a84b-9d3f84ab38ab",
+      "vendor": "google_analytics",
+      "status": "pending_auth",
+      "environment": "production"
+    },
+    {
+      "id": "0caaa79b-ed4b-4609-855c-55129ace5921",
+      "vendor": "stripe",
+      "status": "active",
+      "environment": "production"
+    },
+    {
+      "id": "63dc0c01-2e27-4703-b503-a035b6189b12",
+      "vendor": "greenhouse",
+      "status": "active",
+      "environment": "production"
+    },
+    {
+      "id": "3226672d-8d26-4243-8cf5-06c788bf0990",
+      "vendor": "linkedin",
+      "status": "active",
+      "environment": "production"
+    },
+    {
+      "id": "6c7cc1fb-88c5-41d7-8006-6b5a5fb202f8",
+      "vendor": "clay",
+      "status": "active",
+      "environment": "production"
+    },
+    {
+      "id": "98d82730-17d0-4a4d-af23-9fd738ebad58",
+      "vendor": "slack",
+      "status": "error",
+      "environment": "production"
+    },
+    {
+      "id": "8992743f-6632-4252-81a1-8d09c0482575",
+      "vendor": "apollo",
+      "status": "healthy",
+      "environment": "production"
+    }
+  ],
+  "audit_events_for_hs_conv": [
+    {
+      "created_at": "2026-09-27T20:25:59.737358+00:00",
+      "action": "runtime.turn_latency.critical_path",
+      "keys": [
+        "dominant_checkpoint",
+        "dominant_ms",
+        "dominant_stage",
+        "spoken_mode",
+        "stages",
+        "stages_compact",
+        "total_ms",
+        "turn_id",
+        "waterfall"
+      ],
+      "connected": null,
+      "blocking_reason": null,
+      "execution_path": null
+    },
+    {
+      "created_at": "2026-09-27T20:25:59.815502+00:00",
+      "action": "response.composer.completed",
+      "keys": [
+        "errorCode",
+        "fallback",
+        "kind",
+        "structuredBlocks",
+        "success",
+        "turnId",
+        "usedModel"
+      ],
+      "connected": null,
+      "blocking_reason": null,
+      "execution_path": null
+    },
+    {
+      "created_at": "2026-09-27T20:25:59.935637+00:00",
+      "action": "cognitive.loop.completed",
+      "keys": [
+        "fastPath",
+        "fullLoop",
+        "loopId",
+        "operatorTask",
+        "spokenMode",
+        "stages",
+        "turnId"
+      ],
+      "connected": null,
+      "blocking_reason": null,
+      "execution_path": null
+    }
+  ],
+  "did_not_call_token_refresh": true,
+  "did_not_validate_remote": true,
+  "did_not_reconnect": true,
+  "composer_on_hs_conv": {
+    "errorCode": "tool_error",
+    "kind": "error",
+    "success": false,
+    "note": "listing_f2 short-circuit copy; no tool.invoke.completed on this conversation"
+  },
+  "cause": {
+    "letters": ["C", "F"],
+    "not": ["D", "E", "G_persistent"],
+    "label": "EXTERNAL_CONNECTION_STATE",
+    "detail": "Connector row exists (41175658-… hubspot-isolated-smoke), status healthy at inspect 2026-09-27T20:51:25Z, OAuth blob present with refresh token. Access token expires_at 1790543034 (~12 min remaining at inspect; TOKEN_REFRESH_BUFFER 300s). Row updated_at 2026-09-27T20:51:01Z (after the 20:25 smoke). Same smoke later listed HubSpot as connected on catalog conv dd15bcb5. 18:49 PASS returned 57 contacts. 20:25 READ never invoked HubSpot (no Observation). Treat as a transient executable-integration snapshot / OAuth live-check miss, not a missing connector and not a persistent healthy-but-misclassified regression. Class C implementation acceptance not revoked. No reconnect performed."
+  },
+  "health_sha": "68ee4a8655e4082450c5aa7704113d97f5f06a89",
+  "repository_head": "44732d25b7888ebde0fba1fdd209ef11a2ca1236",
+  "get_state_hubspot_not_connected_conv": {
+    "http": 200,
+    "task_keys": [
+      "clarified_params",
+      "rejected_options",
+      "approved_actions",
+      "current_plan",
+      "completed_steps",
+      "pending_steps",
+      "persona_override",
+      "preferred_tone",
+      "unresolved_tasks",
+      "suppressed_suggestions",
+      "pending_task",
+      "connector_session",
+      "resolved_entities",
+      "recent_user_messages",
+      "recent_connector_invocations",
+      "parameter_ledger",
+      "voice_expression_last",
+      "offered_action",
+      "previous_option_set",
+      "previous_result"
+    ],
+    "plan": null,
+    "obs_count": 0
+  },
+  "get_state_catalog_same_smoke": {
+    "http": 200,
+    "plan_id": "09db601a-77db-492a-b931-429fa7f70951",
+    "obs_count": 1
+  }
+}

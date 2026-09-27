@@ -3,9 +3,11 @@
 **Date:** 2026-09-27  
 **Scope:** Verification and acceptance assurance only. No new product capabilities.  
 **Isolated org:** `f07e57c0-1501-4000-8000-c04e57a00001`  
-**Tree at this pass:** observation alias on `68ee4a86`; checkpoint `dc0f9625a8157ee20312a4fa44663d396b3e9958`; **complete core evidence pack** on this file’s commit (see Promotion consolidation).  
+**SOURCE / REPOSITORY BASELINE:** `44732d25b7888ebde0fba1fdd209ef11a2ca1236`  
+**DEPLOYED CORE RUNTIME:** `68ee4a8655e4082450c5aa7704113d97f5f06a89`  
+`44732d25` is evidence/documentation after the last `backend/app` change (`68ee4a86`). Railway `watchPatterns` correctly did not rebuild. Do not deploy no-op code to equalize SHA labels.  
 **Product Experience Contract:** **not fully accepted.**
-**Capability baseline:** **HOLD**
+**Capability baseline:** **HOLD_CONFIRMED**
 
 Do not transfer evidence across SHAs. Each live row is bound to the SHA that served it.
 
@@ -312,4 +314,66 @@ No category A runtime, B tests, or D config in the dirty tree.
 
 Frontend branch `feat/gravitre-3.0-plus-frontend` was not merged.
 
-Evidence-pack SHA: `856ec34c0d80c450d958fe959a41a1d9173067e9`. Pin SHA: `aad395188bb6672e8e6f58ae52f3ea09abe908ad`. Exact CI for `aad39518`: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36345743529 — Backend pytest, Integration Smoke, text/voice gate, Dependency audit **success**. Billing E2E skipped. Do not treat `dc0f9625` run `36326968254` as this pack’s CI.
+Evidence-pack SHA: `856ec34c0d80c450d958fe959a41a1d9173067e9`. Pin SHA: `aad395188bb6672e8e6f58ae52f3ea09abe908ad`. Exact CI for `aad39518`: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36345743529 — Backend pytest, Integration Smoke, text/voice gate, Dependency audit **success**. Billing E2E skipped. Do not treat `dc0f9625` run `36326968254` as this pack’s CI. Final repository SHA at promotion: `44732d25` CI https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36347953386.
+
+---
+
+## Post-promotion production reconciliation (2026-09-27)
+
+**Outcome: HOLD_CONFIRMED.** Class C implementation acceptance is **not** revoked. No reconnect. No WRITE. No runtime change.
+
+### Repository vs runtime
+
+| Label | SHA |
+|---|---|
+| SOURCE / REPOSITORY BASELINE | `44732d25b7888ebde0fba1fdd209ef11a2ca1236` |
+| DEPLOYED CORE RUNTIME | `68ee4a8655e4082450c5aa7704113d97f5f06a89` |
+
+Commits after `68ee4a86` are documentation/evidence-only. Railway `watchPatterns` did not rebuild. Do not force a deploy to make these labels match.
+
+### Smoke run A (immutable)
+
+`docs/delivery/gravitre-core-hold-promote-main-smoke.json` @ `2026-09-27T18:49:02Z` runtime `68ee4a86`. Greeting conv `ce3e0d74-…` 4856/7874 ms. HubSpot READ conv `3cb1c35e-…` request `af4055b4-…` **57 contacts**, plan `37c40a22-…`, Observation `15ddbc02-…`. Catalog `be8de135-…`. CU `0c3c9891-…` Observation `ac288f8f-…`.
+
+### Smoke run B (separate file)
+
+`docs/delivery/gravitre-core-hold-promote-main-smoke-2026-09-27T202537Z.json` @ `2026-09-27T20:25:37Z` HEAD `44732d25` runtime `68ee4a86`. **Do not overwrite run A.**
+
+| Path | Held? | Evidence |
+|---|---|---|
+| Greeting | outlier | conv `980767c8-…` request `4aabf7a3-…` first useful **8935 ms** / completion **12896 ms** |
+| HubSpot READ | not a live READ | conv `c6fd1035-…` request `fd4fc3e0-…` copy “HubSpot is not connected”; GET `/state` `plan=null` `obs_count=0`; composer `errorCode=tool_error` (no `tool.invoke.completed`) |
+| Catalog | yes | conv `dd15bcb5-…` request `778695d3-…` plan `09db601a-…` Observation `7c8884ce-…`; HubSpot listed **connected** |
+| Computer Use READ | yes | conv `9c3fe36d-…` request `a2e1f2a2-…` example.com → IANA 7490/8054 ms |
+| Follow-up | yes | same conv request `1a199f58-…` IANA URL 2789/4232 ms |
+| GET `/state` | yes | plan `31b2a32e-…` Observation `4b47bf00-…` `obs_count=1` `work_artifacts_count=1` |
+
+### HubSpot “not connected”
+
+Inspect (read-only, no refresh): `docs/delivery/gravitre-post-promotion-hubspot-reconcile.json` @ `2026-09-27T20:51:25Z`.
+
+Connector `41175658-a119-4f3f-949d-0b927e7c0b78` (`hubspot-isolated-smoke`) **status=healthy**, production, OAuth blob present, access+refresh tokens present, `expires_at=1790543034` (~12 min remaining at inspect), `token_needs_refresh_local=false`. Not missing/disabled. Runtime SHA matches deploy. Same smoke’s catalog turn listed HubSpot as connected. 18:49 PASS had 57 contacts.
+
+**Cause:** EXTERNAL_CONNECTION_STATE — transient executable-integration / OAuth live-check miss (letters **C/F**). Not D (missing), not E (SHA mismatch), not a persistent healthy-but-misclassified runtime defect. listing_f2 short-circuit when `hubspot` ∉ `connected`; no provider call.
+
+### Greeting sample (n=5)
+
+`docs/delivery/gravitre-post-promotion-greeting-sample.json` @ `2026-09-27T20:51:54Z` runtime `68ee4a86`.
+
+| | first useful ms | completion ms |
+|---|---|---|
+| 1 cold `415fc0d3-…` req `e12cfa3b-…` | 4158 | 6597 |
+| 2 `4d5759f5-…` | 1966 | 4421 |
+| 3 `52271200-…` | 1814 | 3740 |
+| 4 `8810115c-…` | 1771 | 3798 |
+| 5 `3a43d7cf-…` | 1848 | 3780 |
+| **median** | **1848** | 3798 |
+| **p80** | **1966** | — |
+| **max** | **4158** | 6597 |
+
+Accepted Class A envelope: 4551/7638 recorded on `0b879ec4`; revoke above 8s/12s. Sample max 4158/6597 is inside. The 8935/12896 point is an isolated outlier, not a shifted greeting path. Routing SSE fields were null on these turns; do not invent model TTFT.
+
+### Final classification
+
+**HOLD_CONFIRMED**
+

@@ -1,0 +1,97 @@
+{
+  "probe": "core_hold_promote_main_smoke_post_push",
+  "generated_at": "2026-09-27T20:25:37.105093+00:00",
+  "repository_head": "44732d25b7888ebde0fba1fdd209ef11a2ca1236",
+  "deployed_runtime_sha": "68ee4a8655e4082450c5aa7704113d97f5f06a89",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "write_attempted": false,
+  "httpbin_write": false,
+  "historical_pass_file": "docs/delivery/gravitre-core-hold-promote-main-smoke.json",
+  "historical_pass_generated_at": "2026-09-27T18:49:02.826187+00:00",
+  "greeting": {
+    "conversation_id": "980767c8-bb3f-492b-9d72-3867ede7dca5",
+    "http_status": 200,
+    "request_id": "4aabf7a3-1446-4b4f-a858-37fa3a0c7b88",
+    "first_useful_text_ms": 8935,
+    "completion_ms": 12896,
+    "assistant_excerpt": "Hey — I'm here. What do you want to get done?",
+    "tools": [],
+    "create_claim": false,
+    "httpbin_claim": false,
+    "empty": false,
+    "stream_fail": false
+  },
+  "sealed_provider_read": {
+    "conversation_id": "c6fd1035-edd9-4ccc-ad34-e1200d160597",
+    "http_status": 200,
+    "request_id": "fd4fc3e0-2f16-4758-a055-982bc6f1263e",
+    "first_useful_text_ms": 3301,
+    "completion_ms": 7132,
+    "assistant_excerpt": "HubSpot is not connected on this workspace, so I cannot read those records. Connect HubSpot, then ask again.",
+    "tools": [],
+    "create_claim": false,
+    "httpbin_claim": false,
+    "empty": false,
+    "stream_fail": false,
+    "state": {
+      "http": 200,
+      "plan_id": null,
+      "plan_terminal": null,
+      "obs_count": 0,
+      "last_obs_id": null,
+      "last_obs_success": null,
+      "work_artifacts_count": 0,
+      "visits_type": "list"
+    },
+    "classification_pending_reconcile": true
+  },
+  "catalog_lookup": {
+    "conversation_id": "dd15bcb5-9ee9-4eff-a53b-e826128d8533",
+    "http_status": 200,
+    "request_id": "778695d3-42d9-4fdf-8807-19364ba0fe55",
+    "first_useful_text_ms": 4841,
+    "completion_ms": 7388,
+    "assistant_excerpt": "Here are connected actions that match that search. This is a catalog lookup, not a live provider run. WRITE capabilities are listed only as discoverable; they still require the canonical approval path and were not started. HubSpot READ actions listed as connected. WRITE listed not executed.",
+    "held": true,
+    "state": {
+      "http": 200,
+      "plan_id": "09db601a-77db-492a-b931-429fa7f70951",
+      "plan_terminal": "completed",
+      "obs_count": 1,
+      "last_obs_id": "7c8884ce-9801-4bc3-a194-f59115c58493",
+      "last_obs_success": true,
+      "work_artifacts_count": 1
+    }
+  },
+  "computer_use_read": {
+    "conversation_id": "9c3fe36d-0117-42cd-8d3d-0ac1dab127c4",
+    "http_status": 200,
+    "request_id": "a2e1f2a2-87c9-46bd-a75d-4c184c462360",
+    "first_useful_text_ms": 7490,
+    "completion_ms": 8054,
+    "assistant_excerpt": "I opened a real browser (not an HTTP fetch) and recorded what loaded. Step 1 (goto): Example Domain — https://example.com/ Step 2 (click_link): Example Domains — https://www.iana.org/help/example-domains",
+    "held": true
+  },
+  "persisted_follow_up": {
+    "conversation_id": "9c3fe36d-0117-42cd-8d3d-0ac1dab127c4",
+    "http_status": 200,
+    "request_id": "1a199f58-287a-4e2c-a986-34265fe439da",
+    "first_useful_text_ms": 2789,
+    "completion_ms": 4232,
+    "assistant_excerpt": "https://www.iana.org/help/example-domains",
+    "held": true
+  },
+  "get_state": {
+    "conversation_id": "9c3fe36d-0117-42cd-8d3d-0ac1dab127c4",
+    "http": 200,
+    "plan_id": "31b2a32e-65df-4fb4-993f-0a82728637f5",
+    "plan_terminal": "completed",
+    "obs_count": 1,
+    "last_obs_id": "4b47bf00-55f1-42a0-b838-904877f25cba",
+    "last_obs_success": true,
+    "work_artifacts_count": 1,
+    "held": true
+  },
+  "naive_script_verdict": "PASS — script only checked empty/stream_fail; did not fail HubSpot not-connected",
+  "honest_classification": "PARTIAL — catalog/CU/follow-up/state held; HubSpot READ returned listing_f2 not-connected copy; greeting first useful 8935 ms"
+}
