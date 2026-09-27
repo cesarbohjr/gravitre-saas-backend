@@ -694,6 +694,7 @@ function CanvasNode({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
+        data-node-surface
         className={cn(
           "group relative rounded-[var(--np-radius-lg)] border shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-[border-color,background-color] duration-150",
           // Responsive width - narrower on mobile
@@ -1469,6 +1470,7 @@ function AgentCouncilNode({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
+        data-node-surface
         className={cn(
           "relative w-64 rounded-[var(--np-radius-lg)] border p-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-[border-color,background-color] duration-150",
           nodeSurfaceClass(isSelected),
@@ -3505,33 +3507,74 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   }, [isDraggingConnection, dragSourceNodeId, areNodesConnected])
 
   // Rendered node footprints so edges meet the real handle centres.
-  const [nodeSizes, setNodeSizes] = useState<Record<string, { w: number; h: number }>>({})
-  const nodeIdsKey = nodes.map((n) => `${n.id}:${n.type}`).join("|")
+  const [nodeSizes, setNodeSizes] = useState<Record<string, { w: number; h: number; x: number; y: number }>>({})
   useEffect(() => {
-    const root = canvasRef.current
-    if (!root || typeof ResizeObserver === "undefined") return
+    if (typeof ResizeObserver === "undefined" || typeof MutationObserver === "undefined") return
+    type Box = { w: number; h: number; x: number; y: number }
+    let frame = 0
+    const observed = new Set<HTMLElement>()
     const measure = () => {
-      const next: Record<string, { w: number; h: number }> = {}
-      root.querySelectorAll<HTMLElement>("[data-canvas-node]").forEach((el) => {
+      frame = 0
+      const next: Record<string, Box> = {}
+      for (const el of observed) {
+        if (!el.isConnected) {
+          resize.unobserve(el)
+          observed.delete(el)
+        }
+      }
+      document.querySelectorAll<HTMLElement>("[data-canvas-node]").forEach((el) => {
+        if (!observed.has(el)) {
+          observed.add(el)
+          resize.observe(el)
+        }
         const id = el.dataset.canvasNode
-        if (id) next[id] = { w: el.offsetWidth, h: el.offsetHeight }
+        const surface = el.querySelector<HTMLElement>("[data-node-surface]") ?? el
+        if (id) {
+          next[id] = {
+            w: surface.offsetWidth,
+            h: surface.offsetHeight,
+            x: surface === el ? 0 : surface.offsetLeft,
+            y: surface === el ? 0 : surface.offsetTop,
+          }
+        }
       })
       setNodeSizes((prev) => {
         const keys = Object.keys(next)
         const same =
           keys.length === Object.keys(prev).length &&
-          keys.every((k) => prev[k]?.w === next[k].w && prev[k]?.h === next[k].h)
+          keys.every(
+            (k) => prev[k]?.w === next[k].w && prev[k]?.h === next[k].h && prev[k]?.x === next[k].x && prev[k]?.y === next[k].y,
+          )
         return same ? prev : next
       })
     }
-    measure()
-    const observer = new ResizeObserver(measure)
-    root.querySelectorAll<HTMLElement>("[data-canvas-node]").forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
-  }, [nodeIdsKey])
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure)
+    }
+    const resize = new ResizeObserver(schedule)
+    // Nodes can mount after this effect (seeded or loaded graphs, viewport swaps).
+    const mutation = new MutationObserver(schedule)
+    mutation.observe(canvasRef.current ?? document.body, { childList: true, subtree: true })
+    schedule()
+    return () => {
+      cancelAnimationFrame(frame)
+      resize.disconnect()
+      mutation.disconnect()
+    }
+  }, [])
   const footprintOf = useCallback(
-    (node: WorkflowNode) =>
-      node.type === "decision" ? nodeFootprint("decision") : nodeSizes[node.id] ?? nodeFootprint(node.type),
+    (node: WorkflowNode) => {
+      const m = node.type === "decision" ? undefined : nodeSizes[node.id]
+      return m ? { w: m.w, h: m.h } : nodeFootprint(node.type)
+    },
+    [nodeSizes],
+  )
+  /** Top-left of the node's handle frame (surface), which may sit inside a taller wrapper. */
+  const originOf = useCallback(
+    (node: WorkflowNode) => {
+      const m = node.type === "decision" ? undefined : nodeSizes[node.id]
+      return m ? { x: node.position.x + m.x, y: node.position.y + m.y } : node.position
+    },
     [nodeSizes],
   )
 
@@ -5590,32 +5633,6 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             >
               {/* SVG Definitions for gradients and filters */}
               <defs>
-                <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line)" stopOpacity="0.5" />
-                  <stop offset="50%" stopColor="var(--workflow-line-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-line)" stopOpacity="0.5" />
-                </linearGradient>
-                <linearGradient id="connectionGradientActive" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="0.7" />
-                  <stop offset="50%" stopColor="var(--workflow-line-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-line-active)" stopOpacity="0.7" />
-                </linearGradient>
-                {/* Decision node gradients — signal tokens */}
-                <linearGradient id="decisionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-decision)" stopOpacity="0.6" />
-                  <stop offset="50%" stopColor="var(--workflow-decision-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-decision)" stopOpacity="0.6" />
-                </linearGradient>
-                <linearGradient id="decisionGradientActive" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="0.8" />
-                  <stop offset="50%" stopColor="var(--workflow-line-active-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-line-active)" stopOpacity="0.8" />
-                </linearGradient>
-                <linearGradient id="decisionGradientDimmed" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line-dim)" stopOpacity="0.2" />
-                  <stop offset="50%" stopColor="var(--workflow-line-dim)" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="var(--workflow-line-dim)" stopOpacity="0.2" />
-                </linearGradient>
                 <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                   <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                   <feMerge>
@@ -5657,8 +5674,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 const isDimmedPath = isDecisionSource && chosenPathId && !isChosenPath
                 
                 // Direction from true node centres
-                const fromCenter = nodeCenter(conn.from.type, conn.from.position, fromSize)
-                const toCenter = nodeCenter(conn.to.type, conn.to.position, toSize)
+                const fromCenter = nodeCenter(conn.from.type, originOf(conn.from), fromSize)
+                const toCenter = nodeCenter(conn.to.type, originOf(conn.to), toSize)
                 const dx = toCenter.x - fromCenter.x
                 const dy = toCenter.y - fromCenter.y
                 const isHorizontal = Math.abs(dx) > Math.abs(dy)
@@ -5671,14 +5688,15 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 // Use decision-specific colors for decision nodes
                 let strokeColor: string
                 let dotColor: string
+                // Solid strokes: bounding-box gradients paint nothing on perfectly straight edges.
                 if (isDimmedPath) {
-                  strokeColor = "url(#decisionGradientDimmed)"
+                  strokeColor = "var(--workflow-line-dim)"
                   dotColor = "var(--muted-foreground)"
                 } else if (isDecisionSource) {
-                  strokeColor = isChosenPath ? "url(#decisionGradientActive)" : "url(#decisionGradient)"
+                  strokeColor = isChosenPath ? "var(--workflow-line-active)" : "var(--workflow-decision-mid)"
                   dotColor = isChosenPath ? "var(--workflow-line-active)" : "var(--primary)"
                 } else {
-                  strokeColor = isActive ? "url(#connectionGradientActive)" : "url(#connectionGradient)"
+                  strokeColor = isActive ? "var(--workflow-line-active)" : "var(--workflow-line-mid)"
                   dotColor = isActive ? "var(--workflow-line-active)" : "var(--workflow-line-mid)"
                 }
                 const animationDuration = isActive ? "1.5s" : "3s"
@@ -5686,8 +5704,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 // Edges run handle-centre to handle-centre on the facing sides.
                 const fromSide: NodeAnchorSide = isHorizontal ? (dx > 0 ? "right" : "left") : (dy > 0 ? "bottom" : "top")
                 const toSide: NodeAnchorSide = isHorizontal ? (dx > 0 ? "left" : "right") : (dy > 0 ? "top" : "bottom")
-                const fromPt = nodeAnchor(conn.from.type, conn.from.position, fromSize, fromSide)
-                const toPt = nodeAnchor(conn.to.type, conn.to.position, toSize, toSide)
+                const fromPt = nodeAnchor(conn.from.type, originOf(conn.from), fromSize, fromSide)
+                const toPt = nodeAnchor(conn.to.type, originOf(conn.to), toSize, toSide)
                 const fromX = fromPt.x
                 const fromY = fromPt.y
                 const toX = toPt.x
@@ -5951,7 +5969,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   {isDraggingConnection && dragSourceNodeId && dragMousePosition && (() => {
     const sourceNode = nodes.find(n => n.id === dragSourceNodeId)
     if (!sourceNode) return null
-    const { x: startX, y: startY } = nodeCenter(sourceNode.type, sourceNode.position, footprintOf(sourceNode))
+    const { x: startX, y: startY } = nodeCenter(sourceNode.type, originOf(sourceNode), footprintOf(sourceNode))
     return (
       <svg 
         className="absolute inset-0 pointer-events-none" 
