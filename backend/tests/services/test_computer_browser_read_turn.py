@@ -267,4 +267,8 @@ def test_browser_progress_streams_before_playwright_await() -> None:
     assert "new_context(accept_downloads=False)" in (
         Path(__file__).resolve().parents[2] / "app" / "services" / "browser_agent_service.py"
     ).read_text(encoding="utf-8")
+    session = (
+        Path(__file__).resolve().parents[2] / "app" / "services" / "browser_agent_service.py"
+    ).read_text(encoding="utf-8")
+    assert "if await link.count() == 0" in session
 

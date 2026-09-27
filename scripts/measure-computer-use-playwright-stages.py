@@ -47,7 +47,12 @@ async def one_run(label: str) -> dict:
 async def main() -> int:
     cold = await one_run("cold")
     warm = await one_run("warm_second_process_launch")
-    payload = {"cold": cold, "second_launch": warm}
+    payload = {
+        "proof_class": "LOCAL_PLAYWRIGHT_STAGES_NOT_LIVE_API",
+        "note": "Same public URLs as production. Do not treat as Railway wall time.",
+        "cold": cold,
+        "second_launch": warm,
+    }
     out = ROOT / "docs" / "delivery" / "gravitre-computer-use-playwright-stages-local.json"
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload, indent=2))

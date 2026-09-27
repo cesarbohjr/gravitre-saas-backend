@@ -275,15 +275,15 @@ async def browser_agent_playwright_session(
             clicked = False
             last_error = ""
             follow_used = follow_link_text
-            candidates = [follow_link_text, "Learn more"]
+            candidates: list[str] = []
+            for name in (follow_link_text, "Learn more", "More information"):
+                if name and name not in candidates:
+                    candidates.append(name)
             for name in candidates:
-                if not name:
-                    continue
                 try:
-                    link = page.get_by_role(
-                        "link",
-                        name=re.compile(re.escape(name), re.I),
-                    )
+                    link = page.get_by_role("link", name=name)
+                    if await link.count() == 0:
+                        continue
                     await link.first.click(timeout=8_000)
                     clicked = True
                     follow_used = name
