@@ -10,6 +10,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from app.config import Settings, get_settings
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.browser_agent_service import (
     BrowserAgentError,
     browser_agent_interact,
@@ -66,7 +67,7 @@ def observation_from_browser_result(
             "first_goto_ms": result.get("first_goto_ms"),
             "follow_link_ms": result.get("follow_link_ms"),
             "playwright_session_ms": result.get("playwright_session_ms"),
-            "stage_timings": result.get("stage_timings") or {},
+            "stage_timings": safe_normalize_stored_dict(result, key="stage_timings"),
         },
         plan_id=plan.plan_id,
         source="computer_execution",

@@ -11,6 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.config import Settings, get_settings
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.computer_execution import (
     classify_execution_strategy,
     execute_playwright_browser_read,
@@ -260,7 +261,7 @@ async def try_computer_browser_read_turn(
     from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
 
     t_persist = time.perf_counter()
-    stage_timings = dict(raw.get("stage_timings") or {})
+    stage_timings = safe_normalize_stored_dict(raw, key="stage_timings")
     merged = {
         **(task_state or {}),
         **execution_plan_patch(plan),
