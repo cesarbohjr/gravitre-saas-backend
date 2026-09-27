@@ -1,0 +1,713 @@
+{
+  "evidenceClass": "VISUAL_ACCEPTANCE (fixture tenant) — not production data, not owner-live",
+  "environment": "local production build (next start) against production Supabase auth + api.gravitre.app, E2E billing fixture test tenant",
+  "account": "billing-e2e+active+1790387445@gravitre.app",
+  "orgId": "b6721a05-9c28-468e-9c62-12d076ea15d6",
+  "base": "http://localhost:3000",
+  "buildId": "0JmPKT8m4AUWx-klv8j5C",
+  "buildRecord": "branch feat/gravitre-3.0-plus-frontend; sha 94388a831062edfaab9639613beed6435d50e123; buildId 0JmPKT8m4AUWx-klv8j5C (next build of the committed apps/web tree; next start :3000)",
+  "startedAt": "2026-09-27T14:47:50.248Z",
+  "proof": [],
+  "shots": [
+    {
+      "file": "desktop-light/dashboard.png",
+      "pathname": "/home",
+      "at": "2026-09-27T14:48:21.617Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/ai-workspace.png",
+      "pathname": "/ai",
+      "at": "2026-09-27T14:48:58.059Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/agents.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:49:05.368Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/agents-inspector.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:49:08.133Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/agent-detail.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:49:15.576Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/agent-personality.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:49:18.777Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/workflows.png",
+      "pathname": "/workflows",
+      "at": "2026-09-27T14:49:26.083Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/workflow-builder.png",
+      "pathname": "/workflows/f7de1acc-c5ce-5e6b-9776-2b7b62007cb2/builder",
+      "at": "2026-09-27T14:49:48.926Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/intelligence.png",
+      "pathname": "/intelligence",
+      "at": "2026-09-27T14:50:00.335Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/model-studio.png",
+      "pathname": "/intelligence/model-studio",
+      "at": "2026-09-27T14:50:07.691Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/connectors.png",
+      "pathname": "/connectors",
+      "at": "2026-09-27T14:50:20.129Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/sources.png",
+      "pathname": "/sources",
+      "at": "2026-09-27T14:50:27.485Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/marketplace.png",
+      "pathname": "/marketplace/assets",
+      "at": "2026-09-27T14:50:42.924Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/goals.png",
+      "pathname": "/goals",
+      "at": "2026-09-27T14:50:50.508Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/assignments.png",
+      "pathname": "/assignments",
+      "at": "2026-09-27T14:50:57.833Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/approvals.png",
+      "pathname": "/approvals",
+      "at": "2026-09-27T14:51:05.202Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/schedules.png",
+      "pathname": "/schedules",
+      "at": "2026-09-27T14:51:12.572Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/activity.png",
+      "pathname": "/activity",
+      "at": "2026-09-27T14:51:19.878Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/governance.png",
+      "pathname": "/settings/approvals",
+      "at": "2026-09-27T14:51:27.201Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/administration.png",
+      "pathname": "/admin/intelligence",
+      "at": "2026-09-27T14:51:39.074Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-light/settings.png",
+      "pathname": "/settings",
+      "at": "2026-09-27T14:51:50.533Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/dashboard.png",
+      "pathname": "/home",
+      "at": "2026-09-27T14:52:05.833Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/ai-workspace.png",
+      "pathname": "/ai",
+      "at": "2026-09-27T14:52:42.293Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/agents.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:52:49.638Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/agents-inspector.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:52:52.461Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/agent-detail.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:52:59.844Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/agent-personality.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:53:03.033Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/workflows.png",
+      "pathname": "/workflows",
+      "at": "2026-09-27T14:53:10.299Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/workflow-builder.png",
+      "pathname": "/workflows/f7de1acc-c5ce-5e6b-9776-2b7b62007cb2/builder",
+      "at": "2026-09-27T14:53:22.651Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/intelligence.png",
+      "pathname": "/intelligence",
+      "at": "2026-09-27T14:53:33.982Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/model-studio.png",
+      "pathname": "/intelligence/model-studio",
+      "at": "2026-09-27T14:53:41.278Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/connectors.png",
+      "pathname": "/connectors",
+      "at": "2026-09-27T14:53:53.599Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/sources.png",
+      "pathname": "/sources",
+      "at": "2026-09-27T14:54:00.865Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/marketplace.png",
+      "pathname": "/marketplace/assets",
+      "at": "2026-09-27T14:54:12.356Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/goals.png",
+      "pathname": "/goals",
+      "at": "2026-09-27T14:54:19.748Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/assignments.png",
+      "pathname": "/assignments",
+      "at": "2026-09-27T14:54:27.017Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/approvals.png",
+      "pathname": "/approvals",
+      "at": "2026-09-27T14:54:34.317Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/schedules.png",
+      "pathname": "/schedules",
+      "at": "2026-09-27T14:54:41.584Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/activity.png",
+      "pathname": "/activity",
+      "at": "2026-09-27T14:54:48.969Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/governance.png",
+      "pathname": "/settings/approvals",
+      "at": "2026-09-27T14:54:56.310Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/administration.png",
+      "pathname": "/admin/intelligence",
+      "at": "2026-09-27T14:55:07.657Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-dark/settings.png",
+      "pathname": "/settings",
+      "at": "2026-09-27T14:55:14.961Z",
+      "viewport": "desktop"
+    },
+    {
+      "file": "tablet-light/dashboard.png",
+      "pathname": "/home",
+      "at": "2026-09-27T14:55:26.279Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/ai-workspace.png",
+      "pathname": "/ai",
+      "at": "2026-09-27T14:56:02.643Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/agents.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:56:10.096Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/agents-inspector.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:56:12.867Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/agent-detail.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:56:20.194Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/agent-personality.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:56:23.356Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/workflows.png",
+      "pathname": "/workflows",
+      "at": "2026-09-27T14:56:30.649Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/workflow-builder.png",
+      "pathname": "/workflows/f7de1acc-c5ce-5e6b-9776-2b7b62007cb2/builder",
+      "at": "2026-09-27T14:56:43.003Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/intelligence.png",
+      "pathname": "/intelligence",
+      "at": "2026-09-27T14:56:58.350Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/model-studio.png",
+      "pathname": "/intelligence/model-studio",
+      "at": "2026-09-27T14:57:05.637Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/connectors.png",
+      "pathname": "/connectors",
+      "at": "2026-09-27T14:57:17.947Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/sources.png",
+      "pathname": "/sources",
+      "at": "2026-09-27T14:57:25.250Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/marketplace.png",
+      "pathname": "/marketplace/assets",
+      "at": "2026-09-27T14:57:36.528Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/goals.png",
+      "pathname": "/goals",
+      "at": "2026-09-27T14:57:43.809Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/assignments.png",
+      "pathname": "/assignments",
+      "at": "2026-09-27T14:57:51.122Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/approvals.png",
+      "pathname": "/approvals",
+      "at": "2026-09-27T14:57:58.454Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/schedules.png",
+      "pathname": "/schedules",
+      "at": "2026-09-27T14:58:05.796Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/activity.png",
+      "pathname": "/activity",
+      "at": "2026-09-27T14:58:13.064Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/governance.png",
+      "pathname": "/settings/approvals",
+      "at": "2026-09-27T14:58:20.341Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/administration.png",
+      "pathname": "/admin/intelligence",
+      "at": "2026-09-27T14:58:27.702Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "tablet-light/settings.png",
+      "pathname": "/settings",
+      "at": "2026-09-27T14:58:34.950Z",
+      "viewport": "tablet"
+    },
+    {
+      "file": "mobile-light/dashboard.png",
+      "pathname": "/home",
+      "at": "2026-09-27T14:58:42.278Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/ai-workspace.png",
+      "pathname": "/ai",
+      "at": "2026-09-27T14:59:18.646Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/agents.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:59:25.938Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/agents-inspector.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T14:59:28.692Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/agent-detail.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:59:35.971Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/agent-personality.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T14:59:39.119Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/workflows.png",
+      "pathname": "/workflows",
+      "at": "2026-09-27T14:59:46.412Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/workflow-builder.png",
+      "pathname": "/workflows/f7de1acc-c5ce-5e6b-9776-2b7b62007cb2/builder",
+      "at": "2026-09-27T14:59:58.709Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/intelligence.png",
+      "pathname": "/intelligence",
+      "at": "2026-09-27T15:00:17.997Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/model-studio.png",
+      "pathname": "/intelligence/model-studio",
+      "at": "2026-09-27T15:00:25.246Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/connectors.png",
+      "pathname": "/connectors",
+      "at": "2026-09-27T15:00:37.838Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/sources.png",
+      "pathname": "/sources",
+      "at": "2026-09-27T15:00:45.161Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/marketplace.png",
+      "pathname": "/marketplace/assets",
+      "at": "2026-09-27T15:01:00.471Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/goals.png",
+      "pathname": "/goals",
+      "at": "2026-09-27T15:01:07.787Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/assignments.png",
+      "pathname": "/assignments",
+      "at": "2026-09-27T15:01:15.034Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/approvals.png",
+      "pathname": "/approvals",
+      "at": "2026-09-27T15:01:22.328Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/schedules.png",
+      "pathname": "/schedules",
+      "at": "2026-09-27T15:01:29.617Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/activity.png",
+      "pathname": "/activity",
+      "at": "2026-09-27T15:01:36.892Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/governance.png",
+      "pathname": "/settings/approvals",
+      "at": "2026-09-27T15:01:44.180Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/administration.png",
+      "pathname": "/admin/intelligence",
+      "at": "2026-09-27T15:01:51.485Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-light/settings.png",
+      "pathname": "/settings",
+      "at": "2026-09-27T15:01:58.743Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/dashboard.png",
+      "pathname": "/home",
+      "at": "2026-09-27T15:02:06.024Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/ai-workspace.png",
+      "pathname": "/ai",
+      "at": "2026-09-27T15:02:42.392Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/agents.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T15:02:49.693Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/agents-inspector.png",
+      "pathname": "/agents",
+      "at": "2026-09-27T15:02:52.462Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/agent-detail.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T15:02:59.731Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/agent-personality.png",
+      "pathname": "/agents/9cb075fe-cb7a-57d8-9a01-6ca5a350f0b6",
+      "at": "2026-09-27T15:03:02.908Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/workflows.png",
+      "pathname": "/workflows",
+      "at": "2026-09-27T15:03:10.336Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/workflow-builder.png",
+      "pathname": "/workflows/f7de1acc-c5ce-5e6b-9776-2b7b62007cb2/builder",
+      "at": "2026-09-27T15:03:22.659Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/intelligence.png",
+      "pathname": "/intelligence",
+      "at": "2026-09-27T15:03:38.016Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/model-studio.png",
+      "pathname": "/intelligence/model-studio",
+      "at": "2026-09-27T15:03:45.372Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/connectors.png",
+      "pathname": "/connectors",
+      "at": "2026-09-27T15:03:57.718Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/sources.png",
+      "pathname": "/sources",
+      "at": "2026-09-27T15:04:04.953Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/marketplace.png",
+      "pathname": "/marketplace/assets",
+      "at": "2026-09-27T15:04:16.318Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/goals.png",
+      "pathname": "/goals",
+      "at": "2026-09-27T15:04:23.620Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/assignments.png",
+      "pathname": "/assignments",
+      "at": "2026-09-27T15:04:30.878Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/approvals.png",
+      "pathname": "/approvals",
+      "at": "2026-09-27T15:04:38.127Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/schedules.png",
+      "pathname": "/schedules",
+      "at": "2026-09-27T15:04:45.444Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/activity.png",
+      "pathname": "/activity",
+      "at": "2026-09-27T15:04:52.712Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/governance.png",
+      "pathname": "/settings/approvals",
+      "at": "2026-09-27T15:05:00.053Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/administration.png",
+      "pathname": "/admin/intelligence",
+      "at": "2026-09-27T15:05:07.335Z",
+      "viewport": "mobile"
+    },
+    {
+      "file": "mobile-dark/settings.png",
+      "pathname": "/settings",
+      "at": "2026-09-27T15:05:14.688Z",
+      "viewport": "mobile"
+    }
+  ],
+  "retries": [
+    {
+      "set": "desktop-light",
+      "route": "workflow-builder",
+      "reason": "Failed to load workflow"
+    }
+  ],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "[WorkflowBuilder] Failed to load graph: Error: API authentication failed\n    at _ (http://localhost:3000/_next/static/chunks/0liczn0hkc8nd.js:1:8951)\n    at async I (http://localhost:3000/_next/static",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Refused to execute script from 'http://localhost:3000/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "finishedAt": "2026-09-27T15:05:14.691Z"
+}
