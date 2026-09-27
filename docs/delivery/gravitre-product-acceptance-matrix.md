@@ -2,6 +2,8 @@
 
 Date: 2026-09-24. A–J functional roadmap is complete. This is **not** a new 3.0-K. Full Product Experience Contract (Section 0) is **not** accepted.
 
+**Authoritative Section 0 assurance (2026-09-27):** `docs/delivery/gravitre-section-0-assurance.md`
+
 Do not collapse this table into one PASS.
 
 | Surface | Status | Evidence class | Notes |

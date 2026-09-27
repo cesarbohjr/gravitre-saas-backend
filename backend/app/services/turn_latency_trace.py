@@ -26,6 +26,7 @@ STAGE_CANONICAL = {
     "compose_canned": "COMPOSER",
     "first_sse": "FIRST_SSE",
     "provider": "PROVIDER",
+    "observation": "PROVIDER",
     "connector_preflight": "PREFLIGHT",
     "preflight": "PREFLIGHT",
     "context_entry": "CONTEXT_BUILD",
