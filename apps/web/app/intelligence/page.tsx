@@ -445,7 +445,7 @@ function IntelligenceCenterInner() {
               onRefresh={() => mutateSnapshot()}
               className="justify-start"
             />
-            <IntelligenceJourney step={journeyStep} className="hidden lg:flex" />
+            <IntelligenceJourney step={journeyStep} className="hidden xl:flex" />
           </div>
         </div>
 

@@ -476,7 +476,14 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
               locksDocumentScroll || fillViewport
                 ? cn(
                     "overflow-hidden",
-                    pathname.includes("/builder") ? "pb-0" : "pb-16 md:pb-0",
+                    pathname.includes("/builder")
+                      ? "pb-0"
+                      : cn(
+                          "pb-16 md:pb-0",
+                          // Reserved dock band: panes end above the Ask Gravitre dock instead of running under it.
+                          "[:root:has([data-gravitre-ai-dock=workspace])_&]:pb-[calc(116px+env(safe-area-inset-bottom))]",
+                          "md:[:root:has([data-gravitre-ai-dock=workspace])_&]:pb-[68px]",
+                        ),
                   )
                 : cn(
                     "overflow-y-auto overflow-x-hidden",

@@ -9,7 +9,14 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
-import { GravitrePageHeader, GravitreEmpty } from "@/components/gravitre/nodus-product"
+import { GravitrePageHeader, GravitreEmpty, LiveStatus } from "@/components/gravitre/nodus-product"
+import {
+  OperatingEmpty,
+  PhaseBand,
+  type OperatingPhase,
+} from "@/components/gravitre/operating/operating-primitives"
+
+type QueuePhase = "pending" | "breached" | "approved" | "rejected"
 import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { EvidenceChip } from "@/components/gravitre/creative-grammar"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
@@ -75,7 +82,7 @@ interface Approval {
   status: "pending" | "approved" | "rejected"
   aiRecommendation?: {
     action: "approve" | "reject" | "review"
-    confidence: number
+    confidence: number | null
     reason: string
   }
   slaDeadline?: string | null
@@ -178,7 +185,7 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
   const aiRecommendation:
     | {
         action: "approve" | "reject" | "review"
-        confidence: number
+        confidence: number | null
         reason: string
       }
     | undefined =
@@ -188,7 +195,10 @@ function normalizeApproval(input: Record<string, unknown>): Approval {
             const action = String((rawRecommendation as Record<string, unknown>).action ?? "review")
             return action === "approve" || action === "reject" ? action : "review"
           })(),
-          confidence: Number((rawRecommendation as Record<string, unknown>).confidence ?? 0),
+          confidence: (() => {
+            const value = (rawRecommendation as Record<string, unknown>).confidence
+            return typeof value === "number" && Number.isFinite(value) ? value : null
+          })(),
           reason: String((rawRecommendation as Record<string, unknown>).reason ?? ""),
         }
       : undefined
@@ -340,9 +350,9 @@ const typeIcons = {
 }
 
 const priorityConfig = {
-  high: { color: "border-l-[color:var(--status-rejected)]", bg: "bg-destructive/5", badge: STATUS.rejected },
-  medium: { color: "border-l-[color:var(--status-pending)]", bg: "bg-warning/5", badge: STATUS.pending },
-  low: { color: "border-l-[color:var(--status-idle)]", bg: "bg-transparent", badge: STATUS.idle },
+  high: { bar: "before:bg-destructive", badge: STATUS.rejected },
+  medium: { bar: "before:bg-warning", badge: STATUS.pending },
+  low: { bar: "before:bg-muted-foreground/40", badge: STATUS.idle },
 } as const
 
 // Decision Card Component
@@ -372,43 +382,48 @@ function DecisionCard({
       animate={{ opacity: 1, x: 0 }}
       data-path-waiting={approval.status === "pending" ? "1" : "0"}
       data-path-run-id={approval.context.runId ?? undefined}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onSelect()
+        }
+      }}
       className={cn(
-        "relative cursor-pointer rounded-[var(--np-radius-md)] border-l-4 transition-all",
-        config.color,
+        "relative cursor-pointer rounded-[4px] bg-background transition-shadow before:absolute before:inset-y-2 before:left-1 before:w-[3px] before:rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        readOnly ? "before:bg-[color:var(--g-border-strong)]" : config.bar,
         isSelected
-          ? "border border-[color:var(--g-brand-border)] bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
-          : "border border-divide bg-[color:var(--g-surface-1)]/80 hover:bg-[color:var(--g-surface-2)]",
+          ? "shadow-[0_0_0_1.5px_var(--g-text-primary)]"
+          : "shadow-[0_0_0_1px_var(--g-border-subtle)] hover:shadow-[0_0_0_1px_var(--g-border-strong)]",
       )}
       onClick={onSelect}
     >
-      <div className="p-3">
+      <div className="py-3 pl-4 pr-3">
         {/* Header */}
         <div className="mb-2 flex items-start gap-2.5">
-          <div className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-            approval.priority === "high" ? "bg-destructive/10" : "bg-secondary"
-          )}>
-            <TypeIcon className={cn(
-              "h-4 w-4",
-              approval.priority === "high" ? "text-destructive" : "text-muted-foreground"
-            )} />
-          </div>
+          <TypeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-foreground mb-1 line-clamp-1">
+            <h3 className="mb-0.5 line-clamp-2 text-[13.5px] font-semibold leading-snug text-foreground">
               {approval.title}
             </h3>
             <p className="text-xs text-muted-foreground line-clamp-2">
               {approval.description}
             </p>
           </div>
-          <ChevronRight className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform shrink-0",
-            isSelected && "rotate-90"
-          )} />
+          {!readOnly && approval.status === "pending" ? (
+            <span className="mt-px inline-flex shrink-0 items-center gap-0.5 rounded-[4px] px-1.5 py-0.5 text-[11.5px] font-medium text-foreground">
+              Decide
+              <ArrowRight className="size-3" aria-hidden />
+            </span>
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          )}
         </div>
 
         {/* Badges row */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <div className="mb-2 flex flex-wrap items-center gap-2 pl-[26px]">
           <EnvironmentBadge environment={approval.environment} />
           <span className={cn("rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium capitalize", config.badge)}>
             {approval.priority}
@@ -430,7 +445,7 @@ function DecisionCard({
         </div>
 
         {/* Context */}
-        <div className="text-xs text-muted-foreground mb-3 space-y-1">
+        <div className="space-y-1 pl-[26px] text-xs text-muted-foreground">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span>Requested by</span>
             <RequesterIdentity identity={requester} compact />
@@ -459,15 +474,11 @@ function DecisionCard({
         </div>
 
         {/* Quick Actions */}
-        {!readOnly && approval.status === "pending" ? (
-          <p className="text-[11px] text-muted-foreground">
-            Select to decide
-          </p>
-        ) : approval.context.runId ? (
+        {readOnly && approval.context.runId ? (
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-full gap-1.5 text-xs"
+            className="ml-[26px] mt-2 h-8 gap-1.5 text-xs"
             asChild
             onClick={(e) => e.stopPropagation()}
           >
@@ -522,7 +533,6 @@ function DetailPanel({
   }
 
   const TypeIcon = typeIcons[approval.type]
-  const config = priorityConfig[approval.priority]
   const requester = resolveRequesterIdentity(approval, teamMembers)
   const actionBusy = Boolean(isSubmitting && pendingActionId === approval.id)
 
@@ -534,7 +544,7 @@ function DetailPanel({
       className="h-full flex flex-col"
     >
       {/* Header */}
-      <div className={cn("p-4 sm:p-6 border-b border-border", config.bg)}>
+      <div className="border-b border-border p-4 sm:p-6">
         {onBack ? (
           <Button variant="ghost" size="sm" className="mb-3 -ml-2 lg:hidden" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -597,10 +607,12 @@ function DetailPanel({
                 <p className="mt-1 text-sm font-medium text-foreground">
                   Suggested next step: {approval.aiRecommendation.action}
                 </p>
-                <p className={cn(TYPE.meta, "mt-0.5")}>
-                  {ESTIMATED_CONFIDENCE_LABEL}: {approval.aiRecommendation.confidence}% ·{" "}
-                  {CONFIDENCE_ESTIMATE_METHODOLOGY}
-                </p>
+                {approval.aiRecommendation.confidence != null && (
+                  <p className={cn(TYPE.meta, "mt-0.5")}>
+                    {ESTIMATED_CONFIDENCE_LABEL}: {approval.aiRecommendation.confidence}% ·{" "}
+                    {CONFIDENCE_ESTIMATE_METHODOLOGY}
+                  </p>
+                )}
               </div>
             </div>
             <p className="text-sm text-foreground">
@@ -734,10 +746,11 @@ function ApprovalsContent() {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingActionId, setPendingActionId] = useState<string | null>(null)
-  const [queueTab, setQueueTab] = useState<"pending" | "history">("pending")
-  
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
-    user ? (queueTab === "history" ? "/api/approvals?status=history" : "/api/approvals") : null,
+  const [phase, setPhase] = useState<QueuePhase>("pending")
+  const queueTab: "pending" | "history" = phase === "approved" || phase === "rejected" ? "history" : "pending"
+
+  const { data: pendingData, error: pendingError, isValidating: pendingValidating, mutate: mutatePending } = useSWR(
+    user ? "/api/approvals" : null,
     apiFetcher,
     {
       fallbackData: { approvals: [] as Approval[] },
@@ -746,6 +759,17 @@ function ApprovalsContent() {
       onError: (err) => console.error("[v0] Approvals fetch error:", err),
     },
   )
+  const { data: historyData, error: historyError, isValidating: historyValidating, mutate: mutateHistory } = useSWR(
+    user ? "/api/approvals?status=history" : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+  const data = queueTab === "history" ? historyData : pendingData
+  const error = queueTab === "history" ? historyError : pendingError
+  const isValidating = pendingValidating || historyValidating
+  const mutate = async () => {
+    await Promise.all([mutatePending(), mutateHistory()])
+  }
   const { data: teamPayload } = useSWR(
     user ? "/api/settings/team" : null,
     () => settingsApi.listTeamMembers(),
@@ -753,11 +777,29 @@ function ApprovalsContent() {
   )
   const teamMembers = teamPayload?.team ?? []
 
-  const approvals = normalizeApprovalsResponse(data)
-  const pendingApprovals = approvals.filter((a) => a.status === "pending")
-  const historyApprovals = approvals.filter((a) => a.status === "approved" || a.status === "rejected")
-  const visibleApprovals = queueTab === "pending" ? pendingApprovals : historyApprovals
+  const pendingApprovals = normalizeApprovalsResponse(pendingData).filter((a) => a.status === "pending")
+  const historyApprovals = historyData
+    ? normalizeApprovalsResponse(historyData).filter((a) => a.status === "approved" || a.status === "rejected")
+    : null
+  const breachedApprovals = pendingApprovals.filter((a) => a.slaBreached)
+  const approvedApprovals = historyApprovals?.filter((a) => a.status === "approved") ?? []
+  const rejectedApprovals = historyApprovals?.filter((a) => a.status === "rejected") ?? []
+  const visibleApprovals =
+    phase === "breached"
+      ? breachedApprovals
+      : phase === "approved"
+        ? approvedApprovals
+        : phase === "rejected"
+          ? rejectedApprovals
+          : pendingApprovals
+  const approvals = [...pendingApprovals, ...(historyApprovals ?? [])]
   const selectedApproval = approvals.find(a => a.id === selectedId) || null
+  const queuePhases: OperatingPhase[] = [
+    { id: "pending", label: "Waiting on you", count: pendingApprovals.length, tone: "attention" },
+    { id: "breached", label: "Past SLA", count: pendingApprovals.length ? breachedApprovals.length : 0, tone: "risk" },
+    { id: "approved", label: "Approved", count: historyApprovals ? approvedApprovals.length : null, tone: "done" },
+    { id: "rejected", label: "Rejected", count: historyApprovals ? rejectedApprovals.length : null, tone: "neutral" },
+  ]
   usePublishGravitreAISelection(
     selectedApproval
       ? { kind: "approval", id: selectedApproval.id, label: selectedApproval.title }
@@ -875,15 +917,16 @@ function ApprovalsContent() {
             : "flex min-w-0 flex-1",
         )}>
           {/* Header */}
-          <div className="flex-shrink-0 border-b border-divide">
+          <div className="flex-shrink-0">
             <GravitrePageHeader
               className="border-0"
-              eyebrow="Governance"
               title="Decision queue"
-              description={
-                queueTab === "pending"
-                  ? `${pendingApprovals.length} pending request${pendingApprovals.length !== 1 ? "s" : ""}`
-                  : `${historyApprovals.length} past decision${historyApprovals.length !== 1 ? "s" : ""}`
+              status={
+                <LiveStatus tone={pendingApprovals.length > 0 ? "attention" : "idle"}>
+                  {pendingApprovals.length === 0
+                    ? "Nothing is waiting on you"
+                    : `${pendingApprovals.length} waiting on you${breachedApprovals.length ? ` · ${breachedApprovals.length} past SLA` : ""}`}
+                </LiveStatus>
               }
               icon={<NucleoApproval className="h-5 w-5" />}
               actions={
@@ -897,43 +940,15 @@ function ApprovalsContent() {
                 </div>
               }
             />
-            <div className="px-3 sm:px-4 pb-3 sm:pb-4">
-            <div className="mb-3 flex h-9 items-end gap-5 border-b border-[color:var(--g-border-default)]">
-              <button
-                type="button"
-                onClick={() => {
-                  setQueueTab("pending")
-                  setSelectedId(null)
-                }}
-                aria-pressed={queueTab === "pending"}
-                className={cn(
-                  "relative -mb-px inline-flex h-9 items-center border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  queueTab === "pending"
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Pending
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setQueueTab("history")
-                  setSelectedId(null)
-                }}
-                aria-pressed={queueTab === "history"}
-                className={cn(
-                  "relative -mb-px inline-flex h-9 items-center border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  queueTab === "history"
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Past
-              </button>
-            </div>
-
-          </div>
+            <PhaseBand
+              label="Decision phases"
+              phases={queuePhases}
+              active={phase}
+              onSelect={(next) => {
+                setPhase((next as QueuePhase | null) ?? "pending")
+                setSelectedId(null)
+              }}
+            />
           </div>
 
           {/* Error banner */}
@@ -960,19 +975,24 @@ function ApprovalsContent() {
             </AnimatePresence>
 
             {visibleApprovals.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mb-3">
-                  <CheckCircle2 className="h-6 w-6 text-success" />
-                </div>
-                <p className="text-sm font-medium text-foreground">
-                  {queueTab === "pending" ? "All caught up!" : "No past decisions yet"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {queueTab === "pending"
-                    ? "No pending approvals"
-                    : "Approved and rejected requests will appear here"}
-                </p>
-              </div>
+              <OperatingEmpty
+                className="px-2 sm:px-2"
+                title={
+                  phase === "pending"
+                    ? "Nothing is waiting on you"
+                    : phase === "breached"
+                      ? "No decision is past its SLA"
+                      : phase === "approved"
+                        ? historyApprovals ? "No approved requests yet" : "Loading decisions…"
+                        : historyApprovals ? "No rejected requests yet" : "Loading decisions…"
+                }
+                body={
+                  phase === "pending"
+                    ? "When an agent or workflow needs your decision before it changes a connected system, the request lands here."
+                    : undefined
+                }
+                path={phase === "pending" ? ["Agent proposes an action", "You decide", "Execution continues", "Recorded here"] : undefined}
+              />
             )}
           </div>
         </div>

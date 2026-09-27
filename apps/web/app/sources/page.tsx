@@ -28,7 +28,8 @@ import { sourcesApi } from "@/lib/api"
 import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
 import type { CreateSourceRequest } from "@/types/api"
 import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
-import { EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
+import { NoResultsState } from "@/components/gravitre/empty-state"
+import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { toast } from "sonner"
 
@@ -46,7 +47,8 @@ interface Source {
   description: string
   workflowsUsing: number
   operatorsUsing: number
-  health: number // 0-100
+  /** 0-100 when the backend reports it; null otherwise (never estimated client-side). */
+  health: number | null
   topTables?: string[]
 }
 
@@ -122,13 +124,7 @@ function normalizeSource(input: Record<string, unknown>): Source {
     workflowsUsing: Number(input.workflowsUsing ?? input.workflows_using ?? 0),
     operatorsUsing: Number(input.operatorsUsing ?? input.operators_using ?? 0),
     health:
-      Number.isFinite(Number(input.health)) && Number(input.health) > 0
-        ? Number(input.health)
-        : status === "error" || status === "disconnected"
-        ? 0
-        : status === "syncing"
-        ? 85
-        : 98,
+      input.health != null && Number.isFinite(Number(input.health)) ? Number(input.health) : null,
     topTables: Array.isArray(input.topTables) ? (input.topTables as string[]) : [],
   }
 }
@@ -143,6 +139,17 @@ function normalizeSourcesResponse(payload: unknown): Source[] {
     .map((item) => normalizeSource(item))
     .filter((item) => item.id.length > 0)
   return normalized
+}
+
+/** Data fabric stages: connection → ingestion → schema → available to agents as evidence. */
+type FabricStage = "connected" | "ingesting" | "attention" | "schema" | "grounding"
+
+const FABRIC_STAGE_MATCH: Record<FabricStage, (source: Source) => boolean> = {
+  connected: (s) => s.status === "connected" || s.status === "syncing",
+  ingesting: (s) => s.status === "syncing",
+  attention: (s) => s.status === "error" || s.status === "disconnected",
+  schema: (s) => s.tables > 0,
+  grounding: (s) => s.workflowsUsing + s.operatorsUsing > 0,
 }
 
 const categoryLabels = {
@@ -247,7 +254,7 @@ function SourceTile({
               <p className="text-xs text-muted-foreground">{source.type}</p>
             </div>
           </div>
-          <HealthRing health={source.health} />
+          {source.health != null ? <HealthRing health={source.health} /> : null}
         </div>
 
         <div className="mb-4 flex items-center gap-2">
@@ -403,6 +410,7 @@ export default function SourcesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [mutatingSourceId, setMutatingSourceId] = useState<string | null>(null)
   const [isCreatingSource, setIsCreatingSource] = useState(false)
+  const [fabricStage, setFabricStage] = useState<FabricStage | null>(null)
   const { data, error, isLoading, isValidating, mutate } = useSWR(user ? "/api/sources" : null, apiFetcher, {
     fallbackData: { sources: [] as Source[] },
     revalidateOnFocus: false,
@@ -457,7 +465,8 @@ export default function SourcesPage() {
     }
   }
 
-  const groupedSources = sources.reduce(
+  const stageSources = fabricStage ? sources.filter(FABRIC_STAGE_MATCH[fabricStage]) : sources
+  const groupedSources = stageSources.reduce(
     (acc, source) => {
       if (!acc[source.category]) acc[source.category] = []
       acc[source.category].push(source)
@@ -525,7 +534,22 @@ export default function SourcesPage() {
           }
         />
 
-        <div className="grid gap-8 px-[var(--np-page-pad-sm)] pb-8 pt-2 sm:px-[var(--np-page-pad)] lg:grid-cols-[minmax(0,1fr)_280px]">
+        {sources.length > 0 ? (
+          <PhaseBand
+            label="Data fabric"
+            active={fabricStage}
+            onSelect={(next) => setFabricStage(next as FabricStage | null)}
+            phases={[
+              { id: "connected", label: "Connected", count: connectedCount, tone: "done", hint: `of ${sources.length} sources` },
+              { id: "ingesting", label: "Ingesting now", count: sources.filter(FABRIC_STAGE_MATCH.ingesting).length, tone: "live" },
+              { id: "attention", label: "Needs attention", count: needsAttention.length, tone: "risk" },
+              { id: "schema", label: "Schema discovered", count: sources.filter(FABRIC_STAGE_MATCH.schema).length, tone: "neutral", hint: `${totalTables} tables` },
+              { id: "grounding", label: "Grounding work", count: sources.filter(FABRIC_STAGE_MATCH.grounding).length, tone: "neutral", hint: "Used by workflows or agents" },
+            ]}
+          />
+        ) : null}
+
+        <div className="grid gap-8 px-[var(--np-page-pad-sm)] pb-8 pt-4 sm:px-[var(--np-page-pad)] lg:grid-cols-[minmax(0,1fr)_280px]">
           <div className="min-w-0 space-y-6">
             {showInlineError ? (
               <div className="flex items-center justify-between gap-3 border-l-2 border-destructive bg-background py-1.5 pl-3 text-[13px] text-foreground">
@@ -573,18 +597,29 @@ export default function SourcesPage() {
             ) : null}
 
             {!isLoading && !error && sources.length === 0 ? (
-              <EmptyState
-                icon={Database}
+              <OperatingEmpty
+                className="px-0 sm:px-0"
                 title="No data sources yet"
-                description="Connect your first data source to ground your agents in real business data."
-                action={{ label: "Add data source", onClick: () => setAddModalOpen(true) }}
+                body="Sources are the business data your agents reason over. Once connected, Gravitre ingests it, discovers the schema and makes it available as evidence."
+                path={["Connect a database or warehouse", "Ingest and sync", "Discover schema", "Ground agents with evidence"]}
+                action={
+                  <Button size="sm" onClick={() => setAddModalOpen(true)}>
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add data source
+                  </Button>
+                }
               />
             ) : null}
 
             {!isLoading &&
             sources.length > 0 &&
             categories.filter((cat) => selectedCategory === null || cat === selectedCategory).length === 0 ? (
-              <NoResultsState onClear={() => setSelectedCategory(null)} />
+              <NoResultsState
+                onClear={() => {
+                  setSelectedCategory(null)
+                  setFabricStage(null)
+                }}
+              />
             ) : null}
 
             <AnimatePresence mode="wait">

@@ -55,8 +55,14 @@ import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { FleetControls, FleetControlsCollapsed, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
-import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
-import { mapApiDepartmentToFleet, mapFleetDepartmentToApi, toFleetAgent } from "@/lib/agent-identity-bridge"
+import type { AgentDepartmentId, AgentRuntimeState } from "@/components/agents/fleet-v4/types"
+import {
+  agentStatusToRuntime,
+  mapApiDepartmentToFleet,
+  mapFleetDepartmentToApi,
+  toFleetAgent,
+} from "@/lib/agent-identity-bridge"
+import { PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
 import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
@@ -625,6 +631,15 @@ export default function AgentsPage() {
     return { working, active, errored }
   }, [agents])
 
+  const runtimeCounts = useMemo(() => {
+    const counts = { executing: 0, available: 0, failed: 0, idle: 0 }
+    for (const agent of agents) {
+      const state = agentStatusToRuntime(agent.status)
+      if (state === "executing" || state === "available" || state === "failed" || state === "idle") counts[state] += 1
+    }
+    return counts
+  }, [agents])
+
   const filteredAgents = useMemo(() => {
     if (!normalizedSearchQuery) return agents
     return agents.filter((agent) => agentMatchesQuery(agent, normalizedSearchQuery))
@@ -845,6 +860,20 @@ export default function AgentsPage() {
                 </Suspense>
                 <AgentSurfaceSwitch surface="operate" />
               </GravitrePageHeader>
+
+              {agents.length > 0 ? (
+                <PhaseBand
+                  label="Workforce state"
+                  active={prefs.filters.status}
+                  onSelect={(next) => setFilters({ status: next as AgentRuntimeState | null })}
+                  phases={[
+                    { id: "executing", label: "Working now", count: runtimeCounts.executing, tone: "live" },
+                    { id: "available", label: "On duty", count: runtimeCounts.available, tone: "done", hint: "Ready for work" },
+                    { id: "failed", label: "Needs attention", count: runtimeCounts.failed, tone: "risk" },
+                    { id: "idle", label: "Idle", count: runtimeCounts.idle, tone: "neutral" },
+                  ]}
+                />
+              ) : null}
 
               <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-2.5 sm:px-[var(--np-page-pad)]">
                 <FleetControls

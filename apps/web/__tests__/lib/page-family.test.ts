@@ -3,9 +3,24 @@ import { familyHidesTopBar, resolvePageFamily } from "@/lib/page-family"
 
 describe("page families (G-STRUCT A1)", () => {
   it("resolves operating surfaces", () => {
-    for (const path of ["/home", "/dashboard", "/agents", "/workflows", "/assignments", "/approvals"]) {
+    for (const path of [
+      "/home",
+      "/dashboard",
+      "/agents",
+      "/workflows",
+      "/assignments",
+      "/approvals",
+      "/goals",
+      "/schedules",
+      "/activity",
+      "/sources",
+    ]) {
       expect(resolvePageFamily(path), path).toBe("operating")
     }
+  })
+
+  it("keeps a single source's schema/evidence view in the expert family", () => {
+    expect(resolvePageFamily("/sources/s1")).toBe("expert")
   })
 
   it("resolves expert surfaces, including agent config but not agent creation", () => {

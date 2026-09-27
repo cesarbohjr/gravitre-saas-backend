@@ -8,6 +8,11 @@ import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import {
+  OperatingEmpty,
+  PhaseBand,
+  type OperatingPhase,
+} from "@/components/gravitre/operating/operating-primitives"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
@@ -2895,11 +2900,28 @@ function ConnectorsPageContent() {
     { value: "error", label: "Error", color: "text-destructive", dot: "bg-destructive" },
     { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
   ] as const
-  const totalRequests = connectors.reduce((sum, c) => sum + (c.requestsToday || 0), 0)
-  const avgLatency = Math.round(
-    connectors.filter((c) => c.latency).reduce((sum, c) => sum + (c.latency || 0), 0) /
-    connectors.filter((c) => c.latency).length || 0
-  )
+  const withAvailability = connectors.filter((c) => c.availability)
+  const availabilityCount = (pick: (a: ConnectorAvailability) => boolean): number | null =>
+    withAvailability.length === 0 ? null : withAvailability.filter((c) => pick(c.availability!)).length
+  const capabilityPhases: OperatingPhase[] = [
+    { id: "systems", label: "Systems added", count: connectors.length, tone: "neutral" },
+    {
+      id: "authorized",
+      label: "Authorized",
+      count: availabilityCount((a) => a.authenticated && a.tokenValid),
+      tone: "done",
+      hint: "Credentials valid",
+    },
+    { id: "scoped", label: "Permissions granted", count: availabilityCount((a) => a.scopesValid), tone: "done", hint: "Required scopes" },
+    { id: "healthy", label: "Healthy", count: availabilityCount((a) => a.healthy), tone: "done" },
+    { id: "executable", label: "Can take actions", count: connectedCount, tone: "live", hint: "Agents and workflows can act" },
+    {
+      id: "blocked",
+      label: "Blocked",
+      count: withAvailability.length === 0 ? null : withAvailability.filter((c) => c.availability!.blockingReason).length,
+      tone: "risk",
+    },
+  ]
 
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
@@ -3125,42 +3147,9 @@ function ConnectorsPageContent() {
 
         {!chromeCollapsed ? (
         <>
-        <details>
-          <summary className="g-disclosure cursor-pointer border-b border-divide px-4 py-2 md:px-6">
-            <p className={TYPE.eyebrow}>Health totals</p>
-            <p className={cn(TYPE.meta, "mt-0.5")}>
-              Counts from the last refresh.
-            </p>
-          </summary>
-        <div className="border-b border-border bg-secondary/30 px-4 md:px-6 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-4 md:gap-8">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-success" />
-                <span className="text-xs md:text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{connectedCount}</span> connected
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-3.5 w-3.5 text-warning" />
-                <span className="text-xs md:text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{totalRequests.toLocaleString()}</span> <span className="hidden sm:inline">requests</span> today
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Activity className="h-3.5 w-3.5 text-info" />
-                <span className="text-xs md:text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{avgLatency}ms</span> <span className="hidden sm:inline">avg</span> latency
-                </span>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Status from last refresh
-            </div>
-          </div>
-        </div>
-        </details>
+        {connectors.length > 0 ? (
+          <PhaseBand label="Capability fabric" phases={capabilityPhases} loading={isLoading && connectors.length === 0} />
+        ) : null}
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
         <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
@@ -3201,14 +3190,18 @@ function ConnectorsPageContent() {
               <Button variant="outline" onClick={() => mutate()}>Try again</Button>
             </div>
           ) : connectors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-4">
-                <Cable className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-base font-medium text-foreground mb-1">No connectors yet</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                Connect your CRM, analytics, and productivity tools to power workflows and agents.
-              </p>
+            <div className="py-6">
+              <OperatingEmpty
+                className="px-0 py-0 sm:px-0"
+                title="No connectors yet"
+                body="Connectors are what your agents and workflows can act on. Each one moves from connected, to authorized, to granted the permissions an action needs, before agents can use it."
+                path={["Connect a system", "Authorize access", "Grant permissions", "Agents can act"]}
+              />
+              <div className="mt-5 flex flex-wrap gap-2">
+              <Button onClick={() => openAddModal()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add your first connector
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -3219,12 +3212,9 @@ function ConnectorsPageContent() {
                 <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
                 Check live status
               </Button>
-              <Button onClick={() => openAddModal()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add your first connector
-              </Button>
+              </div>
               {availableToConnect.length > 0 && (
-                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
+                <div className="mt-6 flex max-w-2xl flex-wrap gap-2">
                   {availableToConnect.slice(0, 6).map((entry) => (
                     <Button
                       key={entry.vendorKey}

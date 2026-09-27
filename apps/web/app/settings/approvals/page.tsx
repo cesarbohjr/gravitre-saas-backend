@@ -9,15 +9,7 @@ import { SettingsShell } from "@/components/settings/settings-shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TYPE } from "@/lib/design-system"
-import {
-  ArrowRight,
-  CheckCircle2,
-  Inbox,
-  Loader2,
-  Plus,
-  ShieldCheck,
-  Trash2,
-} from "lucide-react"
+import { ArrowRight, CheckCircle2, Inbox, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -70,7 +62,7 @@ export default function HitlApprovalsPage() {
         >
           <div className="flex h-64 items-center justify-center p-4 text-muted-foreground md:p-6">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Loading…
+            Loadingâ€¦
           </div>
         </SettingsShell>
       </AppShell>
@@ -121,11 +113,9 @@ function ApprovalsContent() {
     fetcher,
     { revalidateOnFocus: false },
   )
-  const { data: teamData } = useSWR<{ team?: User[] }>(
-    "/api/settings/team",
-    fetcher,
-    { revalidateOnFocus: false },
-  )
+  const { data: teamData } = useSWR<{ team?: User[] }>("/api/settings/team", fetcher, {
+    revalidateOnFocus: false,
+  })
 
   const departments = liteData?.departments ?? []
   const team = teamData?.team ?? []
@@ -221,64 +211,166 @@ function ApprovalsContent() {
   }
 
   return (
-    <div className="relative space-y-8 p-4 md:p-6">
-      {/* Each settings hero used its own two-hue gradient (this one sky ->
-          violet, team permissions emerald -> sky), so sibling pages in the same
-          section looked unrelated. Both now share one primary wash. */}
-      <div className="relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-br from-[color:var(--g-brand-soft)] via-[color:var(--g-surface-1)] to-[color:var(--g-surface-2)] p-6 md:p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
-        >
-          <div className="max-w-xl">
-            <div className={cn(TYPE.eyebrow, "mb-3 inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/90 px-3 py-1 normal-case tracking-normal")}>
-              <ShieldCheck className="h-3.5 w-3.5 text-[color:var(--g-brand)]" />
-              Governance
-            </div>
-            <h1 className={TYPE.pageTitle}>Human-in-the-loop</h1>
-            <p className={cn(TYPE.pageLead, "mt-2 leading-relaxed")}>
-              Require approval before high-impact actions run. Scope by organization, department, or
-              person — more specific rules win when several match.
+    <div className="relative space-y-6 p-4 md:p-6">
+      <motion.header
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col gap-3 border-b border-[color:var(--g-border-default)] pb-5 lg:flex-row lg:items-end lg:justify-between"
+      >
+        <div className="max-w-xl">
+          <p className={cn(TYPE.meta, "mb-1 inline-flex items-center gap-1.5")}>
+            <ShieldCheck
+              className="h-3.5 w-3.5 text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]"
+              aria-hidden
+            />
+            Governance
+          </p>
+          <h1 className={TYPE.pageTitle}>Human-in-the-loop</h1>
+          <p className={cn(TYPE.pageLead, "mt-2 leading-relaxed")}>
+            Require approval before high-impact actions run. Scope by organization, department, or person â€”
+            more specific rules win when several match.
+          </p>
+        </div>
+        <p className="text-sm tabular-nums text-muted-foreground" data-testid="hitl-policy-counts">
+          <span className="font-semibold text-foreground">{policies.length}</span>{" "}
+          {policies.length === 1 ? "policy" : "policies"} Â·{" "}
+          <span className="font-semibold text-foreground">{enabledCount}</span> active
+        </p>
+      </motion.header>
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section aria-labelledby="hitl-active-policies" className="min-w-0">
+          <div className="mb-3">
+            <h2 id="hitl-active-policies" className="text-base font-semibold text-foreground">
+              Active policies
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enable, pause, or remove rules without leaving Settings.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:min-w-[240px]">
-            <div className="rounded-2xl border border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur">
-              <p className="text-xs text-muted-foreground font-medium">Policies</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{policies.length}</p>
-            </div>
-            <div className="rounded-2xl border border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur">
-              <p className="text-xs text-muted-foreground font-medium">Active</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{enabledCount}</p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <motion.section
+          {isLoading && !data ? (
+            <div className="flex items-center py-10 text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading policiesâ€¦
+            </div>
+          ) : error ? (
+            <div className="border-l-2 border-destructive py-2 pl-3 text-sm text-destructive">
+              Could not load HITL policies. If this is a new environment, apply the{" "}
+              <code className="text-xs">hitl_policies</code> migration first.
+            </div>
+          ) : policies.length === 0 ? (
+            <div className="border-y border-[color:var(--g-border-subtle)] py-8">
+              <p className="text-sm font-medium text-foreground">No custom policies yet</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                Write and delete actions still require admin/owner approval by default.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-default)]">
+              {policies.map((policy) => (
+                <li
+                  key={policy.id}
+                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-foreground">{policy.name}</p>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-xs font-medium",
+                          policy.enabled ? "text-success" : "text-muted-foreground",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            policy.enabled ? "bg-success" : "bg-muted-foreground/60",
+                          )}
+                        />
+                        {policy.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Scope:{" "}
+                      {policy.scope_type === "org"
+                        ? "Entire org"
+                        : policy.scope_type === "department"
+                          ? `Department Â· ${departmentNameById.get(policy.department_id || "") || policy.department_id}`
+                          : `User Â· ${userLabelById.get(policy.subject_user_id || "") || policy.subject_user_id}`}
+                      {" Â· "}
+                      Actions: {(policy.action_kinds || []).join(", ") || "â€”"}
+                      {" Â· "}
+                      Approvers: {(policy.approver_roles || []).join(", ") || "â€”"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleToggleEnabled(policy)}>
+                      {policy.enabled ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      disabled={deletingId === policy.id}
+                      aria-label={`Delete policy ${policy.name}`}
+                      onClick={() => handleDelete(policy.id)}
+                    >
+                      {deletingId === policy.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-6 border-l-2 border-[color:var(--g-brand)] py-1 pl-3">
+            <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
+              Default protection
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Write and delete actions already require admin or owner approval. Custom policies let you
+              tighten or broaden that for specific teams.
+            </p>
+            <Link
+              href="/approvals"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
+            >
+              <Inbox className="h-3.5 w-3.5" aria-hidden />
+              Open decision queue
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </div>
+        </section>
+
+        <motion.aside
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-5 shadow-sm md:p-6"
+          aria-labelledby="hitl-create-policy"
+          className="lg:border-l lg:border-[color:var(--g-border-subtle)] lg:pl-6"
         >
-          <div className="mb-5 flex items-start justify-between gap-3">
+          <div className="mb-5 flex items-start gap-2">
+            <Plus className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden />
             <div>
-              <h2 className="text-base font-semibold text-foreground">Create policy</h2>
+              <h2 id="hitl-create-policy" className="text-base font-semibold text-foreground">
+                Create policy
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Define who needs approval and who can grant it.
               </p>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Plus className="h-5 w-5" />
             </div>
           </div>
 
           <div className="space-y-5">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                Name
-              </label>
+              <label className="text-xs font-medium text-muted-foreground">Name</label>
               <Input
                 className="mt-1.5 h-11 rounded-xl"
                 value={name}
@@ -301,15 +393,13 @@ function ApprovalsContent() {
 
             {scopeType === "department" ? (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
-                  Department
-                </label>
+                <label className="text-xs font-medium text-muted-foreground">Department</label>
                 <select
                   className="mt-1.5 h-11 w-full rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 text-sm"
                   value={departmentId}
                   onChange={(e) => setDepartmentId(e.target.value)}
                 >
-                  <option value="">Select department…</option>
+                  <option value="">Select departmentâ€¦</option>
                   {departments.map((dept) => (
                     <option key={dept.id} value={dept.id}>
                       {dept.name}
@@ -321,15 +411,13 @@ function ApprovalsContent() {
 
             {scopeType === "user" ? (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
-                  User
-                </label>
+                <label className="text-xs font-medium text-muted-foreground">User</label>
                 <select
                   className="mt-1.5 h-11 w-full rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 text-sm"
                   value={subjectUserId}
                   onChange={(e) => setSubjectUserId(e.target.value)}
                 >
-                  <option value="">Select user…</option>
+                  <option value="">Select userâ€¦</option>
                   {team.map((member) => {
                     const id = String(member.id || "")
                     return (
@@ -361,133 +449,8 @@ function ApprovalsContent() {
               Add policy
             </Button>
           </div>
-        </motion.section>
-
-        <motion.aside
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-4"
-        >
-          <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-5 shadow-sm">
-            <div className="mb-3 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              <h3 className="text-sm font-semibold text-foreground">Default protection</h3>
-            </div>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Write and delete actions already require admin or owner approval. Custom policies let
-              you tighten or broaden that for specific teams.
-            </p>
-          </div>
-          {/* Brand CTA — mineral Decision Queue entry, not a dark-mode island. */}
-          <div className="rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand)] p-5 text-white shadow-[var(--np-shadow)]">
-            <div className="mb-3 flex items-center gap-2">
-              <Inbox className="h-4 w-4" />
-              <h3 className="text-sm font-semibold">Decision queue</h3>
-            </div>
-            <p className="text-sm leading-relaxed text-white/80">
-              Review pending approvals from operators and agents in one place.
-            </p>
-            <Button
-              asChild
-              variant="secondary"
-              className="mt-4 w-full justify-between"
-            >
-              <Link href="/approvals">
-                Open decision queue
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
         </motion.aside>
       </div>
-
-      <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] md:p-6">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">Active policies</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Enable, pause, or remove rules without leaving Settings.
-            </p>
-          </div>
-        </div>
-
-        {isLoading && !data ? (
-          <div className="flex items-center py-10 text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading policies…
-          </div>
-        ) : error ? (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            Could not load HITL policies. If this is a new environment, apply the{" "}
-            <code className="text-xs">hitl_policies</code> migration first.
-          </div>
-        ) : policies.length === 0 ? (
-          <div className="rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-6 py-10 text-center">
-            <p className="text-sm font-medium text-foreground">No custom policies yet</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              Write and delete actions still require admin/owner approval by default.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {policies.map((policy) => (
-              <li
-                key={policy.id}
-                className="flex flex-col gap-3 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-foreground">{policy.name}</p>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold",
-                        // text-emerald-700 had no dark variant, so it was
-                        // near-unreadable on a 10% tint in dark mode.
-                        policy.enabled
-                          ? "bg-success/10 text-success"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {policy.enabled ? "Enabled" : "Disabled"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Scope:{" "}
-                    {policy.scope_type === "org"
-                      ? "Entire org"
-                      : policy.scope_type === "department"
-                        ? `Department · ${departmentNameById.get(policy.department_id || "") || policy.department_id}`
-                        : `User · ${userLabelById.get(policy.subject_user_id || "") || policy.subject_user_id}`}
-                    {" · "}
-                    Actions: {(policy.action_kinds || []).join(", ") || "—"}
-                    {" · "}
-                    Approvers: {(policy.approver_roles || []).join(", ") || "—"}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleToggleEnabled(policy)}>
-                    {policy.enabled ? "Disable" : "Enable"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    disabled={deletingId === policy.id}
-                    onClick={() => handleDelete(policy.id)}
-                  >
-                    {deletingId === policy.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   )
 }
@@ -511,9 +474,7 @@ function ChipGroup({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground">
-        {label}
-      </label>
+      <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <div className="mt-1.5 flex flex-wrap gap-2">
         {options.map((option) => {
           const selected = exclusive ? value === option.value : Boolean(values?.includes(option.value))

@@ -345,7 +345,7 @@ function ActivityPageInner() {
     { id: "all", label: "All", count: isLoading ? undefined : outcomes.length },
     {
       id: "objects",
-      label: "WorkObjects",
+      label: "Work objects",
       count: workObjectsLoading ? undefined : workObjects.length,
     },
     { id: "failures", label: "Failures" },
@@ -359,8 +359,8 @@ function ActivityPageInner() {
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden">
         <GravitrePageHeader
           className="shrink-0"
-          eyebrow="Execution log"
           title="Activity"
+          description="Every outcome, work object and failure your agents and workflows produced, with its evidence."
           icon={<NucleoActivity className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
@@ -386,19 +386,20 @@ function ActivityPageInner() {
             </div>
           }
         >
-          <div className="flex gap-1 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1 sm:w-fit">
+          <div className="-mb-px flex gap-5 border-b border-[color:var(--g-border-default)]" aria-label="Activity views">
             {activityTabs.map((item) => {
               const active = tab === item.id
               return (
                 <button
                   key={item.id}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => setTab(item.id)}
                   className={cn(
-                    "rounded-md px-2.5 py-1.5 text-xs font-medium transition",
+                    "-mb-px border-b-2 pb-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active
-                      ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-sm"
-                      : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                      ? "border-[color:var(--g-text-primary)] text-[color:var(--g-text-primary)]"
+                      : "border-transparent text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
                   )}
                 >
                   {item.label}

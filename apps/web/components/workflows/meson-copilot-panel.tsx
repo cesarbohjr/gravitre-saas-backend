@@ -698,13 +698,18 @@ export function MesonCopilotPanel({
               initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
               animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
               transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 380, damping: 24 }}
-              className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2"
+              className="flex items-center gap-2 py-1"
             >
-              <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+              <CheckCircle className="h-3.5 w-3.5 text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]" />
               <span className="text-xs text-muted-foreground">No issues detected</span>
             </motion.div>
           ) : (
-            <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
+            <motion.div
+              className="divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-subtle)]"
+              variants={container}
+              initial="initial"
+              animate="animate"
+            >
               <AnimatePresence initial={false}>
                 {visibleAlerts.map((alert) => {
                   const Icon = severityIcon(alert.severity)
@@ -716,7 +721,7 @@ export function MesonCopilotPanel({
                       layout={!reduced}
                       variants={item}
                       exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0, marginBottom: 0 }}
-                      className="overflow-hidden rounded-lg border border-border bg-secondary/30 p-2.5"
+                      className="relative overflow-hidden py-2 pl-3 pr-1 before:absolute before:inset-y-2 before:left-0 before:w-[2px] before:rounded-full before:bg-warning"
                     >
                       <div className="flex items-start gap-2">
                         {pulse ? (
@@ -733,9 +738,9 @@ export function MesonCopilotPanel({
                       </div>
                       {(alert.autoFixable || alert.actionTarget) && onFixAlert ? (
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                          className="-ml-2 mt-1 h-6 gap-1 px-2 text-[11px] font-medium"
                           disabled={fixingAlertId === alert.id || isFixed}
                           onClick={() => handleFixAlert(alert)}
                         >

@@ -40,6 +40,7 @@ import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
 import { GravitreAIRuntimeDetails } from "@/components/gravitre/ai-runtime-details"
 import { deriveAiRuntimeState, isApprovalPanelVisible } from "@/lib/gravitre-ai-runtime-state"
 import { AiStartingState } from "./ai-starting-state"
+import { AiMissionSpine, deriveMissionStages } from "./ai-mission-spine"
 
 export interface GravitreAIMobileSheetBridgeProps {
   mode: GravitreAIMobileSheetMode
@@ -156,6 +157,25 @@ export function GravitreAIMobileSheetBridge({
     else setMobileFocus("conversation")
   }, [approvalVisible, showInspect, showWork])
 
+  const runtimeState = deriveAiRuntimeState({
+    status,
+    isStreaming,
+    isBusy,
+    dialogueMode,
+    pendingTask,
+    executionResult,
+    confirmExecuting,
+    canApprove,
+    canContinueAfterStop,
+  })
+  const missionStages = deriveMissionStages({
+    messages,
+    runtimeState,
+    progressSteps: progressSteps ?? null,
+    pendingTask,
+    executionResult,
+  })
+
   return (
     <GravitreAIMobileSheet
       mode={mode}
@@ -172,18 +192,9 @@ export function GravitreAIMobileSheetBridge({
         messages={messages}
         executionResult={executionResult}
         pendingTask={pendingTask}
-        state={deriveAiRuntimeState({
-          status,
-          isStreaming,
-          isBusy,
-          dialogueMode,
-          pendingTask,
-          executionResult,
-          confirmExecuting,
-          canApprove,
-          canContinueAfterStop,
-        })}
+        state={runtimeState}
       />
+      {messages.length === 0 ? null : <AiMissionSpine stages={missionStages} />}
       <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={setTranscriptScroller} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {messages.length === 0 && !showWaiting && !isStreaming ? (

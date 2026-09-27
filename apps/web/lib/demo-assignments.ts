@@ -162,7 +162,7 @@ export function demoAssignmentToAgentJob(demo: DemoAssignment): AgentJob {
     action_title: demo.title,
     action_description: `Deliverables: ${demo.outputTypes.join(", ")} → ${demo.destination}`,
     progress_percent: demo.progress,
-    confidence: (demo.confidence ?? demo.progress) / 100,
+    confidence: demo.confidence != null ? demo.confidence / 100 : undefined,
     requires_approval: requiresApproval,
     agent_name: demo.agent.name,
     summary: demo.brief,

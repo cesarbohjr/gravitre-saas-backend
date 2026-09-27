@@ -92,6 +92,31 @@ function connectorSummary(asset: MarketplaceAssetSummary): string {
   return `${total} app${total === 1 ? "" : "s"} to connect${detail}`
 }
 
+const CAPABILITY_NOUN: Record<string, [string, string]> = {
+  agent: ["agent", "agents"],
+  workflow: ["workflow", "workflows"],
+  knowledge: ["knowledge base", "knowledge bases"],
+  connector_config: ["connector setup", "connector setups"],
+  department_pack: ["department pack", "department packs"],
+}
+
+/** What installing the asset adds to the workspace, from its catalogued contents only. */
+function capabilitySummary(asset: MarketplaceAssetSummary): string {
+  const counts = new Map<string, number>()
+  const items = asset.packItems ?? []
+  if (items.length > 0) {
+    for (const item of items) counts.set(item.child.assetType, (counts.get(item.child.assetType) ?? 0) + 1)
+  } else {
+    counts.set(asset.assetType, 1)
+  }
+  return Array.from(counts.entries())
+    .map(([type, count]) => {
+      const [one, many] = CAPABILITY_NOUN[type] ?? [type.replace(/_/g, " "), `${type.replace(/_/g, " ")}s`]
+      return `${count} ${count === 1 ? one : many}`
+    })
+    .join(", ")
+}
+
 /**
  * Merges facet counts whose labels are equivalent once normalized (casing,
  * spacing, separators), so e.g. "Operations" never appears twice in the rail.
@@ -118,11 +143,10 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
 
 function AssetCardSkeleton() {
   return (
-    <div className="space-y-3 rounded-[14px] border border-[color:var(--g-border-subtle)] p-4">
-      <Skeleton className="size-10 rounded-[10px]" />
-      <Skeleton className="h-4 w-40" />
-      <Skeleton className="h-3 w-56" />
-      <Skeleton className="h-8 w-24" />
+    <div className="space-y-2 py-4">
+      <Skeleton className="h-4 w-56" />
+      <Skeleton className="h-3 w-72" />
+      <Skeleton className="h-3 w-40" />
     </div>
   )
 }
@@ -148,45 +172,64 @@ function AssetCard({
   const showPrimaryAction = isAdmin && !asset.installed
 
   const TypeIcon = TYPE_ICON[asset.assetType] ?? Package
+  const adds = capabilitySummary(asset)
+  const systems = asset.connectorChecklist ?? []
 
   return (
     <article
-      className="group flex h-full flex-col rounded-[14px] border border-[color:var(--g-border-default)] bg-card p-4 transition-[border-color,box-shadow] hover:border-[color:var(--g-border-strong)] hover:shadow-sm"
+      className="group grid gap-x-6 gap-y-3 py-4 md:grid-cols-[minmax(0,1fr)_220px_auto]"
       data-testid="marketplace-pack-row"
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
-          <TypeIcon className="size-5" aria-hidden />
-        </span>
-        <div className="flex items-center gap-1.5">
-          <PriceBadge asset={asset} />
-          <AssetSaveButton slug={asset.slug} assetId={asset.id} size="icon" variant="ghost" />
+      <div className="flex min-w-0 gap-3">
+        <TypeIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="min-w-0">
+          <button
+            type="button"
+            onClick={() => onOpenDetail(asset)}
+            className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <h3 className="text-[14px] font-semibold leading-snug text-foreground">{asset.title}</h3>
+          </button>
+          <p className="mt-0.5 text-[12.5px] text-foreground">
+            <span className="text-muted-foreground">Adds </span>
+            {adds}
+            <span className="text-muted-foreground"> · </span>
+            <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
+          </p>
+          {asset.description ? (
+            <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
+          ) : null}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => onOpenDetail(asset)}
-        className="mt-3 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <h3 className="line-clamp-2 text-[14px] font-semibold leading-snug text-foreground">{asset.title}</h3>
-        <p className="mt-1 truncate text-xs capitalize text-muted-foreground">
-          {(asset.department ?? asset.assetType).replace(/_/g, " ")}
-        </p>
-        {asset.description ? (
-          <p className="mt-2 line-clamp-2 text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
-        ) : null}
-      </button>
-      <p
-        className={cn(
-          "mt-3 flex items-center gap-1.5 text-[11.5px]",
-          ready ? "text-muted-foreground" : "text-warning",
+      <div className="min-w-0 pl-7 md:pl-0">
+        <p className="text-xs font-medium text-muted-foreground">Requires</p>
+        {systems.length === 0 ? (
+          <p className="mt-1 text-[12.5px] text-foreground">No setup required</p>
+        ) : (
+          <ul className="mt-1 space-y-0.5 text-[12.5px]" aria-label={capitalizeFirst(connectorSummary(asset))}>
+            {systems.slice(0, 3).map((item) => (
+              <li key={item.connectorType} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    item.connected ? "bg-[color:var(--g-brand)]" : item.required ? "bg-warning" : "bg-muted-foreground/40",
+                  )}
+                />
+                <span className="truncate text-foreground">{item.label}</span>
+                <span className="shrink-0 text-muted-foreground">
+                  {item.connected ? "connected" : item.required ? "required" : "optional"}
+                </span>
+              </li>
+            ))}
+            {systems.length > 3 ? <li className="text-muted-foreground">+{systems.length - 3} more</li> : null}
+          </ul>
         )}
-      >
-        <Plug className="size-3.5 shrink-0" aria-hidden />
-        {capitalizeFirst(connectorSummary(asset))}
-      </p>
-      <div className="min-h-3 flex-1" aria-hidden />
-      <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--g-border-subtle)] pt-3">
+        {!ready ? <p className="mt-1 text-[11.5px] text-warning">Connect required apps to install</p> : null}
+      </div>
+      <div className="flex flex-wrap items-start gap-2 pl-7 md:justify-end md:pl-0">
+        <PriceBadge asset={asset} />
+        <AssetSaveButton slug={asset.slug} assetId={asset.id} size="icon" variant="ghost" />
           {showPrimaryAction ? (
             <Button
               size="sm"
@@ -210,7 +253,7 @@ function AssetCard({
             </Button>
           ) : null}
       </div>
-      <details className="mt-2">
+      <details className="pl-7 md:col-span-3">
         <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">More about this pack</summary>
         <div className="mt-2 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -606,7 +649,7 @@ function MarketplaceAssetsContent() {
           </div>
 
           {isLoading ? (
-            <div data-review-surface="marketplace-discovery" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div data-review-surface="marketplace-discovery" className="divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-default)]">
               {Array.from({ length: 6 }).map((_, index) => (
                 <AssetCardSkeleton key={index} />
               ))}
@@ -637,7 +680,7 @@ function MarketplaceAssetsContent() {
                   </p>
                 ) : (
                   <div
-                    className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+                    className="mt-3 divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-default)]"
                     data-testid="marketplace-scan-list"
                   >
                     {discoveryAssets.map((asset) => (

@@ -20,7 +20,7 @@ const EXPERT: RegExp[] = [
   /^\/metrics(\/|$)/,
   /^\/agents\/(?!new(\/|$))[^/]+(\/|$)/,
   /^\/connectors(\/|$)/,
-  /^\/sources(\/|$)/,
+  /^\/sources\/[^/]+(\/|$)/,
   /^\/admin(\/|$)/,
   /^\/training(\/|$)/,
 ]
@@ -36,6 +36,7 @@ const OPERATING: RegExp[] = [
   /^\/runs(\/|$)/,
   /^\/goals(\/|$)/,
   /^\/schedules(\/|$)/,
+  /^\/sources\/?$/,
   /^\/notifications(\/|$)/,
   /^\/outcomes(\/|$)/,
 ]

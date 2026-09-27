@@ -1506,11 +1506,11 @@ function AgentCouncilNode({
   const isEscalated = node.state === "escalated"
   
   const stateColors = {
-    idle: { ring: "border-warning/30", bg: "bg-warning/5", glow: "" },
-    debating: { ring: "border-warning animate-pulse", bg: "bg-warning/10", glow: "shadow-[0_0_30px_rgba(245,158,11,0.3)]" },
-    consensus: { ring: "border-success", bg: "bg-success/10", glow: "shadow-[0_0_20px_rgba(16,185,129,0.3)]" },
-    escalated: { ring: "border-destructive", bg: "bg-destructive/10", glow: "shadow-[0_0_20px_rgba(239,68,68,0.3)]" },
-    running: { ring: "border-blue-500 animate-pulse", bg: "bg-blue-500/10", glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]" },
+    idle: { ring: "border-[color:var(--g-border-strong)]", bg: "bg-[color:var(--g-surface-1)]", glow: "" },
+    debating: { ring: "border-[color:var(--g-brand)] motion-safe:animate-pulse", bg: "bg-[color:var(--g-brand)]/[0.06]", glow: "" },
+    consensus: { ring: "border-success", bg: "bg-success/10", glow: "" },
+    escalated: { ring: "border-destructive", bg: "bg-destructive/10", glow: "" },
+    running: { ring: "border-[color:var(--g-brand)] motion-safe:animate-pulse", bg: "bg-[color:var(--g-brand)]/[0.06]", glow: "" },
     success: { ring: "border-success", bg: "bg-success/10", glow: "" },
     error: { ring: "border-destructive", bg: "bg-destructive/10", glow: "" },
     waiting: { ring: "border-warning/50", bg: "bg-warning/5", glow: "" },
@@ -1573,10 +1573,7 @@ function AgentCouncilNode({
   
   // Agent avatar colors based on role
   const getAgentColor = (index: number) => {
-    const colors = [
-      "bg-blue-500", "bg-emerald-500", "bg-[color:var(--g-signal)]", "bg-amber-500",
-      "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-pink-500"
-    ]
+    const colors = ["bg-[color:var(--g-frame)]", "bg-foreground/70"]
     return colors[index % colors.length]
   }
   
@@ -1599,11 +1596,11 @@ function AgentCouncilNode({
         stateConfig.ring,
         stateConfig.bg,
         stateConfig.glow,
-        isSelected && "ring-2 ring-warning/50 ring-offset-2 ring-offset-background"
+        isSelected && "ring-2 ring-foreground/60 ring-offset-2 ring-offset-background"
       )}>
         {/* Orbital ring animation */}
         <div className={cn(
-          "absolute inset-2 rounded-full border border-dashed border-warning/30",
+          "absolute inset-2 rounded-full border border-dashed border-[color:var(--g-border-strong)]",
           isDebating && "animate-spin"
         )} style={{ animationDuration: "8s" }} />
         
@@ -1611,9 +1608,9 @@ function AgentCouncilNode({
         <div className="absolute inset-0 flex items-center justify-center">
           <div className={cn(
             "w-16 h-16 rounded-full flex items-center justify-center",
-            "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-warning/40"
+            "border border-[color:var(--g-border-strong)] bg-background"
           )}>
-            <Users className="h-8 w-8 text-warning" />
+            <Users className="h-7 w-7 text-foreground" />
           </div>
         </div>
         
@@ -1653,8 +1650,8 @@ function AgentCouncilNode({
             isDraggingConnection
               ? "border-primary bg-primary scale-125"
               : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
+              ? "border-foreground bg-foreground/60 hover:scale-125"
+              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1667,8 +1664,8 @@ function AgentCouncilNode({
             isDraggingConnection
               ? "border-primary bg-primary scale-125"
               : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
+              ? "border-foreground bg-foreground/60 hover:scale-125"
+              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1681,8 +1678,8 @@ function AgentCouncilNode({
             isDraggingConnection
               ? "border-primary bg-primary scale-125"
               : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
+              ? "border-foreground bg-foreground/60 hover:scale-125"
+              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1695,8 +1692,8 @@ function AgentCouncilNode({
             isDraggingConnection
               ? "border-primary bg-primary scale-125"
               : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
+              ? "border-foreground bg-foreground/60 hover:scale-125"
+              : "border-[color:var(--g-border-strong)] bg-card hover:border-foreground hover:bg-foreground/40 hover:scale-125"
           )}
           title="Drag to connect"
         />
@@ -1719,15 +1716,15 @@ function AgentCouncilNode({
       <div className="mt-2 text-center max-w-48">
         <div className="font-medium text-sm text-foreground">{node.name}</div>
         <div className="flex items-center justify-center gap-1 mt-0.5">
-          <Users className="h-3 w-3 text-warning" />
-          <span className="text-xs text-warning">Agent Council</span>
+          <Users className="h-3 w-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Agent Council</span>
         </div>
         {node.description && (
           <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{node.description}</div>
         )}
         {/* State indicator */}
         {isDebating && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-warning/10 text-warning border-warning/30">
+          <Badge variant="outline" className="mt-1 border-[color:var(--g-brand-border)] text-[10px] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
             Council evaluating...
           </Badge>
         )}
@@ -1752,7 +1749,7 @@ function AgentCouncilNode({
           e.stopPropagation()
           onViewDebate()
         }}
-        className="flex items-center gap-1 text-[10px] text-warning hover:text-warning bg-warning/10 px-2 py-0.5 rounded-full hover:bg-warning/20 transition-colors"
+        className="flex items-center gap-1 rounded-full border border-[color:var(--g-border-strong)] px-2 py-0.5 text-[10px] text-foreground transition-colors hover:bg-[color:var(--g-surface-1)]"
       >
         <MessageSquare className="h-3 w-3" />
         View debate
@@ -5443,10 +5440,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       console.error("[v0] Error creating council node:", err)
     }
   }}
-  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-warning/10 transition-colors"
+  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-secondary/50 transition-colors"
 >
-  <Users className="h-4 w-4 text-warning" />
-  <span className="text-[10px] text-warning">Council</span>
+  <Users className="h-4 w-4 text-foreground" />
+  <span className="text-[10px] text-muted-foreground">Council</span>
 </button>
   <button
   onClick={() => addNode("approval", "Gate")}
@@ -5465,7 +5462,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             ref={canvasRef}
             data-trace-overlay={traceOverlay ? "on" : "off"}
             className={cn(
-              "flex-1 relative overflow-auto bg-background touch-pan-x touch-pan-y md:m-2 md:rounded-[14px] md:shadow-[var(--g-workspace-shadow)]",
+              "flex-1 relative overflow-auto bg-background touch-pan-x touch-pan-y",
               isDraggingConnection && "cursor-crosshair",
               traceOverlay && "ring-1 ring-inset ring-[color:var(--g-signal)]/40",
             )}
@@ -5821,9 +5818,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <circle cx={fromX} cy={fromY} r="3" fill="white" opacity={isDimmedPath ? "0.2" : "0.5"} />
                     <circle cx={toX} cy={toY} r="3" fill="white" opacity={isDimmedPath ? "0.2" : "0.5"} />
                     
-{/* Disconnect button - always visible and clickable */}
+{/* Disconnect affordance: appears on edge hover so idle edges read as flow, not delete buttons. */}
   <g 
-    className="disconnect-btn" 
+    className="disconnect-btn opacity-0 transition-opacity duration-150 group-hover:opacity-100 [@media(hover:none)]:opacity-100" 
     style={{ pointerEvents: "all", cursor: "pointer" }}
     onClick={(e) => {
       e.stopPropagation()
@@ -5831,32 +5828,31 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       handleDisconnect()
     }}
   >
-    {/* Visible button background */}
+    <title>{`Disconnect ${conn.from.name} from ${conn.to.name}`}</title>
     <circle
       cx={labelX}
       cy={labelY}
-      r="12"
-      fill="#374151"
-      stroke="#6b7280"
-      strokeWidth="2"
+      r="9"
+      fill="var(--g-frame)"
+      stroke="var(--g-frame-rule)"
+      strokeWidth="1"
     />
-    {/* X icon */}
     <line 
-      x1={labelX - 4} 
-      y1={labelY - 4} 
-      x2={labelX + 4} 
-      y2={labelY + 4} 
-      stroke="#d1d5db" 
-      strokeWidth="2.5" 
+      x1={labelX - 3} 
+      y1={labelY - 3} 
+      x2={labelX + 3} 
+      y2={labelY + 3} 
+      stroke="white" 
+      strokeWidth="1.75" 
       strokeLinecap="round" 
     />
     <line 
-      x1={labelX + 4} 
-      y1={labelY - 4} 
-      x2={labelX - 4} 
-      y2={labelY + 4} 
-      stroke="#d1d5db" 
-      strokeWidth="2.5" 
+      x1={labelX + 3} 
+      y1={labelY - 3} 
+      x2={labelX - 3} 
+      y2={labelY + 3} 
+      stroke="white" 
+      strokeWidth="1.75" 
       strokeLinecap="round" 
     />
   </g>
@@ -5869,9 +5865,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   y={labelY + 18}
   width={100}
   height={20}
-  rx="6"
-  fill="#1a1a2e"
-  stroke={isDecisionSource ? "var(--primary)" : "var(--workflow-line-mid)"}
+  rx="4"
+  fill="var(--g-frame)"
+  stroke="var(--g-frame-rule)"
   strokeWidth="1"
   opacity="0.95"
   />
@@ -5879,7 +5875,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   x={labelX}
   y={labelY + 32}
   textAnchor="middle"
-  fill={isDecisionSource ? "#a78bfa" : "#60a5fa"}
+  fill="white"
   fontSize="10"
   fontFamily="ui-monospace, monospace"
   fontWeight="500"

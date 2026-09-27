@@ -80,18 +80,20 @@ export function AskGravitreComposer({
         Ask Gravitre
       </p>
 
-      <div className={cn("flex flex-col gap-1.5", isMap ? "mb-3" : "mb-3")}>
-        {questions.map((question) => (
-          <button
-            key={question}
-            type="button"
-            onClick={() => summon(question, true)}
-            className="text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline"
-          >
-            {question}
-          </button>
-        ))}
-      </div>
+      {isMap ? null : (
+        <div className="mb-3 flex flex-col gap-1.5">
+          {questions.map((question) => (
+            <button
+              key={question}
+              type="button"
+              onClick={() => summon(question, true)}
+              className="text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline"
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+      )}
 
       <form
         className={cn("flex gap-2", isMap ? "" : "mt-4")}
@@ -106,7 +108,7 @@ export function AskGravitreComposer({
           onChange={(event) => setInput(event.target.value)}
           placeholder={isMap ? "Ask Gravitre anything about your business…" : "Ask a question…"}
           aria-label="Ask Gravitre"
-          className={isMap ? "h-11 border-[color:var(--g-brand-border)]/40 bg-background/80" : undefined}
+          className={isMap ? "h-10 border-[color:var(--g-brand-border)]/40 bg-background/80" : undefined}
         />
         <Button
           type="submit"
@@ -124,7 +126,19 @@ export function AskGravitreComposer({
         </p>
       ) : null}
 
-      <div className={cn(isMap ? "mt-2" : "mt-4")}>
+      <div className={cn(isMap ? "mt-2 flex flex-wrap items-center gap-x-4 gap-y-1" : "mt-4")}>
+        {isMap
+          ? questions.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => summon(question, true)}
+                className="text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline"
+              >
+                {question}
+              </button>
+            ))
+          : null}
         <button
           type="button"
           onClick={() => summon("", false)}

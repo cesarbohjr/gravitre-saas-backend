@@ -6,8 +6,8 @@ import useSWR from "swr"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { EmptyState } from "@/components/gravitre/empty-state"
+import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
+import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import { Button } from "@/components/ui/button"
@@ -47,7 +47,7 @@ function GoalRow({ goal, index }: { goal: GoalRecord; index: number }) {
     >
     <Link
       href={`/goals/${goal.id}`}
-      className="group block px-4 py-3.5 transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      className="group block px-[var(--np-page-pad-sm)] py-3.5 transition-colors sm:px-[var(--np-page-pad)] hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -88,7 +88,11 @@ export default function GoalsPage() {
     refreshInterval: 30_000,
   })
 
-  const goals = data ?? []
+  const [phase, setPhase] = useState<string | null>(null)
+  const allGoals = data ?? []
+  const goals = phase ? allGoals.filter((goal) => (goal.status ?? "draft") === phase) : allGoals
+  const countOf = (status: string) => allGoals.filter((goal) => (goal.status ?? "draft") === status).length
+  const activeGoals = countOf("active")
   const refreshGoals = useCallback(() => {
     void mutate()
   }, [mutate])
@@ -100,6 +104,13 @@ export default function GoalsPage() {
           title={SURFACE_COPY.pages.goals.title}
           description={SURFACE_COPY.pages.goals.description}
           icon={<Target className="h-5 w-5" />}
+          status={
+            allGoals.length > 0 ? (
+              <LiveStatus tone={activeGoals > 0 ? "live" : "idle"}>
+                {activeGoals > 0 ? `${activeGoals} objective${activeGoals === 1 ? "" : "s"} in motion` : "No objective in motion"}
+              </LiveStatus>
+            ) : undefined
+          }
           actions={
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={refreshGoals} aria-label="Refresh goals">
@@ -125,22 +136,43 @@ export default function GoalsPage() {
               <Skeleton key={index} className="h-24 w-full rounded-xl" />
             ))}
           </div>
-        ) : goals.length === 0 ? (
-          <EmptyState
-            icon={Target}
-            title="No goals yet"
-            description="Create a goal to generate an AI workflow plan tied to your connectors and approval gates."
-            action={{
-              label: "Create your first goal",
-              onClick: () => setWizardOpen(true),
-            }}
+        ) : allGoals.length === 0 ? (
+          <OperatingEmpty
+            className="px-0 sm:px-0"
+            title="No objectives yet"
+            body="A goal states the outcome you want. Gravitre drafts a plan tied to your connectors and approval gates, agents carry out the work, and results are measured against the goal."
+            path={["Set the objective", "Plan the work", "Agents execute", "Measure the outcome"]}
+            action={
+              <Button onClick={() => setWizardOpen(true)}>
+                <Plus className="size-4" />
+                Create your first goal
+              </Button>
+            }
           />
         ) : (
-          <ul className="divide-y divide-[color:var(--g-border-subtle)] overflow-hidden rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-card">
-            {goals.map((goal, index) => (
-              <GoalRow key={goal.id} goal={goal} index={index} />
-            ))}
-          </ul>
+          <div className="-mx-[var(--np-page-pad-sm)] sm:-mx-[var(--np-page-pad)]">
+            <PhaseBand
+              label="Goal phases"
+              phases={[
+                { id: "active", label: "In motion", count: activeGoals, tone: "live" },
+                { id: "draft", label: "Draft", count: countOf("draft"), tone: "neutral" },
+                { id: "paused", label: "Paused", count: countOf("paused"), tone: "attention" },
+                { id: "completed", label: "Completed", count: countOf("completed"), tone: "done" },
+                { id: "cancelled", label: "Cancelled", count: countOf("cancelled"), tone: "neutral" },
+              ]}
+              active={phase}
+              onSelect={setPhase}
+            />
+            {goals.length === 0 ? (
+              <OperatingEmpty title="No goals in this phase" />
+            ) : (
+              <ul className="divide-y divide-[color:var(--g-border-subtle)] border-b border-[color:var(--g-border-default)]">
+                {goals.map((goal, index) => (
+                  <GoalRow key={goal.id} goal={goal} index={index} />
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
 
