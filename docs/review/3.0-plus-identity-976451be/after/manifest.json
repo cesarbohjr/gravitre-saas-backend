@@ -1,0 +1,358 @@
+{
+  "base": "http://127.0.0.1:3010",
+  "buildId": "V2O9nD6s6ofy_2Uao6KmQ",
+  "buildRecord": "V2O9nD6s6ofy_2Uao6KmQ",
+  "at": "2026-09-27T23:45:06.359Z",
+  "results": [
+    {
+      "name": "A-builder-desktop-light",
+      "file": "A-builder-desktop-light.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (builder seed graph)",
+      "note": "edgeEndpoints=10 maxOffsetPx=1.0 all=[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "B-builder-desktop-dark",
+      "file": "B-builder-desktop-dark.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "C-connector-selected-light",
+      "file": "C-connector-selected-light.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "C-connector-selected-dark",
+      "file": "C-connector-selected-dark.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "D-agent-selected-light",
+      "file": "D-agent-selected-light.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "D-agent-selected-dark",
+      "file": "D-agent-selected-dark.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "E-council-light",
+      "file": "E-council-light.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "E-council-dark",
+      "file": "E-council-dark.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "F-approval-light",
+      "file": "F-approval-light.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "K-builder-mobile-light",
+      "file": "K-builder-mobile-light.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "mobile",
+      "theme": "light",
+      "class": "fixture harness (builder seed graph)",
+      "note": "edgeEndpoints=10 maxOffsetPx=1.0 all=[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "K-builder-mobile-dark",
+      "file": "K-builder-mobile-dark.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "mobile",
+      "theme": "dark",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "L-builder-tablet-light",
+      "file": "L-builder-tablet-light.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "tablet",
+      "theme": "light",
+      "class": "fixture harness (builder seed graph)",
+      "note": "edgeEndpoints=10 maxOffsetPx=1.0 all=[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "F-approval-dark",
+      "file": "F-approval-dark.png",
+      "route": "/e2e/shots/builder",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (builder seed graph)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "M-board-logos-light",
+      "file": "M-board-logos-light.png",
+      "route": "/dev/carbon-board",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "internal design board (placeholder content)"
+    },
+    {
+      "name": "M-board-roles-light",
+      "file": "M-board-roles-light.png",
+      "route": "/dev/carbon-board",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "internal design board (placeholder content)"
+    },
+    {
+      "name": "M-board-nodes-light",
+      "file": "M-board-nodes-light.png",
+      "route": "/dev/carbon-board",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "internal design board (placeholder content)"
+    },
+    {
+      "name": "G-connector-discovery-light",
+      "file": "G-connector-discovery-light.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "G-connector-discovery-dark",
+      "file": "G-connector-discovery-dark.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "H-connector-list-light",
+      "file": "H-connector-list-light.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "H-connector-list-dark",
+      "file": "H-connector-list-dark.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "H-connectors-overview-light",
+      "file": "H-connectors-overview-light.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "I-agents-roster-light",
+      "file": "I-agents-roster-light.png",
+      "route": "/e2e/shots/agents",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (agents)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "I-agents-roster-dark",
+      "file": "I-agents-roster-dark.png",
+      "route": "/e2e/shots/agents",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture harness (agents)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "I-agents-list-light",
+      "file": "I-agents-list-light.png",
+      "route": "/e2e/shots/agents",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture harness (agents)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "J-marketplace-light",
+      "file": "J-marketplace-light.png",
+      "route": "/marketplace/assets",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture tenant (E2E billing test account, real login)"
+    },
+    {
+      "name": "J-marketplace-dark",
+      "file": "J-marketplace-dark.png",
+      "route": "/marketplace/assets",
+      "viewport": "desktop",
+      "theme": "dark",
+      "class": "fixture tenant (E2E billing test account, real login)"
+    },
+    {
+      "name": "J-marketplace-connectors-light",
+      "file": "J-marketplace-connectors-light.png",
+      "route": "/marketplace/connectors",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture tenant (E2E billing test account, real login)"
+    },
+    {
+      "name": "I-agents-tenant-light",
+      "file": "I-agents-tenant-light.png",
+      "route": "/agents",
+      "viewport": "desktop",
+      "theme": "light",
+      "class": "fixture tenant (E2E billing test account, real login)"
+    }
+  ]
+}
