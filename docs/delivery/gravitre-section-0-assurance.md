@@ -3,7 +3,7 @@
 **Date:** 2026-09-27  
 **Scope:** Verification and acceptance assurance only. No new product capabilities.  
 **Isolated org:** `f07e57c0-1501-4000-8000-c04e57a00001`  
-**Tree at this pass:** observation alias on `68ee4a86`; **clean hold baseline** `dc0f9625a8157ee20312a4fa44663d396b3e9958` (envelope lock aligned to committed live JSON).  
+**Tree at this pass:** observation alias on `68ee4a86`; checkpoint `dc0f9625a8157ee20312a4fa44663d396b3e9958`; **complete core evidence pack** on this file’s commit (see Promotion consolidation).  
 **Product Experience Contract:** **not fully accepted.**
 **Capability baseline:** **HOLD**
 
@@ -112,7 +112,7 @@ Do not collapse to one SHA.
 
 | Role | SHA |
 |---|---|
-| Current hold tree | `dc0f9625a8157ee20312a4fa44663d396b3e9958` (observation→PROVIDER + envelope lock) |
+| Current hold tree | this evidence-pack commit (ancestor checkpoint `dc0f9625`; observation alias `68ee4a86`) |
 | CU latency LIVE | `bcff57021460cdf27da8cc5e88083b49d19d205c` |
 | Catalog search LIVE | `158c43eb9e65d66e0329b7d51410518a34f07323` |
 | Class C READ LIVE | `c29f12cb451fe75db6f657c0534dab8f3a36f201` |
@@ -275,3 +275,40 @@ Confirmed by existing tests, not redesigned:
 | Real-world Computer Use WRITE | BLOCKED_NO_AUTHORIZED_TARGET |
 
 After this package: **HOLD**, unless a new genuine regression appears or Cesar supplies owner-live session, physical mic, or an authorized isolated WRITE target.
+
+---
+
+## Promotion consolidation (2026-09-27)
+
+Worktree inventory on `main` at `c24f073c` (equal to `origin/main`, 0 ahead). No local unpushed commits. Stashes exist and were **not applied**.
+
+### Included in this evidence pack (categories C)
+
+| File | Why |
+|---|---|
+| `docs/delivery/gravitre-turn-latency-classes-live.json` | Class C SoT now matches matrix SHA `c29f12cb` conv `b30ba508-…` 4114/6125 ms. Envelope test already accepts `0b879ec4` **or** `c29f12cb`. Git history still has `0b879ec4` on `dc0f9625`. |
+| `docs/delivery/3.0-f-g-live.json` | Official verify-script OUT; SHA `a82d29b9`. |
+| `docs/delivery/3.0-h-live.json` | Official H OUT; SHA `16a2080b`. Listing `nl_f2_proven=false` kept honest. |
+| `docs/delivery/3.0-i-governed-voice-write-live.json` | Official I OUT; SHA `dd576514`; HubSpot `278972733388`. |
+| `docs/delivery/3.0-j-proactive-attention-live.json` | Official J OUT; SHA `4a1e84e9` conv `5cfc0c14-…` `notice_count=2` `write_allowed=false`. |
+| `docs/audits/gravitre-p2-synthesis-live.json` | Gap P2 live; SHA `a5796bf4`. |
+| `docs/audits/gravitre-p5-business-write-live.json` | Gap P5 live; SHA `a5796bf4`; contact `278971888595`. |
+| `docs/delivery/gravitre-core-hold-promote-main-smoke.json` | Minimal promote smoke on deployed runtime `68ee4a86` @ `2026-09-27T18:49:02Z`. |
+
+No category A runtime, B tests, or D config in the dirty tree.
+
+### Intentionally excluded (left on disk, not committed)
+
+| File | Class | Why |
+|---|---|---|
+| `.tmp-3.0-plus-full.txt` | F | Frontend 3.0 Plus design notes. |
+| `.tmp-checks.json` | E | GitHub check-runs dump for `a82d29b9`. |
+| `docs/delivery/gravitre-core-hold-promote-main-smoke.py` | E | Local one-off runner; JSON is the evidence. |
+| Dirty `docs/delivery/f2-repair-live.json` | E | Would overwrite 2.0-E ledger SHA `43570699` / conv `93a17de2` / audit `1a393ff1`. Restored. |
+| Dirty `docs/delivery/gravitre-3.0-pcm-live.json` | E | Would replace Apollo PCM capture with a different WRITE phrase on `dd576514`. Restored. |
+| Dirty `docs/audits/gravitre-pcm-closure-live.json` | E | Later rerun that dropped phrases. Restored. |
+| Stat-dirty `callback-hash-handoff.test.ts` / warmup md | E | Index hash unchanged; racy dirty. Restored. |
+
+Frontend branch `feat/gravitre-3.0-plus-frontend` was not merged.
+
+Exact GitHub CI for **this** SHA is recorded after the run completes (follow-up line below). Do not treat `dc0f9625` run `36326968254` as this pack’s CI.

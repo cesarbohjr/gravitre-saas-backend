@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-09-24T09:15:15.880187+00:00",
+  "proof_class": "SPOKEN_HTTP_NOT_VOICE_C",
+  "physical_mic": false,
+  "health_sha": "dd576514998072a1603a29fa6ec55e4e88a80398",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "probe_email": "gravitre-voice-write-20260924091231@alpha.test.gravitre.app",
+  "hold_conversation_id": "9474fa95-bf20-4853-a23c-d9efa2b51bd5",
+  "write_conversation_id": "ee785d2b-2dbd-4a5e-9a9b-426195303784",
+  "stage_hold": {
+    "http_status": 200,
+    "first_useful_text_ms": 3111,
+    "completion_ms": 17887,
+    "assistant_excerpt": "On it.Checking what I already know.Figuring out the next step.Working on it.Reply **yes** to confirm the HubSpot contact create, or **cancel** to drop it.I'll run this in Hubspot: **Create contact**. - Name: Gravitre Voice Probe 20260924091231 with email gravitre-voice-write-20260924091231@alpha.test.gravitre.app. Do not create it until I approve Gravitre Voice Probe 20260924091231 with email gravitre-voice-write-20260924091231@alpha.test.gravitre.app. Do not create it until I approve\n- Email: gravitre-voice-write-20260924091231@alpha.test.gravitre.app Reply **yes** to approve, or say what to change.",
+    "pending_seen": true,
+    "sent_claim": false
+  },
+  "yes_wait": {
+    "http_status": 200,
+    "first_useful_text_ms": 19334,
+    "completion_ms": 24883,
+    "assistant_excerpt": "Held. I won\u2019t send or execute anything until you clearly confirm.",
+    "pending_seen": false,
+    "sent_claim": false,
+    "pass": false
+  },
+  "cancel": {
+    "http_status": 200,
+    "first_useful_text_ms": 1860,
+    "completion_ms": 14882,
+    "assistant_excerpt": "On it.Checking what I already know.Figuring out the next step.Working on it.Done. I cancelled the pending plan. What should we do instead?",
+    "pending_seen": false,
+    "sent_claim": false
+  },
+  "stage_write": {
+    "http_status": 200,
+    "first_useful_text_ms": 1668,
+    "completion_ms": 35081,
+    "assistant_excerpt": "On it.Checking what I already know.Figuring out the next step.Working on it.Reply **yes** to create the HubSpot contact, or **cancel** to stop it.I'll run this in Hubspot: **Create contact**. - Name: Gravitre Voice Probe 20260924091231 with email gravitre-voice-write-20260924091231@alpha.test.gravitre.app Gravitre Voice Probe 20260924091231 with email gravitre-voice-write-20260924091231@alpha.test.gravitre.app\n- Email: gravitre-voice-write-20260924091231@alpha.test.gravitre.app Reply **yes** to approve, or say what to change.",
+    "pending_seen": true,
+    "sent_claim": false
+  },
+  "ambiguous": {
+    "http_status": 200,
+    "first_useful_text_ms": 4865,
+    "completion_ms": 6688,
+    "assistant_excerpt": "That isn\u2019t a clear approval. Say yes to run it, or tell me what to change first.",
+    "pending_seen": false,
+    "sent_claim": false,
+    "pass": true
+  },
+  "confirm": {
+    "http_status": 200,
+    "first_useful_text_ms": 1304,
+    "completion_ms": 25579,
+    "assistant_excerpt": "On it.Checking what I already know.Figuring out the next step.Working on it.One moment. I\u2019m creating it now.**Create contact** is confirmed. Created HubSpot contact Gravitre Voice Probe 20260924091231 with email gravitre-voice-write-20260924091231@alpha.test.gravitre.app Gravitre Voice Probe 20260924091231 with email gravitre-voice-write-20260924091231@alpha.test.gravitre.app (id: 278972733388). _What this means:_ HubSpot now has this record \u2014 you can open it or create a follow-up from chat. [View in Gravitre](/ai?c=ee785d2b-2dbd-4a5e-9a9b-426195303784) **What I'd look at next:** Create a follow-up task in HubSpot \u2014 New contact is Verified in HubSpot; a task keeps ownership clear.\n_Suggest only \u2014 reply_ **Create a HubSpot task to follow up with this contact** _to proceed (nothing runs until you approve)._",
+    "pending_seen": false,
+    "sent_claim": false
+  },
+  "state_after_confirm": {
+    "http_status": 200,
+    "pending_status": "executed",
+    "plan_id": "439ded6b-05af-4912-bb7d-ff1f89937dd5",
+    "plan_terminal": "completed",
+    "observation_success": true
+  },
+  "duplicate": {
+    "http_status": 200,
+    "first_useful_text_ms": 4649,
+    "completion_ms": 6258,
+    "assistant_excerpt": "That action is already done, so I\u2019m not running it again.",
+    "pending_seen": false,
+    "sent_claim": false
+  },
+  "follow": {
+    "http_status": 200,
+    "first_useful_text_ms": 1370,
+    "completion_ms": 29173,
+    "assistant_excerpt": "On it.Checking what I already know.Figuring out the next step.Working on it.Yes \u2014 that contact was created and verified. The email is gravitre-voice-write-20260924091231@alpha.test.gravitre.app. The provider record is 278972733388.",
+    "pending_seen": false,
+    "sent_claim": false
+  },
+  "hold_pass": false,
+  "identity_preserved_in_approval": true,
+  "classified_preamble_present": false,
+  "physical_human_voice_pass": false
+}

@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-09-23T20:17:51.159168+00:00",
+  "health_sha": "a5796bf40613f14aabc25ddc35394b749c1b82c3",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "fixture_label": "placeholder isolated-org operator verification \u2014 not customer catalog",
+  "probe_email": "placeholder.isolated.459a58e7fe@gravitre-smoke.example.com",
+  "prompt": "Create a HubSpot contact named \"Placeholder Isolated Org\" with email placeholder.isolated.459a58e7fe@gravitre-smoke.example.com.",
+  "conversation_id": "da59fbf2-32c7-4790-9469-ff082581fe23",
+  "canonical": {
+    "plan_source": "connector_write",
+    "plan_terminal": "completed",
+    "observation_count": 1,
+    "provider_record_id": "278971888595",
+    "pending_status": "executed",
+    "lifecycle": "COMPLETED",
+    "verification_status": "verified"
+  },
+  "first": {
+    "excerpt": "I'll run this in Hubspot: **Create contact**. Reply **yes** to approve, or say what to change.",
+    "http_status": 200,
+    "first_ms": 36383
+  },
+  "confirm": {
+    "excerpt": "**Create contact** is confirmed. Created HubSpot contact Placeholder Isolated Org Placeholder Isolated Org (id: 278971888595). _What this means:_ HubSpot now has this record \u2014 you can open it or create a follow-up from chat. [View in Gravitre](/ai?c=da59fbf2-32c7-4790-9469-ff082581fe23) **What I'd look at next:** Create a follow-up task in HubSpot \u2014 New contact is Verified in HubSpot; a task keeps ownership clear.\n_Suggest only \u2014 reply_ **Create a HubSpot task to follow up with this contact** _t",
+    "http_status": 200,
+    "first_ms": 18975
+  },
+  "actions": [
+    "context.understanding.extracted",
+    "memory.recalled",
+    "evidence.sufficiency.assessed",
+    "runtime.jit.context_profile",
+    "runtime.jit.tool_namespace",
+    "unified_turn.live.fallthrough",
+    "runtime.turn_latency.critical_path",
+    "response.composer.completed",
+    "cognitive.loop.completed",
+    "context.understanding.extracted",
+    "memory.recalled",
+    "pending_reply.classified",
+    "tool.invoke.requested",
+    "tool.invoke.completed",
+    "workflow.execute.completed",
+    "tool.invoke.requested",
+    "tool.invoke.completed",
+    "tool.invoke.requested",
+    "tool.invoke.completed",
+    "runtime.turn_latency.critical_path",
+    "response.composer.completed",
+    "cognitive.loop.completed"
+  ],
+  "invokes": [
+    {
+      "action": "tool.invoke.completed",
+      "created_at": "2026-09-23T20:18:47.642431+00:00",
+      "meta": {
+        "action": "hubspot.contacts.create",
+        "provider_invoked": true
+      }
+    },
+    {
+      "action": "tool.invoke.completed",
+      "created_at": "2026-09-23T20:18:50.518619+00:00",
+      "meta": {
+        "action": "hubspot.contacts.get",
+        "provider_invoked": true
+      }
+    },
+    {
+      "action": "tool.invoke.completed",
+      "created_at": "2026-09-23T20:18:52.545227+00:00",
+      "meta": {
+        "action": "hubspot.contacts.get"
+      }
+    }
+  ],
+  "pending": [
+    {
+      "action": "pending_reply.classified",
+      "created_at": "2026-09-23T20:18:44.3128+00:00"
+    }
+  ],
+  "observations": [],
+  "connector_id": "41175658-a119-4f3f-949d-0b927e7c0b78",
+  "hmac_search": {
+    "success": true,
+    "preflight_ok": true,
+    "error": null
+  },
+  "verify_entity_get": {
+    "verified": true,
+    "effect": "created",
+    "detail": "follow_up_entity_get_confirmed",
+    "read_action": "hubspot.contacts.get",
+    "entity_id": "278971888595",
+    "follow_up_attempted": true
+  },
+  "cleanup_deleted": {
+    "success": true,
+    "error": null,
+    "contact_id": "278971888595"
+  },
+  "written_entity_id": "278971888595",
+  "chain_ok": true,
+  "completed_language": true,
+  "composer_agrees": true
+}
