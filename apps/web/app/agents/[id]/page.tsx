@@ -357,13 +357,12 @@ export default function AgentProfilePage({
                 exit={{ opacity: 0, y: -20 }}
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2"
               >
-                <GravitreSurface className="col-span-2">
-                  <AgentCapabilitiesCard
-                    capabilities={apiAgent.capabilities}
-                    permissions={apiAgent.permissions}
-                    systems={agent.systems.map((system) => system.name)}
-                  />
-                </GravitreSurface>
+                <AgentCapabilitiesCard
+                  className="col-span-2"
+                  capabilities={apiAgent.capabilities}
+                  permissions={apiAgent.permissions}
+                  systems={agent.systems.map((system) => system.name)}
+                />
 
                 <div className="col-span-2">
                   <AgentReferenceFoldersPanel

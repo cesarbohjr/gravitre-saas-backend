@@ -281,15 +281,15 @@ export const STATUS = {
   pending:
     "border border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]",
   approved:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
   rejected:
     "border border-transparent bg-destructive/10 text-destructive",
   running:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
   failed:
     "border border-transparent bg-destructive/10 text-destructive",
   verified:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
   estimate:
     "border border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]",
   paused:
@@ -319,7 +319,7 @@ export const STATUS_DOT: Record<StatusTone, string> = {
  */
 export const HIGHLIGHT = {
   brand:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
   signal:
     "border border-transparent bg-[color:var(--g-signal-soft)] text-[color:var(--g-signal)]",
   intelligence:

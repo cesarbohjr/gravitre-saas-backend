@@ -425,7 +425,7 @@ function ActivityPageInner() {
                 <>
                   <HubFilterField label="Status" compact>
                     <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger className="h-8 w-[140px]">
+                      <SelectTrigger aria-label="Status" className="h-8 w-[140px]">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -440,7 +440,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Lifecycle" compact>
                     <Select value={lifecycle} onValueChange={setLifecycle}>
-                      <SelectTrigger className="h-8 w-[150px]">
+                      <SelectTrigger aria-label="Lifecycle" className="h-8 w-[150px]">
                         <SelectValue placeholder="Lifecycle" />
                       </SelectTrigger>
                       <SelectContent>
@@ -468,7 +468,7 @@ function ActivityPageInner() {
                 <>
                   <HubFilterField label="Type" compact>
                     <Select value={objectType} onValueChange={setObjectType}>
-                      <SelectTrigger className="h-8 w-[170px]">
+                      <SelectTrigger aria-label="Type" className="h-8 w-[170px]">
                         <SelectValue placeholder="Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -490,7 +490,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Department" compact>
                     <Select value={objectDepartment} onValueChange={setObjectDepartment}>
-                      <SelectTrigger className="h-8 w-[160px]">
+                      <SelectTrigger aria-label="Department" className="h-8 w-[160px]">
                         <SelectValue placeholder="Department" />
                       </SelectTrigger>
                       <SelectContent>
@@ -510,7 +510,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Status" compact>
                     <Select value={objectStatus} onValueChange={setObjectStatus}>
-                      <SelectTrigger className="h-8 w-[150px]">
+                      <SelectTrigger aria-label="Status" className="h-8 w-[150px]">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -527,7 +527,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Priority" compact>
                     <Select value={objectPriority} onValueChange={setObjectPriority}>
-                      <SelectTrigger className="h-8 w-[140px]">
+                      <SelectTrigger aria-label="Priority" className="h-8 w-[140px]">
                         <SelectValue placeholder="Priority" />
                       </SelectTrigger>
                       <SelectContent>

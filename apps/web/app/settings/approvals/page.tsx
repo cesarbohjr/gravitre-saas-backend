@@ -62,7 +62,7 @@ export default function HitlApprovalsPage() {
         >
           <div className="flex h-64 items-center justify-center p-4 text-muted-foreground md:p-6">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Loadingâ€¦
+            Loading…
           </div>
         </SettingsShell>
       </AppShell>
@@ -227,13 +227,13 @@ function ApprovalsContent() {
           </p>
           <h1 className={TYPE.pageTitle}>Human-in-the-loop</h1>
           <p className={cn(TYPE.pageLead, "mt-2 leading-relaxed")}>
-            Require approval before high-impact actions run. Scope by organization, department, or person â€”
+            Require approval before high-impact actions run. Scope by organization, department, or person —
             more specific rules win when several match.
           </p>
         </div>
         <p className="text-sm tabular-nums text-muted-foreground" data-testid="hitl-policy-counts">
           <span className="font-semibold text-foreground">{policies.length}</span>{" "}
-          {policies.length === 1 ? "policy" : "policies"} Â·{" "}
+          {policies.length === 1 ? "policy" : "policies"} ·{" "}
           <span className="font-semibold text-foreground">{enabledCount}</span> active
         </p>
       </motion.header>
@@ -252,7 +252,7 @@ function ApprovalsContent() {
           {isLoading && !data ? (
             <div className="flex items-center py-10 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loading policiesâ€¦
+              Loading policies…
             </div>
           ) : error ? (
             <div className="border-l-2 border-destructive py-2 pl-3 text-sm text-destructive">
@@ -297,12 +297,12 @@ function ApprovalsContent() {
                       {policy.scope_type === "org"
                         ? "Entire org"
                         : policy.scope_type === "department"
-                          ? `Department Â· ${departmentNameById.get(policy.department_id || "") || policy.department_id}`
-                          : `User Â· ${userLabelById.get(policy.subject_user_id || "") || policy.subject_user_id}`}
-                      {" Â· "}
-                      Actions: {(policy.action_kinds || []).join(", ") || "â€”"}
-                      {" Â· "}
-                      Approvers: {(policy.approver_roles || []).join(", ") || "â€”"}
+                          ? `Department · ${departmentNameById.get(policy.department_id || "") || policy.department_id}`
+                          : `User · ${userLabelById.get(policy.subject_user_id || "") || policy.subject_user_id}`}
+                      {" · "}
+                      Actions: {(policy.action_kinds || []).join(", ") || "—"}
+                      {" · "}
+                      Approvers: {(policy.approver_roles || []).join(", ") || "—"}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-2">
@@ -399,7 +399,7 @@ function ApprovalsContent() {
                   value={departmentId}
                   onChange={(e) => setDepartmentId(e.target.value)}
                 >
-                  <option value="">Select departmentâ€¦</option>
+                  <option value="">Select department…</option>
                   {departments.map((dept) => (
                     <option key={dept.id} value={dept.id}>
                       {dept.name}
@@ -417,7 +417,7 @@ function ApprovalsContent() {
                   value={subjectUserId}
                   onChange={(e) => setSubjectUserId(e.target.value)}
                 >
-                  <option value="">Select userâ€¦</option>
+                  <option value="">Select user…</option>
                   {team.map((member) => {
                     const id = String(member.id || "")
                     return (

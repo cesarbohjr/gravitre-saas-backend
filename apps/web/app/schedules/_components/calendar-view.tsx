@@ -127,7 +127,7 @@ export function CalendarView({
                       ? "bg-[color:var(--g-text-primary)] font-semibold text-background"
                       : inMonth
                         ? "font-medium text-foreground"
-                        : "text-muted-foreground/50",
+                        : "text-muted-foreground",
                   )}
                 >
                   {day.getDate()}

@@ -225,7 +225,7 @@ function AssetCard({
             {systems.length > 3 ? <li className="text-muted-foreground">+{systems.length - 3} more</li> : null}
           </ul>
         )}
-        {!ready ? <p className="mt-1 text-[11.5px] text-warning">Connect required apps to install</p> : null}
+        {!ready ? <p className="mt-1 text-[11.5px] text-amber-800 dark:text-warning">Connect required apps to install</p> : null}
       </div>
       <div className="flex flex-wrap items-start gap-2 pl-7 md:justify-end md:pl-0">
         <PriceBadge asset={asset} />
