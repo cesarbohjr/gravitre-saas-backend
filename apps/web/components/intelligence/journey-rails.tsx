@@ -26,7 +26,7 @@ export function IntelligenceJourney({ step, className }: { step: 0 | 1 | 2 | 3; 
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5",
               index === step
-                ? "bg-[color:var(--g-intelligence-soft)] font-semibold text-[color:var(--g-intelligence)]"
+                ? "bg-[color:var(--g-intelligence-soft)] font-semibold text-[color:var(--g-intelligence-bright)]"
                 : index < step
                   ? "text-foreground"
                   : "text-muted-foreground",

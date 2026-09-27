@@ -910,6 +910,7 @@ export function ConnectorIcon({
   return (
     <div className={cn("relative inline-flex", className)} onClick={onClick}>
       <div
+        role="img"
         aria-label={`${displayName} connector`}
         className={cn(
           "inline-flex items-center justify-center border transition-all duration-200",

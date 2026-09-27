@@ -700,6 +700,8 @@ function CanvasNode({
             e.stopPropagation()
             onDelete()
           }}
+          aria-label="Delete step"
+          title="Delete step"
           className={cn(
             "absolute -right-2.5 -top-2.5 rounded-full bg-destructive text-destructive-foreground transition-all flex items-center justify-center shadow-lg",
             // Larger on mobile (44px) for touch, smaller on desktop
@@ -798,18 +800,13 @@ function CanvasNode({
 
         {/* API Context - subtle metadata */}
         {node.vendor && node.selectedAction && (
-          <div className="flex items-center gap-2 mb-2 text-[9px] text-muted-foreground/70">
+          <div className="flex items-center gap-2 mb-2 text-[11px] text-muted-foreground">
             {(() => {
               const action = connectorActions[node.vendor]?.actions.find(a => a.id === node.selectedAction)
               if (!action) return null
               return (
                 <>
-                  <span className={cn(
-                    "px-1.5 py-0.5 rounded font-mono",
-                    action.method === "GET" && "bg-success/10 text-success",
-                    action.method === "POST" && "bg-blue-500/10 text-[color:var(--info)]",
-                    action.method === "PATCH" && "bg-warning/10 text-warning"
-                  )}>
+                  <span className="font-mono font-medium text-[color:var(--g-text-secondary)]">
                     {action.method}
                   </span>
                   <span className="text-muted-foreground/50">|</span>
@@ -1092,6 +1089,8 @@ function DecisionNode({
               e.stopPropagation()
               onDelete()
             }}
+            aria-label="Delete step"
+            title="Delete step"
             className="absolute -right-3 -top-3 -rotate-45 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity flex items-center justify-center z-10"
           >
             <X className="h-3 w-3" />
@@ -1723,6 +1722,8 @@ function AgentCouncilNode({
               e.stopPropagation()
               onDelete()
             }}
+            aria-label="Delete step"
+            title="Delete step"
             className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 transition-colors z-20"
           >
             <X className="h-3 w-3" />

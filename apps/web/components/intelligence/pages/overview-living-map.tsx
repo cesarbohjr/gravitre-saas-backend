@@ -218,7 +218,7 @@ export function OverviewLivingMap({
               className={cn(
                 "flex-1 rounded px-3 py-1.5 text-xs font-semibold capitalize",
                 mobilePanel === panel
-                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]"
+                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence-bright)]"
                   : "text-[color:var(--g-text-muted)]",
               )}
               onClick={() => setMobilePanel(panel)}
@@ -248,7 +248,7 @@ export function OverviewLivingMap({
               className={cn(
                 "shrink-0 rounded-md px-3 py-1.5 text-left transition-colors",
                 active
-                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]"
+                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence-bright)]"
                   : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)]",
               )}
             >
