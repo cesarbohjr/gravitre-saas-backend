@@ -6,6 +6,7 @@ No provider WRITE. Form fill stays on approval-gated interact.
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -258,6 +259,8 @@ async def try_computer_browser_read_turn(
     plan = mark_plan_terminal(plan, terminal)
     from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
 
+    t_persist = time.perf_counter()
+    stage_timings = dict(raw.get("stage_timings") or {})
     merged = {
         **(task_state or {}),
         **execution_plan_patch(plan),
@@ -268,10 +271,16 @@ async def try_computer_browser_read_turn(
             "cdp_trace_id": raw.get("cdp_trace_id"),
             "screenshot_digest": raw.get("screenshot_digest"),
             "visits": visits,
-            "stage_timings": raw.get("stage_timings") or {},
+            "stage_timings": stage_timings,
         },
     }
     merged = bind_finished_work(merged, body=summary, title="Public web research summary")
+    stage_timings["observation_bind_ms"] = int((time.perf_counter() - t_persist) * 1000)
+    evidence = merged.get("computer_browser_evidence")
+    if isinstance(evidence, dict):
+        evidence["stage_timings"] = stage_timings
+    obs.structured = {**dict(obs.structured), "stage_timings": stage_timings}
+    merged.update(observations_patch([obs]))
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",

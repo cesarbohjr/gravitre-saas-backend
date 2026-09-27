@@ -151,25 +151,68 @@ _public_chromium: Any = None
 _public_chromium_lock = asyncio.Lock()
 
 
-async def _public_read_chromium() -> Any:
+async def _navigation_timing_ms(page: Any) -> dict[str, int]:
+    try:
+        raw = await page.evaluate(
+            """() => {
+              const n = performance.getEntriesByType('navigation')[0];
+              if (!n) return {};
+              const tls = n.secureConnectionStart > 0
+                ? Math.round(n.connectEnd - n.secureConnectionStart)
+                : 0;
+              return {
+                dns_ms: Math.round(n.domainLookupEnd - n.domainLookupStart),
+                tcp_connect_ms: Math.round(n.connectEnd - n.connectStart),
+                tls_ms: tls,
+                ttfb_ms: Math.round(n.responseStart - n.requestStart),
+                download_ms: Math.round(n.responseEnd - n.responseStart),
+                dcl_from_nav_start_ms: Math.round(n.domContentLoadedEventEnd - n.startTime)
+              };
+            }"""
+        )
+    except Exception:  # noqa: BLE001
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, int] = {}
+    for key, value in raw.items():
+        try:
+            out[str(key)] = int(value or 0)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+async def _public_read_chromium() -> tuple[Any, dict[str, int]]:
     """Process-local Chromium for public READ. Isolated context per task — no auth reuse."""
     global _playwright_driver, _public_chromium
     async with _public_chromium_lock:
         if _public_chromium is not None:
             try:
                 if _public_chromium.is_connected():
-                    return _public_chromium
+                    return _public_chromium, {
+                        "chromium_reused": 1,
+                        "playwright_start_ms": 0,
+                        "chromium_launch_ms": 0,
+                    }
             except Exception:  # noqa: BLE001
                 _public_chromium = None
         from playwright.async_api import async_playwright
 
+        t0 = time.perf_counter()
         if _playwright_driver is None:
             _playwright_driver = await async_playwright().start()
+        playwright_start_ms = int((time.perf_counter() - t0) * 1000)
+        t1 = time.perf_counter()
         _public_chromium = await _playwright_driver.chromium.launch(
             headless=True,
             args=["--no-sandbox", "--disable-dev-shm-usage"],
         )
-        return _public_chromium
+        return _public_chromium, {
+            "chromium_reused": 0,
+            "playwright_start_ms": playwright_start_ms,
+            "chromium_launch_ms": int((time.perf_counter() - t1) * 1000),
+        }
 
 
 async def browser_agent_playwright_session(
@@ -200,7 +243,8 @@ async def browser_agent_playwright_session(
     context = None
     try:
         t0 = time.perf_counter()
-        browser = await _public_read_chromium()
+        browser, acquire = await _public_read_chromium()
+        stages.update(acquire)
         stages["chromium_acquire_ms"] = int((time.perf_counter() - t0) * 1000)
         t0 = time.perf_counter()
         context = await browser.new_context(accept_downloads=False)
@@ -208,9 +252,17 @@ async def browser_agent_playwright_session(
         t0 = time.perf_counter()
         page = await context.new_page()
         stages["page_create_ms"] = int((time.perf_counter() - t0) * 1000)
+        stages["first_goto_start_ms"] = 0
         t0 = time.perf_counter()
         await page.goto(safe_url, wait_until="domcontentloaded", timeout=45_000)
         stages["first_goto_dcl_ms"] = int((time.perf_counter() - t0) * 1000)
+        first_nav = await _navigation_timing_ms(page)
+        stages["first_dns_ms"] = first_nav.get("dns_ms", 0)
+        stages["first_tcp_connect_ms"] = first_nav.get("tcp_connect_ms", 0)
+        stages["first_tls_ms"] = first_nav.get("tls_ms", 0)
+        stages["first_ttfb_ms"] = first_nav.get("ttfb_ms", 0)
+        stages["first_download_ms"] = first_nav.get("download_ms", 0)
+        stages["first_dcl_from_nav_start_ms"] = first_nav.get("dcl_from_nav_start_ms", 0)
         first = await _playwright_page_snapshot(page)
         first_ms = first.get("stage_ms") if isinstance(first.get("stage_ms"), dict) else {}
         stages["first_title_ms"] = int(first_ms.get("title_ms") or 0)
@@ -250,6 +302,13 @@ async def browser_agent_playwright_session(
                 t0 = time.perf_counter()
                 await page.wait_for_load_state("domcontentloaded", timeout=45_000)
                 stages["second_dcl_ms"] = int((time.perf_counter() - t0) * 1000)
+                second_nav = await _navigation_timing_ms(page)
+                stages["second_dns_ms"] = second_nav.get("dns_ms", 0)
+                stages["second_tcp_connect_ms"] = second_nav.get("tcp_connect_ms", 0)
+                stages["second_tls_ms"] = second_nav.get("tls_ms", 0)
+                stages["second_ttfb_ms"] = second_nav.get("ttfb_ms", 0)
+                stages["second_download_ms"] = second_nav.get("download_ms", 0)
+                stages["second_dcl_from_nav_start_ms"] = second_nav.get("dcl_from_nav_start_ms", 0)
                 second = await _playwright_page_snapshot(page)
                 second_ms = second.get("stage_ms") if isinstance(second.get("stage_ms"), dict) else {}
                 stages["second_title_ms"] = int(second_ms.get("title_ms") or 0)

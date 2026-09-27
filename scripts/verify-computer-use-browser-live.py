@@ -98,13 +98,23 @@ def parse_sse(raw: str) -> dict:
             name = str(data.get("toolName") or obj.get("toolName") or "")
             if name:
                 tools.append(name)
-    return {"assistant": "".join(texts).strip(), "tools": tools[:12]}
+    assistant = "".join(texts).strip()
+    return {
+        "assistant": assistant,
+        "tools": tools[:12],
+        "has_opening_progress": "opening a real browser session now" in assistant.lower(),
+        "has_completed_browser_result": "opened a real browser (not an http fetch)" in assistant.lower(),
+        "claims_httpx": "httpx" in assistant.lower(),
+    }
 
 
 def stream_turn(http: httpx.Client, headers: dict, conv: str, org_id: str, prompt: str) -> dict:
     t0 = time.perf_counter()
     first_text_ms = None
+    first_progress_ms = None
+    first_result_ms = None
     buf: list[str] = []
+    acc = ""
     with http.stream(
         "POST",
         f"{BASE}/api/assistant/chat",
@@ -121,18 +131,38 @@ def stream_turn(http: httpx.Client, headers: dict, conv: str, org_id: str, promp
     ) as resp:
         status = resp.status_code
         for piece in resp.iter_text():
-            if first_text_ms is None and "text-delta" in piece:
-                first_text_ms = int((time.perf_counter() - t0) * 1000)
             buf.append(piece)
+            acc += piece
+            now_ms = int((time.perf_counter() - t0) * 1000)
+            if first_text_ms is None and "text-delta" in piece:
+                first_text_ms = now_ms
+            lower = acc.lower()
+            if first_progress_ms is None and "opening a real browser session now" in lower:
+                first_progress_ms = now_ms
+            if first_result_ms is None and "opened a real browser (not an http fetch)" in lower:
+                first_result_ms = now_ms
     parsed = parse_sse("".join(buf))
     return {
         "http_status": status,
-        "first_useful_text_ms": first_text_ms,
+        "first_text_delta_ms": first_text_ms,
+        "first_progress_ms": first_progress_ms,
+        "first_result_ms": first_result_ms,
+        "first_useful_text_ms": first_result_ms if first_result_ms is not None else first_text_ms,
         "completion_ms": int((time.perf_counter() - t0) * 1000),
         "assistant_excerpt": (parsed.get("assistant") or "")[:1600],
         "tools": parsed.get("tools"),
-        "used_httpx_claim": "httpx" in str(parsed.get("assistant") or "").lower(),
+        "has_opening_progress": parsed.get("has_opening_progress"),
+        "has_completed_browser_result": parsed.get("has_completed_browser_result"),
+        "used_httpx_claim": bool(parsed.get("claims_httpx")),
         "create_claim": "created the contact" in str(parsed.get("assistant") or "").lower(),
+        "progress_before_result": (
+            first_progress_ms is not None
+            and first_result_ms is not None
+            and first_progress_ms < first_result_ms
+        ),
+        "progress_is_not_completion": bool(
+            parsed.get("has_opening_progress") and parsed.get("has_completed_browser_result")
+        ),
     }
 
 
@@ -184,6 +214,13 @@ def main() -> int:
     obs = (task.get("execution_observations") or [{}])[-1]
     arts = task.get("work_artifacts") or []
     after_obs = len((state_after.get("task_state") or {}).get("execution_observations") or [])
+    evidence = task.get("computer_browser_evidence") or {}
+    previous = {}
+    if OUT.is_file():
+        try:
+            previous = json.loads(OUT.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            previous = {}
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "proof_class": "BROWSER_CDP_PLAYWRIGHT",
@@ -208,6 +245,11 @@ def main() -> int:
         "artifact_exportable": (arts[-1].get("metadata") or {}).get("exportable") if arts else None,
         "obs_count_after_followup": after_obs,
         "reconstruct_entity": (state.get("execution_result") or {}).get("entity_id"),
+        "stage_timings": (obs.get("structured") or {}).get("stage_timings")
+        or evidence.get("stage_timings")
+        or {},
+        "prior_live_baseline": previous.get("current_sha_baseline") or previous.get("prior_live_baseline"),
+        "progress_sse_class": "UX_PROGRESS_NOT_BROWSER_WALL_TIME",
     }
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))
