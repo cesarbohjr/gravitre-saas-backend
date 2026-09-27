@@ -13,7 +13,7 @@ export function EnvironmentBadge({ environment, className, showIcon = false }: E
       className={cn(
         "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium",
         environment === "production"
-          ? "bg-success/15 text-[color:var(--g-brand-active)] dark:text-success"
+          ? "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:bg-success/15 dark:text-success"
           : "bg-warning/15 text-amber-800 dark:text-warning",
         className
       )}
