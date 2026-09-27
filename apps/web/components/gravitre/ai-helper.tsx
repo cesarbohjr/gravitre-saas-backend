@@ -171,7 +171,7 @@ export function GravitreAIHelper() {
                   "md:-translate-x-1/2 md:w-[min(460px,calc(100vw-var(--np-sidebar)-64px))] md:py-1.5 md:pl-1.5 md:pr-2",
                 ),
             // Ink command dock: part of the graphite frame, not a floating support bubble.
-            "bg-[color:var(--g-frame)] px-2 py-1.5 shadow-[0_12px_28px_-12px_rgb(0_0_0/0.45)] transition-colors",
+            "bg-[color:var(--g-frame)] px-2 py-1.5 shadow-[0_8px_20px_-12px_rgb(0_0_0/0.4)] transition-colors",
             "hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
           )}
           aria-label={accessibleName}
@@ -185,7 +185,7 @@ export function GravitreAIHelper() {
                 amplitude={presence === "listening" ? 0.55 : 0.35}
               />
             ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-[color:var(--g-frame-rule)] bg-white/[0.04] text-foreground">
+              <span className="flex h-8 w-8 items-center justify-center text-foreground">
                 {/* A conversation bubble, not the abstract agent glyph: the control
                     has to read as "AI Chat" at a glance. */}
                 <NucleoChat className="h-4 w-4" />
@@ -217,7 +217,7 @@ export function GravitreAIHelper() {
           {onBuilder ? null : (
             <span className="hidden shrink-0 items-center gap-1.5 md:flex" aria-hidden>
               {pendingApprovals > 0 ? (
-                <span className="rounded-[3px] bg-[color:var(--g-signal)]/20 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-foreground">
+                <span className="inline-flex items-center gap-1.5 px-1 text-[11px] font-medium tabular-nums text-foreground before:size-1.5 before:rounded-full before:bg-[color:var(--g-approval)] before:content-['']">
                   {pendingApprovals} to approve
                 </span>
               ) : null}

@@ -20,6 +20,15 @@ import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-
 import { IntegrationSuggestionEvidenceBanner } from "@/components/workflows/integration-suggestion-evidence-banner"
 import { NodeRunDebugPanel } from "@/components/workflows/node-run-debug-panel"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
+import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  BuilderInspector,
+  BuilderNav,
+  BuilderRunTrace,
+  BuilderWorkflowOverview,
+  type GraphEndNode,
+  type InspectorMode,
+} from "@/components/workflows/builder-chrome"
 import { ScheduleEditorDialog } from "@/components/schedules/schedule-editor-dialog"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -152,6 +161,7 @@ import {
   RefreshCw,
   Pause,
   XCircle,
+  PenLine,
 } from "lucide-react"
 import {
   Sheet,
@@ -481,19 +491,22 @@ function getConnectorValidationIssues(nodes: WorkflowNode[]): ConnectorValidatio
 }
 
 // Node type configs
+// Node type is carried by icon + label; the icon frame stays monochrome.
+const NODE_ICON_FRAME = "bg-[color:var(--g-surface-2)] border-[color:var(--g-border-default)] text-foreground"
+
 const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label: string }> = {
-  agent: { icon: Bot, color: "bg-info/20 border-info/40 text-info", label: "Agent" },
-  task: { icon: FileText, color: "bg-success/20 border-success/40 text-success", label: "Task" },
-  connector: { icon: Plug, color: "bg-warning/20 border-warning/40 text-warning", label: "Connector" },
-  tool: { icon: Zap, color: "bg-chart-4/20 border-chart-4/40 text-chart-4", label: "Tool" },
-  source: { icon: Database, color: "bg-muted border-border text-muted-foreground", label: "Source" },
-  approval: { icon: Shield, color: "bg-destructive/20 border-destructive/40 text-destructive", label: "Approval" },
-  decision: { icon: GitBranch, color: "bg-[color:var(--g-signal-surface)] border-[color:var(--g-signal)]/40 text-[color:var(--g-signal)]", label: "Decision" },
-  council: { icon: Users, color: "bg-warning/20 border-warning/40 text-warning", label: "Agent Council" },
-  if: { icon: Split, color: "bg-sky-500/20 border-sky-500/40 text-sky-700 dark:text-sky-400", label: "IF" },
-  switch: { icon: GitBranch, color: "bg-indigo-500/20 border-indigo-500/40 text-indigo-400", label: "Switch" },
-  merge: { icon: GitMerge, color: "bg-teal-500/20 border-teal-500/40 text-teal-700 dark:text-teal-400", label: "Merge" },
-  loop: { icon: Repeat, color: "bg-cyan-500/20 border-cyan-500/40 text-cyan-700 dark:text-cyan-400", label: "Loop" },
+  agent: { icon: Bot, color: NODE_ICON_FRAME, label: "Agent" },
+  task: { icon: FileText, color: NODE_ICON_FRAME, label: "Task" },
+  connector: { icon: Plug, color: NODE_ICON_FRAME, label: "Connector" },
+  tool: { icon: Zap, color: NODE_ICON_FRAME, label: "Tool" },
+  source: { icon: Database, color: NODE_ICON_FRAME, label: "Source" },
+  approval: { icon: Shield, color: NODE_ICON_FRAME, label: "Approval" },
+  decision: { icon: GitBranch, color: NODE_ICON_FRAME, label: "Decision" },
+  council: { icon: Users, color: NODE_ICON_FRAME, label: "Agent Council" },
+  if: { icon: Split, color: NODE_ICON_FRAME, label: "IF" },
+  switch: { icon: GitBranch, color: NODE_ICON_FRAME, label: "Switch" },
+  merge: { icon: GitMerge, color: NODE_ICON_FRAME, label: "Merge" },
+  loop: { icon: Repeat, color: NODE_ICON_FRAME, label: "Loop" },
   }
 
 function getNodeTypeConfig(type: string) {
@@ -648,6 +661,7 @@ function CanvasNode({
         isDragging && "cursor-grabbing z-30",
         stateConfig.animation
       )}
+      data-canvas-node={node.id}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
@@ -660,10 +674,9 @@ function CanvasNode({
           "group relative rounded-[var(--np-radius-lg)] border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition-[border-color,box-shadow] duration-150",
           // Responsive width - narrower on mobile
           "w-48 p-2.5 md:w-56 md:p-3",
-          isSelected ? "border-foreground ring-2 ring-foreground/10" : "border-[color:var(--g-border-default)] hover:border-[color:var(--g-border-strong)]",
+          isSelected ? "border-[color:var(--g-brand)] ring-2 ring-[color:var(--g-brand)]/15" : "border-[color:var(--g-border-default)] hover:border-[color:var(--g-border-strong)]",
           stateConfig.border,
           stateConfig.bg,
-          isHovered && "shadow-[0_4px_12px_rgb(0_0_0/0.08)]"
         )}
       >
         {/* Running indicator glow */}
@@ -699,14 +712,17 @@ function CanvasNode({
 
         {/* State indicator badge */}
         {node.state && node.state !== "idle" && (
-          <div className={cn(
-            "absolute -top-2 left-3 px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium capitalize",
-            node.state === "running" && "bg-info text-info-foreground",
-            node.state === "success" && "bg-success text-success-foreground",
-            node.state === "error" && "bg-destructive text-destructive-foreground",
-            node.state === "waiting" && "bg-warning text-warning-foreground"
-          )}>
-            {node.state === "running" && <Loader2 className="h-2.5 w-2.5 inline mr-1 animate-spin" />}
+          <div className="absolute -top-2.5 left-3 inline-flex items-center gap-1.5 rounded-[4px] border border-[color:var(--g-border-default)] bg-card px-1.5 py-0.5 text-[11px] font-medium capitalize text-foreground">
+            <span
+              aria-hidden
+              className={cn(
+                "size-1.5 rounded-full bg-[color:var(--g-text-muted)]",
+                node.state === "running" && "bg-[color:var(--info)] motion-safe:animate-pulse",
+                node.state === "success" && "bg-[color:var(--g-brand)]",
+                node.state === "error" && "bg-destructive",
+                node.state === "waiting" && "bg-[color:var(--g-approval)]",
+              )}
+            />
             {node.state}
           </div>
         )}
@@ -731,7 +747,7 @@ function CanvasNode({
               {node.selectedAction && (
                 <>
                   <span className="text-muted-foreground/30">|</span>
-                  <p className="text-[10px] text-blue-600 dark:text-blue-400">
+                  <p className="text-[10px] text-[color:var(--info)]">
                     {connectorActions[node.vendor || ""]?.actions.find(a => a.id === node.selectedAction)?.name || node.selectedAction}
                   </p>
                 </>
@@ -791,7 +807,7 @@ function CanvasNode({
                   <span className={cn(
                     "px-1.5 py-0.5 rounded font-mono",
                     action.method === "GET" && "bg-success/10 text-success",
-                    action.method === "POST" && "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                    action.method === "POST" && "bg-blue-500/10 text-[color:var(--info)]",
                     action.method === "PATCH" && "bg-warning/10 text-warning"
                   )}>
                     {action.method}
@@ -1019,6 +1035,7 @@ function DecisionNode({
         isDragging && "cursor-grabbing z-30",
         stateConfig.animation
       )}
+      data-canvas-node={node.id}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
@@ -1029,17 +1046,17 @@ function DecisionNode({
       <div className="relative w-48 flex flex-col items-center">
         {/* Evaluating/Running indicator */}
         {isEvaluating && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-[color:var(--g-signal-surface)] border border-[color:var(--g-signal)]/40">
-            <Loader2 className="h-3 w-3 text-[color:var(--g-signal)] animate-spin" />
-            <span className="text-[10px] font-medium text-[color:var(--g-signal)]">Evaluating...</span>
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-[5px] border border-[color:var(--g-border-default)] bg-card">
+            <Loader2 className="h-3 w-3 text-[color:var(--info)] animate-spin" />
+            <span className="text-[11px] font-medium text-foreground">Evaluating…</span>
           </div>
         )}
 
         {/* AI Reasoning badge */}
         {hasReasoning && !isEvaluating && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-success/20 border border-success/40">
-            <Brain className="h-3 w-3 text-success" />
-            <span className="text-[10px] font-medium text-success">
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-[5px] border border-[color:var(--g-border-default)] bg-card">
+            <Brain className="h-3 w-3 text-[color:var(--g-intelligence-bright)]" />
+            <span className="font-mono text-[11px] font-medium text-foreground">
               {node.decisionConfig?.reasoning?.confidence}% confidence
             </span>
           </div>
@@ -1048,10 +1065,10 @@ function DecisionNode({
         {/* Diamond shape */}
         <div
           className={cn(
-            "relative w-32 h-32 transform rotate-45 rounded-lg border-2 transition-all duration-300",
+            "relative w-32 h-32 transform rotate-45 rounded-lg border transition-all duration-300",
             isSelected
-              ? "border-[color:var(--g-signal)]"
-              : "border-[color:var(--g-signal)]/40 hover:border-[color:var(--g-signal)]/60",
+              ? "border-[color:var(--g-brand)] ring-2 ring-[color:var(--g-brand)]/15"
+              : "border-[color:var(--g-border-strong)] hover:border-foreground/40",
             stateConfig.border || "",
             stateConfig.bg || "bg-card",
             isHovered && !isDragging && "scale-105",
@@ -1061,8 +1078,8 @@ function DecisionNode({
           <div className="absolute inset-0 flex flex-col items-center justify-center -rotate-45">
             <div
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-lg transition-all",
-                "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]",
+                "flex h-10 w-10 items-center justify-center rounded-md transition-all",
+                "text-foreground",
               )}
             >
               <GitBranch className={cn("h-5 w-5", isEvaluating && "animate-pulse")} />
@@ -1584,6 +1601,7 @@ function AgentCouncilNode({
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30"
       )}
+      data-canvas-node={node.id}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
@@ -1592,11 +1610,11 @@ function AgentCouncilNode({
     >
       {/* Circular council container */}
       <div className={cn(
-        "relative w-48 h-48 rounded-full border-2 transition-all duration-300",
+        "relative w-48 h-48 rounded-full border transition-all duration-300",
         stateConfig.ring,
         stateConfig.bg,
         stateConfig.glow,
-        isSelected && "ring-2 ring-foreground/60 ring-offset-2 ring-offset-background"
+        isSelected && "ring-2 ring-[color:var(--g-brand)] ring-offset-2 ring-offset-background"
       )}>
         {/* Orbital ring animation */}
         <div className={cn(
@@ -1810,7 +1828,7 @@ function DebateViewDialog({
 
   const getAgentById = (id: string) => agents.find(a => a.id === id)
   const getAgentColor = (index: number) => {
-    const colors = ["bg-blue-500", "bg-emerald-500", "bg-[color:var(--g-signal)]", "bg-amber-500", "bg-rose-500", "bg-cyan-500"]
+    const colors = ["bg-[color:var(--g-frame)]", "bg-foreground/70"]
     return colors[index % colors.length]
   }
 
@@ -2065,10 +2083,8 @@ function FieldLabel({
       <span>{children}</span>
       <span
         className={cn(
-          "normal-case tracking-normal font-medium text-[10px] px-1.5 py-0.5 rounded",
-          required
-            ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
-            : "bg-muted text-muted-foreground",
+          "font-normal text-[11px]",
+          required ? "text-[color:var(--g-text-secondary)]" : "text-muted-foreground",
         )}
       >
         {required ? "Required" : "Optional"}
@@ -2087,6 +2103,7 @@ function ConfigPanel({
   orgConnectors = [],
   actionCatalog = null,
   lastRunId = null,
+  inline = false,
 }: {
   node: WorkflowNode | null
   onClose: () => void
@@ -2097,6 +2114,8 @@ function ConfigPanel({
   orgConnectors?: Connector[]
   actionCatalog?: ConnectorActionCatalogResponse | null
   lastRunId?: string | null
+  /** Render docked inside the builder inspector instead of as a modal sheet. */
+  inline?: boolean
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   const [showDecisionHelp, setShowDecisionHelp] = useState(true)
@@ -2164,7 +2183,7 @@ function ConfigPanel({
   const boundVendor = connectorBind.vendor
   const boundActionId = connectorBind.selectedAction
 
-  const catalogVendor = actionCatalog?.vendors.find((v) => v.vendor === boundVendor)
+  const catalogVendor = actionCatalog?.vendors?.find((v) => v.vendor === boundVendor)
   const catalogActions: ConnectorActionDefinition[] = catalogVendor ? allActions(catalogVendor) : []
   const legacyActions = boundVendor ? connectorActions[boundVendor]?.actions || [] : []
   const availableCatalogActions = catalogActions.length
@@ -2221,29 +2240,32 @@ function ConfigPanel({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
   })()
 
-  return (
-    <Sheet open={!!node} onOpenChange={() => onClose()}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
-        <SheetHeader className="pb-4 border-b border-border mb-4">
+  const HeaderRoot = inline ? InspectorHeader : SheetHeader
+  const HeaderTitle = inline ? InspectorTitle : SheetTitle
+  const HeaderDescription = inline ? InspectorDescription : SheetDescription
+
+  const content = (
+      <>
+        <HeaderRoot className="pb-4 border-b border-border mb-4">
           <div className="flex items-center gap-3">
             <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-lg border",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border",
               config.color
             )}>
 {boundVendor || node.vendor ? (
   <ConnectorIcon vendor={boundVendor || node.vendor} size="sm" showStatusIndicator={false} />
   ) : (
-  <Icon className="h-5 w-5" />
+  <Icon className="h-4 w-4" />
   )}
             </div>
-            <div>
-              <SheetTitle className="text-left">{node.name}</SheetTitle>
-              <SheetDescription className="text-left">
+            <div className="min-w-0">
+              <HeaderTitle className="text-left">{node.name}</HeaderTitle>
+              <HeaderDescription className="text-left">
                 Inspect · {config.label}. Configuration lives here, not behind Ask.
-              </SheetDescription>
+              </HeaderDescription>
             </div>
           </div>
-        </SheetHeader>
+        </HeaderRoot>
 
         <div className="space-y-6">
           {lastRunId && node ? (
@@ -2253,51 +2275,36 @@ function ConfigPanel({
           {/* Setup status — what is still required for this node to work */}
           <div
             className={cn(
-              "flex items-start gap-2 p-3 rounded-lg border text-sm",
-              readiness.ready
-                ? "bg-success/10 border-success/20 text-success"
-                : "bg-warning/10 border-warning/20 text-warning",
+              "flex items-start gap-2 border-l-2 py-1 pl-3 text-sm",
+              readiness.ready ? "border-l-[color:var(--g-brand)]" : "border-l-[color:var(--g-approval)]",
             )}
             role="status"
           >
             {readiness.ready ? (
-              <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <CheckCircle className="h-4 w-4 shrink-0 mt-0.5 text-[color:var(--g-brand-active)]" />
             ) : (
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[color:var(--warning)]" />
             )}
             <div className="min-w-0">
-              <p className="font-medium text-xs mb-0.5">
+              <p className="font-medium text-[13px] text-foreground mb-0.5">
                 {readiness.ready ? "Setup complete" : "Setup incomplete"}
               </p>
-              <p className="text-[12px] leading-snug opacity-95">{readiness.summary}</p>
+              <p className="text-xs leading-snug text-muted-foreground">{readiness.summary}</p>
             </div>
           </div>
 
           {/* Node Type Badge */}
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
-            <div className={cn("h-2 w-2 rounded-full", 
-              node.type === "source" && "bg-muted-foreground",
-              node.type === "agent" && "bg-blue-500",
-              node.type === "connector" && "bg-amber-500",
-              node.type === "tool" && "bg-[color:var(--g-signal)]",
-node.type === "approval" && "bg-red-500",
-  node.type === "task" && "bg-emerald-500",
-  node.type === "decision" && "bg-[color:var(--g-signal)]"
-            )} />
+          <div className="flex items-center gap-2 border-y border-[color:var(--g-border-subtle)] py-2.5">
+            <Icon className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">{config.label}</span>
             {boundVendor && (
               <>
                 <span className="text-muted-foreground/50">|</span>
                 <span className="text-sm text-muted-foreground capitalize">{boundVendor}</span>
-                <div className={cn(
-                  "ml-auto flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full",
-                  connectorStatus === "connected" 
-                    ? "bg-success/10 text-success" 
-                    : "bg-warning/10 text-warning"
-                )}>
+                <div className="ml-auto flex items-center gap-1.5 text-xs font-medium capitalize text-[color:var(--g-text-secondary)]">
                   <div className={cn(
                     "h-1.5 w-1.5 rounded-full",
-                    connectorStatus === "connected" ? "bg-emerald-500" : "bg-amber-500"
+                    connectorStatus === "connected" ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-approval)]"
                   )} />
                   {connectorStatus}
                 </div>
@@ -2312,9 +2319,9 @@ node.type === "approval" && "bg-red-500",
             <div className="space-y-2 p-3 rounded-lg border border-border bg-secondary/40">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                  <Zap className="h-3.5 w-3.5 text-[color:var(--info)]" />
                   <span className="text-xs font-medium text-foreground">Runs as</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-[color:var(--info)]">
                     invoke_tool
                   </span>
                 </div>
@@ -2514,7 +2521,7 @@ node.type === "approval" && "bg-red-500",
               {selectedAction && (
                 <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <Sparkles className="h-4 w-4 text-[color:var(--info)]" />
                     <span className="text-sm font-medium">Action parameters</span>
                   </div>
                   {selectedAction.fields.map((field) => (
@@ -3273,9 +3280,32 @@ node.type === "approval" && "bg-red-500",
             Delete
           </Button>
         </div>
+      </>
+  )
+
+  if (inline) {
+    return <div className="px-4 py-4">{content}</div>
+  }
+
+  return (
+    <Sheet open={!!node} onOpenChange={() => onClose()}>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
+        {content}
       </SheetContent>
     </Sheet>
   )
+}
+
+function InspectorHeader({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={className}>{children}</div>
+}
+
+function InspectorTitle({ className, children }: { className?: string; children: ReactNode }) {
+  return <h2 className={cn("text-[15px] font-semibold leading-6 text-foreground truncate", className)}>{children}</h2>
+}
+
+function InspectorDescription({ className, children }: { className?: string; children: ReactNode }) {
+  return <p className={cn("text-xs text-muted-foreground", className)}>{children}</p>
 }
 
 export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -3356,13 +3386,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       .filter((workflow) => workflow.id && workflow.id !== id)
       .slice(0, 5)
   }, [workflowListData, id])
-  const MESON_PANEL_KEY = "gravitre:mesonPanelOpen"
-  const [mesonPanelOpen, setMesonPanelOpen] = useState(() => {
-    if (typeof window === "undefined") return true
-    const stored = window.localStorage.getItem(MESON_PANEL_KEY)
-    if (stored !== null) return stored !== "0"
-    return window.matchMedia("(min-width: 768px)").matches
-  })
+  const [inspectorMode, setInspectorMode] = useState<InspectorMode>("configure")
+  const [mesonAttention, setMesonAttention] = useState(false)
+  const mesonPanelOpen = inspectorMode === "meson"
+  const isNarrowViewport = useIsMobile()
   const prevNodeCountRef = useRef(0)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
   const [intelligenceInitialTab, setIntelligenceInitialTab] = useState<"simulate" | "risk" | "dryrun">("simulate")
@@ -3594,31 +3621,71 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     return () => clearInterval(interval)
   }, [isExecuting, executionStartTime])
   
-  const toggleMesonPanel = useCallback(() => {
-    setMesonPanelOpen((open) => {
-      const next = !open
-      window.localStorage.setItem(MESON_PANEL_KEY, next ? "1" : "0")
-      return next
-    })
+  const changeInspectorMode = useCallback((mode: InspectorMode) => {
+    setInspectorMode(mode)
+    if (mode === "meson") setMesonAttention(false)
   }, [])
+
+  const toggleMesonPanel = useCallback(() => {
+    changeInspectorMode(inspectorMode === "meson" ? "configure" : "meson")
+  }, [changeInspectorMode, inspectorMode])
 
   const graphSeededRef = useRef(false)
   useEffect(() => {
-    // The saved graph arriving is not the user adding a step; only later additions open Meson.
+    // The saved graph arriving is not the user adding a step; only later additions flag Meson.
     if (!graphSeededRef.current) {
       if (nodes.length > 0 || !isLoadingGraph) graphSeededRef.current = true
       prevNodeCountRef.current = nodes.length
       return
     }
-    if (nodes.length > prevNodeCountRef.current && window.matchMedia("(min-width: 768px)").matches) {
-      setMesonPanelOpen(true)
-      window.localStorage.setItem(MESON_PANEL_KEY, "1")
+    if (nodes.length > prevNodeCountRef.current && inspectorMode !== "meson") {
+      setMesonAttention(true)
     }
     prevNodeCountRef.current = nodes.length
-  }, [nodes.length, isLoadingGraph])
+  }, [nodes.length, isLoadingGraph, inspectorMode])
+
+  useEffect(() => {
+    if (selectedNodeId) setInspectorMode("configure")
+  }, [selectedNodeId])
+
+  useEffect(() => {
+    if (executionStatus === "running") setInspectorMode("trace")
+  }, [executionStatus])
 
   // Get selected node object
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null
+
+  // Start/End are read from the graph: entry steps have no incoming edge, terminal steps no outgoing one.
+  const graphEnds = useMemo(() => {
+    const incoming = new Set<string>()
+    for (const n of nodes) {
+      for (const to of n.connections) incoming.add(to)
+      for (const path of n.outputPaths ?? n.decisionConfig?.outputPaths ?? []) {
+        if (path.targetNodeId) incoming.add(path.targetNodeId)
+      }
+    }
+    const hasOutgoing = (n: WorkflowNode) =>
+      n.connections.length > 0 ||
+      (n.outputPaths ?? n.decisionConfig?.outputPaths ?? []).some((p) => Boolean(p.targetNodeId))
+    const toEnd = (n: WorkflowNode): GraphEndNode => {
+      const cfg = getNodeTypeConfig(n.type)
+      return {
+        id: n.id,
+        name: n.name,
+        typeLabel: cfg.label,
+        icon: cfg.icon,
+        configKeys: Object.keys(n.config ?? {}),
+      }
+    }
+    const entry = nodes.filter((n) => !incoming.has(n.id))
+    const terminal = nodes.filter((n) => !hasOutgoing(n))
+    return {
+      entryIds: new Set(entry.map((n) => n.id)),
+      terminalIds: new Set(terminal.map((n) => n.id)),
+      entryNodes: entry.map(toEnd),
+      terminalNodes: terminal.map(toEnd),
+    }
+  }, [nodes])
 
   // Check if two nodes are connected (in either direction)
   const areNodesConnected = useCallback((nodeA: string, nodeB: string) => {
@@ -3747,7 +3814,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   }, [])
 
   // Handle canvas click - deselect
-  const handleCanvasClick = useCallback(() => {
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    // A node click still bubbles here after the node selected itself on mouseup.
+    if ((e.target as HTMLElement).closest("[data-canvas-node]")) return
     setSelectedNodeId(null)
   }, [])
 
@@ -4628,6 +4697,76 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     })
   })
 
+  const mesonPanel = (
+    <MesonCopilotPanel
+      open={mesonPanelOpen}
+      embedded
+      onClose={() => changeInspectorMode("configure")}
+      workflowId={id}
+      canPersist={canPersist}
+      nodes={nodes.map((n) => ({
+        id: n.id,
+        type: n.type,
+        name: n.name,
+        vendor: n.vendor,
+        selectedAction: n.selectedAction,
+        description: n.description,
+        position: n.position,
+        config: n.config,
+      }))}
+      edges={nodes.flatMap((n) =>
+        n.connections.map((to) => ({
+          id: `${n.id}-${to}`,
+          from: n.id,
+          to,
+        })),
+      )}
+      orgConnectors={orgConnectors.map((c) => ({
+        id: c.id,
+        vendor: c.vendor,
+        type: (c as { type?: string }).type,
+        status: c.status,
+      }))}
+      onAcceptSuggestion={acceptSuggestion}
+      onDismissSuggestion={dismissSuggestion}
+      onApplyInsight={applyInsight}
+      onFixAlert={fixAlert}
+      crossWorkflowSignals={(nodeReliabilityData?.crossWorkflow ?? []).map((row) => ({
+        message: row.message,
+        count: row.count,
+      }))}
+      onEditApplied={async () => {
+        if (!canPersist) return
+        try {
+          const result = await loadBuilderGraph(id)
+          if (result?.nodes?.length) {
+            setNodes(result.nodes)
+            setWorkflowMeta(result.meta)
+          }
+        } catch (err) {
+          console.error("[WorkflowBuilder] reload after Meson edit failed:", err)
+        }
+      }}
+    />
+  )
+
+  const renderConfigPanel = (inline: boolean) => (
+    <ConfigPanel
+      node={selectedNode}
+      onClose={() => setSelectedNodeId(null)}
+      onUpdate={handleUpdateNode}
+      onDuplicate={
+        selectedNodeId ? () => handleDuplicateNode(selectedNodeId) : undefined
+      }
+      onDelete={selectedNodeId ? () => handleDeleteNode(selectedNodeId) : undefined}
+      orgAgents={orgAgents}
+      orgConnectors={orgConnectors}
+      actionCatalog={actionCatalogData ?? null}
+      lastRunId={lastRunId}
+      inline={inline}
+    />
+  )
+
   return (
     <AppShell>
       <div className="flex h-full flex-col">
@@ -4677,36 +4816,35 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             />
           </div>
         ) : null}
-        {/* Top toolbar */}
-        <div className="flex-shrink-0 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-2 md:px-3 py-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
-              <Link
-                href="/workflows"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-muted-foreground transition-colors hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground"
-                title="Back to workflows"
-                aria-label="Back to workflows"
-              >
-                <ArrowLeft className="h-4 w-4" />
+        {/* Workflow identity bar */}
+        <div
+          data-review-surface="workflow-identity"
+          className="flex h-12 flex-shrink-0 items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-2 md:px-4"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href="/workflows"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground lg:hidden"
+              title="Back to workflows"
+              aria-label="Back to workflows"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px]">
+              <Link href="/workflows" className="hidden shrink-0 text-muted-foreground transition-colors hover:text-foreground lg:inline">
+                Workflows
               </Link>
-              
-              {/* Breadcrumb */}
-              <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Link href="/workflows" className="hover:text-foreground transition-colors">Workflows</Link>
-                <ChevronRight className="h-3 w-3" />
-              </div>
-              
+              <ChevronRight aria-hidden className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground lg:inline" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button 
-                    className="flex items-center gap-2 min-w-0 rounded-[9px] px-1.5 py-1 hover:bg-[color:var(--g-chrome-hover)] transition-colors group"
+                  <button
+                    className="group flex min-w-0 items-center gap-1.5 rounded-[5px] px-1.5 py-1 transition-colors hover:bg-[color:var(--g-chrome-hover)]"
                     title="Switch workflow"
                   >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
-                      <Workflow className="h-3.5 w-3.5" />
+                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px]">
+                      {workflowMeta.name}
                     </span>
-                    <span className="text-[15px] font-semibold tracking-[-0.01em] text-foreground truncate max-w-[140px] sm:max-w-[260px]">{workflowMeta.name}</span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
@@ -4726,7 +4864,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                             environment={
                               workflow.environment === "production" ? "production" : "staging"
                             }
-                            className="ml-auto scale-90"
+                            className="ml-auto"
                           />
                         </Link>
                       </DropdownMenuItem>
@@ -4734,158 +4872,231 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/workflows" className="flex items-center gap-2 text-info">
+                    <Link href="/workflows" className="flex items-center gap-2">
                       <LayoutGrid className="h-3.5 w-3.5" />
                       <span>View all workflows</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/workflows/new/builder" className="flex items-center gap-2 text-success">
+                    <Link href="/workflows/new/builder" className="flex items-center gap-2">
                       <Plus className="h-3.5 w-3.5" />
                       <span>Create new workflow</span>
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <StatusBadge variant="muted" className="hidden sm:inline-flex">{workflowMeta.status}</StatusBadge>
+              <ChevronRight aria-hidden className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground xl:inline" />
+              <span className="hidden shrink-0 text-muted-foreground xl:inline">Editor</span>
+            </nav>
+            <span aria-hidden className="mx-1 hidden h-4 w-px shrink-0 bg-[color:var(--g-border-default)] sm:block" />
+            <div className="hidden min-w-0 items-center gap-3 sm:flex">
+              <StatusBadge variant="muted" className="shrink-0 capitalize">{workflowMeta.status}</StatusBadge>
               <EnvironmentBadge
                 environment={
                   workflowMeta.environment === "production" ? "production" : "staging"
                 }
-                className="hidden sm:inline-flex"
+                className="shrink-0"
               />
-              <span className="hidden md:inline text-xs text-muted-foreground">{workflowMeta.version || "v1"}</span>
-              
-              {/* Last saved indicator */}
+              <span className="hidden shrink-0 font-mono text-xs font-medium text-muted-foreground md:inline">
+                {workflowMeta.version || "v1"}
+              </span>
               {lastSavedAt && (
-                <span className="hidden lg:inline text-xs text-muted-foreground/70">
+                <span className="hidden shrink-0 text-xs text-muted-foreground lg:inline">
                   Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1 md:gap-2 shrink-0">
-              {/* View last run link */}
-              {lastRunId && (
-                <Button asChild variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                  <Link href={`/runs/${lastRunId}`}>
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="sr-only lg:not-sr-only">Last run</span>
-                  </Link>
-                </Button>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={handleSave}
+              disabled={isSaving || isLoadingGraph || isRunning || connectorBlockingIssues.length > 0}
+              aria-busy={isSaving}
+              title={
+                connectorBlockingIssues.length > 0
+                  ? `Resolve ${connectorBlockingIssues.length} connector issue(s) before saving`
+                  : undefined
+              }
+            >
+              {isSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
               )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={() => {
-                  setSettingsName(workflowMeta.name)
-                  setSettingsDescription(workflowMeta.description || "")
-                  setSettingsOpen(true)
-                }}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                <span className="sr-only lg:not-sr-only">Settings</span>
-              </Button>
-              <Button
-                variant={mesonPanelOpen ? "secondary" : "outline"}
-                size="sm"
-                className="relative h-8 gap-2"
-                onClick={toggleMesonPanel}
-                aria-expanded={mesonPanelOpen}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="sr-only lg:not-sr-only">Meson</span>
-                {!mesonPanelOpen && nodes.length > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2" aria-hidden="true">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-primary/70 motion-safe:animate-ping" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                  </span>
-                ) : null}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-2"
-                onClick={() => setIntelligenceOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={intelligenceOpen}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="sr-only lg:not-sr-only">Intelligence</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={handleSave}
-                disabled={isSaving || isLoadingGraph || isRunning || connectorBlockingIssues.length > 0}
-                aria-busy={isSaving}
-                title={
-                  connectorBlockingIssues.length > 0
-                    ? `Resolve ${connectorBlockingIssues.length} connector issue(s) before saving`
-                    : undefined
-                }
-              >
-                {isSaving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
-                )}
-                <span className="sr-only lg:not-sr-only">{isSaving ? "Saving..." : "Save"}</span>
-                {connectorBlockingIssues.length > 0 && (
-                  <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning/20 px-1 text-[10px] font-medium text-warning">
-                    {connectorBlockingIssues.length}
-                  </span>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={handlePreview}
-                disabled={isSaving || isLoadingGraph || isRunning}
-              >
-                <FileSearch className="h-3.5 w-3.5" />
-                <span className="sr-only lg:not-sr-only">Preview</span>
-              </Button>
-              <Button 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={handleRun}
-                disabled={isRunning || isLoadingGraph || isSaving}
-                aria-busy={isRunning}
-              >
-                {isRunning ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Play className="h-3.5 w-3.5" />
-                )}
-                <span className="sr-only sm:not-sr-only">{isRunning ? "Starting..." : "Run"}</span>
-              </Button>
-            </div>
+              <span className="sr-only sm:not-sr-only">{isSaving ? "Saving..." : "Save"}</span>
+              {connectorBlockingIssues.length > 0 && (
+                <span className="ml-0.5 inline-flex items-center gap-1 font-mono text-xs font-medium text-[color:var(--warning)]">
+                  <span aria-hidden className="size-1.5 rounded-full bg-[color:var(--g-approval)]" />
+                  {connectorBlockingIssues.length}
+                </span>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 gap-2"
+              onClick={handleRun}
+              disabled={isRunning || isLoadingGraph || isSaving}
+              aria-busy={isRunning}
+            >
+              {isRunning ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              <span className="sr-only sm:not-sr-only">{isRunning ? "Starting..." : "Run"}</span>
+            </Button>
           </div>
         </div>
 
+        {/* Workflow toolbar */}
         <div
-          data-review-surface="workflow-intent"
-          className="flex-shrink-0 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-3 pb-2 pt-0 md:px-4"
+          role="toolbar"
+          aria-label="Workflow tools"
+          data-review-surface="workflow-toolbar"
+          className="flex h-10 flex-shrink-0 items-stretch justify-between gap-4 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-2 md:px-4"
         >
-          <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 pl-0 md:pl-10">
-            <span className="rounded-full bg-[color:var(--g-intelligence-soft)] px-2 py-0.5 font-sans text-[11px] font-medium text-[color:var(--g-intelligence)]">
-              Intent
-            </span>
-            <span className="min-w-0 text-[13px] font-medium text-foreground">
+          <div className="flex min-w-0 items-stretch gap-1 overflow-x-auto">
+            {(
+              [
+                {
+                  key: "editor",
+                  label: "Editor",
+                  icon: PenLine,
+                  active: inspectorMode === "configure",
+                  onClick: () => changeInspectorMode("configure"),
+                },
+                {
+                  key: "runs",
+                  label: lastRunId ? "Last run" : "Runs",
+                  icon: History,
+                  active: false,
+                  href: lastRunId ? `/runs/${lastRunId}` : "/runs",
+                },
+                {
+                  key: "preview",
+                  label: "Preview",
+                  icon: FileSearch,
+                  active: false,
+                  onClick: handlePreview,
+                  disabled: isSaving || isLoadingGraph || isRunning,
+                },
+                {
+                  key: "trace",
+                  label: "Trace",
+                  icon: Activity,
+                  active: inspectorMode === "trace" || traceOverlay,
+                  pressed: traceOverlay,
+                  onClick: () => {
+                    if (inspectorMode === "trace" && traceOverlay) {
+                      setTraceOverlay(false)
+                      changeInspectorMode("configure")
+                    } else {
+                      setTraceOverlay(true)
+                      changeInspectorMode("trace")
+                    }
+                  },
+                },
+                {
+                  key: "intelligence",
+                  label: "Intelligence",
+                  icon: Brain,
+                  active: intelligenceOpen,
+                  onClick: () => setIntelligenceOpen(true),
+                  dialog: true,
+                },
+                {
+                  key: "meson",
+                  label: "Meson",
+                  icon: Sparkles,
+                  active: mesonPanelOpen,
+                  pressed: mesonPanelOpen,
+                  onClick: toggleMesonPanel,
+                  attention: mesonAttention && !mesonPanelOpen,
+                },
+                {
+                  key: "settings",
+                  label: "Settings",
+                  icon: Settings,
+                  active: settingsOpen,
+                  onClick: () => {
+                    setSettingsName(workflowMeta.name)
+                    setSettingsDescription(workflowMeta.description || "")
+                    setSettingsOpen(true)
+                  },
+                  dialog: true,
+                },
+              ] as Array<{
+                key: string
+                label: string
+                icon: typeof Activity
+                active: boolean
+                pressed?: boolean
+                onClick?: () => void
+                href?: string
+                disabled?: boolean
+                dialog?: boolean
+                attention?: boolean
+              }>
+            ).map((tool) => {
+              const ToolIcon = tool.icon
+              const toolClass = cn(
+                "relative inline-flex shrink-0 items-center gap-1.5 px-2 text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+                "after:absolute after:inset-x-2 after:-bottom-px after:h-[2px] after:content-['']",
+                tool.active
+                  ? "text-foreground after:bg-[color:var(--g-text-primary)]"
+                  : "text-muted-foreground hover:text-foreground after:bg-transparent",
+              )
+              const toolBody = (
+                <>
+                  <ToolIcon className="h-4 w-4" />
+                  <span className="sr-only lg:not-sr-only">{tool.label}</span>
+                  {tool.attention ? (
+                    <span aria-hidden className="size-1.5 rounded-full bg-[color:var(--g-brand)]" />
+                  ) : null}
+                </>
+              )
+              if (tool.href) {
+                return (
+                  <Link key={tool.key} href={tool.href} title={tool.label} className={toolClass}>
+                    {toolBody}
+                  </Link>
+                )
+              }
+              return (
+                <button
+                  key={tool.key}
+                  type="button"
+                  onClick={tool.onClick}
+                  disabled={tool.disabled}
+                  aria-pressed={tool.pressed}
+                  aria-haspopup={tool.dialog ? "dialog" : undefined}
+                  title={tool.label}
+                  className={toolClass}
+                >
+                  {toolBody}
+                </button>
+              )
+            })}
+          </div>
+          <p
+            data-review-surface="workflow-intent"
+            className="hidden min-w-0 items-center gap-2 text-[13px] xl:flex"
+            title={(workflowMeta.description || "").trim() || undefined}
+          >
+            <span className="shrink-0 text-muted-foreground">Intent</span>
+            <span className="min-w-0 max-w-[420px] truncate text-foreground">
               {(workflowMeta.description || "").trim() ||
-                "Name the outcome this workflow should produce — then orchestrate it on the canvas."}
-            </span>
-            <span className="hidden text-xs text-muted-foreground md:inline">
-              Select a node to inspect its configuration.
+                "Name the outcome this workflow should produce, then orchestrate it on the canvas."}
             </span>
           </p>
         </div>
 
         {/* Main content */}
         <div className="flex flex-1 min-h-0 flex-col md:flex-row md:bg-[color:var(--g-chrome)]">
+          <BuilderNav workflowId={id} />
           {/* Left library panel - conditionally shown */}
           {libraryPanelOpen && (
           <div 
@@ -5889,6 +6100,24 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               })}
             </svg>
 
+{/* Start / End markers read from the graph shape */}
+  {nodes.map((node) => {
+    const isEntry = graphEnds.entryIds.has(node.id)
+    const isTerminal = graphEnds.terminalIds.has(node.id)
+    if (!isEntry && !isTerminal) return null
+    return (
+      <span
+        key={`graph-end-${node.id}`}
+        data-graph-end={isEntry && isTerminal ? "start-end" : isEntry ? "start" : "end"}
+        className="pointer-events-none absolute z-0 inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-muted-foreground"
+        style={{ left: node.position.x, top: node.position.y - 26 }}
+      >
+        <span aria-hidden className="h-px w-3 bg-[color:var(--g-border-strong)]" />
+        {isEntry && isTerminal ? "Start · End" : isEntry ? "Start" : "End"}
+      </span>
+    )
+  })}
+
 {/* Nodes */}
   {nodes.map((node) => (
   node.type === "decision" ? (
@@ -6020,20 +6249,20 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             {(isExecuting || executionStatus !== "idle") && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
                 <div className={cn(
-                  "flex items-center gap-4 px-5 py-3 rounded-xl border shadow-lg backdrop-blur-sm",
-                  executionStatus === "running" && "bg-blue-500/10 border-blue-500/30",
-                  executionStatus === "completed" && "bg-success/10 border-success/30",
-                  executionStatus === "error" && "bg-destructive/10 border-destructive/30",
-                  executionStatus === "paused" && "bg-warning/10 border-warning/30",
-                  executionStatus === "waiting" && "bg-warning/10 border-warning/30",
-                  executionStatus === "cancelled" && "bg-destructive/10 border-destructive/30"
+                  "flex items-center gap-4 rounded-[6px] border border-[color:var(--g-border-default)] border-l-2 bg-card px-4 py-2.5",
+                  executionStatus === "running" && "border-l-[color:var(--info)]",
+                  executionStatus === "completed" && "border-l-[color:var(--g-brand)]",
+                  executionStatus === "error" && "border-l-destructive",
+                  executionStatus === "paused" && "border-l-[color:var(--g-approval)]",
+                  executionStatus === "waiting" && "border-l-[color:var(--g-approval)]",
+                  executionStatus === "cancelled" && "border-l-destructive"
                 )}>
                   {/* Status indicator */}
                   <div className="flex items-center gap-2">
                     {executionStatus === "running" && (
                       <>
-                        <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
-                        <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Running workflow...</span>
+                        <Loader2 className="h-5 w-5 text-[color:var(--info)] animate-spin" />
+                        <span className="text-sm font-medium text-[color:var(--info)]">Running workflow...</span>
                       </>
                     )}
                     {executionStatus === "completed" && (
@@ -6179,32 +6408,22 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             )}
 
             {/* Canvas toolbar */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-[12px] border border-[color:var(--g-border-default)] bg-background/95 p-1 shadow-[0_12px_32px_-16px_rgb(16_24_40/0.35)] backdrop-blur">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-[6px] border border-[color:var(--g-border-default)] bg-card p-1">
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-8 w-8 p-0"
+                className="h-8 gap-1.5 px-2.5 text-xs"
                 onClick={openLibraryPanel}
-                title="Add node"
+                title="Add step"
               >
                 <Plus className="h-4 w-4" />
+                Add step
               </Button>
-              <div className="w-px h-6 bg-border" />
-              <Button variant="ghost" size="sm" className="h-8 px-3 gap-1.5 text-xs">
-                <CheckCircle className="h-3.5 w-3.5 text-success" />
-                {nodes.length} nodes
-              </Button>
-              <div className="w-px h-6 bg-border" />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-3 gap-1.5 text-xs"
-                onClick={handlePreview}
-                disabled={isSaving || isLoadingGraph || isRunning}
-              >
-                <FileSearch className="h-3.5 w-3.5" />
-                Preview
-              </Button>
+              <div className="w-px h-5 bg-border" />
+              <span className="px-2.5 font-mono text-xs font-medium text-muted-foreground">
+                {nodes.length} {nodes.length === 1 ? "step" : "steps"}
+              </span>
+              <div className="w-px h-5 bg-border" />
               <Button
                 variant={traceOverlay ? "secondary" : "ghost"}
                 size="sm"
@@ -6223,8 +6442,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <Button
                 onClick={openLibraryPanel}
                 size="sm"
-                className="absolute top-4 left-4 h-9 w-9 p-0 rounded-full shadow-md"
-                title="Add node"
+                variant="outline"
+                className="absolute top-4 left-4 h-8 w-8 p-0 bg-card"
+                title="Add step"
+                aria-label="Add step"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -6232,73 +6453,65 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
           </div>
 
-          <MesonCopilotPanel
-            open={mesonPanelOpen}
-            onClose={() => {
-              setMesonPanelOpen(false)
-              window.localStorage.setItem(MESON_PANEL_KEY, "0")
-            }}
-            workflowId={id}
-            canPersist={canPersist}
-            nodes={nodes.map((n) => ({
-              id: n.id,
-              type: n.type,
-              name: n.name,
-              vendor: n.vendor,
-              selectedAction: n.selectedAction,
-              description: n.description,
-              position: n.position,
-              config: n.config,
-            }))}
-            edges={nodes.flatMap((n) =>
-              n.connections.map((to) => ({
-                id: `${n.id}-${to}`,
-                from: n.id,
-                to,
-              })),
-            )}
-            orgConnectors={orgConnectors.map((c) => ({
-              id: c.id,
-              vendor: c.vendor,
-              type: (c as { type?: string }).type,
-              status: c.status,
-            }))}
-            onAcceptSuggestion={acceptSuggestion}
-            onDismissSuggestion={dismissSuggestion}
-            onApplyInsight={applyInsight}
-            onFixAlert={fixAlert}
-            crossWorkflowSignals={(nodeReliabilityData?.crossWorkflow ?? []).map((row) => ({
-              message: row.message,
-              count: row.count,
-            }))}
-            onEditApplied={async () => {
-              if (!canPersist) return
-              try {
-                const result = await loadBuilderGraph(id)
-                if (result?.nodes?.length) {
-                  setNodes(result.nodes)
-                  setWorkflowMeta(result.meta)
-                }
-              } catch (err) {
-                console.error("[WorkflowBuilder] reload after Meson edit failed:", err)
-              }
-            }}
-          />
+          <BuilderInspector
+            mode={inspectorMode}
+            onModeChange={changeInspectorMode}
+            mesonAttention={mesonAttention}
+            traceLive={executionStatus === "running"}
+          >
+            {inspectorMode === "configure" ? (
+              selectedNode && !isNarrowViewport ? (
+                renderConfigPanel(true)
+              ) : (
+                <BuilderWorkflowOverview
+                  intent={(workflowMeta.description || "").trim()}
+                  entryNodes={graphEnds.entryNodes}
+                  terminalNodes={graphEnds.terminalNodes}
+                  stepCount={nodes.length}
+                  blockingIssues={connectorBlockingIssues.length}
+                  onSelectNode={setSelectedNodeId}
+                  onAddStep={openLibraryPanel}
+                />
+              )
+            ) : null}
+            {inspectorMode === "meson" && !isNarrowViewport ? mesonPanel : null}
+            {inspectorMode === "trace" ? (
+              <BuilderRunTrace
+                status={executionStatus}
+                step={executionStep}
+                total={nodes.length}
+                elapsedSeconds={executionElapsed}
+                error={executionError}
+                lastRunId={lastRunId}
+                traceOverlay={traceOverlay}
+                onToggleTraceOverlay={() => setTraceOverlay((on) => !on)}
+                onSelectNode={setSelectedNodeId}
+                nodes={[...nodes]
+                  .sort((x, y) => x.position.x - y.position.x || x.position.y - y.position.y)
+                  .map((n) => ({
+                    id: n.id,
+                    name: n.name,
+                    typeLabel: getNodeTypeConfig(n.type).label,
+                    state: n.state,
+                    stepError: n.stepError,
+                  }))}
+              />
+            ) : null}
+          </BuilderInspector>
 
-          {/* Right config panel */}
-          <ConfigPanel
-            node={selectedNode}
-            onClose={() => setSelectedNodeId(null)}
-            onUpdate={handleUpdateNode}
-            onDuplicate={
-              selectedNodeId ? () => handleDuplicateNode(selectedNodeId) : undefined
-            }
-            onDelete={selectedNodeId ? () => handleDeleteNode(selectedNodeId) : undefined}
-            orgAgents={orgAgents}
-            orgConnectors={orgConnectors}
-            actionCatalog={actionCatalogData ?? null}
-            lastRunId={lastRunId}
-          />
+          {/* Below md the inspector folds into sheets so configuration and Meson stay reachable. */}
+          {isNarrowViewport ? renderConfigPanel(false) : null}
+          {isNarrowViewport ? (
+            <Sheet open={mesonPanelOpen} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
+              <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 p-0">
+                <SheetHeader className="border-b border-border px-4 py-3">
+                  <SheetTitle className="text-[15px]">Meson</SheetTitle>
+                  <SheetDescription className="text-xs">Suggestions and edits for this workflow.</SheetDescription>
+                </SheetHeader>
+                {mesonPanel}
+              </SheetContent>
+            </Sheet>
+          ) : null}
 
           {/* Debate View Dialog */}
           <DebateViewDialog

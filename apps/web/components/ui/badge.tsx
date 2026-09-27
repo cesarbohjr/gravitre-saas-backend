@@ -24,11 +24,11 @@ const badgeVariants = cva(
           'border-[color:var(--g-border-default)] bg-transparent text-[color:var(--g-text-muted)] [a&]:hover:bg-[color:var(--g-surface-2)] [a&]:hover:text-[color:var(--g-text-primary)]',
         /** Important status only */
         status:
-          'border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]',
+          "border-transparent bg-transparent px-0 text-[color:var(--g-text-secondary)] before:size-1.5 before:shrink-0 before:rounded-full before:bg-[color:var(--g-brand)] before:content-['']",
         warning:
-          'border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]',
+          "border-transparent bg-transparent px-0 text-[color:var(--warning)] before:size-1.5 before:shrink-0 before:rounded-full before:bg-[color:var(--g-approval)] before:content-['']",
         destructive:
-          'border-transparent bg-destructive/10 text-destructive [a&]:hover:bg-destructive/10 focus-visible:ring-destructive/20',
+          "border-transparent bg-transparent px-0 text-destructive before:size-1.5 before:shrink-0 before:rounded-full before:bg-[color:var(--g-danger)] before:content-[''] focus-visible:ring-destructive/20",
         neutral:
           'border-transparent bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)]',
       },

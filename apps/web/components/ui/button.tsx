@@ -20,11 +20,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-foreground text-background shadow-[inset_0_1px_0_0_rgb(255_255_255/0.12)] hover:bg-foreground/85',
+          'bg-foreground text-background hover:bg-foreground/85',
         brand:
-          'bg-primary text-primary-foreground hover:bg-[color:var(--g-brand-hover)] dark:hover:bg-primary/85',
+          'bg-primary text-primary-foreground hover:bg-primary/85',
         destructive:
-          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/40',
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/40',
         outline:
           'border border-[color:var(--g-border-default)] bg-background text-foreground hover:border-[color:var(--g-border-strong)] hover:bg-[color:var(--g-surface-2)]',
         secondary:

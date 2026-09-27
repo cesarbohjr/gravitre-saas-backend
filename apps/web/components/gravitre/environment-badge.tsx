@@ -11,10 +11,7 @@ export function EnvironmentBadge({ environment, className, showIcon = false }: E
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium",
-        environment === "production"
-          ? "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:bg-success/15 dark:text-success"
-          : "bg-warning/15 text-amber-800 dark:text-warning",
+        "inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-[color:var(--g-text-secondary)]",
         className
       )}
     >
@@ -27,7 +24,7 @@ export function EnvironmentBadge({ environment, className, showIcon = false }: E
         <span
           className={cn(
             "h-1.5 w-1.5 rounded-full",
-            environment === "production" ? "bg-success" : "bg-warning"
+            environment === "production" ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-approval)]"
           )}
         />
       )}

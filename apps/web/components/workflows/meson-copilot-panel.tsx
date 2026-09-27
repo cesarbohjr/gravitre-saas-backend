@@ -86,6 +86,7 @@ export function MesonCopilotPanel({
   onFixAlert,
   onEditApplied,
   crossWorkflowSignals,
+  embedded = false,
 }: {
   open: boolean
   onClose: () => void
@@ -109,6 +110,8 @@ export function MesonCopilotPanel({
   onFixAlert?: (alert: MesonAlert) => void
   onEditApplied?: () => void | Promise<void>
   crossWorkflowSignals?: Array<{ message: string; count?: number }>
+  /** Hosted inside the builder inspector: fills the host and drops its own chrome. */
+  embedded?: boolean
 }) {
   const { reduced, container, item } = useMotionPrefs()
   const [suggestions, setSuggestions] = useState<MesonSuggestion[]>([])
@@ -446,11 +449,19 @@ export function MesonCopilotPanel({
       animate={reduced ? { opacity: 1 } : { x: 0, opacity: 1 }}
       transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 360, damping: 34 }}
       className={cn(
-        "relative w-[280px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden",
+        "relative flex flex-col overflow-hidden",
+        embedded
+          ? "min-h-0 w-full flex-1"
+          : "w-[280px] shrink-0 border-l border-border bg-card",
       )}
       aria-label="Meson AI copilot"
     >
-      <div className="relative flex items-center justify-between border-b border-border px-3 py-2.5">
+      <div
+        className={cn(
+          "relative flex items-center justify-between border-b border-border px-3 py-2.5",
+          embedded && "hidden",
+        )}
+      >
         <div className="flex items-center gap-2">
           <NucleoIntelligence className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold text-foreground">Meson</span>

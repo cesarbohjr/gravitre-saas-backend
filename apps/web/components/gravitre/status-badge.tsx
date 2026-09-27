@@ -67,7 +67,7 @@ export function StatusBadge({
   tone,
   children,
   className,
-  dot = false,
+  dot = true,
   icon,
   title,
 }: StatusBadgeProps) {
