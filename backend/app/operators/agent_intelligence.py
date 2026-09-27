@@ -3463,6 +3463,7 @@ class AgentIntelligence:
             )
             for ev in progress_events:
                 yield ev
+            await asyncio.sleep(0)
         _computer_turn = await try_computer_browser_read_turn(
             message=task_text,
             task_state=task_state if isinstance(task_state, dict) else {},
