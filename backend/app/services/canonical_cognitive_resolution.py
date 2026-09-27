@@ -79,6 +79,23 @@ def assess_cognitive_resolution_needs(
             reason="catalog_search",
         )
 
+    from app.services.computer_browser_read_turn import (
+        match_computer_browser_followup,
+        match_computer_browser_intent,
+        match_computer_browser_resume_phrase,
+    )
+
+    if (
+        match_computer_browser_intent(text)
+        or match_computer_browser_resume_phrase(text)
+        or match_computer_browser_followup(text, state)
+    ):
+        return CognitiveResolutionNeeds(
+            run_semantic=False,
+            run_resource=False,
+            reason="computer_browser_read",
+        )
+
     if _CHITCHAT_RE.match(text):
         return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="chitchat")
 

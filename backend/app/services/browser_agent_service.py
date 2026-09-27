@@ -183,6 +183,40 @@ async def _navigation_timing_ms(page: Any) -> dict[str, int]:
     return out
 
 
+async def _click_public_follow_link(
+    page: Any,
+    *,
+    follow_link_text: str | None,
+) -> tuple[bool, str, str]:
+    """Follow the public example.com outbound link without waiting on stale labels.
+
+    Destination href is preferred. Visible names are tried only when present
+    (count() == 0 skips immediately — no 8s timeout on 'More information').
+    """
+    last_error = ""
+    try:
+        href = page.locator('a[href*="iana.org"]')
+        if await href.count() > 0:
+            await href.first.click(timeout=8_000)
+            return True, "a[href*=iana.org]", ""
+    except Exception as extra:  # noqa: BLE001
+        last_error = str(extra)[:240]
+    candidates: list[str] = []
+    for name in (follow_link_text, "Learn more", "More information"):
+        if name and name not in candidates:
+            candidates.append(name)
+    for name in candidates:
+        try:
+            link = page.get_by_role("link", name=name)
+            if await link.count() == 0:
+                continue
+            await link.first.click(timeout=8_000)
+            return True, name, last_error
+        except Exception as exc:  # noqa: BLE001
+            last_error = str(exc)[:240]
+    return False, str(follow_link_text or ""), last_error
+
+
 async def _public_read_chromium() -> tuple[Any, dict[str, int]]:
     """Process-local Chromium for public READ. Isolated context per task — no auth reuse."""
     global _playwright_driver, _public_chromium
@@ -272,31 +306,10 @@ async def browser_agent_playwright_session(
         visits.append(first)
         if follow_link_text:
             t0 = time.perf_counter()
-            clicked = False
-            last_error = ""
-            follow_used = follow_link_text
-            candidates: list[str] = []
-            for name in (follow_link_text, "Learn more", "More information"):
-                if name and name not in candidates:
-                    candidates.append(name)
-            for name in candidates:
-                try:
-                    link = page.get_by_role("link", name=name)
-                    if await link.count() == 0:
-                        continue
-                    await link.first.click(timeout=8_000)
-                    clicked = True
-                    follow_used = name
-                    break
-                except Exception as exc:  # noqa: BLE001
-                    last_error = str(exc)[:240]
-            if not clicked:
-                try:
-                    await page.locator('a[href*="iana.org"]').first.click(timeout=15_000)
-                    clicked = True
-                    follow_used = "a[href*=iana.org]"
-                except Exception as extra:  # noqa: BLE001
-                    last_error = str(extra)[:240]
+            clicked, follow_used, last_error = await _click_public_follow_link(
+                page,
+                follow_link_text=follow_link_text,
+            )
             stages["click_ms"] = int((time.perf_counter() - t0) * 1000)
             if clicked:
                 t0 = time.perf_counter()

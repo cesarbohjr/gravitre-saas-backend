@@ -270,5 +270,77 @@ def test_browser_progress_streams_before_playwright_await() -> None:
     session = (
         Path(__file__).resolve().parents[2] / "app" / "services" / "browser_agent_service.py"
     ).read_text(encoding="utf-8")
-    assert "if await link.count() == 0" in session
+    helper_at = session.find("async def _click_public_follow_link")
+    helper = session[helper_at : helper_at + 1600]
+    assert helper_at > 0
+    assert "if await link.count() == 0" in helper
+    assert 'a[href*="iana.org"]' in helper
+    assert helper.find("iana.org") < helper.find("get_by_role")
+
+
+@pytest.mark.asyncio
+async def test_click_prefers_iana_href_over_stale_visible_label() -> None:
+    from app.services.browser_agent_service import _click_public_follow_link
+
+    class _Loc:
+        def __init__(self, n: int) -> None:
+            self._n = n
+            self.clicks = 0
+            self.first = self
+
+        async def count(self) -> int:
+            return self._n
+
+        async def click(self, timeout: int = 0) -> None:
+            self.clicks += 1
+
+    href = _Loc(1)
+    more = _Loc(1)
+
+    class _Page:
+        def locator(self, _sel: str) -> _Loc:
+            return href
+
+        def get_by_role(self, _role: str, name: str | None = None) -> _Loc:
+            return more
+
+    ok, used, _err = await _click_public_follow_link(_Page(), follow_link_text="More information")
+    assert ok is True
+    assert used == "a[href*=iana.org]"
+    assert href.clicks == 1
+    assert more.clicks == 0
+
+
+@pytest.mark.asyncio
+async def test_click_learn_more_when_href_absent() -> None:
+    from app.services.browser_agent_service import _click_public_follow_link
+
+    class _Loc:
+        def __init__(self, n: int) -> None:
+            self._n = n
+            self.clicks = 0
+            self.first = self
+
+        async def count(self) -> int:
+            return self._n
+
+        async def click(self, timeout: int = 0) -> None:
+            self.clicks += 1
+
+    href = _Loc(0)
+    roles = {"Learn more": _Loc(1), "More information": _Loc(0)}
+
+    class _Page:
+        def locator(self, _sel: str) -> _Loc:
+            return href
+
+        def get_by_role(self, _role: str, name: str | None = None) -> _Loc:
+            return roles.get(str(name or ""), _Loc(0))
+
+    ok, used, _err = await _click_public_follow_link(_Page(), follow_link_text="More information")
+    assert ok is True
+    assert used == "Learn more"
+    assert href.clicks == 0
+    assert roles["Learn more"].clicks == 1
+    assert roles["More information"].clicks == 0
 

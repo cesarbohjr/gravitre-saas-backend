@@ -2015,6 +2015,7 @@ class AgentIntelligence:
                         patch,
                         client=client,
                     )
+                    _mark("observation_persist")
                     # Re-get is a second serial DB hop after the provider READ
                     # and before first SSE. In-memory patch is the same payload
                     # listing / computer just persisted.
@@ -2100,7 +2101,6 @@ class AgentIntelligence:
             if isinstance(_evidence, dict) or compose_kind == "canned":
                 _mark("observation")
             _mark("composer_start")
-            _mark("first_sse")
             packed = await _composed_reply(
                 response_text,
                 kind=compose_kind,
@@ -2470,7 +2470,14 @@ class AgentIntelligence:
 
         _plan_hold = is_plan_without_execute_turn(task_text)
         _plan_hold_spoken = bool(spoken_mode and _plan_hold)
-        if spoken_mode and not loop_trace.fast_path and not _plan_hold_spoken:
+        from app.services.computer_browser_read_turn import match_computer_browser_intent as _match_cu_intent
+
+        if (
+            spoken_mode
+            and not loop_trace.fast_path
+            and not _plan_hold_spoken
+            and not _match_cu_intent(task_text)
+        ):
             for ev in await _loop_stage_speech("PERCEIVE"):
                 yield ev
 
@@ -3472,6 +3479,7 @@ class AgentIntelligence:
             org_id=org_id,
             client=client,
         )
+        _mark("browser_session_end")
         if _computer_turn and _computer_turn.get("stop_pipeline"):
             async for ev in _emit_compiled_operational_short_circuit(_computer_turn):
                 yield ev
