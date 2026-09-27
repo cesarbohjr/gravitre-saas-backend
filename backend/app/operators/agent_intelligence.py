@@ -2023,6 +2023,7 @@ class AgentIntelligence:
                         "listing_f2_read",
                         "listing_f2_read_resume",
                         "catalog_search_eligible",
+                        "entity_join_store",
                         "computer_browser_read",
                         "computer_browser_read_resume",
                         "computer_browser_interact_compile",

@@ -25,6 +25,7 @@ On store-backed entity answers:
 - `systems`: vendor keys from accepted bindings
 - `missing_live_sources`: human strings for disconnected OAuth vendors
 - `join`: boolean (false means records stay separate)
+- GET `/state` reconstructs `execution_result` from bound `work_artifacts[]`. No live multi-provider census.
 
 On listing F2:
 

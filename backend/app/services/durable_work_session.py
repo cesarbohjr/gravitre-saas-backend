@@ -684,6 +684,8 @@ def reconstruct_execution_result(
                 if plan is not None and plan.source == "computer_execution"
                 else "catalog_search_eligible"
                 if plan is not None and plan.source == "catalog_search"
+                else "entity_join_store"
+                if plan is not None and plan.source == "entity_join_store"
                 else None
             ),
             "recorded_at": meta.get("recorded_at"),

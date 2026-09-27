@@ -366,6 +366,7 @@ async def try_compiled_operational_read_turn(
         org_id=org_id,
         client=client,
         connected_integrations=connected_integrations,
+        task_state=task_state,
     )
     if entity_turn:
         return entity_turn

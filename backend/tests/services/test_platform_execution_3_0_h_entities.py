@@ -318,6 +318,10 @@ def test_store_answer_discloses_disconnected_live_sources() -> None:
     assert "not a live multi-provider census" in str(turn["message"]).lower()
     assert turn["writes_started"] is False
     assert turn["missing_live_sources"]
+    assert turn["execution_result"] is not None
+    assert turn["execution_result"]["structured"]["execution_path"] == "entity_join_store"
+    assert turn["provider_reinvoked"] is False
+    assert (turn["task_state"] or {}).get("work_artifacts")
 
 
 def test_ambiguous_display_name_is_not_joined() -> None:
@@ -362,6 +366,8 @@ def test_ambiguous_display_name_is_not_joined() -> None:
     assert turn is not None
     assert turn["join"] is False
     assert "similar display name" in str(turn["message"]).lower()
+    assert turn["execution_result"] is not None
+    assert turn["writes_started"] is False
 
 
 def test_compiled_read_runs_after_ledger_before_cognitive_kernel() -> None:
