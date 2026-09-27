@@ -112,7 +112,7 @@ Do not collapse to one SHA.
 
 | Role | SHA |
 |---|---|
-| Current hold tree | this evidence-pack commit (ancestor checkpoint `dc0f9625`; observation alias `68ee4a86`) |
+| Current hold tree | `856ec34c0d80c450d958fe959a41a1d9173067e9` (evidence pack; checkpoint `dc0f9625`; observation alias `68ee4a86`) |
 | CU latency LIVE | `bcff57021460cdf27da8cc5e88083b49d19d205c` |
 | Catalog search LIVE | `158c43eb9e65d66e0329b7d51410518a34f07323` |
 | Class C READ LIVE | `c29f12cb451fe75db6f657c0534dab8f3a36f201` |
@@ -311,4 +311,4 @@ No category A runtime, B tests, or D config in the dirty tree.
 
 Frontend branch `feat/gravitre-3.0-plus-frontend` was not merged.
 
-Exact GitHub CI for **this** SHA is recorded after the run completes (follow-up line below). Do not treat `dc0f9625` run `36326968254` as this pack’s CI.
+Evidence-pack SHA: `856ec34c0d80c450d958fe959a41a1d9173067e9`. Exact GitHub CI for the **final** core SHA (this file’s commit if it moved) is recorded after that run completes. Do not treat `dc0f9625` run `36326968254` as this pack’s CI.
