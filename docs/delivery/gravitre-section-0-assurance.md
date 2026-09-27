@@ -3,8 +3,9 @@
 **Date:** 2026-09-27  
 **Scope:** Verification and acceptance assurance only. No new product capabilities.  
 **Isolated org:** `f07e57c0-1501-4000-8000-c04e57a00001`  
-**Tree at this pass:** `4ee5cb174094d373818c59949d8aa9785e0a1730` plus the one-line `map_stage("observation")→PROVIDER` lock in this commit.  
+**Tree at this pass:** observation alias on `68ee4a86`; **clean hold baseline** `dc0f9625a8157ee20312a4fa44663d396b3e9958` (envelope lock aligned to committed live JSON).  
 **Product Experience Contract:** **not fully accepted.**
+**Capability baseline:** **HOLD**
 
 Do not transfer evidence across SHAs. Each live row is bound to the SHA that served it.
 
@@ -44,9 +45,13 @@ GitHub Actions:
 | `b6a9722c…` | CI | success | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36226281760 |
 | `9fcaa89c…` | CI | success | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36229510637 |
 | `4ee5cb17…` | Railway backend production | success | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36306934992 |
-| `4ee5cb17…` | CI Backend (pytest) | **1 failed / 6730 passed** | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36306935027 |
+| `4ee5cb17…` | CI Backend (pytest) | **1 failed / 6730 passed** (`map_stage("observation")`) | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36306935027 |
+| `68ee4a86…` | CI Backend (pytest) | **1 failed** (envelope test vs committed Class C JSON SHA) | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36308264729 |
+| `dc0f9625…` | CI (Backend pytest **success**) | **success** | https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36326968254 |
 
-**CI finding (this pass):** `test_p2_observation_and_first_sse_marks` failed because `map_stage("observation")` fell through to `OBSERVATION` instead of `PROVIDER`. `_mark("observation")` is used on compiled short-circuits; `STAGE_CANONICAL` only listed `observation_persist`. One-line alias added. Not a product-behavior change. Same Backend pytest failure was already red on `bcff5702`, `824197bc`, and `524aed29`.
+**Clean hold baseline:** SHA `dc0f9625a8157ee20312a4fa44663d396b3e9958`. CI https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36326968254 — Backend (pytest) success. `map_stage("observation")` is `PROVIDER`. Envelope lock reads committed live JSON (`0b879ec4` or `c29f12cb`). Not a product change. Closed slices not re-probed.
+
+**CI finding (closed):** `test_p2_observation_and_first_sse_marks` failed on `4ee5cb17` because `map_stage("observation")` fell through to `OBSERVATION`. Alias shipped on `68ee4a86`. Envelope test then failed on that SHA against committed `gravitre-turn-latency-classes-live.json` (`0b879ec4`, not local dirty `c29f12cb`). Aligned on `dc0f9625`.
 
 Catalog SHA `158c43eb` Railway deploy: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36274811849. Push `CI` workflow for that SHA was not in the first GitHub API page; do not invent a pytest run URL.
 
@@ -107,7 +112,7 @@ Do not collapse to one SHA.
 
 | Role | SHA |
 |---|---|
-| Current hold tree | `4ee5cb17…` + observation-map alias in this commit |
+| Current hold tree | `dc0f9625a8157ee20312a4fa44663d396b3e9958` (observation→PROVIDER + envelope lock) |
 | CU latency LIVE | `bcff57021460cdf27da8cc5e88083b49d19d205c` |
 | Catalog search LIVE | `158c43eb9e65d66e0329b7d51410518a34f07323` |
 | Class C READ LIVE | `c29f12cb451fe75db6f657c0534dab8f3a36f201` |
