@@ -37,17 +37,17 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   it("connectors default to discovery then a compact management list", () => {
     const src = readFileSync(resolve(webRoot, "app/connectors/page.tsx"), "utf8")
     expect(src).toMatch(/useState<"topology" \| "grid">\("grid"\)/)
-    expect(src).toMatch(/variant="list"/)
-    expect(src).toMatch(/data-gravitre-connector-row/)
+    expect(src).toMatch(/<ConnectorOperatingRow/)
+    expect(src).toMatch(/\{selectedConnector \? \(\s*<ConnectorInspector/)
     expect(src).toMatch(/data-review-surface="connectors-management"/)
-    expect(src).toMatch(/inspector stays closed until then/)
+    expect(src).not.toMatch(/requestsToday|dataFlowRate|usedByWorkflows|triggeredByAgents/)
     expect(src).not.toMatch(/ConnectorsAtmosphere/)
     const strip = readFileSync(
       resolve(webRoot, "components/connectors/available-connectors-strip.tsx"),
       "utf8",
     )
     expect(strip).toMatch(/data-review-surface="connectors-discovery"/)
-    expect(strip).toMatch(/>Discovery</)
+    expect(strip).toMatch(/Discover systems/)
     expect(strip).not.toMatch(/Available\s*</)
   })
 
@@ -118,7 +118,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     const src = readFileSync(resolve(webRoot, "app/settings/organizations/page.tsx"), "utf8")
     expect(src).toMatch(/data-review-surface="settings-orgs-queue"/)
     expect(src).toMatch(/data-review-surface="settings-orgs-inspect"/)
-    expect(src).toMatch(/inspector stays closed until then/)
+    expect(src).not.toMatch(/requestsToday|dataFlowRate|usedByWorkflows|triggeredByAgents/)
     expect(src).toMatch(/data-review-cta="switch-org"/)
     expect(src).not.toMatch(/from \"@\/components\/ui\/card\"/)
     expect(src).not.toMatch(/org\.plan \?\? \"Free\"/)
@@ -166,7 +166,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/data-review-surface="approvals-queue"/)
     expect(src).toMatch(/data-review-surface="approvals-inspect"/)
     expect(src).toMatch(/data-review-cta="approve"/)
-    expect(src).toMatch(/inspector stays closed until then/)
+    expect(src).not.toMatch(/requestsToday|dataFlowRate|usedByWorkflows|triggeredByAgents/)
     expect(src).toMatch(/Decide/)
     expect(src).toMatch(/<PhaseBand/)
     expect(src).toMatch(/hidden items-center gap-3 lg:flex/)

@@ -2,7 +2,7 @@ import type { CanvasWorkflowNode } from "@/lib/workflows/builder-persistence"
 
 /**
  * Capture-harness graph: every node family the builder renders (source, agent,
- * task, council, approval, connector) laid out inside a 1440px canvas.
+ * task, decision, council, approval, connector) laid out inside a 1440px canvas.
  * Fixture only — never loaded by a product route.
  */
 export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
@@ -12,7 +12,7 @@ export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
     name: "Salesforce CRM",
     description: "Pull customer records",
     config: { connector: "salesforce", table: "contacts" },
-    position: { x: 40, y: 70 },
+    position: { x: 40, y: 40 },
     connections: ["node-2"],
     state: "idle",
     vendor: "salesforce",
@@ -25,7 +25,7 @@ export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
     name: "Data Validator",
     description: "Validate and clean records",
     config: { model: "gpt-5.5", temperature: 0.3, role: "Data quality" },
-    position: { x: 320, y: 70 },
+    position: { x: 320, y: 40 },
     connections: ["node-3"],
     state: "idle",
     dataLabel: "validated_data",
@@ -36,10 +36,24 @@ export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
     name: "Enrich with metadata",
     description: "Add company info and scoring",
     config: { instruction: "Enrich customer records with company data" },
-    position: { x: 600, y: 70 },
-    connections: ["node-6"],
+    position: { x: 600, y: 40 },
+    connections: ["node-7"],
     state: "idle",
     dataLabel: "enriched_records",
+  },
+  {
+    id: "node-7",
+    type: "decision",
+    name: "Account tier",
+    description: "Route strategic accounts to council",
+    config: {},
+    position: { x: 616, y: 200 },
+    connections: ["node-6", "node-4"],
+    state: "idle",
+    outputPaths: [
+      { id: "strategic", label: "Strategic", condition: "tier == 'strategic'", targetNodeId: "node-6" },
+      { id: "standard", label: "Standard", isDefault: true, targetNodeId: "node-4" },
+    ],
   },
   {
     id: "node-6",
@@ -47,7 +61,7 @@ export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
     name: "Revenue Council",
     description: "Agree on account priority",
     config: {},
-    position: { x: 568, y: 320 },
+    position: { x: 556, y: 500 },
     connections: ["node-4"],
     state: "idle",
     councilConfig: {
@@ -67,7 +81,7 @@ export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
     name: "Quality Gate",
     description: "Review before production",
     config: { approvers: ["admin"], autoApprove: false },
-    position: { x: 320, y: 320 },
+    position: { x: 300, y: 500 },
     connections: ["node-5"],
     state: "idle",
     dataLabel: "approved_batch",
@@ -78,7 +92,7 @@ export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
     name: "PostgreSQL",
     description: "Write to data warehouse",
     config: { connector: "postgresql", schema: "customers" },
-    position: { x: 40, y: 320 },
+    position: { x: 40, y: 500 },
     connections: [],
     state: "idle",
     vendor: "postgresql",

@@ -99,7 +99,7 @@ export function TeamView({
                   count={rows.length}
                 />
                 <p className="text-[11.5px] tabular-nums text-[color:var(--g-text-muted)]">
-                  {working > 0 ? <span className="font-medium text-[color:var(--g-brand)]">{working} working</span> : "No one working"}
+                  {working > 0 ? <span className="inline-flex items-center gap-1.5 font-medium text-foreground"><span aria-hidden className="size-1.5 rounded-full bg-[color:var(--signal-500)]" />{working} working</span> : "No one working"}
                   {blocked > 0 ? <span className="text-destructive"> · {blocked} blocked</span> : null}
                 </p>
               </div>

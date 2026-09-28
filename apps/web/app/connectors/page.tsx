@@ -1,7 +1,7 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState } from "react"
+import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
@@ -19,6 +19,16 @@ import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connecto
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
+import {
+  ConnectorAttentionList,
+  ConnectorInspector,
+  ConnectorOperatingRow,
+  ConnectorRowHeader,
+  deriveConnectorAttention,
+  useAgentsByVendor,
+  useVendorCapabilities,
+  type ConnectorAttention,
+} from "@/components/connectors/connector-operating"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
@@ -32,8 +42,6 @@ import {
   Settings,
   Trash2,
   ExternalLink,
-  Zap,
-  Activity,
   ArrowRight,
   Circle,
   CheckCircle2,
@@ -46,8 +54,6 @@ import {
   Wifi,
   WifiOff,
   Cable,
-  Bot,
-  Workflow,
   Filter,
   LayoutGrid,
   List,
@@ -135,19 +141,13 @@ interface Connector {
   displayStatus?: string
   environment: "production" | "staging"
   lastSync: string
-  health: number
   description: string
-  dataFlowRate?: string
-  requestsToday?: number
-  latency?: number
   category?: string
   authType?: "oauth" | "apiKey" | "webhook"
   authStatus?: string
   blockingReason?: string
   recoveryAction?: string
   availability?: ConnectorAvailability
-  usedByWorkflows?: number
-  triggeredByAgents?: number
   config?: {
     apiKey?: string
     webhookUrl?: string
@@ -302,19 +302,13 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     displayStatus: displayStatus || undefined,
     environment: environment === "production" ? "production" : "staging",
     lastSync: formatLastSync(model.lastSync ?? model.last_sync ?? model.last_sync_at),
-    health: Number(model.health ?? 0),
     description: String(model.description ?? ""),
-    dataFlowRate: String(model.dataFlowRate ?? model.data_flow_rate ?? "0 MB/s"),
-    requestsToday: Number(model.requestsToday ?? model.requests_today ?? 0),
-    latency: Number(model.latency ?? 0),
     category: String(model.category ?? lookupConnectorCategory(vendor) ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
     authStatus: authStatus || undefined,
     blockingReason: availability?.blockingReason,
     recoveryAction: availability?.recoveryAction,
     availability,
-    usedByWorkflows: Number(model.usedByWorkflows ?? model.used_by_workflows ?? 0),
-    triggeredByAgents: Number(model.triggeredByAgents ?? model.triggered_by_agents ?? 0),
     config:
       model.config && typeof model.config === "object"
         ? (model.config as Connector["config"])
@@ -541,16 +535,68 @@ function ConnectorNode({
   onFocus?: (connector: Connector) => void
   variant?: "topology" | "list"
 }) {
-  const [isHovered, setIsHovered] = useState(false)
-  const config = statusConfig[connector.status] ?? statusConfig.disconnected
-  const StatusIcon = config.icon
   const isSyncing = connector.status === "syncing"
 
+  const optionsMenu = (
+    <ConnectorOptionsMenu
+      connector={connector}
+      onConfigure={onConfigure}
+      onSync={onSync}
+      onTestConnection={onTestConnection}
+      onReconnect={onReconnect}
+      onDelete={onDelete}
+    />
+  )
+
+  if (variant === "list") {
+    return (
+      <div className="flex items-center gap-3 border-b border-divide py-2.5" data-gravitre-connector-row="">
+        <ConnectorIcon
+          vendor={connector.type}
+          status={connector.status === "syncing" ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
+          size="sm"
+          showStatusIndicator={false}
+        />
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          onClick={() => onFocus?.(connector)}
+        >
+          <p className="truncate text-sm font-medium text-foreground">{connector.name}</p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {connector.type}
+            {" · "}
+            {isSyncing ? "Syncing" : connectorStatusLabel(connector)}
+          </p>
+        </button>
+        {optionsMenu}
+      </div>
+    )
+  }
+
+  return <ConnectorTopologyCard connector={connector} position={position} optionsMenu={optionsMenu} onReconnect={onReconnect} />
+}
+
+function ConnectorOptionsMenu({
+  connector,
+  onConfigure,
+  onSync,
+  onTestConnection,
+  onReconnect,
+  onDelete,
+}: {
+  connector: Connector
+  onConfigure: () => void
+  onSync: (connectorId: string) => Promise<void>
+  onTestConnection: (connectorId: string) => Promise<void>
+  onReconnect?: (connector: Connector) => Promise<void>
+  onDelete: () => void
+}) {
+  const isSyncing = connector.status === "syncing"
   const handleSync = async () => {
     await onSync(connector.id)
   }
-
-  const optionsMenu = (
+  return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={`${connector.name} options`}>
@@ -584,38 +630,23 @@ function ConnectorNode({
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
 
-  if (variant === "list") {
-    return (
-      <div className="flex items-center gap-3 border-b border-divide py-2.5" data-gravitre-connector-row="">
-        <ConnectorIcon
-          vendor={connector.type}
-          status={connector.status === "syncing" ? "syncing" : connector.status === "connected" ? "connected" : connector.status === "error" ? "error" : "disconnected"}
-          size="sm"
-          showStatusIndicator={false}
-        />
-        <button
-          type="button"
-          className="min-w-0 flex-1 text-left"
-          onClick={() => onFocus?.(connector)}
-        >
-          <p className="truncate text-sm font-medium text-foreground">{connector.name}</p>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {connector.type}
-            {" · "}
-            {isSyncing ? "Syncing" : connectorStatusLabel(connector)}
-          </p>
-        </button>
-        <Link
-          href={`/connectors/${connector.id}`}
-          className="shrink-0 text-xs text-[color:var(--g-text-muted)] underline-offset-4 hover:text-[color:var(--g-text-primary)] hover:underline"
-        >
-          Details
-        </Link>
-        {optionsMenu}
-      </div>
-    )
-  }
+function ConnectorTopologyCard({
+  connector,
+  position,
+  optionsMenu,
+  onReconnect,
+}: {
+  connector: Connector
+  position: "left" | "right"
+  optionsMenu: ReactNode
+  onReconnect?: (connector: Connector) => Promise<void>
+}) {
+  const [isHovered, setIsHovered] = useState(false)
+  const config = statusConfig[connector.status] ?? statusConfig.disconnected
+  const StatusIcon = config.icon
+  const isSyncing = connector.status === "syncing"
 
   return (
     <motion.div
@@ -698,40 +729,6 @@ function ConnectorNode({
               ))}
             </ul>
           ) : null}
-
-          {/* Live metrics */}
-          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-secondary/50 mb-3">
-            <div className="text-center">
-              <div className="text-xs font-medium text-foreground">{connector.dataFlowRate}</div>
-              <div className="text-[9px] text-muted-foreground">Throughput</div>
-            </div>
-            <div className="text-center border-x border-border/50">
-              <div className="text-xs font-medium text-foreground">{connector.latency}ms</div>
-              <div className="text-[9px] text-muted-foreground">Latency</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xs font-medium text-foreground">{(connector.requestsToday || 0).toLocaleString()}</div>
-              <div className="text-[9px] text-muted-foreground">Requests</div>
-            </div>
-          </div>
-
-          {/* AI Usage Indicators */}
-          {(connector.usedByWorkflows || connector.triggeredByAgents) && connectorIsExecutable(connector) && (
-            <div className="flex items-center gap-3 mb-3 text-[10px] text-muted-foreground">
-              {connector.usedByWorkflows && connector.usedByWorkflows > 0 && (
-                <div className="flex items-center gap-1">
-                  <Workflow className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                  <span>{connector.usedByWorkflows} workflows</span>
-                </div>
-              )}
-              {connector.triggeredByAgents && connector.triggeredByAgents > 0 && (
-                <div className="flex items-center gap-1">
-                  <Bot className="h-3 w-3 text-[color:var(--g-signal)]" />
-                  <span>{connector.triggeredByAgents} agents</span>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between">
@@ -2857,6 +2854,17 @@ function ConnectorsPageContent() {
   const leftConnectors = filteredConnectors.filter((_, i) => i % 2 === 0)
   const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
 
+  const vendorCapabilities = useVendorCapabilities(Boolean(user && orgId))
+  const agentsByVendor = useAgentsByVendor(Boolean(user && orgId))
+  const attentionItems = useMemo(
+    () => connectors.map((c) => deriveConnectorAttention(c)).filter((x): x is ConnectorAttention => x !== null),
+    [connectors],
+  )
+  const attentionIds = useMemo(() => new Set(attentionItems.map((x) => x.connector.id)), [attentionItems])
+  const selectedConnector = focusedConnector
+    ? connectors.find((c) => c.id === focusedConnector.id) ?? null
+    : null
+
   const connectedCount = connectors.filter((c) => connectorIsExecutable(c)).length
   const connectedVendorKeys = useMemo(
     () => new Set(connectors.map((c) => connectorVendorKey(c.type))),
@@ -3286,54 +3294,76 @@ function ConnectorsPageContent() {
             </div>
           )}
 
-          {/* Management: compact list (default). Topology remains opt-in. */}
+          {/* Operating list (default): rows + contextual inspector. Topology remains opt-in. */}
           {viewMode === "grid" && (
             <div data-testid="connectors-list-view" data-review-surface="connectors-management">
-              <div className="mb-3">
-                <p className={TYPE.eyebrow}>Management</p>
-                <p className={cn(TYPE.meta, "mt-0.5")}>
-                  Connected systems as a dense list. Topology is optional.
-                </p>
-              </div>
-              <div className={cn("grid gap-4", focusedConnector && "lg:grid-cols-[minmax(0,1fr)_16rem]")}>
-                <div>
-              {filteredConnectors.map((connector) => (
-                <ConnectorNode
-                  key={connector.id}
-                  connector={connector}
-                  position="right"
-                  variant="list"
-                  onConfigure={() => setConfigureModal(connector)}
-                  onSync={handleSync}
-                  onTestConnection={handleTestConnection}
-                  onReconnect={handleReconnectOAuth}
-                  onDelete={() => setDeleteModal(connector)}
-                  onFocus={setFocusedConnector}
-                />
-              ))}
-                </div>
-                {focusedConnector ? (
-                  <aside className="h-fit border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] p-3 text-sm">
-                    <p className={TYPE.eyebrow}>Inspect</p>
-                    <p className="mt-2 font-medium text-foreground">{focusedConnector.name}</p>
-                    <ul className={cn(TYPE.meta, "mt-2 space-y-1")}>
-                      <li>Status: {focusedConnector.status}</li>
-                      <li>Vendor: {focusedConnector.type}</li>
-                    </ul>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="mt-3 h-8"
-                      onClick={() => setConfigureModal(focusedConnector)}
-                    >
-                      Configure
-                    </Button>
-                  </aside>
-                ) : (
-                  <p className={cn(TYPE.meta, "lg:col-span-2")}>
-                    Select a connected system — inspector stays closed until then.
-                  </p>
-                )}
+              <ConnectorAttentionList
+                items={attentionItems}
+                onAction={(item) => {
+                  const target = connectors.find((c) => c.id === item.connector.id)
+                  if (!target) return
+                  setFocusedConnector(target)
+                  if (item.action === "reconnect") void handleReconnectOAuth(target)
+                  else if (item.action === "configure") setConfigureModal(target)
+                  else void handleTestConnection(target.id)
+                }}
+              />
+              <div className={cn("grid gap-5", selectedConnector && "lg:grid-cols-[minmax(0,1fr)_22rem]")}>
+                <section aria-labelledby="connectors-connected-heading" className="min-w-0">
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <h2 id="connectors-connected-heading" className="text-[13px] font-semibold text-foreground">
+                      Connected systems
+                    </h2>
+                    <p className={TYPE.meta}>
+                      {filteredConnectors.length} shown · select a row to inspect
+                    </p>
+                  </div>
+                  <ConnectorRowHeader />
+                  {filteredConnectors.map((connector) => (
+                    <ConnectorOperatingRow
+                      key={connector.id}
+                      connector={connector}
+                      statusLabel={connector.status === "syncing" ? "Syncing" : connectorStatusLabel(connector)}
+                      capability={vendorCapabilities.get(connector.vendorKey)}
+                      agents={agentsByVendor.get(connector.vendorKey)}
+                      attention={attentionIds.has(connector.id)}
+                      selected={selectedConnector?.id === connector.id}
+                      onSelect={() =>
+                        setFocusedConnector((prev) => (prev?.id === connector.id ? null : connector))
+                      }
+                      menu={
+                        <ConnectorOptionsMenu
+                          connector={connector}
+                          onConfigure={() => setConfigureModal(connector)}
+                          onSync={handleSync}
+                          onTestConnection={handleTestConnection}
+                          onReconnect={handleReconnectOAuth}
+                          onDelete={() => setDeleteModal(connector)}
+                        />
+                      }
+                    />
+                  ))}
+                </section>
+                {selectedConnector ? (
+                  <ConnectorInspector
+                    connector={selectedConnector}
+                    statusLabel={
+                      selectedConnector.status === "syncing" ? "Syncing" : connectorStatusLabel(selectedConnector)
+                    }
+                    capability={vendorCapabilities.get(selectedConnector.vendorKey)}
+                    agents={agentsByVendor.get(selectedConnector.vendorKey)}
+                    attention={deriveConnectorAttention(selectedConnector)}
+                    onConfigure={() => setConfigureModal(selectedConnector)}
+                    onTest={() => void handleTestConnection(selectedConnector.id)}
+                    onSync={() => void handleSync(selectedConnector.id)}
+                    onReconnect={
+                      connectorNeedsOAuthReconnect(selectedConnector)
+                        ? () => void handleReconnectOAuth(selectedConnector)
+                        : undefined
+                    }
+                    onClose={() => setFocusedConnector(null)}
+                  />
+                ) : null}
               </div>
             </div>
           )}

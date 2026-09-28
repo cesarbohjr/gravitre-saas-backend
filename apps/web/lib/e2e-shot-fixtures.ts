@@ -13,6 +13,8 @@
  * same write shows up here as a recorded outcome.
  */
 
+import shotActionCatalog from "./e2e-shot-action-catalog.json"
+
 const DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
 /** Timestamps are rendered with toLocaleString(), so keep them fixed and recent-looking. */
@@ -417,28 +419,32 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // Requested as /api/connectors?org=…&live=1; the harness matches on pathname
   // only, so the query string is irrelevant here.
   "/api/connectors": {
+    // Mirrors backend _connector_response_item: availability is the only
+    // readiness signal; there are no usage/latency/request fields.
     connectors: [
       {
         id: "con_hubspot",
         name: "HubSpot",
         // `vendor` (NOT `type`) carries the vendor slug: normalizeConnector reads
         // `model.vendor ?? model.type` and shouldShowConnectedConnectorOnHub drops
-        // any row whose slug is not a catalog vendor. A category like "crm" here
-        // silently filters every connector out, rendering "0 connected".
+        // any row whose slug is not a catalog vendor.
         vendor: "hubspot",
         status: "connected",
         environment: "production",
-        lastSync: T(3),
-        health: 99,
+        lastSync: AGO(3),
         description: "Marketing, sales, and service",
-        category: "CRM",
         authType: "oauth",
         authStatus: "active",
-        requestsToday: 1284,
-        latency: 210,
-        dataFlowRate: "1.2k/day",
-        usedByWorkflows: 4,
-        triggeredByAgents: 2,
+        availability: {
+          configured: true,
+          authenticated: true,
+          tokenValid: true,
+          scopesValid: true,
+          healthy: true,
+          executable: true,
+          lastCheckedAt: AGO(2),
+          sourceOfTruth: "oauth_token_check",
+        },
       },
       {
         id: "con_salesforce",
@@ -446,20 +452,46 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         vendor: "salesforce",
         status: "error",
         environment: "production",
-        lastSync: T(96),
-        health: 42,
+        lastSync: AGO(96),
         description: "CRM and sales automation",
-        category: "CRM",
         authType: "oauth",
         authStatus: "active",
-        requestsToday: 318,
-        latency: 540,
-        // Omitting dataFlowRate renders a bare "0 MB/s" on the card.
-        dataFlowRate: "320/day",
-        blockingReason: "Connected user lacks edit access on Opportunity objects.",
-        recoveryAction: "Grant the connected user edit access, then re-run the blocked step.",
-        usedByWorkflows: 3,
-        triggeredByAgents: 1,
+        config: { instance_url: "northwind.my.salesforce.com" },
+        availability: {
+          configured: true,
+          authenticated: true,
+          tokenValid: true,
+          scopesValid: false,
+          healthy: true,
+          executable: false,
+          blockingReason: "missing_scope",
+          recoveryAction: "Grant the connected user edit access on Opportunity, then re-run the blocked step.",
+          lastCheckedAt: AGO(14),
+          sourceOfTruth: "oauth_token_check",
+        },
+      },
+      {
+        id: "con_google_ads",
+        name: "Google Ads",
+        vendor: "google_ads",
+        status: "error",
+        environment: "production",
+        lastSync: AGO(60 * 26),
+        description: "Campaign performance reporting",
+        authType: "oauth",
+        authStatus: "auth_expired",
+        availability: {
+          configured: true,
+          authenticated: true,
+          tokenValid: false,
+          scopesValid: true,
+          healthy: false,
+          executable: false,
+          blockingReason: "token_expired",
+          recoveryAction: "Reconnect Google Ads to restore reporting syncs.",
+          lastCheckedAt: AGO(30),
+          sourceOfTruth: "oauth_token_check",
+        },
       },
       {
         id: "con_zendesk",
@@ -467,17 +499,21 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         vendor: "zendesk",
         status: "connected",
         environment: "production",
-        lastSync: T(12),
-        health: 97,
+        lastSync: AGO(12),
         description: "Support tickets and macros",
-        category: "Support",
         authType: "oauth",
         authStatus: "active",
-        requestsToday: 642,
-        latency: 260,
-        dataFlowRate: "640/day",
-        usedByWorkflows: 2,
-        triggeredByAgents: 1,
+        config: { subdomain: "northwind" },
+        availability: {
+          configured: true,
+          authenticated: true,
+          tokenValid: true,
+          scopesValid: true,
+          healthy: true,
+          executable: true,
+          lastCheckedAt: AGO(11),
+          sourceOfTruth: "oauth_token_check",
+        },
       },
       {
         id: "con_slack",
@@ -485,22 +521,27 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         vendor: "slack",
         status: "syncing",
         environment: "production",
-        lastSync: T(1),
-        health: 95,
+        lastSync: AGO(1),
         description: "Notifications and approvals",
-        category: "Productivity",
         authType: "oauth",
         authStatus: "active",
-        requestsToday: 87,
-        latency: 180,
-        dataFlowRate: "90/day",
-        usedByWorkflows: 5,
-        // Must be > 0: the card renders the count with no "agents" label when
-        // it is zero, leaving a stray bare "0" next to "5 workflows".
-        triggeredByAgents: 2,
+        availability: {
+          configured: true,
+          authenticated: true,
+          tokenValid: true,
+          scopesValid: true,
+          healthy: true,
+          executable: true,
+          lastCheckedAt: AGO(1),
+          sourceOfTruth: "oauth_token_check",
+        },
       },
     ],
   },
+
+  // Real action definitions exported from the backend catalog by
+  // scripts/export-shot-action-catalog.py (static product data, not usage).
+  "/api/connectors/catalog/actions": shotActionCatalog,
 
   // ensureSelectedOrg() resolves the active org from this list and calls
   // purgeStaleDemoOrgFromStorage(), which DELETES the seeded gravitre:selectedOrg
@@ -751,6 +792,31 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   "/api/agents": { agents },
   "/api/agents/agt_lead_triage": { agent: agents[0] },
   "/api/agents/agt_deal_desk": { agent: agents[1] },
+  // FIXTURE: agent identity policy + capability profile (shape of GET /identity, /capabilities).
+  "/api/agents/agt_lead_triage/identity": {
+    identity: {
+      agentId: "agt_lead_triage",
+      trustLevel: "write_with_approval",
+      allowedActionKinds: ["read", "write"],
+      allowedToolPatterns: ["hubspot.contacts.*", "apollo.people.*"],
+      maxActionsPerDay: 200,
+      maxSpendUsdPerDay: null,
+      approvalRuleOverrides: { "hubspot.contacts.delete": "always_deny" },
+      updatedAt: "2026-09-21T15:00:00Z",
+    },
+    effective: {
+      trustLevel: "write_with_approval",
+      allowedActionKinds: ["read", "write"],
+      allowedToolPatterns: ["hubspot.contacts.*", "apollo.people.*"],
+    },
+    usageToday: { actions: 34, tokens: 0, spendUsd: 0 },
+  },
+  "/api/agents/agt_lead_triage/capabilities": {
+    allowedConnectors: ["hubspot", "apollo"],
+    availableReadActions: ["hubspot.contacts.search", "apollo.people.enrich"],
+    availableWriteActions: ["hubspot.contacts.create", "hubspot.contacts.update"],
+    approvalRequiredActions: ["hubspot.contacts.create", "hubspot.contacts.update"],
+  },
 
   // Agents 4.0 GRAPH — swarm parent→subtask edges (capture harness only).
   "/api/agent-swarm": {
@@ -1022,6 +1088,23 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         },
       },
     ],
+  },
+  // FIXTURE: execution-outcome ledger rollup (shape of GET ops-summary). Counts only.
+  "/api/workflows/execution-outcomes/ops-summary": {
+    window_hours: 24,
+    totals: { pass: 58, fail: 6, cancel: 3, other: 0 },
+    pass_rate: 0.866,
+    by_source: [
+      { source: "workflow", pass: 41, fail: 4, cancel: 2, pass_rate: 0.872 },
+      { source: "chat", pass: 17, fail: 2, cancel: 1, pass_rate: 0.85 },
+    ],
+    by_connector: [
+      { connector: "hubspot", pass: 31, fail: 2, cancel: 1, pass_rate: 0.912 },
+      { connector: "salesforce", pass: 12, fail: 3, cancel: 0, pass_rate: 0.8 },
+      { connector: "zendesk", pass: 9, fail: 0, cancel: 2, pass_rate: 0.818 },
+      { connector: "slack", pass: 6, fail: 1, cancel: 0, pass_rate: 0.857 },
+    ],
+    event_count: 67,
   },
   "/api/workflows/stats": {
     overallSuccessRate: 96.8,

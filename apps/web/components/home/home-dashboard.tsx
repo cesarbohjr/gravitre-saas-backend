@@ -32,6 +32,7 @@ import { DASHBOARD_PRESETS, KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
 import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
 import { DashboardWidgetView, resolveKpiValue } from "@/components/home/dashboard-widget-view"
 import { KpiPickerDialog } from "@/components/home/kpi-picker-dialog"
+import { OutcomeFlowSankey } from "@/components/home/outcome-flow-sankey"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
@@ -382,6 +383,12 @@ export function HomeDashboard({
             </div>
           ))}
         </motion.div>
+
+        {!editMode ? (
+          <motion.div variants={item}>
+            <OutcomeFlowSankey />
+          </motion.div>
+        ) : null}
 
         {showGettingStarted ? (
           <motion.p variants={item} className={TYPE.meta}>

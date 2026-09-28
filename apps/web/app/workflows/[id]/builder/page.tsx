@@ -1019,7 +1019,7 @@ function DecisionNode({
         </div>
 
         {/* Node label below diamond */}
-        <div className="mt-4 text-center max-w-[180px]">
+        <div className="mt-8 max-w-[180px] rounded-[4px] bg-[color:var(--g-canvas)] px-1.5 py-0.5 text-center">
           <p className="text-sm font-medium text-foreground truncate">{node.name}</p>
           <p className="text-[11px] text-muted-foreground" data-node-type-label>
             Decision
@@ -1032,7 +1032,7 @@ function DecisionNode({
 
         {/* Output paths indicators */}
         {node.outputPaths && node.outputPaths.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1 justify-center max-w-[180px]">
+          <div className="mt-1 flex max-w-[180px] flex-wrap justify-center gap-1 rounded-[4px] bg-[color:var(--g-canvas)] px-1 py-0.5">
             {node.outputPaths.map((path, idx) => (
               <span
                 key={path.id}
@@ -1520,24 +1520,29 @@ function AgentCouncilNode({
           ) : null}
         </div>
 
-        {/* Participants: one row of role micro-icons behind a hairline division */}
+        {/* Participants: role glyph, name, role — real assigned agents only */}
         {agents.length > 0 ? (
           <ul
-            className="mt-2.5 grid grid-cols-3 gap-1.5 border-t border-[color:var(--g-border-default)] pt-2"
+            className="mt-2.5 space-y-1 border-t border-[color:var(--g-border-default)] pt-2"
             aria-label={`${agents.length} participating agents`}
+            data-council-participants
           >
-            {visibleAgents.map((agent, index) => {
+            {visibleAgents.map((agent) => {
               const role = agentStepRole({ role: agent.role }, agent.name)
               const RoleIcon = role.Icon
-              const overflow = index === visibleAgents.length - 1 ? agents.length - visibleAgents.length : 0
               return (
-                <li key={agent.id} className="flex min-w-0 items-center gap-1 text-[11px] text-[color:var(--g-text-secondary)]" title={`${agent.name} · ${agent.role}`}>
-                  <RoleIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-                  <span className="truncate">{agent.name.split(" ")[0]}</span>
-                  {overflow > 0 ? <span className="shrink-0 text-muted-foreground">+{overflow}</span> : null}
+                <li key={agent.id} className="flex min-w-0 items-center gap-2 text-[11.5px] leading-4">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] dark:border-[color:var(--graphite-700)]">
+                    <RoleIcon className="h-3 w-3 text-[color:var(--g-text-secondary)]" strokeWidth={1.75} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">{agent.name}</span>
+                  {agent.role ? <span className="max-w-[40%] shrink-0 truncate text-muted-foreground">{agent.role}</span> : null}
                 </li>
               )
             })}
+            {agents.length > visibleAgents.length ? (
+              <li className="pl-7 text-[11px] text-muted-foreground">+{agents.length - visibleAgents.length} more</li>
+            ) : null}
           </ul>
         ) : (
           <p className="mt-2.5 border-t border-[color:var(--g-border-default)] pt-2 text-[11px] text-muted-foreground">
@@ -5728,7 +5733,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 const labelY = (fromY + toY) / 2 - 12
                 
                 // For decision nodes, show the path label instead of data label
-                const decisionPathLabel = isDecisionSource && conn.from.outputPaths?.[pathIndex]?.label
+                const decisionPathLabel =
+                  isDecisionSource &&
+                  (conn.from.outputPaths?.find((p) => p.targetNodeId === conn.to.id)?.label ??
+                    conn.from.outputPaths?.[pathIndex]?.label)
                 const dataLabel = decisionPathLabel || conn.from.dataLabel
                 
                 // Handler to disconnect this connection

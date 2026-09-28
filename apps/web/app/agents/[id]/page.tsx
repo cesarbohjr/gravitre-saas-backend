@@ -37,6 +37,7 @@ import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 import { responseStyleLabel } from "@/lib/agent-response-style"
 import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 import { AgentIdentityGovernanceCard } from "@/components/gravitre/agent-identity-governance-card"
+import { AgentAutonomyPanel, AgentStrengthProfile } from "@/components/agents/agent-autonomy-panel"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useMotionPrefs } from "@/lib/animations"
 // Types
@@ -151,7 +152,7 @@ function AgentIdentityHero({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAge
             isRunning && !reduced && "animate-pulse",
           )}
         />
-        <span className={cn("text-xs font-medium", status.color)}>
+        <span className="text-xs font-medium text-foreground">
           {status.label}
         </span>
       </div>
@@ -301,21 +302,23 @@ export default function AgentProfilePage({
         </GravitrePageHeader>
 
         <div className="flex-1 px-[var(--np-page-pad-sm)] pb-8 pt-2 sm:px-[var(--np-page-pad)]">
-          <dl className="mb-6 flex flex-wrap gap-x-8 gap-y-3 border-b border-[color:var(--g-border-subtle)] pb-5">
-            <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted.toLocaleString()} />
-            <PerformanceFact
-              label="Success rate"
-              value={agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—"}
-            />
-            <PerformanceFact label="Avg response" value={agent.stats.avgResponseTime} />
-            <PerformanceFact
-              label="Workflows using"
-              value={agent.stats.hoursActive > 0 ? agent.stats.hoursActive.toLocaleString() : "—"}
-            />
-            <p className="basis-full text-xs text-[color:var(--g-text-muted)]">
+          <div className="mb-6 border-b border-[color:var(--g-border-subtle)] pb-5">
+            <dl className="flex flex-wrap gap-x-8 gap-y-3">
+              <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted.toLocaleString()} />
+              <PerformanceFact
+                label="Success rate"
+                value={agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—"}
+              />
+              <PerformanceFact label="Avg response" value={agent.stats.avgResponseTime} />
+              <PerformanceFact
+                label="Workflows using"
+                value={agent.stats.hoursActive > 0 ? agent.stats.hoursActive.toLocaleString() : "—"}
+              />
+            </dl>
+            <p className="mt-3 text-xs text-[color:var(--g-text-muted)]">
               {OPERATIONAL_METHODOLOGY_SHORT}
             </p>
-          </dl>
+          </div>
 
           <div
             role="tablist"
@@ -357,6 +360,9 @@ export default function AgentProfilePage({
                 exit={{ opacity: 0, y: -20 }}
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2"
               >
+                <AgentAutonomyPanel agentId={agent.id} className="col-span-2" />
+                <AgentStrengthProfile className="col-span-2 border-t-0" />
+
                 <AgentCapabilitiesCard
                   className="col-span-2"
                   capabilities={apiAgent.capabilities}
@@ -464,8 +470,9 @@ export default function AgentProfilePage({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="max-w-3xl"
+                className="max-w-3xl space-y-6"
               >
+                <AgentAutonomyPanel agentId={agent.id} />
                 <AgentIdentityGovernanceCard agentId={agent.id} canEdit={isAdmin} />
               </motion.div>
             )}

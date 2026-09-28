@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { BuilderInspector, BuilderRunTrace, type InspectorMode } from "@/components/workflows/builder-chrome"
 import { BuilderNodeBoard, ProviderLogoBoard, RoleMatrixBoard } from "./identity-board"
+import { AiNativeBoard } from "./ai-native-board"
 
 const SWATCHES: { group: string; items: { name: string; hex: string; role: string }[] }[] = [
   {
@@ -392,6 +393,9 @@ function Board() {
       </Section>
       <Section title="Builder nodes, handles and edges" note="Production builder-node-chrome primitives.">
         <BuilderNodeBoard />
+      </Section>
+      <Section title="AI-native primitives and charts" note="Task rows, context card, approval card, tool chips, autonomy scale, Evil Charts radar and sankey.">
+        <AiNativeBoard />
       </Section>
       <Section title="Graph node">
         <Nodes />
