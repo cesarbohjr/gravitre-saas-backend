@@ -60,6 +60,11 @@ describe("3.0 Plus final composition", () => {
     }
   })
 
+  it("marketplace saves requests stay within the backend limit (le=100)", () => {
+    const src = read("components/marketplace/asset-save-button.tsx")
+    expect(src).toMatch(/listSaves\(\{ limit: 100 \}\)/)
+  })
+
   it("top bar org label is hydration-stable", () => {
     const src = read("components/gravitre/top-bar.tsx")
     expect(src).not.toMatch(/useState\(\(\) => getSelectedOrgFromStorage\(\)/)
