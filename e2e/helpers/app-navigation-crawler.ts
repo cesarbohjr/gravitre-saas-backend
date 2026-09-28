@@ -15,6 +15,7 @@ function normalizePath(url: string, origin: string): string {
 function attachDiagnostics(page: Page) {
   const httpErrors: string[] = []
   const consoleErrors: string[] = []
+  const resourceErrors: string[] = []
 
   const onResponse = (response: {
     url: () => string
@@ -25,6 +26,9 @@ function attachDiagnostics(page: Page) {
     const type = response.request().resourceType()
     if (type === "document" && status >= 400) {
       httpErrors.push(`${status} ${response.url()}`)
+    } else if ((type === "fetch" || type === "xhr") && status >= 400) {
+      // Browser "Failed to load resource" console lines omit the URL.
+      resourceErrors.push(`${status} ${response.url()}`)
     }
   }
   const onConsole = (message: { type: () => string; text: () => string }) => {
@@ -43,6 +47,7 @@ function attachDiagnostics(page: Page) {
     },
     httpErrors,
     consoleErrors,
+    resourceErrors,
   }
 }
 
@@ -221,6 +226,9 @@ export async function clickAppSidebarItem(options: {
     if (noisyConsole.length > 0) {
       pass = false
       reason = `Console errors: ${noisyConsole.slice(0, 2).join(" | ")}`
+      if (diagnostics.resourceErrors.length > 0) {
+        reason += ` (failed requests: ${diagnostics.resourceErrors.slice(0, 4).join("; ")})`
+      }
     }
 
     return {

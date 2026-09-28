@@ -91,11 +91,11 @@ export function OutcomeFlowSankey({ className }: { className?: string }) {
       </div>
 
       {hasFlow ? (
-        <>
+        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
           <EChartsSankeyChart
             data={chartData}
             config={config}
-            className="mt-3 h-[260px] w-full"
+            className="h-[240px] w-full"
             nodeWidth={8}
             nodePadding={22}
             linkCurvature={0.5}
@@ -107,6 +107,21 @@ export function OutcomeFlowSankey({ className }: { className?: string }) {
             <EChartsSankeyChart.Link variant="target" />
             <EChartsSankeyChart.Tooltip roundness="sm" />
           </EChartsSankeyChart>
+          <ul aria-hidden className="divide-y divide-[color:var(--g-border-subtle)] self-start border-y border-[color:var(--g-border-subtle)]">
+            {rows.map((row) => (
+              <li key={row.connector} className="flex items-baseline justify-between gap-3 py-2 text-[12px]">
+                <span className="min-w-0 truncate text-foreground">{formatVendorLabel(connectorVendorKey(row.connector))}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {row.pass} passed
+                  {row.fail > 0 ? ` · ${row.fail} failed` : ""}
+                  {row.cancel > 0 ? ` · ${row.cancel} cancelled` : ""}
+                  {row.pass_rate != null ? (
+                    <span className="ml-2 font-medium text-foreground" title="Pass rate: passed ÷ (passed + failed)">{Math.round(row.pass_rate * 100)}%</span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
           <table className="sr-only">
             <caption>Execution outcomes by connector, last {hours} hours</caption>
             <thead>
@@ -128,7 +143,7 @@ export function OutcomeFlowSankey({ className }: { className?: string }) {
               ))}
             </tbody>
           </table>
-        </>
+        </div>
       ) : (
         <p className="mt-2 text-[12px] text-muted-foreground">
           {error

@@ -131,6 +131,7 @@ export function describeBlocking(reason?: string): string | undefined {
 
 export type ConnectorAttention = {
   connector: OperatingConnector
+  kind: "expired" | "scope" | "unauthorized" | "failing"
   problem: string
   evidence: string
   action: "reconnect" | "configure" | "test"
@@ -149,6 +150,7 @@ export function deriveConnectorAttention(connector: OperatingConnector): Connect
   if (expired) {
     return {
       connector,
+      kind: "expired",
       problem: `${connector.name} access expired`,
       evidence: evidence || "The stored token is no longer valid.",
       action: connector.authType === "oauth" ? "reconnect" : "configure",
@@ -158,6 +160,7 @@ export function deriveConnectorAttention(connector: OperatingConnector): Connect
   if (reason === "missing_scope" || (a && a.authenticated && !a.scopesValid)) {
     return {
       connector,
+      kind: "scope",
       problem: `${connector.name} permission missing`,
       evidence: evidence || "A required scope was not granted.",
       action: connector.authType === "oauth" ? "reconnect" : "configure",
@@ -167,6 +170,7 @@ export function deriveConnectorAttention(connector: OperatingConnector): Connect
   if (reason === "pending_auth" || connector.authStatus === "pending_auth" || (a && a.configured && !a.authenticated)) {
     return {
       connector,
+      kind: "unauthorized",
       problem: `${connector.name} is not authorized`,
       evidence: evidence || "Authorization has not been completed.",
       action: connector.authType === "oauth" ? "reconnect" : "configure",
@@ -176,6 +180,7 @@ export function deriveConnectorAttention(connector: OperatingConnector): Connect
   if (reason || connector.status === "error" || (a && !a.healthy)) {
     return {
       connector,
+      kind: "failing",
       problem: `${connector.name} cannot act`,
       evidence: evidence || "The last health check failed.",
       action: "test",
@@ -396,6 +401,147 @@ function formatChecked(value?: string): string | null {
   if (!value) return null
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString()
+}
+
+function SummaryFact({ label, value, tone }: { label: string; value: number; tone?: "warning" }) {
+  return (
+    <div className="px-3 py-2.5">
+      <dt className="text-[12px] text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "mt-0.5 text-lg font-semibold tabular-nums tracking-[-0.01em]",
+          value === 0 ? "text-muted-foreground" : "text-foreground",
+        )}
+      >
+        {tone === "warning" && value > 0 ? <span aria-hidden className="mr-1.5 inline-block h-2 w-2 rounded-full bg-warning align-middle" /> : null}
+        {value}
+      </dd>
+    </div>
+  )
+}
+
+/**
+ * Inspector-column content when no connector is selected. Every figure is
+ * derived from the connector list and the static action catalog already on the page.
+ */
+export function ConnectorOperatingSummary({
+  connectors,
+  attention,
+  capabilities,
+  isExecutable,
+  onSelect,
+  className,
+}: {
+  connectors: OperatingConnector[]
+  attention: ConnectorAttention[]
+  capabilities: Map<string, VendorCapability>
+  isExecutable: (connector: OperatingConnector) => boolean
+  onSelect: (connector: OperatingConnector) => void
+  className?: string
+}) {
+  const executable = connectors.filter(isExecutable)
+  const authIssues = attention.filter((x) => x.kind === "expired" || x.kind === "unauthorized").length
+  const scopeGaps = attention.filter((x) => x.kind === "scope").length
+  const recentlyChecked = connectors
+    .filter((c) => c.availability?.lastCheckedAt && !Number.isNaN(new Date(c.availability.lastCheckedAt).getTime()))
+    .sort((a, b) => new Date(b.availability!.lastCheckedAt!).getTime() - new Date(a.availability!.lastCheckedAt!).getTime())
+    .slice(0, 4)
+
+  return (
+    <aside
+      aria-labelledby="connectors-summary-heading"
+      data-review-surface="connectors-operating-summary"
+      className={cn("h-fit flex-col gap-4 lg:sticky lg:top-0", className)}
+    >
+      <div>
+        <h2 id="connectors-summary-heading" className="text-[13px] font-semibold text-foreground">
+          Operating summary
+        </h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">Select a system to inspect it here.</p>
+      </div>
+
+      <dl className="grid grid-cols-2 divide-x divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-default)]">
+        <SummaryFact label="Executable now" value={executable.length} />
+        <SummaryFact label="Need attention" value={attention.length} tone="warning" />
+        <SummaryFact label="Authorization issues" value={authIssues} tone="warning" />
+        <SummaryFact label="Permission gaps" value={scopeGaps} tone="warning" />
+      </dl>
+
+      {attention.length ? (
+        <section aria-labelledby="connectors-summary-attention">
+          <h3 id="connectors-summary-attention" className="text-[12px] font-medium text-muted-foreground">
+            Needs attention
+          </h3>
+          <ul className="mt-1">
+            {attention.slice(0, 4).map((item) => (
+              <li key={item.connector.id} className="border-b border-[color:var(--g-border-subtle)] last:border-b-0">
+                <button
+                  type="button"
+                  onClick={() => onSelect(item.connector)}
+                  className="flex w-full items-start gap-2.5 py-2 text-left hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ProviderLogo provider={item.connector.vendorKey || item.connector.type} label={item.connector.type} size="sm" decorative />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12.5px] font-medium text-foreground">{item.problem}</span>
+                    <span className="block truncate text-[11.5px] text-muted-foreground">{item.evidence}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section aria-labelledby="connectors-summary-executable">
+        <h3 id="connectors-summary-executable" className="text-[12px] font-medium text-muted-foreground">
+          Ready to act
+        </h3>
+        {executable.length ? (
+          <ul className="mt-1">
+            {executable.slice(0, 6).map((connector) => {
+              const cap = capabilities.get(connector.vendorKey)
+              return (
+                <li key={connector.id} className="border-b border-[color:var(--g-border-subtle)] last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => onSelect(connector)}
+                    className="flex w-full items-center gap-2.5 py-2 text-left hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <ProviderLogo provider={connector.vendorKey || connector.type} label={connector.type} size="sm" decorative />
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">{connector.name}</span>
+                    <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
+                      {cap ? `${cap.read} read · ${cap.write} write` : "—"}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p className="mt-1 text-[12px] text-muted-foreground">No connected system can act yet.</p>
+        )}
+        {executable.length > 6 ? (
+          <p className="mt-1 text-[11.5px] text-muted-foreground">+{executable.length - 6} more in the table</p>
+        ) : null}
+      </section>
+
+      {recentlyChecked.length ? (
+        <section aria-labelledby="connectors-summary-checked">
+          <h3 id="connectors-summary-checked" className="text-[12px] font-medium text-muted-foreground">
+            Latest availability checks
+          </h3>
+          <ul className="mt-1">
+            {recentlyChecked.map((connector) => (
+              <li key={connector.id} className="flex items-baseline justify-between gap-3 border-b border-[color:var(--g-border-subtle)] py-1.5 text-[12px] last:border-b-0">
+                <span className="min-w-0 truncate text-foreground">{connector.name}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">{formatChecked(connector.availability?.lastCheckedAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </aside>
+  )
 }
 
 export function ConnectorInspector({

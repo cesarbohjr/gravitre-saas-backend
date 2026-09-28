@@ -23,6 +23,7 @@ import {
   ConnectorAttentionList,
   ConnectorInspector,
   ConnectorOperatingRow,
+  ConnectorOperatingSummary,
   ConnectorRowHeader,
   deriveConnectorAttention,
   useAgentsByVendor,
@@ -3308,7 +3309,12 @@ function ConnectorsPageContent() {
                   else void handleTestConnection(target.id)
                 }}
               />
-              <div className={cn("grid gap-5", selectedConnector && "lg:grid-cols-[minmax(0,1fr)_22rem]")}>
+              <div
+                className={cn(
+                  "grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]",
+                  selectedConnector && "lg:grid-cols-[minmax(0,1fr)_22rem]",
+                )}
+              >
                 <section aria-labelledby="connectors-connected-heading" className="min-w-0">
                   <div className="mb-2 flex items-baseline justify-between gap-3">
                     <h2 id="connectors-connected-heading" className="text-[13px] font-semibold text-foreground">
@@ -3363,7 +3369,19 @@ function ConnectorsPageContent() {
                     }
                     onClose={() => setFocusedConnector(null)}
                   />
-                ) : null}
+                ) : (
+                  <ConnectorOperatingSummary
+                    className="hidden xl:flex"
+                    connectors={connectors}
+                    attention={attentionItems}
+                    capabilities={vendorCapabilities}
+                    isExecutable={(c) => connectorIsExecutable(c as Connector)}
+                    onSelect={(c) => {
+                      const target = connectors.find((x) => x.id === c.id)
+                      if (target) setFocusedConnector(target)
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}

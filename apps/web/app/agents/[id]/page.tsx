@@ -12,7 +12,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
   GravitrePageHeader,
-  GravitreSurface,
 } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
@@ -358,61 +357,78 @@ export default function AgentProfilePage({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="grid grid-cols-1 gap-6 sm:grid-cols-2"
+                data-agent-overview=""
+                className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]"
               >
-                <AgentAutonomyPanel agentId={agent.id} className="col-span-2" />
-                <AgentStrengthProfile className="col-span-2 border-t-0" />
+                <div data-agent-main-field="" className="min-w-0 space-y-6">
+                  <div>
+                    <AgentAutonomyPanel agentId={agent.id} />
+                    <AgentStrengthProfile className="border-t-0" />
+                  </div>
 
-                <AgentCapabilitiesCard
-                  className="col-span-2"
-                  capabilities={apiAgent.capabilities}
-                  permissions={apiAgent.permissions}
-                  systems={agent.systems.map((system) => system.name)}
-                />
+                  <AgentCapabilitiesCard
+                    capabilities={apiAgent.capabilities}
+                    permissions={apiAgent.permissions}
+                    systems={agent.systems.map((system) => system.name)}
+                  />
 
-                <div className="col-span-2">
+                  <section aria-labelledby="agent-systems-heading" className="border-t border-[color:var(--g-border-default)] pt-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <h3 id="agent-systems-heading" className="text-[13px] font-semibold text-foreground">
+                        Connected systems
+                      </h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => setActiveTab("skills")}
+                      >
+                        <Icon name="add" size="xs" />
+                        Edit
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {agent.systems.length > 0 ? (
+                        agent.systems.map((system, i) => (
+                          <SystemBadge key={system.name} system={system} index={i} />
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No connected systems yet.</p>
+                      )}
+                    </div>
+                  </section>
+
+                  <section aria-labelledby="agent-recent-work-heading" className="border-t border-[color:var(--g-border-default)] pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 id="agent-recent-work-heading" className="text-[13px] font-semibold text-foreground">
+                        Recent work
+                      </h3>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setActiveTab("history")}>
+                        Work history
+                      </Button>
+                    </div>
+                    {agent.recentWork.length > 0 ? (
+                      agent.recentWork.map((work, i) => <WorkItem key={work.title} work={work} index={i} />)
+                    ) : (
+                      <p className="mt-1 text-[12px] text-muted-foreground">
+                        No recent work recorded yet. Work appears here after this agent completes tasks.
+                      </p>
+                    )}
+                  </section>
+                </div>
+
+                <aside data-agent-rail="" aria-label="Knowledge and learning" className="min-w-0 space-y-6">
                   <AgentReferenceFoldersPanel
+                    variant="ruled"
                     folders={apiAgent.referenceFolders ?? []}
                     editHref={`/agents/${agent.id}/knowledge`}
                   />
-                </div>
-
-                <div className="col-span-2">
                   <AgentIntelligenceVisibilitySection
                     agentId={agent.id}
                     orgScopedKey={orgId ? `agent-op-${orgId}-${agent.id}` : null}
-                    compact
+                    layout="rail"
                   />
-                </div>
-
-                <GravitreSurface>
-                  <h3 className="mb-3 font-semibold text-foreground">About</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{agent.description}</p>
-                </GravitreSurface>
-
-                <GravitreSurface>
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="font-semibold text-foreground">Connected systems</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1 text-xs"
-                      onClick={() => setActiveTab("skills")}
-                    >
-                      <Icon name="add" size="xs" />
-                      Edit
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {agent.systems.length > 0 ? (
-                      agent.systems.map((system, i) => (
-                        <SystemBadge key={system.name} system={system} index={i} />
-                      ))
-                    ) : (
-                      <p className="col-span-2 text-sm text-muted-foreground">No connected systems yet.</p>
-                    )}
-                  </div>
-                </GravitreSurface>
+                </aside>
               </motion.div>
             )}
 

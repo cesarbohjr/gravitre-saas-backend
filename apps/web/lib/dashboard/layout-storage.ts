@@ -43,7 +43,8 @@ export function clearLocalLayout(orgId: string, userId: string): void {
 
 export async function fetchRemoteLayout(): Promise<DashboardLayout | null> {
   try {
-    const res = await fetch("/api/settings/dashboard-layout", { credentials: "include" })
+    const { apiFetch } = await import("@/lib/fetcher")
+    const res = await apiFetch("/api/settings/dashboard-layout", { credentials: "include", timeoutMs: 15_000 })
     if (!res.ok) return null
     const body = (await res.json()) as { layout?: DashboardLayout | null }
     if (body.layout?.version === 1 && Array.isArray(body.layout.widgets)) {
@@ -57,7 +58,8 @@ export async function fetchRemoteLayout(): Promise<DashboardLayout | null> {
 
 export async function saveRemoteLayout(layout: DashboardLayout): Promise<boolean> {
   try {
-    const res = await fetch("/api/settings/dashboard-layout", {
+    const { apiFetch } = await import("@/lib/fetcher")
+    const res = await apiFetch("/api/settings/dashboard-layout", {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

@@ -253,6 +253,12 @@ export function HomeDashboard({
           </motion.dl>
         ) : null}
 
+        {!editMode ? (
+          <motion.div variants={item}>
+            <OutcomeFlowSankey />
+          </motion.div>
+        ) : null}
+
         {/* Desktop / tablet grid */}
         <motion.div
           variants={item}
@@ -383,12 +389,6 @@ export function HomeDashboard({
             </div>
           ))}
         </motion.div>
-
-        {!editMode ? (
-          <motion.div variants={item}>
-            <OutcomeFlowSankey />
-          </motion.div>
-        ) : null}
 
         {showGettingStarted ? (
           <motion.p variants={item} className={TYPE.meta}>

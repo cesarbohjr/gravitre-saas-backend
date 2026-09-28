@@ -1,0 +1,368 @@
+{
+  "base": "http://localhost:3012",
+  "buildId": "08FOpW_YbyjBdGfSrzxEl",
+  "at": "2026-09-28T20:40:32.720Z",
+  "results": [
+    {
+      "name": "dashboard-1440x900-light-after",
+      "file": "dashboard-1440x900-light-after.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1440x900",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 448,
+      "measureTop": 590,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "dashboard-1920x1080-light-after",
+      "file": "dashboard-1920x1080-light-after.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1920x1080",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 401,
+      "measureTop": 543,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "dashboard-1920x1080-dark-after",
+      "file": "dashboard-1920x1080-dark-after.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1920x1080",
+      "theme": "dark",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 401,
+      "measureTop": 543,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "agent-detail-1440-tall-light-after",
+      "file": "agent-detail-1440-tall-light-after.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "1440x2200",
+      "theme": "light",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "connectors-1440-noselection-light-after",
+      "file": "connectors-1440-noselection-light-after.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1440x900",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "name": "dashboard-measure-light",
+      "file": "dashboard-measure-light.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1440x900",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 448,
+      "measureTop": 84,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "dashboard-measure-dark",
+      "file": "dashboard-measure-dark.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 448,
+      "measureTop": 84,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "dashboard-tablet-light",
+      "file": "dashboard-tablet-light.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1024x1600",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 402,
+      "measureTop": 544,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "dashboard-mobile-light",
+      "file": "dashboard-mobile-light.png",
+      "route": "/e2e/shots/home",
+      "viewport": "390x2000",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 0,
+      "measureTop": 636,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "agent-detail-1440-tall-dark",
+      "file": "agent-detail-1440-tall-dark.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "1440x2200",
+      "theme": "dark",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "agent-detail-1920x1080-light",
+      "file": "agent-detail-1920x1080-light.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "1920x1080",
+      "theme": "light",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "agent-detail-tablet-light",
+      "file": "agent-detail-tablet-light.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "1024x1600",
+      "theme": "light",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "agent-detail-mobile-light",
+      "file": "agent-detail-mobile-light.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "390x2000",
+      "theme": "light",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "connectors-1440-tall-noselection-light",
+      "file": "connectors-1440-tall-noselection-light.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1440x2200",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "name": "connectors-1440-tall-noselection-dark",
+      "file": "connectors-1440-tall-noselection-dark.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1440x2200",
+      "theme": "dark",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "connectors-1440-tall-selected-light",
+      "file": "connectors-1440-tall-selected-light.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1440x2200",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "connectors-1440-tall-selected-dark",
+      "file": "connectors-1440-tall-selected-dark.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1440x2200",
+      "theme": "dark",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "connectors-1920x1080-light",
+      "file": "connectors-1920x1080-light.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1920x1080",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    },
+    {
+      "name": "connectors-tablet-light",
+      "file": "connectors-tablet-light.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1024x1600",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login?error=session_expired' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked.",
+        "Connecting to 'http://127.0.0.1:3010/login' violates the following Content Security Policy directive: \"connect-src 'self' https: wss:\". The action has been blocked."
+      ]
+    }
+  ]
+}

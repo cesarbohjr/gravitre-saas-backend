@@ -59,9 +59,10 @@ const TOPBAR_MINIMIZED_KEY = "gravitre-topbar-minimized"
 export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
-  const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Organization")
-  const [orgId, setOrgId] = useState(() => getSelectedOrgFromStorage()?.id ?? null)
+  // Server-safe defaults; storage values are applied after mount to keep hydration stable.
+  const [environment, setEnvironment] = useState<AppEnvironment>("production")
+  const [org, setOrg] = useState("Organization")
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const { mode, setMode, isLite } = useViewMode()
@@ -165,6 +166,9 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     userEmail.split("@")[0]
 
   useEffect(() => {
+    const initialOrg = getSelectedOrgFromStorage()
+    if (initialOrg?.name) setOrg(initialOrg.name)
+    if (initialOrg?.id) setOrgId(initialOrg.id)
     void ensureSelectedOrg().then((resolvedOrgId) => {
       const stored = getSelectedOrgFromStorage()
       if (stored?.name) setOrg(stored.name)

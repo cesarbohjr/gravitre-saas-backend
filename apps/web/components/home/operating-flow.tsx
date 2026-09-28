@@ -334,7 +334,7 @@ function Lane({ lane, loading }: { lane: FlowLane; loading: boolean }) {
       ) : lane.items.length === 0 ? (
         <p className="px-3 py-2 text-xs text-muted-foreground">{lane.empty}</p>
       ) : (
-        <ul className={cn("min-h-0 flex-1 overflow-y-auto px-2 pb-3", intervene || lane.id === "next" ? "space-y-1.5" : "space-y-0.5")}>
+        <ul className={cn("min-h-0 flex-1 overflow-y-auto px-2 pb-3 md:max-h-[360px] xl:max-h-[440px]", intervene || lane.id === "next" ? "space-y-1.5" : "space-y-0.5")}>
           {lane.items.map((item) => (
             <LaneItem key={item.id} item={item} lane={lane.id} />
           ))}
@@ -416,7 +416,8 @@ export function OperatingFlow({
 
       {/* Tablet and desktop: the full flow, lanes side by side */}
       <div
-        className="hidden h-[420px] grid-rows-1 divide-x divide-[color:var(--g-border-subtle)] overflow-x-auto border-b border-[color:var(--g-border-subtle)] md:grid lg:h-[max(360px,calc(100dvh-400px))]"
+        data-flow-height="content"
+        className="hidden min-h-[168px] grid-rows-1 divide-x divide-[color:var(--g-border-subtle)] overflow-x-auto border-b border-[color:var(--g-border-subtle)] md:grid"
         style={{ gridTemplateColumns: flowColumnTemplate(lanes, laneLoading) }}
       >
         {lanes.map((lane) => (
