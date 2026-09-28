@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { createElement, useState } from "react"
 import {
   ChartColumn,
   Contact,
@@ -99,7 +99,6 @@ export function ProviderLogo({
     : ({ role: "img", "aria-label": name } as const)
 
   if (!entry || entry.source === "fallback" || !entry.src || failed) {
-    const Glyph = providerFallbackGlyph(entry?.category)
     return (
       <span
         {...a11y}
@@ -107,7 +106,7 @@ export function ProviderLogo({
         data-provider-fallback=""
         className={cn("inline-flex shrink-0 items-center justify-center text-muted-foreground", token.slot, className)}
       >
-        <Glyph className={token.glyph} strokeWidth={1.75} aria-hidden />
+        <FallbackGlyph category={entry?.category} className={token.glyph} />
       </span>
     )
   }
@@ -122,6 +121,10 @@ export function ProviderLogo({
       <ProviderMark entry={entry} theme={theme} plate={token.plate} onError={() => setFailed(true)} />
     </span>
   )
+}
+
+function FallbackGlyph({ category, className }: { category?: ProviderCategory; className: string }) {
+  return createElement(providerFallbackGlyph(category), { className, strokeWidth: 1.75, "aria-hidden": true })
 }
 
 function ProviderMark({
