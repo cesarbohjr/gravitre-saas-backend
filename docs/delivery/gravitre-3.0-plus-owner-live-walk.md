@@ -58,6 +58,7 @@ Defects are fixed from canonical state only. No local mock logic.
 | AI streams correctly (no stalled or duplicated stream) | | |
 | One `/api/chat` request per question (DevTools Network tab) | | |
 | Sidebar navigation Marketplace → Workflows and Agents → Assignments land promptly | | |
+| Intelligence leaves "Loading intelligence" within a couple of seconds after sidebar navigation | | |
 | Intelligence map renders for an org with a knowledge graph (CI fixture org has none, so CI cannot prove it) | | |
 | No 403 on `/api/meson/insights` in the console on `/agents` or any page (fallback now only for Control+ tier) | | |
 

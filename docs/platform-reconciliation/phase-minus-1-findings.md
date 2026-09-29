@@ -126,6 +126,26 @@ spec fixes above and the Meson fix held: no `/api/meson/insights` 403 appeared i
   Classification: **INCONCLUSIVE** (same class as Marketplace → Workflows last run: a different link fails each
   run with no related code change, consistent with first-hit dev compilation). Added to the owner-live walk.
 
+## Billing E2E classification (CI run 36531783430, SHA `af557598`)
+
+INCONCLUSIVE_TIMEOUT. Required jobs passed; Billing E2E cancelled at the 20-minute cap (06:43:17Z → 07:03:32Z)
+after reaching test 114 (88 distinct passed, 23 skipped — the Intelligence map tests now skip as NOT RUN on the
+empty fixture org, as intended). Failures:
+
+- `e2e/app-navigation-crawler.spec.ts` — `/approvals → Intelligence`: "Main content too short (20 chars)", attempt
+  and retry. 20 chars is exactly the `/intelligence` Suspense fallback "Loading intelligence"; the crawler samples
+  600 ms after `<main>` attaches. Classification: **INCONCLUSIVE** (dev-compile timing). The same crawler step
+  passed on `efc0c988`, `445fe3f1` and `a4d4ca25`, and no app code changed between `a4d4ca25` and `af557598`
+  (spec + docs only). Owner-live walk checks that Intelligence leaves its loader promptly.
+- `e2e/marketing-navigation-crawler.spec.ts` — `guides-first-agent`: console error "Encountered a script tag while
+  rendering React component" on `/guides → /docs/guides/how-to/agents`. Reproduced locally 1 of 4 runs.
+  Classification: **real product defect, pre-existing, public marketing (not signed-in)**. Source:
+  `app/(marketing)/layout.tsx` renders `components/marketing/google-tag-manager.tsx`, which emits raw inline
+  `<script>` tags; when that layout mounts on a client-side navigation React 19 warns and the inline GTM/consent
+  bootstrap does not execute. Both files are identical to `main`. Not fixed on this branch (GTM/consent
+  behaviour is outside the 3.0 Plus frontend scope and needs an owner decision, e.g. `next/script` with
+  `beforeInteractive`); tracked as a separate item.
+
 Harness note (not changed unilaterally): 218 tests on one worker do not fit the 20-minute `timeout-minutes`, so
 this job cannot produce PASS as configured. Raising the cap or sharding the suite is Cesar's call.
 
