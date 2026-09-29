@@ -273,7 +273,7 @@ export function HomeDashboard({
               <span className={TYPE.meta}>Readiness from connected capabilities</span>
             </div>
             <div className="divide-y divide-[color:var(--g-border-subtle)]">
-              {data.plays.map(({ play, readiness }) => {
+              {data.plays.map(({ play, readiness, workflowBindingCount }) => {
                 const state = readiness.act_within_policy_ready
                   ? "ACT WITHIN POLICY"
                   : readiness.act_with_approval_ready
@@ -293,6 +293,11 @@ export function HomeDashboard({
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{play.name}</p>
                       <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>{play.objective}</p>
+                      <p className={cn(TYPE.meta, "mt-0.5")}>
+                        {workflowBindingCount > 0
+                          ? `${workflowBindingCount} canonical workflow${workflowBindingCount === 1 ? "" : "s"} bound`
+                          : "No canonical workflow bound yet"}
+                      </p>
                     </div>
                     <span className="font-mono text-[10px] font-medium tracking-[0.04em] text-muted-foreground">
                       {state}
