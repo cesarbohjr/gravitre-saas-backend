@@ -15,6 +15,25 @@ from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
 PLAY_CONFIG_KEY = "play"
 
 
+
+
+def play_binding_for_workflow(
+    workflow: dict[str, Any],
+    *,
+    expected_play_key: str | None = None,
+) -> dict[str, Any] | None:
+    config = workflow.get("config") if isinstance(workflow.get("config"), dict) else {}
+    play = config.get(PLAY_CONFIG_KEY) if isinstance(config.get(PLAY_CONFIG_KEY), dict) else None
+    if play is None:
+        return None
+    key = str(play.get("key") or "").strip().lower()
+    if not key:
+        return None
+    if expected_play_key and key != expected_play_key.strip().lower():
+        return None
+    return dict(play)
+
+
 def list_play_workflow_bindings(
     client: Any,
     org_id: str,
