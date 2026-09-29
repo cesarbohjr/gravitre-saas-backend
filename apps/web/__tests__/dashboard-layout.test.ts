@@ -92,6 +92,7 @@ describe("Outcome plays dashboard integration", () => {
     expect(dashboard).toMatch(/Outcome plays/)
     expect(dashboard).toMatch(/ACT WITH APPROVAL/)
     expect(dashboard).toMatch(/ACT WITHIN POLICY/)
+    expect(dashboard).toMatch(/No canonical workflow bound yet/)
     expect(dashboard).not.toMatch(/verified revenue recovered/i)
   })
 })
