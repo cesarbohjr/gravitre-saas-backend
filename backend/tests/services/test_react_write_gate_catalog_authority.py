@@ -63,7 +63,9 @@ def test_former_lookalike_gaps_are_write_actions():
     ):
         requires, action, *_ = tool_requires_user_write_approval(name, registry)
         assert requires is True, f"{name} must be a write action (action={action})"
-        assert block_react_write_execution(name, {}, registry) is None
+        no_ctx = block_react_write_execution(name, {}, registry)
+        assert no_ctx is not None
+        assert no_ctx["error_code"] == WRITE_APPROVAL_REQUIRED
         blocked = block_react_write_execution(
             name,
             {},

@@ -258,7 +258,7 @@ def resolve_user_write_approval_required(
     if not is_write:
         return False, invoke_action, integration, label
     if client is None or not str(org_id or "").strip() or not str(user_id or "").strip():
-        return False, invoke_action, integration, label
+        return True, invoke_action, integration, label
 
     from app.services.hitl_policy_service import classify_action_kind, get_hitl_policy_service
 
@@ -273,28 +273,22 @@ def resolve_user_write_approval_required(
         user_id=str(user_id),
         action_kind=action_kind,
     )
-    requires = bool(decision.requires_approval)
 
-    from app.services.agent_identity_service import resolve_approval_override, resolve_effective_identity
+    from app.connectors.action_catalog.registry import get_action_spec
+    from app.services.agent_identity_service import resolve_effective_identity
+    from app.services.write_governance import resolve_write_user_approval
 
     identity = resolve_effective_identity(client, str(org_id), str(agent_id or "")) if agent_id else None
-    override = resolve_approval_override(identity, action_kind)
-    if override == "always_approve":
-        requires = True
-    elif override == "always_deny":
-        requires = True
-    elif override == "auto_run" and identity and identity.trust_level == "autonomous":
-        requires = False
-    elif identity and identity.trust_level == "write_with_approval" and is_write:
-        requires = True
-
-    from app.connectors.action_catalog.f1_write_slice import requires_write_approval_always
-    from app.connectors.action_catalog.registry import get_action_spec
-
     spec = get_action_spec(invoke_action) if invoke_action else None
     risk_class = str(getattr(spec, "risk_class", "") or "") if spec is not None else ""
-    if requires_write_approval_always(invoke_action, risk_class=risk_class):
-        requires = True
+    requires, _reason = resolve_write_user_approval(
+        is_write=True,
+        invoke_action=invoke_action,
+        action_kind=action_kind,
+        hitl=decision,
+        identity=identity,
+        risk_class=risk_class,
+    )
 
     return requires, invoke_action, integration, label
 
@@ -393,7 +387,6 @@ def block_react_write_execution(
         requires, invoke_action, integration, label = tool_requires_user_write_approval(
             tool_name, registry
         )
-        requires = False
     from app.connectors.action_catalog.f1_write_slice import is_f1_write_action, requires_write_approval_always
 
     if requires_write_approval_always(invoke_action or invoke_probe):

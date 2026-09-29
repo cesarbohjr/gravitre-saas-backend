@@ -1,7 +1,7 @@
 """Capability registry is derived from canonical sources, not a parallel catalog."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.capabilities import registry
 from app.connectors.action_catalog.registry import all_catalog_action_specs, get_vendor_catalog
@@ -113,3 +113,42 @@ def test_list_agents_is_org_scoped():
         agents = registry.list_agents(object(), "org-9")
     assert lo.call_args.args[1] == "org-9"
     assert agents[0]["requires_approval"] is True and agents[0]["capabilities"] == []
+    assert agents[0]["executionMode"] == "plan_only"
+
+
+def test_tenant_snapshot_strips_connector_config_and_is_org_scoped():
+    rows = [
+        {
+            "id": "c1",
+            "org_id": "org-9",
+            "vendor": "hubspot",
+            "name": "HS",
+            "status": "connected",
+            "environment": "production",
+            "config": {"access_token": "secret-token", "refresh_token": "rt"},
+        }
+    ]
+    empty_hitl = MagicMock()
+    empty_hitl.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    with patch("app.connectors.repository.list_connectors", return_value=rows):
+        with patch("app.operators.repository.list_operators", return_value=[]):
+            with patch(
+                "app.services.cognitive_metrics.list_metrics_with_defaults",
+                return_value={"defaults": [], "overrides": [], "orgId": "org-9"},
+            ):
+                snap = registry.tenant_capability_snapshot(empty_hitl, "org-9")
+    blob = str(snap)
+    assert "secret-token" not in blob
+    assert "refresh_token" not in blob
+    assert snap["orgId"] == "org-9"
+    assert snap["mutation"] is False
+    assert snap["orgConnectors"][0]["vendor"] == "hubspot"
+    assert "config" not in snap["orgConnectors"][0]
+    writes = [a for a in snap["actions"] if a["access"] == "write"]
+    reads = [a for a in snap["actions"] if a["access"] == "read"]
+    assert writes and all(a["runtimeRequiresUserApproval"] is True for a in writes)
+    assert reads and all(a["runtimeRequiresUserApproval"] is False for a in reads)
+    assert snap["governance"]["noHitlPolicyMeans"] == "ACT WITH APPROVAL"
+    assert snap["governance"]["writeRequiresApprovalByDefault"] is True

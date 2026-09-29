@@ -16,7 +16,7 @@ Every claim below comes from a code read or a local registry run. Anything that 
 | Agent trust | `agent_identity_records.trust_level` | `services/react_write_gate.py:351`, `voice_pstn_policy.py:145` | — | `agent_identity_records` | yes | R | — | Agent Detail | PARTIAL | Not enforced in `invoke_tool`; there is a second autonomy system, `operators.execution_mode` |
 | Connector actions | ActionSpec `vendor.resource.verb` | `connectors/action_catalog/*` | `/api/connectors/catalog/*` | frozen dataclass, 85 vendors / 731 unique tools | catalog is global | R and W | 361 writes gated by `catalog_action_requires_write_approval` | Builder, Connectors, Marketplace | WIRED (builder now) | Catalog endpoints are not org-scoped; `risk_class` is filled only for the F1 slice; no output schema |
 | Connectors | `connectors.id` | `connectors/repository.py`, `connection_health.py` | `/api/connectors*` | `connectors` (`vendor`/`type`, `status`) | yes | R/W | admin | Connectors, Sources, Builder | WIRED | Usable = `ACTIVE_CONNECTOR_STATUSES` {active, connected, syncing, healthy}; `GET /plaid/status` is shadowed by `/{connector_id}` |
-| Tool invocation | `tool.invoke.*` audit | `services/tool_service.py` | `/api/tools/invoke`, chat | `audit_events` | yes | R/W | HITL policy, write gate | AI Workspace (protected) | WIRED | No idempotency key; with no `hitl_policies` rows, writes auto-run |
+| Tool invocation | `tool.invoke.*` audit | `services/tool_service.py` | `/api/tools/invoke`, chat | `audit_events` | yes | R/W | HITL + `write_governance` + HMAC | AI Workspace (protected) | WIRED | No-HITL WRITE default is approval-required. Unattended WRITE requires `trust_level=autonomous` and `approval_rule_overrides.write=auto_run`. F1 always-approval. `GET /api/capabilities` exposes the composed view. |
 | Workflows | `workflows.id` | `app/workflows/*` | `/api/workflows`, `/execute`, `/dry-run`, `/runs/{id}/approve` | `workflows`, `workflow_runs`, `workflow_steps` (+ legacy `workflow_defs`) | yes | R/W | approval step, `SAFE_DEFAULT_APPROVER_ROLES` | Workflows, Builder, Schedules | WIRED (list now proxied) | Approval not atomic; trigger_type CHECK mismatch (retry/salesforce/segment/pagerduty) |
 | Workflow primitives | step type | `workflows/constants.py` | — | 11 step types | n/a | n/a | `approval` step | Builder | WIRED | `transform` is dry-run only (not in `EXECUTE_ALLOWED_STEP_TYPES`) |
 | Schedules | `workflow_schedules.id` | workflows scheduler | `/api/workflows/schedules*` | `workflow_schedules` | yes | R/W | — | Schedules | WIRED | — |
@@ -153,7 +153,7 @@ Readiness is computed with `connected=None` (no org context). Every implemented 
 | Optional connectors | slack, gmail / outlook | EXTERNAL_CONNECTION_REQUIRED | |
 | Agents | an org operator | EXTERNAL_CONNECTION_REQUIRED (org data) | no Play-specific agent exists; must not be seeded |
 | Actions | `zendesk.tickets.update`, `intercom.conversations.reply`, `hubspot.contacts.update`, `slack.post_message` | EXTERNAL_CONNECTION_REQUIRED | all writes are approval-gated |
-| Approvals | write gate + `hitl_policies` | AVAILABLE | caveat: with no policies, writes auto-run outside the catalog gate |
+| Approvals | write gate + `hitl_policies` + `write_governance` | AVAILABLE | no HITL rows → ACT WITH APPROVAL, not auto-run |
 | Verification | `zendesk.tickets.update` / `hubspot.contacts.update` = `follow_up_entity_get`; `intercom.conversations.reply`, `slack.post_message` = `accepted_async` | PARTIAL | |
 | Outcome metric | retained account / churn avoided | MISSING | no metric definition or value store; `crm_won`/`crm_lost` are the closest events |
 
@@ -208,7 +208,7 @@ Maturity levels (-1G) use the existing gates, with the same Play code at every l
 - OBSERVE: read actions only; the registry filter is `access="read"`.
 - RECOMMEND: emits `recommendation_created`; no `invoke_tool` (the churn advisory pattern).
 - ACT WITH APPROVAL: write actions through the catalog write gate and `/api/approvals`.
-- ACT WITHIN POLICY: writes auto-run only under explicit `hitl_policies`. This level must not be reachable through the "no policies = auto-run" default; see OPEN decision 3.
+- ACT WITHIN POLICY: writes auto-run only when `write_governance` authorizes this agent/context (`autonomous` + `auto_run`, and no covering HITL). Absence of HITL rows is ACT WITH APPROVAL, not this level.
 
 ## 9. Dashboard data hooks
 
@@ -236,7 +236,7 @@ Day-one value (-1H) may come only from these, fed by real connected data. When a
 
 1. **Registry delivery.** The registry is committed locally on `main` and NOT pushed, because a push to `main` deploys production. Choose: push as-is (internal module, no route), or also add a read-only `/api/capabilities` route for the frontend.
 2. **Agent source of truth.** Retire the Next `/api/agents` BFFs in favor of FastAPI `agents_router`, or keep them and fix the inferred fields.
-3. **Autonomy.** Unify `trust_level` and `operators.execution_mode`, enforce it in `invoke_tool`, and decide whether "no `hitl_policies` = auto-run" stays the default.
+3. **Autonomy.** Canonical invoke-tool resolver is `write_governance.resolve_write_user_approval` (HITL + `trust_level` + `approval_rule_overrides` + F1). `operators.execution_mode` remains workflow auto-execute only; it is not a second invoke_tool gate. Default: no HITL rows → approval required for WRITE.
 4. **Evidence integrity.** Add an audit HMAC / hash chain and persist Observations, or keep them in `task_state`.
 5. **Business metric values.** Add a value store (e.g. `kpi_values`) so Play outcomes can be measured. Without it, outcome metrics stay MISSING/PARTIAL.
 6. **Signal detectors.** Failed-payment and spend-anomaly detectors for Revenue Recovery and Marketing Performance. This is new capability, so it is out of scope for convergence and needs explicit approval.

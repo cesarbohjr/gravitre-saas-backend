@@ -259,7 +259,10 @@ def list_agents(client: Any, org_id: str) -> list[dict[str, Any]]:
             "status": row.get("status"),
             "role": row.get("role"),
             "requires_approval": bool(row.get("requires_approval")),
+            "executionMode": row.get("execution_mode") or "plan_only",
+            "autoExecuteTrustedScopes": list(row.get("auto_execute_trusted_scopes") or []),
             "capabilities": row.get("capabilities") or [],
+            "provenance": "operators",
         }
         for row in list_operators(client, org_id)
     ]
@@ -304,3 +307,98 @@ def resolve_dependencies(
             "verification_mode": cap.verification_mode if cap else None,
         }
     return {"connectors": connector_rows, "actions": action_rows}
+
+
+CANONICAL_SOURCES = {
+    "actions": "app.connectors.action_catalog.registry.get_vendor_catalog",
+    "writeClassification": "app.services.catalog_write_authority.catalog_action_requires_write_approval",
+    "runtimeWriteApproval": "app.services.write_governance.resolve_write_user_approval",
+    "hitl": "hitl_policies via HitlPolicyService.resolve",
+    "trust": "agent_identity_records.trust_level + approval_rule_overrides",
+    "operatorWorkflowAutonomy": "operators.execution_mode + auto_execute_trusted_scopes (workflow auto-execute, not invoke_tool)",
+    "connectors": "connectors table via list_connectors (status only; no token refresh)",
+    "agents": "operators via list_operators",
+    "workflowPrimitives": "app.workflows.constants.ALLOWED_STEP_TYPES",
+    "events": "intelligence_outcome_path + outcome_learning_service + notification_emitter",
+    "metrics": "app.services.cognitive_metrics",
+    "verification": "app.services.write_success_verification",
+    "evidence": "mapped existing stores (see evidence_sources)",
+}
+
+
+def tenant_capability_snapshot(
+    client: Any,
+    org_id: str,
+    *,
+    environment_name: str = "production",
+) -> dict[str, Any]:
+    """Authenticated org view. Status/readiness only — never tokens or connector config."""
+    from app.connectors.repository import list_connectors as list_org_connectors
+    from app.services.hitl_policy_service import HitlPolicyService
+    from app.services.write_governance import snapshot_governance_fields
+
+    connected = connected_vendors(client, org_id, environment_name)
+    hitl = HitlPolicyService().resolve(
+        client, org_id=str(org_id), user_id="", action_kind="write"
+    )
+    org_connectors: list[dict[str, Any]] = []
+    for row in list_org_connectors(client, org_id, environment_name):
+        vendor = str(row.get("vendor") or row.get("type") or "").strip().lower()
+        org_connectors.append(
+            {
+                "id": row.get("id"),
+                "orgId": row.get("org_id"),
+                "vendor": vendor or None,
+                "name": row.get("name"),
+                "status": row.get("status"),
+                "environment": row.get("environment"),
+                "usable": is_connector_usable(row.get("status")),
+                "readiness": connector_readiness(vendor, connected) if vendor else "MISSING",
+            }
+        )
+
+    actions = []
+    for cap in list_actions():
+        write = cap.access == "write"
+        actions.append(
+            {
+                **cap.as_dict(),
+                "catalogRequiresWriteApproval": cap.requires_approval,
+                "runtimeRequiresUserApproval": write,
+                "runtimeApprovalNote": (
+                    "WRITE requires user approval unless write_governance authorizes "
+                    "this agent/context (autonomous + auto_run, and no covering HITL)."
+                    if write
+                    else "READ is not PendingAction-gated by default."
+                ),
+                "readiness": action_readiness(cap.tool, connected),
+                "provenance": CANONICAL_SOURCES["actions"],
+            }
+        )
+
+    return {
+        "orgId": org_id,
+        "environment": environment_name,
+        "mutation": False,
+        "sources": CANONICAL_SOURCES,
+        "governance": snapshot_governance_fields(hitl=hitl),
+        "agents": list_agents(client, org_id),
+        "catalogConnectors": [
+            {**c.as_dict(), "provenance": CANONICAL_SOURCES["actions"]}
+            for c in list_connectors()
+        ],
+        "orgConnectors": org_connectors,
+        "connectedVendors": sorted(connected),
+        "actions": actions,
+        "workflowPrimitives": workflow_primitives(),
+        "events": event_taxonomy(),
+        "metrics": business_metrics(client, org_id),
+        "verification": verification_mechanisms(),
+        "evidence": evidence_sources(),
+        "unavailable": {
+            "playSchema": "not implemented",
+            "outcomeEventStore": "not a Play schema; see evidence OUTCOME stores",
+            "dashboardTemplates": "not implemented",
+        },
+    }
+

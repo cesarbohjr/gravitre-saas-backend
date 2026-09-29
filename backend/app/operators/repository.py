@@ -16,6 +16,7 @@ def list_operators(client: Client, org_id: str) -> list[dict]:
         .select(
             "id, org_id, name, description, status, system_prompt, allowed_environments, "
             "requires_admin, requires_approval, approval_roles, role, capabilities, config, "
+            "execution_mode, auto_execute_trusted_scopes, "
             "active_version_id, environment_id, total_runs, success_rate, avg_duration, icon, avatar_color, avatar_url, "
             "created_at, updated_at"
         )
@@ -33,6 +34,7 @@ def get_operator(client: Client, org_id: str, operator_id: str) -> dict | None:
         .select(
             "id, org_id, name, description, status, system_prompt, allowed_environments, "
             "requires_admin, requires_approval, approval_roles, role, capabilities, config, "
+            "execution_mode, auto_execute_trusted_scopes, "
             "active_version_id, environment_id, total_runs, success_rate, avg_duration, icon, avatar_color, avatar_url, "
             "created_at, updated_at"
         )
