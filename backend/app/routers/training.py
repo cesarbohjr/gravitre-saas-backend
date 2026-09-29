@@ -124,6 +124,53 @@ def _raise_if_response_error(response: Any, *, not_found: str | None = None) -> 
         raise HTTPException(status_code=500, detail=str(error))
 
 
+_SECRET_METADATA_MARKERS = (
+    "token",
+    "api_key",
+    "apikey",
+    "client_secret",
+    "password",
+    "authorization",
+    "credential",
+)
+
+
+def _external_dataset_metadata_is_safe(value: Any) -> bool:
+    """External reference metadata must never become a credential store."""
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            normalized = str(key or "").strip().lower().replace("-", "_")
+            if any(marker in normalized for marker in _SECRET_METADATA_MARKERS):
+                return False
+            if not _external_dataset_metadata_is_safe(nested):
+                return False
+        return True
+    if isinstance(value, (list, tuple)):
+        return all(_external_dataset_metadata_is_safe(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.lower()
+        return not any(
+            marker in lowered
+            for marker in (
+                "token=",
+                "api_key=",
+                "apikey=",
+                "client_secret=",
+                "authorization=",
+                "bearer ",
+            )
+        )
+    return True
+
+
+def _require_safe_external_dataset_metadata(metadata: dict[str, Any]) -> None:
+    if not _external_dataset_metadata_is_safe(metadata):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="External dataset reference metadata must not contain credentials or secrets.",
+        )
+
+
 @router.get("/external-datasets/providers")
 async def list_external_dataset_provider_routes(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -231,6 +278,8 @@ async def create_external_dataset_reference(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
+
+    _require_safe_external_dataset_metadata(body.metadata)
 
     try:
         dataset = inspect_external_dataset(body.provider, body.dataset_id)
