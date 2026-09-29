@@ -1768,7 +1768,68 @@ export const assistantApi = {
 }
 
 // ============ Training ============
+export type ExternalDatasetProviderSummary = {
+  id: string
+  label: string
+  capabilities: string[]
+  auth: string
+  materialization: string
+  notes: string
+}
+
+export type ExternalDatasetSummary = {
+  provider: string
+  dataset_id: string
+  name: string
+  author?: string | null
+  description?: string | null
+  tags: string[]
+  downloads?: number | null
+  likes?: number | null
+  private: boolean
+  gated: boolean
+  reference_url: string
+}
+
 export const trainingApi = {
+  listExternalDatasetProviders: () =>
+    fetcher<{
+      providers: ExternalDatasetProviderSummary[]
+      count: number
+      mutation: false
+      materialization: "explicit_only"
+    }>(apiUrl("/api/training/external-datasets/providers")),
+  searchExternalDatasets: (provider: string, query: string, limit = 20) => {
+    const params = new URLSearchParams({
+      provider,
+      q: query,
+      limit: String(limit),
+    })
+    return fetcher<{
+      provider: string
+      query: string
+      datasets: ExternalDatasetSummary[]
+      count: number
+      mutation: false
+    }>(apiUrl(`/api/training/external-datasets/search?${params.toString()}`))
+  },
+  inspectExternalDataset: (provider: string, datasetId: string) => {
+    const params = new URLSearchParams({ provider, datasetId })
+    return fetcher<{
+      provider: string
+      dataset: ExternalDatasetSummary & {
+        cardData?: Record<string, unknown>
+        files?: Array<{ path: string }>
+        fileCount?: number
+        materialized: false
+        materializationAllowed: boolean
+        truthRule: string
+      }
+      mutation: false
+      materialized: false
+    }>(apiUrl(`/api/training/external-datasets/inspect?${params.toString()}`))
+  },
+
   // Datasets
   listDatasets: () => fetcher<TrainingDatasetListResponse>(apiUrl("/api/training/datasets")),
   getDataset: (id: string) => fetcher<TrainingDataset>(apiUrl(`/api/training/datasets/${id}`)),
