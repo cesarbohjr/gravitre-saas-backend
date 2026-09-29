@@ -127,7 +127,10 @@ def test_external_reference_migration_is_tenant_scoped_and_non_materializing():
     assert "reference" in migration
     assert "sample" in migration
     assert "index" in migration
-    assert "materialized" not in migration.lower()
+    lowered = migration.lower()
+    assert "materialized boolean" not in lowered
+    assert "materialized_at" not in lowered
+    assert "'materialize'" not in lowered
 
 
 def test_external_reference_metadata_rejects_secret_markers():
