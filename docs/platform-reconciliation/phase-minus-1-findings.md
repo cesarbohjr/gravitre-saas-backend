@@ -81,6 +81,37 @@ every width (with retry):
 
 Tests 78–220 were not reached, so no statement is made about them. Re-classify on the next exact-SHA run.
 
+## Billing E2E classification (CI run 36510672358, SHA `445fe3f1`)
+
+INCONCLUSIVE_TIMEOUT. Cancelled at the 20-minute cap (02:10:18Z → 02:30:34Z) after 84 of 218 tests (78 passed).
+The technology spec above passed. Failures before the cutoff:
+
+- `e2e/canonical-ai-workspace.spec.ts` — stale selection is not sent after navigating away.
+  Classification: **test/harness defect**. The Playwright webServer runs `pnpm dev`; React Strict Mode
+  double-invokes the composer-intent effect in `ai-workspace.tsx` (protected seam), so the first prompt is posted
+  twice and the spec read the wrong POST. The POST made from `/e2e/shots/workflows` carries `selection: null`,
+  which is the product contract. Spec now asserts on the POST from the workflows route. Local: 4/4 (repeat-each 2).
+  The dev-only non-idempotent effect is a core/protected-seam handoff item; production builds do not double-invoke.
+- `e2e/execution-result-navigation.spec.ts` — hosted_files file chip.
+  Classification: **test/harness defect**. Commit `62760765` (UX Reset Phase 7) deliberately moved artifacts
+  behind an "Artifacts (N)" disclosure; the spec predates it and fails identically on `main`. Spec now opens the
+  disclosure first. Local: 4/4 (repeat-each 2).
+- `e2e/app-navigation-crawler.spec.ts` — `/home → Agents` console error: 403 on `/api/meson/insights`.
+  Classification: **real product defect, FRONTEND WIRING DEFECT** (signed-in, pre-existing; also failed on
+  `efc0c988`). `/api/meson/insights` is `require_tier("control")` + full seat (`backend/app/routers/meson.py:34`).
+  The global Meson toolbar (`components/gravitre/meson-toolbar-popup.tsx`) called it as a fallback for every
+  signed-in user, so free/node/trial orgs got a 403 on every app page. Fix: the fallback only fires once
+  `/api/entitlements` has loaded and reports tier `control` or `command` (same rule as the server gate). Remaining
+  gap, not fixed: a Lite seat on a Control+ org would still get 403 because the frontend has no seat-type signal;
+  that needs core to expose seat type in `/api/entitlements` or return an empty payload instead of 403.
+- `e2e/app-navigation-crawler.spec.ts` — Marketplace → Workflows sidebar navigation did not reach `/workflows`
+  within 20 s. Classification: **INCONCLUSIVE**. Passed on `efc0c988`; no relevant code changed between the two
+  SHAs; consistent with first-hit dev compilation of `/workflows`. Added to the owner-live walk.
+- `e2e/intelligence-hub-ui.spec.ts` G5 was the test in flight when the job was cancelled — not a failure.
+
+Harness note (not changed unilaterally): 218 tests on one worker do not fit the 20-minute `timeout-minutes`, so
+this job cannot produce PASS as configured. Raising the cap or sharding the suite is Cesar's call.
+
 ## Core handoff (core agent owns)
 
 - **Capability API seam.** Build the authenticated, org-scoped, read-only capability route over the registry in local commit `573c249a` (`backend/app/capabilities/registry.py`, 12 tests). Do not duplicate it; the frontend will consume the route once it exists.

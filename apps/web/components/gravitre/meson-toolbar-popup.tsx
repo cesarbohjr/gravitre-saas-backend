@@ -19,6 +19,7 @@ import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief
 import { NucleoAgent } from "@/components/icons/nucleo/semantic"
 import { assistantApi, mesonApi, type MesonSuggestion } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useEntitlements } from "@/lib/entitlements-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import {
   resolveMesonPageFromPath,
@@ -62,6 +63,8 @@ const QUICK_LAUNCH_PROMPTS = [
  */
 function useMesonGibeVoice() {
   const { user } = useAuth()
+  const { tier, loading: entitlementsLoading } = useEntitlements()
+  const insightsTierAllowed = tier === "control" || tier === "command"
   const briefKey = user ? ["meson-toolbar-advisor-brief"] : null
   const { data: brief, isLoading: briefLoading } = useSWR(
     briefKey,
@@ -76,7 +79,9 @@ function useMesonGibeVoice() {
 
   const briefInsight = briefToInsights(brief).find((item) => item.title?.trim() && item.summary?.trim())
 
-  const fallbackKey = !briefInsight && user ? ["meson-toolbar-fallback-insights"] : null
+  // /api/meson/insights is require_tier("control") server-side; lower tiers would get a 403 on every page.
+  const fallbackKey =
+    !briefInsight && user && !entitlementsLoading && insightsTierAllowed ? ["meson-toolbar-fallback-insights"] : null
   const { data: fallbackData, isLoading: fallbackLoading } = useSWR(fallbackKey, () => mesonApi.insights(), {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,

@@ -56,6 +56,9 @@ Defects are fixed from canonical state only. No local mock logic.
 | Connector capability state matches actual connections and the action catalog | | |
 | Ask Gravitre preserves the current surface context | | |
 | AI streams correctly (no stalled or duplicated stream) | | |
+| One `/api/chat` request per question (DevTools Network tab) | | |
+| Sidebar navigation Marketplace → Workflows lands on `/workflows` promptly | | |
+| No 403 on `/api/meson/insights` in the console on `/agents` or any page (fallback now only for Control+ tier) | | |
 
 ## Gate
 

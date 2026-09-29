@@ -269,10 +269,12 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     const composer = page.getByPlaceholder(/Ask, delegate, or search/i)
     await composer.fill("What is slow in our AI pipeline?")
     await composer.press("Enter")
-    await expect.poll(() => posts.length).toBeGreaterThanOrEqual(2)
-    const later = posts[posts.length - 1] as {
-      workspace_focus?: { selection?: { object_id?: string } | null }
-    }
+    // Dev-mode Strict Mode can post the first prompt twice; wait for the workflows-page post itself.
+    type FocusPost = { workspace_focus?: { route?: string | null; selection?: { object_id?: string } | null } }
+    const fromWorkflows = () =>
+      (posts as FocusPost[]).filter((p) => p.workspace_focus?.route === "/e2e/shots/workflows")
+    await expect.poll(() => fromWorkflows().length).toBeGreaterThanOrEqual(1)
+    const later = fromWorkflows()[fromWorkflows().length - 1]
     expect(later.workspace_focus?.selection ?? null).toBeNull()
   })
 

@@ -40,6 +40,9 @@ test.describe("ExecutionResult navigation buttons", () => {
   test("hosted_files scenario renders Phase 2 file-reference chips", async ({ page }) => {
     await page.goto("/e2e/execution-result?scenario=hosted_files")
     await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    await expect(page.getByTestId("preview-code-pane")).toBeVisible()
+    // Artifacts sit behind a disclosure since UX Reset Phase 7 (62760765).
+    await page.getByText(/^Artifacts \(\d+\)$/).click()
     await expect(page.getByTestId("file-reference-chip").first()).toBeVisible()
     await expect(page.getByText("q3-ops-brief.md")).toBeVisible()
     await expect(page.getByText("q3-ops-brief.docx")).toBeVisible()
