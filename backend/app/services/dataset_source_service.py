@@ -9,6 +9,14 @@ from __future__ import annotations
 from typing import Any
 
 ALLOWED_ACCESS_MODES = frozenset({"reference", "index", "sample", "materialized"})
+_FORBIDDEN_SECRET_MARKERS = (
+    "access_token=",
+    "refresh_token=",
+    "client_secret=",
+    "api_key=",
+    "apikey=",
+    "token=",
+)
 
 
 def normalize_provider(value: str) -> str:
@@ -37,11 +45,16 @@ def validate_source_payload(
         raise ValueError("sample_limit must be greater than zero")
     if normalized_mode == "sample" and sample_limit is None:
         raise ValueError("sample access requires sample_limit")
+    normalized_uri = str(source_uri).strip() if source_uri else None
+    if normalized_uri:
+        lowered = normalized_uri.lower()
+        if any(marker in lowered for marker in _FORBIDDEN_SECRET_MARKERS):
+            raise ValueError("source_uri must not contain provider credentials or tokens")
     return {
         "provider": normalized_provider,
         "external_id": normalized_external_id,
         "access_mode": normalized_mode,
-        "source_uri": str(source_uri).strip() if source_uri else None,
+        "source_uri": normalized_uri,
         "sample_limit": sample_limit,
     }
 
