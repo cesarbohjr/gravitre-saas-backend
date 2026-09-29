@@ -10,29 +10,28 @@ import { formatVendorLabel } from "@/lib/connectors"
 import { cn } from "@/lib/utils"
 
 /**
- * Control levels the runtime enforces today (agent_identity.trust_level):
- * read_only denies write/delete tools, write_with_approval gates every write,
- * autonomous lets writes run unattended only where an auto_run override exists.
- * High-risk catalog writes stay approval-gated at every level.
+ * Recorded agent_identity.trust_level values. These describe the stored policy
+ * only: enforcement is not yet uniform across execution paths, so the panel
+ * must not promise that a given write will or will not run unattended.
  */
 export const AUTONOMY_LEVELS = [
   {
     id: "read_only",
     label: "Read only",
     icon: Eye,
-    summary: "Reads and analyzes. Write and delete tools are denied.",
+    summary: "Recorded policy: read and analyze only.",
   },
   {
     id: "write_with_approval",
     label: "Act with approval",
     icon: Hand,
-    summary: "Prepares writes; every write waits for a human approval.",
+    summary: "Recorded policy: writes wait for a human approval.",
   },
   {
     id: "autonomous",
     label: "Act within policy",
     icon: Zap,
-    summary: "Runs writes unattended only where policy sets auto-run; high-risk writes still need approval.",
+    summary: "Recorded policy: may act unattended where the runtime permits. Not confirmed per action.",
   },
 ] as const
 
@@ -164,7 +163,7 @@ export function AgentAutonomyPanel({ agentId, className }: { agentId: string; cl
           {level?.id === "write_with_approval" ? (
             <span>Every write action</span>
           ) : level?.id === "autonomous" ? (
-            <span>High-risk writes and any action without an auto-run rule</span>
+            <span className="text-muted-foreground">Decided per action by the governed write runtime</span>
           ) : level?.id === "read_only" ? (
             <span className="text-muted-foreground">Not applicable</span>
           ) : (

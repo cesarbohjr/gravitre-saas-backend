@@ -29,6 +29,14 @@ describe("3.0 Plus final composition", () => {
     expect(src).not.toMatch(/style:\s*["']currency["']|\bUSD\b|\bROI\b|savings/)
   })
 
+  it("autonomy panel states recorded policy without promising unattended writes", () => {
+    const src = read("components/agents/agent-autonomy-panel.tsx")
+    expect(src).toMatch(/Recorded policy: may act unattended where the runtime permits/)
+    expect(src).toMatch(/Decided per action by the governed write runtime/)
+    expect(src).not.toMatch(/policy sets auto-run|without an auto-run rule|tools are denied/)
+    expect(src).not.toMatch(/<button|onClick=/)
+  })
+
   it("agent overview is a main field plus a knowledge rail", () => {
     const src = read("app/agents/[id]/page.tsx")
     expect(src).toMatch(/data-agent-main-field=""/)
