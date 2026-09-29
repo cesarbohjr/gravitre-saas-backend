@@ -1,3 +1,4 @@
+from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
 from app.plays.contracts import PlayDefinition, VerificationRequirement
 from app.plays.readiness import resolve_play_readiness
 
@@ -85,3 +86,22 @@ def test_accepted_async_is_not_treated_as_verified_business_result():
     result = resolve_play_readiness(definition, connected_vendors={"slack"})
     row = result.verification[0]
     assert row["adequate_for_verified_result"] is False
+
+
+def test_initial_play_templates_are_dependency_metadata_only():
+    assert {play.key for play in PLATFORM_PLAY_TEMPLATES} == {
+        "customer-rescue",
+        "revenue-recovery",
+        "marketing-performance",
+    }
+    for play in PLATFORM_PLAY_TEMPLATES:
+        payload = play.as_dict()
+        assert "steps" not in payload
+        assert "executor" not in payload
+
+
+def test_revenue_recovery_template_keeps_provider_alternatives():
+    play = get_platform_play("revenue-recovery")
+    assert play is not None
+    assert ("stripe", "quickbooks") in play.required_connector_groups
+    assert ("stripe.invoices.list", "quickbooks.invoices.list") in play.required_read_action_groups
