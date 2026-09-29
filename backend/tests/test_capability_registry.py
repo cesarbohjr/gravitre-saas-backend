@@ -47,7 +47,7 @@ def test_reads_carry_no_verification_mode_and_writes_do():
 
 
 def test_connectors_match_catalog_vendors():
-    assert {c.vendor for c in registry.list_connectors()} == set(get_vendor_catalog())
+    assert {c.vendor for c in registry.list_catalog_connectors()} == set(get_vendor_catalog())
 
 
 def test_workflow_primitives_come_from_step_constants():

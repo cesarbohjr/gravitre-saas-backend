@@ -147,7 +147,7 @@ def approval_required_actions(*, implemented_only: bool = True) -> list[ActionCa
     return [c for c in list_actions(implemented_only=implemented_only) if c.requires_approval]
 
 
-def list_connectors() -> list[ConnectorCapability]:
+def list_catalog_connectors() -> list[ConnectorCapability]:
     by_vendor: dict[str, list[ActionCapability]] = {}
     for cap in _action_index().values():
         by_vendor.setdefault(cap.vendor, []).append(cap)
@@ -385,7 +385,7 @@ def tenant_capability_snapshot(
         "agents": list_agents(client, org_id),
         "catalogConnectors": [
             {**c.as_dict(), "provenance": CANONICAL_SOURCES["actions"]}
-            for c in list_connectors()
+            for c in list_catalog_connectors()
         ],
         "orgConnectors": org_connectors,
         "connectedVendors": sorted(connected),

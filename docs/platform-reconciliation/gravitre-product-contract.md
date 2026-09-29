@@ -114,7 +114,7 @@ Module `backend/app/capabilities/registry.py` (read-only, no tables, no endpoint
 | Question | Function | Canonical source |
 |---|---|---|
 | Agents | `list_agents(client, org_id)` | `operators.repository.list_operators` |
-| Connectors | `list_connectors()`, `connected_vendors(client, org_id)` | vendor catalog, `connectors.repository.list_connectors`, `is_connector_usable` |
+| Connectors | `list_catalog_connectors()`, `connected_vendors(client, org_id)` | vendor catalog, `connectors.repository.list_connectors`, `is_connector_usable` |
 | Actions, READ vs WRITE | `list_actions(vendor, access, implemented_only)`, `get_action(tool)` | ActionSpec catalog, `catalog_action_requires_write_approval`, registered `invoke_tool` handlers |
 | Approval-required actions | `approval_required_actions()` | same write-authority gate the runtime uses |
 | Workflow primitives | `workflow_primitives()` | `ALLOWED_STEP_TYPES`, `EXECUTE_ALLOWED_STEP_TYPES` |
