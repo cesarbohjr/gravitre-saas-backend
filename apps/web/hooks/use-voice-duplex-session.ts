@@ -12,7 +12,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createVoiceAnalyser, type VoiceAnalyserHandle } from "@/lib/voice-analyser"
-import { unlockVoicePlayback } from "@/lib/voice-playback-unlock"
+import {
+  getSharedPlaybackContext,
+  unlockVoicePlayback,
+} from "@/lib/voice-playback-unlock"
 import {
   decideSocketFailure,
   isTerminalServerErrorClass,
@@ -185,6 +188,7 @@ export function useVoiceDuplexSession(options: Options) {
   const wsRef = useRef<WebSocket | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const audioCtxSharedRef = useRef(false)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const analyserRef = useRef<VoiceAnalyserHandle | null>(null)
   const rafRef = useRef<number | null>(null)
@@ -234,6 +238,7 @@ export function useVoiceDuplexSession(options: Options) {
   const wsUrlRef = useRef<string | null>(null)
   const orchestrationRef = useRef<"http" | "pipecat">("http")
   const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
+  const pcmBlockedQueueRef = useRef<Array<{ pcm: Int16Array; sampleRate: number }>>([])
   const pcmNextTimeRef = useRef(0)
   const pcmPlayOriginRef = useRef<number | null>(null)
   const assistantTextRef = useRef("")
@@ -253,6 +258,7 @@ export function useVoiceDuplexSession(options: Options) {
       }
     }
     pcmSourcesRef.current = []
+    pcmBlockedQueueRef.current = []
     pcmNextTimeRef.current = 0
     pcmPlayOriginRef.current = null
   }, [])
@@ -313,7 +319,23 @@ export function useVoiceDuplexSession(options: Options) {
     (pcm: Int16Array, sampleRate: number) => {
       const ctx = audioCtxRef.current
       if (!ctx || pcm.length === 0) return
-      if (playbackBlockedRef.current) return
+      if (ctx.state !== "running" || playbackBlockedRef.current) {
+        // Pipecat uses WebAudio PCM, not HTMLAudioElement.play(). Browsers can
+        // suspend an AudioContext without throwing, which previously meant audio
+        // frames were scheduled onto a silent clock and the user heard nothing.
+        // Keep a bounded copy and surface the same explicit "Enable sound" recovery
+        // used by the HTTP TTS path.
+        pcmBlockedQueueRef.current.push({
+          pcm: new Int16Array(pcm),
+          sampleRate: sampleRate || 16000,
+        })
+        if (pcmBlockedQueueRef.current.length > 80) {
+          pcmBlockedQueueRef.current.splice(0, pcmBlockedQueueRef.current.length - 80)
+        }
+        playbackBlockedRef.current = true
+        setPlaybackBlocked(true)
+        return
+      }
       const f32 = new Float32Array(pcm.length)
       for (let i = 0; i < pcm.length; i++) {
         f32[i] = (pcm[i] ?? 0) / 32768
@@ -421,11 +443,24 @@ export function useVoiceDuplexSession(options: Options) {
   /** Fresh user gesture (tap "Enable sound" / mic) — retry the held-back reply. */
   const resumeBlockedPlayback = useCallback(async () => {
     if (!playbackBlockedRef.current) return
-    await unlockVoicePlayback()
+    const unlocked = await unlockVoicePlayback()
+    const ctx = audioCtxRef.current
+    if (ctx && ctx.state === "suspended") {
+      await ctx.resume().catch(() => {})
+    }
+    const outputRunning = !ctx || ctx.state === "running" || unlocked?.state === "running"
+    if (!outputRunning) {
+      setPlaybackBlocked(true)
+      return
+    }
     playbackBlockedRef.current = false
     setPlaybackBlocked(false)
+    const queuedPcm = pcmBlockedQueueRef.current.splice(0)
+    for (const chunk of queuedPcm) {
+      enqueuePcm(chunk.pcm, chunk.sampleRate)
+    }
     void playNext()
-  }, [playNext])
+  }, [enqueuePcm, playNext])
 
   const enqueueAudio = useCallback(
     (b64: string, contentType?: string) => {
@@ -592,11 +627,14 @@ export function useVoiceDuplexSession(options: Options) {
     }
     processorRef.current = null
     try {
-      audioCtxRef.current?.close()
+      if (!audioCtxSharedRef.current) {
+        audioCtxRef.current?.close()
+      }
     } catch {
       /* ignore */
     }
     audioCtxRef.current = null
+    audioCtxSharedRef.current = false
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
     try {
@@ -993,9 +1031,20 @@ export function useVoiceDuplexSession(options: Options) {
         window.AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
       if (!AC) throw new Error("AudioContext unavailable")
-      const ctx = new AC()
+
+      // Reuse the output context that was unlocked synchronously from the user's
+      // Talk gesture in start(). The old path created a second AudioContext only
+      // after status/auth awaits; on Safari/iOS that second context can remain
+      // suspended even though microphone capture and the websocket are healthy.
+      const sharedOutput = getSharedPlaybackContext()
+      const ctx = sharedOutput ?? new AC()
+      audioCtxSharedRef.current = Boolean(sharedOutput && ctx === sharedOutput)
       audioCtxRef.current = ctx
-      if (ctx.state === "suspended") await ctx.resume()
+      if (ctx.state === "suspended") await ctx.resume().catch(() => {})
+      if (ctx.state !== "running") {
+        playbackBlockedRef.current = true
+        setPlaybackBlocked(true)
+      }
       pcmNextTimeRef.current = 0
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
@@ -1244,10 +1293,16 @@ export function useVoiceDuplexSession(options: Options) {
           window.AudioContext ||
           (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
         if (!AC) throw new Error("AudioContext unavailable")
-        const ctx = new AC()
+        const sharedOutput = getSharedPlaybackContext()
+        const ctx = sharedOutput ?? new AC()
+        audioCtxSharedRef.current = Boolean(sharedOutput && ctx === sharedOutput)
         audioCtxRef.current = ctx
         if (ctx.state === "suspended") {
-          await ctx.resume()
+          await ctx.resume().catch(() => {})
+        }
+        if (ctx.state !== "running") {
+          playbackBlockedRef.current = true
+          setPlaybackBlocked(true)
         }
 
         const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
