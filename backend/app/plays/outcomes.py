@@ -90,8 +90,15 @@ class PlayBusinessResult:
             raise ValueError("attribution_weight must be between 0 and 1")
         if self.verified and not self.verification_method:
             raise ValueError("verified business results require verification_method")
-        if self.status == BusinessResultStatus.VERIFIED_SUCCESS and not self.source_records:
-            raise ValueError("VERIFIED SUCCESS requires at least one source-of-record reference")
+        if self.status == BusinessResultStatus.VERIFIED_SUCCESS:
+            if self.outcome_type == "action_execution":
+                raise ValueError("action execution cannot be promoted to VERIFIED SUCCESS")
+            if not self.source_records:
+                raise ValueError("VERIFIED SUCCESS requires at least one source-of-record reference")
+            if not self.metric_key:
+                raise ValueError("VERIFIED SUCCESS requires a measured metric_key")
+            if self.baseline_value is None or self.result_value is None:
+                raise ValueError("VERIFIED SUCCESS requires baseline_value and result_value")
         if self.currency and (self.unit or "").lower() not in {"currency", "money", "revenue"}:
             raise ValueError("currency is only valid for a monetary unit")
 
