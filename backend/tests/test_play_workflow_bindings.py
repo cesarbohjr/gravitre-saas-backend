@@ -1,6 +1,7 @@
 from app.plays.workflow_bindings import (
     bind_play_to_workflow,
     list_play_workflow_bindings,
+    play_binding_for_workflow,
     unbind_play_from_workflow,
 )
 
@@ -134,3 +135,23 @@ def test_unbind_preserves_unrelated_workflow_config(monkeypatch):
     )
     assert result["bound"] is False
     assert rows[0]["config"] == {"existing": {"keep": True}}
+
+
+def test_play_binding_resolver_requires_exact_play_key():
+    workflow = {
+        "config": {
+            "play": {
+                "key": "revenue-recovery",
+                "version": "1",
+                "execution_authority": "canonical_workflow_runtime",
+            }
+        }
+    }
+    assert play_binding_for_workflow(
+        workflow,
+        expected_play_key="revenue-recovery",
+    )["version"] == "1"
+    assert play_binding_for_workflow(
+        workflow,
+        expected_play_key="customer-rescue",
+    ) is None
