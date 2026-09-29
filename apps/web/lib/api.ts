@@ -1827,6 +1827,39 @@ export const trainingApi = {
       {},
     ),
 
+  listDatasetSourceProviders: () =>
+    fetcher<{
+      providers: string[]
+      count: number
+      providerSpecificBehavior: boolean
+    }>(apiUrl("/api/training/dataset-source-providers")),
+  searchDatasetSourceProvider: (
+    provider: string,
+    query: string,
+    options?: { cursor?: string; limit?: number },
+  ) => {
+    const params = new URLSearchParams({ query })
+    if (options?.cursor) params.set("cursor", options.cursor)
+    if (options?.limit) params.set("limit", String(options.limit))
+    return fetcher<{
+      provider: string
+      mutation: false
+      nextCursor?: string | null
+      items: Array<{
+        provider: string
+        external_id: string
+        display_name: string
+        source_uri?: string | null
+        description?: string | null
+        metadata?: Record<string, unknown> | null
+      }>
+    }>(
+      apiUrl(
+        `/api/training/dataset-source-providers/${encodeURIComponent(provider)}/search?${params.toString()}`,
+      ),
+    )
+  },
+
   // Jobs
   listJobs: () => fetcher<TrainingJobListResponse>(apiUrl("/api/training/jobs")),
   getJob: (id: string) => fetcher<TrainingJob>(apiUrl(`/api/training/jobs/${id}`)),
