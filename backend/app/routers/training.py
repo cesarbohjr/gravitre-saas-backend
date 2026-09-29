@@ -19,6 +19,12 @@ from app.services.training_service import (
     list_training_jobs,
     list_workflow_agents,
 )
+from app.training.dataset_sources import (
+    DatasetSourceAccessMode,
+    DatasetSourceRef,
+    list_dataset_sources,
+    register_dataset_source,
+)
 from app.workers.queue import enqueue_training_job
 from app.workers.training_worker import create_training_worker
 
@@ -47,6 +53,18 @@ class DatasetBindingCreateRequest(BaseModel):
     )
     target_id: str = Field(..., alias="targetId", min_length=1)
     metadata: dict = Field(default_factory=dict)
+
+    model_config = {"populate_by_name": True}
+
+
+class DatasetSourceCreateRequest(BaseModel):
+    provider: str = Field(..., min_length=1)
+    locator: str = Field(..., min_length=1)
+    access_mode: DatasetSourceAccessMode = Field(alias="accessMode")
+    revision: str | None = None
+    license_name: str | None = Field(default=None, alias="licenseName")
+    provenance: dict = Field(default_factory=dict)
+    source_metadata: dict = Field(default_factory=dict, alias="sourceMetadata")
 
     model_config = {"populate_by_name": True}
 
@@ -256,6 +274,72 @@ async def delete_dataset_binding(
     )
     _raise_if_response_error(response)
     return {"ok": True}
+
+
+
+@router.get("/datasets/{dataset_id}/sources")
+async def get_dataset_sources(
+    dataset_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        rows = list_dataset_sources(client, org_id, dataset_id)
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Dataset source storage is not provisioned. Apply database migrations.",
+            ) from exc
+        raise
+    return {
+        "sources": rows,
+        "count": len(rows),
+        "providerNeutral": True,
+        "credentialsStored": False,
+    }
+
+
+@router.post("/datasets/{dataset_id}/sources", status_code=status.HTTP_201_CREATED)
+async def create_dataset_source(
+    dataset_id: str,
+    body: DatasetSourceCreateRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    source = DatasetSourceRef(
+        provider=body.provider,
+        locator=body.locator,
+        access_mode=body.access_mode,
+        revision=body.revision,
+        license_name=body.license_name,
+        provenance=body.provenance,
+        source_metadata=body.source_metadata,
+    )
+    try:
+        row = register_dataset_source(
+            client,
+            org_id=org_id,
+            dataset_id=dataset_id,
+            created_by=user.get("user_id"),
+            source=source,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        **row,
+        "providerNeutral": True,
+        "credentialsStored": False,
+        "fetchStarted": False,
+    }
 
 
 @router.delete("/datasets/{dataset_id}")
