@@ -96,3 +96,16 @@ describe("Outcome plays dashboard integration", () => {
     expect(dashboard).not.toMatch(/verified revenue recovered/i)
   })
 })
+
+
+describe("Outcome-oriented dashboard presets", () => {
+  it("reuses existing KPI registry without inventing Play metrics", () => {
+    const source = readFileSync(resolve(__dirname, "../lib/dashboard/kpi-registry.ts"), "utf8")
+    expect(source).toMatch(/name: "Executive Overview"/)
+    expect(source).toMatch(/name: "Customer Rescue"/)
+    expect(source).toMatch(/name: "Revenue Recovery"/)
+    expect(source).toMatch(/name: "Marketing Performance"/)
+    expect(source).not.toMatch(/recovered_revenue.*availability: "available"/s)
+    expect(source).not.toMatch(/churn_avoided.*availability: "available"/s)
+  })
+})
