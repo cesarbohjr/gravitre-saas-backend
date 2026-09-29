@@ -479,6 +479,9 @@ export function createDefaultLayout(): DashboardLayout {
 export type DashboardPresetId =
   | "operations"
   | "executive"
+  | "customer_rescue"
+  | "revenue_recovery"
+  | "marketing_performance"
   | "agents"
   | "workflows"
   | "models"
@@ -515,8 +518,8 @@ export const DASHBOARD_PRESETS: DashboardPreset[] = [
   },
   {
     id: "executive",
-    name: "Executive",
-    description: "Success rate, workflows, approvals, confidence, revenue risks",
+    name: "Executive Overview",
+    description: "Cross-functional operating health, approvals, confidence, and revenue risk",
     build: () =>
       layoutFromMetricIds([
         "runs.success_rate",
@@ -527,6 +530,51 @@ export const DASHBOARD_PRESETS: DashboardPreset[] = [
         "connectors.active",
         "gibe.revenue_risks",
         "gibe.predictive",
+      ]),
+  },
+  {
+    id: "customer_rescue",
+    name: "Customer Rescue",
+    description: "Customer-risk operating view using existing support, approval, agent, and confidence signals",
+    build: () =>
+      layoutFromMetricIds([
+        "gibe.avg_confidence",
+        "approvals.pending",
+        "agents.active",
+        "agents.executing",
+        "runs.success_rate",
+        "connectors.active",
+        "gibe.predictive",
+      ]),
+  },
+  {
+    id: "revenue_recovery",
+    name: "Revenue Recovery",
+    description: "Revenue-risk operating view using existing risk, approval, connector, and run evidence",
+    build: () =>
+      layoutFromMetricIds([
+        "gibe.revenue_risks",
+        "approvals.pending",
+        "connectors.active",
+        "runs.success_rate",
+        "runs.total",
+        "agents.active",
+        "gibe.avg_confidence",
+      ]),
+  },
+  {
+    id: "marketing_performance",
+    name: "Marketing Performance",
+    description: "Marketing operating view using existing run, connector, confidence, and predictive evidence",
+    build: () =>
+      layoutFromMetricIds([
+        "runs.success_rate",
+        "runs.total",
+        "connectors.active",
+        "gibe.avg_confidence",
+        "gibe.predictive",
+        "usage.records_processed",
+        "runs.breakdown",
       ]),
   },
   {

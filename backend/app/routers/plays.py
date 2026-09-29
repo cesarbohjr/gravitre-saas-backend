@@ -1,0 +1,377 @@
+"""Read-only Play catalog/readiness API.
+
+Execution remains in canonical workflows. This router does not execute Plays
+or mutate connector/workflow/governance state.
+"""
+from __future__ import annotations
+
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+
+from app.auth.dependencies import get_environment_context, require_admin, require_org_member
+from app.capabilities.registry import connected_vendors
+from app.config import Settings, get_settings
+from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
+from app.plays.customer_rescue import observe_customer_rescue
+from app.plays.evidence import build_play_evidence_chain
+from app.plays.marketing_performance import list_marketing_performance_signals
+from app.plays.outcomes import list_play_business_results
+from app.plays.readiness import resolve_play_readiness
+from app.plays.revenue_recovery import list_revenue_recovery_signals
+from app.plays.workflow_bindings import (
+    bind_play_to_workflow,
+    list_play_workflow_bindings,
+    unbind_play_from_workflow,
+)
+from app.workflows.audit import write_audit_event
+from app.workflows.repository import get_supabase_client
+
+router = APIRouter(prefix="/api/plays", tags=["plays"])
+
+class BindWorkflowRequest(BaseModel):
+    workflow_id: str = Field(..., alias="workflowId", min_length=1)
+
+    model_config = {"populate_by_name": True}
+
+
+
+def _member_org(member: tuple[dict, str, str]) -> str:
+    _user, org_id, _role = member
+    if not org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    return org_id
+
+
+def _template_payload(play: Any) -> dict[str, Any]:
+    payload = play.as_dict()
+    payload["executable"] = False
+    payload["executionAuthority"] = "canonical_workflow_runtime"
+    return payload
+
+
+@router.get("")
+async def list_plays(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    connected = connected_vendors(client, org_id, environment_name)
+    items = []
+    for play in PLATFORM_PLAY_TEMPLATES:
+        readiness = resolve_play_readiness(
+            play,
+            connected_vendors=connected,
+            client=client,
+            org_id=org_id,
+            policy_authorized_actions=set(),
+        )
+        bindings = list_play_workflow_bindings(client, org_id, play.key)
+        items.append(
+            {
+                "play": _template_payload(play),
+                "readiness": readiness.as_dict(),
+                "workflowBindings": bindings,
+                "workflowBindingCount": len(bindings),
+            }
+        )
+    return {
+        "plays": items,
+        "count": len(items),
+        "executionAuthority": "canonical_workflow_runtime",
+        "policyNote": (
+            "ACT WITHIN POLICY is not inferred by this read endpoint. "
+            "It requires an effective runtime policy evaluation for a specific agent/action/context."
+        ),
+    }
+
+
+
+
+
+
+@router.get("/customer-rescue/observe")
+async def observe_customer_rescue_play(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=25, ge=1, le=100),
+) -> dict[str, Any]:
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    play = get_platform_play("customer-rescue")
+    assert play is not None
+    connected = connected_vendors(client, org_id, environment_name)
+    readiness = resolve_play_readiness(
+        play,
+        connected_vendors=connected,
+        client=client,
+        org_id=org_id,
+        policy_authorized_actions=set(),
+    )
+    observed = await observe_customer_rescue(
+        org_id,
+        settings=settings,
+        client=client,
+        limit=limit,
+    )
+    return {
+        "playKey": play.key,
+        "readiness": readiness.as_dict(),
+        **observed,
+    }
+
+
+@router.get("/marketing-performance/observe")
+async def observe_marketing_performance(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    play = get_platform_play("marketing-performance")
+    assert play is not None
+    connected = connected_vendors(client, org_id, environment_name)
+    readiness = resolve_play_readiness(
+        play,
+        connected_vendors=connected,
+        client=client,
+        org_id=org_id,
+        policy_authorized_actions=set(),
+    )
+    signals = list_marketing_performance_signals(client, org_id, limit=limit)
+    return {
+        "playKey": play.key,
+        "mode": "OBSERVE",
+        "readiness": readiness.as_dict(),
+        "signals": signals,
+        "count": len(signals),
+        "actionTaken": False,
+        "truthRule": (
+            "Marketing performance movement is not pipeline or revenue attribution. "
+            "Business impact requires source-linked outcome evidence."
+        ),
+    }
+
+
+@router.get("/revenue-recovery/observe")
+async def observe_revenue_recovery(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    """Read existing revenue-recovery signals without taking external action."""
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    play = get_platform_play("revenue-recovery")
+    assert play is not None
+    connected = connected_vendors(client, org_id, environment_name)
+    readiness = resolve_play_readiness(
+        play,
+        connected_vendors=connected,
+        client=client,
+        org_id=org_id,
+        policy_authorized_actions=set(),
+    )
+    signals = list_revenue_recovery_signals(client, org_id, limit=limit)
+    return {
+        "playKey": play.key,
+        "mode": "OBSERVE",
+        "readiness": readiness.as_dict(),
+        "signals": signals,
+        "count": len(signals),
+        "actionTaken": False,
+        "verifiedRecoveredRevenue": None,
+        "truthRule": (
+            "Detected overdue invoices or stalled deals are opportunities, not recovered revenue. "
+            "Recovered revenue is reported only after source-of-record verification."
+        ),
+    }
+
+
+@router.get("/{play_key}/readiness")
+async def get_play_readiness(
+    play_key: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    play = get_platform_play(play_key)
+    if play is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play not found")
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    connected = connected_vendors(client, org_id, environment_name)
+    readiness = resolve_play_readiness(
+        play,
+        connected_vendors=connected,
+        client=client,
+        org_id=org_id,
+        policy_authorized_actions=set(),
+    )
+    bindings = list_play_workflow_bindings(client, org_id, play.key)
+    return {
+        "play": _template_payload(play),
+        "readiness": readiness.as_dict(),
+        "workflowBindings": bindings,
+        "workflowBindingCount": len(bindings),
+        "executionAuthority": "canonical_workflow_runtime",
+    }
+
+
+
+
+
+
+@router.get("/{play_key}/workflow-bindings")
+async def get_play_workflow_bindings(
+    play_key: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    play = get_platform_play(play_key)
+    if play is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play not found")
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    bindings = list_play_workflow_bindings(client, org_id, play.key)
+    return {
+        "playKey": play.key,
+        "workflowBindings": bindings,
+        "count": len(bindings),
+        "executionAuthority": "canonical_workflow_runtime",
+    }
+
+
+@router.post("/{play_key}/workflow-bindings")
+async def create_play_workflow_binding(
+    play_key: str,
+    body: BindWorkflowRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    try:
+        binding = bind_play_to_workflow(
+            client,
+            org_id,
+            play_key=play_key,
+            workflow_id=body.workflow_id,
+            actor_id=str(user.get("user_id") or "") or None,
+            environment_name=environment_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user.get("user_id"),
+        action="play.workflow.bound",
+        resource_type="workflow",
+        resource_id=body.workflow_id,
+        metadata={
+            "play_key": play_key,
+            "environment": environment_name,
+            "execution_authority": "canonical_workflow_runtime",
+        },
+    )
+    return binding
+
+
+@router.delete("/{play_key}/workflow-bindings/{workflow_id}")
+async def delete_play_workflow_binding(
+    play_key: str,
+    workflow_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    try:
+        result = unbind_play_from_workflow(
+            client,
+            org_id,
+            play_key=play_key,
+            workflow_id=workflow_id,
+            environment_name=environment_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user.get("user_id"),
+        action="play.workflow.unbound",
+        resource_type="workflow",
+        resource_id=workflow_id,
+        metadata={"play_key": play_key, "environment": environment_name},
+    )
+    return result
+
+
+@router.get("/{play_key}/outcomes/{outcome_id}/evidence")
+async def get_play_outcome_evidence(
+    play_key: str,
+    outcome_id: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    play = get_platform_play(play_key)
+    if play is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play not found")
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    chain = build_play_evidence_chain(
+        client,
+        org_id,
+        outcome_id,
+        play_key=play.key,
+    )
+    if chain is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Play business result not found",
+        )
+    return {
+        "playKey": play.key,
+        "evidence": chain,
+    }
+
+
+@router.get("/{play_key}/outcomes")
+async def get_play_outcomes(
+    play_key: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    play = get_platform_play(play_key)
+    if play is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play not found")
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    rows = list_play_business_results(client, org_id, play_key=play.key, limit=limit)
+    return {
+        "playKey": play.key,
+        "outcomes": rows,
+        "count": len(rows),
+        "truthRule": "Execution success is not business success; verified business results require source-of-record evidence.",
+    }

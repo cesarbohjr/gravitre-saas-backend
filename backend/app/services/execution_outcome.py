@@ -516,6 +516,107 @@ def _enqueue_failure_alert_correlation(client: Any, event: ExecutionOutcomeEvent
         return False
 
 
+
+def _record_play_actioned_result(
+    client: Any,
+    event: ExecutionOutcomeEvent,
+    status: TerminalStatus,
+    ts: str,
+) -> bool:
+    """Bridge a Play-bound canonical workflow action into the Play ledger.
+
+    This records ACTIONED only. A completed workflow or provider-accepted write
+    is never promoted here to VERIFIED SUCCESS.
+    """
+    if status not in {"completed", "partial_success", "flagged_for_review"}:
+        return False
+    if not event.run_id:
+        return False
+
+    try:
+        row = (
+            client.table("workflow_runs")
+            .select("parameters")
+            .eq("id", event.run_id)
+            .eq("org_id", event.org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        params = row[0].get("parameters") if row and isinstance(row[0].get("parameters"), dict) else {}
+        play = params.get("play") if isinstance(params.get("play"), dict) else {}
+        play_key = str(play.get("key") or "").strip()
+        if not play_key:
+            return False
+
+        meta = dict(event.metadata or {})
+        action_tool = str(
+            meta.get("invoke_action")
+            or meta.get("action_type")
+            or meta.get("tool_name")
+            or ""
+        ).strip()
+        if not action_tool:
+            # A Play-bound read-only or analysis workflow finishing is not an
+            # external action and must not be recorded as ACTIONED.
+            return False
+
+        from app.plays.outcomes import (
+            AttributionType,
+            BusinessResultStatus,
+            PlayBusinessResult,
+            record_play_business_result,
+        )
+
+        evidence_ids: list[str] = []
+        work_object_id = str(meta.get("work_object_id") or "").strip()
+        if work_object_id:
+            evidence_ids.append(work_object_id)
+
+        result = PlayBusinessResult(
+            org_id=event.org_id,
+            play_key=play_key,
+            play_version=str(play.get("version") or "1"),
+            play_instance_id=str(event.run_id),
+            outcome_type="action_execution",
+            status=BusinessResultStatus.ACTIONED,
+            workflow_id=str(event.workflow_id or "") or None,
+            workflow_run_id=str(event.run_id),
+            entity_type=(
+                event.verified_output.entity_type
+                if event.verified_output and event.verified_output.entity_type
+                else None
+            ),
+            entity_id=(
+                event.verified_output.entity_id
+                if event.verified_output and event.verified_output.entity_id
+                else None
+            ),
+            connector_id=str(meta.get("connector_id") or "").strip() or None,
+            action_tools=(action_tool,),
+            evidence_ids=tuple(evidence_ids),
+            attribution_type=AttributionType.NONE,
+            verification_method=None,
+            occurred_at=ts,
+            metadata={
+                "execution_terminal_status": status,
+                "source": event.source,
+                "provider_acceptance_is_business_verification": False,
+            },
+        )
+        record_play_business_result(client, result)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "play_actioned_result_skipped org_id=%s run_id=%s error=%s",
+            event.org_id,
+            event.run_id,
+            exc,
+        )
+        return False
+
+
 def _coerce_verified_output(
     verified_output: VerifiedOutputRef | dict[str, Any] | None,
 ) -> VerifiedOutputRef | None:
@@ -752,6 +853,7 @@ def finalize_execution_outcome(
         "learning_recorded": False,
         "failure_alert_correlated": False,
         "work_object_attributed": bool(event.metadata.get("work_object_id")),
+        "play_actioned_recorded": False,
     }
     audit_action: str | None = None
     notification_event: str | None = None
@@ -796,6 +898,13 @@ def finalize_execution_outcome(
             event.run_id,
             exc,
         )
+
+    fanout["play_actioned_recorded"] = _record_play_actioned_result(
+        client,
+        event,
+        terminal,
+        ts,
+    )
 
     # Module B — when a conversation_id is present, mirror into conversation memory
     # so chat can recall the same outcome without a canvas-specific store.

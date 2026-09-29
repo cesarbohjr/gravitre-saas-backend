@@ -2004,6 +2004,47 @@ export const billingApi = {
     }>(apiUrl("/api/billing/top-up/voice-minutes"), { minutes }),
 }
 
+
+
+export type PlayReadinessSummary = {
+  play_key: string
+  dependency_status: "AVAILABLE" | "PARTIAL" | "MISSING" | "EXTERNAL_CONNECTION_REQUIRED"
+  observe_ready: boolean
+  recommend_ready: boolean
+  act_with_approval_ready: boolean
+  act_within_policy_ready: boolean
+  blockers: string[]
+}
+
+export type PlayListItem = {
+  play: {
+    key: string
+    name: string
+    version: string
+    objective: string
+    executable: boolean
+    executionAuthority: string
+  }
+  readiness: PlayReadinessSummary
+  workflowBindings: Array<{
+    workflowId: string
+    name?: string | null
+    status?: string | null
+    stage?: string | null
+  }>
+  workflowBindingCount: number
+}
+
+export const playsApi = {
+  list: () =>
+    fetcher<{
+      plays: PlayListItem[]
+      count: number
+      executionAuthority: string
+      policyNote: string
+    }>(apiUrl("/api/plays")),
+}
+
 // ============ Metrics ============
 export const metricsApi = {
   overview: (range?: string) =>

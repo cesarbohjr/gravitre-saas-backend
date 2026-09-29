@@ -260,6 +260,57 @@ export function HomeDashboard({
           </motion.div>
         ) : null}
 
+        {!editMode && data.plays.length > 0 ? (
+          <motion.section
+            variants={item}
+            aria-labelledby="dashboard-outcome-plays"
+            className="border-y border-[color:var(--g-border-subtle)]"
+          >
+            <div className="flex items-baseline justify-between gap-3 border-b border-[color:var(--g-border-subtle)] px-3 py-2">
+              <h3 id="dashboard-outcome-plays" className="text-[12px] font-semibold text-foreground">
+                Outcome plays
+              </h3>
+              <span className={TYPE.meta}>Readiness from connected capabilities</span>
+            </div>
+            <div className="divide-y divide-[color:var(--g-border-subtle)]">
+              {data.plays.map(({ play, readiness, workflowBindingCount }) => {
+                const state = readiness.act_within_policy_ready
+                  ? "ACT WITHIN POLICY"
+                  : readiness.act_with_approval_ready
+                    ? "ACT WITH APPROVAL"
+                    : readiness.recommend_ready
+                      ? "RECOMMEND"
+                      : readiness.observe_ready
+                        ? "OBSERVE"
+                        : readiness.dependency_status === "EXTERNAL_CONNECTION_REQUIRED"
+                          ? "CONNECTION REQUIRED"
+                          : readiness.dependency_status
+                return (
+                  <div
+                    key={play.key}
+                    className="grid gap-1 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{play.name}</p>
+                      <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>{play.objective}</p>
+                      <p className={cn(TYPE.meta, "mt-0.5")}>
+                        {workflowBindingCount > 0
+                          ? `${workflowBindingCount} canonical workflow${workflowBindingCount === 1 ? "" : "s"} bound`
+                          : "No canonical workflow bound yet"}
+                      </p>
+                    </div>
+                    <span className="font-mono text-[10px] font-medium tracking-[0.04em] text-muted-foreground">
+                      {state}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </motion.section>
+        ) : null}
+
+
+
         {/* Desktop / tablet grid */}
         <motion.div
           variants={item}

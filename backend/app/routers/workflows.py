@@ -106,6 +106,7 @@ from app.connectors.repository import get_connector
 from app.operators.repository import get_operator
 from app.rag.ingest import get_source
 from app.services.goal_service import GoalService, get_goal_service
+from app.plays.workflow_bindings import play_binding_for_workflow
 from app.services.vertical_workflow_helper import enrich_vertical_workflow_parameters
 from app.workflows.builder_sync import (
     definition_to_builder_nodes,
@@ -143,6 +144,9 @@ class DryRunRequest(BaseModel):
 class ExecuteRequest(BaseModel):
     workflow_id: UUID = Field(..., description="Required workflow to execute")
     parameters: dict | None = Field(default=None)
+    play_key: str | None = Field(default=None, alias="playKey")
+
+    model_config = {"populate_by_name": True}
 
 
 class ApproveRejectRequest(BaseModel):
@@ -1707,6 +1711,19 @@ async def execute_workflow(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow not found",
         )
+
+    play_binding = None
+    if body.play_key:
+        play_binding = play_binding_for_workflow(
+            wf,
+            expected_play_key=body.play_key,
+        )
+        if play_binding is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Workflow is not bound to the requested Play",
+            )
+
     active = get_active_workflow_version(client, org_id, workflow_id, environment_name)
     if not active:
         raise HTTPException(
@@ -1742,6 +1759,15 @@ async def execute_workflow(
         client=client,
         environment_name=environment_name,
     )
+    if play_binding is not None:
+        parameters = {
+            **parameters,
+            "play": {
+                "key": play_binding.get("key"),
+                "version": play_binding.get("version"),
+                "execution_authority": "canonical_workflow_runtime",
+            },
+        }
     schema_version = active.get("schema_version") or definition.get("schema_version") or SCHEMA_VERSION
     run_hash = compute_run_hash(definition, parameters, schema_version)
 

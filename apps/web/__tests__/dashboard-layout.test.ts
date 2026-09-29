@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import { normalizeMetricsOverview } from "@/lib/dashboard/normalize-metrics"
 import { packWidgets, moveWidgetOrder } from "@/lib/dashboard/place-widgets"
@@ -73,5 +75,37 @@ describe("dashboard presets", () => {
         expect(KPI_BY_ID[w.metricId]).toBeTruthy()
       }
     }
+  })
+})
+
+
+describe("Outcome plays dashboard integration", () => {
+  it("loads Plays from the canonical /api/plays endpoint", () => {
+    const api = readFileSync(resolve(__dirname, "../lib/api.ts"), "utf8")
+    const hook = readFileSync(resolve(__dirname, "../hooks/use-home-dashboard-data.ts"), "utf8")
+    expect(api).toMatch(/apiUrl\("\/api\/plays"\)/)
+    expect(hook).toMatch(/playsApi\.list\(\)/)
+  })
+
+  it("renders Play readiness inside the existing Dashboard Measure surface", () => {
+    const dashboard = readFileSync(resolve(__dirname, "../components/home/home-dashboard.tsx"), "utf8")
+    expect(dashboard).toMatch(/Outcome plays/)
+    expect(dashboard).toMatch(/ACT WITH APPROVAL/)
+    expect(dashboard).toMatch(/ACT WITHIN POLICY/)
+    expect(dashboard).toMatch(/No canonical workflow bound yet/)
+    expect(dashboard).not.toMatch(/verified revenue recovered/i)
+  })
+})
+
+
+describe("Outcome-oriented dashboard presets", () => {
+  it("reuses existing KPI registry without inventing Play metrics", () => {
+    const source = readFileSync(resolve(__dirname, "../lib/dashboard/kpi-registry.ts"), "utf8")
+    expect(source).toMatch(/name: "Executive Overview"/)
+    expect(source).toMatch(/name: "Customer Rescue"/)
+    expect(source).toMatch(/name: "Revenue Recovery"/)
+    expect(source).toMatch(/name: "Marketing Performance"/)
+    expect(source).not.toMatch(/recovered_revenue.*availability: "available"/s)
+    expect(source).not.toMatch(/churn_avoided.*availability: "available"/s)
   })
 })
