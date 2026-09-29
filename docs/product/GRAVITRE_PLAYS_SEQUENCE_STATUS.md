@@ -18,8 +18,9 @@ learning, BusinessOutcome and Dashboard were audited before implementation.
 
 COMPLETE.
 
-Existing training datasets/jobs/model registry are retained. No external
-dataset provider has been added.
+Existing training datasets/jobs/model registry are retained as canonical.
+External dataset discovery is additive and does not replace the training
+dataset model.
 
 ### Phase 2 — Play architecture
 
@@ -107,14 +108,35 @@ agent, model, department, evaluation, Play, workflow.
 
 This does not add an external dataset provider.
 
-## Explicitly not started
-
 ### Phase 13 — external dataset provider
 
-NOT STARTED.
+IMPLEMENTED FOUNDATION.
 
-Hugging Face or another provider remains deferred until the first Plays have
-live proof. No provider-specific special case has been introduced.
+A provider-neutral external dataset discovery layer is now merged to main.
+The first adapter is Hugging Face metadata discovery.
+
+Current guarantees:
+
+- provider list/search/inspect are read-only;
+- private/gated datasets are not bypassed;
+- provider content is not downloaded or materialized automatically;
+- external references are tenant-scoped;
+- reference creation/deletion is admin-governed;
+- reference metadata rejects credential/token-bearing fields and locators;
+- purpose bindings remain explicit for agent/model/department/evaluation/Play/workflow.
+
+The provider adapter is an implementation of the provider-neutral interface,
+not a Model Studio special-case runtime.
+
+### Phases 14–17 — governance, tests, implementation order, final report
+
+PRE-LIVE FOUNDATION COMPLETE.
+
+The governance and test contracts are implemented. Exact-head CI and
+Lighthouse passed for the Plays foundation and for the dataset connector merge.
+Production backend deployment of the dataset connector merge is confirmed.
+
+Live authenticated proof remains a distinct gate and is not replaced by CI.
 
 ## Governance state
 
@@ -127,19 +149,28 @@ live proof. No provider-specific special case has been introduced.
 - execution success remains distinct from business success;
 - verified business success requires verification evidence.
 
-## CI note
+## CI / deployment note
 
-Exact-head CI at `9b2f95bcaacf31c78b7d2445882dbc45eba896c5`
-completed successfully before the source-verification extension.
+Plays foundation exact-head CI and Lighthouse passed before merge to main.
 
-The current head must pass a fresh exact-head run before merge.
+Dataset connector exact head:
+`652c19bcccde4b0cb3d64854faa0a7f13f501250`
+
+- CI `36630963094`: PASS
+- Lighthouse `36630963614`: PASS
+- Supabase `external_dataset_references` migration: applied
+- merged main SHA: `9a8431222e0d51d4c051c0405faeec46579356c6`
+- Railway production deploy: SUCCESS
+
+CI_PROVEN and DEPLOYED do not equal authenticated LIVE_API_PROVEN.
 
 ## Next sequence
 
-1. fresh exact-head CI after source-verification + router contract tests;
-2. deployed API proof for Play readiness + observe routes;
-3. prove one canonical Play workflow binding in a non-destructive environment;
-4. prove ACTIONED evidence linkage against that bound workflow;
-5. prove a real source-of-record verification event before any VERIFIED SUCCESS;
-6. then begin provider-neutral external dataset-source work; provider-specific
-   Hugging Face integration remains after the abstraction is proven.
+1. run the authenticated GET-only Plays + dataset live proof against production;
+2. prove one canonical Play workflow binding in a non-destructive authorized environment;
+3. prove ACTIONED evidence linkage against that bound workflow;
+4. prove a real source-of-record business measurement before any VERIFIED SUCCESS;
+5. keep external dataset references non-materializing unless an explicit later
+   materialization contract is approved and implemented;
+6. keep physical voice-to-voice acceptance as a separate release-quality gate:
+   code hardening may pass CI, but closure requires a human to hear production audio.
