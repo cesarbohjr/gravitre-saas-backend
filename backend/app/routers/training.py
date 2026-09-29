@@ -25,6 +25,7 @@ from app.services.training_service import (
 )
 from app.workers.queue import enqueue_training_job
 from app.workers.training_worker import create_training_worker
+from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/training", tags=["training"])
 
@@ -332,7 +333,7 @@ async def create_dataset_source_ref(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
     try:
-        return create_dataset_source(
+        source = create_dataset_source(
             client,
             org_id=org_id,
             dataset_id=dataset_id,
@@ -348,6 +349,23 @@ async def create_dataset_source_ref(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user.get("user_id"),
+        action="training.dataset_source.created",
+        resource_type="training_dataset",
+        resource_id=dataset_id,
+        metadata={
+            "source_id": source.get("id"),
+            "provider": source.get("provider"),
+            "external_id": source.get("external_id"),
+            "access_mode": source.get("access_mode"),
+            "materialization_automatic": False,
+        },
+    )
+    return source
 
 
 @router.delete("/datasets/{dataset_id}")
