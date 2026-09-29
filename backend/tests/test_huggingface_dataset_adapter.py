@@ -115,3 +115,24 @@ def test_huggingface_materialization_is_explicitly_disabled():
     )
     with pytest.raises(ValueError, match="materialization is not enabled"):
         adapter.validate_source(source)
+
+
+@pytest.mark.parametrize(
+    "locator",
+    [
+        "https://huggingface.co/datasets/owner/name",
+        "/owner/name",
+        "owner/name?token=secret",
+        "owner/name#revision",
+    ],
+)
+def test_huggingface_locator_must_be_repository_id(locator):
+    adapter = HuggingFaceDatasetAdapter(request_get=lambda *_a, **_k: None)
+    source = DatasetSourceRef(
+        provider="huggingface",
+        locator=locator,
+        access_mode=DatasetSourceAccessMode.SAMPLE,
+        source_metadata={"config": "default", "split": "train"},
+    )
+    with pytest.raises(ValueError, match="repository id"):
+        adapter.validate_source(source)
