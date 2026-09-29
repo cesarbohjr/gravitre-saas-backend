@@ -109,6 +109,23 @@ The technology spec above passed. Failures before the cutoff:
   SHAs; consistent with first-hit dev compilation of `/workflows`. Added to the owner-live walk.
 - `e2e/intelligence-hub-ui.spec.ts` G5 was the test in flight when the job was cancelled — not a failure.
 
+## Billing E2E classification (CI run 36516204107, SHA `a4d4ca25`)
+
+INCONCLUSIVE_TIMEOUT. Required jobs (web, backend pytest, voice gate, dependency audit, Integration Smoke) passed;
+Billing E2E was cancelled at the 20-minute cap (03:22:03Z → 03:42:18Z) with 81 distinct tests passed. The two
+spec fixes above and the Meson fix held: no `/api/meson/insights` 403 appeared in the crawler. Failures:
+
+- `e2e/intelligence-hub-ui.spec.ts` — G5 (both tests): `intelligence-map-canvas` not found in 60 s.
+  Classification: **test/harness defect**. The fixture org is a fresh signup with no knowledge graph, so
+  `resolveOverviewFieldState` reports `isEmpty` and the Overview renders its canonical empty state
+  ("No knowledge graph yet", `intel-empty-sparse`) instead of the map — same on `main`. The spec asserted a map
+  the fixture can never have. Fix: map-dependent tests (G5 ×2, G4, List alternative) wait for map *or* empty
+  state and skip as NOT RUN when empty, matching the spec's existing "no prediction nodes" skip. Map UI remains
+  unproven in CI and stays on the owner-live walk (Intelligence row).
+- `e2e/app-navigation-crawler.spec.ts` — `/agents → Assignments` stayed on `/agents` past the crawler's 20 s wait.
+  Classification: **INCONCLUSIVE** (same class as Marketplace → Workflows last run: a different link fails each
+  run with no related code change, consistent with first-hit dev compilation). Added to the owner-live walk.
+
 Harness note (not changed unilaterally): 218 tests on one worker do not fit the 20-minute `timeout-minutes`, so
 this job cannot produce PASS as configured. Raising the cap or sharding the suite is Cesar's call.
 
