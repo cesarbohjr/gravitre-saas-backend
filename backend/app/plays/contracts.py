@@ -48,7 +48,10 @@ class PlayDefinition:
     # connected vendor for observation to be ready.
     required_connector_groups: tuple[tuple[str, ...], ...] = ()
     optional_connectors: tuple[str, ...] = ()
-    required_actions: tuple[str, ...] = ()
+    # Action groups are OR groups. Observation/recommendation and action
+    # maturity are evaluated separately so a Play remains useful without WRITE.
+    required_read_action_groups: tuple[tuple[str, ...], ...] = ()
+    write_action_groups: tuple[tuple[str, ...], ...] = ()
     outcome_metrics: tuple[str, ...] = ()
     verification_requirements: tuple[VerificationRequirement, ...] = ()
 
