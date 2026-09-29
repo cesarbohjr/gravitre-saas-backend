@@ -203,23 +203,27 @@ class TestPlayedAudioReconciliationAlignmentDrift:
 
 
 class TestPolishFlagResolution:
-    def test_all_off_by_default(self):
+    def test_safe_production_defaults(self):
         flags = resolve_conversational_polish_flags(_settings())
         assert flags == {
-            "spoken_prompt_v2": False,
+            "spoken_prompt_v2": True,
             "response_length_adapt_v1": False,
-            "played_audio_reconcile_v1": False,
+            "played_audio_reconcile_v1": True,
         }
 
-    def test_flags_read_from_settings(self):
+    def test_flags_read_from_explicit_settings(self):
         flags = resolve_conversational_polish_flags(
             _settings(
-                voice_spoken_prompt_v2=True,
+                voice_spoken_prompt_v2=False,
                 voice_response_length_adapt_v1=True,
-                voice_played_audio_reconcile_v1=True,
+                voice_played_audio_reconcile_v1=False,
             )
         )
-        assert all(flags.values())
+        assert flags == {
+            "spoken_prompt_v2": False,
+            "response_length_adapt_v1": True,
+            "played_audio_reconcile_v1": False,
+        }
 
     def test_missing_attributes_do_not_raise(self):
         flags = resolve_conversational_polish_flags(object())
@@ -322,13 +326,13 @@ class TestResponseLengthIsNotTokenCapped:
 
 
 class TestVoiceStatusPhase5Block:
-    def test_block_present_and_off_by_default(self):
+    def test_block_reflects_safe_production_defaults(self):
         status = voice_status(_settings())
         block = status["phase5_conversational_polish"]
-        assert block["spoken_prompt_v2"] is False
+        assert block["spoken_prompt_v2"] is True
         assert block["response_length_adapt_v1"] is False
-        assert block["played_audio_reconcile_v1"] is False
+        assert block["played_audio_reconcile_v1"] is True
 
-    def test_block_reflects_enabled_flags(self):
-        status = voice_status(_settings(voice_played_audio_reconcile_v1=True))
-        assert status["phase5_conversational_polish"]["played_audio_reconcile_v1"] is True
+    def test_block_reflects_explicit_override(self):
+        status = voice_status(_settings(voice_played_audio_reconcile_v1=False))
+        assert status["phase5_conversational_polish"]["played_audio_reconcile_v1"] is False
