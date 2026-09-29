@@ -53,6 +53,9 @@ class HuggingFaceDatasetAdapter(DatasetProviderAdapter):
         provider = source.provider.strip().lower().replace("-", "_")
         if provider not in {"huggingface", "hugging_face", "hf"}:
             raise ValueError("Hugging Face adapter requires provider=huggingface")
+        locator = source.locator.strip()
+        if "://" in locator or "?" in locator or "#" in locator or locator.startswith("/"):
+            raise ValueError("Hugging Face locator must be a dataset repository id, not a URL")
         if source.access_mode == DatasetSourceAccessMode.MATERIALIZE:
             raise ValueError("Hugging Face materialization is not enabled")
         assert_source_mode_supported(source, self.capabilities())
