@@ -130,3 +130,33 @@ def test_external_reference_migration_is_tenant_scoped_and_non_materializing():
     assert "sample" in migration
     assert "index" in migration
     assert "materialized" not in migration.lower()
+
+
+def test_external_reference_metadata_rejects_secret_markers():
+    from app.routers.training import _require_safe_external_dataset_metadata
+
+    unsafe = (
+        {"token": "secret"},
+        {"nested": {"api_key": "secret"}},
+        {"url": "https://example.test/data?token=secret"},
+        {"authorizationHeader": "Bearer secret"},
+    )
+    for metadata in unsafe:
+        try:
+            _require_safe_external_dataset_metadata(metadata)
+        except Exception as exc:
+            assert getattr(exc, "status_code", None) == 400
+        else:
+            raise AssertionError(f"expected secret metadata refusal: {metadata}")
+
+
+def test_external_reference_metadata_allows_normal_provider_metadata():
+    from app.routers.training import _require_safe_external_dataset_metadata
+
+    _require_safe_external_dataset_metadata(
+        {
+            "reference_url": "https://huggingface.co/datasets/org/example",
+            "tags": ["finance", "benchmark"],
+            "card": {"language": "en", "license": "apache-2.0"},
+        }
+    )
