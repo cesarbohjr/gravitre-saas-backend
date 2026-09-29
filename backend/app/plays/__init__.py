@@ -6,6 +6,14 @@ from app.plays.contracts import (
     PlayReadiness,
     VerificationRequirement,
 )
+from app.plays.outcomes import (
+    AttributionType,
+    BusinessResultStatus,
+    PlayBusinessResult,
+    SourceRecordRef,
+    list_play_business_results,
+    record_play_business_result,
+)
 from app.plays.readiness import resolve_play_readiness
 
 __all__ = [
@@ -14,4 +22,10 @@ __all__ = [
     "PlayReadiness",
     "VerificationRequirement",
     "resolve_play_readiness",
+    "AttributionType",
+    "BusinessResultStatus",
+    "PlayBusinessResult",
+    "SourceRecordRef",
+    "list_play_business_results",
+    "record_play_business_result",
 ]
