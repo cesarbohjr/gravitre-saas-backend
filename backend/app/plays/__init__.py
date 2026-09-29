@@ -15,6 +15,10 @@ from app.plays.outcomes import (
     record_play_business_result,
 )
 from app.plays.readiness import resolve_play_readiness
+from app.plays.verification import (
+    SourceVerificationEvidence,
+    record_source_verified_play_result,
+)
 
 __all__ = [
     "PlayDefinition",
@@ -28,4 +32,6 @@ __all__ = [
     "SourceRecordRef",
     "list_play_business_results",
     "record_play_business_result",
+    "SourceVerificationEvidence",
+    "record_source_verified_play_result",
 ]
