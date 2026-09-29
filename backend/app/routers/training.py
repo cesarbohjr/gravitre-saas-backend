@@ -56,6 +56,29 @@ class DatasetBindingCreateRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class ExternalDatasetReferenceCreateRequest(BaseModel):
+    provider: str = Field(..., min_length=1)
+    dataset_id: str = Field(..., alias="datasetId", min_length=1)
+    purpose: str = Field(
+        ...,
+        pattern="^(reference|benchmark|runtime_retrieval|rag|evaluation|testing|fine_tuning|training|synthetic|agent_benchmarking)$",
+    )
+    target_type: str = Field(
+        ...,
+        alias="targetType",
+        pattern="^(agent|model|department|evaluation|play|workflow)$",
+    )
+    target_id: str = Field(..., alias="targetId", min_length=1)
+    access_mode: str = Field(
+        default="reference",
+        alias="accessMode",
+        pattern="^(reference|sample|index)$",
+    )
+    metadata: dict = Field(default_factory=dict)
+
+    model_config = {"populate_by_name": True}
+
+
 class DocumentImportRequest(BaseModel):
     documents: list[dict] = Field(default_factory=list)
 
@@ -171,6 +194,105 @@ async def inspect_external_dataset_route(
         "mutation": False,
         "materialized": False,
     }
+
+
+@router.get("/external-datasets/references")
+async def list_external_dataset_references(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    target_type: str | None = Query(default=None, alias="targetType"),
+    target_id: str | None = Query(default=None, alias="targetId"),
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    query = (
+        client.table("external_dataset_references")
+        .select(
+            "id, provider, external_dataset_id, purpose, target_type, target_id, "
+            "access_mode, provider_metadata, created_at"
+        )
+        .eq("org_id", org_id)
+        .order("created_at", desc=True)
+    )
+    if target_type:
+        query = query.eq("target_type", target_type)
+    if target_id:
+        query = query.eq("target_id", target_id)
+    rows = query.execute().data or []
+    return {"references": list(rows), "count": len(rows)}
+
+
+@router.post("/external-datasets/references", status_code=status.HTTP_201_CREATED)
+async def create_external_dataset_reference(
+    body: ExternalDatasetReferenceCreateRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+
+    try:
+        dataset = inspect_external_dataset(body.provider, body.dataset_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Dataset provider inspection failed: {exc}",
+        ) from exc
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    row = {
+        "org_id": org_id,
+        "provider": body.provider.strip().lower(),
+        "external_dataset_id": body.dataset_id.strip(),
+        "purpose": body.purpose,
+        "target_type": body.target_type,
+        "target_id": body.target_id.strip(),
+        "access_mode": body.access_mode,
+        "provider_metadata": {
+            **body.metadata,
+            "reference_url": dataset.get("reference_url"),
+            "private": bool(dataset.get("private")),
+            "gated": bool(dataset.get("gated")),
+            "materialized": False,
+        },
+        "created_by": user.get("user_id"),
+    }
+    response = (
+        client.table("external_dataset_references")
+        .upsert(
+            row,
+            on_conflict="org_id,provider,external_dataset_id,purpose,target_type,target_id",
+        )
+        .execute()
+    )
+    _raise_if_response_error(response)
+    result = dict((response.data or [row])[0])
+    result["materialized"] = False
+    return result
+
+
+@router.delete("/external-datasets/references/{reference_id}")
+async def delete_external_dataset_reference(
+    reference_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    response = (
+        client.table("external_dataset_references")
+        .delete()
+        .eq("org_id", org_id)
+        .eq("id", reference_id)
+        .execute()
+    )
+    _raise_if_response_error(response)
+    return {"ok": True}
 
 
 @router.get("/datasets")
