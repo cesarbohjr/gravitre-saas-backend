@@ -1,0 +1,66 @@
+{
+  "probe": "3.0-f-g-live",
+  "captured_at": "2026-09-24T01:26:00.883646+00:00",
+  "git_sha": "a82d29b905235c5c5f2fe0413105be654d82c94d",
+  "sha_match": true,
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "catalog": {
+    "conversation_id": "0e1a2e67-75f8-425b-ba0c-c59cb5501bc0",
+    "http_status": 200,
+    "first_useful_text_ms": 12202,
+    "completion_ms": 15597,
+    "assistant_excerpt": "Here are the connected READ actions that match that search. This is a catalog lookup, not a live provider run. - Search contacts (hubspot read)\n- Search deals (hubspot read)\n- List deals (hubspot read)\n- Search companies (hubspot read)\n- Search people (apollo read)\n- Search contacts (apollo read)\n- Search tickets (hubspot read)\n- Get ticket (hubspot read)\n- List deal pipelines (hubspot read)\n- Get list membership (hubspot read)\n- Update deal stage (hubspot advanced)\n- Get deal (hubspot read)\n- List recent contacts (hubspot read)\n- Get contact (hubspot read)\n- Get company (hubspot read)\n- Create Google Ads Search campaign structure (google_ads advanced) I found 16 eligible actions (cap 32). Writes still need approval and were not included.",
+    "assistant_len": 748
+  },
+  "diagnostic": {
+    "conversation_id": "9b987d0e-4d5a-48dc-8304-9a70c0f241c3",
+    "http_status": 200,
+    "first_useful_text_ms": 4545,
+    "completion_ms": 10488,
+    "assistant_excerpt": "From the connected CRM I received 25 deals in this sample. That is not a causal explanation of why the metric moved. I can use this live sample to describe what the connected system returned. I cannot establish why a business outcome changed without a comparable window and the relevant missing sources. If you want a cause, connect the missing source or ask me to refresh a named period. Google Analytics isn't connected yet. Connect it at /connectors and I can pull live data from your account.",
+    "assistant_len": 496
+  },
+  "followup": {
+    "http_status": 200,
+    "first_useful_text_ms": 7445,
+    "completion_ms": 10676,
+    "assistant_excerpt": "From the connected CRM I received 25 deals in this sample. That is not a causal explanation of why the metric moved. I can use this live sample to describe what the connected system returned. I cannot establish why a business outcome changed without a comparable window and the relevant missing sources. If you want a cause, connect the missing source or ask me to refresh a named period. Google Analytics isn't connected yet. Connect it at /connectors and I can pull live data from your account.",
+    "assistant_len": 496
+  },
+  "get_state": {
+    "http_status": 200,
+    "claim_labels": [
+      {
+        "text": "From the connected CRM I received 25 deals in this sample.",
+        "label": "FACT",
+        "observation_id": "20d43ebb-2ec2-4f82-ba51-802ae1289d1e"
+      },
+      {
+        "text": "That is not a causal explanation of why the metric moved.",
+        "label": "INFERENCE"
+      },
+      {
+        "text": "If you want a cause, connect the missing source or ask me to refresh a named period.",
+        "label": "RECOMMENDATION"
+      }
+    ],
+    "missing_sources": [
+      "Google Analytics isn't connected yet. Connect it at /connectors and I can pull live data from your account."
+    ],
+    "provider_reinvoked": false,
+    "plan_id": "2a7d4df8-4680-4c20-8140-207e3bb33e1b",
+    "has_diagnostic_conclusion": true
+  },
+  "repair": {
+    "conversation_id": "c1076754-5855-4fa8-8a2d-c554e362229a",
+    "http_status": 200,
+    "first_useful_text_ms": 34987,
+    "completion_ms": 37370,
+    "assistant_excerpt": "There's already a pending request to list all HubSpot deals that hasn't completed yet \u2014 and your new message looks identical to it. Want me to **abandon** the pending one and start fresh, or **hold** it and run this alongside?",
+    "assistant_len": 226,
+    "f2_audit": []
+  },
+  "diagnostic_invokes": [],
+  "browser_artifact_panel": "HUMAN/ACCOUNT BLOCKED",
+  "honesty": "Claim persistence is live only if GET /state claim_labels is non-empty on this SHA. f2.read.repair is live only if audit rows exist. Catalog TTFT is wall clock to first text-delta."
+}

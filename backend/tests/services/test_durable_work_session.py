@@ -278,18 +278,108 @@ def test_bind_finished_work_report_from_observations():
     artifacts = bound[WORK_ARTIFACTS_KEY]
     assert contract["diagnosis"].startswith("From the connected CRM")
     assert any("hubspot.deals.list" in line for line in contract["evidence"])
-    assert artifacts[-1]["kind"] == "report"
+    assert artifacts[-1]["kind"] == "executive_report"
     assert artifacts[-1]["metadata"]["plan_id"] == "plan-art-1"
     assert "$" not in artifacts[-1]["preview"]
     payload = execution_result_from_finished_work(bound)
     assert payload is not None
     assert payload["entity_type"] == "report"
     kinds = {row["kind"] for row in (payload.get("artifacts") or [])}
-    assert "report" in kinds or "document" in kinds
+    assert "executive_report" in kinds or "report" in kinds or "document" in kinds
     again = reconstruct_execution_result(bound)
     assert again is not None
     assert again["entity_id"] == payload["entity_id"]
     assert again["structured"]["plan_id"] == "plan-art-1"
+
+
+def test_reconstruct_preserves_table_rows_from_artifact_metadata():
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    stored = {
+        "execution_plan": {"plan_id": "plan-table", "terminal_status": "completed", "steps": []},
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-table",
+                "kind": "table",
+                "title": "Submitted public form fields",
+                "preview": "Submitted the public httpbin form.",
+                "metadata": {
+                    "plan_id": "plan-table",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-table"],
+                    "exportable": True,
+                    "rows": [
+                        {"field": "custemail", "value": "isolated@gravitre.test"},
+                        {"field": "custname", "value": "Isolated Probe"},
+                    ],
+                    "code": "| field | value |\n| custemail | isolated@gravitre.test |",
+                },
+            }
+        ],
+    }
+    rebuilt = reconstruct_execution_result(stored)
+    assert rebuilt is not None
+    assert rebuilt["success"] is True
+    kinds = {row["kind"] for row in (rebuilt.get("artifacts") or [])}
+    assert "table" in kinds
+    rows = rebuilt["structured"]["rows"]
+    assert rows[0]["field"] == "custemail"
+    assert rebuilt["structured"]["kind"] == "table"
+    assert rebuilt["structured"]["exportable"] is True
+    assert rebuilt["structured"]["observation_ids"] == ["obs-table"]
+    assert rebuilt["structured"]["provider_reinvoked"] is False
+
+
+def test_reconstruct_computer_browser_visits_and_screenshot_digest():
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    stored = {
+        "execution_plan": {
+            "plan_id": "plan-cu-read",
+            "source": "computer_execution",
+            "terminal_status": "completed",
+            "steps": [],
+        },
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-cu-read",
+                "kind": "research_summary",
+                "title": "Public web research summary",
+                "preview": "Opened a real browser.",
+                "metadata": {
+                    "plan_id": "plan-cu-read",
+                    "outcome": "completed",
+                    "observation_ids": ["obs-cu"],
+                    "exportable": True,
+                    "execution_path": "computer_browser_read",
+                },
+            }
+        ],
+        "computer_browser_evidence": {
+            "screenshot_digest": "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a",
+            "visits": [
+                {
+                    "url": "https://example.com/",
+                    "title": "Example Domain",
+                    "action": "goto",
+                    "screenshot_digest": "6cc928b05a53a95e6adfc303397a58a426b32b638810d93edbf1fb9dc2a833c0",
+                },
+                {
+                    "url": "https://www.iana.org/help/example-domains",
+                    "title": "Example Domains",
+                    "action": "click_link",
+                    "screenshot_digest": "5f844380de58769434f35b130455e81af710e5a85aff1ada3a630ea4b77a088a",
+                },
+            ],
+        },
+    }
+    rebuilt = reconstruct_execution_result(stored)
+    assert rebuilt is not None
+    assert rebuilt["structured"]["execution_path"] == "computer_browser_read"
+    assert rebuilt["structured"]["screenshot_digest"].startswith("5f844380")
+    assert rebuilt["structured"]["rows"][1]["url"] == "https://www.iana.org/help/example-domains"
+    assert rebuilt["structured"]["visits"][0]["title"] == "Example Domain"
+    assert rebuilt["structured"]["provider_reinvoked"] is False
 
 
 def test_bind_finished_work_skips_without_successful_observation():
@@ -328,3 +418,30 @@ def test_reconstruct_does_not_require_provider_reinvoke():
     assert rebuilt["success"] is True
     assert rebuilt["entity_id"] == "plan-resume"
     assert "hubspot.deals.list" in str(rebuilt["structured"]["content"])
+
+
+def test_reconstruct_returns_persisted_claim_labels():
+    from app.services.durable_work_session import reconstruct_execution_result
+
+    stored = {
+        "execution_plan": {"plan_id": "plan-diag", "terminal_status": "completed", "steps": []},
+        "diagnostic_conclusion": {
+            "labels": [{"text": "HubSpot returned 2 deals.", "label": "FACT", "observation_id": "obs-1"}],
+            "missing_sources": ["Google Analytics is not connected."],
+            "provider_reinvoked": False,
+        },
+        "work_artifacts": [
+            {
+                "artifact_id": "report:plan-diag",
+                "kind": "report",
+                "title": "Diagnostic",
+                "preview": "HubSpot returned 2 deals.",
+                "metadata": {"plan_id": "plan-diag", "outcome": "completed", "code": "HubSpot returned 2 deals."},
+            }
+        ],
+    }
+    rebuilt = reconstruct_execution_result(stored)
+    assert rebuilt is not None
+    assert rebuilt["structured"]["claim_labels"][0]["label"] == "FACT"
+    assert rebuilt["structured"]["missing_sources"]
+    assert rebuilt["structured"]["provider_reinvoked"] is False

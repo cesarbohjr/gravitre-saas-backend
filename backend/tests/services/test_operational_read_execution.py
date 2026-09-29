@@ -63,7 +63,7 @@ async def test_pipeline_health_uses_deals_list_not_search() -> None:
     assert mock_invoke.call_args.kwargs["action_key"] == "hubspot.deals.list"
     assert turn.get("execution_result")
     assert turn["task_state"].get("work_artifacts")
-    assert turn["task_state"]["work_artifacts"][-1]["kind"] == "report"
+    assert turn["task_state"]["work_artifacts"][-1]["kind"] in {"report", "executive_report"}
 
 
 @pytest.mark.asyncio

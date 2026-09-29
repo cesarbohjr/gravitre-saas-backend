@@ -21,6 +21,28 @@ def test_chitchat_skips_resource_resolution() -> None:
     assert needs.reason == "chitchat"
 
 
+def test_catalog_search_skips_semantic_and_resource_resolution() -> None:
+    needs = assess_cognitive_resolution_needs(
+        "Search the tool catalog for HubSpot owners. Do not create records.",
+        {},
+        connected_integrations=["hubspot"],
+    )
+    assert needs.run_semantic is False
+    assert needs.run_resource is False
+    assert needs.reason == "catalog_search"
+
+
+def test_computer_browser_skips_semantic_and_resource_resolution() -> None:
+    needs = assess_cognitive_resolution_needs(
+        "Open https://example.com in a browser. Tell me the page title, then follow "
+        "the More information link. Do not use HubSpot.",
+        {},
+    )
+    assert needs.run_semantic is False
+    assert needs.run_resource is False
+    assert needs.reason == "computer_browser_read"
+
+
 def test_ga4_traffic_requests_resource_and_analytics_short_circuit() -> None:
     needs = assess_cognitive_resolution_needs(
         "Tell me about my GA4 website traffic",

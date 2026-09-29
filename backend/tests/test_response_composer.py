@@ -295,6 +295,131 @@ async def test_verified_write_keeps_completion_over_stale_refusal():
 
 
 @pytest.mark.asyncio
+async def test_catalog_search_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "Here are the connected READ actions that match that search. This is a catalog lookup, not a live provider run."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "catalog_search_eligible",
+            "data": {"text": draft, "execution_path": "catalog_search_eligible"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "catalog lookup" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_listing_f2_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten into five headings"
+
+    draft = "From the connected CRM I received 25 deals in this sample."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "listing_f2_read",
+            "data": {"text": draft, "execution_path": "listing_f2_read"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "25 deals" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_computer_browser_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "I opened a real browser (not an HTTP fetch) and recorded what loaded."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "computer_browser_read",
+            "data": {"text": draft, "execution_path": "computer_browser_read"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "real browser" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_computer_interact_resume_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "isolated@gravitre.test"
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "computer_browser_interact_resume",
+            "data": {"text": draft, "execution_path": "computer_browser_interact_resume"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert text == draft
+
+
+@pytest.mark.asyncio
+async def test_recent_write_observation_skips_composer_llm() -> None:
+    called = False
+
+    async def compose_fn(**kwargs):
+        nonlocal called
+        called = True
+        return "rewritten"
+
+    draft = "Yes — that contact was created and verified. The email is a@alpha.test.gravitre.app."
+    text = await compose_user_reply(
+        {
+            "success": True,
+            "execution_path": "recent_write_observation",
+            "data": {"text": draft, "execution_path": "recent_write_observation"},
+        },
+        kind="canned",
+        draft=draft,
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert called is False
+    assert "a@alpha.test.gravitre.app" in text
+
+
+@pytest.mark.asyncio
 async def test_genuine_pre_execution_refusal_is_kept():
     text = await compose_user_reply(
         {

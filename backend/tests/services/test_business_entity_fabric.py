@@ -117,6 +117,32 @@ def test_person_join_rejects_fuzzy_first_name() -> None:
     assert decision.status == "refused_ambiguous"
 
 
+def test_person_same_display_name_without_email_does_not_join() -> None:
+    left = EntityBinding(
+        system="hubspot",
+        resource_type="contact",
+        resource_id="c1",
+        confidence=0.95,
+        evidence=(EntityEvidence(kind="name", value="Sarah Smith", source="hubspot"),),
+    )
+    right = EntityBinding(
+        system="zendesk",
+        resource_type="user",
+        resource_id="z1",
+        confidence=0.95,
+        evidence=(EntityEvidence(kind="name", value="Sarah Smith", source="zendesk"),),
+    )
+    decision = join_provider_bindings(
+        org_id="org-1",
+        display_name="Sarah Smith",
+        kind="person",
+        left=left,
+        right=right,
+    )
+    assert decision.status == "refused_ambiguous"
+    assert decision.entity is None
+
+
 def test_person_join_on_exact_email() -> None:
     left = EntityBinding(
         system="hubspot",

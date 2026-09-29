@@ -21,3 +21,7 @@
 **Deferred Section 0 (must remain in independent audit):** visible computer/browser execution; richer artifact productivity; physical-mic / driving hands-free; campaign asset factory.
 
 No Computer Use implementation. No 3.0 rewrite. No silent H13 Cesar-stop. No material architecture diversion.
+
+## Assurance pass note (2026-09-27)
+
+Do not treat GAP-007 “No Computer Use implementation” as current capability truth. Later production SHAs proved READ-only Computer Use (`7ac66c36`, latency `bcff5702`) and artifact APIs. Physical mic, owner-live UI, and real-world CU WRITE remain blocked. Canonical write-up: `docs/delivery/gravitre-section-0-assurance.md`. This table is not rewritten.

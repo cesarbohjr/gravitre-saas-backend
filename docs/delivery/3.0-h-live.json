@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-09-24T06:22:54.580844+00:00",
+  "health_sha": "16a2080b95452eec26a02a97714c316f23b175ed",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "catalog": {
+    "http_status": 200,
+    "first_useful_text_ms": 11842,
+    "completion_ms": 14616,
+    "assistant_excerpt": "Here are connected actions that match that search. This is a catalog lookup, not a live provider run. WRITE capabilities are listed only as discoverable; they still require the canonical approval path and were not started. - Search contacts (hubspot; READ, connected)\n- Search deals (hubspot; READ, connected)\n- List deals (hubspot; READ, connected)\n- Search companies (hubspot; READ, connected)\n- Search people (apollo; read READ, connected)\n- Search contacts (apollo; read READ, connected)\n- Search tickets (hubspot; read READ, connected)\n- Get ticket (hubspot; read READ, connected)\n- List deal pipelines (hubspot; read READ, connected)\n- Get list membership (hubspot; read READ, connected)\n- Update deal stage (hubspot; WRITE, approval required \u2014 not executed)\n- Get deal (hubspot; read READ, connected)\n- List recent contacts (hubspot; read READ, connected)\n- Get contact (hubspot; read READ, connected)\n- Get company (hubspot; read READ, connected)\n- Create Google Ads Search campaign structure (google_ads; WRITE, approval required \u2014 not executed) I found 16 eligible actions (cap 32).",
+    "assistant_len": 1092,
+    "conversation_id": "c3c857b5-4220-4306-a52e-d154857c085d",
+    "write_labeled": true,
+    "writes_started_claim": true
+  },
+  "listing": {
+    "http_status": 200,
+    "first_useful_text_ms": 10176,
+    "completion_ms": 15294,
+    "assistant_excerpt": "I need a different kind of lookup for that request.",
+    "assistant_len": 51,
+    "conversation_id": "8eae9cc0-4330-484b-9ac0-6a7a6c4b3109",
+    "f2_repair_rows": [],
+    "nl_f2_proven": false
+  },
+  "entity": {
+    "http_status": 200,
+    "first_useful_text_ms": 5206,
+    "completion_ms": 8865,
+    "assistant_excerpt": "I have accepted joins in this organization, but none named \u201cAlpha\u201d. I will not treat a similar display name as the same company.",
+    "assistant_len": 128,
+    "conversation_id": "7b9524d4-0468-4026-bc9e-87178c97add4",
+    "store_join_language": false,
+    "live_multi_provider_pass": false,
+    "limitation": "QBO/Zendesk live OAuth not required for store answer; do not invent PASS"
+  }
+}

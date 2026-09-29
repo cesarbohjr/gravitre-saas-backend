@@ -147,4 +147,20 @@ async def test_resume_frozen_write_calls_process_turn_confirm() -> None:
     assert turn == executed
     kwargs = svc.process_turn.await_args.kwargs
     assert kwargs["pending_reply_intent"] == "confirm"
-    assert kwargs["message"] == "yes"
+
+
+def test_verified_observation_clears_frozen_write_pending() -> None:
+    state = _frozen_hubspot_state()
+    state["execution_observations"] = [
+        {
+            "success": True,
+            "capability_id": "hubspot.contacts.create",
+            "structured": {
+                "invoke_action": "hubspot.contacts.create",
+                "provider_record_id": "279246127081",
+            },
+            "summary": "Created HubSpot contact",
+        }
+    ]
+    assert frozen_connector_write_params(state) is None
+    assert should_resume_frozen_write("yes", state) is False

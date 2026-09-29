@@ -6,7 +6,20 @@ from typing import Any
 from uuid import uuid4
 
 _ARTIFACT_KINDS = frozenset(
-    {"document", "record", "run", "report", "workspace_file", "link", "hosted_file"}
+    {
+        "document",
+        "record",
+        "run",
+        "report",
+        "workspace_file",
+        "link",
+        "hosted_file",
+        "table",
+        "executive_report",
+        "brief",
+        "action_plan",
+        "research_summary",
+    }
 )
 
 

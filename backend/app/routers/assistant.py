@@ -986,24 +986,31 @@ def _build_stream(
         clear_interrupted_turn(org_id, conversation_id, settings=settings)
 
         suggestions: list[str] = []
-        try:
-            suggestions = await asyncio.wait_for(
-                _generate_followup_suggestions(
-                    user_question=user_text,
-                    assistant_response=assistant_text,
-                    org_id=org_id,
-                    settings=settings,
-                ),
-                timeout=FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
-            )
-        except asyncio.TimeoutError:
-            logger.info(
-                "assistant followup suggestions timed out org_id=%s after %.1fs",
-                org_id,
-                FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
+        from app.services.computer_browser_read_turn import (
+            match_computer_browser_intent as _cu_intent,
+            match_computer_browser_resume_phrase as _cu_resume,
+        )
+
+        _skip_followup_suggestions = _cu_intent(user_text) or _cu_resume(user_text)
+        if not _skip_followup_suggestions:
+            try:
+                suggestions = await asyncio.wait_for(
+                    _generate_followup_suggestions(
+                        user_question=user_text,
+                        assistant_response=assistant_text,
+                        org_id=org_id,
+                        settings=settings,
+                    ),
+                    timeout=FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                logger.info(
+                    "assistant followup suggestions timed out org_id=%s after %.1fs",
+                    org_id,
+                    FOLLOWUP_SUGGESTIONS_TIMEOUT_SECONDS,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("assistant followup suggestions skipped org_id=%s error=%s", org_id, exc)
         if suggestions:
             yield assistant_event_to_sse_line(sse_suggestions(suggestions))
         if intelligence_hub_visualization:
@@ -1363,7 +1370,15 @@ async def assistant_chat(
     prepared_holder = {"model_override": model_override, "task_type": task_type}
 
     preferred_persona = (body.preferred_persona or "").strip() or None
-    if not preferred_persona and user_id:
+    from app.services.computer_browser_read_turn import (
+        match_computer_browser_intent,
+        match_computer_browser_resume_phrase,
+    )
+
+    _computer_compiled_ingress = match_computer_browser_intent(last_user) or match_computer_browser_resume_phrase(
+        last_user
+    )
+    if not preferred_persona and user_id and not _computer_compiled_ingress:
         prefs = await get_user_intelligence_service().get_preferences(
             settings,
             user_id=user_id,
@@ -1386,14 +1401,24 @@ async def assistant_chat(
 
     router_ = get_model_router()
     try:
-        await router_.prepare_stream(
-            task_type=task_type,
-            prompt=last_user,
-            system_prompt=system_prompt,
-            context=history_messages,
-            org_id=org_id,
-            model_override=model_override,
-        )
+        if _computer_compiled_ingress:
+            # Computer Use READ already has a deterministic public-browser path.
+            # OpenAI input moderation here delayed first SSE ~4s past server work.
+            if getattr(settings, "disable_ai", False):
+                raise AIServiceDisabledError()
+            from app.services.ai_guardrails import enforce_budget, enforce_rate_limit
+
+            enforce_rate_limit(org_id, settings)
+            enforce_budget(org_id, settings)
+        else:
+            await router_.prepare_stream(
+                task_type=task_type,
+                prompt=last_user,
+                system_prompt=system_prompt,
+                context=history_messages,
+                org_id=org_id,
+                model_override=model_override,
+            )
     except AIServiceDisabledError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI assistant is temporarily disabled")
     except AIRateLimitError as exc:

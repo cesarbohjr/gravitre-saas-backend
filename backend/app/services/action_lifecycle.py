@@ -7,6 +7,8 @@ the Observation independently from the HTTP provider call.
 """
 from __future__ import annotations
 
+import re
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
@@ -42,9 +44,21 @@ _CLAIMED = frozenset({"executing", "claimed"})
 _DONE = frozenset({"executed", "completed", "verified"})
 
 
+def _observation_verified(obs: dict[str, Any] | None) -> bool:
+    if not isinstance(obs, dict):
+        return False
+    structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+    return bool(
+        obs.get("verification_status") == "verified"
+        or structured.get("verification_status") == "verified"
+        or (isinstance(structured.get("verification"), dict) and structured["verification"].get("verified"))
+    )
+
+
 def semantic_stage_from_state(task_state: dict[str, Any] | None) -> SemanticStage:
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
     status = str(pending.get("status") or "").strip().lower()
     plan = ExecutionPlan.from_dict(state.get("execution_plan"))
     terminal = str(plan.terminal_status if plan else "")
@@ -58,20 +72,23 @@ def semantic_stage_from_state(task_state: dict[str, Any] | None) -> SemanticStag
         return "OUTCOME_UNCERTAIN"
     if status == "awaiting_reconciliation":
         return "AWAITING_RECONCILIATION"
+    pending_invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
+    obs = _latest_observation(state)
+    obs_structured = obs.get("structured") if isinstance(obs, dict) and isinstance(obs.get("structured"), dict) else {}
+    if not pending_invoke and obs:
+        pending_invoke = str(obs.get("capability_id") or obs_structured.get("invoke_action") or "").strip()
+    matching_write = bool(
+        pending_invoke and existing_successful_write(state, invoke_action=pending_invoke)
+    )
+    verified = _observation_verified(obs)
+    if matching_write:
+        if obs and obs.get("success") and verified:
+            return "COMPLETED"
+        return "EXECUTED_UNVERIFIED"
     if status in _AWAITING or terminal == "waiting_for_approval":
         return "AWAITING_APPROVAL"
     if status in _CLAIMED:
         return "EXECUTING"
-    obs = _latest_observation(state)
-    structured = obs.get("structured") if isinstance(obs, dict) and isinstance(obs.get("structured"), dict) else {}
-    verified = bool(
-        isinstance(obs, dict)
-        and (
-            obs.get("verification_status") == "verified"
-            or structured.get("verification_status") == "verified"
-            or (isinstance(structured.get("verification"), dict) and structured["verification"].get("verified"))
-        )
-    )
     if status in _DONE or terminal == "completed":
         if verified:
             return "COMPLETED"
@@ -142,8 +159,15 @@ def existing_successful_write(
             if action == invoke_action and row.get("success") is True:
                 return row
     obs = _latest_observation(state)
-    if obs and str(obs.get("action_key") or "") == invoke_action and obs.get("success"):
-        return obs
+    if obs and obs.get("success"):
+        structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+        keys = {
+            str(obs.get("action_key") or ""),
+            str(obs.get("capability_id") or ""),
+            str(structured.get("invoke_action") or ""),
+        }
+        if invoke_action in keys:
+            return obs
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     if str(pending.get("status") or "") in _DONE and isinstance(pending.get("result"), dict):
         return pending["result"]
@@ -230,9 +254,16 @@ def write_plan_for_action(
             for s in existing.steps
             if s.kind in {"write", "read", "workflow"} and (s.action_key or s.kind == "write")
         ]
-        if write_steps or existing.source not in {"default_compose", "compose"}:
-            if any(s.action_key == plan.invoke_action or s.kind == "write" for s in existing.steps):
-                return existing
+        matching_write = any(
+            s.action_key == plan.invoke_action or s.kind == "write" for s in existing.steps
+        )
+        # Do not reuse an unrelated pending compile/react plan as the WRITE SoT.
+        if (
+            matching_write
+            and existing.source in {"connector_write", "connector_action"}
+            and (write_steps or existing.source not in {"default_compose", "compose"})
+        ):
+            return existing
     built = execution_plan_from_connector_action(
         plan,
         plan_id=existing.plan_id if existing else None,
@@ -357,6 +388,20 @@ def persist_write_outcome_patch(
         "args": dict(connector_plan.args or {}),
         "provider_record_id": provider_record_id(structured),
     }
+    prior_params = (
+        safe_normalize_stored_dict(state, key="pending_task").get("params")
+        if isinstance(safe_normalize_stored_dict(state, key="pending_task").get("params"), dict)
+        else {}
+    )
+    if prior_params:
+        pending["params"] = {
+            **prior_params,
+            **pending["params"],
+            "args": {
+                **(prior_params.get("args") if isinstance(prior_params.get("args"), dict) else {}),
+                **dict(connector_plan.args or {}),
+            },
+        }
     pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), dict) else {}
     if pending_action:
         pending_action = {
@@ -394,6 +439,73 @@ def persist_write_outcome_patch(
     return patch
 
 
+def reconcile_stale_pending_to_observation(
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Terminalize leftover awaiting pending/plan from a verified Observation.
+
+    Does not add, delete, or replace Observations. Does not mark unverified writes completed.
+    """
+    state = task_state if isinstance(task_state, dict) else {}
+    pending_raw = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    if not pending_raw:
+        return None
+    params = pending_raw.get("params") if isinstance(pending_raw.get("params"), dict) else {}
+    invoke = str(params.get("invoke_action") or pending_raw.get("invoke_action") or "").strip()
+    obs = _latest_observation(state)
+    structured = obs.get("structured") if isinstance(obs, dict) and isinstance(obs.get("structured"), dict) else {}
+    if not invoke and obs:
+        invoke = str(obs.get("capability_id") or structured.get("invoke_action") or "").strip()
+    if not invoke:
+        return None
+    replay = existing_successful_write(state, invoke_action=invoke)
+    if not replay:
+        return None
+    status = str(pending_raw.get("status") or "").strip().lower()
+    plan = ExecutionPlan.from_dict(state.get("execution_plan"))
+    terminal = str(plan.terminal_status if plan else "")
+    stale = status in _AWAITING or terminal in {"running", "waiting_for_approval", "pending"}
+    if not stale:
+        return None
+    verified = _observation_verified(obs) and bool(obs and obs.get("success"))
+    pending = dict(pending_raw)
+    pending["status"] = "executed"
+    pending["lifecycle"] = "COMPLETED" if verified else "EXECUTED_UNVERIFIED"
+    record_id = provider_record_id(structured) or params.get("provider_record_id")
+    pending["params"] = {
+        **params,
+        "invoke_action": invoke,
+        "provider_record_id": record_id,
+    }
+    if plan is not None:
+        plan.terminal_status = "completed" if verified else "partial"
+        obs_step = str(obs.get("step_id") or "") if isinstance(obs, dict) else ""
+        plan.steps = [
+            replace(step, status="completed")
+            if (
+                (obs_step and step.step_id == obs_step)
+                or step.action_key == invoke
+                or step.kind == "write"
+            )
+            else step
+            for step in plan.steps
+        ]
+    patch: dict[str, Any] = {
+        "pending_task": pending,
+        "action_lifecycle": "COMPLETED" if verified else "EXECUTED_UNVERIFIED",
+    }
+    if plan is not None:
+        patch.update(execution_plan_patch(plan))
+    pending_action = state.get("pending_action") if isinstance(state.get("pending_action"), dict) else {}
+    if pending_action and verified:
+        patch["pending_action"] = {
+            **pending_action,
+            "status": "confirmed",
+            "plan_id": plan.plan_id if plan is not None else pending_action.get("plan_id"),
+        }
+    return patch
+
+
 def composer_envelope_from_turn(
     *,
     task_state: dict[str, Any] | None,
@@ -428,17 +540,20 @@ def composer_envelope_from_turn(
         "FAILED",
         "OUTCOME_UNCERTAIN",
     }
+    identity_literals = identity_literals_from_state(state)
     return {
         "success": bool(success) and stage not in {"FAILED", "REJECTED", "CANCELLED"},
         "execution_verified": verified and stage == "COMPLETED",
         "canonical_lifecycle": stage,
         "provider_result_evidence": evidence,
         "pending_task": state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None,
+        "identity_literals": identity_literals,
         "data": {
             "canonical_lifecycle": stage,
             "execution_verified": verified and stage == "COMPLETED",
             "provider_result_evidence": evidence,
             "uncertain": uncertain,
+            "identity_literals": identity_literals,
         },
     }
 
@@ -478,3 +593,105 @@ def composer_truth_headline(
             + (f" {detail}" if detail else "")
         ).strip()
     return f"**{title}** is confirmed.\n\n{detail}".strip()
+
+
+_WRITE_STATUS_Q = re.compile(
+    r"(?is)\b("
+    r"did (?:that|it|the contact|you)|"
+    r"already (?:get )?(?:created|done|sent|posted)|"
+    r"was (?:that|it) created|"
+    r"did you create|"
+    r"is (?:that|it) (?:done|created)"
+    r")\b"
+)
+_WRITE_IDENTITY_Q = re.compile(
+    r"(?is)\b("
+    r"which contact|what(?:'s| is) the email|what email|"
+    r"provider (?:record|id)|hubspot id|record id|"
+    r"the email|contact id"
+    r")\b"
+)
+
+
+def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]:
+    """Exact identity-bearing values from frozen args and verified observations."""
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    args = params.get("args") if isinstance(params.get("args"), dict) else {}
+    obs = _latest_observation(state) or {}
+    structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+    literals: list[str] = []
+    for value in (
+        args.get("email"),
+        args.get("firstname"),
+        args.get("lastname"),
+        args.get("name"),
+        args.get("company"),
+        params.get("provider_record_id"),
+        structured.get("provider_record_id"),
+        provider_record_id(structured),
+    ):
+        text = str(value or "").strip()
+        if text and text not in literals:
+            literals.append(text)
+    return literals
+
+
+def recent_write_status_turn(
+    message: str,
+    task_state: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Answer natural follow-ups from Observation — never a second provider WRITE."""
+    if not _WRITE_STATUS_Q.search(message or "") and not _WRITE_IDENTITY_Q.search(message or ""):
+        return None
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    obs = _latest_observation(state)
+    stage = semantic_stage_from_state(state)
+    literals = identity_literals_from_state(state)
+    email = next((item for item in literals if "@" in item), "")
+    record = ""
+    if isinstance(pending.get("params"), dict):
+        record = str(pending["params"].get("provider_record_id") or "").strip()
+    if not record:
+        record = next((item for item in literals if item.isdigit()), "")
+
+    def _reply(text: str) -> dict[str, Any]:
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": text,
+            "task_state": state,
+            "provider_write": False,
+            "execution_path": "recent_write_observation",
+        }
+
+    if stage in {"REJECTED", "CANCELLED"}:
+        return _reply("That write was cancelled. Nothing was created.")
+    if stage == "FAILED":
+        return _reply("That write did not complete. I have not treated it as created.")
+    if stage == "OUTCOME_UNCERTAIN":
+        return _reply(
+            "I attempted that write, but the outcome is still uncertain. I will not treat it as created."
+        )
+    if stage == "AWAITING_APPROVAL":
+        target = f" for {email}" if email else ""
+        return _reply(f"Not yet. That contact is still waiting for your approval{target}.")
+    if not obs and stage not in {"COMPLETED", "EXECUTED_UNVERIFIED", "VERIFIED"}:
+        return _reply("I don't have a matching prior write in this conversation.")
+    if stage == "COMPLETED":
+        if _WRITE_IDENTITY_Q.search(message or ""):
+            bits = ["Yes — that contact was created and verified."]
+            if email:
+                bits.append(f"The email is {email}.")
+            if record:
+                bits.append(f"The provider record is {record}.")
+            return _reply(" ".join(bits))
+        return _reply("Yes — that contact was created and verified.")
+    if stage in {"EXECUTED_UNVERIFIED", "VERIFIED"}:
+        return _reply(
+            "The provider accepted the write, but independent verification is still pending. "
+            "I have not marked it complete."
+        )
+    return _reply("I don't have a matching prior write in this conversation.")

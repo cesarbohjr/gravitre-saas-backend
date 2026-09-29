@@ -142,6 +142,25 @@ def test_f_duplicate_yes_does_not_reclaim() -> None:
     assert replay is not None
 
 
+def test_existing_successful_write_matches_observation_invoke_action() -> None:
+    state = {
+        "execution_observations": [
+            {
+                "success": True,
+                "capability_id": "hubspot.contacts.create",
+                "structured": {
+                    "invoke_action": "hubspot.contacts.create",
+                    "provider_record_id": "279246127081",
+                },
+                "summary": "Created HubSpot contact",
+            }
+        ]
+    }
+    replay = existing_successful_write(state, invoke_action="hubspot.contacts.create")
+    assert replay is not None
+    assert replay["structured"]["provider_record_id"] == "279246127081"
+
+
 def test_g_worker_restart_lease_recovery() -> None:
     pending = {
         "status": "executing",
@@ -198,6 +217,105 @@ def test_j_multi_step_parent_not_complete_while_required_running() -> None:
     updated = apply_observations_to_plan(plan, [obs])
     assert updated.terminal_status != "completed"
     assert updated.steps[1].status == "pending"
+
+
+def test_verified_write_follow_up_does_not_reset_terminal() -> None:
+    state = persist_write_outcome_patch(
+        task_state=_compose_state(),
+        connector_plan=_plan(),
+        success=True,
+        summary="created",
+        structured={"id": "278976365530", "email": "ops@alpha.test.gravitre.app"},
+        pending_task=_compose_state()["pending_task"],
+        verification={"verified": True},
+    )
+    from app.services.execution_plan_service import reconcile_execution_plan
+
+    continued = reconcile_execution_plan(
+        message="Did that contact already get created?",
+        task_state=state,
+        turn_id="turn-follow",
+    )
+    assert continued.terminal_status == "completed"
+    merged = enrich_task_state_patch(
+        {"execution_plan": continued.as_dict()},
+        current_state=state,
+    )
+    assert merged["execution_plan"]["terminal_status"] == "completed"
+
+
+def test_recent_write_follow_up_uses_observation() -> None:
+    from app.services.action_lifecycle import recent_write_status_turn
+
+    state = persist_write_outcome_patch(
+        task_state=_compose_state(),
+        connector_plan=_plan(),
+        success=True,
+        summary="created",
+        structured={"id": "99", "email": "placeholder.isolated@gravitre-smoke.example.com"},
+        pending_task=_compose_state()["pending_task"],
+        verification={"verified": True},
+    )
+    turn = recent_write_status_turn("Did that contact already get created?", state)
+    assert turn is not None
+    assert turn["provider_write"] is False
+    assert "yes" in turn["message"].lower()
+    assert "placeholder.isolated@gravitre-smoke.example.com" not in turn["message"]
+    ident = recent_write_status_turn("What email was that contact created with?", state)
+    assert ident is not None
+    assert "placeholder.isolated@gravitre-smoke.example.com" in ident["message"]
+    assert ident["provider_write"] is False
+    assert "explicit" not in ident["message"].lower()
+
+
+def test_stale_pending_does_not_mask_verified_observation() -> None:
+    from app.services.action_lifecycle import (
+        recent_write_status_turn,
+        reconcile_stale_pending_to_observation,
+    )
+
+    state = persist_write_outcome_patch(
+        task_state=_compose_state(),
+        connector_plan=_plan(),
+        success=True,
+        summary="created",
+        structured={"id": "279246127081", "email": "gravitrepcmwrite20260924181201@alpha.test.gravitre.app"},
+        pending_task=_compose_state()["pending_task"],
+        verification={"verified": True},
+    )
+    original_obs = list(state["execution_observations"])
+    state["pending_task"]["status"] = "awaiting_confirm"
+    state["execution_plan"]["terminal_status"] = "running"
+    assert semantic_stage_from_state(state) == "COMPLETED"
+    turn = recent_write_status_turn("Did that contact already get created?", state)
+    assert turn is not None
+    assert turn["provider_write"] is False
+    assert "yes" in turn["message"].lower()
+    assert "279246127081" not in turn["message"]
+    ident = recent_write_status_turn("What email was that contact created with?", state)
+    assert ident is not None
+    assert "@" in ident["message"]
+    assert "279246127081" in ident["message"]
+    recon = reconcile_stale_pending_to_observation(state)
+    assert recon is not None
+    assert recon["pending_task"]["status"] == "executed"
+    assert recon["execution_plan"]["terminal_status"] == "completed"
+    assert "execution_observations" not in recon
+    assert state["execution_observations"] == original_obs
+
+
+def test_awaiting_without_observation_stays_awaiting() -> None:
+    from app.services.action_lifecycle import (
+        recent_write_status_turn,
+        reconcile_stale_pending_to_observation,
+    )
+
+    state = _compose_state()
+    assert semantic_stage_from_state(state) == "AWAITING_APPROVAL"
+    turn = recent_write_status_turn("Did that contact already get created?", state)
+    assert turn is not None
+    assert "waiting for your approval" in turn["message"].lower()
+    assert reconcile_stale_pending_to_observation(state) is None
 
 
 def test_compose_plan_cannot_mask_write_observation() -> None:

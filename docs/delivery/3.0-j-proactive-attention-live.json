@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-09-24T15:25:22.848691+00:00",
+  "proof_class": "SPOKEN_HTTP_NOT_VOICE_C",
+  "health_sha": "4a1e84e91998d59c414fd98df7406a288fe91cf9",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "conversation_id": "5cfc0c14-ff78-4608-bfc5-e6764d51e0d2",
+  "http_status": 200,
+  "completion_ms": 23678,
+  "assistant_excerpt": "Two items need attention: - Google Analytics needs re-authorization before I can read from it.\n- Google Search Console needs re-authorization before I can read from it. No substitute source was used, and nothing was changed.",
+  "notice_count": 2,
+  "write_allowed": false,
+  "invented_enable": false,
+  "pass": true
+}

@@ -304,6 +304,94 @@ def persist_join_store(client: Any, entity: BusinessEntity) -> int:
         return 0
 
 
+def _evidence_from_json(raw: Any) -> tuple[EntityEvidence, ...]:
+    rows = raw if isinstance(raw, list) else []
+    out: list[EntityEvidence] = []
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind") or "").strip()
+        value = str(item.get("value") or "").strip()
+        if not kind or not value:
+            continue
+        out.append(EntityEvidence(kind=kind, value=value, source=str(item.get("source") or "")))
+    return tuple(out)
+
+
+def load_accepted_entities(client: Any, org_id: str) -> list[BusinessEntity]:
+    """Load tenant-scoped accepted joins. Empty if the store is missing."""
+    if client is None or not org_id:
+        return []
+    try:
+        ents = (
+            client.table("org_business_entities")
+            .select("id,org_id,canonical_key,display_name,kind,confidence,evidence")
+            .eq("org_id", org_id)
+            .limit(20)
+            .execute()
+        )
+        rows = ents.data if isinstance(getattr(ents, "data", None), list) else []
+        binds = (
+            client.table("org_business_entity_bindings")
+            .select("entity_id,system,resource_type,resource_id,confidence,evidence")
+            .eq("org_id", org_id)
+            .limit(80)
+            .execute()
+        )
+        bind_rows = binds.data if isinstance(getattr(binds, "data", None), list) else []
+    except Exception:  # noqa: BLE001
+        return []
+    by_id: dict[str, list[EntityBinding]] = {}
+    for row in bind_rows:
+        if not isinstance(row, dict):
+            continue
+        eid = str(row.get("entity_id") or "")
+        by_id.setdefault(eid, []).append(
+            EntityBinding(
+                system=str(row.get("system") or ""),
+                resource_type=str(row.get("resource_type") or ""),
+                resource_id=str(row.get("resource_id") or ""),
+                confidence=float(row.get("confidence") or 0),
+                evidence=_evidence_from_json(row.get("evidence")),
+            )
+        )
+    out: list[BusinessEntity] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        eid = str(row.get("id") or "")
+        canonical = str(row.get("canonical_key") or eid)
+        out.append(
+            BusinessEntity(
+                id=canonical or eid,
+                org_id=str(row.get("org_id") or org_id),
+                display_name=str(row.get("display_name") or ""),
+                kind=str(row.get("kind") or "company"),
+                bindings=tuple(by_id.get(eid, [])),
+                evidence=_evidence_from_json(row.get("evidence")),
+                confidence=float(row.get("confidence") or 0),
+            )
+        )
+    return out
+
+
+def load_accepted_entity_for_vendors(
+    client: Any,
+    org_id: str,
+    vendors: list[str] | None,
+) -> BusinessEntity | None:
+    wanted = {str(v).strip().lower() for v in (vendors or []) if str(v).strip()}
+    entities = load_accepted_entities(client, org_id)
+    if not entities:
+        return None
+    ranked = sorted(
+        entities,
+        key=lambda ent: len({b.system.strip().lower() for b in ent.bindings} & wanted),
+        reverse=True,
+    )
+    return ranked[0]
+
+
 def persist_business_entity(client: Any, entity: BusinessEntity) -> int:
     """Store accepted joins in the 2.0-B table plus alias projection. Never raises."""
     written = persist_join_store(client, entity)
@@ -351,9 +439,8 @@ def _evidence_keys(evidence: tuple[EntityEvidence, ...]) -> dict[str, set[str]]:
 
 
 def _person_exact_match(left: dict[str, set[str]], right: dict[str, set[str]]) -> bool:
+    # STA-312: email/alias exact only. Display names are never identity proof.
     if left.get("email") and right.get("email") and left["email"] & right["email"]:
-        return True
-    if left.get("name") and right.get("name") and left["name"] & right["name"]:
         return True
     return False
 

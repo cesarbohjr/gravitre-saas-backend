@@ -137,10 +137,16 @@ def _open_ended_read(message: str) -> bool:
 
 def _result_count(data: Any) -> int:
     payload = data if isinstance(data, dict) else {}
-    results = payload.get("results") or payload.get("invoices") or payload.get("tickets") or []
+    nested = payload.get("search") if isinstance(payload.get("search"), dict) else {}
+    for source in (payload, nested):
+        if isinstance(source, dict) and "total" in source:
+            total = source.get("total")
+            if isinstance(total, (int, float)):
+                return int(total)
+    results = payload.get("results") or payload.get("invoices") or payload.get("tickets") or payload.get("contacts") or []
     if isinstance(results, list):
         return len(results)
-    total = payload.get("total") or payload.get("count")
+    total = payload.get("count")
     if isinstance(total, (int, float)):
         return int(total)
     return 0
@@ -295,6 +301,10 @@ async def try_operational_read_short_circuit_turn(
     task_state: dict[str, Any] | None,
     user_id: str | None = None,
 ) -> dict[str, Any] | None:
+    from app.services.multi_source_diagnostic import match_diagnostic_recipe
+
+    if match_diagnostic_recipe(message or ""):
+        return None
     recipe = match_recipe_for_query(message)
     if recipe is None or recipe.recipe_id not in OPERATIONAL_READ_RECIPES:
         from app.services.capability_evidence_plan import looks_like_ceo_ops_question

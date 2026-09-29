@@ -161,6 +161,9 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             # state behind. Read-only prefetch above still applies; only
             # real generation is skipped here.
             return
+        from app.services.voice_session_service import reconstitute_spoken_identity_fields
+
+        query = reconstitute_spoken_identity_fields(text)
         self._last_speculative_text = text
 
         def _runner():
@@ -173,15 +176,19 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 settings=self._app_settings,
                 org_id=self._org_id,
                 user_id=self._user_id,
-                query=text,
+                query=query,
                 agent_id=str(self._agent.get("id") or "") or None,
                 conversation_history=history or None,
                 conversation_id=self._conversation_id,
                 spoken_mode=True,
-                mode=resolve_voice_session_intelligence_mode(text),
+                mode=resolve_voice_session_intelligence_mode(query),
             )
 
-        run = start_speculative_run(text=text, runner=_runner, create_task=self.create_task)
+        run = start_speculative_run(
+            text=query,
+            runner=_runner,
+            create_task=self.create_task,
+        )
         self._speculative_coordinator.set_run(run)
         logger.info(
             "pipecat_voice_speculative_generation_started org_id=%s chars=%s",

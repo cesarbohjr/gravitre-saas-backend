@@ -30,7 +30,8 @@ def test_eligible_set_never_dumps_full_catalog():
     assert len(found) < catalog_n
     ids = {row.action_id for row in found}
     assert "google_analytics.reports.run" in ids
-    assert all(row.kind != "write" for row in found)
+    assert all(not row.governed_write for row in found)
+    assert all("update_stage" not in row.action_id for row in found)
 
 
 def test_f1_eligible_protected_when_vendor_connected():
@@ -126,6 +127,76 @@ def test_search_catalog_tools_prefers_eligible_connected_vendor():
     assert "hubspot_deals_list" in loaded
     assert "github_issues_list" not in loaded
     assert result["count"] >= 1
+
+
+def test_catalog_search_intent_excludes_disconnected_github():
+    from app.services.catalog_search_turn import try_catalog_search_turn
+
+    turn = try_catalog_search_turn(
+        message="Search the tool catalog for GitHub issue list tools. Do not create records.",
+        connected_integrations=["hubspot"],
+    )
+    assert turn is not None
+    assert turn["execution_path"] == "catalog_search_eligible"
+    assert turn["eligible_count"] <= 32
+    assert all(not str(i).startswith("github.") for i in turn["eligible_action_ids"])
+    assert turn["github_excluded"] is True
+    assert turn["writes_started"] is False
+    assert turn["provider_reinvoked"] is False
+    assert turn["execution_result"] is not None
+    assert (turn["task_state"] or {}).get("work_artifacts")
+    assert turn["execution_result"]["structured"]["execution_path"] == "catalog_search_eligible"
+    assert turn["execution_result"]["structured"]["provider_reinvoked"] is False
+    assert "github" in str(turn["message"]).lower()
+    assert "approval required" not in str(turn["message"]).lower() or "WRITE" not in str(turn["message"])
+
+
+def test_general_catalog_lists_writes_as_approval_required():
+    from app.services.catalog_search_turn import try_catalog_search_turn
+
+    turn = try_catalog_search_turn(
+        message="Which connected tools can I use? Search the tool catalog.",
+        connected_integrations=["hubspot"],
+    )
+    assert turn is not None
+    assert turn["writes_started"] is False
+    message = str(turn["message"])
+    if turn.get("writes_listed"):
+        assert "approval required" in message.lower()
+        assert "not executed" in message.lower()
+
+
+def test_catalog_search_skips_unified_live():
+    from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
+
+    assert should_skip_unified_live_for_compiled_read(
+        "Search the tool catalog for HubSpot owners. Do not create records.",
+        {},
+        ["hubspot"],
+    )
+    assert should_skip_unified_live_for_compiled_read(
+        "List all HubSpot deals",
+        {},
+        ["hubspot"],
+    )
+    assert should_skip_unified_live_for_compiled_read(
+        "What do we know about Alpha across HubSpot, QuickBooks, and Zendesk?",
+        {},
+        ["hubspot"],
+    )
+
+
+def test_catalog_search_does_not_run_retrieve_plan_before_compiled() -> None:
+    from pathlib import Path
+
+    text = (
+        Path(__file__).resolve().parents[2] / "app" / "operators" / "agent_intelligence.py"
+    ).read_text(encoding="utf-8")
+    marker = "if match_catalog_search_intent(task_text)"
+    retrieve = "else retrieve_plan_or_none("
+    assert marker in text
+    assert retrieve in text
+    assert text.find(marker) < text.find(retrieve)
 
 
 def test_skills_are_versioned_procedures_not_runtime():

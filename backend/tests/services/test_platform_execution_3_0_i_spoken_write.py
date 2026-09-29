@@ -102,3 +102,110 @@ async def test_gateway_shortcuts_yes_wait_before_kernel() -> None:
     assert (decision.extras or {}).get("provider_invoked") is False
     assert (decision.extras or {}).get("spoken_write_decision") == "hold_commit"
 
+
+def test_natural_yes_create_it_confirms_bound_pending() -> None:
+    spoken = classify_spoken_write_approval("Yes, create it.", task_state=PENDING)
+    assert spoken.decision == "confirm"
+    assert spoken.invoke_allowed is True
+    assert will_execute_staged_connector_write(PENDING, "Yes, create it.") is True
+
+
+def test_ambiguous_yes_does_not_invoke() -> None:
+    spoken = classify_spoken_write_approval("yes maybe", task_state=PENDING)
+    assert spoken.decision == "clarify"
+    assert spoken.invoke_allowed is False
+    assert will_execute_staged_connector_write(PENDING, "yes maybe") is False
+
+
+def test_cancelled_and_expired_pending_refuse_confirm() -> None:
+    cancelled = {
+        "pending_task": {
+            **PENDING["pending_task"],
+            "status": "cancelled",
+        }
+    }
+    spoken = classify_spoken_write_approval("yes", task_state=cancelled)
+    assert spoken.invoke_allowed is False
+    assert spoken.decision == "stale"
+
+    expired = {
+        "pending_task": {
+            **PENDING["pending_task"],
+            "expires_at": "2020-01-01T00:00:00+00:00",
+        }
+    }
+    spoken = classify_spoken_write_approval("yes", task_state=expired)
+    assert spoken.invoke_allowed is False
+    assert spoken.reason == "pending_expired"
+
+
+def test_completed_pending_does_not_duplicate_write() -> None:
+    done = {
+        "pending_task": {
+            **PENDING["pending_task"],
+            "status": "completed",
+        }
+    }
+    spoken = classify_spoken_write_approval("yes", task_state=done)
+    assert spoken.invoke_allowed is False
+    assert spoken.reason == "already_done"
+
+
+def test_foreign_actor_and_org_cannot_confirm() -> None:
+    bound = {
+        "pending_task": {
+            **PENDING["pending_task"],
+            "org_id": "org-a",
+            "actor_id": "user-a",
+            "conversation_id": "conv-a",
+        }
+    }
+    foreign_user = classify_spoken_write_approval(
+        "yes",
+        task_state=bound,
+        expected_org_id="org-a",
+        expected_actor_id="user-b",
+        expected_conversation_id="conv-a",
+    )
+    assert foreign_user.invoke_allowed is False
+    assert foreign_user.reason == "foreign_actor"
+    foreign_org = classify_spoken_write_approval(
+        "yes",
+        task_state=bound,
+        expected_org_id="org-b",
+        expected_actor_id="user-a",
+        expected_conversation_id="conv-a",
+    )
+    assert foreign_org.invoke_allowed is False
+    assert foreign_org.reason == "foreign_org"
+
+
+def test_in_flight_claim_blocks_second_yes() -> None:
+    flying = {
+        "pending_task": {
+            **PENDING["pending_task"],
+            "status": "executing",
+            "execution_claim_id": "claim-1",
+        }
+    }
+    spoken = classify_spoken_write_approval("yes", task_state=flying)
+    assert spoken.invoke_allowed is False
+    assert spoken.reason == "already_claimed"
+
+
+@pytest.mark.asyncio
+async def test_gateway_shortcuts_ambiguous_confirm() -> None:
+    decision = await evaluate_intent_gateway(
+        GatewayContext(
+            message="yes maybe",
+            spoken_mode=True,
+            task_state=PENDING,
+            org_id="org",
+            user_id="user-a",
+            conversation_id="conv-a",
+        )
+    )
+    assert decision.action == "shortcut"
+    assert decision.candidate_id == "spoken_write_clarify"
+    assert (decision.extras or {}).get("provider_invoked") is False
+

@@ -277,6 +277,16 @@ def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
             details["Channel"] = channel
         if text:
             details["Message"] = text[:200] + ("…" if len(text) > 200 else "")
+    elif plan.invoke_action == "hubspot.contacts.create":
+        props = args.get("properties") if isinstance(args.get("properties"), dict) else {}
+        email = str(args.get("email") or props.get("email") or "").strip()
+        first = str(args.get("firstname") or props.get("firstname") or "").strip()
+        last = str(args.get("lastname") or props.get("lastname") or "").strip()
+        name = " ".join(part for part in (first, last) if part).strip()
+        if name:
+            details["Name"] = name
+        if email:
+            details["Email"] = email
     elif args.get("properties") and isinstance(args["properties"], dict):
         for key, value in args["properties"].items():
             if value:

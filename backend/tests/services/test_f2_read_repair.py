@@ -204,6 +204,64 @@ def test_ga4_auth_does_not_fallback_without_gsc() -> None:
     assert repaired is None
 
 
+def test_permission_denied_is_not_an_unauthorized_alternate() -> None:
+    budget = RepairBudget.fresh()
+    blocked = PreflightResult(
+        status="blocked",
+        action_key="hubspot.deals.list",
+        error_class="PERMISSION_DENIED",
+        org_id="org-1",
+    )
+    repaired = repair_blocked_read(
+        blocked=blocked,
+        ctx=_ctx(),
+        invoke_action="hubspot.deals.list",
+        args={},
+        user_message="List my deals.",
+        connected_integrations=["hubspot", "github"],
+        budget=budget,
+    )
+    assert repaired is None
+    assert budget.error_memory
+    assert budget.error_memory[0]["error_class"] == "PERMISSION_DENIED"
+
+
+def test_write_action_is_never_repaired() -> None:
+    blocked = PreflightResult(
+        status="blocked",
+        action_key="hubspot.contacts.create",
+        error_class="TIMEOUT",
+        org_id="org-1",
+    )
+    repaired = repair_blocked_read(
+        blocked=blocked,
+        ctx=_ctx(),
+        invoke_action="hubspot.contacts.create",
+        args={"email": "a@b.com"},
+        user_message="Create a contact.",
+        connected_integrations=["hubspot"],
+    )
+    assert repaired is None
+
+
+def test_uncertain_write_outcome_is_not_retried() -> None:
+    blocked = PreflightResult(
+        status="blocked",
+        action_key="hubspot.deals.list",
+        error_class="OUTCOME_UNCERTAIN",
+        org_id="org-1",
+    )
+    repaired = repair_blocked_read(
+        blocked=blocked,
+        ctx=_ctx(),
+        invoke_action="hubspot.deals.list",
+        args={},
+        user_message="List my deals.",
+        connected_integrations=["hubspot"],
+    )
+    assert repaired is None
+
+
 def test_emit_f2_repair_audit_writes_without_secrets() -> None:
     from uuid import uuid4
 

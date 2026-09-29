@@ -489,6 +489,8 @@ async def compose_user_reply(
         must_compose = False
     # Phrase-bank greetings are already user-facing English. Composer still owns
     # leak filtering via looks_like_raw_backend / finalize; skip a second LLM rewrite.
+    if resolved_kind == "shortcut" and draft and not looks_like_raw_backend(draft):
+        must_compose = False
     if (
         resolved_kind == "error"
         and draft
@@ -536,6 +538,35 @@ async def compose_user_reply(
                 "AWAITING_APPROVAL",
             }
         )
+    ):
+        must_compose = False
+    path = str(
+        env.get("execution_path")
+        or (
+            env["data"].get("execution_path")
+            if isinstance(env.get("data"), dict)
+            else ""
+        )
+        or ""
+    )
+    # Catalog lookup is already user-facing English. Skipping the Composer LLM
+    # is still Composer-owned (leak filter + finalize); it is not a second runtime.
+    if (
+        resolved_kind == "canned"
+        and path in {
+            "catalog_search_eligible",
+            "listing_f2_read",
+            "listing_f2_read_resume",
+            "computer_browser_read",
+            "computer_browser_read_resume",
+            "computer_browser_interact_compile",
+            "computer_browser_interact_confirm",
+            "computer_browser_interact_resume",
+            "entity_join_store",
+            "recent_write_observation",
+        }
+        and draft
+        and not looks_like_raw_backend(draft)
     ):
         must_compose = False
     used_model = False
@@ -590,7 +621,14 @@ async def compose_user_reply(
             fallback = True
 
     try:
-        text = finalize_user_facing_message(text, context="response_composer")
+        identity = env.get("identity_literals")
+        if not identity and isinstance(env.get("data"), dict):
+            identity = env["data"].get("identity_literals")
+        text = finalize_user_facing_message(
+            text,
+            context="response_composer",
+            identity_literals=identity if isinstance(identity, list) else None,
+        )
     except Exception:  # noqa: BLE001
         from app.services.user_facing_copy_guard import scrub_raw_catalog_keys
 

@@ -70,6 +70,32 @@ def assess_cognitive_resolution_needs(
             reason="reference_referent",
         )
 
+    from app.services.catalog_search_turn import match_catalog_search_intent
+
+    if match_catalog_search_intent(text):
+        return CognitiveResolutionNeeds(
+            run_semantic=False,
+            run_resource=False,
+            reason="catalog_search",
+        )
+
+    from app.services.computer_browser_read_turn import (
+        match_computer_browser_followup,
+        match_computer_browser_intent,
+        match_computer_browser_resume_phrase,
+    )
+
+    if (
+        match_computer_browser_intent(text)
+        or match_computer_browser_resume_phrase(text)
+        or match_computer_browser_followup(text, state)
+    ):
+        return CognitiveResolutionNeeds(
+            run_semantic=False,
+            run_resource=False,
+            reason="computer_browser_read",
+        )
+
     if _CHITCHAT_RE.match(text):
         return CognitiveResolutionNeeds(run_semantic=True, run_resource=False, reason="chitchat")
 
@@ -181,6 +207,27 @@ def should_skip_unified_live_for_compiled_read(
     recipe = match_recipe_for_query(message)
     if recipe is not None and recipe.recipe_id in OPERATIONAL_READ_RECIPES:
         return True
+    from app.services.catalog_search_turn import match_catalog_search_intent
+    from app.services.multi_source_diagnostic import match_diagnostic_recipe
+
+    if match_catalog_search_intent(message or "") or match_diagnostic_recipe(message or ""):
+        return True
+    from app.services.listing_f2_read_turn import match_listing_f2_intent
+    from app.services.entity_join_answer_turn import match_cross_system_entity_intent
+    from app.services.computer_browser_read_turn import (
+        match_computer_browser_followup,
+        match_computer_browser_intent,
+        match_computer_browser_resume_phrase,
+    )
+
+    if (
+        match_listing_f2_intent(message or "")
+        or match_cross_system_entity_intent(message or "")
+        or match_computer_browser_intent(message or "")
+        or match_computer_browser_followup(message or "", task_state)
+        or match_computer_browser_resume_phrase(message or "")
+    ):
+        return True
     if frame_is_analytics(task_state):
         return True
     from app.services.operational_read_execution import infer_operational_recipe_id
@@ -284,6 +331,7 @@ async def try_compiled_operational_read_turn(
     connected_integrations: list[str] | None,
     task_state: dict[str, Any] | None,
     user_id: str | None = None,
+    conversation_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Analytics first, then other F1 department READs, before ReAct."""
     from app.services.capability_evidence_plan import looks_like_ceo_ops_question
@@ -301,6 +349,80 @@ async def try_compiled_operational_read_turn(
         )
         if analytics:
             return analytics
+    from app.services.catalog_search_turn import try_catalog_search_turn
+
+    catalog = try_catalog_search_turn(
+        message=message,
+        connected_integrations=connected_integrations,
+        capability_id=None,
+        task_state=task_state,
+    )
+    if catalog:
+        return catalog
+    from app.services.entity_join_answer_turn import try_cross_system_entity_turn
+
+    entity_turn = try_cross_system_entity_turn(
+        message=message or "",
+        org_id=org_id,
+        client=client,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+    )
+    if entity_turn:
+        return entity_turn
+    from app.services.diagnostic_parallel_execution import try_diagnostic_parallel_read_turn
+
+    diagnostic = await try_diagnostic_parallel_read_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+        user_id=user_id,
+    )
+    if diagnostic:
+        return diagnostic
+    from app.services.computer_browser_read_turn import try_computer_browser_read_turn
+
+    computer = await try_computer_browser_read_turn(
+        message=message,
+        task_state=task_state,
+        settings=settings,
+        conversation_id=conversation_id,
+        org_id=org_id,
+        client=client,
+    )
+    if computer:
+        return computer
+    from app.services.computer_browser_interact_turn import try_computer_browser_interact_turn
+
+    interact = await try_computer_browser_interact_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+        user_id=user_id,
+        conversation_id=conversation_id,
+    )
+    if interact:
+        return interact
+    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
+
+    listing = try_listing_f2_read_turn(
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+        user_id=user_id,
+        conversation_id=conversation_id,
+    )
+    if listing:
+        return listing
     from app.services.operational_read_execution import try_operational_read_short_circuit_turn
 
     operational = await try_operational_read_short_circuit_turn(

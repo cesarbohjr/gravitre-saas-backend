@@ -79,4 +79,31 @@ test.describe("ExecutionResult navigation buttons", () => {
       fullPage: true,
     })
   })
+
+  test("computer_browser_read scenario renders visit table and screenshot digest", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=computer_browser_read")
+    await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    await expect(page.getByTestId("canonical-artifact-table")).toBeVisible()
+    await expect(page.getByText("https://example.com/")).toBeVisible()
+    await expect(page.getByText("https://www.iana.org/help/example-domains")).toBeVisible()
+    await expect(page.getByTestId("canonical-screenshot-digest")).toContainText("Browser screenshot digest")
+    await expect(page.getByTestId("canonical-execution-path")).toHaveText("computer_browser_read")
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/computer-browser-read-harness.png",
+      fullPage: true,
+    })
+  })
+
+  test("catalog_search scenario renders eligible ActionSpec rows", async ({ page }) => {
+    await page.goto("/e2e/execution-result?scenario=catalog_search")
+    await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    await expect(page.getByTestId("canonical-artifact-table")).toBeVisible()
+    await expect(page.getByText("List HubSpot contacts")).toBeVisible()
+    await expect(page.getByRole("cell", { name: "READ, connected" }).first()).toBeVisible()
+    await expect(page.getByTestId("canonical-execution-path")).toHaveText("catalog_search_eligible")
+    await page.screenshot({
+      path: "docs/delivery/_artifacts/catalog-search-harness.png",
+      fullPage: true,
+    })
+  })
 })

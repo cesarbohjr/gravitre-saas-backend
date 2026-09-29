@@ -1291,8 +1291,13 @@ class AgentIntelligence:
             task_state=task_state,
         )
         from app.services.user_facing_copy_guard import finalize_user_facing_message
+        from app.services.action_lifecycle import identity_literals_from_state
 
-        content = finalize_user_facing_message(content, context="assistant_finalize")
+        content = finalize_user_facing_message(
+            content,
+            context="assistant_finalize",
+            identity_literals=identity_literals_from_state(task_state if isinstance(task_state, dict) else None),
+        )
         from app.services.cognitive_evidence_envelope import build_evidence_envelope
 
         evidence = build_evidence_envelope(
@@ -1767,6 +1772,7 @@ class AgentIntelligence:
             except Exception:  # noqa: BLE001
                 gateway_state = {}
         _cognitive_resolution = None
+        _compiled_read_ingress = False
         _canonical_task_state: dict[str, Any] = (
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
@@ -1792,11 +1798,42 @@ class AgentIntelligence:
                 )
             )
         _mark("intent_gateway")
+        from app.services.assistant_routing_tier import (
+            RoutingControl,
+            classify_routing_tier,
+            default_model_for_tier,
+        )
         from app.services.chat_turn_cancel_service import is_stop_requested as _chat_stop_requested
         from app.services.cognitive_loop_controller import get_cognitive_loop_controller
 
         loop_controller = get_cognitive_loop_controller(active_settings)
         loop_trace = loop_controller.begin(message=task_text, spoken_mode=bool(spoken_mode))
+        classification_confidence = 0.55
+        persona = {
+            "persona_key": (explicit_persona or "friendly_assistant").strip()
+            or "friendly_assistant",
+            "system_prompt_modifier": "",
+        }
+        mode_key = str(mode or "fast")
+        pipeline_tier = mode_to_tier(mode_key)
+        routing_decision = classify_routing_tier(
+            task_text,
+            mode=str(mode or "fast"),
+            parameters={"mode": str(mode or "fast")},
+        )
+        routing_control = RoutingControl(
+            tier=routing_decision.tier,
+            model=routing_decision.model,
+            max_iterations=max(1, routing_decision.max_tool_rounds),
+            pinned_fast=routing_decision.pinned_fast,
+            model_resolver=default_model_for_tier,
+        )
+        routing_sse = {
+            **routing_decision.to_sse(),
+            "routingTier": routing_control.tier,
+            "maxToolRounds": routing_control.max_iterations,
+        }
+        message_id = str(uuid.uuid4())
         loop_controller.mark_perceive(
             loop_trace,
             gateway,
@@ -1961,7 +1998,12 @@ class AgentIntelligence:
             task_state = _merge_trace_into_state(
                 task_state if isinstance(task_state, dict) else None
             )
-            if conversation_id and isinstance(task_state, dict):
+            _path = str(_analytics_turn.get("execution_path") or "")
+            if (
+                conversation_id
+                and isinstance(task_state, dict)
+                and _path not in {"recent_write_observation"}
+            ):
                 try:
                     patch = {
                         **task_state,
@@ -1973,11 +2015,30 @@ class AgentIntelligence:
                         patch,
                         client=client,
                     )
-                    task_state = await get_conversation_state_service(active_settings).get_task_state(
-                        conversation_id,
-                        org_id,
-                        client=client,
-                    )
+                    _mark("observation_persist")
+                    # Re-get is a second serial DB hop after the provider READ
+                    # and before first SSE. In-memory patch is the same payload
+                    # listing / computer just persisted.
+                    if _path in {
+                        "listing_f2_read",
+                        "listing_f2_read_resume",
+                        "catalog_search_eligible",
+                        "entity_join_store",
+                        "computer_browser_read",
+                        "computer_browser_read_resume",
+                        "computer_browser_interact_compile",
+                        "computer_browser_interact_confirm",
+                        "computer_browser_interact_resume",
+                    }:
+                        task_state = patch
+                    else:
+                        task_state = await get_conversation_state_service(
+                            active_settings
+                        ).get_task_state(
+                            conversation_id,
+                            org_id,
+                            client=client,
+                        )
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("analytics_short_circuit_state_persist_skipped: %s", exc)
             from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
@@ -2035,14 +2096,19 @@ class AgentIntelligence:
             if isinstance(_ar, dict):
                 compose_extra["analytics_result"] = _ar
                 compose_extra["data"]["analytics_result"] = _ar
+            _path = str(_analytics_turn.get("execution_path") or "")
+            if _path:
+                compose_extra["execution_path"] = _path
+                compose_extra["data"]["execution_path"] = _path
             if isinstance(_evidence, dict) or compose_kind == "canned":
                 _mark("observation")
             _mark("composer_start")
-            _mark("first_sse")
             packed = await _composed_reply(
                 response_text,
                 kind=compose_kind,
                 extra=compose_extra,
+                existing_text_id=spoken_progress_text_id,
+                close=True,
                 trace_state=task_state if isinstance(task_state, dict) else None,
             )
             _mark("composer_complete")
@@ -2241,13 +2307,36 @@ class AgentIntelligence:
             )
             return
 
+        from app.services.computer_browser_interact_turn import (
+            computer_interact_should_compile,
+            try_computer_browser_interact_turn,
+        )
+
+        if computer_interact_should_compile(
+            task_text,
+            task_state if isinstance(task_state, dict) else {},
+        ):
+            _confirm_interact = await try_computer_browser_interact_turn(
+                message=task_text,
+                org_id=org_id,
+                client=client,
+                settings=active_settings,
+                connected_integrations=[],
+                task_state=task_state if isinstance(task_state, dict) else {},
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+            if _confirm_interact and _confirm_interact.get("stop_pipeline"):
+                async for ev in _emit_compiled_operational_short_circuit(_confirm_interact):
+                    yield ev
+                return
+
         if (
             gateway.action == "shortcut"
             and (gateway.answer or "").strip()
             and gateway.confidence is not None
             and not loop_trace.operator_task
         ):
-            message_id = str(uuid.uuid4())
             response_text = str(gateway.answer)
             gateway_task_state = gateway_state
             _boot_cognitive_trace(
@@ -2383,7 +2472,14 @@ class AgentIntelligence:
 
         _plan_hold = is_plan_without_execute_turn(task_text)
         _plan_hold_spoken = bool(spoken_mode and _plan_hold)
-        if spoken_mode and not loop_trace.fast_path and not _plan_hold_spoken:
+        from app.services.computer_browser_read_turn import match_computer_browser_intent as _match_cu_intent
+
+        if (
+            spoken_mode
+            and not loop_trace.fast_path
+            and not _plan_hold_spoken
+            and not _match_cu_intent(task_text)
+        ):
             for ev in await _loop_stage_speech("PERCEIVE"):
                 yield ev
 
@@ -2393,7 +2489,8 @@ class AgentIntelligence:
             status_for_stage as _status_for_stage,
         )
 
-        message_id = str(uuid.uuid4())
+        # message_id assigned before Intent Gateway shortcut so HMAC confirm
+        # can emit without UnboundLocalError on routing/persona closures.
         yield sse_intelligence_metadata(
             message_id=message_id,
             confidence={"score": 0.0, "needs_clarification": False},
@@ -2718,23 +2815,24 @@ class AgentIntelligence:
                     early_state = {**early_state, **_canonical_task_state}
                 else:
                     early_state = dict(_canonical_task_state)
-                try:
-                    await get_conversation_state_service(active_settings).update_task_state(
-                        conversation_id,
-                        org_id,
-                        {
-                            "resolution_trace": _canonical_task_state.get("resolution_trace"),
-                            "cognitive_resolution_message": _canonical_task_state.get(
-                                "cognitive_resolution_message"
-                            ),
-                            "cognitive_resolution_needs": _canonical_task_state.get(
-                                "cognitive_resolution_needs"
-                            ),
-                        },
-                        client=client,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("canonical_resolution_persist_skipped: %s", exc)
+                if _cognitive_resolution is not None:
+                    try:
+                        await get_conversation_state_service(active_settings).update_task_state(
+                            conversation_id,
+                            org_id,
+                            {
+                                "resolution_trace": _canonical_task_state.get("resolution_trace"),
+                                "cognitive_resolution_message": _canonical_task_state.get(
+                                    "cognitive_resolution_message"
+                                ),
+                                "cognitive_resolution_needs": _canonical_task_state.get(
+                                    "cognitive_resolution_needs"
+                                ),
+                            },
+                            client=client,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("canonical_resolution_persist_skipped: %s", exc)
             else:
                 _canonical_task_state = _resolution_base
                 if isinstance(early_state, dict):
@@ -3001,6 +3099,10 @@ class AgentIntelligence:
         # enrich / router enrichments when this is not a connector write. Depth is
         # otherwise only set *after* those stages, so TTFT paid ~5–7s of dead work.
         from app.services.chat_intelligence_facade import get_chat_intelligence_facade
+        from app.services.canonical_cognitive_resolution import (
+            should_skip_unified_live_for_compiled_read,
+        )
+        from app.services.computer_browser_interact_turn import computer_interact_should_compile
 
         chat_facade = get_chat_intelligence_facade(active_settings)
         spoken_lite_path = use_spoken_lite_path(
@@ -3008,9 +3110,17 @@ class AgentIntelligence:
             routing_tier=str(routing_control.tier or ""),
             message=task_text,
         )
+        _compiled_read_ingress = should_skip_unified_live_for_compiled_read(
+            task_text,
+            task_state if isinstance(task_state, dict) else _canonical_task_state,
+            list(connected_early or []),
+        ) or computer_interact_should_compile(
+            task_text,
+            task_state if isinstance(task_state, dict) else _canonical_task_state,
+        )
         _mark("spoken_lite_decided")
 
-        if spoken_lite_path:
+        if spoken_lite_path or _compiled_read_ingress:
             # Defaults only — dialogue_settings are unused on the lite path before
             # LIVE returns; a DB round-trip here was pure critical-path waste.
             dialogue_settings = {
@@ -3024,8 +3134,20 @@ class AgentIntelligence:
                 "constraints": [],
                 "model_attempted": False,
                 "model_ran": False,
-                "domain": {"source": "spoken_lite_skip", "confidence": 0.0, "routing_active": False},
-                "skipped": "spoken_conversational_lite",
+                "domain": {
+                    "source": (
+                        "compiled_read_ingress"
+                        if _compiled_read_ingress
+                        else "spoken_lite_skip"
+                    ),
+                    "confidence": 0.0,
+                    "routing_active": False,
+                },
+                "skipped": (
+                    "compiled_read_ingress"
+                    if _compiled_read_ingress
+                    else "spoken_conversational_lite"
+                ),
             }
             pipeline_classification = {
                 "intent": "informational",
@@ -3033,7 +3155,8 @@ class AgentIntelligence:
                 "classification_confidence": 0.7,
                 "department": (department or "").strip() or None,
                 "routing_tier": routing_control.tier,
-                "spoken_lite": True,
+                "spoken_lite": bool(spoken_lite_path),
+                "compiled_read_ingress": bool(_compiled_read_ingress),
             }
             department_scope = (department or "").strip() or None
             if department_scope:
@@ -3180,7 +3303,7 @@ class AgentIntelligence:
             )
             if isinstance(task_state, dict):
                 task_state = {**task_state, **execution_plan_patch(_execution_plan)}
-            if conversation_id:
+            if conversation_id and not _compiled_read_ingress:
                 try:
                     await get_conversation_state_service(active_settings).update_task_state(
                         conversation_id,
@@ -3233,7 +3356,21 @@ class AgentIntelligence:
             }
 
         if spoken_lite_path and isinstance(early_state, dict):
-            task_state = dict(early_state)
+            from app.services.computer_browser_read_turn import (
+                has_completed_computer_session,
+                match_computer_browser_resume_phrase,
+            )
+
+            if match_computer_browser_resume_phrase(task_text) or has_completed_computer_session(
+                early_state
+            ):
+                task_state = await get_conversation_state_service(active_settings).get_task_state(
+                    conversation_id or "",
+                    org_id,
+                    client=client,
+                )
+            else:
+                task_state = dict(early_state)
             _mark("task_state_initial")
         else:
             task_state = await get_conversation_state_service(active_settings).get_task_state(
@@ -3278,8 +3415,10 @@ class AgentIntelligence:
             }
             task_state = {**(task_state or {}), **_ledger_updates}
             if conversation_id:
-                # Spoken lite: do not block first token on ledger persist + re-get.
-                if spoken_lite_path:
+                # Spoken lite / compiled READ: do not block first token on
+                # ledger persist + re-get. Listing F2 keeps the in-memory
+                # ingest; Observation persist still happens on short-circuit.
+                if spoken_lite_path or _compiled_read_ingress:
                     asyncio.create_task(
                         get_conversation_state_service(active_settings).update_task_state(
                             conversation_id,
@@ -3307,6 +3446,85 @@ class AgentIntelligence:
                 exc,
             )
         _mark("parameter_ledger")
+        from app.services.computer_browser_read_turn import (
+            match_computer_browser_followup,
+            match_computer_browser_intent,
+            match_computer_browser_resume_phrase,
+            try_computer_browser_read_turn,
+        )
+
+        _computer_state = task_state if isinstance(task_state, dict) else {}
+        if (
+            match_computer_browser_intent(task_text)
+            and not match_computer_browser_followup(task_text, _computer_state)
+            and not match_computer_browser_resume_phrase(task_text)
+        ):
+            _mark("browser_session_start")
+            from app.services.response_composer import events_for_text
+
+            _browser_progress = (
+                "I'm opening a real browser session now. I'll report the pages after they load."
+            )
+            spoken_progress_text_id, progress_events = events_for_text(
+                _browser_progress,
+                existing_text_id=spoken_progress_text_id,
+                close=False,
+            )
+            for ev in progress_events:
+                yield ev
+            await asyncio.sleep(0)
+        _computer_turn = await try_computer_browser_read_turn(
+            message=task_text,
+            task_state=task_state if isinstance(task_state, dict) else {},
+            settings=active_settings,
+            conversation_id=conversation_id,
+            org_id=org_id,
+            client=client,
+        )
+        _mark("browser_session_end")
+        if _computer_turn and _computer_turn.get("stop_pipeline"):
+            async for ev in _emit_compiled_operational_short_circuit(_computer_turn):
+                yield ev
+            return
+        from app.services.computer_browser_interact_turn import try_computer_browser_interact_turn
+
+        _interact_turn = await try_computer_browser_interact_turn(
+            message=task_text,
+            org_id=org_id,
+            client=client,
+            settings=active_settings,
+            connected_integrations=list(connected_early or []),
+            task_state=task_state if isinstance(task_state, dict) else {},
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        if _interact_turn and _interact_turn.get("stop_pipeline"):
+            async for ev in _emit_compiled_operational_short_circuit(_interact_turn):
+                yield ev
+            return
+        if _compiled_read_ingress:
+            from app.services.canonical_cognitive_resolution import (
+                try_compiled_operational_read_turn as _try_compiled_after_ledger,
+            )
+
+            _early_ts = task_state if isinstance(task_state, dict) else _canonical_task_state
+            if isinstance(_early_ts, dict) and isinstance(_canonical_task_state, dict):
+                _early_ts = {**_canonical_task_state, **_early_ts}
+            _compiled_turn = await _try_compiled_after_ledger(
+                message=task_text,
+                resolution=_cognitive_resolution,
+                org_id=org_id,
+                client=client,
+                settings=active_settings,
+                connected_integrations=list(connected_early or []),
+                task_state=_early_ts if isinstance(_early_ts, dict) else {},
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+            if _compiled_turn and _compiled_turn.get("stop_pipeline"):
+                async for ev in _emit_compiled_operational_short_circuit(_compiled_turn):
+                    yield ev
+                return
         if spoken_lite_path:
             # Persona is SSE metadata only on LIVE conversational — not in the
             # system prompt. Hardcode to skip nested task_state/dialogue DB.
@@ -3589,6 +3807,37 @@ class AgentIntelligence:
         from app.services.pending_write_resume import should_skip_unified_live_for_compiled_write
 
         _live_state = task_state if isinstance(task_state, dict) else _canonical_task_state
+        from app.services.action_lifecycle import (
+            recent_write_status_turn,
+            reconcile_stale_pending_to_observation,
+        )
+
+        _write_follow = recent_write_status_turn(
+            task_text,
+            _live_state if isinstance(_live_state, dict) else {},
+        )
+        if _write_follow and _write_follow.get("stop_pipeline"):
+            _recon = reconcile_stale_pending_to_observation(
+                _live_state if isinstance(_live_state, dict) else {}
+            )
+            if _recon and conversation_id:
+                try:
+                    from app.services.conversation_state_service import get_conversation_state_service
+
+                    _state_svc = get_conversation_state_service(active_settings)
+                    await _state_svc.update_task_state(
+                        conversation_id, org_id, _recon, client=client
+                    )
+                    _write_follow["task_state"] = await _state_svc.get_task_state(
+                        conversation_id, org_id, client=client
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("stale_pending_reconcile_skipped: %s", exc)
+                    if isinstance(_live_state, dict):
+                        _write_follow["task_state"] = {**_live_state, **_recon}
+            async for ev in _emit_compiled_operational_short_circuit(_write_follow):
+                yield ev
+            return
         if _unified_live_ok and should_skip_unified_live_for_compiled_read(
             task_text,
             _live_state,
@@ -3608,6 +3857,20 @@ class AgentIntelligence:
             # action. LIVE must not re-select tools or re-ask yes.
             _unified_live_ok = False
         _mark("capability_compile")
+        from app.services.proactive_business_operator import is_attention_intent, try_ranked_attention_turn
+
+        if is_attention_intent(task_text):
+            att = try_ranked_attention_turn(
+                message=task_text,
+                org_id=org_id,
+                client=client,
+                settings=active_settings,
+                task_state=_live_state if isinstance(_live_state, dict) else {},
+            )
+            if att and att.get("stop_pipeline"):
+                async for ev in _emit_compiled_operational_short_circuit(att):
+                    yield ev
+                return
         if not _unified_live_ok:
             from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn as _try_compiled_early
             from app.services.retrieve_plan_gate import (
@@ -3616,12 +3879,18 @@ class AgentIntelligence:
             )
 
             if conversation_id:
-                retrieved_early = retrieve_plan_or_none(
-                    task_text,
-                    org_id=org_id,
-                    connected_integrations=list(connected_early or []),
-                    client=client,
-                    require_pack_install=True,
+                from app.services.catalog_search_turn import match_catalog_search_intent
+
+                retrieved_early = (
+                    None
+                    if match_catalog_search_intent(task_text)
+                    else retrieve_plan_or_none(
+                        task_text,
+                        org_id=org_id,
+                        connected_integrations=list(connected_early or []),
+                        client=client,
+                        require_pack_install=True,
+                    )
                 )
                 if retrieved_early is not None and retrieved_early.block_fabrication:
                     staged = await stage_retrieved_plan_turn(
@@ -3655,16 +3924,22 @@ class AgentIntelligence:
                     connected_integrations=list(connected_early or []),
                     task_state=_early_ts,
                     user_id=user_id,
+                    conversation_id=conversation_id,
                 )
                 if _early_turn and _early_turn.get("stop_pipeline"):
                     async for ev in _emit_compiled_operational_short_circuit(_early_turn):
                         yield ev
                     return
         _compiled_unified_reasoning = None
+        from app.services.conversational_turn_gate import heuristic_turn_shape
+
+        _pre_live_shape = heuristic_turn_shape(task_text)
+        _skip_unified_compile = getattr(_pre_live_shape, "shape", "") == "conversational"
         if (
             _unified_live_ok
             and bool(getattr(active_settings, "context_compiler_unified_live_v1", True))
             and not _plan_hold_spoken
+            and not _skip_unified_compile
         ):
             from app.services.context_compiler import compile_unified_reasoning_context
             from app.services.workspace_focus_resolver import workspace_focus_trace_meta
@@ -3703,9 +3978,7 @@ class AgentIntelligence:
         # and again at context_inline (~8.5s measured on HubSpot read_tool_classical).
         # Overlap prepare with LIVE when the query cannot change (non-mixed shape).
         if _unified_live_ok and _context_task is None:
-            from app.services.conversational_turn_gate import heuristic_turn_shape
-
-            _live_prefetch_shape = heuristic_turn_shape(task_text)
+            _live_prefetch_shape = _pre_live_shape
             if _live_prefetch_shape is None or getattr(_live_prefetch_shape, "shape", "") != "mixed":
                 _context_task_query = task_text
                 _context_task = asyncio.create_task(_prepare_turn_context(task_text))
@@ -4439,12 +4712,14 @@ class AgentIntelligence:
                         else {}
                     )
                     pending_label = str(_pending_params.get("label") or "")
-                    packed = await _composed_reply(
-                        narrate_connector_write_executing(pending_label),
-                        kind="canned",
-                    )
-                    for ev in packed.events:
-                        yield ev
+                    executing_speech = narrate_connector_write_executing(pending_label)
+                    if executing_speech.strip():
+                        packed = await _composed_reply(
+                            executing_speech,
+                            kind="canned",
+                        )
+                        for ev in packed.events:
+                            yield ev
 
             connector_turn = await run_connector_turn(
                 settings=active_settings,
@@ -5285,6 +5560,7 @@ class AgentIntelligence:
             connected_integrations=list(connected_early or []),
             task_state=_analytics_task_state,
             user_id=user_id,
+            conversation_id=conversation_id,
         )
         if _analytics_turn and _analytics_turn.get("stop_pipeline"):
             async for ev in _emit_compiled_operational_short_circuit(_analytics_turn):
@@ -5927,8 +6203,13 @@ class AgentIntelligence:
                 full_content = f"{claim_prefix}\n\n{full_content}".strip()
 
         from app.services.user_facing_copy_guard import finalize_user_facing_message
+        from app.services.action_lifecycle import identity_literals_from_state
 
-        full_content = finalize_user_facing_message(full_content, context="assistant_pre_emit")
+        full_content = finalize_user_facing_message(
+            full_content,
+            context="assistant_pre_emit",
+            identity_literals=identity_literals_from_state(task_state if isinstance(task_state, dict) else None),
+        )
 
         pending_for_loop = None
         if isinstance(task_state, dict) and isinstance(task_state.get("pending_task"), dict):

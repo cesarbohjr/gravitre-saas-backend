@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-09-25T20:49:26.755887+00:00",
+  "proof_class": "SPOKEN_HTTP_NOT_VOICE_C",
+  "physical_mic": false,
+  "health_sha": "c29f12cb451fe75db6f657c0534dab8f3a36f201",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "latency_class": "c",
+  "class_a_ordinary": null,
+  "class_b_followup": {
+    "conversation_id": "59120b14-8235-4279-9692-2ef0cbee1120",
+    "state_before": {
+      "http": 200,
+      "pending_status": "executed",
+      "pending_lifecycle": "COMPLETED",
+      "plan_id": "0a3e4716-397e-47f6-bb41-c261e4865135",
+      "plan_terminal": "completed",
+      "obs_count": 1,
+      "last_obs_success": true,
+      "provider_record_id": "279246127081",
+      "verification_status": "verified"
+    }
+  },
+  "class_c_read": {
+    "conversation_id": "b30ba508-11f5-4c02-bccb-2d0d30aeef10",
+    "http_status": 200,
+    "first_useful_text_ms": 4114,
+    "completion_ms": 6125,
+    "assistant_excerpt": "This HubSpot account has 57 contacts.",
+    "tools": [],
+    "intelligence_events": 3,
+    "model_ttft_ms": null,
+    "pre_model_ms": null,
+    "wall_to_first_token_ms": null,
+    "cached_prompt_tokens": null,
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "cognitive_stage_ms": null,
+    "unified_latency_ms": null,
+    "context_prompt_ms": null,
+    "shortcut_composer_used_model": null,
+    "create_claim": false,
+    "asked_confirm_again": false,
+    "used_provider_id": false,
+    "used_email": false,
+    "routing_keys": [
+      "cognitiveLoop",
+      "fastPath",
+      "fullLoop",
+      "latencyBudgetMs",
+      "loopId",
+      "maxToolRounds",
+      "modelTier",
+      "operatorTask",
+      "pinnedFast",
+      "reasons",
+      "routingTier",
+      "spokenMode",
+      "stages",
+      "turnId"
+    ]
+  }
+}

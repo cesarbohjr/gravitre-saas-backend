@@ -144,19 +144,41 @@ def conclude_diagnostic(
     """Honest conclusion: observed facts only; never invent a causal story."""
     evidence_ids = {s.step_id for s in plan.steps if s.kind == "evidence"}
     live: list[str] = []
+    findings: list[dict[str, Any]] = []
     for raw in observations or []:
         if isinstance(raw, ExecutionObservation):
             step_id = raw.step_id
             success = raw.success
             summary = raw.summary
+            observation_id = raw.observation_id
+            structured = raw.structured if isinstance(raw.structured, dict) else {}
         elif isinstance(raw, dict):
             step_id = str(raw.get("step_id") or "")
             success = bool(raw.get("success"))
             summary = str(raw.get("summary") or "")
+            observation_id = raw.get("observation_id")
+            structured = raw.get("structured") if isinstance(raw.get("structured"), dict) else {}
         else:
             continue
         if step_id in evidence_ids and success:
-            live.append(summary.strip() or step_id)
+            text = (summary or "").strip()
+            if text.lower() in {"ok", "success", "done"}:
+                count = structured.get("result_count")
+                action = str(structured.get("action_key") or "")
+                if isinstance(count, int):
+                    text = f"The connected read {action or step_id} returned {count} record(s)."
+                else:
+                    text = f"The connected read {action or step_id} completed, but no field-level findings were stored."
+            live.append(text or step_id)
+            findings.append(
+                {
+                    "observation_id": observation_id,
+                    "step_id": step_id,
+                    "summary": text or step_id,
+                    "action_key": structured.get("action_key"),
+                    "result_count": structured.get("result_count"),
+                }
+            )
     from app.services.reasoning_evidence_pipeline import label_claim
 
     if not live:
@@ -165,20 +187,38 @@ def conclude_diagnostic(
             "status": "insufficient_evidence",
             "message": INSUFFICIENT_EVIDENCE,
             "observed": [],
+            "findings": [],
             "labels": [
                 {"text": INSUFFICIENT_EVIDENCE, "label": label_claim(insufficient_evidence=True)},
             ],
         }
-    observed = "; ".join(live[:5])
-    fact = f"Live reads returned: {observed}."
+    fact = live[0]
+    if len(live) > 1:
+        fact = " ".join(live[:5])
     inference = "That is not a causal explanation of why the metric moved."
+    limitation = (
+        "I can use this live sample to describe what the connected system returned. "
+        "I cannot establish why a business outcome changed without a comparable window "
+        "and the relevant missing sources."
+    )
+    recommendation = (
+        "If you want a cause, connect the missing source or ask me to refresh a named period."
+    )
+    message = f"{fact}\n\n{inference} {limitation}\n\n{recommendation}"
+    fact_label = {
+        "text": fact,
+        "label": label_claim(live_observation=True),
+        "observation_id": findings[0].get("observation_id") if findings else None,
+    }
     return {
         "sufficient": True,
         "status": "observed_only",
-        "message": f"{fact} {inference}",
+        "message": message,
         "observed": live,
+        "findings": findings,
         "labels": [
-            {"text": fact, "label": label_claim(live_observation=True)},
+            fact_label,
             {"text": inference, "label": label_claim(live_observation=True, causal=True)},
+            {"text": recommendation, "label": label_claim(recommended_action=True)},
         ],
     }

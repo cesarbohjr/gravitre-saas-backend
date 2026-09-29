@@ -533,13 +533,40 @@ def bind_finished_work(
     if plan_id:
         markdown_bits.append("")
         markdown_bits.append(f"Plan `{plan_id}`")
+    structured_rows = []
+    for row in source_rows:
+        blob = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+        for key in ("rows", "items", "contacts", "deals", "results"):
+            maybe = blob.get(key)
+            if isinstance(maybe, list) and maybe:
+                structured_rows = [item for item in maybe if isinstance(item, dict)][:25]
+                break
+        if structured_rows:
+            break
+    if structured_rows:
+        keys = list(structured_rows[0].keys())[:6]
+        markdown_bits.append("")
+        markdown_bits.append("| " + " | ".join(str(k) for k in keys) + " |")
+        markdown_bits.append("| " + " | ".join("---" for _ in keys) + " |")
+        for item in structured_rows[:12]:
+            markdown_bits.append(
+                "| " + " | ".join(str(item.get(k) or "")[:80] for k in keys) + " |"
+            )
     markdown = "\n".join(markdown_bits)
+    kind = "table" if structured_rows else "executive_report"
+    lowered = f"{report_title} {diagnosis}".lower()
+    if "brief" in lowered:
+        kind = "brief"
+    elif "action plan" in lowered or lowered.startswith("plan"):
+        kind = "action_plan"
+    elif "research" in lowered:
+        kind = "research_summary"
     seed = plan_id or (
         str(source_rows[-1].get("observation_id") or source_rows[-1].get("step_id")) if source_rows else outcome
     )
     artifact = {
         "artifact_id": f"report:{seed or 'work'}",
-        "kind": "report",
+        "kind": kind,
         "title": report_title,
         "preview": diagnosis[:280],
         "mime_type": "text/markdown",
@@ -554,6 +581,10 @@ def bind_finished_work(
             ][:8],
             "code": markdown,
             "previewFormat": "markdown",
+            "exportable": True,
+            "deliverable_kind": kind,
+            "bound_to_plan": bool(plan_id),
+            "rows": structured_rows[:25],
         },
     }
     prior = [row for row in (state.get(WORK_ARTIFACTS_KEY) or []) if isinstance(row, dict)]
@@ -593,6 +624,41 @@ def reconstruct_execution_result(
         "cancelled",
         "partial",
     }
+    rows: list[dict[str, Any]] = []
+    maybe_meta_rows = meta.get("rows")
+    if isinstance(maybe_meta_rows, list) and maybe_meta_rows:
+        rows = [item for item in maybe_meta_rows if isinstance(item, dict)]
+    observations = [row for row in (state.get("execution_observations") or []) if isinstance(row, dict)]
+    if not rows:
+        for obs in reversed(observations):
+            blob = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
+            maybe = blob.get("rows")
+            if isinstance(maybe, list) and maybe:
+                rows = [item for item in maybe if isinstance(item, dict)]
+                break
+    evidence = state.get("computer_browser_evidence") if isinstance(state.get("computer_browser_evidence"), dict) else {}
+    visits = [item for item in (evidence.get("visits") or []) if isinstance(item, dict)] if evidence else []
+    screenshot_digest = str(evidence.get("screenshot_digest") or "").strip() or None if evidence else None
+    if not screenshot_digest:
+        for visit in reversed(visits):
+            digest = str(visit.get("screenshot_digest") or "").strip()
+            if digest:
+                screenshot_digest = digest
+                break
+    if not rows:
+        maybe = evidence.get("submitted_fields") if evidence else None
+        if isinstance(maybe, list):
+            rows = [item for item in maybe if isinstance(item, dict)]
+    if not rows and visits:
+        rows = [
+            {
+                "step": str(index),
+                "title": str(row.get("title") or ""),
+                "url": str(row.get("url") or ""),
+                "action": str(row.get("action") or ""),
+            }
+            for index, row in enumerate(visits, start=1)
+        ]
     result = ExecutionResult(
         success=success,
         entity_type="report",
@@ -603,10 +669,44 @@ def reconstruct_execution_result(
         structured={
             "format": "markdown",
             "content": markdown,
+            "code": markdown,
+            "previewFormat": "markdown",
             "title": report.get("title"),
-            "plan_id": meta.get("plan_id"),
+            "plan_id": meta.get("plan_id") or (plan.plan_id if plan is not None else None),
             "outcome": outcome or terminal or ("completed" if success else "failed"),
             "artifacts": artifacts,
+            "rows": rows,
+            "observation_ids": list(meta.get("observation_ids") or [])[:8],
+            "exportable": bool(meta.get("exportable", True)),
+            "execution_path": meta.get("execution_path")
+            or (
+                "computer_browser_read"
+                if plan is not None and plan.source == "computer_execution"
+                else "catalog_search_eligible"
+                if plan is not None and plan.source == "catalog_search"
+                else "entity_join_store"
+                if plan is not None and plan.source == "entity_join_store"
+                else None
+            ),
+            "recorded_at": meta.get("recorded_at"),
+            "kind": report.get("kind"),
+            "visits": visits,
+            "screenshot_digest": screenshot_digest,
+            "claim_labels": (
+                (state.get("diagnostic_conclusion") or {}).get("labels")
+                if isinstance(state.get("diagnostic_conclusion"), dict)
+                else []
+            ),
+            "missing_sources": list(
+                (state.get("diagnostic_conclusion") or {}).get("missing_sources") or []
+            )
+            if isinstance(state.get("diagnostic_conclusion"), dict)
+            else [],
+            "provider_reinvoked": bool(
+                (state.get("diagnostic_conclusion") or {}).get("provider_reinvoked")
+            )
+            if isinstance(state.get("diagnostic_conclusion"), dict)
+            else False,
         },
         artifacts=artifacts,
         error_code=None if success else (outcome or terminal or "WORK_NOT_COMPLETE"),

@@ -1,0 +1,44 @@
+# Gravitre product-experience contracts (core → 3.0 Plus)
+
+Version: 2026-09-24. Canonical functional state. Presentation owned by the 3.0 Plus frontend agent. Do not redesign Window Manager, voice orb, or Intelligence layouts here.
+
+## Shared identity
+
+| Field | Owner | Notes |
+|---|---|---|
+| `conversation_id` | core | Survives text, HTTP Talk, Pipecat WS |
+| `execution_plan.plan_id` | core | SoT. Follow-ups keep the same id |
+| `pending_task` / `pending_action` | core | Spoken and typed confirm the same claim |
+| `execution_observations[]` | core | Canonical outcomes |
+| `work_artifacts[]` / `durable_deliverable` | core | Bound to `plan_id`, `observation_ids` |
+| `proactive_operator[]` | core | Ranked READ notices; `write_allowed` always false |
+
+## Voice
+
+Pipecat `/api/voice/pipecat/ws` uses the same `conversation_id` as chat. Confirm speech claims the frozen PendingAction. Ambiguous speech does not execute.
+
+## Artifacts
+
+`work_artifacts[].kind`: `executive_report` \| `table` \| `brief` \| `action_plan` \| `research_summary`. Markdown in `metadata.code`. `exportable: true`. Reconstruct via GET `/api/assistant/conversation/{id}/state` — no provider re-invoke. Listing contact-count binds `kind=table` from the provider `total`. Resume phrases (`Show me that table`) must not re-invoke HubSpot.
+
+Presentation: Command OS `ChatExecutionPanel` and `GravitreAIWorkCanvas` consume `execution_result.structured.rows` / `work_artifacts[]`. There is no second UI artifact model.
+
+Browser artifact panel LIVE_UI_PROVEN remains **PENDING** (owner-live frontend authentication). Command OS harness presentation at `/e2e/execution-result` is **harness-only** and is not LIVE_UI_PROVEN. BLOCKED_EXTERNAL for the expired-trial browser panel is unchanged.
+
+## Computer / browser
+
+`classify_execution_strategy`: `api_native` (ActionSpec) \| `browser_cdp` (public URL Chromium READ session) \| `computer_use` (Playwright interact, flag + approval) \| `hybrid`. Observation: `{success,url,action,screenshot_digest,dom_excerpt,cdp_trace_id,approval_id,visits[]}`. No paid CDP vendor started. httpx `browser_agent_read` remains the API-gap fetch helper and is not this Computer Use slice.
+
+Real-world Computer Use WRITE: **BLOCKED_NO_AUTHORIZED_TARGET**. Do not invent a synthetic form or repeat httpbin.
+
+## Hold
+
+Physical mic = HUMAN_EXPERIENCE_PENDING. Owner-live Plus/UI = PENDING. Closed latency and artifact slices stay closed.
+
+## Proactive attention
+
+GET/chat `What needs my attention?` → `execution_path=proactive_attention_3_0_j`. Zero notices when evidence is missing. Positive notices require source-backed readiness/auth evidence.
+
+## Show the work
+
+Deferred. Do not emit a production checklist stream yet.

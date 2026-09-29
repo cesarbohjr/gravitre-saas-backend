@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-09-23T20:20:12.730912+00:00",
+  "health_sha": "a5796bf40613f14aabc25ddc35394b749c1b82c3",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "turns": [
+    {
+      "prompt": "How is my company doing?",
+      "conversation_id": "61973eb5-e61d-4db6-8e3d-482e1f7ed3d9",
+      "first_ms": 22647,
+      "score": {
+        "has_sections": false,
+        "canned_only_25": false,
+        "invents_ga": false,
+        "excerpt": "From the connected CRM I received 25 deals in this sample.\nWhat is happening: HubSpot returned those records. Stage mix in this sample: appointmentscheduled (20), closedwon (3), closedlost (2). No numeric amounts were present on these rows, so I am not stating a pipeline value.\nWhat appears important: The largest stage bucket in this sample is appointmentscheduled. Named examples: Gravitre Smoke Deal c8bdd6304fd641, Gravitre Smoke Deal e020afe818e34c, Gravitre Smoke Deal 07baace23a2a42.\nWhat I c"
+      },
+      "follow_up": {
+        "has_sections": false,
+        "canned_only_25": false,
+        "invents_ga": false,
+        "excerpt": "From the connected CRM I received 25 deals in this sample.\nWhat is happening: HubSpot returned those records. Stage mix in this sample: appointmentscheduled (20), closedwon (3), closedlost (2). No numeric amounts were present on these rows, so I am not stating a pipeline value.\nWhat appears important: The largest stage bucket in this sample is appointmentscheduled. Named examples: Gravitre Smoke Deal c8bdd6304fd641, Gravitre Smoke Deal e020afe818e34c, Gravitre Smoke Deal 07baace23a2a42.\nWhat I c"
+      },
+      "invokes": [
+        "tool.invoke.completed",
+        "tool.invoke.completed"
+      ]
+    },
+    {
+      "prompt": "business performance snapshot",
+      "conversation_id": "bede11c7-0470-457f-a536-2087db112f71",
+      "first_ms": 16983,
+      "score": {
+        "has_sections": false,
+        "canned_only_25": false,
+        "invents_ga": false,
+        "excerpt": "From the connected CRM I received 25 deals in this sample.\nWhat is happening: HubSpot returned those records. Stage mix in this sample: appointmentscheduled (20), closedwon (3), closedlost (2). No numeric amounts were present on these rows, so I am not stating a pipeline value.\nWhat appears important: The largest stage bucket in this sample is appointmentscheduled. Named examples: Gravitre Smoke Deal c8bdd6304fd641, Gravitre Smoke Deal e020afe818e34c, Gravitre Smoke Deal 07baace23a2a42.\nWhat I c"
+      },
+      "follow_up": null,
+      "invokes": [
+        "tool.invoke.completed"
+      ]
+    },
+    {
+      "prompt": "Show my deals",
+      "conversation_id": "3f2ec813-f7e6-4979-9066-d30e35b47fdf",
+      "first_ms": 12708,
+      "score": {
+        "has_sections": false,
+        "canned_only_25": false,
+        "invents_ga": false,
+        "excerpt": "From the connected CRM I received 25 deals in this sample.\nWhat is happening: HubSpot returned those records. Stage mix in this sample: appointmentscheduled (20), closedwon (3), closedlost (2). No numeric amounts were present on these rows, so I am not stating a pipeline value.\nWhat appears important: The largest stage bucket in this sample is appointmentscheduled. Named examples: Gravitre Smoke Deal c8bdd6304fd641, Gravitre Smoke Deal e020afe818e34c, Gravitre Smoke Deal 07baace23a2a42.\nWhat I c"
+      },
+      "follow_up": null,
+      "invokes": [
+        "tool.invoke.completed"
+      ]
+    }
+  ],
+  "all_sections": false,
+  "no_canned_only": true
+}

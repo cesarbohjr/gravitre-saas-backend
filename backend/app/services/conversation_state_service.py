@@ -58,6 +58,9 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     # 3.0-D — finished-work reports must survive GET /state and persist merge.
     "durable_deliverable": None,
     "work_artifacts": [],
+    "diagnostic_conclusion": None,
+    "repair_budget": None,
+    "repair_error_memory": [],
     # Phase E5 — governance continuation (confirmation/clarification/approval).
     "pending_action": None,
     # Phase D — unified turn trace (gateway → compose).
@@ -71,6 +74,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "capability_route_reason": None,
     "cognitive_resolution_message": None,
     "cognitive_resolution_needs": None,
+    # READ-only Chromium visits must survive get_task_state normalize.
+    "computer_browser_evidence": None,
 }
 
 

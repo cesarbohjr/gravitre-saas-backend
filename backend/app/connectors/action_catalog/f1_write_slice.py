@@ -16,6 +16,7 @@ F1_WRITE_CATALOG_ACTIONS: frozenset[str] = frozenset(
         "gmail.messages.send",
         "slack.post_message",
         "hubspot.contacts.create",
+        "browser_agent.interact",
     }
 )
 
@@ -28,6 +29,7 @@ NON_AUTO_APPROVE_RISK_CLASSES: frozenset[str] = frozenset(
         "hr",
         "security",
         "crm_create",
+        "browser_interact",
     }
 )
 
@@ -194,6 +196,34 @@ _OVERLAYS: dict[str, dict[str, Any]] = {
         "execution_adapter": "hubspot.contacts.create",
         "observation_adapter": "hubspot_contacts_create_observation",
     },
+    "browser_agent.interact": {
+        "capabilities": ("computer.browser.interact",),
+        "required_parameters": ("url", "actions"),
+        "optional_parameters": (),
+        "parameter_source_rules": (
+            _rule(
+                "url",
+                "USER_EXPLICIT",
+                "TASK_CONTEXT",
+                required_by_api=True,
+                required_from_user=True,
+            ),
+            _rule(
+                "actions",
+                "USER_EXPLICIT",
+                "TASK_CONTEXT",
+                required_by_api=True,
+                required_from_user=True,
+            ),
+        ),
+        "resource_requirements": (),
+        "auth_scope_requirements": (),
+        "availability_requirements": (),
+        "governance_classification": "write",
+        "risk_class": "browser_interact",
+        "execution_adapter": "browser_agent.interact",
+        "observation_adapter": "browser_interact_observation",
+    },
 }
 
 
@@ -210,3 +240,29 @@ def requires_write_approval_always(action_key: str, *, risk_class: str | None = 
 
 def registry_write_action_key(action_key: str) -> str:
     return registry_action_key(action_key)
+
+
+def internal_f1_write_spec(action_key: str) -> Any:
+    """HMAC ActionSpec that is not a customer catalog vendor row."""
+    key = catalog_action_key(action_key)
+    if key != "browser_agent.interact":
+        return None
+    from app.connectors.action_catalog.f1_read_slice import materialize_action_spec
+    from app.connectors.action_catalog.models import ActionSpec
+
+    return materialize_action_spec(
+        ActionSpec(
+            id="browser_agent.interact",
+            name="Fill or submit a public browser form",
+            description=(
+                "Fill or submit a public browser form after HMAC confirm. "
+                "Use when the user asks to fill the httpbin.org public form. "
+                "Never use for HubSpot or other API-native writes."
+            ),
+            tier="v2",
+            kind="write",
+            scopes=("browser_agent:interact", "browser_agent:*"),
+            destructive=True,
+            requires_approval=True,
+        )
+    )

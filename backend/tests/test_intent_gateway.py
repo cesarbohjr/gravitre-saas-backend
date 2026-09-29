@@ -93,6 +93,15 @@ async def test_hello_there_and_capability_one_liner_shortcut_at_threshold() -> N
     )
     assert hello.action == "shortcut"
     assert hello.candidate_id == "phrase_bank"
+    class_a = await evaluate_intent_gateway(
+        GatewayContext(
+            message="Good morning. Just say hello in one short sentence. Do not look anything up.",
+            spoken_mode=True,
+            org_id="org",
+        )
+    )
+    assert class_a.action == "shortcut"
+    assert class_a.candidate_id == "phrase_bank"
     assert hello.confidence is not None and hello.confidence >= INTENT_GATEWAY_THRESHOLD
     assert capability.action == "shortcut"
     assert capability.candidate_id in {"phrase_bank", "meta_capability"}
