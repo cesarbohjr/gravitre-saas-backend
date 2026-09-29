@@ -11,6 +11,8 @@ describe("provider-neutral dataset sources", () => {
     expect(api).toMatch(/\/api\/training\/datasets\/\$\{datasetId\}\/sources/)
     expect(api).toMatch(/providerSpecificBehavior/)
     expect(api).toMatch(/materializationAutomatic/)
+    expect(api).toMatch(/dataset-source-providers/)
+    expect(api).toMatch(/searchDatasetSourceProvider/)
   })
 
   it("keeps external source inspection inside Model Studio", () => {
