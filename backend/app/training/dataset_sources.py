@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from app.core.safe_dict import safe_normalize_stored_dict
+
 
 class DatasetSourceAccessMode(StrEnum):
     REFERENCE = "reference"
@@ -173,12 +175,6 @@ def source_ref_from_row(row: dict[str, Any]) -> DatasetSourceRef:
         license_name=(
             str(row.get("license_name")) if row.get("license_name") is not None else None
         ),
-        provenance=(
-            dict(row.get("provenance")) if isinstance(row.get("provenance"), dict) else {}
-        ),
-        source_metadata=(
-            dict(row.get("source_metadata"))
-            if isinstance(row.get("source_metadata"), dict)
-            else {}
-        ),
+        provenance=safe_normalize_stored_dict(row, key="provenance"),
+        source_metadata=safe_normalize_stored_dict(row, key="source_metadata"),
     )
