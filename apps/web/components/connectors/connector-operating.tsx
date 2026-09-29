@@ -16,7 +16,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { connectorVendorKey } from "@/lib/connectors"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
-import { allActions, type ConnectorActionCatalogResponse, type ConnectorActionDefinition } from "@/lib/connector-actions"
+import type { ConnectorActionDefinition } from "@/lib/connector-actions"
+import {
+  capabilityActionToConnectorAction,
+  type CapabilitySnapshot,
+} from "@/lib/capabilities"
 import { cn } from "@/lib/utils"
 
 /** Structural subset of the Connectors page model; only fields the backend really sends. */
@@ -58,20 +62,28 @@ export type VendorCapability = {
 
 /** Per-vendor action catalog (GET /api/connectors/catalog/actions): static product data, not usage. */
 export function useVendorCapabilities(enabled: boolean): Map<string, VendorCapability> {
-  const { data } = useSWR<ConnectorActionCatalogResponse>(
-    enabled ? "/api/connectors/catalog/actions" : null,
+  const { data } = useSWR<CapabilitySnapshot>(
+    enabled ? "/api/capabilities" : null,
     apiFetcher,
     { revalidateOnFocus: false, dedupingInterval: 300_000 },
   )
   return useMemo(() => {
     const map = new Map<string, VendorCapability>()
-    for (const vendor of data?.vendors ?? []) {
-      const actions = allActions(vendor).filter((a) => a.implemented)
+    for (const vendor of data?.catalogConnectors ?? []) {
+      const canonical = (data?.actions ?? []).filter(
+        (action) => action.vendor === vendor.vendor && action.implemented,
+      )
+      const actions = canonical.map(capabilityActionToConnectorAction)
       map.set(connectorVendorKey(vendor.vendor), {
-        read: actions.filter((a) => a.kind === "read").length,
-        write: actions.filter((a) => a.kind === "write").length,
-        advanced: actions.filter((a) => a.kind === "advanced").length,
-        approval: actions.filter((a) => a.requiresApproval).length,
+        read: canonical.filter((action) => action.access === "read").length,
+        write: canonical.filter((action) => action.access === "write").length,
+        advanced: canonical.filter((action) => action.kind === "advanced").length,
+        approval: canonical.filter(
+          (action) =>
+            action.runtimeRequiresUserApproval ??
+            action.catalogRequiresWriteApproval ??
+            action.requires_approval,
+        ).length,
         actions,
       })
     }
