@@ -22,9 +22,12 @@ from app.services.training_service import (
 from app.training.dataset_sources import (
     DatasetSourceAccessMode,
     DatasetSourceRef,
+    get_dataset_source,
     list_dataset_sources,
     register_dataset_source,
+    source_ref_from_row,
 )
+from app.training.providers import get_dataset_provider_adapter
 from app.workers.queue import enqueue_training_job
 from app.workers.training_worker import create_training_worker
 
@@ -339,6 +342,61 @@ async def create_dataset_source(
         "providerNeutral": True,
         "credentialsStored": False,
         "fetchStarted": False,
+    }
+
+
+
+
+@router.get("/datasets/{dataset_id}/sources/{source_id}/sample")
+async def sample_dataset_source(
+    dataset_id: str,
+    source_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = 25,
+) -> dict:
+    """Return a bounded remote sample without materializing training records."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=400, detail="Sample limit must be between 1 and 100")
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    row = get_dataset_source(client, org_id, dataset_id, source_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Dataset source not found")
+
+    source = source_ref_from_row(row)
+    if source.access_mode != DatasetSourceAccessMode.SAMPLE:
+        raise HTTPException(
+            status_code=409,
+            detail="Dataset source is not configured for sample access",
+        )
+
+    try:
+        adapter = get_dataset_provider_adapter(source.provider)
+        sample = adapter.sample(source, limit=limit)
+    except LookupError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return {
+        "datasetId": dataset_id,
+        "sourceId": source_id,
+        "provider": source.provider,
+        "rows": list(sample.rows),
+        "rowCount": len(sample.rows),
+        "truncated": sample.truncated,
+        "revision": sample.revision,
+        "provenance": sample.provenance,
+        "materialized": False,
+        "recordsCreated": 0,
     }
 
 
