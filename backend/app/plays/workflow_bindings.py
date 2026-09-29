@@ -9,10 +9,23 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.plays.catalog import get_platform_play
-from app.workflows.repository import get_workflow_def
 from app.workflows.schema_sync import mirror_legacy_workflow_row_to_contract
 
 PLAY_CONFIG_KEY = "play"
+
+
+def _legacy_workflow_row(client: Any, org_id: str, workflow_id: str) -> dict[str, Any] | None:
+    rows = (
+        client.table("workflow_defs")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("id", workflow_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return dict(rows[0]) if rows else None
 
 
 
@@ -83,7 +96,7 @@ def bind_play_to_workflow(
     if play is None:
         raise ValueError("Play not found")
 
-    existing = get_workflow_def(client, org_id, workflow_id)
+    existing = _legacy_workflow_row(client, org_id, workflow_id)
     if existing is None:
         raise LookupError("Workflow not found")
 
@@ -128,7 +141,7 @@ def unbind_play_from_workflow(
     workflow_id: str,
     environment_name: str,
 ) -> dict[str, Any]:
-    existing = get_workflow_def(client, org_id, workflow_id)
+    existing = _legacy_workflow_row(client, org_id, workflow_id)
     if existing is None:
         raise LookupError("Workflow not found")
 
