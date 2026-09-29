@@ -20,3 +20,19 @@ def test_unknown_dataset_provider_fails_closed():
         assert "Unsupported dataset provider" in str(exc)
     else:
         raise AssertionError("expected unsupported provider refusal")
+
+
+def test_huggingface_locator_rejects_urls_and_credentials_before_network():
+    provider = get_external_dataset_provider("huggingface")
+    for locator in (
+        "https://huggingface.co/datasets/org/example",
+        "org/example?token=secret",
+        "org/example#fragment",
+        "org/example?api_key=secret",
+    ):
+        try:
+            provider.inspect(locator)
+        except ValueError as exc:
+            assert "repository id" in str(exc)
+        else:
+            raise AssertionError(f"expected unsafe locator refusal: {locator}")
