@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -12,6 +12,11 @@ from app.config import Settings, get_settings
 from app.core.supabase_response import response_error
 from app.services.agent_finetune_service import assign_trained_model_to_agent, list_deployable_fine_tuned_models
 from app.services.handoff_service import get_agent
+from app.services.external_dataset_providers import (
+    inspect_external_dataset,
+    list_external_dataset_providers,
+    search_external_datasets,
+)
 from app.services.training_service import (
     is_schema_unavailable_error,
     list_custom_instructions,
@@ -94,6 +99,78 @@ def _raise_if_response_error(response: Any, *, not_found: str | None = None) -> 
         )
     if error:
         raise HTTPException(status_code=500, detail=str(error))
+
+
+@router.get("/external-datasets/providers")
+async def list_external_dataset_provider_routes(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    providers = list_external_dataset_providers()
+    return {
+        "providers": providers,
+        "count": len(providers),
+        "mutation": False,
+        "materialization": "explicit_only",
+    }
+
+
+@router.get("/external-datasets/search")
+async def search_external_dataset_routes(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    provider: str = Query(..., min_length=1),
+    q: str = Query(..., min_length=1),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    try:
+        rows = search_external_datasets(provider, q, limit=limit)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:  # provider/network errors stay explicit
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Dataset provider search failed: {exc}",
+        ) from exc
+    return {
+        "provider": provider,
+        "query": q,
+        "datasets": rows,
+        "count": len(rows),
+        "mutation": False,
+    }
+
+
+@router.get("/external-datasets/inspect")
+async def inspect_external_dataset_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    provider: str = Query(..., min_length=1),
+    dataset_id: str = Query(..., alias="datasetId", min_length=1),
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    try:
+        dataset = inspect_external_dataset(provider, dataset_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Dataset provider inspection failed: {exc}",
+        ) from exc
+    return {
+        "provider": provider,
+        "dataset": dataset,
+        "mutation": False,
+        "materialized": False,
+    }
 
 
 @router.get("/datasets")
