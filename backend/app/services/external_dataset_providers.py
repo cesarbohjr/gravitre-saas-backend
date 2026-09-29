@@ -92,6 +92,12 @@ class HuggingFaceDatasetProvider:
         did = str(dataset_id or "").strip().strip("/")
         if not did:
             raise ValueError("dataset_id is required")
+        lowered = did.lower()
+        if "://" in did or "?" in did or "#" in did or any(
+            marker in lowered
+            for marker in ("token=", "api_key=", "apikey=", "client_secret=", "authorization=")
+        ):
+            raise ValueError("dataset_id must be a provider repository id without credentials or URL parameters")
         encoded = quote(did, safe="/")
         with httpx.Client(base_url=self.BASE, headers=self._headers(), timeout=20.0) as client:
             response = client.get(f"/api/datasets/{encoded}")
