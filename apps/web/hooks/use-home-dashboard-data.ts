@@ -7,6 +7,8 @@ import {
   approvalsApi,
   metricsApi,
   agentsApi,
+  playsApi,
+  type PlayListItem,
 } from "@/lib/api"
 import {
   normalizeAiOsStatus,
@@ -40,6 +42,7 @@ export type HomeDashboardData = {
   readyModelCount: number | null
   learningVelocity: string | null
   mostUsedModel: string | null
+  plays: PlayListItem[]
 }
 
 function computeMostUsedModel(agents: Agent[]): string | null {
@@ -130,6 +133,11 @@ export function useHomeDashboardData(enabled: boolean, range: DashboardRange = "
     () => agentsApi.list(),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
+  const { data: playsData } = useSWR(
+    enabled ? "home/plays" : null,
+    () => playsApi.list(),
+    { revalidateOnFocus: false, shouldRetryOnError: false, refreshInterval: 60_000 },
+  )
 
   const agents = agentsList?.agents ?? []
   const activeAgents = agents.filter((agent) => {
@@ -189,6 +197,7 @@ export function useHomeDashboardData(enabled: boolean, range: DashboardRange = "
         ? learningStatus.learning_velocity
         : null,
     mostUsedModel: agents.length > 0 ? computeMostUsedModel(agents) : null,
+    plays: playsData?.plays ?? [],
   }
 
   return data
