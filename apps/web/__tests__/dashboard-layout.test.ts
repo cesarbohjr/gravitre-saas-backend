@@ -75,3 +75,21 @@ describe("dashboard presets", () => {
     }
   })
 })
+
+
+describe("Outcome plays dashboard integration", () => {
+  it("loads Plays from the canonical /api/plays endpoint", () => {
+    const api = readFileSync(resolve(__dirname, "../lib/api.ts"), "utf8")
+    const hook = readFileSync(resolve(__dirname, "../hooks/use-home-dashboard-data.ts"), "utf8")
+    expect(api).toMatch(/apiUrl\("\/api\/plays"\)/)
+    expect(hook).toMatch(/playsApi\.list\(\)/)
+  })
+
+  it("renders Play readiness inside the existing Dashboard Measure surface", () => {
+    const dashboard = readFileSync(resolve(__dirname, "../components/home/home-dashboard.tsx"), "utf8")
+    expect(dashboard).toMatch(/Outcome plays/)
+    expect(dashboard).toMatch(/ACT WITH APPROVAL/)
+    expect(dashboard).toMatch(/ACT WITHIN POLICY/)
+    expect(dashboard).not.toMatch(/verified revenue recovered/i)
+  })
+})
