@@ -142,16 +142,22 @@ class HitlPolicyService:
 
         policies = self._load_enabled(client, org_id)
         if not policies:
-            # No HITL rules → auto-run writes/deletes unless a policy is configured.
+            # No HITL rows is not an allow-all. READ stays unattended; WRITE/DELETE
+            # require approval unless identity explicitly authorizes unattended.
+            needs_approval = kind in {"write", "delete"}
             return HitlDecision(
-                requires_approval=False,
+                requires_approval=needs_approval,
                 matched_policy_id=None,
                 matched_policy_name=None,
                 action_kind=kind,
-                required_approvals=0,
-                approver_roles=[],
+                required_approvals=1 if needs_approval else 0,
+                approver_roles=list(SAFE_DEFAULT_APPROVER_ROLES) if needs_approval else [],
                 approver_user_ids=[],
-                reason="No HITL policies configured (auto-run)",
+                reason=(
+                    "No HITL policies configured (approval required)"
+                    if needs_approval
+                    else "No HITL policies configured (read)"
+                ),
             )
 
         dept_ids = {str(d) for d in (department_ids or []) if d}
@@ -173,15 +179,20 @@ class HitlPolicyService:
                 candidates.append((2, policy))
 
         if not candidates:
+            needs_approval = kind in {"write", "delete"}
             return HitlDecision(
-                requires_approval=False,
+                requires_approval=needs_approval,
                 matched_policy_id=None,
                 matched_policy_name=None,
                 action_kind=kind,
-                required_approvals=0,
-                approver_roles=[],
+                required_approvals=1 if needs_approval else 0,
+                approver_roles=list(SAFE_DEFAULT_APPROVER_ROLES) if needs_approval else [],
                 approver_user_ids=[],
-                reason=f"No HITL policy covers {kind} for this subject (auto-run)",
+                reason=(
+                    f"No HITL policy covers {kind} for this subject (approval required)"
+                    if needs_approval
+                    else f"No HITL policy covers {kind} for this subject (read)"
+                ),
             )
 
         candidates.sort(key=lambda item: item[0])
@@ -199,15 +210,17 @@ class HitlPolicyService:
 
     def _load_enabled(self, client: Any, org_id: str) -> list[dict[str, Any]]:
         try:
-            return (
+            data = (
                 client.table("hitl_policies")
                 .select("*")
                 .eq("org_id", org_id)
                 .eq("enabled", True)
                 .execute()
                 .data
-                or []
             )
+            if not isinstance(data, list):
+                return []
+            return [self._serialize(row) for row in data]
         except Exception as exc:  # noqa: BLE001
             logger.warning("hitl load failed org=%s error=%s", org_id, exc)
             return []

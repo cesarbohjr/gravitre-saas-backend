@@ -101,7 +101,9 @@ def test_platform_write_tools_are_write_actions():
         assert invoke == action
         assert integration == "platform"
         assert label
-        assert block_react_write_execution(tool, {"goal": "x", "query": "x", "task": "x"}, registry) is None
+        blocked = block_react_write_execution(tool, {"goal": "x", "query": "x", "task": "x"}, registry)
+        assert blocked is not None
+        assert blocked["pending_approval"] is True
 
 
 def test_platform_write_tools_block_when_hitl_requires_approval():
@@ -139,7 +141,38 @@ def test_assistant_read_tools_remain_ungated():
         assert block_react_write_execution(tool, {}, registry) is None
 
 
-def test_block_react_write_auto_passes_without_hitl_policy():
+def _empty_hitl_client() -> MagicMock:
+    client = MagicMock()
+
+    def table(name: str):
+        mock = MagicMock()
+        mock.select.return_value = mock
+        mock.eq.return_value = mock
+        mock.execute.return_value = MagicMock(data=[])
+        return mock
+
+    client.table.side_effect = table
+    return client
+
+
+def test_block_react_write_requires_approval_without_hitl_policy():
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    blocked = block_react_write_execution(
+        "apollo_lists_create",
+        {"name": "MSP Prospects", "modality": "contacts"},
+        registry,
+        client=_empty_hitl_client(),
+        org_id="org-1",
+        user_id="user-1",
+    )
+    assert blocked is not None
+    assert blocked["pending_approval"] is True
+    assert blocked["error_code"] == WRITE_APPROVAL_REQUIRED
+
+
+def test_block_react_write_blocks_without_org_context():
     from app.services.tool_registry import get_tool_registry
 
     registry = get_tool_registry()
@@ -148,7 +181,8 @@ def test_block_react_write_auto_passes_without_hitl_policy():
         {"name": "MSP Prospects", "modality": "contacts"},
         registry,
     )
-    assert blocked is None
+    assert blocked is not None
+    assert blocked["pending_approval"] is True
 
 
 def test_block_react_write_blocks_when_hitl_requires_approval():
@@ -172,9 +206,15 @@ def test_block_react_write_blocks_when_hitl_requires_approval():
 
 
 @pytest.mark.asyncio
-async def test_react_engine_auto_runs_write_without_hitl_policy(tool_ctx: ToolContext):
+async def test_react_engine_blocks_write_without_hitl_policy(tool_ctx: ToolContext):
     from app.services.tool_registry import get_tool_registry
 
+    tool_ctx = ToolContext(
+        settings=SimpleNamespace(disable_connectors=False),
+        client=_empty_hitl_client(),
+        org_id="org-1",
+        actor_id="user-1",
+    )
     registry = get_tool_registry()
     registry.execute_tool = AsyncMock(return_value={"success": True, "result": {"id": "list-1"}})  # type: ignore[method-assign]
     engine = ReActEngine(settings=SimpleNamespace(disable_ai=False), registry=registry)
@@ -186,8 +226,9 @@ async def test_react_engine_auto_runs_write_without_hitl_policy(tool_ctx: ToolCo
         allowed_tool_names={"apollo_lists_create"},
     )
 
-    assert result["success"] is True
-    registry.execute_tool.assert_awaited_once()
+    assert result["success"] is False
+    assert result.get("pending_approval") is True
+    registry.execute_tool.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -594,4 +635,77 @@ def test_barge_in_blocks_write_commit_not_read() -> None:
         interrupt={"reason": "barge_in"},
     )
     assert read_ok is None
+
+
+def _autonomous_auto_run_identity():
+    from app.services.agent_identity_service import EffectiveAgentIdentity
+
+    return EffectiveAgentIdentity(
+        org_id="org-1",
+        agent_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        trust_level="autonomous",
+        allowed_tool_patterns=("*",),
+        allowed_action_kinds=frozenset({"read", "write"}),
+        allowed_data_scopes=(),
+        max_actions_per_day=None,
+        max_tokens_per_day=None,
+        max_spend_usd_per_day=None,
+        can_delegate=False,
+        approval_rule_overrides={"write": "auto_run"},
+    )
+
+
+def test_block_react_write_auto_runs_only_with_explicit_identity_policy():
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    with patch(
+        "app.services.agent_identity_service.resolve_effective_identity",
+        return_value=_autonomous_auto_run_identity(),
+    ):
+        blocked = block_react_write_execution(
+            "apollo_lists_create",
+            {"name": "MSP Prospects", "modality": "contacts"},
+            registry,
+            client=_empty_hitl_client(),
+            org_id="org-1",
+            user_id="user-1",
+            agent_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        )
+    assert blocked is None
+
+
+def test_trust_write_with_approval_cannot_auto_run():
+    from app.services.agent_identity_service import EffectiveAgentIdentity
+    from app.services.tool_registry import get_tool_registry
+
+    identity = EffectiveAgentIdentity(
+        org_id="org-1",
+        agent_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        trust_level="write_with_approval",
+        allowed_tool_patterns=("*",),
+        allowed_action_kinds=frozenset({"read", "write"}),
+        allowed_data_scopes=(),
+        max_actions_per_day=None,
+        max_tokens_per_day=None,
+        max_spend_usd_per_day=None,
+        can_delegate=False,
+        approval_rule_overrides={"write": "auto_run"},
+    )
+    registry = get_tool_registry()
+    with patch(
+        "app.services.agent_identity_service.resolve_effective_identity",
+        return_value=identity,
+    ):
+        blocked = block_react_write_execution(
+            "apollo_lists_create",
+            {"name": "MSP Prospects"},
+            registry,
+            client=_empty_hitl_client(),
+            org_id="org-1",
+            user_id="user-1",
+            agent_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        )
+    assert blocked is not None
+    assert blocked["pending_approval"] is True
 

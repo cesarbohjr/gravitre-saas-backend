@@ -54,3 +54,18 @@ def test_apply_auto_execute_clears_confirmation_for_trusted_step():
     }
     updated = apply_auto_execute_guardrails(plan, operator)
     assert updated["steps"][0]["explanation"]["confirmation_required"] is False
+
+
+def test_auto_with_approval_does_not_skip_steps_that_require_approval():
+    operator = {"execution_mode": "auto_with_approval"}
+    step = {
+        "step_type": "execute_workflow",
+        "explanation": {
+            "executable": True,
+            "draft_only": False,
+            "admin_required": False,
+            "approval_required": True,
+            "permissions_required": ["member"],
+        },
+    }
+    assert step_is_auto_eligible(operator, step) is False

@@ -73,7 +73,7 @@ def step_is_auto_eligible(operator: dict[str, Any], step: dict[str, Any]) -> boo
     if explanation.get("admin_required"):
         return False
     approval_required = bool(explanation.get("approval_required"))
-    if approval_required and mode == "auto_trusted_scopes":
+    if approval_required:
         return False
     if mode == "auto_with_approval":
         return True
