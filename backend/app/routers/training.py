@@ -11,6 +11,10 @@ from app.auth.dependencies import get_current_user, get_org_context, require_adm
 from app.config import Settings, get_settings
 from app.core.supabase_response import response_error
 from app.services.agent_finetune_service import assign_trained_model_to_agent, list_deployable_fine_tuned_models
+from app.services.dataset_source_service import (
+    create_dataset_source,
+    list_dataset_sources,
+)
 from app.services.handoff_service import get_agent
 from app.services.training_service import (
     is_schema_unavailable_error,
@@ -46,6 +50,23 @@ class DatasetBindingCreateRequest(BaseModel):
         pattern="^(agent|model|department|evaluation|play|workflow)$",
     )
     target_id: str = Field(..., alias="targetId", min_length=1)
+    metadata: dict = Field(default_factory=dict)
+
+    model_config = {"populate_by_name": True}
+
+
+class DatasetSourceCreateRequest(BaseModel):
+    provider: str = Field(..., min_length=1)
+    external_id: str = Field(..., alias="externalId", min_length=1)
+    display_name: str | None = Field(default=None, alias="displayName")
+    source_uri: str | None = Field(default=None, alias="sourceUri")
+    connection_ref: str | None = Field(default=None, alias="connectionRef")
+    access_mode: str = Field(
+        ...,
+        alias="accessMode",
+        pattern="^(reference|index|sample|materialized)$",
+    )
+    sample_limit: int | None = Field(default=None, alias="sampleLimit", ge=1)
     metadata: dict = Field(default_factory=dict)
 
     model_config = {"populate_by_name": True}
@@ -256,6 +277,77 @@ async def delete_dataset_binding(
     )
     _raise_if_response_error(response)
     return {"ok": True}
+
+
+@router.get("/datasets/{dataset_id}/sources")
+async def list_dataset_source_refs(
+    dataset_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    dataset = (
+        client.table("training_datasets")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("id", dataset_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    rows = list_dataset_sources(client, org_id, dataset_id)
+    return {
+        "sources": rows,
+        "count": len(rows),
+        "providerSpecificBehavior": False,
+        "materializationAutomatic": False,
+    }
+
+
+@router.post("/datasets/{dataset_id}/sources", status_code=status.HTTP_201_CREATED)
+async def create_dataset_source_ref(
+    dataset_id: str,
+    body: DatasetSourceCreateRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    dataset = (
+        client.table("training_datasets")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("id", dataset_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    try:
+        return create_dataset_source(
+            client,
+            org_id=org_id,
+            dataset_id=dataset_id,
+            provider=body.provider,
+            external_id=body.external_id,
+            access_mode=body.access_mode,
+            display_name=body.display_name,
+            source_uri=body.source_uri,
+            connection_ref=body.connection_ref,
+            sample_limit=body.sample_limit,
+            metadata=body.metadata,
+            created_by=user.get("user_id"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.delete("/datasets/{dataset_id}")
