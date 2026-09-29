@@ -18,7 +18,7 @@ Order of authority:
 | Phase -1 addendum | VERBATIM — recorded 2026-09-28 |
 | Phase -1 acceptance / sequencing | VERBATIM — recorded 2026-09-28 |
 | Owner-live gate directive | VERBATIM — recorded 2026-09-28 |
-| Phases 0–17 body | **NOT YET RECORDED** — the text is not present in this repository or in any agent transcript available on 2026-09-28. It must be pasted verbatim by Cesar into the section at the end of this file. It is not reconstructed here, to avoid a paraphrased substitute. |
+| Phases 0–17 body | **SOURCE GAP — NOT RECORDED VERBATIM**. The available repository/source material contains the Phase -1 addendum and sequencing references but not the complete original Phase 0–17 body. It is intentionally not reconstructed or paraphrased as if verbatim. Implementation evidence is tracked in the phase audit/decision/status documents. |
 
 Phase -1 results: `docs/platform-reconciliation/phase-minus-1-findings.md` (and the full product contract in
 local tag `local/capability-registry-phase-minus-1`).
@@ -895,8 +895,15 @@ Do not start that program earlier.
 
 ## 4. Phases 0–17 — Master Program body
 
-**NOT YET RECORDED.** Paste the full Phases 0–17 text verbatim below this line. Until it is recorded,
-the phase references in sections 2 and 3 are the only in-repo description of the program; they are
-sequencing only and are not the phase requirements.
+**SOURCE GAP — NOT RECORDED VERBATIM.** The currently available source record does not contain
+the complete original Phase 0–17 body. Do not fabricate or backfill a paraphrase under a
+"verbatim" label. The implemented phase evidence is recorded in
+`GRAVITRE_PLAYS_PHASE_0_ARCHITECTURE_AUDIT.md`,
+`GRAVITRE_PLAYS_DATASET_MODEL_STUDIO_AUDIT.md`,
+`GRAVITRE_PLAYS_OUTCOME_PERSISTENCE_DECISION.md`,
+`GRAVITRE_PLAYS_WORKFLOW_BINDING_DECISION.md`,
+`GRAVITRE_PLAYS_DASHBOARD_INTEGRATION_DECISION.md`,
+`GRAVITRE_PLAYS_PHASES_14_17_CLOSEOUT.md`, and
+`GRAVITRE_PLAYS_SEQUENCE_STATUS.md`.
 
 <!-- PHASES 0-17 VERBATIM BELOW -->
