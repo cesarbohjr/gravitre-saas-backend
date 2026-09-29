@@ -1768,6 +1768,35 @@ export const assistantApi = {
 }
 
 // ============ Training ============
+
+export type TrainingDatasetSource = {
+  id: string
+  dataset_id: string
+  provider: string
+  locator: string
+  revision?: string | null
+  access_mode: "reference" | "sample" | "index" | "materialize"
+  status: "configured" | "ready" | "error" | "disabled"
+  license_name?: string | null
+  provenance?: Record<string, unknown>
+  source_metadata?: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
+}
+
+export type TrainingDatasetSample = {
+  datasetId: string
+  sourceId: string
+  provider: string
+  rows: Record<string, unknown>[]
+  rowCount: number
+  truncated: boolean
+  revision?: string | null
+  provenance: Record<string, unknown>
+  materialized: false
+  recordsCreated: 0
+}
+
 export const trainingApi = {
   // Datasets
   listDatasets: () => fetcher<TrainingDatasetListResponse>(apiUrl("/api/training/datasets")),
@@ -1785,6 +1814,32 @@ export const trainingApi = {
     postJson<{ added: number; available?: number }>(
       apiUrl(`/api/training/datasets/${datasetId}/import-feedback?limit=${limit}`),
       {},
+    ),
+
+  listDatasetSources: (datasetId: string) =>
+    fetcher<{ sources: TrainingDatasetSource[]; count: number; providerNeutral: boolean; credentialsStored: boolean }>(
+      apiUrl(`/api/training/datasets/${datasetId}/sources`)
+    ),
+  createDatasetSource: (
+    datasetId: string,
+    data: {
+      provider: string
+      locator: string
+      accessMode: "reference" | "sample" | "index" | "materialize"
+      revision?: string
+      licenseName?: string
+      provenance?: Record<string, unknown>
+      sourceMetadata?: Record<string, unknown>
+    },
+  ) =>
+    postJson<TrainingDatasetSource & {
+      providerNeutral: boolean
+      credentialsStored: boolean
+      fetchStarted: boolean
+    }>(apiUrl(`/api/training/datasets/${datasetId}/sources`), data),
+  sampleDatasetSource: (datasetId: string, sourceId: string, limit = 10) =>
+    fetcher<TrainingDatasetSample>(
+      apiUrl(`/api/training/datasets/${datasetId}/sources/${sourceId}/sample?limit=${limit}`)
     ),
 
   // Jobs
