@@ -1768,6 +1768,22 @@ export const assistantApi = {
 }
 
 // ============ Training ============
+export type TrainingDatasetSource = {
+  id: string
+  dataset_id: string
+  provider: string
+  external_id: string
+  display_name?: string | null
+  source_uri?: string | null
+  connection_ref?: string | null
+  access_mode: "reference" | "index" | "sample" | "materialized"
+  materialization_status: "not_requested" | "pending" | "materialized" | "failed"
+  sample_limit?: number | null
+  metadata?: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
+}
+
 export const trainingApi = {
   // Datasets
   listDatasets: () => fetcher<TrainingDatasetListResponse>(apiUrl("/api/training/datasets")),
@@ -1775,6 +1791,30 @@ export const trainingApi = {
   createDataset: (data: { name: string; type: TrainingDatasetType; description?: string }) =>
     postJson<TrainingDataset>(apiUrl("/api/training/datasets"), data),
   deleteDataset: (id: string) => deleteRequest(apiUrl(`/api/training/datasets/${id}`)),
+  listDatasetSources: (datasetId: string) =>
+    fetcher<{
+      sources: TrainingDatasetSource[]
+      count: number
+      providerSpecificBehavior: boolean
+      materializationAutomatic: boolean
+    }>(apiUrl(`/api/training/datasets/${datasetId}/sources`)),
+  createDatasetSource: (
+    datasetId: string,
+    data: {
+      provider: string
+      externalId: string
+      displayName?: string
+      sourceUri?: string
+      connectionRef?: string
+      accessMode: TrainingDatasetSource["access_mode"]
+      sampleLimit?: number
+      metadata?: Record<string, unknown>
+    },
+  ) =>
+    postJson<TrainingDatasetSource>(
+      apiUrl(`/api/training/datasets/${datasetId}/sources`),
+      data,
+    ),
   uploadRecords: (datasetId: string, records: { input: string; expected_output: string }[]) =>
     postJson<{ added: number }>(apiUrl(`/api/training/datasets/${datasetId}/records`), { records }),
   importDocuments: (datasetId: string, documents: { title?: string; content: string }[]) =>
