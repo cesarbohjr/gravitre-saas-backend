@@ -60,7 +60,7 @@ export type VendorCapability = {
   actions: ConnectorActionDefinition[]
 }
 
-/** Per-vendor action catalog (GET /api/connectors/catalog/actions): static product data, not usage. */
+/** Per-vendor capability view derived from canonical GET /api/capabilities. */
 export function useVendorCapabilities(enabled: boolean): Map<string, VendorCapability> {
   const { data } = useSWR<CapabilitySnapshot>(
     enabled ? "/api/capabilities" : null,
