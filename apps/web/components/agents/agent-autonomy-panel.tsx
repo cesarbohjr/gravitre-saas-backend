@@ -8,30 +8,34 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { formatVendorLabel } from "@/lib/connectors"
 import { cn } from "@/lib/utils"
+import {
+  deriveAutonomyLabel,
+  type CapabilitySnapshot,
+} from "@/lib/capabilities"
 
 /**
- * Recorded agent_identity.trust_level values. These describe the stored policy
- * only: enforcement is not yet uniform across execution paths, so the panel
- * must not promise that a given write will or will not run unattended.
+ * Customer-facing autonomy labels derive from agent identity plus the
+ * canonical WRITE-governance snapshot. Missing policy always fails closed to
+ * ACT WITH APPROVAL.
  */
 export const AUTONOMY_LEVELS = [
   {
     id: "read_only",
-    label: "Read only",
+    label: "READ ONLY",
     icon: Eye,
-    summary: "Recorded policy: read and analyze only.",
+    summary: "Can inspect and analyze only.",
   },
   {
     id: "write_with_approval",
-    label: "Act with approval",
+    label: "ACT WITH APPROVAL",
     icon: Hand,
-    summary: "Recorded policy: writes wait for a human approval.",
+    summary: "Write actions are prepared and require human approval.",
   },
   {
     id: "autonomous",
-    label: "Act within policy",
+    label: "ACT WITHIN POLICY",
     icon: Zap,
-    summary: "Recorded policy: may act unattended where the runtime permits. Not confirmed per action.",
+    summary: "Only explicitly policy-authorized actions may run unattended.",
   },
 ] as const
 
@@ -82,9 +86,25 @@ export function AgentAutonomyPanel({ agentId, className }: { agentId: string; cl
   const { data: profile } = useSWR<CapabilityProfile>(agentId ? `/api/agents/${agentId}/capabilities` : null, apiFetcher, {
     revalidateOnFocus: false,
   })
+  const { data: capabilitySnapshot } = useSWR<CapabilitySnapshot>(
+    agentId ? "/api/capabilities" : null,
+    apiFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 },
+  )
 
   const record = status?.identity ?? null
-  const effectiveLevel = (status?.effective?.trustLevel ?? record?.trustLevel ?? null) as AutonomyLevelId | null
+  const storedTrustLevel = status?.effective?.trustLevel ?? record?.trustLevel ?? null
+  const canonicalLabel = deriveAutonomyLabel(
+    storedTrustLevel,
+    record?.approvalRuleOverrides,
+    capabilitySnapshot?.governance,
+  )
+  const effectiveLevel: AutonomyLevelId =
+    canonicalLabel === "READ ONLY"
+      ? "read_only"
+      : canonicalLabel === "ACT WITHIN POLICY"
+        ? "autonomous"
+        : "write_with_approval"
   const level = AUTONOMY_LEVELS.find((l) => l.id === effectiveLevel) ?? null
   const kinds = status?.effective?.allowedActionKinds?.length
     ? status.effective.allowedActionKinds
@@ -163,7 +183,7 @@ export function AgentAutonomyPanel({ agentId, className }: { agentId: string; cl
           {level?.id === "write_with_approval" ? (
             <span>Every write action</span>
           ) : level?.id === "autonomous" ? (
-            <span className="text-muted-foreground">Decided per action by the governed write runtime</span>
+            <span className="text-muted-foreground">Only explicitly policy-authorized actions can run unattended; high-risk actions still require approval.</span>
           ) : level?.id === "read_only" ? (
             <span className="text-muted-foreground">Not applicable</span>
           ) : (
