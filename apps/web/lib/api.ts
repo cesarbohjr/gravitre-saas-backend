@@ -2026,6 +2026,13 @@ export type PlayListItem = {
     executionAuthority: string
   }
   readiness: PlayReadinessSummary
+  workflowBindings: Array<{
+    workflowId: string
+    name?: string | null
+    status?: string | null
+    stage?: string | null
+  }>
+  workflowBindingCount: number
 }
 
 export const playsApi = {
