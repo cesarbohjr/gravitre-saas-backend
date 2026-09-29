@@ -20,12 +20,12 @@ CUSTOMER_RESCUE = PlayDefinition(
         ("zendesk", "intercom", "freshdesk"),
     ),
     required_read_action_groups=(
-        ("hubspot.contacts.search", "salesforce.accounts.get"),
+        ("hubspot.contacts.search", "salesforce.contacts.search"),
         ("zendesk.tickets.list", "intercom.conversations.list", "freshdesk.tickets.list"),
     ),
     write_action_groups=(
         ("hubspot.contacts.update", "salesforce.accounts.update"),
-        ("zendesk.tickets.update", "intercom.conversations.reply"),
+        ("zendesk.tickets.update", "intercom.conversations.reply", "freshdesk.tickets.update"),
     ),
 )
 
