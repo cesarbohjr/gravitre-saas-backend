@@ -34,6 +34,7 @@ export function ModelStudioStage({
   const router = useRouter()
   const [segment, setSegment] = useState<StudioSegment>("create")
   const [intent, setIntent] = useState<StudioIntentId | null>(null)
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null)
 
   const { data: modelsData, isLoading: modelsLoading } = useSWR(
     enabled && (segment === "evaluate" || segment === "deploy") ? "ml-models-list-studio" : null,
@@ -48,6 +49,13 @@ export function ModelStudioStage({
   const { data: datasetsData, isLoading: datasetsLoading } = useSWR(
     enabled && segment === "train" ? "training-datasets-studio" : null,
     () => trainingApi.listDatasets(),
+    { revalidateOnFocus: false },
+  )
+  const { data: datasetSourcesData, isLoading: datasetSourcesLoading } = useSWR(
+    enabled && segment === "train" && selectedDatasetId
+      ? `training-dataset-sources-studio:${selectedDatasetId}`
+      : null,
+    () => trainingApi.listDatasetSources(selectedDatasetId as string),
     { revalidateOnFocus: false },
   )
 
@@ -173,13 +181,68 @@ export function ModelStudioStage({
                   }}
                 />
               ) : (
-                <ul className="divide-y divide-divide border border-divide">
-                  {datasets.slice(0, 8).map((dataset) => (
-                    <li key={dataset.id} className="px-3 py-2 text-sm">
-                      {dataset.name}
-                    </li>
-                  ))}
-                </ul>
+                <div className="grid border border-divide lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)]">
+                  <ul className="divide-y divide-divide">
+                    {datasets.slice(0, 8).map((dataset) => {
+                      const selected = selectedDatasetId === dataset.id
+                      return (
+                        <li key={dataset.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDatasetId(dataset.id)}
+                            aria-pressed={selected}
+                            className={cn(
+                              "w-full px-3 py-2 text-left text-sm",
+                              selected
+                                ? "bg-[color:var(--g-surface-2)]"
+                                : "hover:bg-[color:var(--g-surface-2)]/50",
+                            )}
+                          >
+                            <span className="font-medium text-foreground">{dataset.name}</span>
+                            <span className={cn(TYPE.meta, "mt-0.5 block")}>
+                              {dataset.type} · {dataset.record_count ?? 0} records
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <div className="border-t border-divide p-3 lg:border-t-0 lg:border-l">
+                    {!selectedDatasetId ? (
+                      <p className={TYPE.meta}>
+                        Select a dataset to inspect external source references.
+                      </p>
+                    ) : datasetSourcesLoading ? (
+                      <p className={TYPE.meta}>Loading source references…</p>
+                    ) : (datasetSourcesData?.sources ?? []).length === 0 ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">No external sources</p>
+                        <p className={TYPE.meta}>
+                          This dataset uses local records only. External providers remain references until materialization is explicitly requested.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">External sources</p>
+                          <p className={TYPE.meta}>Provider-neutral references for this dataset.</p>
+                        </div>
+                        <ul className="divide-y divide-divide border-y border-divide">
+                          {(datasetSourcesData?.sources ?? []).map((source) => (
+                            <li key={source.id} className="py-2">
+                              <p className="text-sm font-medium text-foreground">
+                                {source.display_name || source.external_id}
+                              </p>
+                              <p className={TYPE.meta}>
+                                {source.provider} · {source.access_mode.replace("_", " ")} · {source.materialization_status.replace("_", " ")}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
               <Link
                 href={APP_ROUTES.training}
