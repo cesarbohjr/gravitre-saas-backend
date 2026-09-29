@@ -14,6 +14,7 @@ from app.capabilities.registry import connected_vendors
 from app.config import Settings, get_settings
 from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
 from app.plays.customer_rescue import observe_customer_rescue
+from app.plays.evidence import build_play_evidence_chain
 from app.plays.marketing_performance import list_marketing_performance_signals
 from app.plays.outcomes import list_play_business_results
 from app.plays.readiness import resolve_play_readiness
@@ -205,6 +206,37 @@ async def get_play_readiness(
         "play": _template_payload(play),
         "readiness": readiness.as_dict(),
         "executionAuthority": "canonical_workflow_runtime",
+    }
+
+
+
+
+@router.get("/{play_key}/outcomes/{outcome_id}/evidence")
+async def get_play_outcome_evidence(
+    play_key: str,
+    outcome_id: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    play = get_platform_play(play_key)
+    if play is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play not found")
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    chain = build_play_evidence_chain(
+        client,
+        org_id,
+        outcome_id,
+        play_key=play.key,
+    )
+    if chain is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Play business result not found",
+        )
+    return {
+        "playKey": play.key,
+        "evidence": chain,
     }
 
 
