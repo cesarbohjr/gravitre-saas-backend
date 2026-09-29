@@ -1830,6 +1830,42 @@ export const trainingApi = {
     }>(apiUrl(`/api/training/external-datasets/inspect?${params.toString()}`))
   },
 
+  listExternalDatasetReferences: (target?: { targetType?: string; targetId?: string }) => {
+    const params = new URLSearchParams()
+    if (target?.targetType) params.set("targetType", target.targetType)
+    if (target?.targetId) params.set("targetId", target.targetId)
+    const query = params.toString()
+    return fetcher<{
+      references: Array<{
+        id: string
+        provider: string
+        external_dataset_id: string
+        purpose: string
+        target_type: string
+        target_id: string
+        access_mode: "reference" | "sample" | "index"
+        provider_metadata: Record<string, unknown>
+        created_at?: string
+      }>
+      count: number
+    }>(apiUrl(`/api/training/external-datasets/references${query ? `?${query}` : ""}`))
+  },
+  createExternalDatasetReference: (data: {
+    provider: string
+    datasetId: string
+    purpose: "reference" | "benchmark" | "runtime_retrieval" | "rag" | "evaluation" | "testing" | "fine_tuning" | "training" | "synthetic" | "agent_benchmarking"
+    targetType: "agent" | "model" | "department" | "evaluation" | "play" | "workflow"
+    targetId: string
+    accessMode?: "reference" | "sample" | "index"
+    metadata?: Record<string, unknown>
+  }) =>
+    postJson<Record<string, unknown>>(
+      apiUrl("/api/training/external-datasets/references"),
+      data,
+    ),
+  deleteExternalDatasetReference: (referenceId: string) =>
+    deleteRequest(apiUrl(`/api/training/external-datasets/references/${referenceId}`)),
+
   // Datasets
   listDatasets: () => fetcher<TrainingDatasetListResponse>(apiUrl("/api/training/datasets")),
   getDataset: (id: string) => fetcher<TrainingDataset>(apiUrl(`/api/training/datasets/${id}`)),
