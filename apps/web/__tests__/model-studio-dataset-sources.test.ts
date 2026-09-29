@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
-const webRoot = resolve(__dirname, "../..")
+const webRoot = resolve(__dirname, "..")
 const read = (path: string) => readFileSync(resolve(webRoot, path), "utf8")
 
 describe("Model Studio external dataset sources", () => {
