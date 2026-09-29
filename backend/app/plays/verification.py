@@ -99,6 +99,14 @@ def record_source_verified_play_result(
     if not play_key or not play_version:
         raise ValueError("ACTIONED Play result is missing Play identity")
 
+    if success:
+        if not evidence.metric_key:
+            raise ValueError("VERIFIED SUCCESS requires a measured metric_key")
+        if evidence.baseline_value is None:
+            raise ValueError("VERIFIED SUCCESS requires a baseline measurement")
+        if evidence.outcome_type == "action_execution":
+            raise ValueError("action execution verification is not business-result verification")
+
     source_ref = SourceRecordRef(
         system=evidence.system,
         record_type=evidence.record_type,

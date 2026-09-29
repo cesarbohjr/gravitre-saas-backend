@@ -110,3 +110,54 @@ def test_confidence_and_attribution_weight_are_bounded():
             status=BusinessResultStatus.DETECTED,
             attribution_weight=-0.1,
         ).to_storage_row()
+
+
+def test_verified_success_cannot_be_generic_action_execution():
+    with pytest.raises(ValueError, match="action execution"):
+        PlayBusinessResult(
+            org_id="org-1",
+            play_key="revenue-recovery",
+            play_version="1",
+            outcome_type="action_execution",
+            status=BusinessResultStatus.VERIFIED_SUCCESS,
+            metric_key="open_invoice_balance",
+            baseline_value=100.0,
+            result_value=0.0,
+            verification_method="source_of_record_re_read",
+            source_records=(
+                SourceRecordRef(system="quickbooks", record_type="invoice", record_id="inv-1"),
+            ),
+        ).to_storage_row()
+
+
+def test_verified_success_requires_metric_and_baseline_measurements():
+    with pytest.raises(ValueError, match="metric_key"):
+        PlayBusinessResult(
+            org_id="org-1",
+            play_key="revenue-recovery",
+            play_version="1",
+            outcome_type="recovered_revenue",
+            status=BusinessResultStatus.VERIFIED_SUCCESS,
+            baseline_value=100.0,
+            result_value=0.0,
+            verification_method="source_of_record_re_read",
+            source_records=(
+                SourceRecordRef(system="quickbooks", record_type="invoice", record_id="inv-1"),
+            ),
+        ).to_storage_row()
+
+    with pytest.raises(ValueError, match="baseline_value and result_value"):
+        PlayBusinessResult(
+            org_id="org-1",
+            play_key="revenue-recovery",
+            play_version="1",
+            outcome_type="recovered_revenue",
+            status=BusinessResultStatus.VERIFIED_SUCCESS,
+            metric_key="open_invoice_balance",
+            baseline_value=None,
+            result_value=0.0,
+            verification_method="source_of_record_re_read",
+            source_records=(
+                SourceRecordRef(system="quickbooks", record_type="invoice", record_id="inv-1"),
+            ),
+        ).to_storage_row()
