@@ -23,7 +23,7 @@ def test_no_connection_does_not_claim_observe_ready():
         version="1",
         objective="Find recoverable revenue.",
         required_connector_groups=(("stripe", "quickbooks"),),
-        required_actions=("stripe.invoices.list",),
+        required_read_action_groups=(("stripe.invoices.list", "quickbooks.invoices.list"),),
     )
     result = resolve_play_readiness(definition, connected_vendors=set())
     assert result.observe_ready is False
@@ -37,10 +37,8 @@ def test_write_can_reach_approval_maturity_but_not_policy_without_explicit_autho
         version="1",
         objective="Find recoverable revenue.",
         required_connector_groups=(("hubspot",),),
-        required_actions=(
-            "hubspot.contacts.list",
-            "hubspot.contacts.update",
-        ),
+        required_read_action_groups=(("hubspot.contacts.list",),),
+        write_action_groups=(("hubspot.contacts.update",),),
     )
     result = resolve_play_readiness(
         definition,
@@ -60,10 +58,8 @@ def test_explicit_policy_authorization_is_required_for_act_within_policy():
         version="1",
         objective="Intervene on at-risk customers.",
         required_connector_groups=(("hubspot",),),
-        required_actions=(
-            "hubspot.contacts.list",
-            "hubspot.contacts.update",
-        ),
+        required_read_action_groups=(("hubspot.contacts.list",),),
+        write_action_groups=(("hubspot.contacts.update",),),
     )
     result = resolve_play_readiness(
         definition,
