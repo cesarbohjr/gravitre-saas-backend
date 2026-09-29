@@ -42,6 +42,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { workflowsApi } from "@/lib/api"
+import { relativeTime } from "@/lib/agent-job-result"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import type { Workflow as ApiWorkflow, WorkflowStatus } from "@/types/api"
 
@@ -76,6 +77,17 @@ function normalizeWorkflowStatus(raw: string): Workflow["status"] {
   return "draft"
 }
 
+function formatLastRun(value: unknown): string {
+  if (typeof value !== "string" || !value.trim() || value === "Never") return "Never"
+  return relativeTime(value)
+}
+
+function formatSuccessRate(value: unknown, runCount: number): string {
+  if (runCount <= 0) return "—"
+  const rate = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""))
+  return Number.isFinite(rate) ? `${Math.round(rate)}%` : "—"
+}
+
 function normalizeWorkflow(input: Record<string, unknown>): Workflow {
   const status = String(input.status ?? "draft")
   const environment = String(input.environment ?? "staging")
@@ -85,15 +97,16 @@ function normalizeWorkflow(input: Record<string, unknown>): Workflow {
   const fromMarketplace = Boolean(
     config.marketplaceAssetId || versionConfig.marketplaceAssetId,
   )
+  const runCount = Number(input.runCount ?? input.run_count ?? 0) || 0
   return {
     id: String(input.id ?? ""),
     name: String(input.name ?? "workflow"),
     description: String(input.description ?? ""),
     status: normalizeWorkflowStatus(status),
     environment: environment === "production" ? "production" : "staging",
-    lastRun: String(input.lastRun ?? input.last_run ?? "Never"),
-    successRate: String(input.successRate ?? input.success_rate ?? "-"),
-    runCount: Number(input.runCount ?? input.run_count ?? 0),
+    lastRun: formatLastRun(input.lastRun ?? input.last_run),
+    successRate: formatSuccessRate(input.successRate ?? input.success_rate, runCount),
+    runCount,
     nodes: Array.isArray(input.nodes) ? (input.nodes as WorkflowNode[]) : undefined,
     isRunning: Boolean(input.isRunning ?? input.is_running ?? false),
     fromMarketplace,

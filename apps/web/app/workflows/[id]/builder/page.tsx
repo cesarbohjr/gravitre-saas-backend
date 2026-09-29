@@ -22,6 +22,12 @@ import { NodeRunDebugPanel } from "@/components/workflows/node-run-debug-panel"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
 import { useBuilderSeed } from "@/components/workflows/builder-seed-context"
 import {
+  catalogActionIndex,
+  connectedVendorSet,
+  getConnectorValidationIssues,
+  isUsableConnectorStatus,
+} from "@/lib/workflows/builder-connector-validation"
+import {
   NodeHandle,
   NodeHandles,
   NodeMark,
@@ -246,80 +252,15 @@ interface Connection {
   to: string
 }
 
-// Default workflow metadata (used for non-UUID routes)
+// Metadata for routes without a persisted workflow (e.g. /workflows/new/builder)
 const defaultWorkflowMeta: WorkflowMeta = {
-  id: "demo",
-  name: "Customer Data Pipeline",
-  description: "End-to-end customer data sync with validation and enrichment",
+  id: "new",
+  name: "Untitled workflow",
+  description: "",
   status: "draft",
-  environment: "staging",
-  version: "v1.2.0",
 }
 
-// Mock nodes for the canvas
-const initialNodes: WorkflowNode[] = [
-  {
-    id: "node-1",
-    type: "source",
-    name: "Salesforce CRM",
-    description: "Pull customer records",
-    config: { connector: "salesforce", table: "contacts" },
-    position: { x: 100, y: 150 },
-    connections: ["node-2"],
-    state: "idle",
-    vendor: "salesforce",
-    selectedAction: "fetch_records",
-    dataLabel: "customer_records",
-  },
-  {
-    id: "node-2",
-    type: "agent",
-    name: "Data Validator",
-    description: "Validate and clean records",
-    config: { model: "gpt-5.5", temperature: 0.3 },
-    position: { x: 350, y: 150 },
-    connections: ["node-3"],
-    state: "idle",
-    dataLabel: "validated_data",
-  },
-  {
-    id: "node-3",
-    type: "task",
-    name: "Enrich with metadata",
-    description: "Add company info and scoring",
-    config: { instruction: "Enrich customer records with company data" },
-    position: { x: 600, y: 100 },
-    connections: ["node-4"],
-    state: "idle",
-    dataLabel: "enriched_records",
-  },
-  {
-    id: "node-4",
-    type: "approval",
-    name: "Quality Gate",
-    description: "Review before production",
-    config: { approvers: ["admin"], autoApprove: false },
-    position: { x: 600, y: 250 },
-    connections: ["node-5"],
-    state: "idle",
-    dataLabel: "approved_batch",
-  },
-  {
-    id: "node-5",
-    type: "connector",
-    name: "PostgreSQL",
-    description: "Write to data warehouse",
-    config: { connector: "postgresql", schema: "customers" },
-    position: { x: 850, y: 150 },
-    connections: [],
-    state: "idle",
-    vendor: "postgresql",
-    selectedAction: "insert",
-    dataLabel: "sync_complete",
-  },
-]
-
-// Connector actions with dynamic form fields
+// Legacy connector action forms; the canonical ActionSpec catalog takes precedence when loaded.
 const connectorActions: Record<string, { actions: Array<{ id: string; name: string; method: string; type: string; fields: Array<{ name: string; type: string; required: boolean; placeholder?: string; options?: string[] }> }> }> = {
   salesforce: {
     actions: [
@@ -429,15 +370,6 @@ const connectorActions: Record<string, { actions: Array<{ id: string; name: stri
   },
 }
 
-const connectorLibrary = [
-  { id: "conn-1", name: "Salesforce", vendor: "salesforce", status: "connected" },
-  { id: "conn-2", name: "HubSpot", vendor: "hubspot", status: "connected" },
-  { id: "conn-3", name: "Slack", vendor: "slack", status: "connected" },
-  { id: "conn-4", name: "Microsoft 365", vendor: "microsoft", status: "disconnected" },
-  { id: "conn-5", name: "PostgreSQL", vendor: "postgresql", status: "connected" },
-  { id: "conn-6", name: "Stripe", vendor: "stripe", status: "connected" },
-]
-
 // G1: derive the canonical invoke_tool action key (`{vendor}.{actionId}`) that the
 // backend builder_sync compiles connector nodes into. Mirrors lib/connector-sdk actionKey().
 function compiledActionKey(vendor?: string, selectedAction?: string): string | null {
@@ -450,59 +382,6 @@ function compiledActionKey(vendor?: string, selectedAction?: string): string | n
 function isActionImplemented(vendor?: string, selectedAction?: string): boolean {
   if (!vendor || !selectedAction) return false
   return !!connectorActions[vendor]?.actions.find((a) => a.id === selectedAction)
-}
-
-export interface ConnectorValidationIssue {
-  nodeId: string
-  nodeName: string
-  severity: "error" | "warning"
-  message: string
-}
-
-// G1: pre-save/publish validation so operators never ship a connector step that
-// silently compiles to a no-op. Returns blocking errors + non-blocking warnings.
-function getConnectorValidationIssues(nodes: WorkflowNode[]): ConnectorValidationIssue[] {
-  const issues: ConnectorValidationIssue[] = []
-  for (const node of nodes) {
-    if (node.type !== "connector") continue
-    // No connector bound at all.
-    if (!node.vendor) {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: "No connector selected — pick a connector & action.",
-      })
-      continue
-    }
-    const connector = connectorLibrary.find((c) => c.vendor === node.vendor)
-    // Vendor disconnected in the connector library.
-    if (!connector || connector.status !== "connected") {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: `${node.vendor} is disconnected — reconnect it before publishing.`,
-      })
-    }
-    // Action chosen but not in the catalog → would compile to noop.
-    if (!node.selectedAction) {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: "No action selected — this step would not run.",
-      })
-    } else if (!isActionImplemented(node.vendor, node.selectedAction)) {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: `Action "${node.selectedAction}" is not available for ${node.vendor}.`,
-      })
-    }
-  }
-  return issues
 }
 
 // Node type configs
@@ -2013,17 +1892,15 @@ function ConfigPanel({
   const selectedAction = availableActions.find((a) => a.id === boundActionId)
 
   const liveConnector =
-    orgConnectors.find((c) => c.vendor === boundVendor && c.status === "active") ||
+    orgConnectors.find((c) => c.vendor === boundVendor && isUsableConnectorStatus(c.status)) ||
     orgConnectors.find((c) => c.vendor === boundVendor)
   const connectorStatus: "connected" | "disconnected" | "error" = liveConnector
-    ? liveConnector.status === "active"
+    ? isUsableConnectorStatus(liveConnector.status)
       ? "connected"
       : liveConnector.status === "error"
         ? "error"
         : "disconnected"
-    : connectorLibrary.find((c) => c.vendor === boundVendor)?.status === "connected"
-      ? "connected"
-      : "disconnected"
+    : "disconnected"
 
   const vendorOptions = (() => {
     const fromLive = orgConnectors.map((c) => ({
@@ -2036,13 +1913,8 @@ function ConfigPanel({
       name: v.displayName || v.vendor,
       status: "catalog" as const,
     }))
-    const fromMock = connectorLibrary.map((c) => ({
-      vendor: c.vendor,
-      name: c.name,
-      status: c.status,
-    }))
     const map = new Map<string, { vendor: string; name: string; status: string }>()
-    for (const row of [...fromLive, ...fromCatalog, ...fromMock]) {
+    for (const row of [...fromLive, ...fromCatalog]) {
       if (!map.has(row.vendor)) map.set(row.vendor, row)
     }
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
@@ -3210,7 +3082,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [lastRunId, setLastRunId] = useState<string | null>(null)
   
   const seedOverride = useBuilderSeed()
-  const [nodes, setNodes] = useState<WorkflowNode[]>(() => seedOverride ?? initialNodes)
+  const [nodes, setNodes] = useState<WorkflowNode[]>(() => seedOverride ?? [])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [traceOverlay, setTraceOverlay] = useState(false)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
@@ -3256,8 +3128,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [isRunning, setIsRunning] = useState(false)
   // G1: live blocking-issue count to disable Save/Publish + drive warnings.
   const connectorBlockingIssues = useMemo(
-    () => getConnectorValidationIssues(nodes).filter((i) => i.severity === "error"),
-    [nodes],
+    () =>
+      getConnectorValidationIssues(nodes, {
+        connectedVendors: connectedVendorSet(orgConnectorsData?.connectors),
+        catalogActions: catalogActionIndex(actionCatalogData),
+        isLegacyActionImplemented: isActionImplemented,
+      }).filter((i) => i.severity === "error"),
+    [nodes, orgConnectorsData?.connectors, actionCatalogData],
   )
   // Execution mode state
   const [isExecuting, setIsExecuting] = useState(false)
@@ -5137,26 +5014,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
               {activeLibrary === "connectors" && (
                 <div className="space-y-0.5">
-                  {orgConnectors.length === 0 &&
-                    connectorLibrary.map((conn) => (
-                      <LibraryItem
-                        key={conn.id}
-                        name={conn.name}
-                        vendor={conn.vendor}
-                        nodeType="connector"
-                        dragPayload={{ vendor: conn.vendor }}
-                        onAdd={() =>
-                          addNode("connector", conn.name, undefined, {
-                            vendor: conn.vendor,
-                            config: connectorConfigWithBind({}, { vendor: conn.vendor }),
-                          })
-                        }
-                      />
-                    ))}
                   {orgConnectors.map((conn) => (
                     <LibraryItem
                       key={conn.id}
-                      name={`${conn.name}${conn.status === "active" ? "" : ` (${conn.status})`}`}
+                      name={`${conn.name}${isUsableConnectorStatus(conn.status) ? "" : ` (${conn.status})`}`}
                       vendor={conn.vendor}
                       nodeType="connector"
                       dragPayload={{

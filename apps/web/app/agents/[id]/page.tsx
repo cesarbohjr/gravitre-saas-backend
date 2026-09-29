@@ -303,7 +303,11 @@ export default function AgentProfilePage({
         <div className="flex-1 px-[var(--np-page-pad-sm)] pb-8 pt-2 sm:px-[var(--np-page-pad)]">
           <div className="mb-6 border-b border-[color:var(--g-border-subtle)] pb-5">
             <dl className="flex flex-wrap gap-x-8 gap-y-3">
-              <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted.toLocaleString()} />
+              {apiAgent.stats?.totalRuns != null ? (
+                <PerformanceFact label="Total runs" value={apiAgent.stats.totalRuns.toLocaleString()} />
+              ) : (
+                <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted.toLocaleString()} />
+              )}
               <PerformanceFact
                 label="Success rate"
                 value={agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—"}

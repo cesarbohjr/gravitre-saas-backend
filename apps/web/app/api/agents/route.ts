@@ -80,6 +80,7 @@ function mapAgentRow(
             : null
       return {
         tasksToday,
+        totalRuns: null,
         successRate,
         successRateSource:
           successRate == null ? ("insufficient_data" as const) : ("stored_column" as const),
@@ -149,6 +150,7 @@ function mapOperatorRow(
     personality,
     stats: {
       tasksToday: totalRuns,
+      totalRuns,
       successRate,
       successRateSource:
         successRate == null ? ("insufficient_data" as const) : ("stored_column" as const),

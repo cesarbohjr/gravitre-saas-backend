@@ -155,26 +155,6 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
   )
 }
 
-// Generate mock connector dependencies based on nodes
-function getConnectorDependencies(nodes: WorkflowNode[]): ConnectorDependency[] {
-  const connectorNodes = nodes.filter(n => n.type === "connector" || n.type === "source")
-  const vendorMap: Record<string, ConnectorDependency> = {
-    "Salesforce": { name: "Salesforce", vendor: "salesforce", status: "connected", lastSync: "2 min ago" },
-    "PostgreSQL": { name: "PostgreSQL", vendor: "postgresql", status: "connected", lastSync: "Just now" },
-    "Slack": { name: "Slack", vendor: "slack", status: "connected", lastSync: "5 min ago" },
-    "HubSpot": { name: "HubSpot", vendor: "hubspot", status: "disconnected" },
-    "Stripe": { name: "Stripe", vendor: "stripe", status: "connected", lastSync: "1 min ago" },
-    "SendGrid": { name: "SendGrid", vendor: "sendgrid", status: "connected", lastSync: "10 min ago" },
-    "S3 Bucket": { name: "AWS S3", vendor: "aws", status: "connected", lastSync: "Just now" },
-    "Snowflake": { name: "Snowflake", vendor: "snowflake", status: "connected", lastSync: "3 min ago" },
-    "QuickBooks": { name: "QuickBooks", vendor: "quickbooks", status: "error" },
-  }
-  
-  return connectorNodes
-    .map(n => vendorMap[n.name])
-    .filter((dep): dep is ConnectorDependency => !!dep)
-}
-
 export function WorkflowCard({
   id,
   name,
@@ -197,8 +177,8 @@ export function WorkflowCard({
 }: WorkflowCardProps) {
   const statusConf = statusConfig[status]
   
-  // Use provided dependencies or generate from nodes
-  const dependencies = connectorDependencies || getConnectorDependencies(nodes)
+  // Connection state must come from the caller's real connector records; never derived from node names.
+  const dependencies = connectorDependencies ?? []
   const hasDisconnected = dependencies.some(d => d.status === "disconnected" || d.status === "error")
   // G1: connector + invoke_tool action counts. Each connector/source node compiles
   // to one vendor invoke_tool action, so action count tracks those node types.

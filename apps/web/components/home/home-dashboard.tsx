@@ -48,9 +48,10 @@ const RICH_WIDGETS = new Set([
 ])
 const NUMBER_VIZ = new Set(["number", "number_trend", "status", "sparkline"])
 
+// The metrics overview accepts 7d | 30d | 90d only, so shorter ranges are served as 7 days.
 const RANGE_LABEL: Record<DashboardRange, string> = {
-  "1h": "last hour",
-  "24h": "last 24 hours",
+  "1h": "last 7 days (shortest available)",
+  "24h": "last 7 days (shortest available)",
   "7d": "last 7 days",
   "30d": "last 30 days",
   "90d": "last 90 days",

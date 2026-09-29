@@ -29,14 +29,14 @@ import {
 const endpoints = [
   {
     method: "POST",
-    path: "/api/workflows/{id}/execute",
-    description: "Execute a workflow with optional parameters",
+    path: "/api/workflows/execute",
+    description: "Execute a workflow by id with optional parameters",
     badge: "Core",
   },
   {
     method: "GET",
     path: "/api/workflows",
-    description: "List all workflows with filtering and pagination",
+    description: "List the organization's workflows with run counts and last run",
     badge: null,
   },
   {
@@ -47,7 +47,7 @@ const endpoints = [
   },
   {
     method: "POST",
-    path: "/api/workflows/{id}/dry-run",
+    path: "/api/workflows/dry-run",
     description: "Preview workflow execution without committing changes",
     badge: "Core",
   },
@@ -59,7 +59,7 @@ const endpoints = [
   },
   {
     method: "POST",
-    path: "/api/runs/{id}/approve",
+    path: "/api/workflows/runs/{id}/approve",
     description: "Approve a pending workflow run (human-in-the-loop)",
     badge: null,
   },
@@ -89,7 +89,7 @@ const endpoints = [
   },
   {
     method: "POST",
-    path: "/api/operator/action-plan",
+    path: "/api/operators/{id}/action-plans",
     description: "Generate an AI action plan from natural language",
     badge: "AI",
   },

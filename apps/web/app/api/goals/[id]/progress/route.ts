@@ -33,49 +33,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .order("created_at", { ascending: false })
       .limit(1)
 
-    const { data: runs } = await supabase
-      .from("runs")
-      .select("*")
-      .eq("org_id", orgId)
-      .order("created_at", { ascending: false })
-      .limit(8)
-
     const latestPlan = planRows?.[0]
     const proposedSteps = Array.isArray(latestPlan?.proposed_steps) ? latestPlan.proposed_steps : []
-    const completedByStatus = String(goal.status) === "completed" ? 100 : 0
-    const completedBySteps = proposedSteps.length > 0 ? Math.min(95, Math.round((proposedSteps.length - 1) * (100 / proposedSteps.length))) : 0
-    const completionPercentage = Math.max(completedByStatus, completedBySteps)
+    // No runtime links runs or step completion to goals, so progress is only known once the goal is completed.
+    const goalCompleted = String(goal.status) === "completed"
+    const completionPercentage = goalCompleted ? 100 : null
 
     const milestoneStatus = proposedSteps.map((step: unknown, index: number) => ({
       id: (step as { id?: string }).id ?? `milestone-${index + 1}`,
       title: (step as { title?: string }).title ?? `Milestone ${index + 1}`,
-      status: completionPercentage === 100 ? "completed" : index === 0 ? "in_progress" : "planned",
-    }))
-
-    const runHistory = (runs ?? []).map((row) => {
-      const model = snakeToCamel<Record<string, unknown>>(row)
-      return {
-        id: model.id,
-        status: model.status ?? "pending",
-        startedAt: model.startedAt ?? null,
-        completedAt: model.completedAt ?? null,
-        durationMs: model.durationMs ?? null,
-      }
-    })
-
-    const recentDeliverables = runHistory.slice(0, 3).map((run, idx) => ({
-      id: `deliverable-${idx + 1}`,
-      title: `Run ${String(run.id).slice(0, 8)} output`,
-      status: run.status,
-      completedAt: run.completedAt,
+      status: goalCompleted ? "completed" : "planned",
     }))
 
     return NextResponse.json({
       goal: snakeToCamel<Record<string, unknown>>(goal),
       completionPercentage,
       milestoneStatus,
-      recentDeliverables,
-      runHistory,
       successMetricTracking:
         (snakeToCamel<Record<string, unknown>>(goal).successMetrics as Record<string, unknown>) ?? {},
     })

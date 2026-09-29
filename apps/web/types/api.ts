@@ -142,6 +142,8 @@ export interface AgentPersonality {
 
 export interface AgentStats {
   tasksToday: number
+  /** Lifetime run count from the operator record; null when the source row has none. */
+  totalRuns?: number | null
   /** null when Phase 5 honesty withholds a rate (no runs / no evidence). */
   successRate: number | null
   successRateSource?: "live_outcomes" | "live_runs" | "stored_column" | "insufficient_data"

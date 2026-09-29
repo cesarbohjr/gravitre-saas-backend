@@ -65,6 +65,30 @@ describe("3.0 Plus final composition", () => {
     expect(src).toMatch(/listSaves\(\{ limit: 100 \}\)/)
   })
 
+  it("builder never seeds a mock pipeline or mock connector statuses", () => {
+    const src = read("app/workflows/[id]/builder/page.tsx")
+    expect(src).not.toMatch(/Customer Data Pipeline/)
+    expect(src).not.toMatch(/connectorLibrary/)
+    expect(src).toMatch(/useState<WorkflowNode\[\]>\(\(\) => seedOverride \?\? \[\]\)/)
+  })
+
+  it("workflow cards do not invent connector dependencies", () => {
+    const src = read("components/gravitre/workflow-card.tsx")
+    expect(src).not.toMatch(/lastSync: "\d+ min ago"|lastSync: "Just now"/)
+    expect(src).toMatch(/connectorDependencies \?\? \[\]/)
+  })
+
+  it("workflow list comes from the core route", () => {
+    const src = read("app/api/workflows/route.ts")
+    expect(src).toMatch(/proxyToFastApi\(request, "\/api\/workflows"\)/)
+  })
+
+  it("goal progress is not invented", () => {
+    const src = read("app/api/goals/[id]/progress/route.ts")
+    expect(src).not.toMatch(/Math\.min\(95/)
+    expect(src).not.toMatch(/recentDeliverables/)
+  })
+
   it("top bar org label is hydration-stable", () => {
     const src = read("components/gravitre/top-bar.tsx")
     expect(src).not.toMatch(/useState\(\(\) => getSelectedOrgFromStorage\(\)/)
