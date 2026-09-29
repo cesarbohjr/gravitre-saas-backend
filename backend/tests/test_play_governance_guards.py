@@ -48,3 +48,19 @@ def test_play_business_result_contract_requires_source_of_record_for_verified_su
     source = (ROOT / "app" / "plays" / "outcomes.py").read_text()
     assert "VERIFIED SUCCESS requires at least one source-of-record reference" in source
     assert "verified business results require verification_method" in source
+
+
+def test_source_verification_bridge_is_not_a_public_play_mutation_route():
+    router = (ROOT / "app" / "routers" / "plays.py").read_text()
+    verification = (ROOT / "app" / "plays" / "verification.py").read_text()
+    assert "record_source_verified_play_result" not in router
+    assert "SourceVerificationEvidence" not in router
+    assert "record_source_verified_play_result" in verification
+
+
+def test_live_play_proof_is_get_only():
+    script = (ROOT.parent / "scripts" / "verify-plays-readonly-live.py").read_text()
+    assert "client.get(" in script
+    assert "client.post(" not in script
+    assert "client.delete(" not in script
+    assert '"mutation": False' in script
