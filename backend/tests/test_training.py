@@ -148,3 +148,26 @@ def test_instructions_crud(_mock_list, mock_create):
     )
     assert create_response.status_code == 201
     assert create_response.json()["name"] == "Tone"
+
+
+@patch("app.routers.training.list_dataset_source_provider_keys", return_value=[])
+def test_dataset_source_provider_list_is_authenticated_and_provider_neutral(_providers):
+    authenticate()
+    response = client.get("/api/training/dataset-source-providers")
+    assert response.status_code == 200
+    assert response.json() == {
+        "providers": [],
+        "count": 0,
+        "providerSpecificBehavior": False,
+    }
+
+
+@patch("app.routers.training.get_dataset_source_provider", return_value=None)
+def test_dataset_source_provider_search_fails_closed_when_adapter_missing(_provider):
+    authenticate()
+    response = client.get(
+        "/api/training/dataset-source-providers/not-installed/search",
+        params={"query": "customers"},
+    )
+    assert response.status_code == 404
+    assert "not available" in response.json()["detail"]
