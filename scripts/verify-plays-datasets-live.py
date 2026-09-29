@@ -23,6 +23,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import httpx
 
@@ -75,7 +76,7 @@ def main() -> int:
         "/api/plays/marketing-performance/readiness",
         "/api/plays/marketing-performance/observe",
         "/api/training/external-datasets/providers",
-        f"/api/training/external-datasets/search?provider=huggingface&q={httpx.QueryParams({'q': query})['q']}&limit=5",
+        f"/api/training/external-datasets/search?provider=huggingface&q={quote_plus(query)}&limit=5",
     ]
 
     with httpx.Client(base_url=BASE, headers=headers, timeout=90.0) as client:
