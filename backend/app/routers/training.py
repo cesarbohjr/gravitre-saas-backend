@@ -11,6 +11,10 @@ from app.auth.dependencies import get_current_user, get_org_context, require_adm
 from app.config import Settings, get_settings
 from app.core.supabase_response import response_error
 from app.services.agent_finetune_service import assign_trained_model_to_agent, list_deployable_fine_tuned_models
+from app.services.dataset_source_providers import (
+    get_dataset_source_provider,
+    list_dataset_source_provider_keys,
+)
 from app.services.dataset_source_service import (
     create_dataset_source,
     list_dataset_sources,
@@ -116,6 +120,44 @@ def _raise_if_response_error(response: Any, *, not_found: str | None = None) -> 
         )
     if error:
         raise HTTPException(status_code=500, detail=str(error))
+
+
+@router.get("/dataset-source-providers")
+async def list_dataset_source_providers(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    providers = list_dataset_source_provider_keys()
+    return {
+        "providers": providers,
+        "count": len(providers),
+        "providerSpecificBehavior": False,
+    }
+
+
+@router.get("/dataset-source-providers/{provider}/search")
+async def search_dataset_source_provider(
+    provider: str,
+    query: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    cursor: str | None = None,
+    limit: int = 20,
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    adapter = get_dataset_source_provider(provider)
+    if adapter is None:
+        raise HTTPException(status_code=404, detail="Dataset source provider not available")
+    safe_limit = max(1, min(int(limit), 50))
+    page = adapter.search(query=query.strip(), cursor=cursor, limit=safe_limit)
+    return {
+        **page.as_dict(),
+        "provider": str(provider).strip().lower(),
+        "mutation": False,
+    }
 
 
 @router.get("/datasets")
