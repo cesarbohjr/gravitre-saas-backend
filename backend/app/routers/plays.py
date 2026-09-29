@@ -8,8 +8,9 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
-from app.auth.dependencies import get_environment_context, require_org_member
+from app.auth.dependencies import get_environment_context, require_admin, require_org_member
 from app.capabilities.registry import connected_vendors
 from app.config import Settings, get_settings
 from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
@@ -19,9 +20,21 @@ from app.plays.marketing_performance import list_marketing_performance_signals
 from app.plays.outcomes import list_play_business_results
 from app.plays.readiness import resolve_play_readiness
 from app.plays.revenue_recovery import list_revenue_recovery_signals
+from app.plays.workflow_bindings import (
+    bind_play_to_workflow,
+    list_play_workflow_bindings,
+    unbind_play_from_workflow,
+)
+from app.workflows.audit import write_audit_event
 from app.workflows.repository import get_supabase_client
 
 router = APIRouter(prefix="/api/plays", tags=["plays"])
+
+class BindWorkflowRequest(BaseModel):
+    workflow_id: str = Field(..., alias="workflowId", min_length=1)
+
+    model_config = {"populate_by_name": True}
+
 
 
 def _member_org(member: tuple[dict, str, str]) -> str:
@@ -209,6 +222,103 @@ async def get_play_readiness(
     }
 
 
+
+
+
+
+@router.get("/{play_key}/workflow-bindings")
+async def get_play_workflow_bindings(
+    play_key: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    play = get_platform_play(play_key)
+    if play is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play not found")
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    bindings = list_play_workflow_bindings(client, org_id, play.key)
+    return {
+        "playKey": play.key,
+        "workflowBindings": bindings,
+        "count": len(bindings),
+        "executionAuthority": "canonical_workflow_runtime",
+    }
+
+
+@router.post("/{play_key}/workflow-bindings")
+async def create_play_workflow_binding(
+    play_key: str,
+    body: BindWorkflowRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    try:
+        binding = bind_play_to_workflow(
+            client,
+            org_id,
+            play_key=play_key,
+            workflow_id=body.workflow_id,
+            actor_id=str(user.get("user_id") or "") or None,
+            environment_name=environment_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user.get("user_id"),
+        action="play.workflow.bound",
+        resource_type="workflow",
+        resource_id=body.workflow_id,
+        metadata={
+            "play_key": play_key,
+            "environment": environment_name,
+            "execution_authority": "canonical_workflow_runtime",
+        },
+    )
+    return binding
+
+
+@router.delete("/{play_key}/workflow-bindings/{workflow_id}")
+async def delete_play_workflow_binding(
+    play_key: str,
+    workflow_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    try:
+        result = unbind_play_from_workflow(
+            client,
+            org_id,
+            play_key=play_key,
+            workflow_id=workflow_id,
+            environment_name=environment_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user.get("user_id"),
+        action="play.workflow.unbound",
+        resource_type="workflow",
+        resource_id=workflow_id,
+        metadata={"play_key": play_key, "environment": environment_name},
+    )
+    return result
 
 
 @router.get("/{play_key}/outcomes/{outcome_id}/evidence")
