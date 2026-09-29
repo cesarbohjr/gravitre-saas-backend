@@ -15,6 +15,7 @@ from app.config import Settings, get_settings
 from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
 from app.plays.outcomes import list_play_business_results
 from app.plays.readiness import resolve_play_readiness
+from app.plays.revenue_recovery import list_revenue_recovery_signals
 from app.workflows.repository import get_supabase_client
 
 router = APIRouter(prefix="/api/plays", tags=["plays"])
@@ -68,6 +69,44 @@ async def list_plays(
         "policyNote": (
             "ACT WITHIN POLICY is not inferred by this read endpoint. "
             "It requires an effective runtime policy evaluation for a specific agent/action/context."
+        ),
+    }
+
+
+
+
+@router.get("/revenue-recovery/observe")
+async def observe_revenue_recovery(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    """Read existing revenue-recovery signals without taking external action."""
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    play = get_platform_play("revenue-recovery")
+    assert play is not None
+    connected = connected_vendors(client, org_id, environment_name)
+    readiness = resolve_play_readiness(
+        play,
+        connected_vendors=connected,
+        client=client,
+        org_id=org_id,
+        policy_authorized_actions=set(),
+    )
+    signals = list_revenue_recovery_signals(client, org_id, limit=limit)
+    return {
+        "playKey": play.key,
+        "mode": "OBSERVE",
+        "readiness": readiness.as_dict(),
+        "signals": signals,
+        "count": len(signals),
+        "actionTaken": False,
+        "verifiedRecoveredRevenue": None,
+        "truthRule": (
+            "Detected overdue invoices or stalled deals are opportunities, not recovered revenue. "
+            "Recovered revenue is reported only after source-of-record verification."
         ),
     }
 
