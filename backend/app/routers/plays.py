@@ -72,10 +72,13 @@ async def list_plays(
             org_id=org_id,
             policy_authorized_actions=set(),
         )
+        bindings = list_play_workflow_bindings(client, org_id, play.key)
         items.append(
             {
                 "play": _template_payload(play),
                 "readiness": readiness.as_dict(),
+                "workflowBindings": bindings,
+                "workflowBindingCount": len(bindings),
             }
         )
     return {
@@ -215,9 +218,12 @@ async def get_play_readiness(
         org_id=org_id,
         policy_authorized_actions=set(),
     )
+    bindings = list_play_workflow_bindings(client, org_id, play.key)
     return {
         "play": _template_payload(play),
         "readiness": readiness.as_dict(),
+        "workflowBindings": bindings,
+        "workflowBindingCount": len(bindings),
         "executionAuthority": "canonical_workflow_runtime",
     }
 
