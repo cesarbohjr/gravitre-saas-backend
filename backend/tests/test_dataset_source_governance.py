@@ -32,4 +32,5 @@ def test_dataset_source_mutation_requires_admin():
     end = router.index('@router.delete("/datasets/{dataset_id}")', start)
     block = router[start:end]
     assert "Depends(require_admin)" in block
+    assert 'action="training.dataset_source.created"' in block
     assert "materializationAutomatic" in router
