@@ -24,7 +24,9 @@ describe("voice duplex audible output contract", () => {
   })
 
   it("does not close the shared output context when a voice session ends", () => {
-    expect(hook).toMatch(/if \(!audioCtxSharedRef\.current\) \{\s*audioCtxRef\.current\?\.close\(\)/)
+    expect(hook).toMatch(/if \(!audioCtxSharedRef\.current\) \{/)
+    expect(hook).toMatch(/outputCtx\?\.close\(\)/)
+    expect(hook).toMatch(/removeEventListener\("statechange", stateHandler\)/)
   })
 
   it("fails visibly when assistant text arrives but Pipecat never sends audio", () => {
@@ -33,5 +35,29 @@ describe("voice duplex audible output contract", () => {
     expect(hook).toMatch(/Voice reply arrived, but no audio was received/)
     expect(hook).toMatch(/armAudioReplyWatchdog\(\)/)
     expect(hook).toMatch(/clearAudioReplyWatchdog\(\)/)
+  })
+})
+
+
+describe("voice physical-output failure handling", () => {
+  it("surfaces AudioContext suspension after the session has started", () => {
+    expect(hook).toMatch(/addEventListener\("statechange", onOutputStateChange\)/)
+    expect(hook).toMatch(/sessionWantedRef\.current && ctx\.state !== "running"/)
+    expect(hook).toMatch(/removeEventListener\("statechange", stateHandler\)/)
+  })
+
+  it("does not silently drop PCM when WebAudio source scheduling fails", () => {
+    expect(hook).toMatch(/Voice audio could not start\. Tap Enable sound, then try again\./)
+    expect(hook).toMatch(/pcmBlockedQueueRef\.current\.unshift/)
+    expect(hook).toMatch(/outputFailureNotifiedRef/)
+  })
+
+  it("captures Pipecat playback offset before stopping audio on barge-in", () => {
+    const capture = hook.indexOf("const pcmOriginBeforeStop = pcmPlayOriginRef.current")
+    const stop = hook.indexOf("stopPlayback()", capture)
+    const send = hook.indexOf("encodePipecatInterrupt({ playbackOffsetMs })", capture)
+    expect(capture).toBeGreaterThan(-1)
+    expect(stop).toBeGreaterThan(capture)
+    expect(send).toBeGreaterThan(stop)
   })
 })

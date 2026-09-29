@@ -249,6 +249,11 @@ export function useVoiceDuplexSession(options: Options) {
   // delivered anything to the browser.
   const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioFramesReceivedRef = useRef(0)
+  // Output-path diagnostics stay browser-local. A running AudioContext can still
+  // be suspended by the browser after the initial Talk gesture; listen for that
+  // transition so the UI surfaces Enable sound instead of silently losing audio.
+  const outputContextStateHandlerRef = useRef<(() => void) | null>(null)
+  const outputFailureNotifiedRef = useRef(false)
   const speculativeRef = useRef<{
     text: string
     turnId: string
@@ -351,7 +356,17 @@ export function useVoiceDuplexSession(options: Options) {
   const enqueuePcm = useCallback(
     (pcm: Int16Array, sampleRate: number) => {
       const ctx = audioCtxRef.current
-      if (!ctx || pcm.length === 0) return
+      if (pcm.length === 0) return
+      if (!ctx) {
+        if (!outputFailureNotifiedRef.current) {
+          outputFailureNotifiedRef.current = true
+          setPresence("error")
+          optsRef.current.onError?.(
+            "Voice audio output is unavailable in this browser. End the call and try again.",
+          )
+        }
+        return
+      }
       if (ctx.state !== "running" || playbackBlockedRef.current) {
         // Pipecat uses WebAudio PCM, not HTMLAudioElement.play(). Browsers can
         // suspend an AudioContext without throwing, which previously meant audio
@@ -389,6 +404,21 @@ export function useVoiceDuplexSession(options: Options) {
       try {
         src.start(startAt)
       } catch {
+        // A WebAudio scheduling failure used to drop this chunk silently even
+        // though the server had delivered valid PCM. Hold the chunk and move the
+        // session into the explicit sound-unlock recovery path instead.
+        pcmBlockedQueueRef.current.unshift({
+          pcm: new Int16Array(pcm),
+          sampleRate: sampleRate || 16000,
+        })
+        playbackBlockedRef.current = true
+        setPlaybackBlocked(true)
+        if (!outputFailureNotifiedRef.current) {
+          outputFailureNotifiedRef.current = true
+          optsRef.current.onError?.(
+            "Voice audio could not start. Tap Enable sound, then try again.",
+          )
+        }
         return
       }
       if (pcmPlayOriginRef.current == null) {
@@ -487,6 +517,7 @@ export function useVoiceDuplexSession(options: Options) {
       return
     }
     playbackBlockedRef.current = false
+    outputFailureNotifiedRef.current = false
     setPlaybackBlocked(false)
     const queuedPcm = pcmBlockedQueueRef.current.splice(0)
     for (const chunk of queuedPcm) {
@@ -660,8 +691,14 @@ export function useVoiceDuplexSession(options: Options) {
     }
     processorRef.current = null
     try {
+      const outputCtx = audioCtxRef.current
+      const stateHandler = outputContextStateHandlerRef.current
+      if (outputCtx && stateHandler) {
+        outputCtx.removeEventListener("statechange", stateHandler)
+      }
+      outputContextStateHandlerRef.current = null
       if (!audioCtxSharedRef.current) {
-        audioCtxRef.current?.close()
+        outputCtx?.close()
       }
     } catch {
       /* ignore */
@@ -690,6 +727,15 @@ export function useVoiceDuplexSession(options: Options) {
 
   const bargeIn = useCallback(async () => {
     const t0 = performance.now()
+    // Capture the heard-audio offset BEFORE stopPlayback clears the PCM origin.
+    // Played-audio reconciliation depends on this boundary; the old order always
+    // sent undefined even when audio had been playing.
+    const ctxBeforeStop = audioCtxRef.current
+    const pcmOriginBeforeStop = pcmPlayOriginRef.current
+    const playbackOffsetMs =
+      ctxBeforeStop && pcmOriginBeforeStop != null
+        ? Math.max(0, Math.round((ctxBeforeStop.currentTime - pcmOriginBeforeStop) * 1000))
+        : undefined
     setPresence("interrupted")
     agentSpeakingRef.current = false
     stopPlayback()
@@ -699,13 +745,7 @@ export function useVoiceDuplexSession(options: Options) {
       const ws = wsRef.current
       if (ws && ws.readyState === WebSocket.OPEN) {
         try {
-          const ctx = audioCtxRef.current
-          const origin = pcmPlayOriginRef.current
-          const offsetMs =
-            ctx && origin != null
-              ? Math.max(0, Math.round((ctx.currentTime - origin) * 1000))
-              : undefined
-          ws.send(encodePipecatInterrupt({ playbackOffsetMs: offsetMs }))
+          ws.send(encodePipecatInterrupt({ playbackOffsetMs }))
         } catch {
           /* ignore */
         }
@@ -1073,6 +1113,16 @@ export function useVoiceDuplexSession(options: Options) {
       const ctx = sharedOutput ?? new AC()
       audioCtxSharedRef.current = Boolean(sharedOutput && ctx === sharedOutput)
       audioCtxRef.current = ctx
+      outputFailureNotifiedRef.current = false
+      const onOutputStateChange = () => {
+        if (audioCtxRef.current !== ctx) return
+        if (sessionWantedRef.current && ctx.state !== "running") {
+          playbackBlockedRef.current = true
+          setPlaybackBlocked(true)
+        }
+      }
+      outputContextStateHandlerRef.current = onOutputStateChange
+      ctx.addEventListener("statechange", onOutputStateChange)
       if (ctx.state === "suspended") await ctx.resume().catch(() => {})
       if (ctx.state !== "running") {
         playbackBlockedRef.current = true
