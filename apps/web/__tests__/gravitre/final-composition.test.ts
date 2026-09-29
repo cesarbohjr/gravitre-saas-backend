@@ -41,11 +41,14 @@ describe("3.0 Plus final composition", () => {
     expect(read("content/docs/public/guides/how-to/ai-operator.mdx")).not.toMatch(/"instruction":|"environmentId":/)
   })
 
-  it("autonomy panel states recorded policy without promising unattended writes", () => {
+  it("autonomy panel derives the three canonical labels and fails closed", () => {
     const src = read("components/agents/agent-autonomy-panel.tsx")
-    expect(src).toMatch(/Recorded policy: may act unattended where the runtime permits/)
-    expect(src).toMatch(/Decided per action by the governed write runtime/)
-    expect(src).not.toMatch(/policy sets auto-run|without an auto-run rule|tools are denied/)
+    expect(src).toMatch(/READ ONLY/)
+    expect(src).toMatch(/ACT WITH APPROVAL/)
+    expect(src).toMatch(/ACT WITHIN POLICY/)
+    expect(src).toMatch(/deriveAutonomyLabel/)
+    expect(src).toMatch(/high-risk actions still require approval/)
+    expect(src).not.toMatch(/writes run automatically unless/)
     expect(src).not.toMatch(/<button|onClick=/)
   })
 
