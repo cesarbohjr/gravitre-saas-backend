@@ -32,8 +32,7 @@ export function AgentAppearancePicker({
           Agent appearance
         </h3>
           <p className="mt-1 text-xs text-[color:var(--g-text-muted)]">
-            Soft curated icons + soft identity colors only — no glow discs, gradients, or freeform
-            hex. Status stays separate. Suggested for “{roleHint}”:{" "}
+            Pick an icon and identity color. Suggested for “{roleHint}”:{" "}
             {ROLE_ICON_REGISTRY[suggested].label}.
           </p>
       </div>
@@ -49,13 +48,13 @@ export function AgentAppearancePicker({
         <div>
           <p className="text-sm font-medium">{ROLE_ICON_REGISTRY[icon].label}</p>
           <p className="text-xs text-[color:var(--g-text-muted)]">
-            {IDENTITY_COLOR_TOKENS[color].label} · {ROLE_ICON_REGISTRY[icon].source}
+            {IDENTITY_COLOR_TOKENS[color].label} · {ROLE_ICON_REGISTRY[icon].category}
           </p>
         </div>
       </div>
 
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+        <p className="mb-2 text-xs font-medium text-[color:var(--g-text-muted)]">
           Icon
         </p>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
@@ -83,7 +82,7 @@ export function AgentAppearancePicker({
       </div>
 
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+        <p className="mb-2 text-xs font-medium text-[color:var(--g-text-muted)]">
           Color
         </p>
         <div className="flex flex-wrap gap-2">

@@ -4,7 +4,8 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { CheckCircle2, ChevronDown, Plug } from "lucide-react"
+import { CheckCircle2, ChevronDown } from "lucide-react"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import type {
   MarketplaceAssetSummary,
   MarketplaceConnectorChecklistItem,
@@ -94,22 +95,21 @@ export function ConnectorChecklist({
   if (!items.length) return null
   return (
     <div>
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+      <p className="mb-1 text-xs font-semibold text-muted-foreground">{title}</p>
       {description ? <p className="mb-2 text-[11px] text-muted-foreground">{description}</p> : null}
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.connectorType} className="space-y-1 text-sm">
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
+                <ProviderLogo provider={item.connectorType} label={item.label} size="sm" decorative className="shrink-0" />
                 {item.connected ? (
-                  <CheckCircle2 className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-                ) : (
-                  <Plug className={cn("h-4 w-4 shrink-0", checklistTone(item))} aria-hidden />
-                )}
+                  <CheckCircle2 className={cn("h-3.5 w-3.5 shrink-0", checklistTone(item))} aria-label="Connected" />
+                ) : null}
                 <span className={cn("truncate", !item.connected && item.required && "font-medium")}>
                   {item.label || item.connectorType}
                   {item.required ? (
-                    <span className="ml-1 text-[10px] font-semibold uppercase text-destructive">Required</span>
+                    <span className="ml-1 text-xs font-semibold text-destructive">Required</span>
                   ) : (
                     <span className="ml-1 text-[10px] text-muted-foreground">Optional</span>
                   )}
@@ -172,7 +172,7 @@ export function PackContentsPreview({
   if (compact) {
     return (
       <details className="group mb-4 rounded-lg border border-border/60 bg-muted/20 p-3">
-        <summary className="flex cursor-pointer list-none items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-muted-foreground [&::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold text-muted-foreground [&::-webkit-details-marker]:hidden">
           <span>What&apos;s included ({items.length})</span>
           <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
         </summary>
@@ -183,7 +183,7 @@ export function PackContentsPreview({
 
   return (
     <div className="rounded-lg border bg-muted/20 p-4">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-2 text-xs font-semibold text-muted-foreground">
         What&apos;s included ({items.length})
       </p>
       {body}

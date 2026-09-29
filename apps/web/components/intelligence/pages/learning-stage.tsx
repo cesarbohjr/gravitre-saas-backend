@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils"
 import { ArrowRight, Brain, Cpu } from "@phosphor-icons/react"
 
 const SEGMENTS: { id: LearningSegment; label: string }[] = [
-  { id: "recent", label: "Learned Recently" },
+  { id: "recent", label: "Learned recently" },
   { id: "relationships", label: "Relationships" },
   { id: "memory", label: "Memory" },
   { id: "models", label: "Models" },
@@ -118,7 +118,7 @@ function FilterSelect({
 }) {
   return (
     <label className="flex min-w-[7.5rem] flex-1 flex-col gap-0.5 sm:max-w-[10rem]">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value || null)}
@@ -272,7 +272,7 @@ function MemoryPanel({
 
       <Link
         href={APP_ROUTES.intelligenceMemory}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
       >
         Open full org memory
         <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -344,7 +344,7 @@ function ModelsPanel({
 
       <Link
         href={APP_ROUTES.builtInModels}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
       >
         Open built-in models
         <ArrowRight className="h-3.5 w-3.5" aria-hidden />

@@ -20,6 +20,36 @@ import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-
 import { IntegrationSuggestionEvidenceBanner } from "@/components/workflows/integration-suggestion-evidence-banner"
 import { NodeRunDebugPanel } from "@/components/workflows/node-run-debug-panel"
 import { MesonCopilotPanel } from "@/components/workflows/meson-copilot-panel"
+import { useBuilderSeed } from "@/components/workflows/builder-seed-context"
+import {
+  catalogActionIndex,
+  connectedVendorSet,
+  getConnectorValidationIssues,
+  isUsableConnectorStatus,
+} from "@/lib/workflows/builder-connector-validation"
+import {
+  NodeHandle,
+  NodeHandles,
+  NodeMark,
+  NodeSelectionEdge,
+  agentStepRole,
+  handleDotClass,
+  nodeAnchor,
+  nodeCenter,
+  nodeFootprint,
+  nodeSurfaceClass,
+  type NodeAnchorSide,
+  type NodeConnectState,
+} from "@/components/workflows/builder-node-chrome"
+import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  BuilderInspector,
+  BuilderNav,
+  BuilderRunTrace,
+  BuilderWorkflowOverview,
+  type GraphEndNode,
+  type InspectorMode,
+} from "@/components/workflows/builder-chrome"
 import { ScheduleEditorDialog } from "@/components/schedules/schedule-editor-dialog"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
@@ -152,6 +182,7 @@ import {
   RefreshCw,
   Pause,
   XCircle,
+  PenLine,
 } from "lucide-react"
 import {
   Sheet,
@@ -221,80 +252,15 @@ interface Connection {
   to: string
 }
 
-// Default workflow metadata (used for non-UUID routes)
+// Metadata for routes without a persisted workflow (e.g. /workflows/new/builder)
 const defaultWorkflowMeta: WorkflowMeta = {
-  id: "demo",
-  name: "Customer Data Pipeline",
-  description: "End-to-end customer data sync with validation and enrichment",
+  id: "new",
+  name: "Untitled workflow",
+  description: "",
   status: "draft",
-  environment: "staging",
-  version: "v1.2.0",
 }
 
-// Mock nodes for the canvas
-const initialNodes: WorkflowNode[] = [
-  {
-    id: "node-1",
-    type: "source",
-    name: "Salesforce CRM",
-    description: "Pull customer records",
-    config: { connector: "salesforce", table: "contacts" },
-    position: { x: 100, y: 150 },
-    connections: ["node-2"],
-    state: "idle",
-    vendor: "salesforce",
-    selectedAction: "fetch_records",
-    dataLabel: "customer_records",
-  },
-  {
-    id: "node-2",
-    type: "agent",
-    name: "Data Validator",
-    description: "Validate and clean records",
-    config: { model: "gpt-5.5", temperature: 0.3 },
-    position: { x: 350, y: 150 },
-    connections: ["node-3"],
-    state: "idle",
-    dataLabel: "validated_data",
-  },
-  {
-    id: "node-3",
-    type: "task",
-    name: "Enrich with metadata",
-    description: "Add company info and scoring",
-    config: { instruction: "Enrich customer records with company data" },
-    position: { x: 600, y: 100 },
-    connections: ["node-4"],
-    state: "idle",
-    dataLabel: "enriched_records",
-  },
-  {
-    id: "node-4",
-    type: "approval",
-    name: "Quality Gate",
-    description: "Review before production",
-    config: { approvers: ["admin"], autoApprove: false },
-    position: { x: 600, y: 250 },
-    connections: ["node-5"],
-    state: "idle",
-    dataLabel: "approved_batch",
-  },
-  {
-    id: "node-5",
-    type: "connector",
-    name: "PostgreSQL",
-    description: "Write to data warehouse",
-    config: { connector: "postgresql", schema: "customers" },
-    position: { x: 850, y: 150 },
-    connections: [],
-    state: "idle",
-    vendor: "postgresql",
-    selectedAction: "insert",
-    dataLabel: "sync_complete",
-  },
-]
-
-// Connector actions with dynamic form fields
+// Legacy connector action forms; the canonical ActionSpec catalog takes precedence when loaded.
 const connectorActions: Record<string, { actions: Array<{ id: string; name: string; method: string; type: string; fields: Array<{ name: string; type: string; required: boolean; placeholder?: string; options?: string[] }> }> }> = {
   salesforce: {
     actions: [
@@ -404,15 +370,6 @@ const connectorActions: Record<string, { actions: Array<{ id: string; name: stri
   },
 }
 
-const connectorLibrary = [
-  { id: "conn-1", name: "Salesforce", vendor: "salesforce", status: "connected" },
-  { id: "conn-2", name: "HubSpot", vendor: "hubspot", status: "connected" },
-  { id: "conn-3", name: "Slack", vendor: "slack", status: "connected" },
-  { id: "conn-4", name: "Microsoft 365", vendor: "microsoft", status: "disconnected" },
-  { id: "conn-5", name: "PostgreSQL", vendor: "postgresql", status: "connected" },
-  { id: "conn-6", name: "Stripe", vendor: "stripe", status: "connected" },
-]
-
 // G1: derive the canonical invoke_tool action key (`{vendor}.{actionId}`) that the
 // backend builder_sync compiles connector nodes into. Mirrors lib/connector-sdk actionKey().
 function compiledActionKey(vendor?: string, selectedAction?: string): string | null {
@@ -427,73 +384,23 @@ function isActionImplemented(vendor?: string, selectedAction?: string): boolean 
   return !!connectorActions[vendor]?.actions.find((a) => a.id === selectedAction)
 }
 
-export interface ConnectorValidationIssue {
-  nodeId: string
-  nodeName: string
-  severity: "error" | "warning"
-  message: string
-}
-
-// G1: pre-save/publish validation so operators never ship a connector step that
-// silently compiles to a no-op. Returns blocking errors + non-blocking warnings.
-function getConnectorValidationIssues(nodes: WorkflowNode[]): ConnectorValidationIssue[] {
-  const issues: ConnectorValidationIssue[] = []
-  for (const node of nodes) {
-    if (node.type !== "connector") continue
-    // No connector bound at all.
-    if (!node.vendor) {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: "No connector selected — pick a connector & action.",
-      })
-      continue
-    }
-    const connector = connectorLibrary.find((c) => c.vendor === node.vendor)
-    // Vendor disconnected in the connector library.
-    if (!connector || connector.status !== "connected") {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: `${node.vendor} is disconnected — reconnect it before publishing.`,
-      })
-    }
-    // Action chosen but not in the catalog → would compile to noop.
-    if (!node.selectedAction) {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: "No action selected — this step would not run.",
-      })
-    } else if (!isActionImplemented(node.vendor, node.selectedAction)) {
-      issues.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        severity: "error",
-        message: `Action "${node.selectedAction}" is not available for ${node.vendor}.`,
-      })
-    }
-  }
-  return issues
-}
-
 // Node type configs
+// Node type is carried by icon + label; the icon frame stays monochrome.
+const NODE_ICON_FRAME = "bg-[color:var(--g-surface-2)] border-[color:var(--g-border-default)] text-foreground"
+
 const nodeTypeConfig: Record<NodeType, { icon: typeof Bot; color: string; label: string }> = {
-  agent: { icon: Bot, color: "bg-info/20 border-info/40 text-info", label: "Agent" },
-  task: { icon: FileText, color: "bg-success/20 border-success/40 text-success", label: "Task" },
-  connector: { icon: Plug, color: "bg-warning/20 border-warning/40 text-warning", label: "Connector" },
-  tool: { icon: Zap, color: "bg-chart-4/20 border-chart-4/40 text-chart-4", label: "Tool" },
-  source: { icon: Database, color: "bg-muted border-border text-muted-foreground", label: "Source" },
-  approval: { icon: Shield, color: "bg-destructive/20 border-destructive/40 text-destructive", label: "Approval" },
-  decision: { icon: GitBranch, color: "bg-[color:var(--g-signal-surface)] border-[color:var(--g-signal)]/40 text-[color:var(--g-signal)]", label: "Decision" },
-  council: { icon: Users, color: "bg-warning/20 border-warning/40 text-warning", label: "Agent Council" },
-  if: { icon: Split, color: "bg-sky-500/20 border-sky-500/40 text-sky-400", label: "IF" },
-  switch: { icon: GitBranch, color: "bg-indigo-500/20 border-indigo-500/40 text-indigo-400", label: "Switch" },
-  merge: { icon: GitMerge, color: "bg-teal-500/20 border-teal-500/40 text-teal-400", label: "Merge" },
-  loop: { icon: Repeat, color: "bg-cyan-500/20 border-cyan-500/40 text-cyan-400", label: "Loop" },
+  agent: { icon: Bot, color: NODE_ICON_FRAME, label: "Agent" },
+  task: { icon: FileText, color: NODE_ICON_FRAME, label: "Task" },
+  connector: { icon: Plug, color: NODE_ICON_FRAME, label: "Connector" },
+  tool: { icon: Zap, color: NODE_ICON_FRAME, label: "Tool" },
+  source: { icon: Database, color: NODE_ICON_FRAME, label: "Source" },
+  approval: { icon: Shield, color: NODE_ICON_FRAME, label: "Approval" },
+  decision: { icon: GitBranch, color: NODE_ICON_FRAME, label: "Decision" },
+  council: { icon: Users, color: NODE_ICON_FRAME, label: "Agent Council" },
+  if: { icon: Split, color: NODE_ICON_FRAME, label: "IF" },
+  switch: { icon: GitBranch, color: NODE_ICON_FRAME, label: "Switch" },
+  merge: { icon: GitMerge, color: NODE_ICON_FRAME, label: "Merge" },
+  loop: { icon: Repeat, color: NODE_ICON_FRAME, label: "Loop" },
   }
 
 function getNodeTypeConfig(type: string) {
@@ -503,14 +410,14 @@ function getNodeTypeConfig(type: string) {
 // Node state visual config
 const nodeStateConfig: Record<NodeState, { border: string; bg: string; animation: string }> = {
   idle: { border: "", bg: "", animation: "" },
-  running: { border: "border-info shadow-[0_0_15px_rgba(59,130,246,0.4)]", bg: "bg-info/5", animation: "animate-pulse" },
-  success: { border: "border-success shadow-[0_0_10px_rgba(16,185,129,0.3)]", bg: "bg-success/5", animation: "" },
-  error: { border: "border-destructive shadow-[0_0_12px_rgba(239,68,68,0.4)]", bg: "bg-destructive/5", animation: "animate-shake" },
+  running: { border: "border-info", bg: "bg-info/5", animation: "" },
+  success: { border: "border-success/60", bg: "", animation: "" },
+  error: { border: "border-destructive", bg: "bg-destructive/5", animation: "" },
 waiting: { border: "border-warning/50", bg: "bg-warning/5", animation: "opacity-60" },
   evaluating: { border: "border-[color:var(--g-signal)]", bg: "bg-[color:var(--g-signal-surface)]", animation: "animate-pulse" },
-  debating: { border: "border-warning shadow-[0_0_20px_rgba(245,158,11,0.5)]", bg: "bg-warning/10", animation: "animate-pulse" },
-  consensus: { border: "border-success shadow-[0_0_15px_rgba(16,185,129,0.4)]", bg: "bg-success/10", animation: "" },
-  escalated: { border: "border-destructive shadow-[0_0_15px_rgba(239,68,68,0.4)]", bg: "bg-destructive/10", animation: "" },
+  debating: { border: "border-warning", bg: "bg-warning/5", animation: "" },
+  consensus: { border: "border-success/60", bg: "bg-success/5", animation: "" },
+  escalated: { border: "border-destructive", bg: "bg-destructive/5", animation: "" },
   }
 
 // Canvas Node Component - with mobile touch support
@@ -525,6 +432,7 @@ function CanvasNode({
   onConnectionDragStart,
   onConnectionDrop,
   isDraggingConnection,
+  connectState = "idle",
   isMobile,
   reliabilityMessage,
   }: {
@@ -538,11 +446,17 @@ function CanvasNode({
   onConnectionDragStart?: (nodeId: string, e: React.MouseEvent | React.TouchEvent) => void
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
+  connectState?: NodeConnectState
   isMobile?: boolean
   reliabilityMessage?: string | null
   }) {
   const config = getNodeTypeConfig(node.type)
-  const Icon = config.icon
+  const agentRole = node.type === "agent" ? agentStepRole(node.config, node.name) : null
+  const Icon = agentRole?.Icon ?? config.icon
+  const actionName = node.selectedAction
+    ? connectorActions[node.vendor || ""]?.actions.find((a) => a.id === node.selectedAction)?.name || node.selectedAction
+    : null
+  const typeDetail = agentRole?.label ?? actionName
   const [isDragging, setIsDragging] = useState(false)
   const [isInteracting, setIsInteracting] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -643,11 +557,14 @@ function CanvasNode({
   return (
     <div
       className={cn(
-        "absolute cursor-pointer transition-all duration-150 touch-none select-none",
+        "group/node absolute cursor-pointer transition-all duration-150 touch-none select-none",
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30",
         stateConfig.animation
       )}
+      data-canvas-node={node.id}
+      data-node-type={node.type}
+      data-selected={isSelected ? "true" : undefined}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
@@ -656,30 +573,21 @@ function CanvasNode({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
+        data-node-surface
         className={cn(
-          "group relative rounded-lg border bg-card shadow-lg transition-all duration-300",
+          "group relative rounded-[var(--np-radius-lg)] border shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-[border-color,background-color] duration-150",
           // Responsive width - narrower on mobile
           "w-48 p-2.5 md:w-56 md:p-3",
-          isSelected ? "border-info ring-2 ring-info/30" : "border-border hover:border-muted-foreground/50",
+          nodeSurfaceClass(isSelected),
           stateConfig.border,
           stateConfig.bg,
-          isHovered && "shadow-xl translate-y-[-2px]"
         )}
       >
+        {isSelected ? <NodeSelectionEdge /> : null}
         {/* Running indicator glow */}
         {node.state === "running" && (
-          <div className="absolute inset-0 rounded-lg bg-blue-500/10 animate-pulse pointer-events-none" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[var(--np-radius-lg)] bg-info/70 motion-safe:animate-pulse" />
         )}
-
-        {/* Drag handle - always visible on mobile when selected */}
-        <div className={cn(
-          "absolute -left-2 top-1/2 -translate-y-1/2 transition-opacity",
-          showControls ? "opacity-100" : "opacity-0"
-        )}>
-          <div className="bg-secondary rounded-md p-1">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
 
         {/* Delete button - larger touch target on mobile, visible when selected */}
         <button
@@ -687,8 +595,10 @@ function CanvasNode({
             e.stopPropagation()
             onDelete()
           }}
+          aria-label="Delete step"
+          title="Delete step"
           className={cn(
-            "absolute -right-2.5 -top-2.5 rounded-full bg-destructive text-destructive-foreground transition-all flex items-center justify-center shadow-lg",
+            "absolute -right-2.5 -top-2.5 flex items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground transition-all hover:border-destructive hover:text-destructive",
             // Larger on mobile (44px) for touch, smaller on desktop
             "h-8 w-8 md:h-6 md:w-6",
             showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
@@ -699,44 +609,30 @@ function CanvasNode({
 
         {/* State indicator badge */}
         {node.state && node.state !== "idle" && (
-          <div className={cn(
-            "absolute -top-2 left-4 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide",
-            node.state === "running" && "bg-info text-info-foreground",
-            node.state === "success" && "bg-success text-success-foreground",
-            node.state === "error" && "bg-destructive text-destructive-foreground",
-            node.state === "waiting" && "bg-warning text-warning-foreground"
-          )}>
-            {node.state === "running" && <Loader2 className="h-2.5 w-2.5 inline mr-1 animate-spin" />}
+          <div className="absolute -top-2.5 left-3 inline-flex items-center gap-1.5 rounded-[4px] border border-[color:var(--g-border-default)] bg-card px-1.5 py-0.5 text-[11px] font-medium capitalize text-foreground">
+            <span
+              aria-hidden
+              className={cn(
+                "size-1.5 rounded-full bg-[color:var(--g-text-muted)]",
+                node.state === "running" && "bg-[color:var(--info)] motion-safe:animate-pulse",
+                node.state === "success" && "bg-[color:var(--g-brand)]",
+                node.state === "error" && "bg-destructive",
+                node.state === "waiting" && "bg-[color:var(--g-approval)]",
+              )}
+            />
             {node.state}
           </div>
         )}
 
         {/* Node header */}
         <div className="flex items-start gap-2.5 mb-2">
-          <div className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-all",
-            config.color,
-            node.state === "running" && "animate-pulse"
-          )}>
-{node.vendor ? (
-  <ConnectorIcon vendor={node.vendor} size="xs" showStatusIndicator={false} />
-  ) : (
-  <Icon className="h-4 w-4" />
-  )}
-          </div>
+          <NodeMark vendor={node.vendor} icon={Icon} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{node.name}</p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-[10px] text-muted-foreground">{config.label}</p>
-              {node.selectedAction && (
-                <>
-                  <span className="text-muted-foreground/30">|</span>
-                  <p className="text-[10px] text-blue-400">
-                    {connectorActions[node.vendor || ""]?.actions.find(a => a.id === node.selectedAction)?.name || node.selectedAction}
-                  </p>
-                </>
-              )}
-            </div>
+            <p className="text-sm font-medium leading-5 text-foreground truncate">{node.name}</p>
+            <p className="truncate text-[11px] leading-4 text-muted-foreground" data-node-type-label>
+              {config.label}
+              {typeDetail ? <span> · {typeDetail}</span> : null}
+            </p>
             {(() => {
               const actionMeta = node.vendor
                 ? connectorActions[node.vendor]?.actions.find((a) => a.id === node.selectedAction)
@@ -782,18 +678,13 @@ function CanvasNode({
 
         {/* API Context - subtle metadata */}
         {node.vendor && node.selectedAction && (
-          <div className="flex items-center gap-2 mb-2 text-[9px] text-muted-foreground/70">
+          <div className="flex items-center gap-2 mb-2 text-[11px] text-muted-foreground">
             {(() => {
               const action = connectorActions[node.vendor]?.actions.find(a => a.id === node.selectedAction)
               if (!action) return null
               return (
                 <>
-                  <span className={cn(
-                    "px-1.5 py-0.5 rounded font-mono",
-                    action.method === "GET" && "bg-success/10 text-success",
-                    action.method === "POST" && "bg-blue-500/10 text-blue-400",
-                    action.method === "PATCH" && "bg-warning/10 text-warning"
-                  )}>
+                  <span className="font-mono font-medium text-[color:var(--g-text-secondary)]">
                     {action.method}
                   </span>
                   <span className="text-muted-foreground/50">|</span>
@@ -812,113 +703,15 @@ function CanvasNode({
           </div>
         )}
 
-{/* Connection handles - all 4 sides - Drag from these to connect */}
-  {/* Mobile-friendly: larger touch targets (44px touch area, visible indicator) */}
-  {/* Left handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    // Larger touch target on mobile
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-      : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Right handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-      : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Top handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-      : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Bottom handle */}
-  <div
-  role="button"
-  tabIndex={0}
-  aria-label={`Connect from ${node.name}`}
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onTouchStart={(e) => {
-    e.stopPropagation()
-    if (e.touches.length === 1) {
-      onConnectionDragStart?.(node.id, e)
-    }
-  }}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onTouchEnd={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  onKeyDown={(e) => e.key === "Enter" && onConnectionDragStart?.(node.id, e as unknown as React.MouseEvent)}
-  className={cn(
-    "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-    "h-6 w-6 md:h-4 md:w-4",
-    isDraggingConnection
-      ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-      : isSelected
-        ? "border-info bg-info/60 hover:scale-125 hover:shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-        : "border-muted-foreground/40 bg-card hover:border-info hover:bg-info/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
+        <NodeHandles
+          nodeId={node.id}
+          nodeName={node.name}
+          selected={isSelected}
+          connectState={connectState}
+          isDraggingConnection={isDraggingConnection}
+          onConnectionDragStart={onConnectionDragStart}
+          onConnectionDrop={onConnectionDrop}
+        />
       </div>
     </div>
   )
@@ -936,6 +729,7 @@ function DecisionNode({
   onConnectionDragStart,
   onConnectionDrop,
   isDraggingConnection,
+  connectState = "idle",
   }: {
   node: WorkflowNode
   isSelected: boolean
@@ -947,6 +741,7 @@ function DecisionNode({
   onConnectionDragStart?: (nodeId: string, e: React.MouseEvent) => void
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
+  connectState?: NodeConnectState
   }) {
   const [isDragging, setIsDragging] = useState(false)
   const [isMouseDown, setIsMouseDown] = useState(false)
@@ -1014,11 +809,14 @@ function DecisionNode({
   return (
     <div
       className={cn(
-        "absolute cursor-pointer transition-all duration-150",
+        "group/node absolute cursor-pointer transition-all duration-150",
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30",
         stateConfig.animation
       )}
+      data-canvas-node={node.id}
+      data-node-type="decision"
+      data-selected={isSelected ? "true" : undefined}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
@@ -1027,19 +825,30 @@ function DecisionNode({
     >
       {/* Diamond shape container */}
       <div className="relative w-48 flex flex-col items-center">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          aria-label="Delete step"
+          title="Delete step"
+          className="absolute right-0 top-0 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground opacity-0 transition-opacity hover:border-destructive hover:text-destructive focus-visible:opacity-100 group-hover/node:opacity-100"
+        >
+          <X className="h-3 w-3" />
+        </button>
         {/* Evaluating/Running indicator */}
         {isEvaluating && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-[color:var(--g-signal-surface)] border border-[color:var(--g-signal)]/40">
-            <Loader2 className="h-3 w-3 text-[color:var(--g-signal)] animate-spin" />
-            <span className="text-[10px] font-medium text-[color:var(--g-signal)]">Evaluating...</span>
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-[5px] border border-[color:var(--g-border-default)] bg-card">
+            <Loader2 className="h-3 w-3 text-[color:var(--info)] animate-spin" />
+            <span className="text-[11px] font-medium text-foreground">Evaluating…</span>
           </div>
         )}
 
         {/* AI Reasoning badge */}
         {hasReasoning && !isEvaluating && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-success/20 border border-success/40">
-            <Brain className="h-3 w-3 text-success" />
-            <span className="text-[10px] font-medium text-success">
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-[5px] border border-[color:var(--g-border-default)] bg-card">
+            <Brain className="h-3 w-3 text-[color:var(--g-intelligence-bright)]" />
+            <span className="font-mono text-[11px] font-medium text-foreground">
               {node.decisionConfig?.reasoning?.confidence}% confidence
             </span>
           </div>
@@ -1048,103 +857,52 @@ function DecisionNode({
         {/* Diamond shape */}
         <div
           className={cn(
-            "relative w-32 h-32 transform rotate-45 rounded-lg border-2 transition-all duration-300",
-            isSelected
-              ? "border-[color:var(--g-signal)]"
-              : "border-[color:var(--g-signal)]/40 hover:border-[color:var(--g-signal)]/60",
+            "relative w-32 h-32 transform rotate-45 rounded-lg border transition-[border-color,background-color] duration-150",
+            nodeSurfaceClass(isSelected),
             stateConfig.border || "",
-            stateConfig.bg || "bg-card",
-            isHovered && !isDragging && "scale-105",
+            stateConfig.bg || "",
           )}
         >
           {/* Inner content - counter-rotate to be upright */}
           <div className="absolute inset-0 flex flex-col items-center justify-center -rotate-45">
             <div
               className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-lg transition-all",
-                "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]",
+                "flex h-10 w-10 items-center justify-center rounded-md transition-all",
+                "text-foreground",
               )}
             >
               <GitBranch className={cn("h-5 w-5", isEvaluating && "animate-pulse")} />
             </div>
           </div>
 
-          {/* Delete button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-            className="absolute -right-3 -top-3 -rotate-45 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity flex items-center justify-center z-10"
-          >
-            <X className="h-3 w-3" />
-          </button>
-
-{/* Connection handles - on diamond corners - Drag to connect */}
-  {/* Top corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute -top-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Right corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute top-1/2 -right-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Bottom corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
-  {/* Left corner */}
-  <div
-  onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-  onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-  className={cn(
-  "absolute top-1/2 -left-1.5 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-  isDraggingConnection
-  ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-  : isSelected
-  ? "border-[color:var(--g-signal)] bg-[color:var(--g-signal)]/60 hover:scale-125"
-  : "border-[color:var(--g-signal)]/40 bg-card hover:border-[color:var(--g-signal)] hover:bg-[color:var(--g-signal)]/50 hover:scale-125"
-  )}
-  title="Drag to connect"
-  />
+          {/* Corners of the rotated square are the diamond's tips */}
+          {(["-top-2.5 -left-2.5", "-top-2.5 -right-2.5", "-bottom-2.5 -right-2.5", "-bottom-2.5 -left-2.5"] as const).map((position) => (
+            <div
+              key={position}
+              role="button"
+              tabIndex={0}
+              aria-label={`Connect from ${node.name}`}
+              data-connect-state={connectState}
+              onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
+              onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
+              title={connectState === "invalid" ? "Already connected" : "Drag to connect"}
+              className={cn(
+                "group/handle absolute z-10 flex h-5 w-5 items-center justify-center rounded-full outline-none",
+                position,
+                connectState === "invalid" ? "cursor-not-allowed" : "cursor-crosshair",
+              )}
+            >
+              <span aria-hidden className={handleDotClass(connectState, isSelected)} />
+            </div>
+          ))}
         </div>
 
         {/* Node label below diamond */}
-        <div className="mt-4 text-center max-w-[180px]">
+        <div className="mt-8 max-w-[180px] rounded-[4px] bg-[color:var(--g-canvas)] px-1.5 py-0.5 text-center">
           <p className="text-sm font-medium text-foreground truncate">{node.name}</p>
-          <p className="text-[10px] text-[color:var(--g-signal)] flex items-center justify-center gap-1">
-            <GitBranch className="h-3 w-3" />
-            Decision Node
+          <p className="text-[11px] text-muted-foreground" data-node-type-label>
+            Decision
+            {node.outputPaths?.length ? <span> · {node.outputPaths.length} paths</span> : null}
           </p>
           {node.description && (
             <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{node.description}</p>
@@ -1153,7 +911,7 @@ function DecisionNode({
 
         {/* Output paths indicators */}
         {node.outputPaths && node.outputPaths.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1 justify-center max-w-[180px]">
+          <div className="mt-1 flex max-w-[180px] flex-wrap justify-center gap-1 rounded-[4px] bg-[color:var(--g-canvas)] px-1 py-0.5">
             {node.outputPaths.map((path, idx) => (
               <span
                 key={path.id}
@@ -1250,7 +1008,7 @@ function AIReasoningPanel({
       {/* Header - always visible */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/20">
@@ -1285,12 +1043,12 @@ function AIReasoningPanel({
           {/* Confidence meter */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Confidence</span>
+              <span className="text-xs text-muted-foreground">Confidence</span>
               <span className="text-xs font-mono text-success">{reasoning.confidence}%</span>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                className="h-full bg-[color:var(--g-brand)] transition-all"
                 style={{ width: `${reasoning.confidence}%` }}
               />
             </div>
@@ -1298,7 +1056,7 @@ function AIReasoningPanel({
 
           {/* Key factors */}
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Key Factors</p>
+            <p className="text-xs text-muted-foreground mb-2">Key factors</p>
             <div className="space-y-1.5">
               {reasoning.factors?.map((factor, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
@@ -1312,7 +1070,7 @@ function AIReasoningPanel({
           {/* Rejected paths */}
           {reasoning.rejectedPaths && reasoning.rejectedPaths.length > 0 && (
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Alternatives Considered</p>
+              <p className="text-xs text-muted-foreground mb-2">Alternatives considered</p>
               <div className="flex flex-wrap gap-1.5">
                 {reasoning.rejectedPaths.map((path, i) => (
                   <span
@@ -1368,7 +1126,7 @@ function DecisionSummaryToast({
 }) {
   return (
     <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in">
-      <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-success/30 shadow-lg max-w-sm">
+      <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-success/30 shadow-md max-w-sm">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/20 shrink-0">
           <Brain className="h-4 w-4 text-success" />
         </div>
@@ -1468,7 +1226,17 @@ function DynamicFormField({
   )
 }
 
-// Agent Council Node Component - Multi-agent collaboration
+// Agent Council Node Component - Multi-agent collaboration.
+// Rectangular group node in the same family as every other step; the group
+// is carried by one glyph, a participant count and an inner participant row.
+const COUNCIL_METHOD_LABEL: Record<NonNullable<CouncilConfig["debateMode"]>, string> = {
+  consensus: "Consensus required",
+  majority: "Majority vote",
+  "lead-decides": "Lead agent decides",
+  "human-approval": "Human approval",
+  "risk-escalation": "Risk escalation",
+}
+
 function AgentCouncilNode({
   node,
   isSelected,
@@ -1481,6 +1249,7 @@ function AgentCouncilNode({
   onConnectionDragStart,
   onConnectionDrop,
   isDraggingConnection,
+  connectState = "idle",
   }: {
   node: WorkflowNode
   isSelected: boolean
@@ -1493,31 +1262,23 @@ function AgentCouncilNode({
   onConnectionDragStart?: (nodeId: string, e: React.MouseEvent) => void
   onConnectionDrop?: (nodeId: string) => void
   isDraggingConnection?: boolean
+  connectState?: NodeConnectState
   }) {
   const [isDragging, setIsDragging] = useState(false)
   const [isMouseDown, setIsMouseDown] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const dragStartRef = useRef({ x: 0, y: 0, nodeX: 0, nodeY: 0 })
   const hasDraggedRef = useRef(false)
-  
+
   const agents = node.councilConfig?.participatingAgents || []
   const isDebating = node.state === "debating"
   const hasConsensus = node.state === "consensus"
   const isEscalated = node.state === "escalated"
-  
-  const stateColors = {
-    idle: { ring: "border-warning/30", bg: "bg-warning/5", glow: "" },
-    debating: { ring: "border-warning animate-pulse", bg: "bg-warning/10", glow: "shadow-[0_0_30px_rgba(245,158,11,0.3)]" },
-    consensus: { ring: "border-success", bg: "bg-success/10", glow: "shadow-[0_0_20px_rgba(16,185,129,0.3)]" },
-    escalated: { ring: "border-destructive", bg: "bg-destructive/10", glow: "shadow-[0_0_20px_rgba(239,68,68,0.3)]" },
-    running: { ring: "border-blue-500 animate-pulse", bg: "bg-blue-500/10", glow: "shadow-[0_0_20px_rgba(59,130,246,0.3)]" },
-    success: { ring: "border-success", bg: "bg-success/10", glow: "" },
-    error: { ring: "border-destructive", bg: "bg-destructive/10", glow: "" },
-    waiting: { ring: "border-warning/50", bg: "bg-warning/5", glow: "" },
-    evaluating: { ring: "border-[color:var(--g-signal)]", bg: "bg-[color:var(--g-signal-surface)]", glow: "" },
-  }
-  const stateConfig = stateColors[node.state || "idle"]
-  
+  const stateConfig = nodeStateConfig[node.state || "idle"]
+  const method = node.councilConfig?.debateMode ? COUNCIL_METHOD_LABEL[node.councilConfig.debateMode] : null
+  const evidenceCount = node.councilConfig?.evidenceSources?.length ?? 0
+  const visibleAgents = agents.slice(0, 3)
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -1530,20 +1291,20 @@ function AgentCouncilNode({
       nodeY: node.position.y,
     }
   }
-  
+
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     onShowDetails()
   }
-  
+
   useEffect(() => {
     if (!isMouseDown) return
-    
+
     const handleGlobalMouseMove = (e: MouseEvent) => {
       const dx = e.clientX - dragStartRef.current.x
       const dy = e.clientY - dragStartRef.current.y
-      
+
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
         hasDraggedRef.current = true
         setIsDragging(true)
@@ -1552,7 +1313,7 @@ function AgentCouncilNode({
         onDrag({ x: newX, y: newY })
       }
     }
-    
+
     const handleGlobalMouseUp = () => {
       if (!hasDraggedRef.current) {
         onSelect()
@@ -1561,204 +1322,145 @@ function AgentCouncilNode({
       setIsMouseDown(false)
       hasDraggedRef.current = false
     }
-    
+
     window.addEventListener("mousemove", handleGlobalMouseMove)
     window.addEventListener("mouseup", handleGlobalMouseUp)
-    
+
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove)
       window.removeEventListener("mouseup", handleGlobalMouseUp)
     }
   }, [isMouseDown, onDrag, onSelect, node.id])
-  
-  // Agent avatar colors based on role
-  const getAgentColor = (index: number) => {
-    const colors = [
-      "bg-blue-500", "bg-emerald-500", "bg-[color:var(--g-signal)]", "bg-amber-500",
-      "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-pink-500"
-    ]
-    return colors[index % colors.length]
-  }
-  
+
   return (
     <div
       className={cn(
-        "absolute cursor-pointer transition-all duration-150 group",
+        "group/node absolute cursor-pointer select-none transition-all duration-150",
         isSelected ? "z-20" : "z-10",
         isDragging && "cursor-grabbing z-30"
       )}
+      data-canvas-node={node.id}
+      data-node-type="council"
+      data-selected={isSelected ? "true" : undefined}
       style={{ left: node.position.x, top: node.position.y }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Circular council container */}
-      <div className={cn(
-        "relative w-48 h-48 rounded-full border-2 transition-all duration-300",
-        stateConfig.ring,
-        stateConfig.bg,
-        stateConfig.glow,
-        isSelected && "ring-2 ring-warning/50 ring-offset-2 ring-offset-background"
-      )}>
-        {/* Orbital ring animation */}
-        <div className={cn(
-          "absolute inset-2 rounded-full border border-dashed border-warning/30",
-          isDebating && "animate-spin"
-        )} style={{ animationDuration: "8s" }} />
-        
-        {/* Center icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className={cn(
-            "w-16 h-16 rounded-full flex items-center justify-center",
-            "bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-warning/40"
-          )}>
-            <Users className="h-8 w-8 text-warning" />
-          </div>
-        </div>
-        
-        {/* Agent avatars in orbital positions */}
-        {agents.slice(0, 6).map((agent, index) => {
-          const angle = (index * 360 / Math.min(agents.length, 6)) - 90
-          const radius = 70
-          const x = Math.cos(angle * Math.PI / 180) * radius
-          const y = Math.sin(angle * Math.PI / 180) * radius
-          
-          return (
-            <div
-              key={agent.id}
-              className={cn(
-                "absolute w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all duration-300",
-                getAgentColor(index),
-                isDebating && "animate-pulse"
-              )}
-              style={{
-                left: `calc(50% + ${x}px - 20px)`,
-                top: `calc(50% + ${y}px - 20px)`,
-              }}
-              title={`${agent.name} - ${agent.role}`}
-            >
-              {agent.name.charAt(0)}
-            </div>
-          )
-        })}
-        
-        {/* Connection handles */}
-        {/* Top */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-              : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        {/* Right */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-              : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        {/* Bottom */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-              : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        {/* Left */}
-        <div
-          onMouseDown={(e) => onConnectionDragStart?.(node.id, e)}
-          onMouseUp={() => isDraggingConnection && onConnectionDrop?.(node.id)}
-          className={cn(
-            "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 rounded-full border-2 transition-all duration-200 cursor-crosshair z-10",
-            isDraggingConnection
-              ? "border-success bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)] scale-125"
-              : isSelected
-              ? "border-warning bg-warning/60 hover:scale-125"
-              : "border-warning/40 bg-card hover:border-warning hover:bg-warning/50 hover:scale-125"
-          )}
-          title="Drag to connect"
-        />
-        
-        {/* Delete button on hover */}
+      <div
+        data-node-surface
+        className={cn(
+          "relative w-64 rounded-[var(--np-radius-lg)] border p-3 shadow-[0_1px_2px_rgb(0_0_0/0.04)] transition-[border-color,background-color] duration-150",
+          nodeSurfaceClass(isSelected),
+          stateConfig.border,
+          stateConfig.bg,
+        )}
+      >
+        {isSelected ? <NodeSelectionEdge /> : null}
+        {isDebating || node.state === "running" ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[var(--np-radius-lg)] bg-[color:var(--g-brand)] motion-safe:animate-pulse" />
+        ) : null}
+
         {isHovered && (
           <button
             onClick={(e) => {
               e.stopPropagation()
               onDelete()
             }}
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90 transition-colors z-20"
+            aria-label="Delete step"
+            title="Delete step"
+            className="absolute -right-2.5 -top-2.5 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
           >
             <X className="h-3 w-3" />
           </button>
         )}
-      </div>
-      
-      {/* Node label below */}
-      <div className="mt-2 text-center max-w-48">
-        <div className="font-medium text-sm text-foreground">{node.name}</div>
-        <div className="flex items-center justify-center gap-1 mt-0.5">
-          <Users className="h-3 w-3 text-warning" />
-          <span className="text-xs text-warning">Agent Council</span>
+
+        {/* Header: group glyph, title, type · participant count */}
+        <div className="flex items-start gap-2.5">
+          <NodeMark icon={Users} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium leading-5 text-foreground">{node.name}</p>
+            <p className="truncate text-[11px] leading-4 text-muted-foreground" data-node-type-label>
+              Agent Council · {agents.length} {agents.length === 1 ? "agent" : "agents"}
+            </p>
+          </div>
+          {isDebating || hasConsensus || isEscalated ? (
+            <span
+              className={cn(
+                "shrink-0 rounded-[4px] border px-1.5 py-0.5 text-[10px] font-medium",
+                isDebating && "border-[color:var(--g-brand-border)] text-foreground",
+                hasConsensus && "border-success/30 text-success",
+                isEscalated && "border-destructive/30 text-destructive",
+              )}
+            >
+              {isDebating ? "Evaluating" : hasConsensus ? "Consensus" : "Escalated"}
+            </span>
+          ) : null}
         </div>
-        {node.description && (
-          <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{node.description}</div>
+
+        {/* Participants: role glyph, name, role — real assigned agents only */}
+        {agents.length > 0 ? (
+          <ul
+            className="mt-2.5 space-y-1 border-t border-[color:var(--g-border-default)] pt-2"
+            aria-label={`${agents.length} participating agents`}
+            data-council-participants
+          >
+            {visibleAgents.map((agent) => {
+              const role = agentStepRole({ role: agent.role }, agent.name)
+              const RoleIcon = role.Icon
+              return (
+                <li key={agent.id} className="flex min-w-0 items-center gap-2 text-[11.5px] leading-4">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-2)] dark:border-[color:var(--graphite-700)]">
+                    <RoleIcon className="h-3 w-3 text-[color:var(--g-text-secondary)]" strokeWidth={1.75} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">{agent.name}</span>
+                  {agent.role ? <span className="max-w-[40%] shrink-0 truncate text-muted-foreground">{agent.role}</span> : null}
+                </li>
+              )
+            })}
+            {agents.length > visibleAgents.length ? (
+              <li className="pl-7 text-[11px] text-muted-foreground">+{agents.length - visibleAgents.length} more</li>
+            ) : null}
+          </ul>
+        ) : (
+          <p className="mt-2.5 border-t border-[color:var(--g-border-default)] pt-2 text-[11px] text-muted-foreground">
+            No agents assigned
+          </p>
         )}
-        {/* State indicator */}
-        {isDebating && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-warning/10 text-warning border-warning/30">
-            Council evaluating...
-          </Badge>
-        )}
-        {hasConsensus && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-success/10 text-success border-success/30">
-            Consensus reached
-          </Badge>
-        )}
-        {isEscalated && (
-          <Badge variant="outline" className="mt-1 text-[10px] bg-destructive/10 text-destructive border-destructive/30">
-            Escalated to human
-          </Badge>
-        )}
-{/* Agent count and View Debate button */}
-  <div className="flex items-center justify-center gap-2 mt-1.5">
-    {agents.length > 0 && (
-      <span className="text-[10px] text-muted-foreground">{agents.length} agents</span>
-    )}
-    {(isDebating || hasConsensus || isEscalated) && onViewDebate && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onViewDebate()
-        }}
-        className="flex items-center gap-1 text-[10px] text-warning hover:text-warning bg-warning/10 px-2 py-0.5 rounded-full hover:bg-warning/20 transition-colors"
-      >
-        <MessageSquare className="h-3 w-3" />
-        View Debate
-      </button>
-    )}
-  </div>
+
+        {/* Coordination metadata */}
+        {method || evidenceCount > 0 || ((isDebating || hasConsensus || isEscalated) && onViewDebate) ? (
+          <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+            <span className="truncate">
+              {[method, evidenceCount > 0 ? `${evidenceCount} evidence ${evidenceCount === 1 ? "source" : "sources"}` : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+            {(isDebating || hasConsensus || isEscalated) && onViewDebate ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onViewDebate()
+                }}
+                className="flex shrink-0 items-center gap-1 rounded-[4px] border border-[color:var(--g-border-strong)] px-1.5 py-0.5 text-[10px] text-foreground transition-colors hover:bg-[color:var(--g-surface-2)]"
+              >
+                <MessageSquare className="h-3 w-3" aria-hidden />
+                View debate
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <NodeHandles
+          nodeId={node.id}
+          nodeName={node.name}
+          selected={isSelected}
+          connectState={connectState}
+          isDraggingConnection={isDraggingConnection}
+          onConnectionDragStart={onConnectionDragStart as ((nodeId: string, e: React.MouseEvent | React.TouchEvent) => void) | undefined}
+          onConnectionDrop={onConnectionDrop}
+        />
       </div>
     </div>
   )
@@ -1813,7 +1515,7 @@ function DebateViewDialog({
 
   const getAgentById = (id: string) => agents.find(a => a.id === id)
   const getAgentColor = (index: number) => {
-    const colors = ["bg-blue-500", "bg-emerald-500", "bg-[color:var(--g-signal)]", "bg-amber-500", "bg-rose-500", "bg-cyan-500"]
+    const colors = ["bg-[color:var(--g-frame)]", "bg-foreground/70"]
     return colors[index % colors.length]
   }
 
@@ -1847,7 +1549,7 @@ function DebateViewDialog({
         <div className="flex-1 overflow-y-auto space-y-6 py-4">
           {/* Debate Timeline */}
           <div className="px-1">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Debate Timeline</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Debate timeline</h4>
             <div className="flex items-center gap-2">
               {timeline.map((step, idx) => (
                 <div key={idx} className="flex items-center gap-2 flex-1">
@@ -1880,7 +1582,7 @@ function DebateViewDialog({
 
           {/* Agent Contributions */}
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Agent Contributions</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Agent contributions</h4>
             <div className="grid gap-3">
               {contributions.map((contribution, idx) => {
                 const agent = getAgentById(contribution.agentId) || agents[idx]
@@ -1938,9 +1640,9 @@ function DebateViewDialog({
           {/* Disagreements */}
           {disagreements.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <h4 className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                Disagreements Detected
+                Disagreements detected
               </h4>
               <div className="space-y-2">
                 {disagreements.map((disagreement, idx) => {
@@ -1967,7 +1669,7 @@ function DebateViewDialog({
             <div className="p-4 rounded-lg bg-success/5 border border-success/30">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle className="h-5 w-5 text-success" />
-                <h4 className="font-medium text-foreground">Final Decision</h4>
+                <h4 className="font-medium text-foreground">Final decision</h4>
                 <Badge variant="outline" className="ml-auto bg-success/10 text-success border-success/30">
                   {finalDecision.confidence}% confidence
                 </Badge>
@@ -1990,7 +1692,7 @@ function DebateViewDialog({
               )}
               {finalDecision.dissentingOpinions && finalDecision.dissentingOpinions.length > 0 && (
                 <div className="pt-3 border-t border-warning/20">
-                  <p className="text-xs text-warning uppercase tracking-wide mb-2">Dissenting opinions:</p>
+                  <p className="text-xs text-warning mb-2">Dissenting opinions:</p>
                   {finalDecision.dissentingOpinions.map((dissent, i) => {
                     const agent = getAgentById(dissent.agentId)
                     return (
@@ -2014,7 +1716,7 @@ function DebateViewDialog({
               onClick={onAcceptDecision}
             >
               <CheckCircle className="h-4 w-4" />
-              Accept Recommendation
+              Accept recommendation
             </Button>
             <Button 
               variant="outline" 
@@ -2030,7 +1732,7 @@ function DebateViewDialog({
               onClick={onRequestMoreEvidence}
             >
               <FileSearch className="h-4 w-4" />
-              More Evidence
+              More evidence
             </Button>
           </div>
         )}
@@ -2063,15 +1765,13 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-2"
+      className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-2"
     >
       <span>{children}</span>
       <span
         className={cn(
-          "normal-case tracking-normal font-medium text-[10px] px-1.5 py-0.5 rounded",
-          required
-            ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
-            : "bg-muted text-muted-foreground",
+          "font-normal text-[11px]",
+          required ? "text-[color:var(--g-text-secondary)]" : "text-muted-foreground",
         )}
       >
         {required ? "Required" : "Optional"}
@@ -2090,6 +1790,7 @@ function ConfigPanel({
   orgConnectors = [],
   actionCatalog = null,
   lastRunId = null,
+  inline = false,
 }: {
   node: WorkflowNode | null
   onClose: () => void
@@ -2100,6 +1801,8 @@ function ConfigPanel({
   orgConnectors?: Connector[]
   actionCatalog?: ConnectorActionCatalogResponse | null
   lastRunId?: string | null
+  /** Render docked inside the builder inspector instead of as a modal sheet. */
+  inline?: boolean
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   const [showDecisionHelp, setShowDecisionHelp] = useState(true)
@@ -2167,7 +1870,7 @@ function ConfigPanel({
   const boundVendor = connectorBind.vendor
   const boundActionId = connectorBind.selectedAction
 
-  const catalogVendor = actionCatalog?.vendors.find((v) => v.vendor === boundVendor)
+  const catalogVendor = actionCatalog?.vendors?.find((v) => v.vendor === boundVendor)
   const catalogActions: ConnectorActionDefinition[] = catalogVendor ? allActions(catalogVendor) : []
   const legacyActions = boundVendor ? connectorActions[boundVendor]?.actions || [] : []
   const availableCatalogActions = catalogActions.length
@@ -2189,17 +1892,15 @@ function ConfigPanel({
   const selectedAction = availableActions.find((a) => a.id === boundActionId)
 
   const liveConnector =
-    orgConnectors.find((c) => c.vendor === boundVendor && c.status === "active") ||
+    orgConnectors.find((c) => c.vendor === boundVendor && isUsableConnectorStatus(c.status)) ||
     orgConnectors.find((c) => c.vendor === boundVendor)
   const connectorStatus: "connected" | "disconnected" | "error" = liveConnector
-    ? liveConnector.status === "active"
+    ? isUsableConnectorStatus(liveConnector.status)
       ? "connected"
       : liveConnector.status === "error"
         ? "error"
         : "disconnected"
-    : connectorLibrary.find((c) => c.vendor === boundVendor)?.status === "connected"
-      ? "connected"
-      : "disconnected"
+    : "disconnected"
 
   const vendorOptions = (() => {
     const fromLive = orgConnectors.map((c) => ({
@@ -2212,41 +1913,39 @@ function ConfigPanel({
       name: v.displayName || v.vendor,
       status: "catalog" as const,
     }))
-    const fromMock = connectorLibrary.map((c) => ({
-      vendor: c.vendor,
-      name: c.name,
-      status: c.status,
-    }))
     const map = new Map<string, { vendor: string; name: string; status: string }>()
-    for (const row of [...fromLive, ...fromCatalog, ...fromMock]) {
+    for (const row of [...fromLive, ...fromCatalog]) {
       if (!map.has(row.vendor)) map.set(row.vendor, row)
     }
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
   })()
 
-  return (
-    <Sheet open={!!node} onOpenChange={() => onClose()}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
-        <SheetHeader className="pb-4 border-b border-border mb-4">
+  const HeaderRoot = inline ? InspectorHeader : SheetHeader
+  const HeaderTitle = inline ? InspectorTitle : SheetTitle
+  const HeaderDescription = inline ? InspectorDescription : SheetDescription
+
+  const content = (
+      <>
+        <HeaderRoot className="pb-4 border-b border-border mb-4">
           <div className="flex items-center gap-3">
             <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-lg border",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border",
               config.color
             )}>
 {boundVendor || node.vendor ? (
   <ConnectorIcon vendor={boundVendor || node.vendor} size="sm" showStatusIndicator={false} />
   ) : (
-  <Icon className="h-5 w-5" />
+  <Icon className="h-4 w-4" />
   )}
             </div>
-            <div>
-              <SheetTitle className="text-left">{node.name}</SheetTitle>
-              <SheetDescription className="text-left">
+            <div className="min-w-0">
+              <HeaderTitle className="text-left">{node.name}</HeaderTitle>
+              <HeaderDescription className="text-left">
                 Inspect · {config.label}. Configuration lives here, not behind Ask.
-              </SheetDescription>
+              </HeaderDescription>
             </div>
           </div>
-        </SheetHeader>
+        </HeaderRoot>
 
         <div className="space-y-6">
           {lastRunId && node ? (
@@ -2256,51 +1955,36 @@ function ConfigPanel({
           {/* Setup status — what is still required for this node to work */}
           <div
             className={cn(
-              "flex items-start gap-2 p-3 rounded-lg border text-sm",
-              readiness.ready
-                ? "bg-success/10 border-success/20 text-success"
-                : "bg-warning/10 border-warning/20 text-warning",
+              "flex items-start gap-2 border-l-2 py-1 pl-3 text-sm",
+              readiness.ready ? "border-l-[color:var(--g-brand)]" : "border-l-[color:var(--g-approval)]",
             )}
             role="status"
           >
             {readiness.ready ? (
-              <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <CheckCircle className="h-4 w-4 shrink-0 mt-0.5 text-[color:var(--g-brand-active)]" />
             ) : (
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[color:var(--warning)]" />
             )}
             <div className="min-w-0">
-              <p className="font-medium text-xs uppercase tracking-wide mb-0.5">
+              <p className="font-medium text-[13px] text-foreground mb-0.5">
                 {readiness.ready ? "Setup complete" : "Setup incomplete"}
               </p>
-              <p className="text-[12px] leading-snug opacity-95">{readiness.summary}</p>
+              <p className="text-xs leading-snug text-muted-foreground">{readiness.summary}</p>
             </div>
           </div>
 
           {/* Node Type Badge */}
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
-            <div className={cn("h-2 w-2 rounded-full", 
-              node.type === "source" && "bg-muted-foreground",
-              node.type === "agent" && "bg-blue-500",
-              node.type === "connector" && "bg-amber-500",
-              node.type === "tool" && "bg-[color:var(--g-signal)]",
-node.type === "approval" && "bg-red-500",
-  node.type === "task" && "bg-emerald-500",
-  node.type === "decision" && "bg-[color:var(--g-signal)]"
-            )} />
+          <div className="flex items-center gap-2 border-y border-[color:var(--g-border-subtle)] py-2.5">
+            <Icon className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">{config.label}</span>
             {boundVendor && (
               <>
                 <span className="text-muted-foreground/50">|</span>
                 <span className="text-sm text-muted-foreground capitalize">{boundVendor}</span>
-                <div className={cn(
-                  "ml-auto flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full",
-                  connectorStatus === "connected" 
-                    ? "bg-success/10 text-success" 
-                    : "bg-warning/10 text-warning"
-                )}>
+                <div className="ml-auto flex items-center gap-1.5 text-xs font-medium capitalize text-[color:var(--g-text-secondary)]">
                   <div className={cn(
                     "h-1.5 w-1.5 rounded-full",
-                    connectorStatus === "connected" ? "bg-emerald-500" : "bg-amber-500"
+                    connectorStatus === "connected" ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-approval)]"
                   )} />
                   {connectorStatus}
                 </div>
@@ -2315,9 +1999,9 @@ node.type === "approval" && "bg-red-500",
             <div className="space-y-2 p-3 rounded-lg border border-border bg-secondary/40">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-blue-400" />
+                  <Zap className="h-3.5 w-3.5 text-[color:var(--info)]" />
                   <span className="text-xs font-medium text-foreground">Runs as</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-[color:var(--info)]">
                     invoke_tool
                   </span>
                 </div>
@@ -2451,7 +2135,7 @@ node.type === "approval" && "bg-red-500",
                   <p className="text-[10px] text-muted-foreground mt-1">
                     No connectors loaded yet.{" "}
                     <Link href="/connectors" className="text-info underline-offset-2 hover:underline">
-                      Open Connectors
+                      Open connectors
                     </Link>{" "}
                     to connect Apollo, HubSpot, etc.
                   </p>
@@ -2517,8 +2201,8 @@ node.type === "approval" && "bg-red-500",
               {selectedAction && (
                 <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-medium">Action Parameters</span>
+                    <Sparkles className="h-4 w-4 text-[color:var(--info)]" />
+                    <span className="text-sm font-medium">Action parameters</span>
                   </div>
                   {selectedAction.fields.map((field) => (
                     <DynamicFormField
@@ -2555,7 +2239,7 @@ node.type === "approval" && "bg-red-500",
           {/* Type-specific config */}
           {node.type === "agent" && (
             <div className="space-y-4 pt-4 border-t border-border">
-              <h4 className="text-sm font-medium text-foreground">Agent Settings</h4>
+              <h4 className="text-sm font-medium text-foreground">Agent settings</h4>
               <div>
                 <FieldLabel required>Existing agent</FieldLabel>
                 {orgAgents.length === 0 ? (
@@ -2649,7 +2333,7 @@ node.type === "approval" && "bg-red-500",
 
           {node.type === "task" && (
             <div className="space-y-4 pt-4 border-t border-border">
-              <h4 className="text-sm font-medium text-foreground">Task Settings</h4>
+              <h4 className="text-sm font-medium text-foreground">Task settings</h4>
               <div>
                 <FieldLabel required>Instructions</FieldLabel>
                 <textarea
@@ -2671,7 +2355,7 @@ node.type === "approval" && "bg-red-500",
                 </p>
               </div>
               <div>
-                <FieldLabel>Model Override</FieldLabel>
+                <FieldLabel>Model override</FieldLabel>
                 <p className="text-[10px] text-muted-foreground mb-1.5">
                   Optionally override the agent&apos;s default model for this step
                 </p>
@@ -2688,9 +2372,9 @@ node.type === "approval" && "bg-red-500",
 
 {node.type === "approval" && (
   <div className="space-y-4 pt-4 border-t border-border">
-  <h4 className="text-sm font-medium text-foreground">Approval Settings</h4>
+  <h4 className="text-sm font-medium text-foreground">Approval settings</h4>
   <div>
-  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
   Approvers
   </label>
   <Input
@@ -2718,7 +2402,7 @@ node.type === "approval" && "bg-red-500",
         <GitBranch className="h-4 w-4 text-[color:var(--g-signal)]" />
       </div>
       <div>
-        <h4 className="text-sm font-medium text-foreground">Decision Configuration</h4>
+        <h4 className="text-sm font-medium text-foreground">Decision configuration</h4>
         <p className="text-[10px] text-muted-foreground">Configure branching to the next steps</p>
       </div>
     </div>
@@ -2755,7 +2439,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Decision Objective */}
     <div>
-      <FieldLabel required={decisionStrategy !== "rule-based"}>Decision Objective</FieldLabel>
+      <FieldLabel required={decisionStrategy !== "rule-based"}>Decision objective</FieldLabel>
       <Textarea
         value={node.decisionConfig?.objective || ""}
         onChange={(e) => onUpdate({ 
@@ -2768,7 +2452,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Decision Strategy */}
     <div>
-      <FieldLabel required>Decision Strategy</FieldLabel>
+      <FieldLabel required>Decision strategy</FieldLabel>
       <div className="grid grid-cols-3 gap-2">
         {(["rule-based", "ai-assisted", "hybrid"] as const).map((strategy) => (
           <button
@@ -2797,7 +2481,7 @@ node.type === "approval" && "bg-red-500",
 
     {/* Input Data Sources */}
     <div>
-      <FieldLabel>Input Data Sources</FieldLabel>
+      <FieldLabel>Input data sources</FieldLabel>
       <p className="text-[10px] text-muted-foreground mb-1.5">
         Optional notes for the operator — not connected to live CRM yet. Prefer “Previous node outputs”.
       </p>
@@ -2885,8 +2569,8 @@ node.type === "approval" && "bg-red-500",
       </p>
       {pathConditionsVisible && (
         <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-2 mb-1">
-          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Branch name</span>
-          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">When to take this branch</span>
+          <span className="text-xs text-muted-foreground">Branch name</span>
+          <span className="text-xs text-muted-foreground">When to take this branch</span>
           <span />
         </div>
       )}
@@ -2956,7 +2640,7 @@ node.type === "approval" && "bg-red-500",
           {node.decisionConfig.reasoning.summary}
         </p>
         <div className="space-y-1">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Key factors:</p>
+          <p className="text-xs text-muted-foreground">Key factors:</p>
           {node.decisionConfig.reasoning.factors?.map((factor, i) => (
             <div key={i} className="flex items-center gap-1.5 text-xs text-foreground">
               <CheckCircle className="h-3 w-3 text-success" />
@@ -2983,15 +2667,15 @@ node.type === "approval" && "bg-red-500",
         <Users className="h-4 w-4 text-warning" />
       </div>
       <div>
-        <h4 className="text-sm font-medium text-foreground">Council Configuration</h4>
+        <h4 className="text-sm font-medium text-foreground">Council configuration</h4>
         <p className="text-[10px] text-muted-foreground">Configure multi-agent collaboration</p>
       </div>
     </div>
 
     {/* Council Objective */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-        Council Objective
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+        Council objective
       </label>
       <Textarea
         value={node.councilConfig?.objective || ""}
@@ -3006,8 +2690,8 @@ node.type === "approval" && "bg-red-500",
     {/* Participating Agents — org/pack agents first (STA-321); mock personas as advanced */}
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Participating Agents
+        <label className="text-xs font-medium text-muted-foreground">
+          Participating agents
         </label>
         <span className="text-[10px] text-warning">
           {node.councilConfig?.participatingAgents?.length || 0} selected
@@ -3087,15 +2771,15 @@ node.type === "approval" && "bg-red-500",
 
     {/* Debate Mode */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-        Debate Mode
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+        Debate mode
       </label>
       <div className="grid grid-cols-2 gap-2">
         {([
-          { id: "consensus", label: "Consensus Required", desc: "All must agree" },
-          { id: "majority", label: "Majority Vote", desc: "Most votes wins" },
-          { id: "lead-decides", label: "Lead Agent Decides", desc: "One agent leads" },
-          { id: "human-approval", label: "Human Approval", desc: "User must confirm" },
+          { id: "consensus", label: "Consensus required", desc: "All must agree" },
+          { id: "majority", label: "Majority vote", desc: "Most votes wins" },
+          { id: "lead-decides", label: "Lead agent decides", desc: "One agent leads" },
+          { id: "human-approval", label: "Human approval", desc: "User must confirm" },
         ] as const).map((mode) => (
           <button
             key={mode.id}
@@ -3118,8 +2802,8 @@ node.type === "approval" && "bg-red-500",
 
     {/* Evidence Sources */}
     <div>
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
-        Evidence Sources
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+        Evidence sources
       </label>
       <div className="space-y-1.5">
         {["Previous node outputs", "CRM data", "Billing data", "Support tickets", "Knowledge base", "Documents"].map((source) => (
@@ -3145,8 +2829,8 @@ node.type === "approval" && "bg-red-500",
     {/* Output Options */}
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Output Options
+        <label className="text-xs font-medium text-muted-foreground">
+          Output options
         </label>
         <button
           onClick={() => {
@@ -3202,7 +2886,7 @@ node.type === "approval" && "bg-red-500",
       <div className="p-3 rounded-lg bg-success/5 border border-success/20">
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle className="h-4 w-4 text-success" />
-          <span className="text-xs font-medium text-success">Council Decision</span>
+          <span className="text-xs font-medium text-success">Council decision</span>
           <span className="ml-auto text-[10px] text-success bg-success/20 px-1.5 py-0.5 rounded">
             {node.councilConfig.finalDecision.confidence}% confidence
           </span>
@@ -3215,7 +2899,7 @@ node.type === "approval" && "bg-red-500",
         </p>
         {node.councilConfig.finalDecision.keyReasons && (
           <div className="space-y-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Key reasons:</p>
+            <p className="text-xs text-muted-foreground">Key reasons:</p>
             {node.councilConfig.finalDecision.keyReasons.map((reason, i) => (
               <div key={i} className="flex items-center gap-1.5 text-xs text-foreground">
                 <CheckCircle className="h-3 w-3 text-success" />
@@ -3226,7 +2910,7 @@ node.type === "approval" && "bg-red-500",
         )}
         {node.councilConfig.finalDecision.dissentingOpinions && node.councilConfig.finalDecision.dissentingOpinions.length > 0 && (
           <div className="mt-2 pt-2 border-t border-warning/20">
-            <p className="text-[10px] text-warning uppercase tracking-wide mb-1">Dissenting opinions:</p>
+            <p className="text-xs text-warning mb-1">Dissenting opinions:</p>
             {node.councilConfig.finalDecision.dissentingOpinions.map((dissent, i) => (
               <div key={i} className="text-xs text-muted-foreground">
                 {dissent.opinion}
@@ -3241,7 +2925,7 @@ node.type === "approval" && "bg-red-500",
   
   {/* Environment */}
           <div className="pt-4 border-t border-border">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
               Environment
             </label>
             <div className="flex items-center gap-2">
@@ -3276,9 +2960,32 @@ node.type === "approval" && "bg-red-500",
             Delete
           </Button>
         </div>
+      </>
+  )
+
+  if (inline) {
+    return <div className="px-4 py-4">{content}</div>
+  }
+
+  return (
+    <Sheet open={!!node} onOpenChange={() => onClose()}>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
+        {content}
       </SheetContent>
     </Sheet>
   )
+}
+
+function InspectorHeader({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={className}>{children}</div>
+}
+
+function InspectorTitle({ className, children }: { className?: string; children: ReactNode }) {
+  return <h2 className={cn("text-[15px] font-semibold leading-6 text-foreground truncate", className)}>{children}</h2>
+}
+
+function InspectorDescription({ className, children }: { className?: string; children: ReactNode }) {
+  return <p className={cn("text-xs text-muted-foreground", className)}>{children}</p>
 }
 
 export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -3359,11 +3066,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       .filter((workflow) => workflow.id && workflow.id !== id)
       .slice(0, 5)
   }, [workflowListData, id])
-  const MESON_PANEL_KEY = "gravitre:mesonPanelOpen"
-  const [mesonPanelOpen, setMesonPanelOpen] = useState(() => {
-    if (typeof window === "undefined") return true
-    return window.localStorage.getItem(MESON_PANEL_KEY) !== "0"
-  })
+  const [inspectorMode, setInspectorMode] = useState<InspectorMode>("configure")
+  const [mesonAttention, setMesonAttention] = useState(false)
+  const mesonPanelOpen = inspectorMode === "meson"
+  const isNarrowViewport = useIsMobile()
   const prevNodeCountRef = useRef(0)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
   const [intelligenceInitialTab, setIntelligenceInitialTab] = useState<"simulate" | "risk" | "dryrun">("simulate")
@@ -3375,7 +3081,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [lastRunId, setLastRunId] = useState<string | null>(null)
   
-  const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes)
+  const seedOverride = useBuilderSeed()
+  const [nodes, setNodes] = useState<WorkflowNode[]>(() => seedOverride ?? [])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [traceOverlay, setTraceOverlay] = useState(false)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
@@ -3421,8 +3128,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [isRunning, setIsRunning] = useState(false)
   // G1: live blocking-issue count to disable Save/Publish + drive warnings.
   const connectorBlockingIssues = useMemo(
-    () => getConnectorValidationIssues(nodes).filter((i) => i.severity === "error"),
-    [nodes],
+    () =>
+      getConnectorValidationIssues(nodes, {
+        connectedVendors: connectedVendorSet(orgConnectorsData?.connectors),
+        catalogActions: catalogActionIndex(actionCatalogData),
+        isLegacyActionImplemented: isActionImplemented,
+      }).filter((i) => i.severity === "error"),
+    [nodes, orgConnectorsData?.connectors, actionCatalogData],
   )
   // Execution mode state
   const [isExecuting, setIsExecuting] = useState(false)
@@ -3595,24 +3307,71 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     return () => clearInterval(interval)
   }, [isExecuting, executionStartTime])
   
-  const toggleMesonPanel = useCallback(() => {
-    setMesonPanelOpen((open) => {
-      const next = !open
-      window.localStorage.setItem(MESON_PANEL_KEY, next ? "1" : "0")
-      return next
-    })
+  const changeInspectorMode = useCallback((mode: InspectorMode) => {
+    setInspectorMode(mode)
+    if (mode === "meson") setMesonAttention(false)
   }, [])
 
+  const toggleMesonPanel = useCallback(() => {
+    changeInspectorMode(inspectorMode === "meson" ? "configure" : "meson")
+  }, [changeInspectorMode, inspectorMode])
+
+  const graphSeededRef = useRef(false)
   useEffect(() => {
-    if (nodes.length > prevNodeCountRef.current) {
-      setMesonPanelOpen(true)
-      window.localStorage.setItem(MESON_PANEL_KEY, "1")
+    // The saved graph arriving is not the user adding a step; only later additions flag Meson.
+    if (!graphSeededRef.current) {
+      if (nodes.length > 0 || !isLoadingGraph) graphSeededRef.current = true
+      prevNodeCountRef.current = nodes.length
+      return
+    }
+    if (nodes.length > prevNodeCountRef.current && inspectorMode !== "meson") {
+      setMesonAttention(true)
     }
     prevNodeCountRef.current = nodes.length
-  }, [nodes.length])
+  }, [nodes.length, isLoadingGraph, inspectorMode])
+
+  useEffect(() => {
+    if (selectedNodeId) setInspectorMode("configure")
+  }, [selectedNodeId])
+
+  useEffect(() => {
+    if (executionStatus === "running") setInspectorMode("trace")
+  }, [executionStatus])
 
   // Get selected node object
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null
+
+  // Start/End are read from the graph: entry steps have no incoming edge, terminal steps no outgoing one.
+  const graphEnds = useMemo(() => {
+    const incoming = new Set<string>()
+    for (const n of nodes) {
+      for (const to of n.connections) incoming.add(to)
+      for (const path of n.outputPaths ?? n.decisionConfig?.outputPaths ?? []) {
+        if (path.targetNodeId) incoming.add(path.targetNodeId)
+      }
+    }
+    const hasOutgoing = (n: WorkflowNode) =>
+      n.connections.length > 0 ||
+      (n.outputPaths ?? n.decisionConfig?.outputPaths ?? []).some((p) => Boolean(p.targetNodeId))
+    const toEnd = (n: WorkflowNode): GraphEndNode => {
+      const cfg = getNodeTypeConfig(n.type)
+      return {
+        id: n.id,
+        name: n.name,
+        typeLabel: cfg.label,
+        icon: cfg.icon,
+        configKeys: Object.keys(n.config ?? {}),
+      }
+    }
+    const entry = nodes.filter((n) => !incoming.has(n.id))
+    const terminal = nodes.filter((n) => !hasOutgoing(n))
+    return {
+      entryIds: new Set(entry.map((n) => n.id)),
+      terminalIds: new Set(terminal.map((n) => n.id)),
+      entryNodes: entry.map(toEnd),
+      terminalNodes: terminal.map(toEnd),
+    }
+  }, [nodes])
 
   // Check if two nodes are connected (in either direction)
   const areNodesConnected = useCallback((nodeA: string, nodeB: string) => {
@@ -3621,6 +3380,85 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     if (!nodeAData || !nodeBData) return false
     return nodeAData.connections.includes(nodeB) || nodeBData.connections.includes(nodeA)
   }, [nodes])
+
+  // Visual connect state per node while a connection is being dragged.
+  const connectStateFor = useCallback((nodeId: string): NodeConnectState => {
+    if (!isDraggingConnection || !dragSourceNodeId) return "idle"
+    if (nodeId === dragSourceNodeId) return "source"
+    return areNodesConnected(dragSourceNodeId, nodeId) ? "invalid" : "valid"
+  }, [isDraggingConnection, dragSourceNodeId, areNodesConnected])
+
+  // Rendered node footprints so edges meet the real handle centres.
+  const [nodeSizes, setNodeSizes] = useState<Record<string, { w: number; h: number; x: number; y: number }>>({})
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined" || typeof MutationObserver === "undefined") return
+    type Box = { w: number; h: number; x: number; y: number }
+    let frame = 0
+    const observed = new Set<HTMLElement>()
+    const measure = () => {
+      frame = 0
+      const next: Record<string, Box> = {}
+      for (const el of observed) {
+        if (!el.isConnected) {
+          resize.unobserve(el)
+          observed.delete(el)
+        }
+      }
+      document.querySelectorAll<HTMLElement>("[data-canvas-node]").forEach((el) => {
+        if (!observed.has(el)) {
+          observed.add(el)
+          resize.observe(el)
+        }
+        const id = el.dataset.canvasNode
+        const surface = el.querySelector<HTMLElement>("[data-node-surface]") ?? el
+        if (id) {
+          next[id] = {
+            w: surface.offsetWidth,
+            h: surface.offsetHeight,
+            x: surface === el ? 0 : surface.offsetLeft,
+            y: surface === el ? 0 : surface.offsetTop,
+          }
+        }
+      })
+      setNodeSizes((prev) => {
+        const keys = Object.keys(next)
+        const same =
+          keys.length === Object.keys(prev).length &&
+          keys.every(
+            (k) => prev[k]?.w === next[k].w && prev[k]?.h === next[k].h && prev[k]?.x === next[k].x && prev[k]?.y === next[k].y,
+          )
+        return same ? prev : next
+      })
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure)
+    }
+    const resize = new ResizeObserver(schedule)
+    // Nodes can mount after this effect (seeded or loaded graphs, viewport swaps).
+    const mutation = new MutationObserver(schedule)
+    mutation.observe(canvasRef.current ?? document.body, { childList: true, subtree: true })
+    schedule()
+    return () => {
+      cancelAnimationFrame(frame)
+      resize.disconnect()
+      mutation.disconnect()
+    }
+  }, [])
+  const footprintOf = useCallback(
+    (node: WorkflowNode) => {
+      const m = node.type === "decision" ? undefined : nodeSizes[node.id]
+      return m ? { w: m.w, h: m.h } : nodeFootprint(node.type)
+    },
+    [nodeSizes],
+  )
+  /** Top-left of the node's handle frame (surface), which may sit inside a taller wrapper. */
+  const originOf = useCallback(
+    (node: WorkflowNode) => {
+      const m = node.type === "decision" ? undefined : nodeSizes[node.id]
+      return m ? { x: node.position.x + m.x, y: node.position.y + m.y } : node.position
+    },
+    [nodeSizes],
+  )
 
   // Handle node click - implements the click-to-select-then-click-to-connect pattern
 // Simplified click - just select/deselect nodes
@@ -3741,7 +3579,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   }, [])
 
   // Handle canvas click - deselect
-  const handleCanvasClick = useCallback(() => {
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    // A node click still bubbles here after the node selected itself on mouseup.
+    if ((e.target as HTMLElement).closest("[data-canvas-node]")) return
     setSelectedNodeId(null)
   }, [])
 
@@ -3976,8 +3816,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 strategy: "ai-assisted",
               },
               outputPaths: [
-                { id: "path-a", label: "Primary Path" },
-                { id: "path-b", label: "Alternate Path" },
+                { id: "path-a", label: "Primary path" },
+                { id: "path-b", label: "Alternate path" },
               ],
             },
           ])
@@ -3999,9 +3839,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 inputSources: ["Previous node outputs", "CRM data"],
               },
               outputPaths: [
-                { id: "high", label: "High Value", condition: "score > 80" },
-                { id: "medium", label: "Medium Value", condition: "score 40-80" },
-                { id: "low", label: "Low Value", condition: "score < 40", isDefault: true },
+                { id: "high", label: "High value", condition: "score > 80" },
+                { id: "medium", label: "Medium value", condition: "score 40-80" },
+                { id: "low", label: "Low value", condition: "score < 40", isDefault: true },
               ],
             },
           ])
@@ -4238,7 +4078,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Awaiting approval", {
           description: `Run paused at an approval gate · ${runId}`,
           action: {
-            label: "View Run",
+            label: "View run",
             onClick: () => router.push(`/runs/${runId}`),
           },
         })
@@ -4249,7 +4089,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Pending approval", {
           description: `This run is waiting in the Decision Queue · ${runId}`,
           action: {
-            label: "Open Approvals",
+            label: "Open approvals",
             onClick: () => router.push(`/approvals?id=${runId}`),
           },
         })
@@ -4260,7 +4100,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Workflow paused", {
           description: `Run ID: ${runId}`,
           action: {
-            label: "View Run",
+            label: "View run",
             onClick: () => router.push(`/runs/${runId}`),
           },
         })
@@ -4298,7 +4138,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       toast.success("Workflow executed successfully", {
         description: `Run ID: ${runId}`,
         action: {
-          label: "View Run",
+          label: "View run",
           onClick: () => router.push(`/runs/${runId}`),
         },
       })
@@ -4326,7 +4166,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         toast.message("Awaiting approval", {
           description: "Your run was saved and queued for review.",
           action: {
-            label: "Open Approvals",
+            label: "Open approvals",
             onClick: () => router.push(`/approvals?id=${response.run_id}`),
           },
         })
@@ -4445,7 +4285,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       
       // Simulate AI decision reasoning
       const outputPaths = currentNode.outputPaths || [
-        { id: "default", label: "Default Path" }
+        { id: "default", label: "Default path" }
       ]
       const randomPathIndex = Math.floor(Math.random() * outputPaths.length)
       const chosenPath = outputPaths[randomPathIndex]
@@ -4622,6 +4462,76 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     })
   })
 
+  const mesonPanel = (
+    <MesonCopilotPanel
+      open={mesonPanelOpen}
+      embedded
+      onClose={() => changeInspectorMode("configure")}
+      workflowId={id}
+      canPersist={canPersist}
+      nodes={nodes.map((n) => ({
+        id: n.id,
+        type: n.type,
+        name: n.name,
+        vendor: n.vendor,
+        selectedAction: n.selectedAction,
+        description: n.description,
+        position: n.position,
+        config: n.config,
+      }))}
+      edges={nodes.flatMap((n) =>
+        n.connections.map((to) => ({
+          id: `${n.id}-${to}`,
+          from: n.id,
+          to,
+        })),
+      )}
+      orgConnectors={orgConnectors.map((c) => ({
+        id: c.id,
+        vendor: c.vendor,
+        type: (c as { type?: string }).type,
+        status: c.status,
+      }))}
+      onAcceptSuggestion={acceptSuggestion}
+      onDismissSuggestion={dismissSuggestion}
+      onApplyInsight={applyInsight}
+      onFixAlert={fixAlert}
+      crossWorkflowSignals={(nodeReliabilityData?.crossWorkflow ?? []).map((row) => ({
+        message: row.message,
+        count: row.count,
+      }))}
+      onEditApplied={async () => {
+        if (!canPersist) return
+        try {
+          const result = await loadBuilderGraph(id)
+          if (result?.nodes?.length) {
+            setNodes(result.nodes)
+            setWorkflowMeta(result.meta)
+          }
+        } catch (err) {
+          console.error("[WorkflowBuilder] reload after Meson edit failed:", err)
+        }
+      }}
+    />
+  )
+
+  const renderConfigPanel = (inline: boolean) => (
+    <ConfigPanel
+      node={selectedNode}
+      onClose={() => setSelectedNodeId(null)}
+      onUpdate={handleUpdateNode}
+      onDuplicate={
+        selectedNodeId ? () => handleDuplicateNode(selectedNodeId) : undefined
+      }
+      onDelete={selectedNodeId ? () => handleDeleteNode(selectedNodeId) : undefined}
+      orgAgents={orgAgents}
+      orgConnectors={orgConnectors}
+      actionCatalog={actionCatalogData ?? null}
+      lastRunId={lastRunId}
+      inline={inline}
+    />
+  )
+
   return (
     <AppShell>
       <div className="flex h-full flex-col">
@@ -4649,7 +4559,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => router.push("/workflows")}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Workflows
+                  Back to workflows
                 </Button>
                 <Button onClick={() => window.location.reload()}>
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -4671,39 +4581,39 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             />
           </div>
         ) : null}
-        {/* Top toolbar */}
-        <div className="flex-shrink-0 border-b border-border bg-card px-3 md:px-4 py-2 md:py-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
-              <Link
-                href="/workflows"
-                className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                title="Back to Workflows"
-              >
-                <ArrowLeft className="h-4 w-4" />
+        {/* Workflow identity bar */}
+        <div
+          data-review-surface="workflow-identity"
+          className="flex h-12 flex-shrink-0 items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-2 md:px-4"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href="/workflows"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground lg:hidden"
+              title="Back to workflows"
+              aria-label="Back to workflows"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px]">
+              <Link href="/workflows" className="hidden shrink-0 text-muted-foreground transition-colors hover:text-foreground lg:inline">
+                Workflows
               </Link>
-              
-              {/* Breadcrumb */}
-              <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>Gravitre Labs</span>
-                <ChevronRight className="h-3 w-3" />
-                <Link href="/workflows" className="hover:text-foreground transition-colors">Workflows</Link>
-                <ChevronRight className="h-3 w-3" />
-              </div>
-              
+              <ChevronRight aria-hidden className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground lg:inline" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button 
-                    className="flex items-center gap-2 min-w-0 hover:text-foreground transition-colors group"
+                  <button
+                    className="group flex min-w-0 items-center gap-1.5 rounded-[5px] px-1.5 py-1 transition-colors hover:bg-[color:var(--g-chrome-hover)]"
                     title="Switch workflow"
                   >
-                    <Workflow className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium text-foreground truncate max-w-[120px] sm:max-w-[200px]">{workflowMeta.name}</span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px]">
+                      {workflowMeta.name}
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-64">
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent Workflows</div>
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Recent workflows</div>
                   <DropdownMenuSeparator />
                   {recentWorkflows.length === 0 ? (
                     <div className="px-2 py-2 text-xs text-muted-foreground">
@@ -4719,7 +4629,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                             environment={
                               workflow.environment === "production" ? "production" : "staging"
                             }
-                            className="ml-auto scale-90"
+                            className="ml-auto"
                           />
                         </Link>
                       </DropdownMenuItem>
@@ -4727,155 +4637,231 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/workflows" className="flex items-center gap-2 text-info">
+                    <Link href="/workflows" className="flex items-center gap-2">
                       <LayoutGrid className="h-3.5 w-3.5" />
-                      <span>View All Workflows</span>
+                      <span>View all workflows</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/workflows/new/builder" className="flex items-center gap-2 text-success">
+                    <Link href="/workflows/new/builder" className="flex items-center gap-2">
                       <Plus className="h-3.5 w-3.5" />
-                      <span>Create New Workflow</span>
+                      <span>Create new workflow</span>
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <StatusBadge variant="muted">{workflowMeta.status}</StatusBadge>
+              <ChevronRight aria-hidden className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground xl:inline" />
+              <span className="hidden shrink-0 text-muted-foreground xl:inline">Editor</span>
+            </nav>
+            <span aria-hidden className="mx-1 hidden h-4 w-px shrink-0 bg-[color:var(--g-border-default)] sm:block" />
+            <div className="hidden min-w-0 items-center gap-3 sm:flex">
+              <StatusBadge variant="muted" className="shrink-0 capitalize">{workflowMeta.status}</StatusBadge>
               <EnvironmentBadge
                 environment={
                   workflowMeta.environment === "production" ? "production" : "staging"
                 }
+                className="shrink-0"
               />
-              <span className="hidden md:inline text-xs text-muted-foreground">{workflowMeta.version || "v1"}</span>
-              
-              {/* Last saved indicator */}
+              <span className="hidden shrink-0 font-mono text-xs font-medium text-muted-foreground md:inline">
+                {workflowMeta.version || "v1"}
+              </span>
               {lastSavedAt && (
-                <span className="hidden lg:inline text-xs text-muted-foreground/70">
+                <span className="hidden shrink-0 text-xs text-muted-foreground lg:inline">
                   Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1 md:gap-2 shrink-0">
-              {/* View last run link */}
-              {lastRunId && (
-                <Link href={`/runs/${lastRunId}`}>
-                  <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="hidden sm:inline">Last Run</span>
-                  </Button>
-                </Link>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={handleSave}
+              disabled={isSaving || isLoadingGraph || isRunning || connectorBlockingIssues.length > 0}
+              aria-busy={isSaving}
+              title={
+                connectorBlockingIssues.length > 0
+                  ? `Resolve ${connectorBlockingIssues.length} connector issue(s) before saving`
+                  : undefined
+              }
+            >
+              {isSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
               )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={() => {
-                  setSettingsName(workflowMeta.name)
-                  setSettingsDescription(workflowMeta.description || "")
-                  setSettingsOpen(true)
-                }}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Settings</span>
-              </Button>
-              <Button
-                variant={mesonPanelOpen ? "secondary" : "outline"}
-                size="sm"
-                className="relative h-8 gap-2"
-                onClick={toggleMesonPanel}
-                aria-expanded={mesonPanelOpen}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Meson</span>
-                {!mesonPanelOpen && nodes.length > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2" aria-hidden="true">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-primary/70 motion-safe:animate-ping" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                  </span>
-                ) : null}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-2"
-                onClick={() => setIntelligenceOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={intelligenceOpen}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Intelligence</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={handleSave}
-                disabled={isSaving || isLoadingGraph || isRunning || connectorBlockingIssues.length > 0}
-                aria-busy={isSaving}
-                title={
-                  connectorBlockingIssues.length > 0
-                    ? `Resolve ${connectorBlockingIssues.length} connector issue(s) before saving`
-                    : undefined
-                }
-              >
-                {isSaving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save"}</span>
-                {connectorBlockingIssues.length > 0 && (
-                  <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning/20 px-1 text-[10px] font-medium text-warning">
-                    {connectorBlockingIssues.length}
-                  </span>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={handlePreview}
-                disabled={isSaving || isLoadingGraph || isRunning}
-              >
-                <FileSearch className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Preview</span>
-              </Button>
-              <Button 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={handleRun}
-                disabled={isRunning || isLoadingGraph || isSaving}
-                aria-busy={isRunning}
-              >
-                {isRunning ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Play className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">{isRunning ? "Starting..." : "Run"}</span>
-              </Button>
-            </div>
+              <span className="sr-only sm:not-sr-only">{isSaving ? "Saving..." : "Save"}</span>
+              {connectorBlockingIssues.length > 0 && (
+                <span className="ml-0.5 inline-flex items-center gap-1 font-mono text-xs font-medium text-[color:var(--warning)]">
+                  <span aria-hidden className="size-1.5 rounded-full bg-[color:var(--g-approval)]" />
+                  {connectorBlockingIssues.length}
+                </span>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 gap-2"
+              onClick={handleRun}
+              disabled={isRunning || isLoadingGraph || isSaving}
+              aria-busy={isRunning}
+            >
+              {isRunning ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              <span className="sr-only sm:not-sr-only">{isRunning ? "Starting..." : "Run"}</span>
+            </Button>
           </div>
         </div>
 
+        {/* Workflow toolbar */}
         <div
-          data-review-surface="workflow-intent"
-          className="flex-shrink-0 border-b border-border bg-card/80 px-3 py-2 md:px-4"
+          role="toolbar"
+          aria-label="Workflow tools"
+          data-review-surface="workflow-toolbar"
+          className="flex h-10 flex-shrink-0 items-stretch justify-between gap-4 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] px-2 md:px-4"
         >
-          <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Intent
-          </p>
-          <p className="mt-0.5 text-sm font-medium text-foreground">
-            {(workflowMeta.description || "").trim() ||
-              "Name the outcome this workflow should produce — then orchestrate it on the canvas."}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Select a node to inspect configuration. Ask does not hide setup.
+          <div className="flex min-w-0 items-stretch gap-1 overflow-x-auto">
+            {(
+              [
+                {
+                  key: "editor",
+                  label: "Editor",
+                  icon: PenLine,
+                  active: inspectorMode === "configure",
+                  onClick: () => changeInspectorMode("configure"),
+                },
+                {
+                  key: "runs",
+                  label: lastRunId ? "Last run" : "Runs",
+                  icon: History,
+                  active: false,
+                  href: lastRunId ? `/runs/${lastRunId}` : "/runs",
+                },
+                {
+                  key: "preview",
+                  label: "Preview",
+                  icon: FileSearch,
+                  active: false,
+                  onClick: handlePreview,
+                  disabled: isSaving || isLoadingGraph || isRunning,
+                },
+                {
+                  key: "trace",
+                  label: "Trace",
+                  icon: Activity,
+                  active: inspectorMode === "trace" || traceOverlay,
+                  pressed: traceOverlay,
+                  onClick: () => {
+                    if (inspectorMode === "trace" && traceOverlay) {
+                      setTraceOverlay(false)
+                      changeInspectorMode("configure")
+                    } else {
+                      setTraceOverlay(true)
+                      changeInspectorMode("trace")
+                    }
+                  },
+                },
+                {
+                  key: "intelligence",
+                  label: "Intelligence",
+                  icon: Brain,
+                  active: intelligenceOpen,
+                  onClick: () => setIntelligenceOpen(true),
+                  dialog: true,
+                },
+                {
+                  key: "meson",
+                  label: "Meson",
+                  icon: Sparkles,
+                  active: mesonPanelOpen,
+                  pressed: mesonPanelOpen,
+                  onClick: toggleMesonPanel,
+                  attention: mesonAttention && !mesonPanelOpen,
+                },
+                {
+                  key: "settings",
+                  label: "Settings",
+                  icon: Settings,
+                  active: settingsOpen,
+                  onClick: () => {
+                    setSettingsName(workflowMeta.name)
+                    setSettingsDescription(workflowMeta.description || "")
+                    setSettingsOpen(true)
+                  },
+                  dialog: true,
+                },
+              ] as Array<{
+                key: string
+                label: string
+                icon: typeof Activity
+                active: boolean
+                pressed?: boolean
+                onClick?: () => void
+                href?: string
+                disabled?: boolean
+                dialog?: boolean
+                attention?: boolean
+              }>
+            ).map((tool) => {
+              const ToolIcon = tool.icon
+              const toolClass = cn(
+                "relative inline-flex shrink-0 items-center gap-1.5 px-2 text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+                "after:absolute after:inset-x-2 after:-bottom-px after:h-[2px] after:content-['']",
+                tool.active
+                  ? "text-foreground after:bg-[color:var(--g-text-primary)]"
+                  : "text-muted-foreground hover:text-foreground after:bg-transparent",
+              )
+              const toolBody = (
+                <>
+                  <ToolIcon className="h-4 w-4" />
+                  <span className="sr-only lg:not-sr-only">{tool.label}</span>
+                  {tool.attention ? (
+                    <span aria-hidden className="size-1.5 rounded-full bg-[color:var(--g-brand)]" />
+                  ) : null}
+                </>
+              )
+              if (tool.href) {
+                return (
+                  <Link key={tool.key} href={tool.href} title={tool.label} className={toolClass}>
+                    {toolBody}
+                  </Link>
+                )
+              }
+              return (
+                <button
+                  key={tool.key}
+                  type="button"
+                  onClick={tool.onClick}
+                  disabled={tool.disabled}
+                  aria-pressed={tool.pressed}
+                  aria-haspopup={tool.dialog ? "dialog" : undefined}
+                  title={tool.label}
+                  className={toolClass}
+                >
+                  {toolBody}
+                </button>
+              )
+            })}
+          </div>
+          <p
+            data-review-surface="workflow-intent"
+            className="hidden min-w-0 items-center gap-2 text-[13px] xl:flex"
+            title={(workflowMeta.description || "").trim() || undefined}
+          >
+            <span className="shrink-0 text-muted-foreground">Intent</span>
+            <span className="min-w-0 max-w-[420px] truncate text-foreground">
+              {(workflowMeta.description || "").trim() ||
+                "Name the outcome this workflow should produce, then orchestrate it on the canvas."}
+            </span>
           </p>
         </div>
 
         {/* Main content */}
-        <div className="flex flex-1 min-h-0 flex-col md:flex-row">
+        <div className="flex flex-1 min-h-0 flex-col md:flex-row md:bg-[color:var(--g-chrome)]">
+          <BuilderNav workflowId={id} />
           {/* Left library panel - conditionally shown */}
           {libraryPanelOpen && (
           <div 
@@ -4896,7 +4882,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   <button
   key={tab}
   onClick={() => setActiveLibrary(tab)}
-  className={`px-2.5 py-2.5 text-[10px] font-medium uppercase tracking-wide transition-colors whitespace-nowrap shrink-0 ${
+  className={`px-2.5 py-2.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
   activeLibrary === tab
   ? "text-foreground border-b-2 border-foreground"
   : "text-muted-foreground hover:text-foreground"
@@ -5001,7 +4987,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           outputOptions: [
                             { id: "approve", label: "Approve" },
                             { id: "reject", label: "Reject" },
-                            { id: "escalate", label: "Escalate to Human" },
+                            { id: "escalate", label: "Escalate to human" },
                           ],
                         },
                       }
@@ -5028,26 +5014,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
               {activeLibrary === "connectors" && (
                 <div className="space-y-0.5">
-                  {orgConnectors.length === 0 &&
-                    connectorLibrary.map((conn) => (
-                      <LibraryItem
-                        key={conn.id}
-                        name={conn.name}
-                        vendor={conn.vendor}
-                        nodeType="connector"
-                        dragPayload={{ vendor: conn.vendor }}
-                        onAdd={() =>
-                          addNode("connector", conn.name, undefined, {
-                            vendor: conn.vendor,
-                            config: connectorConfigWithBind({}, { vendor: conn.vendor }),
-                          })
-                        }
-                      />
-                    ))}
                   {orgConnectors.map((conn) => (
                     <LibraryItem
                       key={conn.id}
-                      name={`${conn.name}${conn.status === "active" ? "" : ` (${conn.status})`}`}
+                      name={`${conn.name}${isUsableConnectorStatus(conn.status) ? "" : ` (${conn.status})`}`}
                       vendor={conn.vendor}
                       nodeType="connector"
                       dragPayload={{
@@ -5156,9 +5126,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           inputSources: ["CRM data", "Engagement metrics"],
                         },
                         outputPaths: [
-                          { id: "high", label: "High Value", condition: "score > 80" },
-                          { id: "medium", label: "Medium Value", condition: "score 40-80" },
-                          { id: "low", label: "Low Value", condition: "score < 40", isDefault: true },
+                          { id: "high", label: "High value", condition: "score > 80" },
+                          { id: "medium", label: "Medium value", condition: "score 40-80" },
+                          { id: "low", label: "Low value", condition: "score < 40", isDefault: true },
                         ],
                       }
                       setNodes((prev) => [...prev, newNode])
@@ -5212,9 +5182,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           strategy: "hybrid",
                         },
                         outputPaths: [
-                          { id: "sales", label: "Sales Team" },
-                          { id: "support", label: "Support Team" },
-                          { id: "billing", label: "Billing Team" },
+                          { id: "sales", label: "Sales team" },
+                          { id: "support", label: "Support team" },
+                          { id: "billing", label: "Billing team" },
                           { id: "other", label: "General", isDefault: true },
                         ],
                       }
@@ -5243,7 +5213,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                         outputPaths: [
                           { id: "email", label: "Email" },
                           { id: "sms", label: "SMS" },
-                          { id: "call", label: "Phone Call" },
+                          { id: "call", label: "Phone call" },
                         ],
                       }
                       setNodes((prev) => [...prev, newNode])
@@ -5279,7 +5249,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <span className="text-xs text-[color:var(--g-signal)]">Create custom decision</span>
                   </button>
 
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide pt-3 pb-1">
+                  <p className="text-xs text-muted-foreground pt-3 pb-1">
                     Logic nodes
                   </p>
                   <LibraryItem
@@ -5361,7 +5331,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
 {/* Quick add */}
   <div className="border-t border-border p-3">
-  <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Quick Add</p>
+  <p className="text-xs text-muted-foreground mb-2">Quick add</p>
   <div className="grid grid-cols-5 gap-1">
   <button
   onClick={() => addNode("agent", "New Agent")}
@@ -5420,7 +5390,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           outputOptions: [
             { id: "approve", label: "Approve" },
             { id: "reject", label: "Reject" },
-            { id: "escalate", label: "Escalate to Human" },
+            { id: "escalate", label: "Escalate to human" },
           ],
         },
       }
@@ -5430,10 +5400,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       console.error("[v0] Error creating council node:", err)
     }
   }}
-  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-warning/10 transition-colors"
+  className="flex flex-col items-center gap-1 p-2 rounded-md hover:bg-secondary/50 transition-colors"
 >
-  <Users className="h-4 w-4 text-warning" />
-  <span className="text-[10px] text-warning">Council</span>
+  <Users className="h-4 w-4 text-foreground" />
+  <span className="text-[10px] text-muted-foreground">Council</span>
 </button>
   <button
   onClick={() => addNode("approval", "Gate")}
@@ -5483,48 +5453,20 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           >
             {traceOverlay ? (
               <div className="pointer-events-none absolute right-4 top-4 z-20 max-w-sm border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] px-3 py-2 text-xs text-foreground">
-                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  TRACE
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">Trace</p>
                 <p className="mt-1">
-                  Orchestration path on this canvas. Duration bars appear only from a real run —
-                  never invented.
+                  The path this workflow takes. Step durations appear after a real run.
                 </p>
               </div>
             ) : null}
             {/* Enhanced grid background with subtle gradient */}
-            <div className="absolute inset-0">
-              {/* Radial gradient overlay for depth */}
-              <div 
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: "radial-gradient(ellipse at center, transparent 0%, hsl(var(--background)) 70%)",
-                }}
-              />
-              {/* Subtle animated gradient orbs */}
-              <div 
-                className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full pointer-events-none opacity-[0.03]"
-                style={{
-                  background: "radial-gradient(circle, hsl(var(--info)) 0%, transparent 70%)",
-                  animation: "pulse 8s ease-in-out infinite",
-                }}
-              />
-              <div 
-                className="absolute bottom-1/4 left-1/4 w-72 h-72 rounded-full pointer-events-none opacity-[0.02]"
-                style={{
-                  background: "radial-gradient(circle, hsl(var(--success)) 0%, transparent 70%)",
-                  animation: "pulse 10s ease-in-out infinite 2s",
-                }}
-              />
-              {/* Grid pattern */}
+            <div className="pointer-events-none absolute inset-0 bg-[color:var(--g-canvas)]">
               <div
-                className="absolute inset-0 opacity-[0.03]"
+                className="absolute inset-0"
                 style={{
-                  backgroundImage: `
-                    linear-gradient(hsl(var(--foreground)) 1px, transparent 1px),
-                    linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)
-                  `,
-                  backgroundSize: "40px 40px",
+                  backgroundImage:
+                    "radial-gradient(circle, var(--g-border-strong) 1px, transparent 1.2px)",
+                  backgroundSize: "20px 20px",
                 }}
               />
             </div>
@@ -5533,7 +5475,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             {nodes.length === 0 && !isLoadingGraph && (
               <div className="absolute inset-0 flex items-center justify-center z-10">
                 <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
-                  <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center border border-border">
+                  <div className="h-16 w-16 rounded-lg bg-muted/50 flex items-center justify-center border border-border">
                     <Workflow className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <div>
@@ -5544,7 +5486,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   </div>
                   <Button onClick={openLibraryPanel} size="lg" className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Add First Step
+                    Add first step
                   </Button>
                 </div>
               </div>
@@ -5557,32 +5499,6 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             >
               {/* SVG Definitions for gradients and filters */}
               <defs>
-                <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line)" stopOpacity="0.5" />
-                  <stop offset="50%" stopColor="var(--workflow-line-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-line)" stopOpacity="0.5" />
-                </linearGradient>
-                <linearGradient id="connectionGradientActive" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="0.7" />
-                  <stop offset="50%" stopColor="var(--workflow-line-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-line-active)" stopOpacity="0.7" />
-                </linearGradient>
-                {/* Decision node gradients — signal tokens */}
-                <linearGradient id="decisionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-decision)" stopOpacity="0.6" />
-                  <stop offset="50%" stopColor="var(--workflow-decision-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-decision)" stopOpacity="0.6" />
-                </linearGradient>
-                <linearGradient id="decisionGradientActive" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="0.8" />
-                  <stop offset="50%" stopColor="var(--workflow-line-active-mid)" stopOpacity="1" />
-                  <stop offset="100%" stopColor="var(--workflow-line-active)" stopOpacity="0.8" />
-                </linearGradient>
-                <linearGradient id="decisionGradientDimmed" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--workflow-line-dim)" stopOpacity="0.2" />
-                  <stop offset="50%" stopColor="var(--workflow-line-dim)" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="var(--workflow-line-dim)" stopOpacity="0.2" />
-                </linearGradient>
                 <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                   <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                   <feMerge>
@@ -5600,10 +5516,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               </defs>
               
               {connections.map((conn, i) => {
-                const nodeWidth = conn.from.type === "decision" ? 128 : 224
-                const nodeHeight = conn.from.type === "decision" ? 128 : 80
-                const toNodeWidth = conn.to.type === "decision" ? 128 : 224
-                const toNodeHeight = conn.to.type === "decision" ? 128 : 80
+                const fromSize = footprintOf(conn.from)
+                const toSize = footprintOf(conn.to)
                 
                 // Check if this is a decision node connection
                 const isDecisionSource = conn.from.type === "decision"
@@ -5625,15 +5539,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 const isChosenPath = chosenPathId && outputPath?.id === chosenPathId
                 const isDimmedPath = isDecisionSource && chosenPathId && !isChosenPath
                 
-                // Calculate center positions
-                const fromCenterX = conn.from.position.x + nodeWidth / 2
-                const fromCenterY = conn.from.position.y + nodeHeight / 2
-                const toCenterX = conn.to.position.x + toNodeWidth / 2
-                const toCenterY = conn.to.position.y + toNodeHeight / 2
-                
-                // Determine connection direction based on relative position
-                const dx = toCenterX - fromCenterX
-                const dy = toCenterY - fromCenterY
+                // Direction from true node centres
+                const fromCenter = nodeCenter(conn.from.type, originOf(conn.from), fromSize)
+                const toCenter = nodeCenter(conn.to.type, originOf(conn.to), toSize)
+                const dx = toCenter.x - fromCenter.x
+                const dy = toCenter.y - fromCenter.y
                 const isHorizontal = Math.abs(dx) > Math.abs(dy)
                 
                 // Get state-based coloring
@@ -5644,101 +5554,35 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 // Use decision-specific colors for decision nodes
                 let strokeColor: string
                 let dotColor: string
+                // Solid strokes: bounding-box gradients paint nothing on perfectly straight edges.
                 if (isDimmedPath) {
-                  strokeColor = "url(#decisionGradientDimmed)"
+                  strokeColor = "var(--workflow-line-dim)"
                   dotColor = "var(--muted-foreground)"
                 } else if (isDecisionSource) {
-                  strokeColor = isChosenPath ? "url(#decisionGradientActive)" : "url(#decisionGradient)"
+                  strokeColor = isChosenPath ? "var(--workflow-line-active)" : "var(--workflow-decision-mid)"
                   dotColor = isChosenPath ? "var(--workflow-line-active)" : "var(--primary)"
                 } else {
-                  strokeColor = isActive ? "url(#connectionGradientActive)" : "url(#connectionGradient)"
+                  strokeColor = isActive ? "var(--workflow-line-active)" : "var(--workflow-line-mid)"
                   dotColor = isActive ? "var(--workflow-line-active)" : "var(--workflow-line-mid)"
                 }
                 const animationDuration = isActive ? "1.5s" : "3s"
                 
-                let fromX: number, fromY: number, toX: number, toY: number
+                // Edges run handle-centre to handle-centre on the facing sides.
+                const fromSide: NodeAnchorSide = isHorizontal ? (dx > 0 ? "right" : "left") : (dy > 0 ? "bottom" : "top")
+                const toSide: NodeAnchorSide = isHorizontal ? (dx > 0 ? "left" : "right") : (dy > 0 ? "top" : "bottom")
+                const fromPt = nodeAnchor(conn.from.type, originOf(conn.from), fromSize, fromSide)
+                const toPt = nodeAnchor(conn.to.type, originOf(conn.to), toSize, toSide)
+                const fromX = fromPt.x
+                const fromY = fromPt.y
+                const toX = toPt.x
+                const toY = toPt.y
                 let pathD: string
-                
-                // For decision nodes, offset multiple output paths
-                const pathYOffset = isDecisionSource && totalPaths > 1 
-                  ? (pathIndex - (totalPaths - 1) / 2) * 25 
-                  : 0
-                
                 if (isHorizontal) {
-                  // Horizontal connection (left-right)
-                  if (dx > 0) {
-                    // To is to the right of From
-                    if (isDecisionSource) {
-                      // Decision node uses diamond shape - exit from right corner
-                      fromX = conn.from.position.x + nodeWidth + 10
-                      fromY = conn.from.position.y + nodeHeight / 2 + pathYOffset
-                    } else {
-                      fromX = conn.from.position.x + nodeWidth + 7
-                      fromY = conn.from.position.y + nodeHeight / 2
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x - 10
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    } else {
-                      toX = conn.to.position.x - 7
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    }
-                  } else {
-                    // To is to the left of From
-                    if (isDecisionSource) {
-                      fromX = conn.from.position.x - 10
-                      fromY = conn.from.position.y + nodeHeight / 2 + pathYOffset
-                    } else {
-                      fromX = conn.from.position.x - 7
-                      fromY = conn.from.position.y + nodeHeight / 2
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x + toNodeWidth + 10
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    } else {
-                      toX = conn.to.position.x + toNodeWidth + 7
-                      toY = conn.to.position.y + toNodeHeight / 2
-                    }
-                  }
                   const controlOffset = Math.max(Math.abs(toX - fromX) * 0.4, 50)
                   const ctrl1X = dx > 0 ? fromX + controlOffset : fromX - controlOffset
                   const ctrl2X = dx > 0 ? toX - controlOffset : toX + controlOffset
                   pathD = `M ${fromX} ${fromY} C ${ctrl1X} ${fromY}, ${ctrl2X} ${toY}, ${toX} ${toY}`
                 } else {
-                  // Vertical connection (top-bottom)
-                  if (dy > 0) {
-                    // To is below From
-                    if (isDecisionSource) {
-                      fromX = conn.from.position.x + nodeWidth / 2 + pathYOffset
-                      fromY = conn.from.position.y + nodeHeight + 10
-                    } else {
-                      fromX = conn.from.position.x + nodeWidth / 2
-                      fromY = conn.from.position.y + nodeHeight + 7
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y - 10
-                    } else {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y - 7
-                    }
-                  } else {
-                    // To is above From
-                    if (isDecisionSource) {
-                      fromX = conn.from.position.x + nodeWidth / 2 + pathYOffset
-                      fromY = conn.from.position.y - 10
-                    } else {
-                      fromX = conn.from.position.x + nodeWidth / 2
-                      fromY = conn.from.position.y - 7
-                    }
-                    if (isDecisionTarget) {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y + toNodeHeight + 10
-                    } else {
-                      toX = conn.to.position.x + toNodeWidth / 2
-                      toY = conn.to.position.y + toNodeHeight + 7
-                    }
-                  }
                   const controlOffset = Math.max(Math.abs(toY - fromY) * 0.4, 50)
                   const ctrl1Y = dy > 0 ? fromY + controlOffset : fromY - controlOffset
                   const ctrl2Y = dy > 0 ? toY - controlOffset : toY + controlOffset
@@ -5750,7 +5594,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 const labelY = (fromY + toY) / 2 - 12
                 
                 // For decision nodes, show the path label instead of data label
-                const decisionPathLabel = isDecisionSource && conn.from.outputPaths?.[pathIndex]?.label
+                const decisionPathLabel =
+                  isDecisionSource &&
+                  (conn.from.outputPaths?.find((p) => p.targetNodeId === conn.to.id)?.label ??
+                    conn.from.outputPaths?.[pathIndex]?.label)
                 const dataLabel = decisionPathLabel || conn.from.dataLabel
                 
                 // Handler to disconnect this connection
@@ -5794,7 +5641,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <path
                       d={pathD}
                       stroke={strokeColor}
-                      strokeWidth={isDecisionSource ? "3" : "2.5"}
+                      strokeWidth={isDecisionSource ? "2" : "1.5"}
+                      className="transition-[stroke-width] duration-150 group-hover:[stroke-width:2.25]"
                     fill="none"
                     opacity={
                       traceOverlay
@@ -5830,15 +5678,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                         </circle>
                       </>
                     )}
-                    {/* Connection endpoint dots with glow */}
-                    <circle cx={fromX} cy={fromY} r={isDecisionSource ? "6" : "5"} fill={dotColor} opacity={isDimmedPath ? "0.4" : "0.9"} />
-                    <circle cx={toX} cy={toY} r="5" fill={dotColor} opacity={isDimmedPath ? "0.4" : "0.9"} />
-                    <circle cx={fromX} cy={fromY} r="3" fill="white" opacity={isDimmedPath ? "0.2" : "0.5"} />
-                    <circle cx={toX} cy={toY} r="3" fill="white" opacity={isDimmedPath ? "0.2" : "0.5"} />
+                    {/* Endpoints sit on the handle centres */}
+                    <circle cx={fromX} cy={fromY} r="3" fill={dotColor} opacity={isDimmedPath ? "0.4" : "1"} />
+                    <circle cx={toX} cy={toY} r="3" fill={dotColor} opacity={isDimmedPath ? "0.4" : "1"} />
                     
-{/* Disconnect button - always visible and clickable */}
+{/* Disconnect affordance: appears on edge hover so idle edges read as flow, not delete buttons. */}
   <g 
-    className="disconnect-btn" 
+    className="disconnect-btn opacity-0 transition-opacity duration-150 group-hover:opacity-100 [@media(hover:none)]:opacity-100" 
     style={{ pointerEvents: "all", cursor: "pointer" }}
     onClick={(e) => {
       e.stopPropagation()
@@ -5846,32 +5692,31 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       handleDisconnect()
     }}
   >
-    {/* Visible button background */}
+    <title>{`Disconnect ${conn.from.name} from ${conn.to.name}`}</title>
     <circle
       cx={labelX}
       cy={labelY}
-      r="12"
-      fill="#374151"
-      stroke="#6b7280"
-      strokeWidth="2"
+      r="9"
+      fill="var(--g-frame)"
+      stroke="var(--g-frame-rule)"
+      strokeWidth="1"
     />
-    {/* X icon */}
     <line 
-      x1={labelX - 4} 
-      y1={labelY - 4} 
-      x2={labelX + 4} 
-      y2={labelY + 4} 
-      stroke="#d1d5db" 
-      strokeWidth="2.5" 
+      x1={labelX - 3} 
+      y1={labelY - 3} 
+      x2={labelX + 3} 
+      y2={labelY + 3} 
+      stroke="white" 
+      strokeWidth="1.75" 
       strokeLinecap="round" 
     />
     <line 
-      x1={labelX + 4} 
-      y1={labelY - 4} 
-      x2={labelX - 4} 
-      y2={labelY + 4} 
-      stroke="#d1d5db" 
-      strokeWidth="2.5" 
+      x1={labelX + 3} 
+      y1={labelY - 3} 
+      x2={labelX - 3} 
+      y2={labelY + 3} 
+      stroke="white" 
+      strokeWidth="1.75" 
       strokeLinecap="round" 
     />
   </g>
@@ -5884,9 +5729,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   y={labelY + 18}
   width={100}
   height={20}
-  rx="6"
-  fill="#1a1a2e"
-  stroke={isDecisionSource ? "var(--primary)" : "var(--workflow-line-mid)"}
+  rx="4"
+  fill="var(--g-frame)"
+  stroke="var(--g-frame-rule)"
   strokeWidth="1"
   opacity="0.95"
   />
@@ -5894,7 +5739,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   x={labelX}
   y={labelY + 32}
   textAnchor="middle"
-  fill={isDecisionSource ? "#a78bfa" : "#60a5fa"}
+  fill="white"
   fontSize="10"
   fontFamily="ui-monospace, monospace"
   fontWeight="500"
@@ -5907,6 +5752,24 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 )
               })}
             </svg>
+
+{/* Start / End markers read from the graph shape */}
+  {nodes.map((node) => {
+    const isEntry = graphEnds.entryIds.has(node.id)
+    const isTerminal = graphEnds.terminalIds.has(node.id)
+    if (!isEntry && !isTerminal) return null
+    return (
+      <span
+        key={`graph-end-${node.id}`}
+        data-graph-end={isEntry && isTerminal ? "start-end" : isEntry ? "start" : "end"}
+        className="pointer-events-none absolute z-0 inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-muted-foreground"
+        style={{ left: node.position.x, top: node.position.y - 26 }}
+      >
+        <span aria-hidden className="h-px w-3 bg-[color:var(--g-border-strong)]" />
+        {isEntry && isTerminal ? "Start · End" : isEntry ? "Start" : "End"}
+      </span>
+    )
+  })}
 
 {/* Nodes */}
   {nodes.map((node) => (
@@ -5923,6 +5786,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   onConnectionDragStart={handleConnectionDragStart}
   onConnectionDrop={handleConnectionDrop}
   isDraggingConnection={isDraggingConnection}
+  connectState={connectStateFor(node.id)}
   />
   ) : node.type === "council" ? (
   <AgentCouncilNode
@@ -5944,6 +5808,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   onConnectionDragStart={handleConnectionDragStart}
   onConnectionDrop={handleConnectionDrop}
   isDraggingConnection={isDraggingConnection}
+  connectState={connectStateFor(node.id)}
   />
   ) : (
   <CanvasNode
@@ -5958,6 +5823,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       onConnectionDragStart={handleConnectionDragStart}
       onConnectionDrop={handleConnectionDrop}
       isDraggingConnection={isDraggingConnection}
+      connectState={connectStateFor(node.id)}
       isMobile={isMobile}
       reliabilityMessage={
         reliabilityByLabel.get(node.name.toLowerCase())
@@ -5972,64 +5838,32 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   {isDraggingConnection && dragSourceNodeId && dragMousePosition && (() => {
     const sourceNode = nodes.find(n => n.id === dragSourceNodeId)
     if (!sourceNode) return null
-    const nodeWidth = sourceNode.type === "decision" ? 128 : 224
-    const nodeHeight = sourceNode.type === "decision" ? 128 : 80
-    const startX = sourceNode.position.x + nodeWidth / 2
-    const startY = sourceNode.position.y + nodeHeight / 2
+    const { x: startX, y: startY } = nodeCenter(sourceNode.type, originOf(sourceNode), footprintOf(sourceNode))
     return (
       <svg 
         className="absolute inset-0 pointer-events-none" 
         style={{ overflow: "visible", width: "100%", height: "100%", zIndex: 100 }}
       >
-        <defs>
-          <linearGradient id="dragLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="var(--workflow-line-active)" stopOpacity="1" />
-            <stop offset="100%" stopColor="var(--workflow-line-active-mid)" stopOpacity="0.5" />
-          </linearGradient>
-        </defs>
-        {/* Glow effect */}
+        {/* Flat dashed preview: no glow, no motion */}
         <line
           x1={startX}
           y1={startY}
           x2={dragMousePosition.x}
           y2={dragMousePosition.y}
-          stroke="var(--workflow-line-active)"
-          strokeWidth="6"
-          opacity="0.3"
+          stroke="var(--signal-500)"
+          strokeWidth="1.5"
           strokeLinecap="round"
+          strokeDasharray="6 4"
         />
-        {/* Main line */}
-        <line
-          x1={startX}
-          y1={startY}
-          x2={dragMousePosition.x}
-          y2={dragMousePosition.y}
-          stroke="url(#dragLineGradient)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray="8 4"
-        >
-          <animate
-            attributeName="stroke-dashoffset"
-            from="0"
-            to="-24"
-            dur="0.5s"
-            repeatCount="indefinite"
-          />
-        </line>
-        {/* Start point */}
-        <circle cx={startX} cy={startY} r="6" fill="var(--workflow-line-active)" />
-        <circle cx={startX} cy={startY} r="3" fill="white" opacity="0.6" />
-        {/* End point (cursor) */}
-        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="8" fill="var(--workflow-line-active)" opacity="0.3" />
-        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="4" fill="var(--workflow-line-active)" />
+        <circle cx={startX} cy={startY} r="3" fill="var(--signal-500)" />
+        <circle cx={dragMousePosition.x} cy={dragMousePosition.y} r="3" fill="var(--signal-500)" />
       </svg>
     )
   })()}
 
   {/* Drag-to-connect indicator */}
   {isDraggingConnection && (
-  <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-success/10 border border-success/30 text-success rounded-full px-4 py-2 shadow-lg z-50">
+  <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-success/10 border border-success/30 text-success rounded-full px-4 py-2 shadow-md z-50">
   <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
   <span className="text-sm font-medium">Drop on a node to connect</span>
   </div>
@@ -6039,20 +5873,20 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             {(isExecuting || executionStatus !== "idle") && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
                 <div className={cn(
-                  "flex items-center gap-4 px-5 py-3 rounded-xl border shadow-lg backdrop-blur-sm",
-                  executionStatus === "running" && "bg-blue-500/10 border-blue-500/30",
-                  executionStatus === "completed" && "bg-success/10 border-success/30",
-                  executionStatus === "error" && "bg-destructive/10 border-destructive/30",
-                  executionStatus === "paused" && "bg-warning/10 border-warning/30",
-                  executionStatus === "waiting" && "bg-warning/10 border-warning/30",
-                  executionStatus === "cancelled" && "bg-destructive/10 border-destructive/30"
+                  "flex items-center gap-4 rounded-[6px] border border-[color:var(--g-border-default)] border-l-2 bg-card px-4 py-2.5",
+                  executionStatus === "running" && "border-l-[color:var(--info)]",
+                  executionStatus === "completed" && "border-l-[color:var(--g-brand)]",
+                  executionStatus === "error" && "border-l-destructive",
+                  executionStatus === "paused" && "border-l-[color:var(--g-approval)]",
+                  executionStatus === "waiting" && "border-l-[color:var(--g-approval)]",
+                  executionStatus === "cancelled" && "border-l-destructive"
                 )}>
                   {/* Status indicator */}
                   <div className="flex items-center gap-2">
                     {executionStatus === "running" && (
                       <>
-                        <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
-                        <span className="text-sm font-medium text-blue-400">Running workflow...</span>
+                        <Loader2 className="h-5 w-5 text-[color:var(--info)] animate-spin" />
+                        <span className="text-sm font-medium text-[color:var(--info)]">Running workflow...</span>
                       </>
                     )}
                     {executionStatus === "completed" && (
@@ -6175,12 +6009,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   {executionStatus === "completed" && lastRunId && (
                     <>
                       <div className="w-px h-6 bg-border" />
-                      <Link href={`/runs/${lastRunId}`}>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-success hover:text-success">
+                      <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs text-success hover:text-success">
+                        <Link href={`/runs/${lastRunId}`}>
                           <ExternalLink className="h-3 w-3 mr-1" />
-                          View Run
-                        </Button>
-                      </Link>
+                          View run
+                        </Link>
+                      </Button>
                     </>
                   )}
                   
@@ -6198,42 +6032,32 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             )}
 
             {/* Canvas toolbar */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card border border-border rounded-lg p-1 shadow-lg">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-[6px] border border-[color:var(--g-border-default)] bg-card p-1">
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-8 w-8 p-0"
+                className="h-8 gap-1.5 px-2.5 text-xs"
                 onClick={openLibraryPanel}
-                title="Add node"
+                title="Add step"
               >
                 <Plus className="h-4 w-4" />
+                Add step
               </Button>
-              <div className="w-px h-6 bg-border" />
-              <Button variant="ghost" size="sm" className="h-8 px-3 gap-1.5 text-xs">
-                <CheckCircle className="h-3.5 w-3.5 text-success" />
-                {nodes.length} nodes
-              </Button>
-              <div className="w-px h-6 bg-border" />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-3 gap-1.5 text-xs"
-                onClick={handlePreview}
-                disabled={isSaving || isLoadingGraph || isRunning}
-              >
-                <FileSearch className="h-3.5 w-3.5" />
-                Preview
-              </Button>
+              <div className="w-px h-5 bg-border" />
+              <span className="px-2.5 font-mono text-xs font-medium text-muted-foreground">
+                {nodes.length} {nodes.length === 1 ? "step" : "steps"}
+              </span>
+              <div className="w-px h-5 bg-border" />
               <Button
                 variant={traceOverlay ? "secondary" : "ghost"}
                 size="sm"
                 className="h-8 px-3 gap-1.5 text-xs"
                 aria-pressed={traceOverlay}
                 onClick={() => setTraceOverlay((on) => !on)}
-                title="TRACE overlay"
+                title="Trace overlay"
               >
                 <Activity className="h-3.5 w-3.5" />
-                TRACE
+                Trace
               </Button>
             </div>
 
@@ -6242,8 +6066,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               <Button
                 onClick={openLibraryPanel}
                 size="sm"
-                className="absolute top-4 left-4 h-9 w-9 p-0 rounded-full shadow-lg"
-                title="Add node"
+                variant="outline"
+                className="absolute top-4 left-4 h-8 w-8 p-0 bg-card"
+                title="Add step"
+                aria-label="Add step"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -6251,73 +6077,65 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
           </div>
 
-          <MesonCopilotPanel
-            open={mesonPanelOpen}
-            onClose={() => {
-              setMesonPanelOpen(false)
-              window.localStorage.setItem(MESON_PANEL_KEY, "0")
-            }}
-            workflowId={id}
-            canPersist={canPersist}
-            nodes={nodes.map((n) => ({
-              id: n.id,
-              type: n.type,
-              name: n.name,
-              vendor: n.vendor,
-              selectedAction: n.selectedAction,
-              description: n.description,
-              position: n.position,
-              config: n.config,
-            }))}
-            edges={nodes.flatMap((n) =>
-              n.connections.map((to) => ({
-                id: `${n.id}-${to}`,
-                from: n.id,
-                to,
-              })),
-            )}
-            orgConnectors={orgConnectors.map((c) => ({
-              id: c.id,
-              vendor: c.vendor,
-              type: (c as { type?: string }).type,
-              status: c.status,
-            }))}
-            onAcceptSuggestion={acceptSuggestion}
-            onDismissSuggestion={dismissSuggestion}
-            onApplyInsight={applyInsight}
-            onFixAlert={fixAlert}
-            crossWorkflowSignals={(nodeReliabilityData?.crossWorkflow ?? []).map((row) => ({
-              message: row.message,
-              count: row.count,
-            }))}
-            onEditApplied={async () => {
-              if (!canPersist) return
-              try {
-                const result = await loadBuilderGraph(id)
-                if (result?.nodes?.length) {
-                  setNodes(result.nodes)
-                  setWorkflowMeta(result.meta)
-                }
-              } catch (err) {
-                console.error("[WorkflowBuilder] reload after Meson edit failed:", err)
-              }
-            }}
-          />
+          <BuilderInspector
+            mode={inspectorMode}
+            onModeChange={changeInspectorMode}
+            mesonAttention={mesonAttention}
+            traceLive={executionStatus === "running"}
+          >
+            {inspectorMode === "configure" ? (
+              selectedNode && !isNarrowViewport ? (
+                renderConfigPanel(true)
+              ) : (
+                <BuilderWorkflowOverview
+                  intent={(workflowMeta.description || "").trim()}
+                  entryNodes={graphEnds.entryNodes}
+                  terminalNodes={graphEnds.terminalNodes}
+                  stepCount={nodes.length}
+                  blockingIssues={connectorBlockingIssues.length}
+                  onSelectNode={setSelectedNodeId}
+                  onAddStep={openLibraryPanel}
+                />
+              )
+            ) : null}
+            {inspectorMode === "meson" && !isNarrowViewport ? mesonPanel : null}
+            {inspectorMode === "trace" ? (
+              <BuilderRunTrace
+                status={executionStatus}
+                step={executionStep}
+                total={nodes.length}
+                elapsedSeconds={executionElapsed}
+                error={executionError}
+                lastRunId={lastRunId}
+                traceOverlay={traceOverlay}
+                onToggleTraceOverlay={() => setTraceOverlay((on) => !on)}
+                onSelectNode={setSelectedNodeId}
+                nodes={[...nodes]
+                  .sort((x, y) => x.position.x - y.position.x || x.position.y - y.position.y)
+                  .map((n) => ({
+                    id: n.id,
+                    name: n.name,
+                    typeLabel: getNodeTypeConfig(n.type).label,
+                    state: n.state,
+                    stepError: n.stepError,
+                  }))}
+              />
+            ) : null}
+          </BuilderInspector>
 
-          {/* Right config panel */}
-          <ConfigPanel
-            node={selectedNode}
-            onClose={() => setSelectedNodeId(null)}
-            onUpdate={handleUpdateNode}
-            onDuplicate={
-              selectedNodeId ? () => handleDuplicateNode(selectedNodeId) : undefined
-            }
-            onDelete={selectedNodeId ? () => handleDeleteNode(selectedNodeId) : undefined}
-            orgAgents={orgAgents}
-            orgConnectors={orgConnectors}
-            actionCatalog={actionCatalogData ?? null}
-            lastRunId={lastRunId}
-          />
+          {/* Below md the inspector folds into sheets so configuration and Meson stay reachable. */}
+          {isNarrowViewport ? renderConfigPanel(false) : null}
+          {isNarrowViewport ? (
+            <Sheet open={mesonPanelOpen} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
+              <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 p-0">
+                <SheetHeader className="border-b border-border px-4 py-3">
+                  <SheetTitle className="text-[15px]">Meson</SheetTitle>
+                  <SheetDescription className="text-xs">Suggestions and edits for this workflow.</SheetDescription>
+                </SheetHeader>
+                {mesonPanel}
+              </SheetContent>
+            </Sheet>
+          ) : null}
 
           {/* Debate View Dialog */}
           <DebateViewDialog
@@ -6386,7 +6204,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Workflow Settings</DialogTitle>
+            <DialogTitle>Workflow settings</DialogTitle>
             <DialogDescription>
               Configure settings for this workflow.
             </DialogDescription>
@@ -6394,7 +6212,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           <div className="space-y-6 py-4">
             {/* Workflow Name */}
             <div className="space-y-2">
-              <Label htmlFor="workflow-name">Workflow Name</Label>
+              <Label htmlFor="workflow-name">Workflow name</Label>
               <Input 
                 id="workflow-name" 
                 value={settingsName}
@@ -6443,7 +6261,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Enable Notifications</Label>
+                  <Label>Enable notifications</Label>
                   <p className="text-xs text-muted-foreground">Get notified when workflow fails</p>
                 </div>
                 <Switch defaultChecked />
@@ -6459,7 +6277,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Require Approval</Label>
+                  <Label>Require approval</Label>
                   <p className="text-xs text-muted-foreground">Require manual approval before execution</p>
                 </div>
                 <Switch />
@@ -6495,7 +6313,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 toast.success("Settings updated locally")
               }
             }}>
-              Save Settings
+              Save settings
             </Button>
           </div>
         </DialogContent>
@@ -6524,7 +6342,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
           <SheetHeader className="pb-4">
             <SheetTitle className="flex items-center justify-between">
-              <span>Workflow Nodes ({nodes.length})</span>
+              <span>Workflow nodes ({nodes.length})</span>
               <Button
                 size="sm"
                 onClick={() => {
@@ -6534,7 +6352,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 className="gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                Add Node
+                Add node
               </Button>
             </SheetTitle>
             <SheetDescription>
@@ -6633,7 +6451,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   }}
                 >
                   <Plus className="h-4 w-4" />
-                  Add First Node
+                  Add first node
                 </Button>
               </div>
             )}
@@ -6644,7 +6462,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       {/* Mobile Floating Action Bar */}
       {isMobile && (
         <div className="fixed bottom-4 left-4 right-4 z-50 md:hidden">
-          <div className="flex items-center justify-between gap-2 p-2 bg-card/95 backdrop-blur-lg border border-border rounded-2xl shadow-2xl">
+          <div className="flex items-center justify-between gap-2 p-2 bg-card border border-border rounded-lg shadow-md">
             <Button
               variant="outline"
               size="sm"
@@ -6652,7 +6470,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               onClick={() => setShowMobileNodeList(true)}
             >
               <LayoutGrid className="h-4 w-4" />
-              <span className="font-medium">{nodes.length} Nodes</span>
+              <span className="font-medium">{nodes.length} {nodes.length === 1 ? "node" : "nodes"}</span>
             </Button>
             <Button
               size="sm"

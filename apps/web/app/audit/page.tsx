@@ -162,7 +162,7 @@ export default function AuditPage() {
         <GravitrePageHeader
           className="shrink-0"
           eyebrow="Governance"
-          title="Audit Trail"
+          title="Audit trail"
           description="Who did what, when, and the outcome"
           icon={<NavFile className="h-5 w-5" />}
           actions={
@@ -263,7 +263,7 @@ export default function AuditPage() {
                 }}
               >
                 <SelectTrigger className="h-8 w-[140px] border-divide bg-[color:var(--g-surface-1)] text-xs">
-                  <SelectValue placeholder="Entity Type" />
+                  <SelectValue placeholder="Entity type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All entities</SelectItem>

@@ -1,0 +1,312 @@
+{
+  "base": "http://127.0.0.1:3010",
+  "route": "/e2e/shots/builder",
+  "class": "fixture (harness seed graph, no backend)",
+  "at": "2026-09-27T20:37:08.825Z",
+  "results": [
+    {
+      "name": "01-desktop-light-overview",
+      "file": "01-desktop-light-overview.png",
+      "viewport": "desktop",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "02-desktop-dark-overview",
+      "file": "02-desktop-dark-overview.png",
+      "viewport": "desktop",
+      "theme": "dark",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "03-desktop-light-agent",
+      "file": "03-desktop-light-agent.png",
+      "viewport": "desktop",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "04-desktop-dark-agent",
+      "file": "04-desktop-dark-agent.png",
+      "viewport": "desktop",
+      "theme": "dark",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "05-desktop-light-connector",
+      "file": "05-desktop-light-connector.png",
+      "viewport": "desktop",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "06-desktop-light-start-inputs",
+      "file": "06-desktop-light-start-inputs.png",
+      "viewport": "desktop",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "07-desktop-light-end-output",
+      "file": "07-desktop-light-end-output.png",
+      "viewport": "desktop",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "08-desktop-light-meson",
+      "file": "08-desktop-light-meson.png",
+      "viewport": "desktop",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "meson",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "09-desktop-dark-meson",
+      "file": "09-desktop-dark-meson.png",
+      "viewport": "desktop",
+      "theme": "dark",
+      "note": "",
+      "inspectorMode": "meson",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "10-desktop-light-trace",
+      "file": "10-desktop-light-trace.png",
+      "viewport": "desktop",
+      "theme": "light",
+      "note": "Trace toolbar action: overlay on + Run/Trace mode. No run executed in the harness (idle state).",
+      "inspectorMode": "trace",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "11-desktop-dark-trace",
+      "file": "11-desktop-dark-trace.png",
+      "viewport": "desktop",
+      "theme": "dark",
+      "note": "",
+      "inspectorMode": "trace",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "12-tablet-light-overview",
+      "file": "12-tablet-light-overview.png",
+      "viewport": "tablet",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "13-tablet-light-agent",
+      "file": "13-tablet-light-agent.png",
+      "viewport": "tablet",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": true,
+      "navVisible": true,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "14-mobile-light",
+      "file": "14-mobile-light.png",
+      "viewport": "mobile",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": false,
+      "navVisible": false,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "15-mobile-dark",
+      "file": "15-mobile-dark.png",
+      "viewport": "mobile",
+      "theme": "dark",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": false,
+      "navVisible": false,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "16-mobile-light-agent-sheet",
+      "file": "16-mobile-light-agent-sheet.png",
+      "viewport": "mobile",
+      "theme": "light",
+      "note": "",
+      "inspectorMode": "configure",
+      "inspectorVisible": false,
+      "navVisible": false,
+      "graphEnds": [
+        "start:Start",
+        "end:End"
+      ],
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    }
+  ]
+}

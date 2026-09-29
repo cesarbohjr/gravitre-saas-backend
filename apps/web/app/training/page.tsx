@@ -35,13 +35,13 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
-    return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
   }
   if (status === "training" || status === "processing" || status === "queued") {
-    return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+    return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
   }
   if (status === "failed") {
-    return "bg-red-500/10 text-red-400 border-red-500/20"
+    return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
   }
   return "bg-secondary text-muted-foreground border-border"
 }
@@ -570,7 +570,7 @@ function TrainingPageContent() {
         />
 
         {loadError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>{loadError}</span>
             <Button
               variant="outline"
@@ -649,7 +649,7 @@ function TrainingPageContent() {
           className="space-y-2 border-b border-divide py-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Job monitor
             </p>
             <Button
@@ -707,14 +707,14 @@ function TrainingPageContent() {
             className="space-y-4 border-b border-divide pb-6"
           >
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-foreground">Training Datasets</h2>
+              <h2 className="text-lg font-semibold text-foreground">Training datasets</h2>
               <p className="text-sm text-muted-foreground">
                 Pick a type, add teaching material, then run a job when you have enough records.
               </p>
             </div>
 
             <div className="space-y-3 rounded-xl border border-border/50 bg-background/40 p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Dataset type</p>
+              <p className="text-xs font-medium text-muted-foreground">Dataset type</p>
               <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
                 {DATASET_TYPE_META.map((meta) => {
                   const selected = datasetType === meta.value
@@ -802,7 +802,7 @@ function TrainingPageContent() {
                         </div>
                         <span
                           className={cn(
-                            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase",
+                            "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
                             statusClasses(dataset.status)
                           )}
                         >
@@ -994,7 +994,7 @@ function TrainingPageContent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:border-emerald-500/40 hover:text-emerald-400"
+                          className="hover:border-emerald-500/40 hover:text-emerald-800 dark:hover:text-emerald-400"
                           disabled={busy}
                           onClick={() => {
                             setTrainDatasetId(null)
@@ -1016,7 +1016,7 @@ function TrainingPageContent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:border-blue-500/40 hover:text-blue-400"
+                          className="hover:border-blue-500/40 hover:text-blue-800 dark:hover:text-blue-400"
                           disabled={busy || dataset.record_count < 1}
                           onClick={() => {
                             setRecordDatasetId(null)
@@ -1028,7 +1028,7 @@ function TrainingPageContent() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="hover:border-red-500/40 hover:text-red-400"
+                          className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
                           disabled={busy}
                           onClick={() => void handleDeleteDataset(dataset.id)}
                         >
@@ -1059,7 +1059,7 @@ function TrainingPageContent() {
             className="space-y-4 border-b border-divide pb-6"
           >
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-foreground">Training Jobs</h2>
+              <h2 className="text-lg font-semibold text-foreground">Training jobs</h2>
               <p className="text-sm text-muted-foreground">
                 Fine-tune runs started from a dataset. When a job completes, assign the model under Fine-tunes.
               </p>
@@ -1103,7 +1103,7 @@ function TrainingPageContent() {
                         </div>
                         <span
                           className={cn(
-                            "shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase",
+                            "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
                             statusClasses(job.status)
                           )}
                         >
@@ -1132,7 +1132,7 @@ function TrainingPageContent() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="hover:border-red-500/40 hover:text-red-400"
+                            className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
                             disabled={mutatingJobId === job.id}
                             onClick={() => void handleCancelJob(job.id)}
                           >
@@ -1163,7 +1163,7 @@ function TrainingPageContent() {
           className="space-y-4 border-b border-divide pb-6"
         >
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">Custom Instructions</h2>
+            <h2 className="text-lg font-semibold text-foreground">Custom instructions</h2>
             <p className="text-sm text-muted-foreground">
               Live prompt guidance injected into agent chats when enabled. Use this for tone, escalation rules, and
               standing policies without waiting for a fine-tune.
@@ -1225,9 +1225,9 @@ function TrainingPageContent() {
                   </div>
                   <span
                     className={cn(
-                      "rounded-full border px-2 py-0.5 text-[10px] uppercase",
+                      "rounded-full border px-2 py-0.5 text-xs font-medium",
                       instruction.is_active
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
                         : "bg-secondary text-muted-foreground border-border"
                     )}
                   >
@@ -1239,7 +1239,7 @@ function TrainingPageContent() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="hover:border-blue-500/40 hover:text-blue-400"
+                    className="hover:border-blue-500/40 hover:text-blue-800 dark:hover:text-blue-400"
                     disabled={mutatingInstructionId === instruction.id}
                     onClick={() => void handleToggleInstruction(instruction)}
                   >
@@ -1248,7 +1248,7 @@ function TrainingPageContent() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="hover:border-red-500/40 hover:text-red-400"
+                    className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
                     disabled={mutatingInstructionId === instruction.id}
                     onClick={() => void handleDeleteInstruction(instruction.id)}
                   >

@@ -48,7 +48,7 @@ curl -s -X POST "https://gravitre.app/api/workflows/execute" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "workflowId": "WORKFLOW_UUID",
+    "workflow_id": "WORKFLOW_UUID",
     "parameters": {}
   }'
 ```
@@ -86,9 +86,9 @@ curl -s -X POST "https://gravitre.app/api/operator/action-plan" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "operatorGoal": "Summarize connector errors",
-    "primaryContext": {"type": "connector", "id": "CONNECTOR_UUID"},
-    "relatedContexts": []
+    "operator_goal": "Summarize connector errors",
+    "primary_context": {"type": "connector", "id": "CONNECTOR_UUID"},
+    "related_contexts": []
   }'
 ```
 

@@ -30,6 +30,13 @@ describe("normalizeMetricsOverview", () => {
     expect(n.avgDuration).toBe(900)
     expect(n.activeWorkflows).toBe(1)
   })
+
+  it("reports no success rate or duration when nothing has run", () => {
+    const n = normalizeMetricsOverview({ totalRuns: 0, successRate: 0, avgDuration: 0 })
+    expect(n.totalRuns).toBe(0)
+    expect(n.successRate).toBeNull()
+    expect(n.avgDuration).toBeNull()
+  })
 })
 
 describe("packWidgets", () => {

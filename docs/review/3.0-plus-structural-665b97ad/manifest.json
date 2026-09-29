@@ -1,0 +1,22 @@
+{
+  "reviewedCommit": "665b97ad964fc3184da32344ef0eecb30280544c",
+  "branch": "feat/gravitre-3.0-plus-frontend",
+  "afterBuildId": "DFFQachDxFSignKgq9Gqp",
+  "visualAcceptance": "NOT ACCEPTED",
+  "images": [
+    { "file": "01-dashboard-before.png", "route": "/home", "set": "before", "viewport": "1440x900", "theme": "light", "class": "production main, E2E fixture test tenant" },
+    { "file": "02-dashboard-after.png", "route": "/home", "set": "after", "viewport": "1440x900", "theme": "light", "class": "665b97ad build DFFQachDxFSignKgq9Gqp, E2E fixture test tenant" },
+    { "file": "03-dashboard-before-grayscale.png", "route": "/home", "set": "before", "derivedFrom": "01", "class": "derived grayscale" },
+    { "file": "04-dashboard-after-grayscale.png", "route": "/home", "set": "after", "derivedFrom": "02", "class": "derived grayscale" },
+    { "file": "05-ai-before-start.png", "route": "/ai", "set": "before", "viewport": "1440x900", "theme": "light", "class": "production main, E2E fixture test tenant" },
+    { "file": "06-ai-after-start.png", "route": "/ai", "set": "after", "viewport": "1440x900", "theme": "light", "class": "665b97ad build DFFQachDxFSignKgq9Gqp, E2E fixture test tenant" },
+    { "file": "07-ai-after-active-FIXTURE-MOCKED.png", "route": "/e2e/shots/ai (fullscreen)", "set": "after", "viewport": "1440x900", "theme": "light", "class": "FIXTURE harness + MOCKED /api/chat reply; pre-commit tree, colour-only delta from 665b97ad" },
+    { "file": "08-assignments-before.png", "route": "/assignments", "set": "before", "viewport": "1440x900", "theme": "light", "class": "production main, E2E fixture test tenant" },
+    { "file": "09-assignments-after.png", "route": "/assignments", "set": "after", "viewport": "1440x900", "theme": "light", "class": "665b97ad build DFFQachDxFSignKgq9Gqp, E2E fixture test tenant" },
+    { "file": "10-assignments-after-inspector-FIXTURE.png", "route": "/e2e/shots/assignments", "set": "after", "viewport": "1440x900", "theme": "light", "class": "FIXTURE harness data; pre-commit tree, colour-only delta from 665b97ad" },
+    { "file": "11-intelligence-before.png", "route": "/intelligence", "set": "before", "viewport": "1440x900", "theme": "light", "class": "production main, E2E fixture test tenant" },
+    { "file": "12-intelligence-after.png", "route": "/intelligence", "set": "after", "viewport": "1440x900", "theme": "light", "class": "665b97ad build DFFQachDxFSignKgq9Gqp, E2E fixture test tenant" },
+    { "file": "13-shell-before.png", "route": "/home", "set": "before", "derivedFrom": "01", "class": "crop (top 320px)" },
+    { "file": "14-shell-after.png", "route": "/home", "set": "after", "derivedFrom": "02", "class": "crop (top 320px)" }
+  ]
+}

@@ -162,7 +162,7 @@ export function LiveActivityRail({
 
         {/* In progress */}
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">In progress</p>
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">In progress</p>
           {runsError ? (
             <p className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
               Run activity unavailable — refresh to retry.
@@ -197,7 +197,7 @@ export function LiveActivityRail({
         {/* Recent */}
         {recent.length > 0 ? (
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent</p>
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">Recent</p>
             <ul className="space-y-1">
               {recent.map((run) => (
                 <motion.li key={run.id} whileHover={{ x: 2 }}>

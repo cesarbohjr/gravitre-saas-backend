@@ -19,7 +19,7 @@
   --color-gray-300: #eaedf1;
   --color-gray-400: #d7d7d7;
   --color-gray-500: #c0c0c0;
-  --color-gray-600: #8b8b8b;
+  --color-gray-600: #6b6b70;
   /* Nodus --color-brand was #f17463; Gravitre brand green */
   --color-brand: #16a374;
   --color-brand-soft: #e0f3ec;
@@ -68,15 +68,26 @@
   --g-brand-border: color-mix(in srgb, #16a374 22%, #eaedf1);
   --g-brand-glow: 0 8px 28px -10px color-mix(in srgb, #16a374 30%, transparent);
   /* Nodus Product Image layout tokens (measured from dashboard@3x.png) */
-  --np-sidebar: 220px;
+  --np-sidebar: 236px;
   --np-sidebar-rail: 64px;
+  /* 3.0 Plus operating environment: navigation and command chrome sit on a quiet
+     tone; the working surface is a raised, inset workspace panel. */
+  --g-chrome: #f2f3f1;
+  --g-chrome-hover: #e8eae7;
+  --g-workspace-radius: 10px;
+  /* Graphite frame: navigation and command chrome are the instrument; the
+     workspace inside stays light. */
+  --g-frame: oklch(0.145 0.003 260);
+  --g-frame-rule: oklch(0.25 0.003 260);
+  --g-workspace-shadow: 0 0 0 1px #e3e6e2, 0 1px 2px rgb(16 24 40 / 0.04), 0 12px 32px -18px rgb(16 24 40 / 0.14);
+  --g-rail-bg: #fafbfa;
   /* P12 desktop densify — ops panes, not marketing canvas */
   --np-page-pad: 16px;
   --np-page-pad-sm: 12px;
   --np-kpi-gap: 12px;
-  --np-radius-sm: 6px;
-  --np-radius-md: 8px;
-  --np-radius-lg: 12px;
+  --np-radius-sm: 4px;
+  --np-radius-md: 6px;
+  --np-radius-lg: 8px;
   --np-row-h: 36px;
   --np-header-h: 36px;
   --np-nav-icon: 16px;
@@ -93,7 +104,8 @@
   --secondary: #f5f5f5;
   --secondary-foreground: #202020;
   --muted: #f5f5f5;
-  --muted-foreground: #8b8b8b;
+  /* #8b8b8b was 3.5:1 on white (fails WCAG AA for body copy). */
+  --muted-foreground: #66666b;
   /* Accent = the interactive hover/active SURFACE token (shadcn semantics),
      not a decorative brand color. It was electric blue (hue 250, chroma .16 on
      the foreground), which tinted every `hover:bg-accent` / `hover:text-
@@ -133,7 +145,7 @@
   --workflow-decision: var(--g-signal);
   --workflow-decision-mid: var(--g-signal);
   --workflow-line-dim: var(--muted-foreground);
-  --radius: 0.625rem;
+  --radius: 0.375rem;
   /* Premium elevation scale (light) — soft, layered, low-spread shadows */
   --elevation-1: 0 1px 2px -1px oklch(0.18 0.02 160 / 0.08), 0 1px 3px oklch(0.18 0.02 160 / 0.06);
   --elevation-2: 0 2px 4px -2px oklch(0.18 0.02 160 / 0.08), 0 4px 12px -2px oklch(0.18 0.02 160 / 0.08);
@@ -142,11 +154,11 @@
   /* Top inset highlight for "glass" edge on elevated surfaces */
   --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.6);
   /* Sidebar: subtle cool surface with brand-emerald accents */
-  --sidebar: #f9f9f9;
+  --sidebar: #f2f3f1;
   --sidebar-foreground: #202020;
   --sidebar-primary: #16a374;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f5f5f5;
+  --sidebar-accent: #e8eae7;
   --sidebar-accent-foreground: #202020;
   --sidebar-border: #eaedf1;
   --sidebar-ring: #16a374;
@@ -197,12 +209,14 @@
   --g-surface-3: #f5f5f5;
   --g-surface-elevated: #ffffff;
   --g-surface-active: color-mix(in srgb, #16a374 6%, var(--g-surface-1));
-  --g-text-primary: #202020;
+  /* Light mode gets authority from ink and rules, not darker surfaces:
+     structure is carried by border-default rules, so they must read on white. */
+  --g-text-primary: #18181b;
   --g-text-secondary: #343434;
-  --g-text-muted: #8b8b8b;
+  --g-text-muted: #66666b;
   --g-text-disabled: color-mix(in srgb, var(--g-text-muted) 55%, transparent);
   --g-border-subtle: color-mix(in srgb, #eaedf1 85%, transparent);
-  --g-border-default: #eaedf1;
+  --g-border-default: #e2e4e8;
   --g-border-strong: #d7d7d7;
   --g-border-active: color-mix(in srgb, var(--primary) 28%, var(--g-border-default));
   --g-intelligence: oklch(0.52 0.16 290);
@@ -216,7 +230,7 @@
   --g-emerald-surface: color-mix(in srgb, var(--primary) 8%, var(--g-surface-1));
   --g-emerald-glow: 0 8px 28px -10px color-mix(in srgb, var(--primary) 30%, transparent);
   /* Nodus divide / pattern tokens */
-  --divide: #eaedf1;
+  --divide: #e2e4e8;
   --dots: #eaedf1;
   --line: #eaedf1;
   --footer-link: #676767;
@@ -301,11 +315,13 @@
   --g-type-display-tracking: -0.03em;
   --g-type-label-tracking: 0.14em;
   /* Radius (aligned with design-system RADIUS) */
-  --g-radius-control: 9999px;
+  /* Sharp-technical geometry: small radii on working surfaces; the larger
+     panel radius is reserved for elevated / conversational surfaces. */
+  --g-radius-control: 0.375rem;
   --g-radius-field: 0.375rem;
-  --g-radius-tile: 0.5rem;
-  --g-radius-card: 0.75rem;
-  --g-radius-panel: 1rem;
+  --g-radius-tile: 0.375rem;
+  --g-radius-card: 0.5rem;
+  --g-radius-panel: 0.625rem;
   /* Space scale */
   --g-space-1: 0.25rem;
   --g-space-2: 0.5rem;
@@ -315,6 +331,15 @@
   --g-space-6: 2rem;
   --g-space-7: 3rem;
   --g-space-8: 4rem;
+
+  /* Window Manager chrome (Slice 0 / 3.0 Plus) — presentation only */
+  --g-wm-surface: var(--g-surface-1);
+  --g-wm-border: var(--g-border-default);
+  --g-wm-shadow: var(--g-shadow-elevated);
+  --g-wm-dock-width: min(420px, 42vw);
+  --g-wm-compact-width: 360px;
+  --g-wm-floating-min-width: 480px;
+  --g-wm-header-h: 40px;
 }
 
 /* Marketing daylight canvas — warm mineral light (not sterile #FFF) */
@@ -375,27 +400,25 @@
 }
 
 .dark {
-  /* Gravitre Brand: Deep navy/black background (#0B0F14) */
-  --background: oklch(0.08 0.01 250);
-  --foreground: oklch(0.95 0 0);
-  /* Surface: slightly lighter panels (#11161D) */
-  --card: oklch(0.11 0.01 250);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.11 0.01 250);
-  --popover-foreground: oklch(0.95 0 0);
-  /* Primary: Gravitre brand emerald green */
+  /* Graphite, not navy: neutral charcoal ladder with emerald as the only hue. */
+  --background: oklch(0.155 0.002 260);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.19 0.002 260);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.215 0.002 260);
+  --popover-foreground: oklch(0.96 0 0);
   --primary: oklch(0.72 0.14 162);
-  --primary-foreground: oklch(0.14 0.02 162);
-  --secondary: oklch(0.15 0.01 250);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.15 0.01 250);
-  --muted-foreground: oklch(0.60 0 0);
-  --accent: oklch(0.18 0.02 250);
-  --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.20 0.01 250);
-  --input: oklch(0.15 0.01 250);
+  --primary-foreground: oklch(0.16 0.02 162);
+  --secondary: oklch(0.235 0.002 260);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.235 0.002 260);
+  --muted-foreground: oklch(0.72 0.004 260);
+  --accent: oklch(0.255 0.003 260);
+  --accent-foreground: oklch(0.96 0 0);
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.28 0.003 260);
+  --input: oklch(0.235 0.002 260);
   --ring: oklch(0.72 0.14 162);
   /* Status colors. Dark-mode fills are lighter than their light-mode
      counterparts, so their foregrounds invert to dark to stay legible. */
@@ -434,13 +457,45 @@
   --elevation-4: 0 24px 56px -12px oklch(0 0 0 / 0.7), inset 0 1px 0 0 oklch(1 0 0 / 0.07);
   --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.07);
   /* Sidebar: Even deeper */
-  --sidebar: oklch(0.06 0.01 250);
-  --sidebar-foreground: oklch(0.95 0 0);
+  /* Nodus ramp + divide tokens are used directly by utilities (text-charcoal-900,
+     bg-gray-100, border-divide), so they must follow the theme too. */
+  --color-charcoal-900: oklch(0.96 0 0);
+  --color-charcoal-800: oklch(0.9 0 0);
+  --color-charcoal-700: oklch(0.84 0 0);
+  --color-gray-100: oklch(0.19 0.002 260);
+  --color-gray-200: oklch(0.215 0.002 260);
+  --color-gray-300: oklch(0.28 0.003 260);
+  --color-gray-400: oklch(0.36 0.003 260);
+  --color-gray-500: oklch(0.5 0.003 260);
+  --color-gray-600: oklch(0.7 0.004 260);
+  --color-brand-soft: color-mix(in oklch, oklch(0.72 0.14 162) 14%, transparent);
+  --brand-soft: var(--color-brand-soft);
+  --divide: var(--border);
+  --dots: oklch(0.3 0.003 260);
+  --line: var(--border);
+  --footer-link: var(--muted-foreground);
+  --canvas: oklch(0.36 0.003 260);
+  --canvas-fill: oklch(0.28 0.003 260);
+  --g-background-muted: var(--muted);
+  --g-border-strong: oklch(0.36 0.003 260);
+  --g-brand-soft: var(--color-brand-soft);
+  --g-brand-surface: color-mix(in oklch, oklch(0.72 0.14 162) 8%, var(--card));
+  --g-brand-border: color-mix(in oklch, oklch(0.72 0.14 162) 30%, var(--border));
+  --g-surface-elevated: var(--popover);
+  --g-highlight-top: inset 0 1px 0 0 oklch(1 0 0 / 0.05);
+  --np-shadow: 0 0 0 1px var(--border);
+  --shadow-aceternity: 0 0 0 1px var(--border);
+  --sidebar: oklch(0.13 0.002 260);
+  --g-chrome: oklch(0.13 0.002 260);
+  --g-chrome-hover: oklch(0.19 0.003 260);
+  --g-workspace-shadow: 0 0 0 1px var(--border), 0 16px 40px -24px rgb(0 0 0 / 0.6);
+  --g-rail-bg: color-mix(in oklch, var(--card) 70%, var(--background));
+  --sidebar-foreground: oklch(0.96 0 0);
   --sidebar-primary: oklch(0.72 0.14 162);
-  --sidebar-primary-foreground: oklch(0.14 0.02 162);
-  --sidebar-accent: oklch(0.12 0.01 250);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.16 0.01 250);
+  --sidebar-primary-foreground: oklch(0.16 0.02 162);
+  --sidebar-accent: oklch(0.215 0.002 260);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.24 0.003 260);
   --sidebar-ring: oklch(0.72 0.14 162);
   /* Lifted slightly on the near-black dark canvas so the circle reads as a chip
      rather than dissolving into the background. */
@@ -457,6 +512,7 @@
   --status-idle: var(--muted-foreground);
 
   /* Design Pass 2 aliases — dark values where intelligence/emerald diverge */
+  --g-canvas: var(--background);
   --g-void: var(--background);
   --g-background: var(--background);
   --g-surface-1: var(--card);
@@ -497,6 +553,15 @@
   --g-shadow-surface: var(--elevation-1);
   --g-shadow-elevated: var(--elevation-2);
   --g-blur-atmosphere: 56px;
+
+  /* Window Manager chrome (dark) */
+  --g-wm-surface: var(--g-surface-1);
+  --g-wm-border: var(--g-border-default);
+  --g-wm-shadow: var(--elevation-3);
+  --g-wm-dock-width: min(420px, 42vw);
+  --g-wm-compact-width: 360px;
+  --g-wm-floating-min-width: 480px;
+  --g-wm-header-h: 40px;
   --g-duration-micro: 150ms;
   --g-duration-state: 320ms;
   --g-duration-flow: 800ms;
@@ -542,6 +607,331 @@
   --g-graphic-blur: 28px;
   --g-graphic-opacity: 0.4;
   --g-graphic-signal-ms: 2400ms;
+}
+
+/* ==================================================================
+   Gravitre Carbon Intelligence palette (3.0 Plus visual maturity).
+   Layered after the legacy blocks so every existing token name resolves
+   to the new system. Green is a signal (live / healthy / verified /
+   selected), Ion violet is the analytical accent, primary actions are ink.
+   Light-mode TEXT variants of semantic hues are one step darker than the
+   swatch so body copy holds WCAG AA on Porcelain and Bone; the swatch
+   hue is used for dots, edges and fills.
+   ================================================================== */
+:root {
+  --carbon-950: #0a0b0c;
+  --carbon-900: #111315;
+  --graphite-800: #1a1d20;
+  --graphite-700: #25292d;
+  --porcelain-50: #f7f7f5;
+  --bone-100: #efefeb;
+  --ink-950: #151618;
+  --signal-500: #2fbf8f;
+  --signal-600: #239b75;
+  --signal-300: #79d8b8;
+  --signal-wash: #e8f5ef;
+  --ion-500: #7c6cf2;
+  --ion-300: #a89cf8;
+  --ion-wash: #f0eeff;
+  --attention-500: #c8902f;
+  --failure-500: #c94c4c;
+  --information-500: #4e7fcb;
+
+  --background: var(--porcelain-50);
+  --foreground: var(--ink-950);
+  --card: #fbfbfa;
+  --card-foreground: var(--ink-950);
+  --popover: #fdfdfc;
+  --popover-foreground: var(--ink-950);
+  --primary: var(--ink-950);
+  --primary-foreground: #fbfbfa;
+  --secondary: var(--bone-100);
+  --secondary-foreground: var(--ink-950);
+  --muted: var(--bone-100);
+  --muted-foreground: #5f656c;
+  --accent: #e9e9e4;
+  --accent-foreground: var(--ink-950);
+  --border: #dcdcd6;
+  --input: #dcdcd6;
+  --ring: var(--ink-950);
+  --success: #1b7a5c;
+  --success-foreground: #fbfbfa;
+  --warning: #8a6116;
+  --warning-foreground: #fbfbfa;
+  --info: #3a68b0;
+  --info-foreground: #fbfbfa;
+  --destructive: #b3403f;
+  --destructive-foreground: #fbfbfa;
+  --chart-1: var(--signal-600);
+  --chart-2: var(--information-500);
+  --chart-3: var(--attention-500);
+  --chart-4: var(--ion-500);
+  --chart-5: var(--failure-500);
+  --schedule-workflow: var(--ion-500);
+  --schedule-task: var(--information-500);
+  --schedule-job: var(--signal-600);
+  --workflow-line: #9a9d98;
+  --workflow-line-mid: #9a9d98;
+  --workflow-line-active: var(--signal-500);
+  --workflow-line-active-mid: var(--signal-500);
+  --workflow-line-dim: #c4c5bf;
+  --sidebar: var(--bone-100);
+  --sidebar-foreground: var(--ink-950);
+  --sidebar-primary: var(--ink-950);
+  --sidebar-primary-foreground: #fbfbfa;
+  --sidebar-accent: #e5e5df;
+  --sidebar-accent-foreground: var(--ink-950);
+  --sidebar-border: #dcdcd6;
+  --sidebar-ring: var(--ink-950);
+  --status-pending: var(--attention-500);
+  --status-approved: var(--signal-600);
+  --status-rejected: var(--failure-500);
+  --status-running: var(--signal-500);
+  --status-failed: var(--failure-500);
+  --status-verified: var(--signal-600);
+  --status-estimate: var(--attention-500);
+  --status-idle: #8b9097;
+
+  --brand: var(--signal-500);
+  --brand-soft: var(--signal-wash);
+  --g-brand: var(--signal-500);
+  --g-brand-hover: var(--signal-600);
+  --g-brand-active: #1b7a5c;
+  --g-brand-soft: var(--signal-wash);
+  --g-brand-muted: var(--signal-300);
+  --g-brand-surface: var(--signal-wash);
+  --g-brand-border: color-mix(in srgb, var(--signal-500) 38%, var(--border));
+  --g-brand-glow: 0 0 #0000;
+  --g-emerald: var(--signal-500);
+  --g-emerald-bright: #1b7a5c;
+  --g-emerald-soft: var(--signal-wash);
+  --g-emerald-surface: var(--signal-wash);
+  --g-emerald-glow: 0 0 #0000;
+  --g-intelligence: var(--ion-500);
+  --g-intelligence-bright: #5647c9;
+  --g-intelligence-soft: var(--ion-wash);
+  --g-intelligence-surface: var(--ion-wash);
+  --g-intelligence-glow: 0 0 #0000;
+  --g-signal: var(--information-500);
+  --g-signal-soft: color-mix(in srgb, var(--information-500) 10%, var(--card));
+  --g-signal-surface: color-mix(in srgb, var(--information-500) 6%, var(--card));
+  --g-approval: var(--attention-500);
+  --g-approval-bright: #8a6116;
+  --g-approval-soft: color-mix(in srgb, var(--attention-500) 12%, var(--card));
+  --g-approval-surface: color-mix(in srgb, var(--attention-500) 7%, var(--card));
+  --g-danger: var(--failure-500);
+  --g-success: var(--signal-600);
+  --g-warning: var(--attention-500);
+
+  --g-canvas: var(--porcelain-50);
+  --g-background: var(--porcelain-50);
+  --g-background-muted: var(--bone-100);
+  --g-surface-1: #fbfbfa;
+  --g-surface-2: #f2f2ef;
+  --g-surface-3: var(--bone-100);
+  --g-surface-elevated: #fdfdfc;
+  --g-surface-active: color-mix(in srgb, var(--signal-500) 7%, var(--card));
+  --g-text-primary: var(--ink-950);
+  --g-text-secondary: #3a3d41;
+  --g-text-muted: #5f656c;
+  --g-icon-muted: #6f767e;
+  --g-border-subtle: #e6e6e1;
+  --g-border-default: #dcdcd6;
+  --g-border-strong: #c3c4bd;
+  --g-border-active: var(--ink-950);
+  --divide: #dcdcd6;
+  --line: #dcdcd6;
+  --dots: #d6d6d0;
+  --g-chrome: var(--bone-100);
+  --g-chrome-hover: #e5e5df;
+  --g-frame: var(--carbon-900);
+  --g-frame-rule: var(--graphite-700);
+  --g-rail-bg: #f2f2ef;
+  --g-workspace-radius: 8px;
+  --g-workspace-shadow: 0 0 0 1px var(--border);
+
+  --g-glow-intelligence: 0 0 #0000;
+  --g-glow-operational: 0 0 #0000;
+  --g-glow-signal: 0 0 #0000;
+  --g-glow-approval: 0 0 #0000;
+  --g-light-intelligence: linear-gradient(transparent, transparent);
+  --g-light-operational: linear-gradient(transparent, transparent);
+  --g-light-neutral: linear-gradient(transparent, transparent);
+  --g-material-panel: linear-gradient(var(--g-surface-1), var(--g-surface-1));
+  --g-highlight-intelligence: inset 0 0 0 0 #0000;
+  --g-highlight-operational: inset 0 0 0 0 #0000;
+  --g-highlight-top: inset 0 0 0 0 #0000;
+  --highlight-edge: inset 0 0 0 0 #0000;
+  --g-shadow-subtle: 0 0 #0000;
+  --g-shadow-surface: 0 1px 0 rgb(21 22 24 / 0.03);
+  --g-shadow-elevated: 0 1px 2px rgb(21 22 24 / 0.06), 0 6px 16px -8px rgb(21 22 24 / 0.12);
+  --elevation-1: 0 1px 0 rgb(21 22 24 / 0.04);
+  --elevation-2: 0 1px 2px rgb(21 22 24 / 0.06), 0 6px 16px -8px rgb(21 22 24 / 0.12);
+  --elevation-3: 0 2px 4px rgb(21 22 24 / 0.06), 0 12px 28px -12px rgb(21 22 24 / 0.18);
+  --elevation-4: 0 4px 8px rgb(21 22 24 / 0.06), 0 20px 40px -16px rgb(21 22 24 / 0.22);
+  --np-shadow: 0 0 0 1px var(--border);
+  --shadow-aceternity: 0 0 0 1px var(--border);
+  --g-graphic-glow: 0 0 #0000;
+
+  --radius: 0.375rem;
+  --g-radius-control: 0.3125rem;
+  --g-radius-field: 0.3125rem;
+  --g-radius-tile: 0.375rem;
+  --g-radius-card: 0.5rem;
+  --g-radius-panel: 0.5rem;
+  --np-radius-sm: 4px;
+  --np-radius-md: 5px;
+  --np-radius-lg: 8px;
+
+  --g-type-page: 1.75rem;
+  --g-type-workspace: 1.25rem;
+  --g-type-section: 0.9375rem;
+  --g-type-body-ui: 0.875rem;
+  --g-type-meta: 0.75rem;
+  --g-type-mono: 0.75rem;
+}
+
+.dark {
+  --background: var(--carbon-950);
+  --foreground: #e8eaec;
+  --card: var(--carbon-900);
+  --card-foreground: #e8eaec;
+  --popover: var(--graphite-800);
+  --popover-foreground: #e8eaec;
+  --primary: #e8eaec;
+  --primary-foreground: var(--carbon-950);
+  --secondary: var(--graphite-800);
+  --secondary-foreground: #e8eaec;
+  --muted: var(--graphite-800);
+  --muted-foreground: #b7bdc4;
+  --accent: var(--graphite-700);
+  --accent-foreground: #e8eaec;
+  --border: #262a2e;
+  --input: #2c3034;
+  --ring: #e8eaec;
+  --success: #4fcf9f;
+  --success-foreground: var(--carbon-950);
+  --warning: #d9a548;
+  --warning-foreground: var(--carbon-950);
+  --info: #7aa3e3;
+  --info-foreground: var(--carbon-950);
+  --destructive: #e07272;
+  --destructive-foreground: var(--carbon-950);
+  --chart-1: var(--signal-500);
+  --chart-2: #7aa3e3;
+  --chart-3: #d9a548;
+  --chart-4: var(--ion-300);
+  --chart-5: #e07272;
+  --schedule-workflow: var(--ion-300);
+  --schedule-task: #7aa3e3;
+  --schedule-job: var(--signal-500);
+  --workflow-line: #50565c;
+  --workflow-line-mid: #50565c;
+  --workflow-line-active: var(--signal-500);
+  --workflow-line-active-mid: var(--signal-500);
+  --workflow-line-dim: #363b40;
+  --sidebar: var(--carbon-950);
+  --sidebar-foreground: #e8eaec;
+  --sidebar-primary: #e8eaec;
+  --sidebar-primary-foreground: var(--carbon-950);
+  --sidebar-accent: var(--graphite-800);
+  --sidebar-accent-foreground: #e8eaec;
+  --sidebar-border: #1f2326;
+  --sidebar-ring: #e8eaec;
+  --status-pending: #d9a548;
+  --status-approved: var(--signal-500);
+  --status-rejected: #e07272;
+  --status-running: var(--signal-500);
+  --status-failed: #e07272;
+  --status-verified: var(--signal-500);
+  --status-estimate: #d9a548;
+  --status-idle: #7d848b;
+
+  --brand: var(--signal-500);
+  --g-brand: var(--signal-500);
+  --g-brand-hover: var(--signal-300);
+  --g-brand-active: var(--signal-300);
+  --color-brand-soft: color-mix(in srgb, var(--signal-500) 13%, transparent);
+  --brand-soft: var(--color-brand-soft);
+  --g-brand-soft: var(--color-brand-soft);
+  --g-brand-muted: var(--signal-600);
+  --g-brand-surface: color-mix(in srgb, var(--signal-500) 7%, var(--card));
+  --g-brand-border: color-mix(in srgb, var(--signal-500) 34%, var(--border));
+  --g-emerald: var(--signal-500);
+  --g-emerald-bright: var(--signal-300);
+  --g-emerald-soft: color-mix(in srgb, var(--signal-500) 12%, transparent);
+  --g-emerald-surface: color-mix(in srgb, var(--signal-500) 7%, var(--card));
+  --g-intelligence: var(--ion-300);
+  --g-intelligence-bright: var(--ion-300);
+  --g-intelligence-soft: color-mix(in srgb, var(--ion-500) 16%, transparent);
+  --g-intelligence-surface: color-mix(in srgb, var(--ion-500) 8%, var(--card));
+  --g-signal: #7aa3e3;
+  --g-signal-soft: color-mix(in srgb, var(--information-500) 16%, transparent);
+  --g-signal-surface: color-mix(in srgb, var(--information-500) 8%, var(--card));
+  --g-approval: #d9a548;
+  --g-approval-bright: #e2b560;
+  --g-approval-soft: color-mix(in srgb, var(--attention-500) 16%, transparent);
+  --g-approval-surface: color-mix(in srgb, var(--attention-500) 8%, var(--card));
+  --g-danger: #e07272;
+  --g-success: var(--signal-500);
+  --g-warning: #d9a548;
+
+  --g-canvas: var(--carbon-950);
+  --g-void: var(--carbon-950);
+  --g-background: var(--carbon-950);
+  --g-background-muted: var(--graphite-800);
+  --g-surface-1: var(--carbon-900);
+  --g-surface-2: #15181a;
+  --g-surface-3: var(--graphite-800);
+  --g-surface-elevated: var(--graphite-800);
+  --g-surface-active: color-mix(in srgb, var(--signal-500) 8%, var(--card));
+  --g-text-primary: #e8eaec;
+  --g-text-secondary: #cdd1d6;
+  --g-text-muted: #b7bdc4;
+  --g-icon-muted: #8b9198;
+  --g-border-subtle: #1e2124;
+  --g-border-default: #262a2e;
+  --g-border-strong: #353a3f;
+  --g-border-active: #e8eaec;
+  --divide: #262a2e;
+  --line: #262a2e;
+  --dots: #24282c;
+  --g-chrome: var(--carbon-950);
+  --g-chrome-hover: var(--graphite-800);
+  --g-frame: var(--carbon-950);
+  --g-frame-rule: #1f2326;
+  --g-rail-bg: #0e1012;
+  --g-workspace-shadow: 0 0 0 1px var(--border);
+
+  --color-charcoal-900: #e8eaec;
+  --color-charcoal-800: #cdd1d6;
+  --color-charcoal-700: #b7bdc4;
+  --color-gray-100: var(--carbon-900);
+  --color-gray-200: var(--graphite-800);
+  --color-gray-300: var(--graphite-700);
+  --color-gray-400: #353a3f;
+  --color-gray-500: #50565c;
+  --color-gray-600: #8b9198;
+
+  --g-glow-intelligence: 0 0 #0000;
+  --g-glow-operational: 0 0 #0000;
+  --g-glow-signal: 0 0 #0000;
+  --g-glow-approval: 0 0 #0000;
+  --g-intelligence-glow: 0 0 #0000;
+  --g-emerald-glow: 0 0 #0000;
+  --g-highlight-intelligence: inset 0 0 0 0 #0000;
+  --g-highlight-operational: inset 0 0 0 0 #0000;
+  --g-highlight-top: inset 0 0 0 0 #0000;
+  --highlight-edge: inset 0 0 0 0 #0000;
+  --elevation-1: 0 0 0 1px var(--border);
+  --elevation-2: 0 0 0 1px var(--border), 0 8px 20px -10px rgb(0 0 0 / 0.6);
+  --elevation-3: 0 0 0 1px var(--border), 0 14px 32px -14px rgb(0 0 0 / 0.7);
+  --elevation-4: 0 0 0 1px var(--border), 0 22px 48px -18px rgb(0 0 0 / 0.75);
+  --g-shadow-surface: var(--elevation-1);
+  --g-shadow-elevated: var(--elevation-2);
+  --np-shadow: 0 0 0 1px var(--border);
+  --shadow-aceternity: 0 0 0 1px var(--border);
+  --g-graphic-glow: 0 0 #0000;
 }
 
 @theme inline {
@@ -600,7 +990,100 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Carbon palette remap: legacy mint / violet / sky / amber / red utility
+     classes resolve onto the Signal, Ion and semantic ladders. */
+  --color-emerald-50: #f1f8f4;
+  --color-emerald-100: #e8f5ef;
+  --color-emerald-200: #cdeadf;
+  --color-emerald-300: #79d8b8;
+  --color-emerald-400: #4fcf9f;
+  --color-emerald-500: #2fbf8f;
+  --color-emerald-600: #239b75;
+  --color-emerald-700: #1b7a5c;
+  --color-emerald-800: #155f48;
+  --color-emerald-900: #0f4535;
+  --color-emerald-950: #0a2e23;
+  --color-green-50: #f1f8f4;
+  --color-green-100: #e8f5ef;
+  --color-green-200: #cdeadf;
+  --color-green-300: #79d8b8;
+  --color-green-400: #4fcf9f;
+  --color-green-500: #2fbf8f;
+  --color-green-600: #239b75;
+  --color-green-700: #1b7a5c;
+  --color-green-800: #155f48;
+  --color-green-900: #0f4535;
+  --color-green-950: #0a2e23;
+  --color-teal-50: #f1f8f4;
+  --color-teal-100: #e8f5ef;
+  --color-teal-200: #cdeadf;
+  --color-teal-300: #79d8b8;
+  --color-teal-400: #4fcf9f;
+  --color-teal-500: #2fbf8f;
+  --color-teal-600: #239b75;
+  --color-teal-700: #1b7a5c;
+  --color-teal-800: #155f48;
+  --color-teal-900: #0f4535;
+  --color-teal-950: #0a2e23;
+  --color-violet-50: #f6f5ff;
+  --color-violet-100: #f0eeff;
+  --color-violet-200: #ddd8fd;
+  --color-violet-300: #a89cf8;
+  --color-violet-400: #9486f5;
+  --color-violet-500: #7c6cf2;
+  --color-violet-600: #6453dc;
+  --color-violet-700: #5647c9;
+  --color-violet-800: #43379e;
+  --color-violet-900: #2f2770;
+  --color-violet-950: #1d1847;
+  --color-purple-50: #f6f5ff;
+  --color-purple-100: #f0eeff;
+  --color-purple-200: #ddd8fd;
+  --color-purple-300: #a89cf8;
+  --color-purple-400: #9486f5;
+  --color-purple-500: #7c6cf2;
+  --color-purple-600: #6453dc;
+  --color-purple-700: #5647c9;
+  --color-purple-800: #43379e;
+  --color-purple-900: #2f2770;
+  --color-purple-950: #1d1847;
+  --color-sky-50: #f2f6fc;
+  --color-sky-100: #e4edf9;
+  --color-sky-200: #c6d7f1;
+  --color-sky-300: #97b5e6;
+  --color-sky-400: #7aa3e3;
+  --color-sky-500: #4e7fcb;
+  --color-sky-600: #3a68b0;
+  --color-sky-700: #2f5590;
+  --color-sky-800: #264471;
+  --color-sky-900: #1c3354;
+  --color-sky-950: #122238;
+  --color-amber-50: #faf5ea;
+  --color-amber-100: #f5ead3;
+  --color-amber-200: #ebd4a6;
+  --color-amber-300: #dfb971;
+  --color-amber-400: #d9a548;
+  --color-amber-500: #c8902f;
+  --color-amber-600: #a87624;
+  --color-amber-700: #8a6116;
+  --color-amber-800: #6b4b12;
+  --color-amber-900: #4d360e;
+  --color-amber-950: #2f210a;
+  --color-red-50: #fbf2f2;
+  --color-red-100: #f6e2e2;
+  --color-red-200: #ecc4c4;
+  --color-red-300: #e09a9a;
+  --color-red-400: #e07272;
+  --color-red-500: #c94c4c;
+  --color-red-600: #b3403f;
+  --color-red-700: #963535;
+  --color-red-800: #772a2a;
+  --color-red-900: #561f1f;
+  --color-red-950: #351313;
+  --radius-xl: 8px;
+  /* Carbon radius ceiling: controls 4–6px, panels 6–8px, working surfaces ≤10px. */
+  --radius-2xl: 10px;
+  --radius-3xl: 10px;
   /* Premium elevation — named utilities + upgrade of standard shadow scale */
   --shadow-elevation-1: var(--elevation-1);
   --shadow-elevation-2: var(--elevation-2);
@@ -610,6 +1093,7 @@
   --shadow-md: var(--elevation-2);
   --shadow-lg: var(--elevation-3);
   --shadow-xl: var(--elevation-4);
+  --shadow-2xl: var(--elevation-4);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -1167,4 +1651,48 @@ html.chat-immersive body {
   font-size: 0.75rem;
   font-weight: 600;
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+/* Collapsed secondary-metrics disclosure: the chevron after the label is the only
+   open/closed cue, since the native marker is hidden. */
+.g-disclosure {
+  list-style: none;
+}
+.g-disclosure::-webkit-details-marker {
+  display: none;
+}
+.g-disclosure > :first-child::after {
+  content: "";
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-left: 0.5rem;
+  border-right: 1.5px solid var(--muted-foreground);
+  border-bottom: 1.5px solid var(--muted-foreground);
+  transform: translateY(-2px) rotate(-45deg);
+  transition: transform 150ms ease;
+}
+details[open] > .g-disclosure > :first-child::after {
+  transform: translateY(-3px) rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-disclosure > :first-child::after {
+    transition: none;
+  }
+}
+
+/* 3.0 Plus Slice 1 — docked AI workspace reserves page width on md+ so the page
+   beside it stays readable and clickable. Below md the workspace is a sheet. */
+@media (min-width: 768px) {
+  body[data-gravitre-wm-docked] {
+    padding-right: var(--g-wm-dock-width);
+  }
+}
+
+/* Carbon Intelligence: product surfaces are flat. While an app shell is mounted
+   (portaled dialogs included), gradient utilities resolve to their first stop.
+   Marketing pages have no app shell and keep their art. Inline-style gradients
+   (canvas grids, intelligence fields) are untouched. */
+:root:has([data-page-family]) :is([class*="bg-gradient-to-"], [class*="bg-linear-to-"]) {
+  background-image: none;
+  background-color: var(--tw-gradient-from, transparent);
 }

@@ -22,7 +22,7 @@ test.describe("Agent knowledge workspace", () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto("/e2e/shots/agent-knowledge", { waitUntil: "networkidle" })
 
-    const supportCard = page.locator("article").filter({ hasText: "Support Macros" })
+    const supportCard = page.locator("article").filter({ hasText: "Support macros" })
     await supportCard.getByRole("button", { name: "+ Assign" }).click()
     await expect(supportCard.getByText("Assigned")).toBeVisible()
   })

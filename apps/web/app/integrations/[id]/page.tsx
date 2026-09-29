@@ -102,12 +102,12 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
             className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Integrations
+            Back to integrations
           </Link>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold text-foreground">Slack Notifications</h1>
+              <h1 className="text-xl font-semibold text-foreground">Slack notifications</h1>
               <StatusBadge variant="success" dot>
                 active
               </StatusBadge>

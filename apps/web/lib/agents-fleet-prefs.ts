@@ -114,7 +114,8 @@ export function writeLocalAgentsFleetPrefs(prefs: AgentsFleetPrefs): void {
 
 export async function fetchRemoteAgentsFleetPrefs(): Promise<AgentsFleetPrefs | null> {
   try {
-    const res = await fetch("/api/settings/agents-fleet", { credentials: "include" })
+    const { apiFetch } = await import("@/lib/fetcher")
+    const res = await apiFetch("/api/settings/agents-fleet", { credentials: "include", timeoutMs: 15_000 })
     if (!res.ok) return null
     const body = (await res.json()) as { prefs?: unknown }
     if (!body.prefs) return null
@@ -126,7 +127,8 @@ export async function fetchRemoteAgentsFleetPrefs(): Promise<AgentsFleetPrefs | 
 
 export async function saveRemoteAgentsFleetPrefs(prefs: AgentsFleetPrefs): Promise<boolean> {
   try {
-    const res = await fetch("/api/settings/agents-fleet", {
+    const { apiFetch } = await import("@/lib/fetcher")
+    const res = await apiFetch("/api/settings/agents-fleet", {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

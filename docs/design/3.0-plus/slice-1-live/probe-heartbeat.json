@@ -1,0 +1,911 @@
+{
+ "beats": [
+  {
+   "t": 734,
+   "lag": 17,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 4,
+   "ltMs": 970,
+   "path": "/home"
+  },
+  {
+   "t": 1766,
+   "lag": 350,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 5,
+   "ltMs": 1240,
+   "path": "/home"
+  },
+  {
+   "t": 3131,
+   "lag": 5,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 4146,
+   "lag": 3,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 5159,
+   "lag": 13,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 6177,
+   "lag": 6,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 7186,
+   "lag": 3,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 8201,
+   "lag": 3,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 9214,
+   "lag": 2,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 10223,
+   "lag": 7,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 9,
+   "ltMs": 1777,
+   "path": "/home"
+  },
+  {
+   "t": 11241,
+   "lag": 31,
+   "state": "generating",
+   "msgs": 0,
+   "open": 1,
+   "lt": 10,
+   "ltMs": 1871,
+   "path": "/home"
+  },
+  {
+   "t": 12282,
+   "lag": 9,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 12,
+   "ltMs": 2206,
+   "path": "/home"
+  },
+  {
+   "t": 13295,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 12,
+   "ltMs": 2206,
+   "path": "/home"
+  },
+  {
+   "t": 14316,
+   "lag": 2,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 15331,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 16342,
+   "lag": 8,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 17359,
+   "lag": 6,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 18372,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 19385,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 20410,
+   "lag": 32,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 21455,
+   "lag": 29,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 22501,
+   "lag": 8,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 23514,
+   "lag": 6,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 24529,
+   "lag": 7,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 25546,
+   "lag": 13,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 26569,
+   "lag": 7,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 27589,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 28634,
+   "lag": 26,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 29689,
+   "lag": 6,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 30705,
+   "lag": 8,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 31719,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 32762,
+   "lag": 8,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 33807,
+   "lag": 10,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 34829,
+   "lag": 7,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 35853,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 36868,
+   "lag": 9,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 37913,
+   "lag": 15,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 38946,
+   "lag": 12,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 39962,
+   "lag": 15,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 40987,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 42002,
+   "lag": 6,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 43037,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 44060,
+   "lag": 26,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 45175,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 13,
+   "ltMs": 2285,
+   "path": "/home"
+  },
+  {
+   "t": 46185,
+   "lag": 2,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 47205,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 48224,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 49235,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 50248,
+   "lag": 6,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 51261,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 52267,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 53295,
+   "lag": 7,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 16,
+   "ltMs": 2590,
+   "path": "/home"
+  },
+  {
+   "t": 54324,
+   "lag": 21,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 55349,
+   "lag": 8,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 56363,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 57378,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 58388,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 59393,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 60404,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 61419,
+   "lag": 6,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 62439,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 63462,
+   "lag": 23,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 64512,
+   "lag": 58,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 65662,
+   "lag": 14,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 66677,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 67692,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 68697,
+   "lag": 2,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 69713,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 70742,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 71747,
+   "lag": 6,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 72757,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 73797,
+   "lag": 40,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 74862,
+   "lag": 9,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 75902,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 76953,
+   "lag": 7,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 77995,
+   "lag": 9,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 79024,
+   "lag": 34,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 80062,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 81082,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 82098,
+   "lag": 2,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 83112,
+   "lag": 12,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 84126,
+   "lag": 4,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 85144,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 86161,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 87176,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 88183,
+   "lag": 11,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 89198,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 90216,
+   "lag": 5,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 91238,
+   "lag": 3,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  },
+  {
+   "t": 92253,
+   "lag": 2,
+   "state": "streaming",
+   "msgs": 1,
+   "open": 1,
+   "lt": 19,
+   "ltMs": 2861,
+   "path": "/home"
+  }
+ ],
+ "pageErrors": [],
+ "consoleErrors": [
+  "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://cdn.plaid.com https://www.googletagmanager.com https://www.google-ana",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+  "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://cdn.plaid.com https://www.googletagmanager.com https://www.google-ana",
+  "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+ ]
+}

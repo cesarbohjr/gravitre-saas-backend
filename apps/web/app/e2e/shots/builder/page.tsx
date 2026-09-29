@@ -1,8 +1,10 @@
 import { Suspense } from "react"
 
 import BuilderPage from "@/app/workflows/[id]/builder/page"
+import { BuilderSeedProvider } from "@/components/workflows/builder-seed-context"
 
 import { ShotAuthProvider } from "../shot-auth"
+import { BUILDER_SHOT_SEED } from "./seed"
 
 /**
  * The orchestration builder canvas, for marketing capture.
@@ -14,9 +16,9 @@ import { ShotAuthProvider } from "../shot-auth"
  *
  * The id is deliberately NOT a uuid. `loadBuilderGraph` gates on
  * `isPersistableWorkflowId` (a uuid test) and returns null for anything else,
- * which leaves the canvas on its `initialNodes` seed — a populated
- * Salesforce -> validator -> enrich -> approval pipeline. That keeps the shot
- * free of any dependency on database state.
+ * which leaves the canvas on its seed graph. The harness supplies its own seed
+ * (`BUILDER_SHOT_SEED`, which adds an Agent Council) so the shot covers every
+ * node family without any dependency on database state.
  *
  * Suspense wraps it because the builder calls `useSearchParams`, which otherwise
  * opts the whole route into client-side bailout during prerender.
@@ -24,9 +26,11 @@ import { ShotAuthProvider } from "../shot-auth"
 export default function Page() {
   return (
     <ShotAuthProvider>
-      <Suspense fallback={null}>
-        <BuilderPage params={Promise.resolve({ id: "shot-demo-builder" })} />
-      </Suspense>
+      <BuilderSeedProvider value={BUILDER_SHOT_SEED}>
+        <Suspense fallback={null}>
+          <BuilderPage params={Promise.resolve({ id: "shot-demo-builder" })} />
+        </Suspense>
+      </BuilderSeedProvider>
     </ShotAuthProvider>
   )
 }

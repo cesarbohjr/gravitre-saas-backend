@@ -230,7 +230,7 @@ export default function ModelProfilePage() {
 
             <TabsContent value="overview" className="mt-6 space-y-4">
               <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">
                   Quick answers
                 </p>
                 <SixQuestionsPanel answers={sixQuestionsAnswers} />

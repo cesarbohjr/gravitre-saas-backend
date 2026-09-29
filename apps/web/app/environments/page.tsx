@@ -222,10 +222,10 @@ function EnvironmentNode({
               <Server className={cn(
                 "h-7 w-7",
                 environment.name === "Production" 
-                  ? "text-emerald-400" 
+                  ? "text-emerald-700 dark:text-emerald-400" 
                   : environment.name === "Staging"
-                    ? "text-blue-400"
-                    : "text-amber-400"
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-amber-700 dark:text-amber-400"
               )} />
             </div>
             <div>
@@ -267,7 +267,7 @@ function EnvironmentNode({
 
       {/* API Endpoint */}
       <div className="p-5">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">API Endpoint</p>
+        <p className="text-xs text-muted-foreground mb-2 font-medium">API Endpoint</p>
         <div className="flex items-center gap-2">
           <code className="flex-1 text-xs font-mono text-muted-foreground bg-secondary rounded-lg px-3 py-2 truncate">
             {environment.apiUrl}
@@ -303,11 +303,11 @@ function EnvironmentNode({
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2">
               <Shield className="h-3.5 w-3.5" />
-              Manage Access
+              Manage access
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2">
               <ExternalLink className="h-3.5 w-3.5" />
-              Open Dashboard
+              Open dashboard
             </DropdownMenuItem>
             {!environment.isDefault && (
               <>
@@ -428,12 +428,12 @@ export default function EnvironmentsPage() {
               disabled={isLoading || adminLoading || !isAdmin}
             >
               <Plus className="h-3.5 w-3.5" />
-              New Environment
+              New environment
             </Button>
           }
         >
           {error && (
-            <div className="mb-3 rounded-[var(--np-radius-md)] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <div className="mb-3 rounded-[var(--np-radius-md)] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
               Failed to load environments. Showing latest available data.
             </div>
           )}
@@ -476,7 +476,7 @@ export default function EnvironmentsPage() {
           {!adminLoading && !isAdmin ? (
             <GravitreSurface className="p-3" padded={false}>
               <div className="flex items-center gap-3">
-                <Shield className="h-4 w-4 text-amber-400" />
+                <Shield className="h-4 w-4 text-amber-700 dark:text-amber-400" />
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">Admin access required.</span>
                   {" "}Ask an organization owner to grant you admin before changing environments.

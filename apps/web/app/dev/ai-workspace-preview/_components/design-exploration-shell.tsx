@@ -22,8 +22,38 @@ import { IntelligenceFieldPrototype } from "./ux30-plus/intelligence-field-proto
 import { ActivityTracePrototype } from "./ux30-plus/activity-trace-prototype"
 import { NavRailPrototype } from "./ux30-plus/nav-rail-prototype"
 import { CreativeKfPrototype } from "./creative-kf-prototype"
+import { WorkflowBuilderRfPrototype } from "./ux30-plus/workflow-builder-rf-prototype"
+import { WindowManagerDockedPrototype } from "./ux30-plus/window-manager-docked-prototype"
+import { PageIntroVariantsPrototype } from "./ux30-plus/page-intro-variants-prototype"
+import { SharedAiWorkspacePrototype } from "./ux30-plus/shared-ai-workspace-prototype"
+import { ModelStudioPrototype } from "./ux30-plus/model-studio-prototype"
+import { DesignSelectionIndex } from "./ux30-plus/design-selection-index"
+import { IntelligenceJourneyPrototype } from "./ux30-plus/intelligence-journey-prototype"
+import { DashboardConceptsPrototype } from "./ux30-plus/dashboard-concepts-prototype"
+import { AgentWorkspaceConceptsPrototype } from "./ux30-plus/agent-workspace-concepts-prototype"
+import { WorkflowGenPreviewPrototype } from "./ux30-plus/workflow-gen-preview-prototype"
+import { SaaSFrameResearchTrace } from "./ux30-plus/saasframe-research-trace"
+import { GStructDecisionPackage } from "./ux30-plus/g-struct-decision-package"
 
-const UX30_SURFACES = ["foundation", "intelligence", "activity", "navigation", "creative"] as const
+const UX30_SURFACES = [
+  "selection",
+  "g-struct",
+  "saasframe",
+  "page-intro",
+  "window-manager",
+  "intelligence-journey",
+  "intelligence",
+  "workflow-rf",
+  "workflow-gen",
+  "ai-workspace",
+  "model-studio",
+  "dashboard",
+  "agent-workspace",
+  "foundation",
+  "activity",
+  "navigation",
+  "creative",
+] as const
 type Ux30Surface = (typeof UX30_SURFACES)[number]
 
 const LEGACY_SURFACES = [
@@ -44,8 +74,12 @@ type LegacySurface = (typeof LEGACY_SURFACES)[number]
 type Surface = Ux30Surface | LegacySurface
 
 const UX30_SCENES: Record<Ux30Surface, string[]> = {
+  selection: ["index"],
+  "g-struct": ["decide"],
+  saasframe: ["trace"],
   foundation: ["default", "reduced"],
   intelligence: [
+    "field-primary",
     "default",
     "change",
     "compare",
@@ -58,6 +92,7 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
     "mobile",
     "reduced",
   ],
+  "intelligence-journey": ["field-primary", "matrix-rail", "split-insight", "journey", "empty"],
   activity: [
     "default",
     "selected",
@@ -73,6 +108,24 @@ const UX30_SCENES: Record<Ux30Surface, string[]> = {
   ],
   navigation: ["compact", "expanded", "pinned", "keyboard", "mobile"],
   creative: ["compare", "workbench", "refined", "pilot3"],
+  "workflow-rf": ["design", "live", "explain", "history", "ai-preview"],
+  "workflow-gen": ["prompt", "preview", "rf"],
+  "window-manager": ["docked", "compact", "floating", "expanded", "fullscreen", "minimized", "restored", "tour"],
+  "page-intro": ["operating", "expert", "empty", "immersive", "compare"],
+  "ai-workspace": [
+    "conversation-primary",
+    "work-primary",
+    "split",
+    "generating",
+    "streaming",
+    "complete",
+    "needs-approval",
+    "show-the-work-slot",
+    "voice-continuity",
+  ],
+  "model-studio": ["standard", "advanced"],
+  dashboard: ["attention-first", "ops-board", "outcome-rail"],
+  "agent-workspace": ["roster-detail", "workbench", "mission"],
 }
 
 const AI_SCENES: AiScene[] = [
@@ -97,9 +150,8 @@ const OPS_SCENES = ["default", "empty", "loading", "error", "selected", "list", 
 
 export function DesignExplorationShell() {
   const params = useSearchParams()
-  const raw = params.get("s") ?? "foundation"
-  const isUx30 = (UX30_SURFACES as readonly string[]).includes(raw)
-  const surface = (isUx30 ? raw : raw) as Surface
+  const raw = params.get("s") ?? "selection"
+  const surface = raw as Surface
   const scene = params.get("scene") ?? defaultScene(surface)
 
   const href = (s: Surface, sc?: string) => {
@@ -118,36 +170,50 @@ export function DesignExplorationShell() {
   return (
     <div className="min-h-screen bg-[color:var(--g-background)] text-[color:var(--g-text-primary)]">
       <header className="border-b border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)] px-4 py-3 md:px-6">
-        <p className={TYPE.eyebrow}>UX/UI 3.0 Plus · harness only · not production</p>
-        <h1 className={TYPE.pageTitle}>Design exploration — Cesar selection prototypes</h1>
-        <nav className="mt-3 flex flex-wrap gap-1" aria-label="3.0 Plus surfaces">
+        <p className={TYPE.eyebrow}>UX/UI 3.0 Plus · harness only · not production · not Phase 8</p>
+        <h1 className={TYPE.pageTitle}>Design-selection package — Cesar review</h1>
+        <nav className="mt-3 flex flex-wrap gap-1" aria-label="Selection surfaces">
           {UX30_SURFACES.map((s) => (
             <Button key={s} size="sm" variant={surface === s ? "secondary" : "default"} asChild>
               <a href={href(s)}>{s}</a>
             </Button>
           ))}
         </nav>
-        <nav className="mt-2 flex flex-wrap gap-1" aria-label="Legacy Reset 2.0 surfaces">
+        <nav className="mt-2 flex flex-wrap gap-1" aria-label="Legacy surfaces">
           {LEGACY_SURFACES.map((s) => (
             <Button key={s} size="sm" variant={surface === s ? "secondary" : "ghost"} asChild>
               <a href={href(s)}>{s}</a>
             </Button>
           ))}
         </nav>
-        <nav className="mt-2 flex flex-wrap gap-1" aria-label="Scenes">
-          {scenes.map((sc) => (
-            <Button key={sc} size="sm" variant={scene === sc ? "secondary" : "ghost"} asChild>
-              <a href={href(surface, sc)}>{sc}</a>
-            </Button>
-          ))}
-        </nav>
+        {surface !== "selection" && (
+          <nav className="mt-2 flex flex-wrap gap-1" aria-label="Scenes">
+            {scenes.map((sc) => (
+              <Button key={sc} size="sm" variant={scene === sc ? "secondary" : "ghost"} asChild>
+                <a href={href(surface, sc)}>{sc}</a>
+              </Button>
+            ))}
+          </nav>
+        )}
       </header>
       <main className="p-4 md:p-6">
+        {surface === "selection" && <DesignSelectionIndex />}
+        {surface === "g-struct" && <GStructDecisionPackage scene={scene} />}
+        {surface === "saasframe" && <SaaSFrameResearchTrace scene={scene} />}
         {surface === "foundation" && <FoundationPrototype scene={scene} />}
         {surface === "intelligence" && <IntelligenceFieldPrototype scene={scene} />}
+        {surface === "intelligence-journey" && <IntelligenceJourneyPrototype scene={scene} />}
         {surface === "activity" && <ActivityTracePrototype scene={scene} />}
         {surface === "navigation" && <NavRailPrototype scene={scene} />}
         {surface === "creative" && <CreativeKfPrototype scene={scene} />}
+        {surface === "workflow-rf" && <WorkflowBuilderRfPrototype scene={scene} />}
+        {surface === "workflow-gen" && <WorkflowGenPreviewPrototype scene={scene} />}
+        {surface === "window-manager" && <WindowManagerDockedPrototype scene={scene} />}
+        {surface === "page-intro" && <PageIntroVariantsPrototype scene={scene} />}
+        {surface === "ai-workspace" && <SharedAiWorkspacePrototype scene={scene} />}
+        {surface === "model-studio" && <ModelStudioPrototype scene={scene} />}
+        {surface === "dashboard" && <DashboardConceptsPrototype scene={scene} />}
+        {surface === "agent-workspace" && <AgentWorkspaceConceptsPrototype scene={scene} />}
         {surface === "nucleo" && <SelectedNucleo scene={scene} />}
         {surface === "ai" && <SelectedAiCommandOs scene={normalizeAi(scene)} />}
         {surface === "agents" && <SelectedAgents scene={scene} />}
@@ -165,11 +231,23 @@ export function DesignExplorationShell() {
 }
 
 function defaultScene(surface: Surface): string {
+  if (surface === "selection") return "index"
+  if (surface === "g-struct") return "decide"
+  if (surface === "saasframe") return "trace"
   if (surface === "foundation") return "default"
-  if (surface === "intelligence") return "default"
+  if (surface === "intelligence") return "field-primary"
+  if (surface === "intelligence-journey") return "field-primary"
   if (surface === "activity") return "default"
   if (surface === "navigation") return "compact"
   if (surface === "creative") return "compare"
+  if (surface === "workflow-rf") return "design"
+  if (surface === "workflow-gen") return "prompt"
+  if (surface === "window-manager") return "docked"
+  if (surface === "page-intro") return "operating"
+  if (surface === "ai-workspace") return "conversation-primary"
+  if (surface === "model-studio") return "standard"
+  if (surface === "dashboard") return "attention-first"
+  if (surface === "agent-workspace") return "roster-detail"
   if (surface === "ai") return "compact-conversation"
   if (surface === "agents") return "default"
   return "default"

@@ -136,7 +136,9 @@ export function buildDeliverables(result: AgentJobHandoffResult | null): Deliver
   if (!result) return []
 
   const items: DeliverableView[] = []
-  const confidence = result.confidence ?? 0
+  const raw = typeof result.confidence === "number" && Number.isFinite(result.confidence) ? result.confidence : 0
+  // Percent, agent-reported. 0 = not reported (the UI hides it).
+  const confidence = Math.round(raw <= 1 ? raw * 100 : raw)
   const sources = (result.rag_sources ?? [])
     .map((s) => s.source)
     .filter((s): s is string => Boolean(s))
@@ -162,7 +164,7 @@ export function buildDeliverables(result: AgentJobHandoffResult | null): Deliver
       title: formattedAction.length > 48 ? `${formattedAction.slice(0, 45)}…` : formattedAction,
       type: "workflow",
       status: "ready",
-      confidence: Math.max(0, confidence - index * 3),
+      confidence: 0,
       preview: formattedAction,
       sourceRefs: sources.slice(0, 2),
     })

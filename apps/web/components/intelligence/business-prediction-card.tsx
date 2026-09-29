@@ -36,7 +36,7 @@ export function BusinessPredictionCard({ prediction }: { prediction: BusinessPre
           <div className="min-w-0 space-y-2">
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
                 meta.className,
               )}
             >

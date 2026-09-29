@@ -39,7 +39,7 @@ export function ReasoningBlock({
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary">
             <Icon className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {label}
           </span>
         </div>

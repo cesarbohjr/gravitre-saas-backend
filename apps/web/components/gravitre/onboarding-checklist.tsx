@@ -25,14 +25,17 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
-import { onboardingApi, settingsApi } from "@/lib/api"
+import { connectorsApi, onboardingApi, settingsApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import {
   ONBOARDING_CHECKLIST_STEPS,
   ONBOARDING_ROUTE_STEP_MAP,
   type OnboardingChecklistStepKey,
 } from "@/lib/onboarding-checklist-steps"
-import type { OnboardingProgress } from "@/types/api"
+import type { ConnectorListResponse, OnboardingProgress } from "@/types/api"
+
+/** Mirrors backend ACTIVE_CONNECTOR_STATUSES (app/connectors/constants.py). */
+const ACTIVE_CONNECTOR_STATUSES = new Set(["active", "connected", "syncing", "healthy"])
 
 // Types
 interface ChecklistItem {
@@ -168,23 +171,43 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       return
     }
     startTransition(() => setWelcomeSynced(true))
-    void onboardingApi.completeStep("welcome").then(() => mutateProgress())
+    void onboardingApi
+      .completeStep("welcome")
+      .then(() => mutateProgress())
+      .catch(() => undefined)
   }, [user, welcomeSynced, progress, mutateProgress])
+
+  const routeMatch = pathname
+    ? ROUTE_STEP_MAP.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+    : undefined
+  const connectPending =
+    routeMatch?.stepKey === "connect" &&
+    !progress?.steps?.some((step) => step.key === "connect" && step.is_completed)
+  // The backend refuses "connect" until the org has an active connector.
+  const { data: connectorList } = useSWR<ConnectorListResponse>(
+    user && connectPending ? "/api/connectors" : null,
+    () => connectorsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const hasActiveConnector = (connectorList?.connectors ?? []).some((c) =>
+    ACTIVE_CONNECTOR_STATUSES.has(String(c.status)),
+  )
 
   // Auto-complete steps when user visits relevant routes
   useEffect(() => {
-    if (!user || !progress || !pathname) return
-
-    const match = ROUTE_STEP_MAP.find(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
-    if (!match) return
+    if (!user || !progress || !routeMatch) return
 
     const alreadyDone = progress.steps?.some(
-      (step) => step.key === match.stepKey && step.is_completed,
+      (step) => step.key === routeMatch.stepKey && step.is_completed,
     )
     if (alreadyDone) return
+    if (routeMatch.stepKey === "connect" && !hasActiveConnector) return
 
-    void onboardingApi.completeStep(match.stepKey).then(() => mutateProgress())
-  }, [user, pathname, progress, mutateProgress])
+    void onboardingApi
+      .completeStep(routeMatch.stepKey)
+      .then(() => mutateProgress())
+      .catch(() => undefined)
+  }, [user, routeMatch, progress, hasActiveConnector, mutateProgress])
 
   const items = useMemo(
     () => buildItemsFromProgress(progress, Boolean(user)),
@@ -200,7 +223,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     (itemId: string) => {
       const item = CHECKLIST_DEFS.find((def) => def.id === itemId)
       if (!item || items.find((i) => i.id === itemId)?.completed) return
-      void onboardingApi.completeStep(item.stepKey).then(() => mutateProgress())
+      void onboardingApi
+        .completeStep(item.stepKey)
+        .then(() => mutateProgress())
+        .catch(() => undefined)
     },
     [items, mutateProgress],
   )
@@ -298,7 +324,7 @@ export function OnboardingChecklist() {
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-        className="fixed bottom-6 right-6 z-50 w-80"
+        className="fixed z-50 max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] max-md:left-[88px] max-md:right-3 md:bottom-6 md:right-6 md:w-80"
       >
         {/* Celebration overlay */}
         {showCelebration && (

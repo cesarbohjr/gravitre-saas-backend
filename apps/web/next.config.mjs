@@ -39,6 +39,8 @@ const securityHeaders = [
 
 const nextConfig = {
   // Type errors now fail the build (tsc is clean). Keep it that way via CI + typecheck.
+  // The dev-tools "N" badge sits over the sidebar and AI dock in dev captures; it never ships.
+  devIndicators: false,
   images: {
     unoptimized: true,
   },

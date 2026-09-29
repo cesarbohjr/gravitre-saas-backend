@@ -255,7 +255,7 @@ export default function ConnectorDetailPage() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem>
                     <Download className="h-4 w-4 mr-2" />
-                    Export Logs
+                    Export logs
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -263,7 +263,7 @@ export default function ConnectorDetailPage() {
                     onClick={() => setShowDeleteDialog(true)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Remove Connector
+                    Remove connector
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -340,7 +340,7 @@ export default function ConnectorDetailPage() {
               Credentials & sync
             </h2>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">API Key</label>
+                  <label className="text-xs text-muted-foreground font-medium">API Key</label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-secondary px-2 py-1.5 rounded font-mono truncate">
                       {connector.config.apiKey
@@ -372,7 +372,7 @@ export default function ConnectorDetailPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Webhook URL</label>
+                  <label className="text-xs text-muted-foreground font-medium">Webhook URL</label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-secondary px-2 py-1.5 rounded font-mono truncate">
                       {connector.config.webhookUrl || "Not configured"}
@@ -390,7 +390,7 @@ export default function ConnectorDetailPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Sync Interval</label>
+                  <label className="text-xs text-muted-foreground font-medium">Sync interval</label>
                 <p className="text-sm font-medium">Every {connector.config.syncInterval}</p>
               </div>
           </section>
@@ -402,7 +402,7 @@ export default function ConnectorDetailPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-destructive">
                 <Trash2 className="h-5 w-5" />
-                Remove Connector
+                Remove connector
               </DialogTitle>
               <DialogDescription>
                 This will disconnect {connector.name} and remove all associated configurations. 
@@ -422,7 +422,7 @@ export default function ConnectorDetailPage() {
               <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
               <Button variant="destructive" onClick={handleDelete} className="gap-2">
                 <Trash2 className="h-4 w-4" />
-                Remove Connector
+                Remove connector
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -459,7 +459,7 @@ export default function ConnectorDetailPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Sync Interval</label>
+                <label className="text-sm font-medium">Sync interval</label>
                 <select 
                   defaultValue={connector.config.syncInterval}
                   className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm"
@@ -478,7 +478,7 @@ export default function ConnectorDetailPage() {
                 setShowConfigDialog(false)
                 toast.success("Configuration updated")
               }}>
-                Save Changes
+                Save changes
               </Button>
             </DialogFooter>
           </DialogContent>

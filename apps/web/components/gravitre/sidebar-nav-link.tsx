@@ -63,8 +63,8 @@ export function SidebarNavLink({
       className={cn(
         "group relative z-10 flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150",
         isActive
-          ? "border-l-2 -ml-px border-l-brand bg-brand/10 pl-[9px] text-charcoal-900"
-          : "-ml-px border-l-2 border-l-transparent pl-[9px] text-gray-600 hover:bg-white hover:text-charcoal-900",
+          ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)] dark:bg-sidebar-accent dark:shadow-none"
+          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
       )}
     >
       <Icon
@@ -82,7 +82,7 @@ export function SidebarNavLink({
       {badge ? (
         <span
           className={cn(
-            "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+            "rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium",
             isActive
               ? "bg-[color:var(--g-emerald-soft)] text-[color:var(--g-emerald-bright)] ring-1 ring-[color:var(--g-emerald)]/25"
               : "bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)]",

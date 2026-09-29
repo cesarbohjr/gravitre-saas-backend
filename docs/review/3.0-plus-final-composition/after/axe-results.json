@@ -1,0 +1,78 @@
+{
+  "base": "http://localhost:3012",
+  "at": "2026-09-28T20:38:17.532Z",
+  "results": [
+    {
+      "scheme": "light",
+      "route": "/e2e/shots/home",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+      "violations": []
+    },
+    {
+      "scheme": "light",
+      "route": "/e2e/shots/agent-detail",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+      "violations": []
+    },
+    {
+      "scheme": "light",
+      "route": "/e2e/shots/connectors",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+      "violations": []
+    },
+    {
+      "scheme": "light",
+      "route": "/e2e/shots/agents",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+      "violations": []
+    },
+    {
+      "scheme": "light",
+      "route": "/e2e/shots/builder",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+      "violations": []
+    },
+    {
+      "scheme": "light",
+      "route": "/dev/carbon-board",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+      "violations": []
+    },
+    {
+      "scheme": "dark",
+      "route": "/e2e/shots/home",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+      "violations": []
+    },
+    {
+      "scheme": "dark",
+      "route": "/e2e/shots/agent-detail",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+      "violations": []
+    },
+    {
+      "scheme": "dark",
+      "route": "/e2e/shots/connectors",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+      "violations": []
+    },
+    {
+      "scheme": "dark",
+      "route": "/e2e/shots/agents",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+      "violations": []
+    },
+    {
+      "scheme": "dark",
+      "route": "/e2e/shots/builder",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+      "violations": []
+    },
+    {
+      "scheme": "dark",
+      "route": "/dev/carbon-board",
+      "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+      "violations": []
+    }
+  ]
+}

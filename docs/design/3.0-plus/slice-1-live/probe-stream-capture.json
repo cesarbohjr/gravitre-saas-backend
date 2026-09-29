@@ -1,0 +1,464 @@
+{
+  "conv": "04310635-2332-4b3b-9452-22faebc5f8ae",
+  "states": [
+    {
+      "t": 53487,
+      "s": "generating",
+      "url": "/home"
+    },
+    {
+      "t": 140113,
+      "s": "streaming",
+      "url": "/home"
+    }
+  ],
+  "events": [
+    {
+      "t": 37989,
+      "kind": "navigated",
+      "url": "http://127.0.0.1:3010/home"
+    },
+    {
+      "t": 43406,
+      "kind": "navigated",
+      "url": "http://127.0.0.1:3010/home"
+    },
+    {
+      "t": 43621,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/settings/dashboard-layout"
+    },
+    {
+      "t": 43761,
+      "kind": "console-error",
+      "text": "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://cdn.plaid.com https://www.googletagmanager.com https://www.google-ana"
+    },
+    {
+      "t": 43829,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 43921,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/billing/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44000,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44086,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/onboarding?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44185,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/learning-progress?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44273,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/trust-summary?periodDays=7&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44282,
+      "kind": "console-error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "t": 44359,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/business-impact?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44445,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/ai-os/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44566,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/predictive-ops?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44651,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/learning/live-dashboard?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44740,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/learning/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 44823,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/approvals?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 45239,
+      "kind": "navigated",
+      "url": "http://127.0.0.1:3010/home"
+    },
+    {
+      "t": 48207,
+      "kind": "navigated",
+      "url": "http://127.0.0.1:3010/home"
+    },
+    {
+      "t": 48369,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/settings/dashboard-layout"
+    },
+    {
+      "t": 48382,
+      "kind": "console-error",
+      "text": "Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: \"script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://cdn.plaid.com https://www.googletagmanager.com https://www.google-ana"
+    },
+    {
+      "t": 48612,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 48654,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/billing/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 48724,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 48820,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/onboarding?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 48925,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/learning-progress?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49029,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/trust-summary?periodDays=7&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49131,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/business-impact?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49349,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/ai-os/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49349,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/predictive-ops?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49436,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/learning/live-dashboard?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49529,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/learning/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49647,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/approvals?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49860,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/metrics/overview?range=7d&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49955,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/agents?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 49955,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/settings/lite-membership?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 50139,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/settings?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 50141,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/notifications?limit=50&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 50291,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/entitlements?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 50292,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/enterprise/branding?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 50383,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/organizations?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 52133,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 52354,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/preferences?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 53472,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/agents?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 53483,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/conversations?include_archived=true&limit=50&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 53483,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/voice/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 53484,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/voice/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 53485,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/business-signals?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 53486,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/advisor-brief?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 98774,
+      "kind": "console-error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "t": 108183,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/approvals?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 108214,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/metrics/overview?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 108214,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/organizations?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 108215,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/advisor-brief?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 108390,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/meson/insights?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 110686,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 113993,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 114076,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/onboarding?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 114712,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/approvals?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 115156,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/settings/lite-membership?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 115241,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/notifications?limit=50&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 117227,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 117464,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/preferences?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 118693,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/agents?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 118797,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/conversations?include_archived=true&limit=50&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 118887,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/business-signals?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 120146,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/settings?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 120409,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/entitlements?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 123729,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/advisor-brief?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 138280,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/intelligence/learning/live-dashboard?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 138486,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/admin/learning/status?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 140311,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/assistant/conversation/04310635-2332-4b3b-9452-22faebc5f8ae/state?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 140353,
+      "kind": "request",
+      "body": "{\"mode\":\"fast\",\"conversation_id\":\"04310635-2332-4b3b-9452-22faebc5f8ae\",\"preferred_persona\":\"friendly_assistant\",\"cross_department\":false,\"spoken_mode\":false,\"surface\":\"ai_chat\",\"workspace_focus\":{\"surface\":\"ai_chat\",\"route\":\"/home\",\"selection\":null},\"id\":\"XtQIetfUY2583qnp\",\"messages\":[{\"parts\":[{\"type\":\"text\",\"text\":\"Slice 1 window test: reply in one short sentence describing what you can help with. Do not take any actions or use any tools.\"}],\"id\":\"kZDkXxGEo25kI00n\",\"role\":\"user\",\"metadata\":{\"created_at\":\"2026-09-24T21:35:14.716Z\"}}],\"trigger\":\"submit-message\"}"
+    },
+    {
+      "t": 140364,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/auth/me?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 155389,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/notifications?limit=50&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    },
+    {
+      "t": 166263,
+      "kind": "api",
+      "method": "GET",
+      "url": "/api/metrics/overview?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea"
+    }
+  ]
+}

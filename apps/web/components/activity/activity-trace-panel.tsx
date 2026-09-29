@@ -141,9 +141,9 @@ export function ActivityTracePanel({
   if (stages.length === 0) {
     return (
       <div className={cn("rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-canvas)] p-4", className)} data-testid="activity-trace-empty">
-        <p className={TYPE.eyebrow}>TRACE</p>
+        <p className={TYPE.eyebrow}>Trace</p>
         <p className={cn(TYPE.bodyMuted, "mt-2 text-sm")}>
-          No recorded TRACE stages on this outcome. Do not invent a waterfall.
+          No recorded TRACE stages on this outcome.
         </p>
         {outcome.runId ? (
           <Button type="button" size="sm" variant="outline" className="mt-3" asChild>
@@ -208,7 +208,7 @@ export function ActivityTracePanel({
                     tone === "waiting" && "border-warning/40",
                   )}
                 >
-                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="block text-xs font-semibold text-muted-foreground">
                     {stage.label}
                   </span>
                   <span className="mt-0.5 block text-xs font-medium text-foreground line-clamp-2">
@@ -252,7 +252,7 @@ export function ActivityTracePanel({
                       aria-hidden
                     />
                     <span className="min-w-0">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span className="block text-xs font-semibold text-muted-foreground">
                         {stage.label}
                       </span>
                     </span>
@@ -309,7 +309,7 @@ export function ActivityTracePanel({
                         href={active.evidenceUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs font-medium text-[color:var(--g-brand)] hover:underline"
+                        className="text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
                       >
                         Open evidence
                       </a>

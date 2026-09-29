@@ -22,7 +22,7 @@ export function AssetSaveButton({
   className?: string
 }) {
   const { data: savesData, mutate } = useSWR("marketplace-saves", () =>
-    marketplaceApi.listSaves({ limit: 200 }),
+    marketplaceApi.listSaves({ limit: 100 }),
   )
 
   const serverSaved = Boolean(

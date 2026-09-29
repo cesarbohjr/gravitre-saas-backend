@@ -47,7 +47,7 @@ function ReviewRow({ review }: { review: MarketplaceReview }) {
       <div className="mb-1 flex items-center justify-between gap-2">
         <StarPicker value={review.rating} onChange={() => {}} disabled />
         {review.mine ? (
-          <span className="text-[10px] font-medium uppercase tracking-wider text-primary">Your review</span>
+          <span className="text-xs font-medium text-primary">Your review</span>
         ) : null}
       </div>
       {review.title ? <p className="font-medium text-foreground">{review.title}</p> : null}

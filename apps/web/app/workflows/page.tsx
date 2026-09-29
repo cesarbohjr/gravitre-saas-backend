@@ -4,12 +4,10 @@ import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import {
-  GravitreMetric,
-  GravitrePageHeader,
-} from "@/components/gravitre/nodus-product"
+import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
+import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { WorkflowCard, WorkflowGrid } from "@/components/gravitre/workflow-card"
-import { ErrorState, EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
+import { ErrorState, NoResultsState } from "@/components/gravitre/empty-state"
 import { CardSkeleton } from "@/components/gravitre/loading-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { DataTable } from "@/components/gravitre/data-table"
@@ -44,6 +42,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { workflowsApi } from "@/lib/api"
+import { relativeTime } from "@/lib/agent-job-result"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import type { Workflow as ApiWorkflow, WorkflowStatus } from "@/types/api"
 
@@ -78,6 +77,17 @@ function normalizeWorkflowStatus(raw: string): Workflow["status"] {
   return "draft"
 }
 
+function formatLastRun(value: unknown): string {
+  if (typeof value !== "string" || !value.trim() || value === "Never") return "Never"
+  return relativeTime(value)
+}
+
+function formatSuccessRate(value: unknown, runCount: number): string {
+  if (runCount <= 0) return "—"
+  const rate = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""))
+  return Number.isFinite(rate) ? `${Math.round(rate)}%` : "—"
+}
+
 function normalizeWorkflow(input: Record<string, unknown>): Workflow {
   const status = String(input.status ?? "draft")
   const environment = String(input.environment ?? "staging")
@@ -87,15 +97,16 @@ function normalizeWorkflow(input: Record<string, unknown>): Workflow {
   const fromMarketplace = Boolean(
     config.marketplaceAssetId || versionConfig.marketplaceAssetId,
   )
+  const runCount = Number(input.runCount ?? input.run_count ?? 0) || 0
   return {
     id: String(input.id ?? ""),
     name: String(input.name ?? "workflow"),
     description: String(input.description ?? ""),
     status: normalizeWorkflowStatus(status),
     environment: environment === "production" ? "production" : "staging",
-    lastRun: String(input.lastRun ?? input.last_run ?? "Never"),
-    successRate: String(input.successRate ?? input.success_rate ?? "-"),
-    runCount: Number(input.runCount ?? input.run_count ?? 0),
+    lastRun: formatLastRun(input.lastRun ?? input.last_run),
+    successRate: formatSuccessRate(input.successRate ?? input.success_rate, runCount),
+    runCount,
     nodes: Array.isArray(input.nodes) ? (input.nodes as WorkflowNode[]) : undefined,
     isRunning: Boolean(input.isRunning ?? input.is_running ?? false),
     fromMarketplace,
@@ -153,7 +164,7 @@ const columns = [
   },
   {
     key: "lastRun",
-    header: "Last Run",
+    header: "Last run",
     className: "w-32",
     render: (item: Workflow) => (
       <span className="text-muted-foreground">{item.lastRun}</span>
@@ -161,7 +172,7 @@ const columns = [
   },
   {
     key: "successRate",
-    header: "Success Rate",
+    header: "Success rate",
     className: "w-28 text-right",
     render: (item: Workflow) => (
       <span className="text-muted-foreground">{item.successRate}</span>
@@ -180,12 +191,12 @@ const columns = [
     header: "",
     className: "w-24 text-right",
     render: (item: Workflow) => (
-      <Link href={`/workflows/${item.id}/builder`}>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+      <Button asChild variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+        <Link href={`/workflows/${item.id}/builder`}>
           <Edit className="h-3 w-3" />
           Edit
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     ),
   },
 ]
@@ -195,6 +206,8 @@ const VIEW_MODES = [
   { id: "grid" as const, label: "Grid", icon: LayoutGrid },
   { id: "table" as const, label: "Table", icon: Rows3 },
 ] as const
+
+type WorkflowPhase = "running" | "active" | "error" | "paused" | "draft"
 
 type WorkflowStatsPayload = {
   overallSuccessRate?: number
@@ -211,6 +224,7 @@ export default function WorkflowsPage() {
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [envFilter, setEnvFilter] = useState<string[]>([])
+  const [phase, setPhase] = useState<WorkflowPhase | null>(null)
 
   useEffect(() => {
     if (user) void ensureSelectedOrg(true).then(setOrgId)
@@ -244,13 +258,16 @@ export default function WorkflowsPage() {
   const activeCount = workflows.filter((w) => w.status === "active").length
   const pausedCount = workflows.filter((w) => w.status === "paused").length
   const runningCount = workflows.filter((w) => w.isRunning).length
+  const errorCount = workflows.filter((w) => w.status === "error").length
+  const draftCount = workflows.filter((w) => w.status === "draft").length
 
   const filteredWorkflows = workflows.filter(w => {
     const matchesSearch = w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       w.description.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(w.status)
     const matchesEnv = envFilter.length === 0 || envFilter.includes(w.environment)
-    return matchesSearch && matchesStatus && matchesEnv
+    const matchesPhase = !phase || (phase === "running" ? Boolean(w.isRunning) : w.status === phase)
+    return matchesSearch && matchesStatus && matchesEnv && matchesPhase
   })
   
   const activeFiltersCount = statusFilter.length + envFilter.length
@@ -322,9 +339,19 @@ export default function WorkflowsPage() {
         {/* Header */}
         <div className="relative z-10">
           <GravitrePageHeader
-            eyebrow="Automation"
             title={SURFACE_COPY.pages.workflows.title}
             description={SURFACE_COPY.pages.workflows.description}
+            status={
+              workflows.length > 0 ? (
+                <LiveStatus tone={runningCount > 0 ? "live" : errorCount > 0 ? "attention" : "idle"}>
+                  {runningCount > 0
+                    ? `${runningCount} running now`
+                    : errorCount > 0
+                      ? `${errorCount} failing`
+                      : "Nothing running"}
+                </LiveStatus>
+              ) : undefined
+            }
             icon={<NucleoWorkflow className="h-5 w-5" />}
             actions={
             <>
@@ -441,47 +468,25 @@ export default function WorkflowsPage() {
               <Button size="sm" className={cn("gap-2", RADIUS.control)} asChild>
                 <Link href="/workflows/new/builder">
                   <Icon name="add" size="sm" />
-                  <span className="hidden sm:inline">New Workflow</span>
+                  <span className="hidden sm:inline">New workflow</span>
                 </Link>
               </Button>
             </>
           }
           />
-          <details className="px-[var(--np-page-pad-sm)] pb-3 sm:px-[var(--np-page-pad)]">
-            <summary className="cursor-pointer list-none border-b border-divide py-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Totals</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {workflows.length} workflows · {activeCount} active · {runningCount} running — after the list, not instead of it.
-              </p>
-            </summary>
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-3 lg:grid-cols-4">
-            <GravitreMetric
-              label="Total"
-              value={<AnimatedCounter value={workflows.length} duration={0.8} />}
-              hint="In workspace"
-              icon={<NucleoWorkflow className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="Active"
-              value={<AnimatedCounter value={activeCount} duration={0.8} />}
-              hint={activeCount > 0 ? "Live" : "None active"}
-              icon={<Zap className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="Paused"
-              value={<AnimatedCounter value={pausedCount} duration={0.8} />}
-              hint={pausedCount > 0 ? "On hold" : "None paused"}
-              warning={pausedCount > 0}
-              icon={<TrendingUp className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="Running"
-              value={<AnimatedCounter value={runningCount} duration={0.8} />}
-              hint={runningCount > 0 ? "In flight" : "None running"}
-              icon={<Edit className="h-4 w-4" />}
-            />
-          </section>
-          </details>
+          <PhaseBand
+            label="Workflow phases"
+            loading={isLoading && workflows.length === 0}
+            phases={[
+              { id: "running", label: "Running now", count: runningCount, tone: "live", hint: runningCount ? "In flight" : undefined },
+              { id: "active", label: "Active", count: activeCount, tone: "done" },
+              { id: "error", label: "Failing", count: errorCount, tone: "risk" },
+              { id: "paused", label: "Paused", count: pausedCount, tone: "attention" },
+              { id: "draft", label: "Draft", count: draftCount, tone: "neutral" },
+            ]}
+            active={phase}
+            onSelect={(next) => setPhase(next as WorkflowPhase | null)}
+          />
         </div>
 
         {/* List is the product; live counts live in Totals. */}
@@ -505,11 +510,22 @@ export default function WorkflowsPage() {
           )}
 
           {!isLoading && !error && workflows.length === 0 && (
-            <EmptyState
-              icon={NucleoWorkflow}
+            <OperatingEmpty
+              className="px-0 py-4 sm:px-0"
               title="No workflows yet"
-              description="Create your first workflow to automate work across your systems."
-              action={{ label: "New Workflow", onClick: () => router.push("/workflows/new/builder") }}
+              body="A workflow turns an objective into repeatable steps across your connected systems. Start from a goal, let Meson draft it, or build it step by step."
+              path={["Describe the objective", "Build the steps", "Run with approvals", "Review outcomes"]}
+              action={
+                <>
+                  <Button size="sm" className={cn("gap-2", RADIUS.control)} onClick={() => setGoalWizardOpen(true)}>
+                    <Target className="h-3.5 w-3.5" />
+                    Create from Goal
+                  </Button>
+                  <Button variant="outline" size="sm" className={cn("gap-2", RADIUS.control)} asChild>
+                    <Link href="/workflows/new/builder">New workflow</Link>
+                  </Button>
+                </>
+              }
             />
           )}
 
@@ -564,6 +580,7 @@ export default function WorkflowsPage() {
                 setSearchQuery("")
                 setStatusFilter([])
                 setEnvFilter([])
+                setPhase(null)
               }}
             />
           ) : (
@@ -638,9 +655,7 @@ export default function WorkflowsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className={cn(
-                  "overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
-                )}
+                className="-mx-4 border-y border-[color:var(--g-border-default)] md:-mx-6"
               >
                 <DataTable
                   columns={columns}

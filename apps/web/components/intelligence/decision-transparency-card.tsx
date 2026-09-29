@@ -57,19 +57,19 @@ export function DecisionTransparencyCard({
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Decision type</dt>
+          <dt className="text-xs text-muted-foreground font-medium">Decision type</dt>
           <dd className="mt-1 text-sm font-medium capitalize text-foreground">
             {readString(envelope.decision_type, "answer").replace(/_/g, " ")}
           </dd>
         </div>
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Freshness</dt>
+          <dt className="text-xs text-muted-foreground font-medium">Freshness</dt>
           <dd className="mt-1 text-sm font-medium text-foreground">
             {envelope.freshness_status ? freshnessLabelText(envelope.freshness_status) : "—"}
           </dd>
         </div>
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Learning confidence</dt>
+          <dt className="text-xs text-muted-foreground font-medium">Learning confidence</dt>
           <dd className="mt-1">
             <LearningConfidenceBadge learning={envelope.learning_confidence} showSamples />
           </dd>

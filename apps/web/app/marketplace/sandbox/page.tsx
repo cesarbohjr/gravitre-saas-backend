@@ -172,7 +172,7 @@ export default function MarketplaceSandboxPage() {
 
                 {demoResult.auditTrail.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Audit trail</p>
+                    <p className="text-xs font-medium text-muted-foreground">Audit trail</p>
                     <AdaptiveDataView className="rounded border border-border">
                       <table className="w-full text-xs">
                         <thead className="bg-muted/50">

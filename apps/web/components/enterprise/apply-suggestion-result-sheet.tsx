@@ -75,7 +75,7 @@ export function ApplySuggestionResultSheet({
 
           {entities.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold text-muted-foreground">
                 Created / updated
               </p>
               <ul className="space-y-2">
@@ -106,7 +106,7 @@ export function ApplySuggestionResultSheet({
 
           {highlights.length > 0 ? (
             <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
                 <Lightbulb className="h-3.5 w-3.5" aria-hidden />
                 Evidence
               </p>

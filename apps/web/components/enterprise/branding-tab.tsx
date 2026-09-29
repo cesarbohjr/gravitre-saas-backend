@@ -57,7 +57,7 @@ function DnsRow({ record }: { record: EnterpriseDnsRecord }) {
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold text-muted-foreground">
             Host / Name
           </span>
           <div className="flex items-center gap-1.5">
@@ -80,7 +80,7 @@ function DnsRow({ record }: { record: EnterpriseDnsRecord }) {
           </div>
         </div>
         <div className="space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-semibold text-muted-foreground">
             Value
           </span>
           <div className="flex items-center gap-1.5">
@@ -492,7 +492,7 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
             {/* Step 2: DNS records */}
             {instructions && instructions.records.length > 0 && !domainVerified && (
               <div className="space-y-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground">
                   Add these records at your DNS provider
                 </span>
                 {instructions.records.map((record, i) => (
@@ -578,7 +578,7 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
 
       {/* Preview column (stacks below on mobile) */}
       <div className="space-y-2 lg:sticky lg:top-4 lg:self-start">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="text-xs font-semibold text-muted-foreground">
           Live preview
         </span>
         <LivePreview

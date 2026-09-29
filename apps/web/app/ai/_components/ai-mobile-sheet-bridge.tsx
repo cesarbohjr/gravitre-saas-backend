@@ -37,6 +37,10 @@ import {
 import type { UIMessage } from "ai"
 import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 import type { GravitreHelperPresence } from "@/lib/gravitre-ai-presence"
+import { GravitreAIRuntimeDetails } from "@/components/gravitre/ai-runtime-details"
+import { deriveAiRuntimeState, isApprovalPanelVisible } from "@/lib/gravitre-ai-runtime-state"
+import { AiStartingState } from "./ai-starting-state"
+import { AiMissionSpine, deriveMissionStages } from "./ai-mission-spine"
 
 export interface GravitreAIMobileSheetBridgeProps {
   mode: GravitreAIMobileSheetMode
@@ -127,6 +131,8 @@ export function GravitreAIMobileSheetBridge({
   voice,
 }: GravitreAIMobileSheetBridgeProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
+  // State, not a ref: the drawer mounts its content after this component's first effects run.
+  const [transcriptScroller, setTranscriptScroller] = useState<HTMLDivElement | null>(null)
   const [orbHost, setOrbHost] = useState<HTMLDivElement | null>(null)
   const [mobileFocus, setMobileFocus] = useState<"conversation" | "work" | "inspect">("conversation")
   useEffect(() => {
@@ -135,11 +141,40 @@ export function GravitreAIMobileSheetBridge({
 
   const showWork = hasWorkArtifact({ executionResult, pendingTask })
   const showInspect = shouldRevealInspector({ progressSteps, pendingTask })
+  // The approve/reject card lives in the transcript; the overlay would cover it.
+  const approvalVisible = isApprovalPanelVisible({ dialogueMode, pendingTask })
   useEffect(() => {
-    if (showInspect) setMobileFocus("inspect")
+    if (!approvalVisible || !transcriptScroller) return
+    const frame = requestAnimationFrame(() => {
+      transcriptScroller.scrollTop = transcriptScroller.scrollHeight
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [approvalVisible, pendingTask, transcriptScroller])
+  useEffect(() => {
+    if (approvalVisible) setMobileFocus("conversation")
+    else if (showInspect) setMobileFocus("inspect")
     else if (showWork) setMobileFocus("work")
     else setMobileFocus("conversation")
-  }, [showInspect, showWork])
+  }, [approvalVisible, showInspect, showWork])
+
+  const runtimeState = deriveAiRuntimeState({
+    status,
+    isStreaming,
+    isBusy,
+    dialogueMode,
+    pendingTask,
+    executionResult,
+    confirmExecuting,
+    canApprove,
+    canContinueAfterStop,
+  })
+  const missionStages = deriveMissionStages({
+    messages,
+    runtimeState,
+    progressSteps: progressSteps ?? null,
+    pendingTask,
+    executionResult,
+  })
 
   return (
     <GravitreAIMobileSheet
@@ -151,7 +186,20 @@ export function GravitreAIMobileSheetBridge({
     >
       {/* Positioned wrapper so the contained orb fills the sheet, not the composer. */}
       <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      <GravitreAIRuntimeDetails
+        inspectorSide="bottom"
+        conversationId={conversationId}
+        messages={messages}
+        executionResult={executionResult}
+        pendingTask={pendingTask}
+        state={runtimeState}
+      />
+      {messages.length === 0 ? null : <AiMissionSpine stages={missionStages} />}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={setTranscriptScroller} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        {messages.length === 0 && !showWaiting && !isStreaming ? (
+          <AiStartingState onInputChange={onInputChange} inputRef={inputRef} />
+        ) : null}
         <GravitreAIConversationTranscript
           routeKey="/ai"
           messages={messages}
@@ -225,6 +273,7 @@ export function GravitreAIMobileSheetBridge({
           )}
         </div>
       ) : null}
+      </div>
       </div>
     </GravitreAIMobileSheet>
   )

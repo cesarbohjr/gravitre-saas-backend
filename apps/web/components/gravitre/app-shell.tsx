@@ -20,6 +20,7 @@ import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitre
 import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { familyHidesTopBar, resolvePageFamily } from "@/lib/page-family"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
@@ -87,11 +88,9 @@ const NAV_EXPANDED_STORAGE_KEY = "gravitre-nav-expanded"
 
 function readNavExpandedPreference(): boolean {
   if (typeof window === "undefined") return false
-  // Default to the minimized icon-only rail when unset; users who explicitly
-  // expand it keep that choice via localStorage.
-  const stored = localStorage.getItem(NAV_EXPANDED_STORAGE_KEY)
-  if (stored === null) return false
-  return stored === "true"
+  // Unset: icon rail at every width so the work owns the viewport; labelled
+  // navigation is an explicit pin. An explicit pin/unpin always wins.
+  return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
 }
 
 export function AppShell({ children, title, fillViewport = false }: AppShellProps) {
@@ -116,18 +115,22 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
   const isImmersiveChat =
     pathname === "/ai" ||
     pathname.startsWith("/ai/") ||
-    (pathname.startsWith("/agents/") && pathname.endsWith("/chat")) ||
-    pathname === "/connectors"
+    (pathname.startsWith("/agents/") && pathname.endsWith("/chat"))
+  /** Full-height hub with its own scroll region; keeps the standard top bar. */
+  const isFullHeightHub = pathname === "/connectors"
+  const locksDocumentScroll = isImmersiveChat || isFullHeightHub
   useEffect(() => {
-    if (!isImmersiveChat) return
+    if (!locksDocumentScroll) return
     document.documentElement.classList.add("chat-immersive")
     return () => document.documentElement.classList.remove("chat-immersive")
-  }, [isImmersiveChat])
+  }, [locksDocumentScroll])
   const isAssignmentDetail =
     pathname.startsWith("/assignments/") &&
     pathname !== "/assignments" &&
     !pathname.startsWith("/assignments/new")
   const useCompactTopBar = isImmersiveChat || isAssignmentDetail
+  const pageFamily = resolvePageFamily(pathname)
+  const hideTopBar = familyHidesTopBar(pathname)
   const { user, loading } = useAuth()
 
   useGlobalWorkShortcuts()
@@ -359,16 +362,27 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
 
   return (
     <MesonToolbarProvider>
-    <div className="flex h-screen overflow-hidden bg-white text-charcoal-900">
+    <div
+      className="flex h-screen overflow-hidden bg-[color:var(--g-frame)] text-foreground"
+      data-page-family={pageFamily}
+    >
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          navExpanded={navExpanded}
+          navExpanded={navExpanded && pageFamily !== "immersive"}
           onToggleExpanded={handleMenuClick}
         />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <TopBar title={title} onMenuClick={handleMenuClick} compact={useCompactTopBar} />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className={cn("shrink-0", hideTopBar && "md:hidden")}>
+            <TopBar title={title} onMenuClick={handleMenuClick} compact={useCompactTopBar || hideTopBar} />
+          </div>
 
+          <div
+            data-gravitre-workspace-panel=""
+            className={cn(
+              "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background",
+            )}
+          >
           {showTrialExpiredBanner && (
             <TrialExpiredBanner
               message={trialExpiredBannerMessage(planRequired)}
@@ -383,12 +397,12 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
             const urgent = days !== null && days <= 3
             const warning = days !== null && days <= 7
             const bannerClass = urgent
-              ? "border-destructive/30 bg-destructive/10 text-foreground"
+              ? "border-l-destructive"
               : warning
-                ? "border-warning/30 bg-warning/10 text-foreground"
-                : "border-success/30 bg-success/10 text-foreground"
+                ? "border-l-warning"
+                : "border-l-[color:var(--g-brand)]"
             return (
-            <div className={cn("border-b px-4 py-2 text-sm flex items-center justify-between", bannerClass)} data-testid="active-trial-banner">
+            <div className={cn("flex min-h-9 items-center justify-between border-b border-l-2 border-[color:var(--g-border-subtle)] bg-background px-4 py-1.5 text-[13px] text-foreground", bannerClass)} data-testid="active-trial-banner">
               <span>
                 You&apos;re on a 7-day free trial of Node.
                 {days !== null && ` ${days} day${days === 1 ? "" : "s"} left.`}
@@ -438,9 +452,9 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Link href="/agents">
-                    <Button size="sm" variant="default">Explore agents</Button>
-                  </Link>
+                  <Button asChild size="sm" variant="default">
+                    <Link href="/agents">Explore agents</Link>
+                  </Button>
                   <button 
                     onClick={handleDismissWelcome} 
                     aria-label="Dismiss welcome banner"
@@ -459,19 +473,28 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
               // flex rows, charts) from forcing the whole viewport wider than
               // the screen on mobile. Wide data views own their own x-scroll.
               "flex min-h-0 min-w-0 flex-1 flex-col",
-              isImmersiveChat || fillViewport
+              locksDocumentScroll || fillViewport
                 ? cn(
                     "overflow-hidden",
-                    pathname.includes("/builder") ? "pb-0" : "pb-16 md:pb-0",
+                    pathname.includes("/builder")
+                      ? "pb-0"
+                      : cn(
+                          "pb-16 md:pb-0",
+                          // Reserved dock band: panes end above the Ask Gravitre dock instead of running under it.
+                          "[:root:has([data-gravitre-ai-dock=workspace])_&]:pb-[calc(116px+env(safe-area-inset-bottom))]",
+                          "md:[:root:has([data-gravitre-ai-dock=workspace])_&]:pb-[68px]",
+                        ),
                   )
                 : cn(
                     "overflow-y-auto overflow-x-hidden",
-                    pathname.includes("/builder") ? "pb-4" : "pb-20 md:pb-4",
+                    // Clears the fixed AI launcher (and the mobile bottom nav) at scroll end.
+                    pathname.includes("/builder") ? "pb-4" : "pb-32 md:pb-24",
                   ),
             )}
           >
             {children}
           </main>
+          </div>
           <MobileBottomNav />
         </div>
       

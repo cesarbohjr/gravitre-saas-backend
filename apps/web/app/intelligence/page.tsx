@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -38,6 +37,9 @@ import {
   type GravitreAISelectedEntity,
 } from "@/components/gravitre/ai-workspace-provider"
 import { OverviewLivingMap } from "@/components/intelligence/pages/overview-living-map"
+import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
+import { IntelligenceFreshnessBar } from "@/components/intelligence/shell/intelligence-freshness-bar"
+import { EvidenceRail, InsightRail, IntelligenceJourney } from "@/components/intelligence/journey-rails"
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
 import {
@@ -54,6 +56,7 @@ import {
   type CanonicalGraphNode,
 } from "@/lib/intelligence/canonical-graph-topology"
 import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-focus"
+import { relationsForSelection, selectionForMapNode } from "@/lib/intelligence/selection-relations"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
@@ -131,6 +134,18 @@ function selectedEntityFromMapSelection(selection: IntelligenceMapSelection): Gr
   return { kind: "relationship", id: selection.edgeId, label: selection.label }
 }
 
+function useMinWidth(px: number): boolean {
+  const [matches, setMatches] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia(`(min-width: ${px}px)`)
+    const update = () => setMatches(query.matches)
+    update()
+    query.addEventListener("change", update)
+    return () => query.removeEventListener("change", update)
+  }, [px])
+  return matches
+}
+
 function IntelligenceCenterInner() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
@@ -150,6 +165,10 @@ function IntelligenceCenterInner() {
   const [orgReady, setOrgReady] = useState(false)
   const askSelected = useMemo(() => selectedEntityFromMapSelection(mapSelection), [mapSelection])
   usePublishGravitreAISelection(askSelected)
+  // At xl the evidence rail sits beside the field, so it inspects the selection; the drawer opens on request.
+  const railInspects = useMinWidth(1280)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+  useEffect(() => setInspectorOpen(false), [mapSelection])
 
   useEffect(() => {
     if (!user) {
@@ -333,6 +352,25 @@ function IntelligenceCenterInner() {
     applyMapVisualization,
   ])
 
+  const selectionRelations = useMemo(
+    () => relationsForSelection(mapSelection, pageContext?.graph),
+    [mapSelection, pageContext?.graph],
+  )
+
+  const selectRelatedNode = useCallback(
+    (nodeId: string) => {
+      const mapNode = resolveCanonicalGraphMapNode(
+        nodeId,
+        { nodes: (pageContext?.graph?.nodes ?? []) as CanonicalGraphNode[] },
+        mapAgents,
+      )
+      if (!mapNode) return
+      setMapSelection(selectionForMapNode(mapNode))
+      setMapHighlightIds([nodeId])
+    },
+    [pageContext?.graph?.nodes, mapAgents],
+  )
+
   if (!user) {
     return (
       <AppShell title={copy.title}>
@@ -380,23 +418,57 @@ function IntelligenceCenterInner() {
   const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
   const totalEvents = readNumber(summary.total_events, 0)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
+  const journeyStep: 0 | 1 | 2 = !askSelected ? 0 : askSelected.kind === "relationship" ? 2 : 1
   return (
     <AppShell title={copy.title}>
       <div className="relative bg-[color:var(--g-canvas)]">
         <IntelligenceSectionRedirect />
 
-        {/* Dominant map zone — the product, not a card among cards */}
-        <section className="relative border-b border-divide">
-          <div className="relative z-10 mx-auto max-w-[1600px] space-y-4 px-4 py-4 md:px-6 md:py-6">
-            <GravitrePageHeader
-              className="border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]"
-              eyebrow="Intelligence"
-              title={copy.title}
-              description="One shared intelligence coordinating your business — explore the live map, then inspect evidence below."
-              icon={<NucleoIntelligence className="h-5 w-5" />}
+        {/* Investigation toolbar — identity, hub sections, freshness and journey in one line */}
+        <div
+          data-investigation-toolbar=""
+          className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-2 md:px-5"
+        >
+          <h1 className="flex items-center gap-2 pb-2.5 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+            <NucleoIntelligence className="h-4 w-4" aria-hidden />
+            {copy.title}
+            <span className="sr-only">
+              — how your agents, systems, and knowledge connect. Select anything on the field to see the evidence.
+            </span>
+          </h1>
+          <IntelligenceHubTabs active="overview" className="min-w-0 flex-1" />
+          <div className="flex items-center gap-4 pb-2">
+            <IntelligenceFreshnessBar
+              loadState={snapshotLoadState}
+              generatedAt={generatedAt}
+              isValidating={snapshotValidating}
+              onRefresh={() => mutateSnapshot()}
+              className="justify-start"
             />
+            <IntelligenceJourney step={journeyStep} className="hidden xl:flex" />
+          </div>
+        </div>
 
+        {/* Field-primary: the field owns the first viewport; insight and evidence rails are edge-attached */}
+        <section className="relative border-b border-divide">
+          <div className="relative z-10 grid md:grid-cols-2 xl:h-[calc(100dvh-6.75rem)] xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
+            <aside
+              aria-label="Insight"
+              className="order-2 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 md:border-r xl:order-1 xl:overflow-y-auto xl:border-t-0"
+            >
+              <InsightRail
+                signals={signals}
+                signalsLoading={signalsLoading}
+                learnings={displayLearnings}
+                onSelectSignal={(signal) => {
+                  setMapSelection({ kind: "signal", signal })
+                  setActiveLens("predicts")
+                }}
+              />
+            </aside>
+            <div className="order-1 min-w-0 px-3 py-3 md:col-span-2 md:px-4 xl:order-2 xl:col-span-1 xl:overflow-y-auto">
             <IntelligenceShell
+              chrome="none"
               activeTab="overview"
               loadState={snapshotLoadState}
               generatedAt={generatedAt}
@@ -440,23 +512,44 @@ function IntelligenceCenterInner() {
                   window.scrollTo({ top: 0, behavior: "smooth" })
                 }}
                 cacheKey={`overview:${activeLens}`}
+                inspectorOpen={!railInspects || inspectorOpen}
+                onInspectorClose={railInspects ? () => setInspectorOpen(false) : undefined}
               />
             </IntelligenceShell>
+            </div>
+            <aside
+              aria-label="Evidence"
+              className="order-3 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 xl:overflow-y-auto xl:border-l xl:border-t-0"
+            >
+              <EvidenceRail
+                selected={askSelected}
+                relations={selectionRelations}
+                onSelectRelated={selectRelatedNode}
+                onOpenDetails={railInspects ? () => setInspectorOpen(true) : undefined}
+                onClear={() => setMapSelection(null)}
+                totalEvents={totalEvents}
+                avgConfidence={avgConfidence}
+                entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}
+                relationshipCount={canonicalMetrics?.knowledge?.knownRelationships ?? null}
+              />
+            </aside>
           </div>
         </section>
 
         {/* Contextual support — closed until asked; map stays the product */}
-        <details className="mx-auto max-w-[1600px] px-4 py-6 md:px-6">
-          <summary className="cursor-pointer list-none">
-            <div className="flex items-center justify-between gap-3 border-b border-divide pb-3">
+        <details className="group/evidence mx-auto max-w-[1600px] px-4 py-6 md:px-6">
+          <summary className="cursor-pointer list-none rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+            <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] pb-3">
               <div>
-                <p className={TYPE.eyebrow}>Evidence</p>
                 <h2 className={TYPE.sectionTitle}>Attention, learnings, and impact</h2>
                 <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                  Open after you pick something on the map — not a second dashboard around the graph.
+                  What needs attention, what Gravitre learned, and the evidence behind it.
                 </p>
               </div>
-              <span className="text-xs text-muted-foreground">Show</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                <span className="group-open/evidence:hidden">Show</span>
+                <span className="hidden group-open/evidence:inline">Hide</span>
+              </span>
             </div>
           </summary>
           <div className="space-y-8 pt-6">
@@ -476,18 +569,19 @@ function IntelligenceCenterInner() {
 
           <WhyGravitrePanel className="relative" data={whyEvidence} isLoading={whyEvidenceLoading} />
 
-          <details className="group">
-            <summary className="cursor-pointer list-none">
-              <div className="flex items-center justify-between gap-3 border-b border-divide pb-3">
+          <details className="group/advanced">
+            <summary className="cursor-pointer list-none rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] pb-3">
                 <div>
-                  <p className={TYPE.eyebrow}>Advanced</p>
-                  <h2 className={TYPE.sectionTitle}>Models, training, routing, and deep tools</h2>
+                  <h2 className={TYPE.sectionTitle}>Models, training, and routing</h2>
                   <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                    Everything that powered the old dashboard layout — still here, no longer the
-                    primary experience.
+                    Model health, simulations, and links to the detailed intelligence tools.
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">Show</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  <span className="group-open/advanced:hidden">Show</span>
+                  <span className="hidden group-open/advanced:inline">Hide</span>
+                </span>
               </div>
             </summary>
             <div className="space-y-6 pt-6">
@@ -500,8 +594,7 @@ function IntelligenceCenterInner() {
                     {SURFACE_COPY.sections.routingTraceHint}
                   </p>
                   <p className={cn(TYPE.meta, "mt-3 border-b border-divide py-3")}>
-                    No live routing trace on this hub. Per-turn traces appear on chat surfaces with
-                    real SSE metadata.
+                    Routing traces appear on each conversation, next to the reply they explain.
                   </p>
                 </section>
                 <section>
@@ -520,7 +613,7 @@ function IntelligenceCenterInner() {
               {ADVANCED_LINK_GROUPS.map((group) => (
                 <section key={group.heading} aria-labelledby={`adv-${group.heading}`}>
                   <div className="mb-2">
-                    <h3 id={`adv-${group.heading}`} className={TYPE.eyebrow}>
+                    <h3 id={`adv-${group.heading}`} className="text-sm font-semibold text-foreground">
                       {group.heading}
                     </h3>
                     <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
@@ -544,11 +637,11 @@ function IntelligenceCenterInner() {
               ))}
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild>
                   <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
                 </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={APP_ROUTES.agents}>Agents hub</Link>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={APP_ROUTES.agents}>AI team</Link>
                 </Button>
               </div>
             </div>

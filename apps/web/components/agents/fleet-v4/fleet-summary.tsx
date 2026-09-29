@@ -27,7 +27,7 @@ export function FleetSummaryBar({
       )}
     >
       <div>
-        <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+        <p className="text-xs font-medium text-[color:var(--g-text-muted)]">
           AI Team
         </p>
         <p className="text-lg font-semibold tabular-nums text-[color:var(--g-text-primary)]">

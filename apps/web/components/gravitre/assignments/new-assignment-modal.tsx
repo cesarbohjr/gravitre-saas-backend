@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Icon } from "@/lib/icons"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import type { AgentIdentityInput } from "@/lib/agent-identity"
 import { agentsApi, marketplaceApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { hoverLift, pressScale } from "@/lib/animations"
@@ -49,6 +51,7 @@ interface AssignableAgent {
   name: string
   role: string
   gradient: string
+  identity: AgentIdentityInput
   successRate: number
 }
 
@@ -70,7 +73,7 @@ function ModalStepIndicator({ currentStep }: { currentStep: number }) {
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
                 isActive && "bg-emerald-500 text-white",
-                isComplete && "bg-emerald-500/20 text-emerald-400",
+                isComplete && "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
                 !isActive && !isComplete && "bg-secondary text-muted-foreground",
               )}
             >
@@ -133,6 +136,14 @@ export function NewAssignmentModal({
         name: item.name,
         role: item.role || item.description || "Agent",
         gradient: avatarGradient(item.personality?.color ?? ""),
+        identity: {
+          name: item.name,
+          role: item.role,
+          icon: item.icon,
+          avatarColor: item.avatarColor,
+          avatarUrl: item.avatarUrl,
+          personality: item.personality,
+        },
         successRate: Number.isFinite(successRate) ? Math.round(successRate) : 0,
       }
     })
@@ -233,7 +244,7 @@ export function NewAssignmentModal({
         <DialogHeader className="space-y-4 border-b border-border px-6 py-5 text-left">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <DialogTitle className="text-lg">New Assignment</DialogTitle>
+              <DialogTitle className="text-lg">New assignment</DialogTitle>
               <DialogDescription>{MODAL_STEPS[step - 1].description}</DialogDescription>
             </div>
             <ModalStepIndicator currentStep={step} />
@@ -261,7 +272,7 @@ export function NewAssignmentModal({
                   </div>
                 ) : agentsError ? (
                   <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-center">
-                    <Icon name="warning" size="md" className="mx-auto mb-2 text-red-400" />
+                    <Icon name="warning" size="md" className="mx-auto mb-2 text-red-600 dark:text-red-400" />
                     <p className="text-sm text-foreground">Could not load agents</p>
                     <p className="mt-1 text-xs text-muted-foreground">Check your connection and try again.</p>
                     <Button variant="outline" size="sm" className="mt-4" onClick={() => void mutate()}>
@@ -304,18 +315,11 @@ export function NewAssignmentModal({
                             transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
                           />
                         ) : null}
-                        <div
-                          className={cn(
-                            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white",
-                            agent.gradient,
-                          )}
-                        >
-                          <Icon name="ai" size="md" />
-                        </div>
+                        <AgentIdentityAvatar agent={agent.identity} size="lg" showStatusDot={false} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-semibold text-foreground">{agent.name}</p>
                           <p className="truncate text-xs text-muted-foreground">{agent.role}</p>
-                          <p className="mt-1 text-[11px] text-emerald-400">{agent.successRate}% success</p>
+                          <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400">{agent.successRate}% success</p>
                         </div>
                         {selectedAgentId === agent.id ? (
                           <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500">
@@ -345,14 +349,7 @@ export function NewAssignmentModal({
                 ) : selectedAgent ? (
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3">
                     <div className="min-w-0 flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white",
-                          selectedAgent.gradient,
-                        )}
-                      >
-                        <Icon name="ai" size="sm" />
-                      </div>
+                      <AgentIdentityAvatar agent={selectedAgent.identity} size="md" showStatusDot={false} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
                           {agentAutoResolved ? "Auto-selected" : "Assigned to"} {selectedAgent.name}
@@ -457,15 +454,8 @@ export function NewAssignmentModal({
                 transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 32 }}
                 className="mx-auto max-w-md space-y-5 text-center"
               >
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ring-1 ring-emerald-500/20">
-                  <div
-                    className={cn(
-                      "flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br text-white",
-                      selectedAgent?.gradient,
-                    )}
-                  >
-                    <Icon name="ai" size="lg" />
-                  </div>
+                <div className="mx-auto flex w-fit">
+                  <AgentIdentityAvatar agent={selectedAgent?.identity ?? { name: "Agent" }} size="xl" showStatusDot={false} />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Assigning to</p>
@@ -473,7 +463,7 @@ export function NewAssignmentModal({
                   <p className="text-sm text-muted-foreground">{selectedAgent?.role}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card/50 p-4 text-left">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Task</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Task</p>
                   <p className="mt-2 text-sm leading-relaxed text-foreground">{taskBrief.trim()}</p>
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full bg-secondary px-2.5 py-1 capitalize text-muted-foreground">
@@ -487,7 +477,7 @@ export function NewAssignmentModal({
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  The assignment will appear at the top of your list as <span className="text-amber-400">Queued</span>.
+                  The assignment will appear at the top of your list as <span className="text-amber-700 dark:text-amber-400">Queued</span>.
                 </p>
               </motion.div>
             ) : null}
@@ -531,7 +521,7 @@ export function NewAssignmentModal({
                 ) : (
                   <>
                     <Icon name="check" size="sm" />
-                    Assign Task
+                    Assign task
                   </>
                 )}
               </Button>

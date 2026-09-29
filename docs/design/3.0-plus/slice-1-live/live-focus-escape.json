@@ -1,0 +1,96 @@
+[
+  {
+    "vp": "1440",
+    "check": "launcher does not steal focus on page load",
+    "result": "PASS",
+    "evidence": {
+      "tag": "BODY",
+      "helper": false,
+      "label": null,
+      "inSheet": false
+    }
+  },
+  {
+    "vp": "1440",
+    "check": "Escape leaves fullscreen",
+    "result": "PASS",
+    "evidence": {
+      "before": "fullscreen",
+      "after": "expanded",
+      "focusInFs": {
+        "tag": "BUTTON",
+        "helper": false,
+        "label": null,
+        "inSheet": false
+      }
+    }
+  },
+  {
+    "vp": "1440",
+    "check": "focus returns to the launcher after minimize",
+    "result": "PASS",
+    "evidence": {
+      "tag": "BUTTON",
+      "helper": true,
+      "label": "Open AI Chat — Ready",
+      "inSheet": false
+    }
+  },
+  {
+    "vp": "1440",
+    "check": "Enter on the focused launcher restores the workspace",
+    "result": "PASS",
+    "evidence": {
+      "placement": null,
+      "shell": "expanded",
+      "sheet": null
+    }
+  },
+  {
+    "vp": "390",
+    "check": "launcher does not steal focus on page load",
+    "result": "PASS",
+    "evidence": {
+      "tag": "BODY",
+      "helper": false,
+      "label": null,
+      "inSheet": false
+    }
+  },
+  {
+    "vp": "390",
+    "check": "Escape leaves fullscreen",
+    "result": "PASS",
+    "evidence": {
+      "before": "fullscreen",
+      "after": "expanded",
+      "focusInFs": {
+        "tag": "BUTTON",
+        "helper": false,
+        "label": "Exit fullscreen",
+        "inSheet": true
+      }
+    }
+  },
+  {
+    "vp": "390",
+    "check": "focus returns to the launcher after minimize",
+    "result": "PASS",
+    "evidence": {
+      "tag": "BUTTON",
+      "helper": true,
+      "label": "Open AI Chat — Ready",
+      "inSheet": false
+    }
+  },
+  {
+    "vp": "390",
+    "check": "Enter on the focused launcher restores the workspace",
+    "result": "PASS",
+    "evidence": {
+      "placement": null,
+      "shell": null,
+      "sheet": "expanded"
+    }
+  }
+]

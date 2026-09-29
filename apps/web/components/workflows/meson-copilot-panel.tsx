@@ -86,6 +86,7 @@ export function MesonCopilotPanel({
   onFixAlert,
   onEditApplied,
   crossWorkflowSignals,
+  embedded = false,
 }: {
   open: boolean
   onClose: () => void
@@ -109,6 +110,8 @@ export function MesonCopilotPanel({
   onFixAlert?: (alert: MesonAlert) => void
   onEditApplied?: () => void | Promise<void>
   crossWorkflowSignals?: Array<{ message: string; count?: number }>
+  /** Hosted inside the builder inspector: fills the host and drops its own chrome. */
+  embedded?: boolean
 }) {
   const { reduced, container, item } = useMotionPrefs()
   const [suggestions, setSuggestions] = useState<MesonSuggestion[]>([])
@@ -446,11 +449,19 @@ export function MesonCopilotPanel({
       animate={reduced ? { opacity: 1 } : { x: 0, opacity: 1 }}
       transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 360, damping: 34 }}
       className={cn(
-        "relative w-[280px] shrink-0 border-l border-border bg-card flex flex-col overflow-hidden",
+        "relative flex flex-col overflow-hidden",
+        embedded
+          ? "min-h-0 w-full flex-1"
+          : "w-[280px] shrink-0 border-l border-border bg-card",
       )}
-      aria-label="Meson AI Copilot"
+      aria-label="Meson AI copilot"
     >
-      <div className="relative flex items-center justify-between border-b border-border px-3 py-2.5">
+      <div
+        className={cn(
+          "relative flex items-center justify-between border-b border-border px-3 py-2.5",
+          embedded && "hidden",
+        )}
+      >
         <div className="flex items-center gap-2">
           <NucleoIntelligence className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold text-foreground">Meson</span>
@@ -464,7 +475,7 @@ export function MesonCopilotPanel({
         {/* Conversational edit (Phase 2) */}
         {canPersist && workflowId ? (
           <section className="border-b border-border p-3">
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Edit with Meson
             </h3>
             <textarea
@@ -561,7 +572,7 @@ export function MesonCopilotPanel({
 
         {crossWorkflowSignals && crossWorkflowSignals.length > 0 ? (
           <section className="border-b border-border p-3">
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Cross-workflow
             </h3>
             <div className="space-y-1.5">
@@ -579,7 +590,7 @@ export function MesonCopilotPanel({
 
         {/* Suggestions */}
         <section className="border-b border-border p-3">
-          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
             Meson suggests
           </h3>
           {loadingSuggestions ? (
@@ -677,7 +688,7 @@ export function MesonCopilotPanel({
         {/* Alerts */}
         <section className="border-b border-border p-3">
           <div className="mb-2 flex items-center gap-2">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Alerts</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">Alerts</h3>
             {visibleAlerts.length > 0 ? (
               <motion.span
                 key={badgeBounce}
@@ -698,13 +709,18 @@ export function MesonCopilotPanel({
               initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
               animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
               transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 380, damping: 24 }}
-              className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2"
+              className="flex items-center gap-2 py-1"
             >
-              <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+              <CheckCircle className="h-3.5 w-3.5 text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]" />
               <span className="text-xs text-muted-foreground">No issues detected</span>
             </motion.div>
           ) : (
-            <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
+            <motion.div
+              className="divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-subtle)]"
+              variants={container}
+              initial="initial"
+              animate="animate"
+            >
               <AnimatePresence initial={false}>
                 {visibleAlerts.map((alert) => {
                   const Icon = severityIcon(alert.severity)
@@ -716,7 +732,7 @@ export function MesonCopilotPanel({
                       layout={!reduced}
                       variants={item}
                       exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0, marginBottom: 0 }}
-                      className="overflow-hidden rounded-lg border border-border bg-secondary/30 p-2.5"
+                      className="relative overflow-hidden py-2 pl-3 pr-1 before:absolute before:inset-y-2 before:left-0 before:w-[2px] before:rounded-full before:bg-warning"
                     >
                       <div className="flex items-start gap-2">
                         {pulse ? (
@@ -733,9 +749,9 @@ export function MesonCopilotPanel({
                       </div>
                       {(alert.autoFixable || alert.actionTarget) && onFixAlert ? (
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="mt-2 h-6 gap-1 px-2 text-[10px]"
+                          className="-ml-2 mt-1 h-6 gap-1 px-2 text-[11px] font-medium"
                           disabled={fixingAlertId === alert.id || isFixed}
                           onClick={() => handleFixAlert(alert)}
                         >
@@ -768,7 +784,7 @@ export function MesonCopilotPanel({
         {/* Tips + Insights (rotated per workflow / hour) */}
         <section className="p-3 space-y-4">
           <div>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Tips
             </h3>
             {loadingInsights ? (
@@ -811,7 +827,7 @@ export function MesonCopilotPanel({
           </div>
 
           <div>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
               Insights
             </h3>
             {loadingInsights ? (

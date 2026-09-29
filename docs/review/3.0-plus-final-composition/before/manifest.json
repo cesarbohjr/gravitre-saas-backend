@@ -1,0 +1,87 @@
+{
+  "base": "http://127.0.0.1:3010",
+  "buildId": "5nvk1_BIwHZ8T3Q-FihIh",
+  "at": "2026-09-28T18:43:59.557Z",
+  "results": [
+    {
+      "name": "dashboard-1440x900-light-before",
+      "file": "dashboard-1440x900-light-before.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1440x900",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 500,
+      "measureTop": 642,
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "dashboard-1920x1080-light-before",
+      "file": "dashboard-1920x1080-light-before.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1920x1080",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 680,
+      "measureTop": 822,
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "dashboard-1920x1080-dark-before",
+      "file": "dashboard-1920x1080-dark-before.png",
+      "route": "/e2e/shots/home",
+      "viewport": "1920x1080",
+      "theme": "dark",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "flowHeight": 680,
+      "measureTop": 822,
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "agent-detail-1440-tall-light-before",
+      "file": "agent-detail-1440-tall-light-before.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "1440x2200",
+      "theme": "light",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    },
+    {
+      "name": "connectors-1440-noselection-light-before",
+      "file": "connectors-1440-noselection-light-before.png",
+      "route": "/e2e/shots/connectors",
+      "viewport": "1440x900",
+      "theme": "light",
+      "class": "fixture harness (connectors)",
+      "note": "",
+      "flowHeight": null,
+      "measureTop": null,
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3010/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled."
+      ]
+    }
+  ]
+}

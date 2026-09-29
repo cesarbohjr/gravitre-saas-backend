@@ -48,7 +48,7 @@ export function useIntelligenceSnapshot({
         ]
       : null
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
+  const { data: raw, error, isLoading, isValidating, mutate } = useSWR(
     swrKey,
     () => intelligenceApi.pageContext({ windowHours, activeLens }),
     {
@@ -56,6 +56,10 @@ export function useIntelligenceSnapshot({
       keepPreviousData: true,
     },
   )
+  // Consumers read `snapshot.*` directly; a body without a snapshot is no data.
+  const data = raw && typeof raw === "object" && raw.snapshot ? raw : undefined
+  const malformed = raw !== undefined && !data
+  const effectiveError = error ?? (malformed ? new Error("page-context response has no snapshot") : undefined)
 
   if (data) hadDataRef.current = true
 
@@ -65,7 +69,7 @@ export function useIntelligenceSnapshot({
     enabled,
     isLoading,
     isValidating,
-    error,
+    error: effectiveError,
     data,
     hadData: hadDataRef.current,
     qualityFlags,
@@ -79,7 +83,7 @@ export function useIntelligenceSnapshot({
     data,
     lastKnown,
     loadState,
-    error,
+    error: effectiveError,
     isValidating,
     mutate,
     generatedAt,

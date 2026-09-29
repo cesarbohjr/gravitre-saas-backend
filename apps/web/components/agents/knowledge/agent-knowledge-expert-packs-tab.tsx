@@ -55,7 +55,7 @@ export function AgentKnowledgeExpertPacksTab({
       </p>
       {recommended.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">Recommended</h2>
+          <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">Recommended</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {recommended.map((pack) => {
               const avail = packAvailabilityLabel(pack)
@@ -82,7 +82,7 @@ export function AgentKnowledgeExpertPacksTab({
         </section>
       ) : null}
       <section className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+        <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">
           {recommended.length > 0 ? "All expert packs" : "Expert packs"}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

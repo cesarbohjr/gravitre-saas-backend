@@ -104,9 +104,9 @@ function HealthScoreRing({ score, size = 120 }: { score: number; size?: number }
   const offset = circumference - (score / 100) * circumference
   
   const getScoreColor = (s: number) => {
-    if (s >= 80) return { stroke: "#10b981", bg: "rgba(16, 185, 129, 0.1)" }
-    if (s >= 60) return { stroke: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" }
-    return { stroke: "#ef4444", bg: "rgba(239, 68, 68, 0.1)" }
+    if (s >= 80) return { stroke: "var(--g-success)", bg: "color-mix(in srgb, var(--g-success) 10%, transparent)" }
+    if (s >= 60) return { stroke: "var(--g-warning)", bg: "color-mix(in srgb, var(--g-warning) 10%, transparent)" }
+    return { stroke: "var(--g-danger)", bg: "color-mix(in srgb, var(--g-danger) 10%, transparent)" }
   }
   
   const colors = getScoreColor(score)
@@ -171,16 +171,16 @@ function RecommendationCard({
   const [expanded, setExpanded] = useState(false)
   
   const riskColors = {
-    low: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-    medium: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-    high: "bg-red-500/10 text-red-400 border-red-500/30",
+    low: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+    medium: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    high: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
   }
   
   const categoryColors = {
-    performance: "text-blue-400",
-    reliability: "text-emerald-400",
-    cost: "text-violet-400",
-    quality: "text-amber-400",
+    performance: "text-blue-600 dark:text-blue-400",
+    reliability: "text-emerald-700 dark:text-emerald-400",
+    cost: "text-violet-600 dark:text-violet-400",
+    quality: "text-amber-700 dark:text-amber-400",
   }
   
   return (
@@ -227,11 +227,11 @@ function RecommendationCard({
               >
                 <div className="pt-3 border-t border-border space-y-3">
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Evidence</p>
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Evidence</p>
                     <ul className="space-y-1">
                       {recommendation.evidence.map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-foreground">
-                          <CheckCircle className="h-3 w-3 text-emerald-400 mt-0.5 shrink-0" />
+                          <CheckCircle className="h-3 w-3 text-emerald-700 dark:text-emerald-400 mt-0.5 shrink-0" />
                           {item}
                         </li>
                       ))}
@@ -239,13 +239,13 @@ function RecommendationCard({
                   </div>
                   
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Suggested Change</p>
+                    <p className="text-xs text-muted-foreground mb-1 font-medium">Suggested change</p>
                     <p className="text-xs text-foreground">{recommendation.suggestedChange}</p>
                   </div>
                   
                   {recommendation.affectedNodes && (
                     <div>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Affected Steps</p>
+                      <p className="text-xs text-muted-foreground mb-1 font-medium">Affected steps</p>
                       <div className="flex flex-wrap gap-1">
                         {recommendation.affectedNodes.map((node) => (
                           <Badge key={node} variant="outline" className="text-[10px]">
@@ -314,7 +314,7 @@ function PreviewOptimizationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5 text-primary" />
-            Preview Optimization
+            Preview optimization
           </DialogTitle>
           <DialogDescription>
             Review the proposed changes before applying them to your workflow.
@@ -333,22 +333,22 @@ function PreviewOptimizationDialog({
             <div className="p-4 rounded-lg bg-secondary/50 border border-border">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current</span>
+                <span className="text-xs font-medium text-muted-foreground">Current</span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-400">1</span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400">1</span>
                   </div>
-                  Data Enrichment
+                  Data enrichment
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-400">2</span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400">2</span>
                   </div>
                   HubSpot Sync
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400">
                   <AlertTriangle className="h-4 w-4" />
                   28% failure rate
                 </div>
@@ -358,25 +358,25 @@ function PreviewOptimizationDialog({
             <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="text-xs font-medium text-emerald-400 uppercase tracking-wide">Proposed</span>
+                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Proposed</span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs">
                   <div className="h-6 w-6 rounded bg-emerald-500/20 flex items-center justify-center">
-                    <Sparkles className="h-3 w-3 text-emerald-400" />
+                    <Sparkles className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />
                   </div>
-                  <span className="text-emerald-400">Data Validation</span>
-                  <Badge className="ml-auto text-[9px] bg-emerald-500/20 text-emerald-400">NEW</Badge>
+                  <span className="text-emerald-700 dark:text-emerald-400">Data validation</span>
+                  <Badge className="ml-auto text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">NEW</Badge>
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-400">2</span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400">2</span>
                   </div>
-                  Data Enrichment
+                  Data enrichment
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
                   <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-400">3</span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400">3</span>
                   </div>
                   HubSpot Sync
                 </div>
@@ -386,18 +386,18 @@ function PreviewOptimizationDialog({
           
           {/* Expected impact */}
           <div className="p-4 rounded-lg bg-secondary/30 border border-border">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Expected Impact</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-3">Expected impact</h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-400">-24%</div>
-                <div className="text-[10px] text-muted-foreground">Failed Runs</div>
+                <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">-24%</div>
+                <div className="text-[10px] text-muted-foreground">Failed runs</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">+6</div>
-                <div className="text-[10px] text-muted-foreground">Health Score</div>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">+6</div>
+                <div className="text-[10px] text-muted-foreground">Health score</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-amber-400">87%</div>
+                <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">87%</div>
                 <div className="text-[10px] text-muted-foreground">Confidence</div>
               </div>
             </div>
@@ -407,7 +407,7 @@ function PreviewOptimizationDialog({
         <div className="flex items-center gap-2 pt-4 border-t border-border">
           <Button variant="default" className="flex-1 gap-2" onClick={onApply}>
             <CheckCircle className="h-4 w-4" />
-            Apply Optimization
+            Apply optimization
           </Button>
           <Button variant="outline" className="gap-2" onClick={onSaveAsNew}>
             <GitBranch className="h-4 w-4" />
@@ -439,7 +439,7 @@ function AIExplanationDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-violet-400" />
+            <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             AI Explanation
           </DialogTitle>
           <DialogDescription>
@@ -449,7 +449,7 @@ function AIExplanationDialog({
         
         <div className="space-y-4 py-4">
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Why this recommendation?</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Why this recommendation?</h4>
             <p className="text-sm text-foreground">
               Gravitre analyzed 847 workflow runs over the past 30 days and identified a pattern: 
               {recommendation.issue.toLowerCase()} This optimization addresses the root cause by {recommendation.suggestedChange.toLowerCase()}
@@ -457,11 +457,11 @@ function AIExplanationDialog({
           </div>
           
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Supporting Evidence</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Supporting evidence</h4>
             <ul className="space-y-2">
               {recommendation.evidence.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                  <CheckCircle className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-400 mt-0.5 shrink-0" />
                   {item}
                 </li>
               ))}
@@ -469,14 +469,14 @@ function AIExplanationDialog({
           </div>
           
           <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">What could go wrong?</h4>
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">What could go wrong?</h4>
             <ul className="space-y-2">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
                 Additional validation step may slightly increase processing time (+0.3s avg)
               </li>
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
                 Some edge cases may be flagged as invalid when they are actually valid
               </li>
             </ul>
@@ -484,8 +484,8 @@ function AIExplanationDialog({
           
           <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
             <div className="flex items-center gap-2 mb-1">
-              <Activity className="h-4 w-4 text-violet-400" />
-              <span className="text-xs font-medium text-violet-400">Confidence Level: {recommendation.confidence}%</span>
+              <Activity className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              <span className="text-xs font-medium text-violet-600 dark:text-violet-400">Confidence Level: {recommendation.confidence}%</span>
             </div>
             <p className="text-xs text-muted-foreground">
               This recommendation is based on strong evidence from recent workflow executions. 
@@ -539,10 +539,10 @@ export function OptimizationInsightsPanel({
         >
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30">
-              <Sparkles className="h-4 w-4 text-violet-400" />
+              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-foreground">Optimization Insights</h3>
+              <h3 className="font-semibold text-sm text-foreground">Optimization insights</h3>
               <p className="text-xs text-muted-foreground">
                 {mockRecommendations.length} recommendations available
               </p>
@@ -553,7 +553,7 @@ export function OptimizationInsightsPanel({
               <span className="text-xs text-muted-foreground">Health:</span>
               <span className={cn(
                 "text-sm font-bold",
-                healthScore >= 80 ? "text-emerald-400" : healthScore >= 60 ? "text-amber-400" : "text-red-400"
+                healthScore >= 80 ? "text-emerald-700 dark:text-emerald-400" : healthScore >= 60 ? "text-amber-700 dark:text-amber-400" : "text-red-600 dark:text-red-400"
               )}>
                 {healthScore}/100
               </span>
@@ -605,8 +605,8 @@ export function OptimizationInsightsPanel({
                       <HealthScoreRing score={healthScore} />
                       
                       <div className="flex-1">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                          Score Dimensions
+                        <h4 className="text-xs font-medium text-muted-foreground mb-3">
+                          Score dimensions
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
                           {mockDimensions.map((dim) => (
@@ -615,19 +615,19 @@ export function OptimizationInsightsPanel({
                               <span className="text-xs text-muted-foreground flex-1">{dim.name}</span>
                               <span className={cn(
                                 "text-xs font-medium",
-                                dim.score >= 80 ? "text-emerald-400" : dim.score >= 60 ? "text-amber-400" : "text-red-400"
+                                dim.score >= 80 ? "text-emerald-700 dark:text-emerald-400" : dim.score >= 60 ? "text-amber-700 dark:text-amber-400" : "text-red-600 dark:text-red-400"
                               )}>
                                 {dim.score}
                               </span>
-                              {dim.trend === "up" && <TrendingUp className="h-3 w-3 text-emerald-400" />}
-                              {dim.trend === "down" && <TrendingDown className="h-3 w-3 text-red-400" />}
+                              {dim.trend === "up" && <TrendingUp className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />}
+                              {dim.trend === "down" && <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />}
                             </div>
                           ))}
                         </div>
                       </div>
                       
                       <div className="w-40">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">
                           7-Day Trend
                         </h4>
                         <div className="h-16">
@@ -635,14 +635,14 @@ export function OptimizationInsightsPanel({
                             <AreaChart data={mockScoreHistory}>
                               <defs>
                                 <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                  <stop offset="5%" stopColor="var(--g-success)" stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor="var(--g-success)" stopOpacity={0}/>
                                 </linearGradient>
                               </defs>
                               <Area
                                 type="monotone"
                                 dataKey="score"
-                                stroke="#10b981"
+                                stroke="var(--g-success)"
                                 strokeWidth={2}
                                 fill="url(#scoreGradient)"
                               />
@@ -655,7 +655,7 @@ export function OptimizationInsightsPanel({
                     {/* Recommendations */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        <h4 className="text-xs font-medium text-muted-foreground">
                           Recommendations
                         </h4>
                         <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1">
@@ -704,15 +704,15 @@ export function OptimizationInsightsPanel({
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">Version {version.version}</span>
                             {version.status === "active" && (
-                              <Badge className="text-[10px] bg-emerald-500/20 text-emerald-400">Active</Badge>
+                              <Badge className="text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">Active</Badge>
                             )}
                             {version.status === "testing" && (
-                              <Badge className="text-[10px] bg-blue-500/20 text-blue-400">Testing</Badge>
+                              <Badge className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400">Testing</Badge>
                             )}
                           </div>
                           <span className={cn(
                             "text-sm font-medium",
-                            version.healthScore >= 80 ? "text-emerald-400" : "text-amber-400"
+                            version.healthScore >= 80 ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
                           )}>
                             {version.healthScore}/100
                           </span>
@@ -749,9 +749,9 @@ export function OptimizationInsightsPanel({
                   <div className="space-y-4">
                     <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
                       <div className="flex items-center gap-2 mb-3">
-                        <FlaskConical className="h-5 w-5 text-blue-400" />
+                        <FlaskConical className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         <span className="font-medium text-sm">A/B Test: Validation Optimization</span>
-                        <Badge className="text-[10px] bg-blue-500/20 text-blue-400">Running</Badge>
+                        <Badge className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400">Running</Badge>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4 mb-4">
@@ -765,10 +765,10 @@ export function OptimizationInsightsPanel({
                         </div>
                         <div className="p-3 rounded bg-emerald-500/10 border border-emerald-500/20">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-emerald-400">Version 4 (Test)</span>
+                            <span className="text-xs text-emerald-700 dark:text-emerald-400">Version 4 (Test)</span>
                             <span className="text-xs text-muted-foreground">50% traffic</span>
                           </div>
-                          <div className="text-xl font-bold text-emerald-400 mb-1">91%</div>
+                          <div className="text-xl font-bold text-emerald-700 dark:text-emerald-400 mb-1">91%</div>
                           <div className="text-[10px] text-muted-foreground">Success rate (118 runs)</div>
                         </div>
                       </div>
@@ -776,10 +776,10 @@ export function OptimizationInsightsPanel({
                       <div className="flex items-center gap-2">
                         <Button variant="default" size="sm" className="h-7 text-xs gap-1">
                           <CheckCircle className="h-3 w-3" />
-                          Promote Winner
+                          Promote winner
                         </Button>
                         <Button variant="outline" size="sm" className="h-7 text-xs">
-                          End Test
+                          End test
                         </Button>
                         <span className="text-[10px] text-muted-foreground ml-auto">
                           Started 3 days ago • 242 total runs

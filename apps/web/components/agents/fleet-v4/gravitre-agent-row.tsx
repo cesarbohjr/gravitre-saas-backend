@@ -2,6 +2,7 @@
 
 import type { DragEvent, MouseEvent } from "react"
 import { cn } from "@/lib/utils"
+import { relativeTime } from "@/lib/agent-job-result"
 import { DEPARTMENT_ACCENT } from "./identity-tokens"
 import { FLEET_DEPARTMENT_ORDER, setFleetAgentDragData } from "./fleet-department-dnd"
 import { GravitreAgentActivityIndicator } from "./gravitre-agent-activity-indicator"
@@ -72,7 +73,7 @@ export function GravitreAgentRow({
               if (next === agent.department) return
               onDepartmentChange(agent.id, next)
             }}
-            className="max-w-[11rem] rounded-md border border-divide bg-white px-2 py-1 text-xs text-[color:var(--g-text-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--g-brand)]"
+            className="max-w-[11rem] rounded-md border border-divide bg-background px-2 py-1 text-xs text-[color:var(--g-text-primary)] focus:outline-none focus:ring-1 focus:ring-[color:var(--g-brand)]"
           >
             {FLEET_DEPARTMENT_ORDER.map((department) => (
               <option key={department} value={department}>
@@ -105,7 +106,7 @@ export function GravitreAgentRow({
         {agent.model}
       </td>
       <td className="h-12 border-b border-divide/70 px-4 text-sm text-[color:var(--g-text-muted)]">
-        {agent.lastActiveLabel}
+        {relativeTime(agent.lastActiveLabel)}
       </td>
       <td className="h-12 border-b border-divide/70 px-4 text-right text-xs font-medium text-[color:var(--g-brand)]">
         Open

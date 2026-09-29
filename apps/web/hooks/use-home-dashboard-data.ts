@@ -168,7 +168,11 @@ export function useHomeDashboardData(enabled: boolean, range: DashboardRange = "
     pendingApprovals: pendingApprovalItems.length,
     pendingApprovalItems: pendingApprovalItems.map((item) => ({
       id: item.id,
-      title: item.workflow_name ?? item.workflowName ?? `Run ${item.id.slice(0, 8)}`,
+      title:
+        (item as { title?: string }).title?.trim() ||
+        item.workflow_name ||
+        item.workflowName ||
+        `Run ${item.id.slice(0, 8)}`,
     })),
     avgConfidence,
     queryRows: learning?.queryRows ?? 0,

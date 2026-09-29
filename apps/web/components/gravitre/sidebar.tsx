@@ -29,7 +29,6 @@ import {
 } from "@/components/ui/tooltip"
 import { resolveSidebarNavIcon } from "@/components/gravitre/nodus-product/sidebar-nucleo"
 import { cycleNavFocus } from "@/lib/nav-rail-focus"
-
 const sectionColors = SIDEBAR_SECTION_COLORS
 
 function sidebarLinkTestId(name: string): string {
@@ -37,6 +36,19 @@ function sidebarLinkTestId(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
+}
+
+/** Job-based group names; the config keys stay stable for callers and tests. */
+const GROUP_LABELS: Record<string, string> = {
+  WORK: "Operate",
+  BUILD: "Build",
+  ACTIVITY: "Monitor",
+  INSIGHTS: "Know",
+  SETTINGS: "Configure",
+}
+
+function groupLabel(group: string): string {
+  return GROUP_LABELS[group] ?? group.charAt(0).toUpperCase() + group.slice(1).toLowerCase()
 }
 
 interface SidebarProps {
@@ -155,8 +167,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
         data-testid="nav-rail-b"
         data-nav-expanded={navExpanded ? "true" : "false"}
         className={cn(
-          // Nodus Phase 8: gray rail, white content canvas, divide borders
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-divide bg-[color:var(--g-background)] transition-all duration-300 ease-in-out",
+          // Graphite instrument frame: scoped dark tokens so nested controls theme with it.
+          "dark fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-[color:var(--g-frame-rule)] bg-[color:var(--g-frame)] text-foreground transition-[width,transform] duration-300 ease-in-out md:border-r-0",
           // Mobile: slide-out drawer (Nodus labeled rail ~220px)
           "w-[var(--np-sidebar)]",
           isOpen ? "translate-x-0" : "-translate-x-full",
@@ -167,7 +179,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
       >
         {/* Logo — full wordmark when expanded; mark-only on collapsed rail.
             Expand/collapse lives on the top-bar hamburger only (no sidebar caret). */}
-        <div className="flex h-12 shrink-0 items-center border-b border-divide px-3 md:px-2.5">
+        <div className="flex h-12 shrink-0 items-center px-3 sm:h-11 md:px-2.5">
           <Link
             href="/"
             className={cn(
@@ -211,14 +223,14 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                   <img
                     src="/images/gravitre-icon-black.png"
                     alt="Gravitre"
-                    className="h-8 w-8 object-contain"
+                    className="h-7 w-7 object-contain dark:invert"
                   />
                 </div>
                 <div className={cn("min-w-0", navExpanded ? "md:block" : "md:hidden")}>
                   <img
                     src="/images/gravitre-logo-black.png"
                     alt="Gravitre"
-                    className="h-9 w-auto max-w-[168px] object-contain object-left"
+                    className="h-7 w-auto max-w-[148px] object-contain object-left dark:invert"
                   />
                 </div>
               </>
@@ -235,7 +247,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
           </Button>
         </div>
 
-        {/* Navigation */}
+       {/* Navigation */}
         {/* `min-h-0` is required: without it a `flex-1` child refuses to shrink
             below its content height, so the nav overflows its track and squeezes
             the footer instead of scrolling internally. */}
@@ -250,22 +262,22 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
             const isCollapsed = collapsedSections.includes(group.group)
 
             return (
-              <div key={group.group} className="mb-0.5">
-                {/* Section Divider */}
-                {groupIndex > 0 && (
-                  <div className="mx-2 mb-2 mt-2 h-px bg-sidebar-border" />
-                )}
+              <div key={group.group} className={cn(groupIndex > 0 && "mt-3", !navExpanded && groupIndex > 0 && "md:mt-2")}>
+                {/* Rail: a hairline stands in for the group label */}
+                {groupIndex > 0 && !navExpanded ? (
+                  <div className="mx-3 mb-2 hidden h-px bg-[color:var(--g-frame-rule)] md:block" aria-hidden />
+                ) : null}
 
                 {/* Section Header — labels when nav expanded (desktop) or mobile drawer */}
                 <button
                   onClick={() => toggleSection(group.group)}
                   className={cn(
-                    "hidden w-full items-center justify-between px-2 py-1 group rounded-md hover:bg-sidebar-accent/30 transition-colors",
+                    "hidden w-full items-center justify-between px-2.5 pb-1 pt-0.5 group rounded-md transition-colors",
                     navExpanded ? "md:flex" : "md:hidden",
                   )}
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-colors group-hover:text-foreground">
-                    {group.group}
+                  <span className="text-[11px] font-medium tracking-[0.01em] text-muted-foreground transition-colors group-hover:text-foreground">
+                    {groupLabel(group.group)}
                   </span>
                   <Icon
                     name="caretDown"
@@ -276,9 +288,9 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                     )}
                   />
                 </button>
-                <div className="flex w-full items-center justify-between px-2 py-1 md:hidden">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    {group.group}
+                <div className="flex w-full items-center justify-between px-2.5 pb-1 md:hidden">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {groupLabel(group.group)}
                   </span>
                 </div>
 
@@ -301,23 +313,21 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                       const showTooltip = !isMobile && !navExpanded
                       const NavIcon = resolveSidebarNavIcon(item.icon)
                       const itemClassName = cn(
-                        "group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-all duration-150 px-2.5 py-1.5",
+                        "group relative flex items-center gap-2.5 rounded-[6px] text-[13px] font-medium transition-all duration-150 px-2.5 py-[7px]",
                         navExpanded
-                          ? "md:justify-start md:px-2.5 md:py-1.5"
-                          : "md:justify-center md:px-0 md:py-2.5",
+                          ? "md:justify-start md:px-2.5 md:py-[7px]"
+                          : "md:mx-auto md:h-10 md:w-10 md:justify-center md:px-0 md:py-0",
                         lockedFullSeat
                           ? "cursor-not-allowed text-muted-foreground/50"
                           : isActive
                             ? cn(
                                 colors.activeBg,
-                                "text-foreground",
-                                navExpanded && "md:border-l-2 md:-ml-px md:pl-[9px]",
-                                colors.activeBorder,
+                                "font-semibold text-foreground",
+                                // Brand tick marks the one active destination.
+                                "before:absolute before:left-[-6px] before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[color:var(--g-brand)]",
+                                !navExpanded && "md:before:left-[-9px]",
                               )
-                            : cn(
-                                "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                                navExpanded && "md:border-l-2 md:border-l-transparent md:-ml-px md:pl-[9px]",
-                              ),
+                            : "text-muted-foreground hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground",
                       )
                       const inner = (
                                 <>
@@ -355,11 +365,11 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                                 {item.badge && (
                                   <span
                                     className={cn(
-                                      "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                                      "rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium",
                                       navExpanded ? "md:inline" : "md:hidden",
                                       isActive && !lockedFullSeat
-                                        ? "bg-primary/15 text-primary ring-1 ring-primary/20"
-                                        : "bg-muted/60 text-muted-foreground/70",
+                                        ? "bg-[color:var(--g-emerald-soft)] text-[color:var(--g-emerald-bright)]"
+                                        : "bg-white/[0.08] text-muted-foreground",
                                     )}
                                   >
                                     {item.badge}
@@ -379,6 +389,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                               <Link
                                 href={item.href}
                                 data-testid={`sidebar-link-${sidebarLinkTestId(item.name)}`}
+                                aria-label={navExpanded ? undefined : item.name}
                                 onClick={onClose}
                                 className={itemClassName}
                               >
@@ -417,17 +428,8 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
         </nav>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-divide bg-[color:var(--g-background)] px-2 py-2.5 md:px-2">
-          <div className={cn("flex items-center justify-between", navExpanded ? "md:justify-between" : "md:justify-center")}>
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand shadow-aceternity">
-                <Icon name="shield" size="xs" className="text-primary-foreground" />
-              </div>
-              <div className={cn("flex flex-col", navExpanded ? "md:flex" : "md:hidden")}>
-                <span className="text-[11px] font-medium text-foreground">Gravitre</span>
-                <span className="text-[9px] text-muted-foreground/60">v1.2.0</span>
-              </div>
-            </div>
+        <div className="hidden shrink-0 border-t border-[color:var(--g-frame-rule)] px-2 py-2 md:block">
+          <div className={cn("flex items-center", navExpanded ? "justify-end" : "justify-center")}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

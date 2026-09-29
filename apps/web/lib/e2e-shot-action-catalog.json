@@ -1,0 +1,1508 @@
+{
+  "vendors": [
+    {
+      "vendor": "hubspot",
+      "displayName": "HubSpot",
+      "category": "CRM / Marketing",
+      "apiDocsUrl": "https://developers.hubspot.com/docs/api/overview",
+      "shipped": true,
+      "integrationClass": "OPEN_API",
+      "sourceActionDestination": {
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      "toolKnowledgePackId": "pack.tool.hubspot",
+      "mcpPreference": {
+        "vendor": "hubspot",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      },
+      "tiers": {
+        "v1": {
+          "label": "Read",
+          "description": "List, get, and search \u2014 safe read-only API operations.",
+          "actions": [
+            {
+              "id": "contacts.get",
+              "tool": "hubspot.contacts.get",
+              "name": "Get contact",
+              "description": "Get contact via hubspot API. Use when you need to get contact via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:contacts:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "contacts.search",
+              "tool": "hubspot.contacts.search",
+              "name": "Search contacts",
+              "description": "Search contacts via hubspot API. Use when you need to search contacts via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:contacts:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "deals.get",
+              "tool": "hubspot.deals.get",
+              "name": "Get deal",
+              "description": "Get deal via hubspot API. Use when you need to get deal via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:deals:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "deals.search",
+              "tool": "hubspot.deals.search",
+              "name": "Search deals",
+              "description": "Search deals via hubspot API. Use when you need to search deals via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:deals:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "deals.list",
+              "tool": "hubspot.deals.list",
+              "name": "List deals",
+              "description": "List deals via hubspot API. Use when you need to list deals via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:deals:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "companies.search",
+              "tool": "hubspot.companies.search",
+              "name": "Search companies",
+              "description": "Search companies via hubspot API. Use when you need to search companies via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:companies:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "companies.get",
+              "tool": "hubspot.companies.get",
+              "name": "Get company",
+              "description": "Get company via hubspot API. Use when you need to get company via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:companies:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tickets.search",
+              "tool": "hubspot.tickets.search",
+              "name": "Search tickets",
+              "description": "Search tickets via hubspot API. Use when you need to search tickets via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:tickets:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tickets.get",
+              "tool": "hubspot.tickets.get",
+              "name": "Get ticket",
+              "description": "Get ticket via hubspot API. Use when you need to get ticket via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:tickets:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "owners.list",
+              "tool": "hubspot.owners.list",
+              "name": "List owners",
+              "description": "List owners via hubspot API. Use when you need to list owners via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:owners:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "pipelines.list",
+              "tool": "hubspot.pipelines.list",
+              "name": "List deal pipelines",
+              "description": "List deal pipelines via hubspot API. Use when you need to list deal pipelines via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:pipelines:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "contacts.list",
+              "tool": "hubspot.contacts.list",
+              "name": "List recent contacts",
+              "description": "List recent contacts via hubspot API. Use when you need to list recent contacts via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:contacts:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "campaigns.list",
+              "tool": "hubspot.campaigns.list",
+              "name": "List marketing emails/campaigns",
+              "description": "List marketing emails/campaigns via hubspot API. Use when you need to list marketing emails/campaigns via hubspot.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "hubspot:marketing-email:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v2": {
+          "label": "Write",
+          "description": "Create and update records \u2014 mutating operations, often approval-gated.",
+          "actions": [
+            {
+              "id": "contacts.create",
+              "tool": "hubspot.contacts.create",
+              "name": "Create contact",
+              "description": "Create contact via hubspot API. Use when you need to create contact via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:contacts:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "contacts.update",
+              "tool": "hubspot.contacts.update",
+              "name": "Update contact",
+              "description": "Update contact via hubspot API. Use when you need to update contact via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:contacts:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "campaigns.update",
+              "tool": "hubspot.campaigns.update",
+              "name": "Update marketing email/campaign",
+              "description": "Update marketing email/campaign via hubspot API. Use when you need to update marketing email/campaign via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:marketing-email:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "contacts.delete",
+              "tool": "hubspot.contacts.delete",
+              "name": "Delete contact",
+              "description": "Delete contact via hubspot API. Use when you need to delete contact via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:contacts:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "deals.create",
+              "tool": "hubspot.deals.create",
+              "name": "Create deal",
+              "description": "Create deal via hubspot API. Use when you need to create deal via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:deals:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "deals.update",
+              "tool": "hubspot.deals.update",
+              "name": "Update deal",
+              "description": "Update deal via hubspot API. Use when you need to update deal via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:deals:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "deals.delete",
+              "tool": "hubspot.deals.delete",
+              "name": "Delete deal",
+              "description": "Delete deal via hubspot API. Use when you need to delete deal via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:deals:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "notes.create",
+              "tool": "hubspot.notes.create",
+              "name": "Create note",
+              "description": "Create note via hubspot API. Use when you need to create note via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:notes:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "notes.delete",
+              "tool": "hubspot.notes.delete",
+              "name": "Delete note",
+              "description": "Delete note via hubspot API. Use when you need to delete note via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:notes:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "associations.create",
+              "tool": "hubspot.associations.create",
+              "name": "Associate two CRM objects",
+              "description": "Associate two CRM objects via hubspot API. Use when you need to associate two crm objects via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:associations:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "companies.create",
+              "tool": "hubspot.companies.create",
+              "name": "Create company",
+              "description": "Create company via hubspot API. Use when you need to create company via hubspot.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "hubspot:companies:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v3": {
+          "label": "Advanced",
+          "description": "Search, batch, enroll, transition \u2014 orchestration and cross-object flows.",
+          "actions": [
+            {
+              "id": "deals.update_stage",
+              "tool": "hubspot.deals.update_stage",
+              "name": "Update deal stage",
+              "description": "Update deal stage via hubspot API. Use when you need to update deal stage via hubspot.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "hubspot:deals:write",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "sequences.enroll",
+              "tool": "hubspot.sequences.enroll",
+              "name": "Enroll in sequence",
+              "description": "Enroll in sequence via hubspot API. Use when you need to enroll in sequence via hubspot.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "hubspot:sequences:enroll",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "lists.get",
+              "tool": "hubspot.lists.get",
+              "name": "Get list membership",
+              "description": "Read a HubSpot list and its membership size/members. Use when verifying list population after add_contact, or when you need the current member count for a known list_id.",
+              "tier": "v3",
+              "kind": "read",
+              "scopes": [
+                "hubspot:lists:read",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "lists.add_contact",
+              "tool": "hubspot.lists.add_contact",
+              "name": "Add contact to list",
+              "description": "Add contact to list via hubspot API. Use when you need to add contact to list via hubspot.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "hubspot:lists:write",
+                "hubspot:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "lists.create",
+              "tool": "hubspot.lists.create",
+              "name": "Create list",
+              "description": "Create a HubSpot contact list. Defaults: processing_type=MANUAL (static), object_type_id=0-1 (contacts). Do not send Salesforce fields. DYNAMIC lists need filter rules this action does not accept \u2014 use MANUAL. Use when you need to create a HubSpot list.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "hubspot:lists:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tickets.create",
+              "tool": "hubspot.tickets.create",
+              "name": "Create support ticket",
+              "description": "Create support ticket via hubspot API. Use when you need to create support ticket via hubspot.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "hubspot:tickets:write",
+                "hubspot:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        }
+      },
+      "readTools": [
+        "hubspot.contacts.get",
+        "hubspot.contacts.search",
+        "hubspot.deals.get",
+        "hubspot.deals.search",
+        "hubspot.deals.list",
+        "hubspot.companies.search",
+        "hubspot.companies.get",
+        "hubspot.tickets.search",
+        "hubspot.tickets.get",
+        "hubspot.owners.list",
+        "hubspot.pipelines.list",
+        "hubspot.contacts.list",
+        "hubspot.campaigns.list"
+      ]
+    },
+    {
+      "vendor": "salesforce",
+      "displayName": "Salesforce",
+      "category": "CRM / Marketing",
+      "apiDocsUrl": "https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/",
+      "shipped": true,
+      "integrationClass": "OPEN_API",
+      "sourceActionDestination": {
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      "toolKnowledgePackId": "pack.tool.salesforce",
+      "mcpPreference": {
+        "vendor": "salesforce",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      },
+      "tiers": {
+        "v1": {
+          "label": "Read",
+          "description": "List, get, and search \u2014 safe read-only API operations.",
+          "actions": [
+            {
+              "id": "leads.get",
+              "tool": "salesforce.leads.get",
+              "name": "Get lead",
+              "description": "Get lead via salesforce API. Use when you need to get lead via salesforce.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "salesforce:leads:read",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "leads.search",
+              "tool": "salesforce.leads.search",
+              "name": "Search leads",
+              "description": "Search leads via salesforce API. Use when you need to search leads via salesforce.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "salesforce:leads:read",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "contacts.search",
+              "tool": "salesforce.contacts.search",
+              "name": "Search contacts when the user asks for Salesforce contacts (not leads)",
+              "description": "Search contacts when the user asks for Salesforce contacts (not leads) via salesforce API. Use when you need to search contacts when the user asks for salesforce contacts (not leads) via salesforce.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "salesforce:contacts:read",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "accounts.get",
+              "tool": "salesforce.accounts.get",
+              "name": "Get account",
+              "description": "Get account via salesforce API. Use when you need to get account via salesforce.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "salesforce:accounts:read",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "opportunities.get",
+              "tool": "salesforce.opportunities.get",
+              "name": "Get opportunity",
+              "description": "Get opportunity via salesforce API. Use when you need to get opportunity via salesforce.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "salesforce:opportunities:read",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "query",
+              "tool": "salesforce.query",
+              "name": "Run SOQL query",
+              "description": "Run SOQL query via salesforce API. Use when you need to run soql query via salesforce.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "salesforce:query:read",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v2": {
+          "label": "Write",
+          "description": "Create and update records \u2014 mutating operations, often approval-gated.",
+          "actions": [
+            {
+              "id": "leads.create",
+              "tool": "salesforce.leads.create",
+              "name": "Create lead",
+              "description": "Create lead via salesforce API. Use when you need to create lead via salesforce.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "salesforce:leads:write",
+                "salesforce:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "leads.update",
+              "tool": "salesforce.leads.update",
+              "name": "Update lead",
+              "description": "Update lead via salesforce API. Use when you need to update lead via salesforce.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "salesforce:leads:write",
+                "salesforce:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "accounts.create",
+              "tool": "salesforce.accounts.create",
+              "name": "Create account",
+              "description": "Create account via salesforce API. Use when you need to create account via salesforce.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "salesforce:accounts:write",
+                "salesforce:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "opportunities.create",
+              "tool": "salesforce.opportunities.create",
+              "name": "Create opportunity",
+              "description": "Create opportunity via salesforce API. Use when you need to create opportunity via salesforce.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "salesforce:opportunities:write",
+                "salesforce:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tasks.create",
+              "tool": "salesforce.tasks.create",
+              "name": "Create task",
+              "description": "Create task via salesforce API. Use when you need to create task via salesforce.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "salesforce:tasks:write",
+                "salesforce:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v3": {
+          "label": "Advanced",
+          "description": "Search, batch, enroll, transition \u2014 orchestration and cross-object flows.",
+          "actions": [
+            {
+              "id": "opportunities.update_stage",
+              "tool": "salesforce.opportunities.update_stage",
+              "name": "Update opportunity stage",
+              "description": "Update opportunity stage via salesforce API. Use when you need to update opportunity stage via salesforce.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "salesforce:opportunities:write",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "accounts.update",
+              "tool": "salesforce.accounts.update",
+              "name": "Update account",
+              "description": "Update account via salesforce API. Use when you need to update account via salesforce.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "salesforce:accounts:write",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "opportunities.update",
+              "tool": "salesforce.opportunities.update",
+              "name": "Update opportunity",
+              "description": "Update opportunity via salesforce API. Use when you need to update opportunity via salesforce.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "salesforce:opportunities:write",
+                "salesforce:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        }
+      },
+      "readTools": [
+        "salesforce.leads.get",
+        "salesforce.leads.search",
+        "salesforce.contacts.search",
+        "salesforce.accounts.get",
+        "salesforce.opportunities.get",
+        "salesforce.query"
+      ]
+    },
+    {
+      "vendor": "zendesk",
+      "displayName": "Zendesk",
+      "category": "Customer Support",
+      "apiDocsUrl": "https://developer.zendesk.com/api-reference/",
+      "shipped": true,
+      "integrationClass": "OPEN_API",
+      "sourceActionDestination": {
+        "source": true,
+        "action": true,
+        "destination": true,
+        "reason": "connector has business-record mutating actions and is approved as a system-of-record destination"
+      },
+      "toolKnowledgePackId": "pack.tool.zendesk",
+      "mcpPreference": {
+        "vendor": "zendesk",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      },
+      "tiers": {
+        "v1": {
+          "label": "Read",
+          "description": "List, get, and search \u2014 safe read-only API operations.",
+          "actions": [
+            {
+              "id": "tickets.get",
+              "tool": "zendesk.tickets.get",
+              "name": "Get ticket",
+              "description": "Get ticket via zendesk API. Use when you need to get ticket via zendesk.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "zendesk:tickets:read",
+                "zendesk:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tickets.list",
+              "tool": "zendesk.tickets.list",
+              "name": "List tickets",
+              "description": "List tickets via zendesk API. Use when you need to list tickets via zendesk.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "zendesk:tickets:read",
+                "zendesk:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "users.get",
+              "tool": "zendesk.users.get",
+              "name": "Get user",
+              "description": "Get user via zendesk API. Use when you need to get user via zendesk.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "zendesk:users:read",
+                "zendesk:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v2": {
+          "label": "Write",
+          "description": "Create and update records \u2014 mutating operations, often approval-gated.",
+          "actions": [
+            {
+              "id": "tickets.create",
+              "tool": "zendesk.tickets.create",
+              "name": "Create ticket",
+              "description": "Create ticket via zendesk API. Use when you need to create ticket via zendesk.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "zendesk:tickets:write",
+                "zendesk:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tickets.update",
+              "tool": "zendesk.tickets.update",
+              "name": "Update ticket",
+              "description": "Update ticket via zendesk API. Use when you need to update ticket via zendesk.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "zendesk:tickets:write",
+                "zendesk:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tickets.close",
+              "tool": "zendesk.tickets.close",
+              "name": "Close ticket",
+              "description": "Close ticket via zendesk API. Use when you need to close ticket via zendesk.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "zendesk:tickets:write",
+                "zendesk:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "tickets.add_tags",
+              "tool": "zendesk.tickets.add_tags",
+              "name": "Add ticket tags",
+              "description": "Add ticket tags via zendesk API. Use when you need to add ticket tags via zendesk.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "zendesk:tickets:write",
+                "zendesk:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v3": {
+          "label": "Advanced",
+          "description": "Search, batch, enroll, transition \u2014 orchestration and cross-object flows.",
+          "actions": [
+            {
+              "id": "tickets.merge",
+              "tool": "zendesk.tickets.merge",
+              "name": "Merge tickets",
+              "description": "Merge tickets via zendesk API. Use when you need to merge tickets via zendesk.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "zendesk:tickets:write",
+                "zendesk:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "macros.apply",
+              "tool": "zendesk.macros.apply",
+              "name": "Apply macro",
+              "description": "Apply macro via zendesk API. Use when you need to apply macro via zendesk.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "zendesk:macros:write",
+                "zendesk:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "side_conversations.create",
+              "tool": "zendesk.side_conversations.create",
+              "name": "Create side conversation",
+              "description": "Create side conversation via zendesk API. Use when you need to create side conversation via zendesk.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "zendesk:tickets:write",
+                "zendesk:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        }
+      },
+      "readTools": [
+        "zendesk.tickets.get",
+        "zendesk.tickets.list",
+        "zendesk.users.get"
+      ]
+    },
+    {
+      "vendor": "slack",
+      "displayName": "Slack",
+      "category": "Communication",
+      "apiDocsUrl": "https://api.slack.com/methods",
+      "shipped": true,
+      "integrationClass": "OPEN_API",
+      "sourceActionDestination": {
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      "toolKnowledgePackId": "pack.tool.slack",
+      "mcpPreference": {
+        "vendor": "slack",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      },
+      "tiers": {
+        "v1": {
+          "label": "Read",
+          "description": "List, get, and search \u2014 safe read-only API operations.",
+          "actions": [
+            {
+              "id": "conversations.list",
+              "tool": "slack.conversations.list",
+              "name": "List channels",
+              "description": "List channels via slack API. Use when you need to list channels via slack.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "slack:channels:read",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "conversations.history",
+              "tool": "slack.conversations.history",
+              "name": "Read channel messages",
+              "description": "Read channel messages via slack API. Use when you need to read channel messages via slack.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "slack:messages:read",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "users.list",
+              "tool": "slack.users.list",
+              "name": "List workspace users",
+              "description": "List workspace users via slack API. Use when you need to list workspace users via slack.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "slack:users:read",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "users.info",
+              "tool": "slack.users.info",
+              "name": "Get user profile",
+              "description": "Get user profile via slack API. Use when you need to get user profile via slack.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "slack:users:read",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "search_files",
+              "tool": "slack.search_files",
+              "name": "Search shared files",
+              "description": "Search shared files via slack API. Use when you need to search shared files via slack.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "slack:files:read",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "get_file_metadata",
+              "tool": "slack.get_file_metadata",
+              "name": "Get shared file metadata",
+              "description": "Get shared file metadata via slack API. Use when you need to get shared file metadata via slack.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "slack:files:read",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "get_file_content",
+              "tool": "slack.get_file_content",
+              "name": "Read shared file content",
+              "description": "Read shared file content via slack API. Use when you need to read shared file content via slack.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "slack:files:read",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v2": {
+          "label": "Write",
+          "description": "Create and update records \u2014 mutating operations, often approval-gated.",
+          "actions": [
+            {
+              "id": "post_message",
+              "tool": "slack.post_message",
+              "name": "Post message",
+              "description": "Post message via slack API. Use when you need to post message via slack.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "slack:messages:write",
+                "slack:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "conversations.create",
+              "tool": "slack.conversations.create",
+              "name": "Create channel",
+              "description": "Create channel via slack API. Use when you need to create channel via slack.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "slack:channels:write",
+                "slack:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "chat.update",
+              "tool": "slack.chat.update",
+              "name": "Update message",
+              "description": "Update message via slack API. Use when you need to update message via slack.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "slack:messages:write",
+                "slack:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "conversations.join",
+              "tool": "slack.conversations.join",
+              "name": "Join a public channel",
+              "description": "Join a public channel via slack API. Use when you need to join a public channel via slack.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "slack:channels:join",
+                "slack:*"
+              ],
+              "destructive": true,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v3": {
+          "label": "Advanced",
+          "description": "Search, batch, enroll, transition \u2014 orchestration and cross-object flows.",
+          "actions": [
+            {
+              "id": "files.upload",
+              "tool": "slack.files.upload",
+              "name": "Upload file",
+              "description": "Upload file via slack API. Use when you need to upload file via slack.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "slack:files:write",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "reactions.add",
+              "tool": "slack.reactions.add",
+              "name": "Add reaction",
+              "description": "Add reaction via slack API. Use when you need to add reaction via slack.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "slack:reactions:write",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "workflows.trigger",
+              "tool": "slack.workflows.trigger",
+              "name": "Trigger workflow",
+              "description": "Trigger workflow via slack API. Use when you need to trigger workflow via slack.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "slack:workflows:write",
+                "slack:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        }
+      },
+      "readTools": [
+        "slack.conversations.list",
+        "slack.conversations.history",
+        "slack.users.list",
+        "slack.users.info",
+        "slack.search_files",
+        "slack.get_file_metadata",
+        "slack.get_file_content"
+      ]
+    },
+    {
+      "vendor": "google_ads",
+      "displayName": "Google Ads",
+      "category": "CRM / Marketing",
+      "apiDocsUrl": "https://developers.google.com/google-ads/api/docs/start",
+      "shipped": true,
+      "integrationClass": "OPEN_API",
+      "sourceActionDestination": {
+        "source": true,
+        "action": true,
+        "destination": false,
+        "reason": "connector can execute actions but is currently treated as an operational surface, not final system of record"
+      },
+      "toolKnowledgePackId": null,
+      "mcpPreference": {
+        "vendor": "google_ads",
+        "official_mcp_known": false,
+        "prefer": "n/a",
+        "reason": "No Wave-1 official MCP classification for this vendor."
+      },
+      "tiers": {
+        "v1": {
+          "label": "Read",
+          "description": "List, get, and search \u2014 safe read-only API operations.",
+          "actions": [
+            {
+              "id": "campaigns.list",
+              "tool": "google_ads.campaigns.list",
+              "name": "List Google Ads campaigns",
+              "description": "List Google Ads campaigns via google_ads API. Use when you need to list google ads campaigns via google_ads.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "google_ads:read",
+                "google_ads:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "campaigns.get",
+              "tool": "google_ads.campaigns.get",
+              "name": "Get Google Ads campaign",
+              "description": "Get Google Ads campaign via google_ads API. Use when you need to get google ads campaign via google_ads.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "google_ads:read",
+                "google_ads:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "ad_groups.list",
+              "tool": "google_ads.ad_groups.list",
+              "name": "List Google Ads ad groups",
+              "description": "List Google Ads ad groups via google_ads API. Use when you need to list google ads ad groups via google_ads.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "google_ads:read",
+                "google_ads:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "reports.performance",
+              "tool": "google_ads.reports.performance",
+              "name": "Google Ads performance report",
+              "description": "Google Ads performance report via google_ads API. Use when you need to google ads performance report via google_ads.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "google_ads:read",
+                "google_ads:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "keywords.list",
+              "tool": "google_ads.keywords.list",
+              "name": "List Google Ads keywords",
+              "description": "List Google Ads keywords via google_ads API. Use when you need to list google ads keywords via google_ads.",
+              "tier": "v1",
+              "kind": "read",
+              "scopes": [
+                "google_ads:read",
+                "google_ads:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v2": {
+          "label": "Write",
+          "description": "Create and update records \u2014 mutating operations, often approval-gated.",
+          "actions": [
+            {
+              "id": "campaigns.update_budget",
+              "tool": "google_ads.campaigns.update_budget",
+              "name": "Update campaign daily budget",
+              "description": "Update campaign daily budget via google_ads API. Use when you need to update campaign daily budget via google_ads.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "google_ads:write",
+                "google_ads:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "campaigns.pause",
+              "tool": "google_ads.campaigns.pause",
+              "name": "Pause Google Ads campaign",
+              "description": "Pause Google Ads campaign via google_ads API. Use when you need to pause google ads campaign via google_ads.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "google_ads:write",
+                "google_ads:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "campaigns.resume",
+              "tool": "google_ads.campaigns.resume",
+              "name": "Resume Google Ads campaign",
+              "description": "Resume Google Ads campaign via google_ads API. Use when you need to resume google ads campaign via google_ads.",
+              "tier": "v2",
+              "kind": "write",
+              "scopes": [
+                "google_ads:write",
+                "google_ads:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        },
+        "v3": {
+          "label": "Advanced",
+          "description": "Search, batch, enroll, transition \u2014 orchestration and cross-object flows.",
+          "actions": [
+            {
+              "id": "accounts.list",
+              "tool": "google_ads.accounts.list",
+              "name": "List accessible Google Ads customer accounts",
+              "description": "List accessible Google Ads customer accounts via google_ads API. Use when you need to list accessible google ads customer accounts via google_ads.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "google_ads:read",
+                "google_ads:*"
+              ],
+              "destructive": false,
+              "requiresApproval": false,
+              "implemented": true,
+              "chatExecutable": true
+            },
+            {
+              "id": "structure.create",
+              "tool": "google_ads.structure.create",
+              "name": "Create Google Ads Search campaign structure",
+              "description": "Create Google Ads Search campaign structure via google_ads API. Use when you need to create google ads search campaign structure via google_ads.",
+              "tier": "v3",
+              "kind": "advanced",
+              "scopes": [
+                "google_ads:write",
+                "google_ads:*"
+              ],
+              "destructive": true,
+              "requiresApproval": true,
+              "implemented": true,
+              "chatExecutable": true
+            }
+          ]
+        }
+      },
+      "readTools": [
+        "google_ads.campaigns.list",
+        "google_ads.campaigns.get",
+        "google_ads.ad_groups.list",
+        "google_ads.reports.performance",
+        "google_ads.keywords.list"
+      ]
+    }
+  ],
+  "vendorCount": 5,
+  "tierLabels": {
+    "v1": "Read",
+    "v2": "Write",
+    "v3": "Advanced",
+    "v4": "Orchestration"
+  }
+}

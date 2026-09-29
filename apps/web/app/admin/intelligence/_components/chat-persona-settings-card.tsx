@@ -102,7 +102,7 @@ export function ChatPersonaSettingsCard({ enabled }: { enabled: boolean }) {
         </div>
 
         <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Available personas</p>
+          <p className="text-xs font-medium text-muted-foreground">Available personas</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {personaOptions.map((persona) => (
               <li

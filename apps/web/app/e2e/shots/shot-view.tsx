@@ -5,8 +5,10 @@ import AgentsPage from "@/app/agents/page"
 // results, not conversational answers" — the wrong surface for an AI section.
 import AiPage from "@/app/ai/page"
 import ApprovalsPage from "@/app/approvals/page"
+import AssignmentsPage from "@/app/assignments/page"
 import ConnectorsPage from "@/app/connectors/page"
 import HomePage from "@/app/home/page"
+import IntelligencePage from "@/app/intelligence/page"
 import WorkflowsPage from "@/app/workflows/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
@@ -26,8 +28,10 @@ export const SHOT_SURFACES = {
   agents: AgentsPage,
   ai: AiPage,
   approvals: ApprovalsPage,
+  assignments: AssignmentsPage,
   connectors: ConnectorsPage,
   home: HomePage,
+  "intelligence-field": IntelligencePage,
   workflows: WorkflowsPage,
   proof: AiWorkspaceProofPage,
   "agent-chat": AgentChatProofPage,

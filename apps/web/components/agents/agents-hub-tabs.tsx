@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { TYPE } from "@/lib/design-system"
+import { HUB_TABS } from "@/lib/design-system"
 
 export type AgentsHubTab = "roster" | "multi-agent" | "training"
 
@@ -21,13 +21,23 @@ export function resolveAgentsHubTab(pathname: string, tabParam: string | null): 
   return "roster"
 }
 
-export function AgentsHubTabs({ active }: { active?: AgentsHubTab }) {
+export function AgentsHubTabs({
+  active,
+  inHeader = false,
+}: {
+  active?: AgentsHubTab
+  /** Inside a page header that owns the bottom border. */
+  inHeader?: boolean
+}) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const current = active ?? resolveAgentsHubTab(pathname, searchParams.get("tab"))
 
   return (
-    <nav aria-label="Agents hub" className="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <nav
+      aria-label="Agents hub"
+      className={cn(HUB_TABS.nav, !inHeader && "mb-0 border-b border-[color:var(--g-border-subtle)]")}
+    >
       {LINKS.map((link) => {
         const isActive = current === link.id
         return (
@@ -35,13 +45,7 @@ export function AgentsHubTabs({ active }: { active?: AgentsHubTab }) {
             key={link.id}
             href={link.href}
             aria-current={isActive ? "page" : undefined}
-            className={cn(
-              TYPE.meta,
-              "underline-offset-4",
-              isActive
-                ? "text-[color:var(--g-text-primary)] underline"
-                : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-            )}
+            className={cn(HUB_TABS.link, isActive ? HUB_TABS.active : HUB_TABS.idle)}
           >
             {link.label}
           </Link>

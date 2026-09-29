@@ -155,26 +155,6 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
   )
 }
 
-// Generate mock connector dependencies based on nodes
-function getConnectorDependencies(nodes: WorkflowNode[]): ConnectorDependency[] {
-  const connectorNodes = nodes.filter(n => n.type === "connector" || n.type === "source")
-  const vendorMap: Record<string, ConnectorDependency> = {
-    "Salesforce": { name: "Salesforce", vendor: "salesforce", status: "connected", lastSync: "2 min ago" },
-    "PostgreSQL": { name: "PostgreSQL", vendor: "postgresql", status: "connected", lastSync: "Just now" },
-    "Slack": { name: "Slack", vendor: "slack", status: "connected", lastSync: "5 min ago" },
-    "HubSpot": { name: "HubSpot", vendor: "hubspot", status: "disconnected" },
-    "Stripe": { name: "Stripe", vendor: "stripe", status: "connected", lastSync: "1 min ago" },
-    "SendGrid": { name: "SendGrid", vendor: "sendgrid", status: "connected", lastSync: "10 min ago" },
-    "S3 Bucket": { name: "AWS S3", vendor: "aws", status: "connected", lastSync: "Just now" },
-    "Snowflake": { name: "Snowflake", vendor: "snowflake", status: "connected", lastSync: "3 min ago" },
-    "QuickBooks": { name: "QuickBooks", vendor: "quickbooks", status: "error" },
-  }
-  
-  return connectorNodes
-    .map(n => vendorMap[n.name])
-    .filter((dep): dep is ConnectorDependency => !!dep)
-}
-
 export function WorkflowCard({
   id,
   name,
@@ -197,8 +177,8 @@ export function WorkflowCard({
 }: WorkflowCardProps) {
   const statusConf = statusConfig[status]
   
-  // Use provided dependencies or generate from nodes
-  const dependencies = connectorDependencies || getConnectorDependencies(nodes)
+  // Connection state must come from the caller's real connector records; never derived from node names.
+  const dependencies = connectorDependencies ?? []
   const hasDisconnected = dependencies.some(d => d.status === "disconnected" || d.status === "error")
   // G1: connector + invoke_tool action counts. Each connector/source node compiles
   // to one vendor invoke_tool action, so action count tracks those node types.
@@ -249,13 +229,13 @@ export function WorkflowCard({
 
             <div className="flex flex-col items-end gap-1">
               {fromMarketplace ? (
-                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                   Marketplace
                 </span>
               ) : null}
               {/* Environment badge */}
               <div className={`
-                flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide
+                flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium
                 ${environment === "production" 
                   ? "bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)] ring-1 ring-[color:var(--g-emerald)]/20" 
                   : "bg-[color:var(--g-approval)]/10 text-[color:var(--g-approval)] ring-1 ring-[color:var(--g-approval)]/20"
@@ -265,7 +245,7 @@ export function WorkflowCard({
                   name={environment === "production" ? "production" : "staging"} 
                   size="xs" 
                 />
-                {environment === "production" ? "PROD" : "STG"}
+                {environment === "production" ? "Production" : "Staging"}
               </div>
             </div>
           </div>
@@ -286,7 +266,7 @@ export function WorkflowCard({
           {/* Connected Systems Mini-Icons */}
           {dependencies.length > 0 && !hasDisconnected && (
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Systems:</span>
+              <span className="text-xs text-muted-foreground font-medium">Systems:</span>
               <div className="flex items-center gap-1">
                 {dependencies.slice(0, 4).map((dep, i) => (
                   <Tooltip key={i}>
@@ -323,7 +303,7 @@ export function WorkflowCard({
             <div className="flex items-center gap-4">
               {/* Success rate */}
               <div className="flex items-center gap-1.5">
-                <Icon name="chartLine" size="xs" className="text-emerald-400" />
+                <Icon name="chartLine" size="xs" className="text-emerald-700 dark:text-emerald-400" />
                 <span className="text-xs text-muted-foreground">{successRate}</span>
               </div>
               

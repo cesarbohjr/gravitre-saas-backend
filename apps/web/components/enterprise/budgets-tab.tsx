@@ -184,7 +184,7 @@ function AgentBudgetRow({
       <td className="py-3 pr-4">
         <div className="flex flex-col gap-1">
           <span className="font-medium text-foreground">{agent.name}</span>
-          <Badge variant="outline" className="w-fit text-[10px] uppercase tracking-wide">
+          <Badge variant="outline" className="w-fit text-xs font-medium">
             {agent.executionMode.replace(/_/g, " ")}
           </Badge>
         </div>
@@ -297,7 +297,7 @@ export function BudgetsTab({ isAdmin }: { isAdmin: boolean }) {
             <AdaptiveDataView className="border-0">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr className="border-b border-border text-xs text-muted-foreground font-medium">
                     <th className="pb-2 pr-4 font-medium">Agent</th>
                     <th className="pb-2 pr-4 font-medium">Actions</th>
                     <th className="pb-2 pr-4 font-medium">Tokens</th>

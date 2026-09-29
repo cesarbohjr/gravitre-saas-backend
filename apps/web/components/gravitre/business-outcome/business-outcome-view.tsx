@@ -212,7 +212,7 @@ function Section({
   if (!collapsible) {
     return (
       <div className="mt-3">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+        <p className="text-xs font-medium text-muted-foreground">{title}</p>
         <div className="mt-1 text-xs text-foreground/90">{children}</div>
       </div>
     )
@@ -228,7 +228,7 @@ function Section({
           )}
           aria-hidden
         />
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground group-hover:text-foreground">
+        <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
           {title}
         </span>
         {meta ? (
@@ -311,7 +311,7 @@ export function BusinessOutcomeView({
             <p className="min-w-0 break-words font-medium text-foreground">{outcome.title || "Outcome"}</p>
             <span
               className={cn(
-                "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
                 style.pillClass,
               )}
             >

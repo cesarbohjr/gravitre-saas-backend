@@ -220,7 +220,7 @@ export function WhyGravitrePanel({
                     )}
                   >
                     <span className="block font-medium">{item.title ?? "Priority"}</span>
-                    <span className={cn("text-[10px] uppercase", priorityBandTone(item.priorityBand))}>
+                    <span className={cn("text-xs font-medium", priorityBandTone(item.priorityBand))}>
                       {item.priorityScore != null ? `${Math.round(item.priorityScore)}/100` : "—"}
                     </span>
                   </button>

@@ -15,6 +15,7 @@ function normalizePath(url: string, origin: string): string {
 function attachDiagnostics(page: Page) {
   const httpErrors: string[] = []
   const consoleErrors: string[] = []
+  const resourceErrors: string[] = []
 
   const onResponse = (response: {
     url: () => string
@@ -25,6 +26,9 @@ function attachDiagnostics(page: Page) {
     const type = response.request().resourceType()
     if (type === "document" && status >= 400) {
       httpErrors.push(`${status} ${response.url()}`)
+    } else if ((type === "fetch" || type === "xhr") && status >= 400) {
+      // Browser "Failed to load resource" console lines omit the URL.
+      resourceErrors.push(`${status} ${response.url()}`)
     }
   }
   const onConsole = (message: { type: () => string; text: () => string }) => {
@@ -43,6 +47,7 @@ function attachDiagnostics(page: Page) {
     },
     httpErrors,
     consoleErrors,
+    resourceErrors,
   }
 }
 
@@ -71,7 +76,7 @@ async function mainContentText(page: Page): Promise<string> {
 }
 
 async function ensureSidebarReady(page: Page, timeout = 15_000) {
-  const sidebarNav = page.locator("aside nav")
+  const sidebarNav = page.locator('aside nav[aria-label="Primary"]')
   await sidebarNav.waitFor({ state: "visible", timeout })
   return sidebarNav
 }
@@ -188,7 +193,10 @@ export async function clickAppSidebarItem(options: {
     const finalUrl = page.url()
     const finalPath = normalizePath(finalUrl, origin)
     const finalHash = new URL(finalUrl).hash
-    const content = await mainContentText(page)
+    let content = await mainContentText(page)
+    if (content.length < minContentLength && (await modalAiShell(page).isVisible().catch(() => false))) {
+      content = ((await modalAiShell(page).innerText().catch(() => "")) ?? "").trim()
+    }
 
     let pass = true
     let reason: string | undefined
@@ -218,6 +226,9 @@ export async function clickAppSidebarItem(options: {
     if (noisyConsole.length > 0) {
       pass = false
       reason = `Console errors: ${noisyConsole.slice(0, 2).join(" | ")}`
+      if (diagnostics.resourceErrors.length > 0) {
+        reason += ` (failed requests: ${diagnostics.resourceErrors.slice(0, 4).join("; ")})`
+      }
     }
 
     return {
@@ -233,6 +244,11 @@ export async function clickAppSidebarItem(options: {
   } finally {
     diagnostics.detach()
   }
+}
+
+/** `/ai` renders the canonical workspace as a fullscreen modal dialog that covers the sidebar. */
+function modalAiShell(page: Page) {
+  return page.locator('[data-gravitre-ai-shell][aria-modal="true"]').first()
 }
 
 export async function crawlAppSidebarNavigation(options: {
@@ -252,6 +268,10 @@ export async function crawlAppSidebarNavigation(options: {
   await ensureSidebarReady(page, 120_000)
 
   for (const item of items) {
+    if (await modalAiShell(page).isVisible().catch(() => false)) {
+      await page.goto(seedPath, { waitUntil: "domcontentloaded" })
+      await ensureSidebarReady(page, 60_000)
+    }
     results.push(
       await clickAppSidebarItem({
         page,

@@ -121,7 +121,7 @@ export function CostTab() {
         <CardContent className="flex flex-col gap-1 p-6">
           <div className="flex items-center gap-2 text-muted-foreground">
             <DollarSign className="h-4 w-4" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider">
+            <span className="text-xs font-semibold">
               Month-to-date spend
             </span>
           </div>

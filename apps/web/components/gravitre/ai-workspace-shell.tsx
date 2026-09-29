@@ -75,7 +75,11 @@ export interface GravitreAIWorkspaceShellProps {
   onExitFullscreen: () => void
   /** Fully closes the floating workspace back down to the Helper bubble. */
   onClose: () => void
+  /** Docks to the right edge (Expanded only; the manifest decides visibility). */
+  onDock?: () => void
   titleAccessory?: ReactNode
+  /** Centre of the header — the Conversation / Work / Split switch. */
+  headerAccessory?: ReactNode
   children: ReactNode
 }
 
@@ -93,7 +97,9 @@ export function GravitreAIWorkspaceShell({
   onEnterFullscreen,
   onExitFullscreen,
   onClose,
+  onDock,
   titleAccessory,
+  headerAccessory,
   children,
 }: GravitreAIWorkspaceShellProps) {
   const isFullscreen = mode === "fullscreen"
@@ -143,18 +149,18 @@ export function GravitreAIWorkspaceShell({
       aria-modal={isFullscreen ? true : undefined}
       aria-label="Gravitre AI workspace"
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-divide px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
+      <div className="dark flex min-h-12 shrink-0 items-center justify-between border-b border-[color:var(--g-frame-rule)] bg-[color:var(--g-frame)] px-3 py-2 text-foreground">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] border border-[color:var(--g-frame-rule)] bg-white/[0.04] text-foreground">
             <NucleoChat width={NUCLEO_SIZE.default} height={NUCLEO_SIZE.default} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
+            <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-foreground">Gravitre AI</p>
             {titleAccessory}
           </div>
           <span
             className={cn(
-              "ml-1 hidden shrink-0 items-center gap-1 rounded-full bg-[color:var(--g-surface-2)] px-1.5 py-0.5 text-[10px] font-medium sm:flex",
+              "ml-1 hidden shrink-0 items-center gap-1.5 rounded-[3px] border border-[color:var(--g-frame-rule)] px-1.5 py-0.5 text-[11px] font-medium sm:flex",
               copy.tone,
             )}
           >
@@ -162,6 +168,9 @@ export function GravitreAIWorkspaceShell({
             {copy.label}
           </span>
         </div>
+        {headerAccessory ? (
+          <div className="mx-2 hidden min-w-0 flex-1 justify-center sm:flex">{headerAccessory}</div>
+        ) : null}
         <ChatWindowControls
           surface={isFullscreen ? "fullscreen" : "expanded"}
           handlers={{
@@ -169,6 +178,7 @@ export function GravitreAIWorkspaceShell({
             exitFullscreen: onExitFullscreen,
             collapseToFloat: onMinimizeToFloat,
             minimizeToHelper: onClose,
+            dock: onDock,
           }}
           leading={
             <>
@@ -211,7 +221,7 @@ export function GravitreAIWorkspaceShell({
           ConversationSidebar's own transition with an abrupt unmount.
         */}
         {leftPanel}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">{children}</div>
         {/*
           GravitreAIRightPanel is new (Phase 3) and has no pre-existing
           collapse contract to preserve, so a simple mount/unmount collapse

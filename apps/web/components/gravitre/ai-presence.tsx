@@ -95,7 +95,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
                 name="ai" 
                 size="lg" 
                 emphasis 
-                className={isProcessing || isListening ? "text-white" : "text-blue-400"} 
+                className={isProcessing || isListening ? "text-white" : "text-blue-600 dark:text-blue-400"} 
               />
             </motion.div>
 
@@ -136,7 +136,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
               <motion.span
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[9px] font-medium text-blue-400"
+                className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400"
               >
                 Working
               </motion.span>
@@ -163,7 +163,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex items-center gap-1.5 text-xs text-blue-400"
+                  className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400"
                 >
                   <Icon name="activity" size="xs" />
                   <span>Processing your request</span>
@@ -232,7 +232,7 @@ export function AITypingIndicator() {
   return (
     <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50">
       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20">
-        <Icon name="ai" size="sm" emphasis className="text-blue-400" />
+        <Icon name="ai" size="sm" emphasis className="text-blue-600 dark:text-blue-400" />
       </div>
       <div className="flex gap-1">
         {[0, 1, 2].map((i) => (

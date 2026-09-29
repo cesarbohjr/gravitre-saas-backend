@@ -8,6 +8,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { organizationsApi } from "@/lib/api"
 import type { Organization } from "@/types/api"
 import { toast } from "sonner"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { GlobalCommandBar } from "./global-command-bar"
 import { NotificationCenter } from "./notification-center"
@@ -25,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { MesonToolbarTrigger } from "@/components/gravitre/meson-toolbar-popup"
+import { ShellOperatingPulse } from "@/components/gravitre/shell-operating-pulse"
 import { cn } from "@/lib/utils"
 import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
 import { Icon } from "@/lib/icons"
@@ -57,13 +59,15 @@ const TOPBAR_MINIMIZED_KEY = "gravitre-topbar-minimized"
 export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [environment, setEnvironment] = useState<AppEnvironment>(() => getSelectedEnvironmentFromStorage())
-  const [org, setOrg] = useState(() => getSelectedOrgFromStorage()?.name ?? "Organization")
-  const [orgId, setOrgId] = useState(() => getSelectedOrgFromStorage()?.id ?? null)
+  // Server-safe defaults; storage values are applied after mount to keep hydration stable.
+  const [environment, setEnvironment] = useState<AppEnvironment>("production")
+  const [org, setOrg] = useState("Organization")
+  const [orgId, setOrgId] = useState<string | null>(null)
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const { mode, setMode, isLite } = useViewMode()
   const { user, signOut } = useAuth()
+  const { resolvedTheme, setTheme } = useTheme()
 
   useEffect(() => {
     try {
@@ -155,13 +159,16 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
       : null
 
   // Derive user info from auth context
-  const userEmail = user?.email ?? "john@acmecorp.com"
+  const userEmail = user?.email ?? ""
   const userName = 
     (user?.user_metadata?.full_name as string | undefined) ||
     (user?.user_metadata?.name as string | undefined) ||
     userEmail.split("@")[0]
 
   useEffect(() => {
+    const initialOrg = getSelectedOrgFromStorage()
+    if (initialOrg?.name) setOrg(initialOrg.name)
+    if (initialOrg?.id) setOrgId(initialOrg.id)
     void ensureSelectedOrg().then((resolvedOrgId) => {
       const stored = getSelectedOrgFromStorage()
       if (stored?.name) setOrg(stored.name)
@@ -218,13 +225,15 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
       <header
         data-testid="app-top-bar"
         className={cn(
-          // Nodus Phase 8: divide border + aceternity elevation on light chrome
-          "flex items-center justify-between border-b border-divide bg-white px-3 shadow-aceternity sm:px-4",
-          chromeQuiet ? "h-10 sm:h-9" : "h-12 sm:h-12",
+          // Graphite command frame: workspace → environment → page left, command centre, account right.
+          "dark relative flex items-center justify-between bg-[color:var(--g-frame)] px-3 text-foreground sm:px-4 md:pl-1 md:pr-3",
+          chromeQuiet ? "h-10 sm:h-10" : "h-12",
         )}
       >
-        {/* Left side - Menu + Org + Environment + Page title */}
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        {/* Left side - Menu + (mobile) Org + Environment + Page title */}
+        {/* lg+: left and right clusters share the remaining width equally, so the
+            live-state + command group stays centred without overlapping either side. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-2.5">
           {/* Nav toggle — mobile drawer; tablet+ expands icon rail to labels */}
           <Button
             variant="ghost"
@@ -258,12 +267,12 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 gap-2 px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-xs"
+                className="h-11 gap-1.5 rounded-[4px] px-2.5 text-sm font-medium hover:bg-accent sm:h-8 sm:px-2 sm:text-[13px]"
                 aria-label={`Organization: ${org}. Switch organization`}
+                data-testid="workspace-identity"
               >
                 <Icon name="company" size="md" className="text-muted-foreground sm:hidden" />
-                <Icon name="company" size="sm" className="hidden text-muted-foreground sm:block" />
-                <span className="hidden sm:inline">{org}</span>
+                <span className="hidden max-w-[180px] truncate font-semibold sm:inline">{org}</span>
                 <Icon name="caretDown" size="sm" className="text-muted-foreground sm:hidden" />
                 <Icon
                   name="caretDown"
@@ -303,22 +312,28 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <span className="text-muted-foreground/40 hidden sm:inline">/</span>
+          <span className="hidden text-muted-foreground/50 sm:inline" aria-hidden>/</span>
 
-          {/* Environment Selector */}
+          {/* Environment — part of the workspace path, not a separate control cluster */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-2 px-2 text-xs hidden sm:flex hover:bg-accent"
+                className="hidden h-8 gap-1.5 rounded-[4px] px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground sm:flex"
+                aria-label={`Environment: ${environment}. Switch environment`}
               >
-                <Icon 
-                  name={environment === "production" ? "production" : "staging"} 
-                  size="sm"
-                  className={environment === "production" ? "text-success" : "text-warning"}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    environment === "production" ? "bg-[color:var(--g-brand)]" : "bg-warning",
+                  )}
                 />
-                <span className="capitalize">{environment}</span>
+                {/* Production compresses to its dot on narrow frames; staging always names itself. */}
+                <span className={cn("capitalize", environment === "production" && "hidden xl:inline")}>
+                  {environment}
+                </span>
                 <Icon name="caretDown" size="xs" className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
@@ -336,7 +351,6 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {title && !chromeQuiet ? (
             <>
-              <span className="text-muted-foreground/40 hidden md:inline">/</span>
               {/* On phones the org chip collapses to an icon, so the page title
                   is the only text label — show it there too, at a legible size. */}
               <span
@@ -345,8 +359,10 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
               >
                 {title}
               </span>
+              {/* md–lg the page H1 carries the name; the crumb returns where the path has room. */}
+              <span className="hidden text-muted-foreground/50 md:inline lg:hidden 2xl:inline" aria-hidden>/</span>
               <span
-                className="hidden max-w-[240px] truncate text-sm font-medium text-foreground md:block"
+                className="hidden max-w-[280px] truncate pl-1 text-[13px] font-semibold text-foreground md:block lg:hidden 2xl:block"
                 aria-current="page"
               >
                 {title}
@@ -364,23 +380,33 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           ) : null}
         </div>
 
-        {/* Right side - Controls */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* Global Command Bar */}
+        {/* Centre — live operating state (xl+) beside the command bar */}
+        <div className="flex shrink-0 items-center gap-2">
+          {!chromeQuiet ? (
+            <ShellOperatingPulse
+              pendingApprovals={pendingApprovals}
+              activeWorkflows={activeWorkflows}
+              className="hidden xl:flex"
+            />
+          ) : null}
           <GlobalCommandBar />
+        </div>
+
+        {/* Right side - Controls */}
+        <div className="flex items-center gap-1 sm:gap-1.5 lg:flex-1 lg:justify-end">
 
           {/* Admin/Lite Mode Toggle */}
           {!chromeQuiet ? (
-          <div className="hidden items-center gap-0.5 rounded-xl border border-divide bg-[color:var(--g-background-muted)] p-0.5 sm:flex">
+          <div className="mr-1 hidden items-center gap-px rounded-[4px] bg-white/[0.04] p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => switchMode("admin")}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200",
+                    "rounded-[2px] px-2 py-0.5 text-xs font-medium transition-colors duration-150",
                     mode === "admin"
-                      ? "bg-white text-charcoal-900 shadow-aceternity"
-                      : "text-gray-600 hover:text-charcoal-900"
+                      ? "bg-white/[0.12] text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Admin
@@ -395,10 +421,10 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 <button
                   onClick={() => switchMode("lite")}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200",
+                    "rounded-[2px] px-2 py-0.5 text-xs font-medium transition-colors duration-150",
                     mode === "lite"
-                      ? "bg-white text-charcoal-900 shadow-aceternity"
-                      : "text-gray-600 hover:text-charcoal-900"
+                      ? "bg-white/[0.12] text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Lite
@@ -417,14 +443,16 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
           {/* Notifications */}
           <NotificationCenter />
 
+          <span aria-hidden className="mx-1 hidden h-5 w-px bg-[color:var(--g-frame-rule)] sm:block" />
+
           {/* User Avatar */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="group relative h-11 w-11 rounded-full p-0 hover:bg-accent sm:h-8 sm:w-8" aria-label="Account menu">
+              <Button variant="ghost" size="icon" className="group relative h-11 w-11 rounded-full p-0 hover:bg-accent sm:h-8 sm:w-8" aria-label="Account menu" data-testid="account-identity">
                 <UserAccountAvatar
                   useCurrentUser
                   size="md"
-                  className="relative ring-1 ring-border transition-colors group-hover:ring-primary/40 sm:h-8 sm:w-8"
+                  className="relative ring-1 ring-[color:var(--g-frame-rule)] transition-colors group-hover:ring-foreground/40 sm:h-7 sm:w-7"
                 />
               </Button>
             </DropdownMenuTrigger>
@@ -476,7 +504,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                       <Icon name="user" size="sm" className="text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Edit Profile</p>
+                      <p className="text-sm font-medium">Edit profile</p>
                       <p className="text-[10px] text-muted-foreground">Manage your personal info</p>
                     </div>
                   </Link>
@@ -499,7 +527,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                     </div>
                     <div>
                       <p className="text-sm font-medium">Team</p>
-                      <p className="text-[10px] text-muted-foreground">8 members</p>
+                      <p className="text-[10px] text-muted-foreground">Members and roles</p>
                     </div>
                   </Link>
                 </DropdownMenuItem>
@@ -519,6 +547,31 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 </DropdownMenuItem>
               </div>
               
+              <DropdownMenuSeparator className="my-0" />
+
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <span className="text-sm">Appearance</span>
+                <div role="radiogroup" aria-label="Appearance" className="inline-flex items-center gap-0.5 rounded-[var(--np-radius-md)] bg-[color:var(--g-background-muted)] p-0.5">
+                  {(["light", "dark"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      role="radio"
+                      aria-checked={resolvedTheme === option}
+                      onClick={() => setTheme(option)}
+                      className={cn(
+                        "rounded-[6px] px-2.5 py-1 text-xs font-medium capitalize transition-colors",
+                        resolvedTheme === option
+                          ? "bg-background text-foreground shadow-[0_0_0_1px_var(--g-border-default)]"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <DropdownMenuSeparator className="my-0" />
               
               <div className="p-1.5">

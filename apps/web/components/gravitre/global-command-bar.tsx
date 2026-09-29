@@ -35,7 +35,7 @@ const navigationItems: CommandItem[] = [
   {
     id: "nav-assistant",
     type: "navigation",
-    title: "Workspace Chat",
+    title: "Workspace chat",
     subtitle: "Multi-turn chat with tools",
     icon: "chat",
     href: `${APP_ROUTES.gravitreAi}?mode=chat`,
@@ -44,7 +44,7 @@ const navigationItems: CommandItem[] = [
   {
     id: "nav-search",
     type: "navigation",
-    title: "Universal Search",
+    title: "Universal search",
     subtitle: "Find workflows, runs, and docs",
     icon: "search",
     href: "/search",
@@ -54,12 +54,12 @@ const navigationItems: CommandItem[] = [
   { id: "nav-workflows", type: "navigation", title: "Workflows", subtitle: "Automation flows", icon: "automations", href: "/workflows", keywords: ["flow", "pipeline"], requiresFullSeat: true },
   { id: "nav-connectors", type: "navigation", title: "Connectors", subtitle: "Integrations", icon: "apps", href: "/connectors", keywords: ["api", "integration"], requiresFullSeat: true },
   { id: "nav-sources", type: "navigation", title: "Sources", subtitle: "Data sources", icon: "data", href: "/sources", keywords: ["data", "database"], requiresFullSeat: true },
-  { id: "nav-assign", type: "navigation", title: "Assign Work", subtitle: "Run department workflows", icon: "send", href: "/lite/assign", keywords: ["assign", "lite", "work"] },
-  { id: "nav-tasks", type: "navigation", title: "My Tasks", subtitle: "Assigned work", icon: "listTodo", href: "/lite/tasks", keywords: ["tasks", "lite"] },
+  { id: "nav-assign", type: "navigation", title: "Assign work", subtitle: "Run department workflows", icon: "send", href: "/lite/assign", keywords: ["assign", "lite", "work"] },
+  { id: "nav-tasks", type: "navigation", title: "My tasks", subtitle: "Assigned work", icon: "listTodo", href: "/lite/tasks", keywords: ["tasks", "lite"] },
   { id: "nav-activity", type: "navigation", title: "Activity", subtitle: "Completed work and failure alerts", icon: "run", href: "/activity", keywords: ["execute", "history", "runs", "outcomes"] },
   { id: "nav-approvals", type: "navigation", title: "Approvals", subtitle: "Pending reviews", icon: "approvals", href: "/approvals", keywords: ["review", "approve"] },
   { id: "nav-intelligence", type: "navigation", title: "Intelligence", subtitle: "Health, ROI, learning, models", icon: "dashboard", href: "/intelligence", keywords: ["monitor", "stats", "metrics", "insights"] },
-  { id: "nav-audit", type: "navigation", title: "Audit Log", subtitle: "Compliance export", icon: "history", href: "/audit", keywords: ["log", "history", "compliance"] },
+  { id: "nav-audit", type: "navigation", title: "Audit log", subtitle: "Compliance export", icon: "history", href: "/audit", keywords: ["log", "history", "compliance"] },
   { id: "nav-settings", type: "navigation", title: "Settings", subtitle: "Personal, organization, admin", icon: "settings", href: "/settings", keywords: ["config", "preferences", "enterprise", "federation", "environments"] },
 ]
 
@@ -183,11 +183,11 @@ export function GlobalCommandBar() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Search or run a command"
-        className="group flex h-11 items-center justify-center gap-2 rounded-xl border border-divide bg-[color:var(--g-background)] px-3 text-sm text-gray-600 shadow-aceternity transition-colors hover:border-brand/40 hover:bg-white hover:text-charcoal-900 sm:h-8 sm:px-3.5"
+        className="group flex h-11 items-center justify-center gap-2 rounded-[4px] border border-[color:var(--g-border-default)] bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-brand/40 hover:text-foreground sm:h-8 sm:px-3.5 lg:w-[min(260px,24vw)] lg:justify-start xl:w-[min(300px,20vw)]"
       >
         <Icon name="search" size="sm" className="shrink-0" />
         <span className="hidden lg:inline font-medium">Search or command...</span>
-        <kbd className="ml-1 hidden items-center gap-0.5 rounded-md border border-divide bg-white px-2 py-0.5 font-mono text-[10px] text-gray-600 lg:inline-flex">
+        <kbd className="ml-1 hidden items-center lg:ml-auto gap-0.5 rounded-md border border-divide bg-background px-2 py-0.5 font-mono text-[10px] text-muted-foreground lg:inline-flex">
           <Icon name="command" size="xs" />K
         </kbd>
       </button>
@@ -249,7 +249,7 @@ export function GlobalCommandBar() {
                       {groups.map((group) => (
                         <div key={group.group} className="mb-2">
                           <div className="flex items-center gap-2 px-3 py-1.5">
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]">
+                            <span className="text-xs font-semibold text-[color:var(--g-text-muted)]">
                               {group.group}
                             </span>
                           </div>

@@ -5,16 +5,24 @@
  * Phase 1A of UX Reset 1.0: map first, prove behavior, then retire aliases.
  * Do not big-bang rename call sites.
  *
+ * 3.0 Plus Slice 0 (G-STRUCT 2026-09-24): add `floating` + `docked` as first-class
+ * presentation modes. Window Manager policy (contextual default + preference)
+ * lives in `gravitre-window-manager.ts`. `restored` is an action, not stored here.
+ *
  *   Canonical     Legacy
- *   minimized  -> helper   (launcher; floatWorkspaceOpen === false)
- *   compact    -> float    (floating ~500–600px window)
+ *   minimized  -> helper
+ *   compact    -> float
+ *   floating   -> floating
+ *   docked     -> docked
  *   expanded   -> expanded
- *   fullscreen -> fullscreen  (/ai is this presentation of the same runtime)
+ *   fullscreen -> fullscreen
  */
 
 export const CANONICAL_PRESENTATION_STATES = [
   "minimized",
   "compact",
+  "floating",
+  "docked",
   "expanded",
   "fullscreen",
 ] as const
@@ -22,7 +30,14 @@ export const CANONICAL_PRESENTATION_STATES = [
 export type CanonicalPresentationState = (typeof CANONICAL_PRESENTATION_STATES)[number]
 
 /** Names still stored in React state and most components. */
-export const LEGACY_PRESENTATION_MODES = ["helper", "float", "expanded", "fullscreen"] as const
+export const LEGACY_PRESENTATION_MODES = [
+  "helper",
+  "float",
+  "floating",
+  "docked",
+  "expanded",
+  "fullscreen",
+] as const
 
 export type LegacyPresentationMode = (typeof LEGACY_PRESENTATION_MODES)[number]
 
@@ -32,6 +47,8 @@ export type GravitrePresentationInput = CanonicalPresentationState | LegacyPrese
 const CANONICAL_TO_LEGACY: Record<CanonicalPresentationState, LegacyPresentationMode> = {
   minimized: "helper",
   compact: "float",
+  floating: "floating",
+  docked: "docked",
   expanded: "expanded",
   fullscreen: "fullscreen",
 }
@@ -39,6 +56,8 @@ const CANONICAL_TO_LEGACY: Record<CanonicalPresentationState, LegacyPresentation
 const LEGACY_TO_CANONICAL: Record<LegacyPresentationMode, CanonicalPresentationState> = {
   helper: "minimized",
   float: "compact",
+  floating: "floating",
+  docked: "docked",
   expanded: "expanded",
   fullscreen: "fullscreen",
 }
@@ -82,5 +101,5 @@ export function deriveCanonicalPresentation(args: {
   return canonical
 }
 
-/** Shared Framer layout id — compact/expanded/fullscreen are one physical frame. */
+/** Shared Framer layout id — compact/expanded/fullscreen/docked are one physical frame. */
 export const GRAVITRE_AI_WORKSPACE_LAYOUT_ID = "gravitre-ai-workspace-frame"

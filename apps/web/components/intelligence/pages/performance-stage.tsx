@@ -118,9 +118,9 @@ export function PerformanceStage({
       ) : null}
 
       <details>
-        <summary className="cursor-pointer list-none border-b border-divide py-2">
+        <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
           <p className={TYPE.eyebrow}>Metrics</p>
-          <p className={cn(TYPE.meta, "mt-0.5")}>Totals for the selected view — after the path, not instead of it.</p>
+          <p className={cn(TYPE.meta, "mt-0.5")}>Totals for the selected view.</p>
         </summary>
       <div className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-4 lg:grid-cols-4">
         {viewMode === "impact" ? (
@@ -207,7 +207,7 @@ export function PerformanceStage({
       </details>
 
       <details>
-        <summary className="cursor-pointer list-none border-b border-divide py-2">
+        <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
           <p className={TYPE.eyebrow}>Instrumentation</p>
           <p className={cn(TYPE.meta, "mt-0.5")}>
             Pipeline and waterfall stay subordinate. This window has no per-span duration

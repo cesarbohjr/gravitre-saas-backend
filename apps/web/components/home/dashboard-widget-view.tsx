@@ -35,10 +35,11 @@ import {
   NucleoSuccess,
 } from "@/components/icons/nucleo/semantic"
 
-const BRAND = "#16a374"
-const BRAND_SOFT = "#5ec49a"
-const MUTED = "#94a3b8"
-const IDLE = "#cbd5e1"
+const BRAND = "var(--g-brand)"
+const BRAND_SOFT = "var(--g-brand-muted)"
+const MUTED = "var(--muted-foreground)"
+const IDLE = "var(--g-border-strong)"
+const WARNING = "var(--g-warning)"
 
 function formatDuration(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms) || ms < 0) return "—"
@@ -62,22 +63,22 @@ const KPI_ICON_STYLES: Record<
 > = {
   "agents.active": {
     icon: <NucleoAgent className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-blue-500/8 text-blue-600/60",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.success_rate": {
     icon: <NucleoSuccess className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-emerald-500/8 text-emerald-600/60",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.avg_duration": {
     icon: <NucleoHistory className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-amber-500/8 text-amber-600/55",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "models.most_used": {
     icon: <NucleoIntelligence className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-[color:var(--g-brand)]/10 text-[color:var(--g-brand)]/60",
+    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
 }
@@ -101,7 +102,7 @@ function MetricNumber({
   return (
     <GravitreMetric
       label={label}
-      value={value}
+      value={metricId === "models.most_used" ? <span className="normal-nums">{value}</span> : value}
       hint={hint}
       href={href}
       warning={warning}
@@ -130,7 +131,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
     { label: "Active", value: counts.active, color: BRAND },
     { label: "Executing", value: counts.processing, color: BRAND_SOFT },
     { label: "Idle", value: counts.idle, color: MUTED },
-    { label: "Error", value: counts.error, color: "#f59e0b" },
+    { label: "Error", value: counts.error, color: WARNING },
   ].filter((s) => s.value > 0)
   const total = slices.reduce((sum, s) => sum + s.value, 0) || 1
   const circumference = 2 * Math.PI * 14
@@ -142,7 +143,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
         <h2 className={TYPE.sectionTitle}>Agents by status</h2>
         <Link
           href={APP_ROUTES.agents}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
         >
           View agents
           <NucleoArrowRight className="h-3 w-3" />
@@ -182,7 +183,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
             { label: "Active", value: counts.active, color: BRAND },
             { label: "Executing", value: counts.processing, color: BRAND_SOFT },
             { label: "Idle", value: counts.idle, color: MUTED },
-            { label: "Error", value: counts.error, color: "#f59e0b" },
+            { label: "Error", value: counts.error, color: WARNING },
           ].map((row) => (
             <li key={row.label} className="flex items-center justify-between gap-3 text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
@@ -213,11 +214,11 @@ function RunsBreakdown({ data }: { data: HomeDashboardData }) {
     <GravitreSurface className="h-full">
       <div className="flex items-start justify-between gap-3">
         <h2 className={TYPE.sectionTitle}>
-          {chartData.length > 0 ? "Tasks breakdown" : "Tasks breakdown"}
+          Tasks breakdown
         </h2>
         <Link
           href={APP_ROUTES.runs}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
         >
           View runs
           <NucleoArrowRight className="h-3 w-3" />
@@ -269,7 +270,7 @@ function WorkflowMonitor({ data }: { data: HomeDashboardData }) {
           </div>
           <Link
             href={APP_ROUTES.agents}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
           >
             View all
             <NucleoArrowRight className="h-3 w-3" />
@@ -309,7 +310,7 @@ function WorkflowMonitor({ data }: { data: HomeDashboardData }) {
                     </Link>
                   </GravitreTd>
                   <GravitreTd>
-                    <span className="text-muted-foreground">{agent.model?.trim() || "—"}</span>
+                    <span className="normal-nums text-muted-foreground">{agent.model?.trim() || "—"}</span>
                   </GravitreTd>
                   <GravitreTd>
                     <span className="inline-flex items-center gap-1.5">
@@ -345,7 +346,7 @@ function WorkflowMonitor({ data }: { data: HomeDashboardData }) {
   )
 }
 
-function resolveKpiValue(
+export function resolveKpiValue(
   metricId: string,
   data: HomeDashboardData,
 ): { value: string; hint?: string; href?: string; warning?: boolean; empty?: boolean } {
@@ -537,7 +538,7 @@ function ProgressWidget({
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-medium tracking-wide text-muted-foreground">{title}</p>
         {href ? (
-          <Link href={href} className="text-[11px] text-[color:var(--brand)] hover:underline">
+          <Link href={href} className="text-[11px] text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]">
             Open
           </Link>
         ) : null}
@@ -571,7 +572,7 @@ function ListWidget({
         {href ? (
           <Link
             href={href}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--brand)] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
           >
             View
             <NucleoArrowRight className="h-3 w-3" />

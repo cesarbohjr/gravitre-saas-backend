@@ -19,6 +19,7 @@ import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief
 import { NucleoAgent } from "@/components/icons/nucleo/semantic"
 import { assistantApi, mesonApi, type MesonSuggestion } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useEntitlements } from "@/lib/entitlements-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import {
   resolveMesonPageFromPath,
@@ -62,6 +63,8 @@ const QUICK_LAUNCH_PROMPTS = [
  */
 function useMesonGibeVoice() {
   const { user } = useAuth()
+  const { tier, loading: entitlementsLoading } = useEntitlements()
+  const insightsTierAllowed = tier === "control" || tier === "command"
   const briefKey = user ? ["meson-toolbar-advisor-brief"] : null
   const { data: brief, isLoading: briefLoading } = useSWR(
     briefKey,
@@ -76,7 +79,9 @@ function useMesonGibeVoice() {
 
   const briefInsight = briefToInsights(brief).find((item) => item.title?.trim() && item.summary?.trim())
 
-  const fallbackKey = !briefInsight && user ? ["meson-toolbar-fallback-insights"] : null
+  // /api/meson/insights is require_tier("control") server-side; lower tiers would get a 403 on every page.
+  const fallbackKey =
+    !briefInsight && user && !entitlementsLoading && insightsTierAllowed ? ["meson-toolbar-fallback-insights"] : null
   const { data: fallbackData, isLoading: fallbackLoading } = useSWR(fallbackKey, () => mesonApi.insights(), {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
@@ -118,7 +123,7 @@ function MesonGibeVoice({
 
   return (
     <div className="rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
-      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+      <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400">
         <Sparkles className="h-3 w-3" />
         {source === "gibe" ? "GIBE · Meson's take" : "Meson"}
       </div>
@@ -149,7 +154,7 @@ function MesonQuickLauncher() {
 
   return (
     <div className="mt-3 border-t border-border/60 pt-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
         <NucleoAgent className="h-3 w-3" />
         Quick launcher
       </p>
@@ -270,16 +275,14 @@ export function MesonToolbarTrigger() {
             size="icon"
             onClick={togglePanel}
             className={cn(
-              "relative rounded-full p-0 hover:bg-violet-500/10",
+              "relative rounded-[4px] p-0 text-muted-foreground hover:bg-accent hover:text-foreground",
               TOUCH_ICON_BUTTON,
-              panelOpen && "bg-violet-500/10 ring-1 ring-violet-500/30",
+              panelOpen && "bg-accent text-foreground",
             )}
             aria-expanded={panelOpen}
             aria-label={panelOpen ? "Hide Meson tips" : "Show Meson tips"}
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm sm:h-7 sm:w-7">
-              <Blocks className="h-4 w-4 text-white sm:h-3.5 sm:w-3.5" />
-            </span>
+            <Blocks className="h-4 w-4" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">

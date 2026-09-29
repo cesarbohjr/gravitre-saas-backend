@@ -1415,14 +1415,23 @@ export const approvalsApi = {
 // ============ Connectors ============
 export const connectorsApi = {
   list: () => fetcher<ConnectorListResponse>(apiUrl("/api/connectors")),
-  actionCatalog: () =>
-    fetcher<import("@/lib/connector-actions").ConnectorActionCatalogResponse>(
-      apiUrl("/api/connectors/catalog/actions")
-    ),
-  actionCatalogForVendor: (vendor: string) =>
-    fetcher<import("@/lib/connector-actions").VendorActionCatalog>(
-      apiUrl(`/api/connectors/catalog/actions/${encodeURIComponent(vendor)}`)
-    ),
+  actionCatalog: async () => {
+    const snapshot = await fetcher<import("@/lib/capabilities").CapabilitySnapshot>(
+      apiUrl("/api/capabilities")
+    )
+    const { capabilitySnapshotToActionCatalog } = await import("@/lib/capabilities")
+    return capabilitySnapshotToActionCatalog(snapshot)
+  },
+  actionCatalogForVendor: async (vendor: string) => {
+    const snapshot = await fetcher<import("@/lib/capabilities").CapabilitySnapshot>(
+      apiUrl("/api/capabilities")
+    )
+    const { capabilitySnapshotToActionCatalog } = await import("@/lib/capabilities")
+    const catalog = capabilitySnapshotToActionCatalog(snapshot)
+    const row = catalog.vendors.find((item) => item.vendor === vendor)
+    if (!row) throw new Error(`Connector capability not found for ${vendor}`)
+    return row
+  },
   sourceActionDestinationCoverage: () =>
     fetcher<{
       summary: {

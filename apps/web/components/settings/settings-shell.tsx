@@ -149,7 +149,7 @@ function SettingsNavItem({
     "flex w-full items-center gap-3 rounded-[var(--np-radius-md)] px-3 text-left text-sm transition-colors",
     compact ? "py-3" : "py-2",
     isActive
-      ? "bg-[color:var(--g-brand-soft)] font-medium text-[color:var(--g-brand)]"
+      ? "bg-[color:var(--g-brand-soft)] font-medium text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]"
       : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)] hover:text-[color:var(--g-text-primary)]",
   )
 

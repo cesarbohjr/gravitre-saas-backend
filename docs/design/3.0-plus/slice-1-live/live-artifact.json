@@ -1,0 +1,203 @@
+[
+  {
+    "check": "target conversation found via API",
+    "result": "PASS",
+    "evidence": {
+      "id": "efccc7cd-ee81-48ce-877e-619d9fe23152",
+      "n": 10,
+      "title": "https://gravitre.app/"
+    }
+  },
+  {
+    "check": "canonical history renders on open (resume)",
+    "result": "PASS",
+    "evidence": {
+      "conversation": "efccc7cd-ee81-48ce-877e-619d9fe23152",
+      "rendered": 11,
+      "backendCount": 10,
+      "waitMs": 74762,
+      "duplicates": 0
+    }
+  },
+  {
+    "check": "composition options for a conversation with prior work",
+    "result": "INFO",
+    "evidence": {
+      "options": [
+        {
+          "label": "Conversation",
+          "disabled": false,
+          "selected": "true"
+        },
+        {
+          "label": "Work",
+          "disabled": true,
+          "selected": "false"
+        },
+        {
+          "label": "Split",
+          "disabled": true,
+          "selected": "false"
+        },
+        {
+          "label": "Conversation",
+          "disabled": false,
+          "selected": "true"
+        },
+        {
+          "label": "Work",
+          "disabled": true,
+          "selected": "false"
+        },
+        {
+          "label": "Split",
+          "disabled": true,
+          "selected": "false"
+        }
+      ],
+      "composition": "conversation",
+      "runtime": "idle"
+    }
+  },
+  {
+    "check": "Work view availability",
+    "result": "INFO",
+    "evidence": "Work disabled — no live work objects exposed for this conversation"
+  },
+  {
+    "check": "conversation traffic",
+    "result": "INFO",
+    "evidence": {
+      "finished": [
+        {
+          "method": "GET",
+          "path": "/api/conversations?limit=50",
+          "status": 200,
+          "ms": 4613,
+          "at": "2026-09-24T22:23:05.446Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/assistant/preferences?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 15611,
+          "at": "2026-09-24T22:23:28.558Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations?include_archived=true&limit=50&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 15437,
+          "at": "2026-09-24T22:23:28.558Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/assistant/conversation/efccc7cd-ee81-48ce-877e-619d9fe23152/state?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 15354,
+          "at": "2026-09-24T22:23:28.559Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/assistant/advisor-brief?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 46108,
+          "at": "2026-09-24T22:23:59.694Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/assistant/advisor-brief?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 44991,
+          "at": "2026-09-24T22:23:59.989Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/assistant/business-signals?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 48409,
+          "at": "2026-09-24T22:24:01.902Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 54711,
+          "at": "2026-09-24T22:24:18.302Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 54337,
+          "at": "2026-09-24T22:24:18.311Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 54538,
+          "at": "2026-09-24T22:24:18.317Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152/messages?limit=80&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 54846,
+          "at": "2026-09-24T22:24:18.355Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152/messages?limit=80&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 54820,
+          "at": "2026-09-24T22:24:18.502Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152/messages?limit=80&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 54640,
+          "at": "2026-09-24T22:24:18.503Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 58966,
+          "at": "2026-09-24T22:24:23.121Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152?org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 58796,
+          "at": "2026-09-24T22:24:23.132Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152/messages?limit=80&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 59089,
+          "at": "2026-09-24T22:24:23.146Z"
+        },
+        {
+          "method": "GET",
+          "path": "/api/conversations/efccc7cd-ee81-48ce-877e-619d9fe23152/messages?limit=80&org_id=cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
+          "status": 200,
+          "ms": 58905,
+          "at": "2026-09-24T22:24:23.152Z"
+        }
+      ],
+      "pending": []
+    }
+  },
+  {
+    "check": "no page errors and no chat POSTs from inspection",
+    "result": "PASS",
+    "evidence": {
+      "pageErrors": [],
+      "chatPosts": 0
+    }
+  }
+]

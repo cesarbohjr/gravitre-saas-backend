@@ -113,7 +113,7 @@ curl -s "https://gravitre.app/api/operator/context/workflow/WORKFLOW_ID" \
 curl -s -X POST "https://gravitre.app/api/operator/action-plan" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"instruction": "Summarize failed runs today", "environmentId": "ENV_ID"}'
+  -d '{"operator_goal": "Summarize why this run failed", "primary_context": {"type": "run", "id": "RUN_ID"}}'
 ```
 
 See [OpenAPI](/docs/api/openapi.json) for schemas.

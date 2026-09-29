@@ -86,7 +86,7 @@ function MemoryCard({ memory, index, onEdit, onDelete }: {
   const [isHovered, setIsHovered] = useState(false)
 
   const colorClasses: Record<string, { bg: string; border: string; text: string; ring: string }> = {
-    blue: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-400", ring: "ring-blue-500/20" },
+    blue: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-600 dark:text-blue-400", ring: "ring-blue-500/20" },
     rose: { bg: "bg-destructive/10", border: "border-destructive/30", text: "text-destructive", ring: "ring-destructive/20" },
     signal: { bg: "bg-[color:var(--g-signal-surface)]", border: "border-[color:var(--g-signal)]/30", text: "text-[color:var(--g-signal)]", ring: "ring-[color:var(--g-signal)]/20" },
     amber: { bg: "bg-warning/10", border: "border-warning/30", text: "text-warning", ring: "ring-warning/20" },
@@ -399,7 +399,7 @@ export default function AgentMemoryPage({
   }
 
   return (
-    <AppShell title="Agent Memory">
+    <AppShell title="Agent memory">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           eyebrow="AI Team"
@@ -416,7 +416,7 @@ export default function AgentMemoryPage({
                 onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
               >
                 <Icon name="add" size="sm" />
-                Add Memory
+                Add memory
               </Button>
             </div>
           }
@@ -424,10 +424,10 @@ export default function AgentMemoryPage({
 
         <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
           <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric label="Total Memories" value={stats.total} />
-            <GravitreMetric label="Avg Confidence" value={`${stats.avgConfidence}%`} />
-            <GravitreMetric label="Total Usage" value={stats.totalUsage} />
-            <GravitreMetric label="Protected Rules" value={stats.protected} />
+            <GravitreMetric label="Total memories" value={stats.total} />
+            <GravitreMetric label="Avg confidence" value={`${stats.avgConfidence}%`} />
+            <GravitreMetric label="Total usage" value={stats.totalUsage} />
+            <GravitreMetric label="Protected rules" value={stats.protected} />
           </section>
 
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -505,7 +505,7 @@ export default function AgentMemoryPage({
                   onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
                 >
                   <Icon name="add" size="sm" />
-                  Add Memory
+                  Add memory
                 </Button>
               }
             />

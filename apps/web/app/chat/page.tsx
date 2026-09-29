@@ -79,7 +79,7 @@ const SEARCH_GROUP_CONFIG: Array<{
   label: string
   icon: LucideIcon
 }> = [
-  { key: "run", label: "Workflow Runs", icon: Zap },
+  { key: "run", label: "Workflow runs", icon: Zap },
   { key: "workflow", label: "Workflows", icon: Workflow },
   { key: "agent", label: "Agents", icon: Bot },
   { key: "connector", label: "Connectors", icon: Link2 },
@@ -147,7 +147,7 @@ function statusBadgeClass(status: string): string {
     return "bg-success/10 text-success"
   }
   if (normalized.includes("run")) {
-    return "bg-blue-500/10 text-blue-400"
+    return "bg-blue-500/10 text-blue-600 dark:text-blue-400"
   }
   return "bg-secondary text-muted-foreground"
 }
@@ -199,15 +199,15 @@ function SearchResultRow({
       >
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/80">
           {result.entity_type === "run" ? (
-            <Zap className="h-4 w-4 text-blue-400" />
+            <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           ) : result.entity_type === "agent" ? (
-            <Bot className="h-4 w-4 text-violet-400" />
+            <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           ) : result.entity_type === "connector" ? (
             <Link2 className="h-4 w-4 text-success" />
           ) : result.entity_type === "workflow" ? (
             <Workflow className="h-4 w-4 text-warning" />
           ) : result.entity_type === "source" ? (
-            <Database className="h-4 w-4 text-cyan-400" />
+            <Database className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
           ) : (
             <FileText className="h-4 w-4 text-muted-foreground" />
           )}
@@ -339,11 +339,11 @@ function SearchTypeaheadDropdown({
               <div
                 className={cn(
                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                  item.kind === "agent" && "bg-violet-500/10 text-violet-400",
+                  item.kind === "agent" && "bg-violet-500/10 text-violet-600 dark:text-violet-400",
                   item.kind === "workflow" && "bg-warning/10 text-warning",
                   item.kind === "connector" && "bg-success/10 text-success",
                   item.kind === "history" && "bg-secondary text-muted-foreground",
-                  item.kind === "search" && "bg-blue-500/10 text-blue-400",
+                  item.kind === "search" && "bg-blue-500/10 text-blue-600 dark:text-blue-400",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -704,7 +704,7 @@ export default function ChatPage() {
   )
 
   return (
-    <AppShell title="Universal Search">
+    <AppShell title="Universal search">
       <div className="flex h-full flex-col md:flex-row">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="border-b border-border px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-card to-secondary/20">
@@ -714,7 +714,7 @@ export default function ChatPage() {
                   <Search className="h-4 w-4 md:h-5 md:w-5 text-success" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-base md:text-lg font-semibold text-foreground">Universal Search</h1>
+                  <h1 className="text-base md:text-lg font-semibold text-foreground">Universal search</h1>
                   <p className="text-xs md:text-sm text-muted-foreground text-pretty">
                     Find workflows, runs, agents, and docs — returns links to records, not chat replies
                   </p>
@@ -740,7 +740,7 @@ export default function ChatPage() {
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
                   <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 flex items-center justify-center mb-6">
-                    <Search className="h-8 w-8 text-blue-400" />
+                    <Search className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">Sign in required</h2>
                   <p className="text-sm text-muted-foreground max-w-md">
@@ -803,7 +803,7 @@ export default function ChatPage() {
                     ))}
                   </div>
 
-                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
+                  <p className="mb-3 text-xs font-medium text-muted-foreground/70">
                     Or try
                   </p>
                   <SearchSuggestionChips
@@ -888,7 +888,7 @@ export default function ChatPage() {
                           <div className="mb-3 flex items-center gap-3">
                             <div className="flex items-center gap-2 shrink-0">
                               <group.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              <h3 className="text-xs font-semibold text-muted-foreground">
                                 {group.label} ({group.items.length})
                               </h3>
                             </div>
@@ -920,7 +920,7 @@ export default function ChatPage() {
           <div className="p-4 border-b border-border flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-              <h2 className="text-sm font-semibold text-foreground truncate">Recent Searches</h2>
+              <h2 className="text-sm font-semibold text-foreground truncate">Recent searches</h2>
               {recentHistory.length > 0 && (
                 <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
                   {recentHistory.length}

@@ -324,8 +324,8 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
         {step === 2 && selectedType && (
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Source Name
+              <label className="text-xs font-medium text-muted-foreground">
+                Source name
               </label>
               <input
                 type="text"
@@ -337,7 +337,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
 
             {selectedType.oauthVendor && linkedConnectors.length > 0 ? (
               <div>
-                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <label className="text-xs font-medium text-muted-foreground">
                   Linked Connector *
                 </label>
                 <select
@@ -366,7 +366,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
               field.key === "connector_id" && selectedType.oauthVendor && linkedConnectors.length > 0 ? null : (
               <div key={field.key}>
                 {field.type !== "boolean" && (
-                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <label className="text-xs font-medium text-muted-foreground">
                     {field.label}
                     {field.required ? " *" : ""}
                   </label>
@@ -400,7 +400,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                 </p>
                 <Button onClick={() => void handleTest()} className="gap-2">
                   <Activity className="h-4 w-4" />
-                  Test Connection
+                  Test connection
                 </Button>
               </div>
             )}
@@ -413,7 +413,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
             )}
 
             {testError && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-400">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-600 dark:text-red-400">
                 {testError}
               </div>
             )}
@@ -422,7 +422,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
                 <div className="text-center">
                   <Check className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
-                  <p className="text-sm font-medium text-emerald-400">
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                     {testResult.message ?? "Connection successful"}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -433,7 +433,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                 </div>
                 {testResult.suggestions?.length ? (
                   <div className="mt-4 border-t border-emerald-500/20 pt-3">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">
                       Suggested questions after connect
                     </p>
                     <ul className="space-y-1 text-xs text-muted-foreground">
@@ -452,7 +452,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
               </Button>
               {!testResult && !testing ? (
                 <Button variant="outline" onClick={() => void handleTest()}>
-                  Retry Test
+                  Retry test
                 </Button>
               ) : null}
               <Button

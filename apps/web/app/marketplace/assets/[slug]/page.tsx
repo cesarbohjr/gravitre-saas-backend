@@ -198,7 +198,7 @@ function MarketplaceAssetDetailContent() {
               ) : null}
               {asset.businessOutcome || asset.useCase || asset.estimatedHoursSaved != null ? (
                 <div className="rounded-lg border bg-muted/20 p-4 text-sm">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Outcome
                   </p>
                   {asset.businessOutcome ? (

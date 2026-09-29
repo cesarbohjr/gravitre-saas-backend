@@ -59,8 +59,13 @@ export function OverviewLivingMap({
   whyEvidence,
   onAskAbout,
   cacheKey,
+  inspectorOpen = true,
+  onInspectorClose,
   className,
 }: {
+  /** When false the selection stays on the field but the inspector drawer is not shown. */
+  inspectorOpen?: boolean
+  onInspectorClose?: () => void
   activeLens: IntelligenceMapLens
   onLensChange: (lens: IntelligenceMapLens) => void
   lensMetrics: IntelligenceLensMetrics
@@ -82,7 +87,7 @@ export function OverviewLivingMap({
 }) {
   const reducedMotion = useReducedMotion()
   const isMobile = useGravitreMobileViewport()
-  const [viewMode, setViewMode] = useState<OverviewViewMode>("matrix")
+  const [viewMode, setViewMode] = useState<OverviewViewMode>("field")
   const [streamOpen, setStreamOpen] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("main")
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
@@ -142,18 +147,18 @@ export function OverviewLivingMap({
 
   return (
     <div className={cn("space-y-3", className)} data-testid="intelligence-i1-i2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <NucleoIntelligence size={22} className="mt-0.5 shrink-0" />
-          <div>
-            <p className={TYPE.eyebrow}>
-              Intelligence · {viewMode === "matrix" ? "Matrix lens" : "Field topology"}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <NucleoIntelligence size={18} className="shrink-0 text-[color:var(--g-intelligence)]" />
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
+              {LENS_QUESTIONS[activeLens]}
             </p>
-            <p className={cn(TYPE.meta, "mt-0.5 max-w-xl")}>{LENS_QUESTIONS[activeLens]}</p>
-            <p className={cn(TYPE.meta, "mt-1 text-muted-foreground")}>
+            <p className={cn(TYPE.meta, "tabular-nums")}>
+              {viewMode === "matrix" ? "Matrix lens" : "Field topology"} ·{" "}
               {mapLoading
                 ? "Loading…"
-                : `${knownEntities ?? "—"} entities · ${knownRels ?? "—"} relationships · ${instanceNodes} displayable field nodes`}
+                : `${knownEntities ?? "—"} entities · ${knownRels ?? "—"} relationships · ${instanceNodes} on the map`}
             </p>
           </div>
         </div>
@@ -167,20 +172,22 @@ export function OverviewLivingMap({
             <Button
               type="button"
               size="sm"
-              variant={viewMode === "matrix" ? "secondary" : "ghost"}
+              variant={viewMode === "field" ? "secondary" : "ghost"}
               className="h-8"
-              onClick={() => setViewMode("matrix")}
+              aria-pressed={viewMode === "field"}
+              onClick={() => setViewMode("field")}
             >
-              Matrix
+              Field
             </Button>
             <Button
               type="button"
               size="sm"
-              variant={viewMode === "field" ? "secondary" : "ghost"}
+              variant={viewMode === "matrix" ? "secondary" : "ghost"}
               className="h-8"
-              onClick={() => setViewMode("field")}
+              aria-pressed={viewMode === "matrix"}
+              onClick={() => setViewMode("matrix")}
             >
-              Field
+              Matrix
             </Button>
           </div>
           <Button
@@ -211,7 +218,7 @@ export function OverviewLivingMap({
               className={cn(
                 "flex-1 rounded px-3 py-1.5 text-xs font-semibold capitalize",
                 mobilePanel === panel
-                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]"
+                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence-bright)]"
                   : "text-[color:var(--g-text-muted)]",
               )}
               onClick={() => setMobilePanel(panel)}
@@ -241,18 +248,24 @@ export function OverviewLivingMap({
               className={cn(
                 "shrink-0 rounded-md px-3 py-1.5 text-left transition-colors",
                 active
-                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]"
+                  ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence-bright)]"
                   : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)]",
               )}
             >
-              <span className="block text-xs font-semibold uppercase tracking-wide">{lens.label}</span>
+              <span className="block text-xs font-semibold">{lens.label}</span>
               <span className={cn(TYPE.meta, "block tabular-nums")}>{stat.value}</span>
             </button>
           )
         })}
       </div>
 
-      <div className={cn("relative flex flex-1 gap-0", "min-h-[56vh]", isMobile && "flex-col")}>
+      <div
+        className={cn(
+          "relative flex flex-1 gap-0 overflow-hidden rounded-[var(--np-radius-sm)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]",
+          "min-h-[64vh]",
+          isMobile && "flex-col",
+        )}
+      >
         {(!isMobile || mobilePanel === "changes") && (
           <IntelligenceChangeStream
             open={streamVisible}
@@ -268,10 +281,10 @@ export function OverviewLivingMap({
         )}
 
         {(!isMobile || mobilePanel === "main") && (
-          <div className="relative min-h-[56vh] min-w-0 flex-1">
+          <div className="relative min-h-[64vh] min-w-0 flex-1">
             {mapLoading ? (
               <div
-                className="relative z-30 flex min-h-[56vh] items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]"
+                className="relative z-30 flex min-h-[64vh] items-center justify-center rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]"
                 aria-live="polite"
                 aria-busy="true"
                 data-testid="intel-field-loading"
@@ -281,7 +294,7 @@ export function OverviewLivingMap({
             ) : null}
 
             {isError ? (
-              <div className="flex min-h-[56vh] flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="flex min-h-[64vh] flex-col items-center justify-center gap-3 p-6 text-center">
                 <p className={TYPE.sectionTitle}>Unable to load intelligence</p>
                 <p className={cn(TYPE.bodyMuted, "max-w-sm")}>
                   Page-context failed. Retry the same org-scoped contract — no invented graph.
@@ -299,8 +312,8 @@ export function OverviewLivingMap({
                 </p>
                 <p className={cn(TYPE.bodyMuted, "mt-2 max-w-md")}>
                   {isEmpty
-                    ? "Connect sources and sync CRM so org_entity_relationships can resolve entity ids."
-                    : `${knownRels} relationship rows are counted, but endpoint entity ids are not displayable as field nodes. Do not invent nodes.`}
+                    ? "Connect sources and sync your CRM to map how your entities relate."
+                    : `${knownRels} relationships are recorded, but their entities can't be placed on the map yet.`}
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button type="button" size="sm" asChild>
@@ -320,7 +333,7 @@ export function OverviewLivingMap({
                   if (key) onLensChange(lens)
                 }}
                 onOpenFieldView={openFieldFromMatrix}
-                className="min-h-[56vh] p-2"
+                className="min-h-[64vh] p-2"
               />
             ) : null}
 
@@ -338,7 +351,7 @@ export function OverviewLivingMap({
                 dimNodeIds={dimNodeIds}
                 focusNodeIds={mergedFocus}
                 cacheKey={cacheKey}
-                className="min-h-[56vh]"
+                className="min-h-[64vh]"
               />
             ) : null}
           </div>
@@ -346,8 +359,11 @@ export function OverviewLivingMap({
       </div>
 
       <IntelligenceInspectorDrawer
-        selection={selection}
-        onSelectionChange={onSelectionChange}
+        selection={inspectorOpen ? selection : null}
+        onSelectionChange={(next) => {
+          if (next === null && onInspectorClose) onInspectorClose()
+          else onSelectionChange(next)
+        }}
         pageContext={pageContext}
         whyData={whyEvidence}
         onAskAbout={onAskAbout}

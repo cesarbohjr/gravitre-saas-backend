@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, use, useMemo, useEffect } from "react"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
@@ -29,6 +30,7 @@ import { NavTasks } from "@/components/icons/nodus-nav/outline"
 import { cn } from "@/lib/utils"
 import { formatAssignmentOutput } from "@/lib/plain-english"
 import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
+import { readableAssignmentText } from "@/lib/assignments-list"
 import type { AgentJob } from "@/hooks/use-async-job"
 import { toast } from "sonner"
 import {
@@ -63,11 +65,11 @@ async function fetchAgentJob(id: string): Promise<AgentJob> {
 }
 
 const typeConfig: Record<string, { icon: string; color: string; label: string; bg: string }> = {
-  email: { icon: "mail", color: "text-blue-400", label: "Email", bg: "bg-blue-500/10" },
-  social: { icon: "share", color: "text-violet-400", label: "Social", bg: "bg-violet-500/10" },
+  email: { icon: "mail", color: "text-blue-600 dark:text-blue-400", label: "Email", bg: "bg-blue-500/10" },
+  social: { icon: "share", color: "text-violet-600 dark:text-violet-400", label: "Social", bg: "bg-violet-500/10" },
   report: { icon: "chart", color: "text-[color:var(--g-brand)]", label: "Report", bg: "bg-[color:var(--g-brand-soft)]" },
-  segment: { icon: "users", color: "text-amber-400", label: "Segment", bg: "bg-amber-500/10" },
-  workflow: { icon: "workflow", color: "text-rose-400", label: "Workflow", bg: "bg-rose-500/10" },
+  segment: { icon: "users", color: "text-amber-700 dark:text-amber-400", label: "Segment", bg: "bg-amber-500/10" },
+  workflow: { icon: "workflow", color: "text-rose-600 dark:text-rose-400", label: "Workflow", bg: "bg-rose-500/10" },
 }
 
 // Live Execution Timeline
@@ -87,11 +89,11 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
               }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <Icon name="activity" size="sm" className="text-blue-400" />
+              <Icon name="activity" size="sm" className="text-blue-600 dark:text-blue-400" />
             </motion.div>
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Execution Progress</h3>
+            <h3 className="font-semibold text-foreground">Execution progress</h3>
             <p className="text-xs text-muted-foreground">{completedSteps} of {steps.length} steps complete</p>
           </div>
         </div>
@@ -158,7 +160,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   >
-                    <Icon name="spinner" size="sm" className="text-blue-400" />
+                    <Icon name="spinner" size="sm" className="text-blue-600 dark:text-blue-400" />
                   </motion.div>
                 </motion.div>
               )}
@@ -169,7 +171,7 @@ function ExecutionTimeline({ steps, currentProgress }: { steps: ExecutionStep[];
               )}
               {step.status === "error" && (
                 <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center">
-                  <Icon name="warning" size="sm" className="text-red-400" />
+                  <Icon name="warning" size="sm" className="text-red-600 dark:text-red-400" />
                 </div>
               )}
               
@@ -252,14 +254,14 @@ function DeliverableCard({
           <Icon name={config.icon as IconName} size="sm" className={config.color} />
         </div>
         
-        {/* Confidence ring */}
-        {deliverable.status === "ready" && (
-          <div className="relative h-9 w-9">
+        {/* Agent-reported confidence ring — only when the handoff reported one. */}
+        {deliverable.status === "ready" && deliverable.confidence > 0 && (
+          <div className="relative h-9 w-9" title="Agent-reported confidence (not verified)">
             <svg className="h-9 w-9 -rotate-90">
               <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="3" className="text-secondary" />
               <motion.circle
                 cx="18" cy="18" r="14" fill="none"
-                stroke={deliverable.confidence >= 90 ? "#10b981" : deliverable.confidence >= 70 ? "#f59e0b" : "#ef4444"}
+                stroke={deliverable.confidence >= 90 ? "var(--g-brand)" : "var(--g-text-muted)"}
                 strokeWidth="3" strokeLinecap="round" strokeDasharray={88}
                 initial={{ strokeDashoffset: 88 }}
                 animate={{ strokeDashoffset: 88 - (deliverable.confidence / 100) * 88 }}
@@ -321,7 +323,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8">
         <div className="h-16 w-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
-          <Icon name="warning" size="xl" className="text-red-400" />
+          <Icon name="warning" size="xl" className="text-red-600 dark:text-red-400" />
         </div>
         <h3 className="font-semibold text-foreground mb-2">Task failed</h3>
         <p className="text-sm text-muted-foreground max-w-md">{jobError}</p>
@@ -335,7 +337,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
         <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center mb-4">
           <Icon name="eye" size="xl" className="text-muted-foreground" />
         </div>
-        <h3 className="font-semibold text-foreground mb-2">Select a Deliverable</h3>
+        <h3 className="font-semibold text-foreground mb-2">Select a deliverable</h3>
         <p className="text-sm text-muted-foreground max-w-xs">
           Click on any deliverable to preview its content and approve for publishing
         </p>
@@ -365,7 +367,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
                       "text-xs font-medium",
                       deliverable.confidence >= 90 ? "text-[color:var(--g-brand)]" : "text-amber-600"
                     )}>
-                      {deliverable.confidence}% confidence
+                      {deliverable.confidence}% agent-reported confidence
                     </span>
                   </>
                 )}
@@ -374,7 +376,7 @@ function PreviewPanel({ deliverable, isApproved, onApprove, onPush, onEdit, jobE
           </div>
           
           {isApproved && (
-            <div className="flex items-center gap-1.5 rounded-full bg-[color:var(--g-brand-soft)] px-2.5 py-1 text-xs font-medium text-[color:var(--g-brand)]">
+            <div className="flex items-center gap-1.5 rounded-[4px] bg-[color:var(--g-brand-soft)] px-1.5 py-0.5 text-xs font-medium text-[color:var(--g-brand)]">
               <Icon name="check" size="xs" />
               Approved
             </div>
@@ -559,7 +561,7 @@ function AssignmentApprovalDialog({
           <DialogTitle className="text-lg">{title}</DialogTitle>
           <DialogDescription>
             Generated by {agentName}
-            {confidence > 0 ? ` · ${confidence}% confident` : ""}
+            {confidence > 0 ? ` · agent-reported confidence ${confidence}%` : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -570,8 +572,8 @@ function AssignmentApprovalDialog({
         </div>
 
         <div className="border-t border-divide px-6 py-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Quality check
+          <p className="mb-3 text-xs font-medium text-muted-foreground">
+            Evidence
           </p>
           <ul className="space-y-2">
             {qualityChecks.map((check) => (
@@ -626,7 +628,7 @@ function AssignmentApprovalDialog({
             <>
               <Button
                 variant="outline"
-                className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                className="border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-800 dark:hover:text-red-300"
                 onClick={() => setRejectMode(true)}
                 disabled={isSubmitting}
               >
@@ -691,12 +693,13 @@ export default function AssignmentDetailPage({
   const progress = job ? jobProgress(job.status, handoff) : 0
 
   const taskTitle =
-    handoff?.action_title?.trim() ||
-    handoff?.task?.description?.trim() ||
-    (typeof job?.result === "object" && job?.result && "task" in job.result
-      ? String((job.result as { task?: { description?: string } }).task?.description || "")
-      : "") ||
-    "Agent assignment"
+    readableAssignmentText(
+      handoff?.action_title?.trim() ||
+        handoff?.task?.description?.trim() ||
+        (typeof job?.result === "object" && job?.result && "task" in job.result
+          ? String((job.result as { task?: { description?: string } }).task?.description || "")
+          : ""),
+    ) || "Agent assignment"
 
   const taskBrief = formatAssignmentOutput(
     handoff?.finding_description?.trim() ||
@@ -706,7 +709,6 @@ export default function AssignmentDetailPage({
   )
 
   const agentName = handoff?.agent_name || "Agent"
-  const agentInitials = agentName.slice(0, 2).toUpperCase()
   const agentId = handoff?.agent_id
   const createdAt = relativeTime(job?.createdAt)
   const confidencePercent = Math.round(
@@ -726,23 +728,17 @@ export default function AssignmentDetailPage({
     const sources = (handoff?.rag_sources ?? [])
       .map((source) => source.source)
       .filter(Boolean) as string[]
-    const checks: Array<{ label: string; status: "pass" | "warn" }> = [
-      { label: "All requested sections included", status: "pass" },
-    ]
+    const checks: Array<{ label: string; status: "pass" | "warn" }> = []
     if (sources.length > 0) {
       checks.push({
-        label: `Data sourced from ${sources.slice(0, 2).join(" + ")}`,
+        label: `Grounded in ${sources.slice(0, 2).join(" + ")}${sources.length > 2 ? ` and ${sources.length - 2} more` : ""}`,
         status: "pass",
       })
     } else {
-      checks.push({ label: "Data sourced from connected systems", status: "pass" })
-    }
-    checks.push({ label: "Format matches template", status: "pass" })
-    if (confidencePercent > 0 && confidencePercent < 95) {
-      checks.push({ label: "Optional comparison sections may be incomplete", status: "warn" })
+      checks.push({ label: "No retrieved sources were reported for this output", status: "warn" })
     }
     return checks
-  }, [handoff?.rag_sources, confidencePercent])
+  }, [handoff?.rag_sources])
 
   const reportContent = formatAssignmentOutput(
     handoff?.answer?.trim() ||
@@ -849,7 +845,6 @@ export default function AssignmentDetailPage({
       <AppShell title="Assignment">
         <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
           <GravitrePageHeader
-            eyebrow="Work"
             title="Assignment"
             description="Loading…"
             icon={<NavTasks className="h-5 w-5" />}
@@ -867,13 +862,12 @@ export default function AssignmentDetailPage({
       <AppShell title="Assignment">
         <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
           <GravitrePageHeader
-            eyebrow="Work"
             title="Assignment"
             icon={<NavTasks className="h-5 w-5" />}
             actions={
-              <Link href="/assignments">
-                <Button variant="outline" size="sm">Back to Assignments</Button>
-              </Link>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/assignments">Back to assignments</Link>
+              </Button>
             }
           />
           <div className="flex flex-1 items-center justify-center px-[var(--np-page-pad)]">
@@ -882,9 +876,9 @@ export default function AssignmentDetailPage({
               title="Assignment not found"
               hint={loadError instanceof Error ? loadError.message : "This assignment could not be loaded."}
               action={
-                <Link href="/assignments">
-                  <Button variant="outline" size="sm">Back to Assignments</Button>
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/assignments">Back to assignments</Link>
+                </Button>
               }
             />
           </div>
@@ -913,30 +907,27 @@ export default function AssignmentDetailPage({
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           className="shrink-0"
-          eyebrow="Work"
           title={taskTitle}
           description={`${agentName} · ${createdAt} · ${job.status.replace(/_/g, " ")}`}
           icon={<NavTasks className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               {agentId ? (
-                <Link href={`/agents/${agentId}/chat`}>
-                  <Button variant="outline" size="sm" className="text-xs">Chat</Button>
-                </Link>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/agents/${agentId}/chat`}>Chat</Link>
+                </Button>
               ) : null}
-              <Link href="/assignments">
-                <Button variant="outline" size="sm" className="gap-1">
+              <Button asChild variant="ghost" size="sm" className="gap-1">
+                <Link href="/assignments">
                   <Icon name="chevronLeft" size="sm" />
                   Back
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           }
         >
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] text-sm font-bold text-[color:var(--g-brand)]">
-              {agentInitials}
-            </div>
+            <AgentIdentityAvatar agent={{ name: agentName }} size="md" showStatusDot={false} />
             {taskBrief && taskBrief !== taskTitle ? (
               <p className="max-w-xl text-xs text-muted-foreground line-clamp-2">{taskBrief}</p>
             ) : null}
@@ -958,9 +949,9 @@ export default function AssignmentDetailPage({
             icon={<Icon name="check" size="sm" />}
           />
           <GravitreMetric
-            label="Confidence"
-            value={confidencePercent > 0 ? `${confidencePercent}%` : "—"}
-            hint="From agent handoff"
+            label="Agent-reported confidence"
+            value={confidencePercent > 0 ? `${confidencePercent}%` : "Not reported"}
+            hint="Self-reported in the agent handoff, not verified"
             icon={<Icon name="shield" size="sm" />}
           />
           <GravitreMetric
@@ -1002,7 +993,7 @@ export default function AssignmentDetailPage({
               )}
 
               {approvalStatus === "rejected" && rejectionReason && (
-                <GravitreSurface className="border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400" padded={false}>
+                <GravitreSurface className="border-red-500/30 bg-red-500/5 p-4 text-sm text-red-600 dark:text-red-400" padded={false}>
                   Rejected: {rejectionReason}
                 </GravitreSurface>
               )}
@@ -1018,7 +1009,7 @@ export default function AssignmentDetailPage({
                   {readyCount > 0 && approvedCount < readyCount && (
                     <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={handleApproveAll}>
                       <Icon name="check" size="xs" />
-                      Approve All
+                      Approve all
                     </Button>
                   )}
                 </div>

@@ -342,7 +342,7 @@ export function ModelSelector({
                       <div className="px-3 pb-3 space-y-3">
                         {/* Temperature */}
                         <div>
-                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                          <label className="text-xs font-medium text-muted-foreground">
                             Temperature
                           </label>
                           <input

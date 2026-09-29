@@ -245,7 +245,7 @@ function pendingDescription(pendingTask: ChatPendingTask): string {
     }
     return (
       `Gravitre will run ${total} steps across your connected apps. ` +
-      "Read steps run automatically; write steps run automatically unless your approval settings require confirmation."
+      "Read steps can run directly. Write steps require approval unless your organization policy explicitly authorizes that action to run unattended."
     )
   }
   if (pendingTask.type === "connector_action") {

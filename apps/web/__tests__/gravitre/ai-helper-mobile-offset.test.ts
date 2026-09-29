@@ -99,6 +99,53 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     expect(button.className).toContain("md:bottom-5")
   })
 
+  it("docks centred on the workspace panel from md up, collapsed or expanded rail", async () => {
+    await renderHelper()
+    const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.getAttribute("data-gravitre-ai-dock")).toBe("workspace")
+    expect(button.className).toContain("md:left-[calc(50%+var(--np-sidebar-rail)/2)]")
+    expect(button.className).toContain("md:[:root:has([data-nav-expanded=true])_&]:left-[calc(50%+var(--np-sidebar)/2)]")
+    expect(button.className).toContain("md:-translate-x-1/2")
+  })
+
+  it("keeps the corner anchor clear of the rail on the Workflow Builder canvas", async () => {
+    pathnameState.value = "/workflows/wf-1/builder"
+    await renderHelper()
+    const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.getAttribute("data-gravitre-ai-dock")).toBe("canvas")
+    expect(button.className).toContain("md:left-[calc(var(--np-sidebar-rail)+12px)]")
+    expect(button.className).toContain("md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]")
+  })
+
+  it("drops to the icon-only pill below xl on the Workflow Builder so it clears the canvas toolbar", async () => {
+    pathnameState.value = "/workflows/wf-1/builder"
+    await renderHelper()
+    const label = container.querySelector("[data-gravitre-ai-helper-label]") as HTMLElement
+    expect(label.className).toContain("xl:flex")
+    expect(label.className).not.toContain("sm:flex")
+  })
+
+  it("keeps the labelled pill from sm up on other routes", async () => {
+    await renderHelper()
+    const label = container.querySelector("[data-gravitre-ai-helper-label]") as HTMLElement
+    expect(label.className).toContain("sm:flex")
+  })
+
+  it("scrollable pages pad main so the launcher never covers the last content at scroll end", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const shell = readFileSync(resolve(__dirname, "../../components/gravitre/app-shell.tsx"), "utf8")
+    // Launcher: md:bottom-5 (20px) + 52px pill = 72px < 96px; mobile: 56px nav + 12px gap + 44px = 112px < 128px.
+    expect(shell).toContain('"pb-32 md:pb-24"')
+  })
+
+  it("stacks above MobileBottomNav (z-30) but below modal sheets and dialogs (z-50)", async () => {
+    await renderHelper()
+    const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.className).toContain("z-40")
+    expect(button.className).not.toMatch(/z-\[(?:[5-9]\d|\d{3,})\]/)
+  })
+
   it("the mobile offset (56px bar + 12px gap = 68px+) is strictly greater than MobileBottomNav's own height (56px) — no overlap by construction", () => {
     const mobileBottomNavHeightPx = 56 // h-14, confirmed in mobile-bottom-nav.tsx
     const helperGapPx = 12

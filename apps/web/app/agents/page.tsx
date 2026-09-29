@@ -10,6 +10,7 @@ import {
   GravitreEmpty,
   GravitrePageHeader,
   GravitreSurface,
+  LiveStatus,
 } from "@/components/gravitre/nodus-product"
 import { StatusChip } from "@/components/gravitre/visual"
 import { Button } from "@/components/ui/button"
@@ -54,8 +55,14 @@ import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { FleetControls, FleetControlsCollapsed, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
-import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
-import { mapApiDepartmentToFleet, mapFleetDepartmentToApi, toFleetAgent } from "@/lib/agent-identity-bridge"
+import type { AgentDepartmentId, AgentRuntimeState } from "@/components/agents/fleet-v4/types"
+import {
+  agentStatusToRuntime,
+  mapApiDepartmentToFleet,
+  mapFleetDepartmentToApi,
+  toFleetAgent,
+} from "@/lib/agent-identity-bridge"
+import { PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
 import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
@@ -106,10 +113,8 @@ function deriveModelLabel(input: Record<string, unknown>): string {
     config.model ?? config.model_base ?? versionConfig.model ?? input.model ?? "",
   ).trim()
   if (explicit) return explicit.replace(/^openai\//, "").replace(/^anthropic\//, "Claude ")
-  const role = String(input.role ?? "")
-  if (role.toLowerCase().includes("data")) return "GPT-5.5"
-  if (role.toLowerCase().includes("support")) return "Claude"
-  return "GPT-5.5"
+  // No configured model is shown as unknown; never guess one from the role.
+  return ""
 }
 
 function deriveKnowledgeDocCount(input: Record<string, unknown>, stats: Record<string, unknown>): number {
@@ -345,12 +350,14 @@ function AgentDetailPanel({
   onStart,
   onStop,
   onDepartmentChange,
+  onClose,
   isMutating,
 }: {
   agent: Agent
   onStart: (agent: Agent) => Promise<void>
   onStop: (agent: Agent) => Promise<void>
   onDepartmentChange: (agentId: string, department: AgentDepartment) => Promise<void>
+  onClose?: () => void
   isMutating: boolean
 }) {
   return (
@@ -363,6 +370,7 @@ function AgentDetailPanel({
       <AgentFleetInspectorBody
         agent={agent}
         layout="panel"
+        onClose={onClose}
         onStart={(a) => onStart(a as Agent)}
         onStop={(a) => onStop(a as Agent)}
         onDepartmentChange={(agentId, department) => {
@@ -379,17 +387,23 @@ function AgentPreviewSheet({
   agent,
   open,
   onOpenChange,
+  onStart,
+  onStop,
+  isMutating,
   onDepartmentChange,
 }: {
   agent: Agent
   open: boolean
   onOpenChange: (open: boolean) => void
   onOpenProfile?: () => void
+  onStart?: (agent: Agent) => Promise<void>
+  onStop?: (agent: Agent) => Promise<void>
+  isMutating?: boolean
   onDepartmentChange?: (agentId: string, department: AgentDepartment) => Promise<void>
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm">
+      <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-[400px]">
         <SheetHeader className="sr-only">
           <SheetTitle>{agent.name}</SheetTitle>
           <SheetDescription>{agent.role}</SheetDescription>
@@ -397,6 +411,9 @@ function AgentPreviewSheet({
         <AgentFleetInspectorBody
           agent={agent}
           layout="sheet"
+          onStart={onStart ? (a) => onStart(a as Agent) : undefined}
+          onStop={onStop ? (a) => onStop(a as Agent) : undefined}
+          isMutating={isMutating}
           onDepartmentChange={
             onDepartmentChange
               ? (agentId, department) => {
@@ -601,6 +618,28 @@ export default function AgentsPage() {
     await handleDepartmentChange(agentId, fleetId)
   }
   
+  const workforce = useMemo(() => {
+    let working = 0
+    let active = 0
+    let errored = 0
+    for (const agent of agents) {
+      const status = normalizeAgentStatus(agent.status)
+      if (agentStatusIsLiveWork(status)) working += 1
+      if (status === "active" || status === "processing") active += 1
+      if (status === "error") errored += 1
+    }
+    return { working, active, errored }
+  }, [agents])
+
+  const runtimeCounts = useMemo(() => {
+    const counts = { executing: 0, available: 0, failed: 0, idle: 0 }
+    for (const agent of agents) {
+      const state = agentStatusToRuntime(agent.status)
+      if (state === "executing" || state === "available" || state === "failed" || state === "idle") counts[state] += 1
+    }
+    return counts
+  }, [agents])
+
   const filteredAgents = useMemo(() => {
     if (!normalizedSearchQuery) return agents
     return agents.filter((agent) => agentMatchesQuery(agent, normalizedSearchQuery))
@@ -710,7 +749,21 @@ export default function AgentsPage() {
     const agent = agentsById.get(id)
     if (!agent) return
     setSelectedAgent(agent)
+    const desktop =
+      typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+    if (desktop) {
+      if (!detailPanelOpen) {
+        window.localStorage.setItem(AGENT_DETAIL_PANEL_KEY, "1")
+        setDetailPanelOpen(true)
+      }
+      return
+    }
     setPreviewOpen(true)
+  }
+
+  const closeDetailPanel = () => {
+    window.localStorage.setItem(AGENT_DETAIL_PANEL_KEY, "0")
+    setDetailPanelOpen(false)
   }
 
   const chromeToggle = (
@@ -733,27 +786,28 @@ export default function AgentsPage() {
     <>
       {chromeToggle}
       <AskGravitreSummonButton />
-      <Button onClick={() => router.push("/agents/new")} className="gap-2">
-        <Plus className="h-4 w-4" />
-        <span className="hidden sm:inline">New Agent</span>
-      </Button>
-      <Button variant="outline" onClick={() => router.push(APP_ROUTES.multiAgentRun)} className="gap-2">
-        <Users className="h-4 w-4" />
-        <span className="hidden sm:inline">Multi-Agent Run</span>
-      </Button>
       <MesonBuildButton
         onClick={() => setMesonWizardOpen(true)}
         isOpen={mesonWizardOpen}
       />
+      <Button variant="ghost" onClick={() => router.push(APP_ROUTES.multiAgentRun)}>
+        <Users className="size-4" />
+        <span className="hidden sm:inline">Multi-agent run</span>
+      </Button>
+      <Button onClick={() => router.push("/agents/new")}>
+        <Plus className="size-4" />
+        <span className="hidden sm:inline">New agent</span>
+      </Button>
       {visibleSelectedAgent ? (
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={toggleDetailPanel}
           aria-label={detailPanelOpen ? "Hide agent details" : "Show agent details"}
+          aria-pressed={detailPanelOpen}
           className="hidden lg:inline-flex"
         >
-          {detailPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+          {detailPanelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
         </Button>
       ) : null}
     </>
@@ -763,13 +817,14 @@ export default function AgentsPage() {
   <AppShell title={SURFACE_COPY.pages.agents.title}>
     <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)] lg:flex-row">
   {/* Left - Agent roster */}
-  <div className="relative z-10 flex flex-1 flex-col border-divide lg:border-r">
-          <div className="relative z-10 space-y-3 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]">
-            <Suspense fallback={null}>
-              <AgentsHubTabs active="roster" />
-            </Suspense>
-            {!chromeCollapsed ? <AgentSurfaceSwitch surface="operate" /> : null}
-          </div>
+  <div className="relative z-10 flex min-w-0 flex-1 flex-col border-divide lg:border-r">
+          {chromeCollapsed ? (
+            <div className="relative z-10 px-[var(--np-page-pad-sm)] pt-3 sm:px-[var(--np-page-pad)]">
+              <Suspense fallback={null}>
+                <AgentsHubTabs active="roster" />
+              </Suspense>
+            </div>
+          ) : null}
 
           {chromeCollapsed ? (
             <div className="flex flex-wrap items-center gap-2 border-b border-divide px-[var(--np-page-pad-sm)] py-2 sm:px-[var(--np-page-pad)]">
@@ -783,16 +838,42 @@ export default function AgentsPage() {
             <>
               <GravitrePageHeader
                 className="shrink-0"
-                eyebrow="AI Team"
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description={SURFACE_COPY.pages.agents.description}
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
+                status={
+                  agents.length > 0 ? (
+                    <LiveStatus tone={workforce.errored > 0 ? "attention" : workforce.working > 0 ? "live" : "idle"}>
+                      {`${workforce.working} working · ${workforce.active} on duty · ${agents.length} teammates`}
+                      {workforce.errored > 0 ? ` · ${workforce.errored} need attention` : ""}
+                    </LiveStatus>
+                  ) : null
+                }
                 actions={
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {rosterActions}
                   </div>
                 }
-              />
+              >
+                <Suspense fallback={null}>
+                  <AgentsHubTabs active="roster" />
+                </Suspense>
+                <AgentSurfaceSwitch surface="operate" />
+              </GravitrePageHeader>
+
+              {agents.length > 0 ? (
+                <PhaseBand
+                  label="Workforce state"
+                  active={prefs.filters.status}
+                  onSelect={(next) => setFilters({ status: next as AgentRuntimeState | null })}
+                  phases={[
+                    { id: "executing", label: "Working now", count: runtimeCounts.executing, tone: "live" },
+                    { id: "available", label: "On duty", count: runtimeCounts.available, tone: "done", hint: "Ready for work" },
+                    { id: "failed", label: "Needs attention", count: runtimeCounts.failed, tone: "risk" },
+                    { id: "idle", label: "Idle", count: runtimeCounts.idle, tone: "neutral" },
+                  ]}
+                />
+              ) : null}
 
               <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-2.5 sm:px-[var(--np-page-pad)]">
                 <FleetControls
@@ -818,7 +899,7 @@ export default function AgentsPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         aria-label="Search agents"
-                        className="h-8 w-full rounded-md border border-divide bg-[color:var(--g-surface-1)] pl-8 pr-8 text-xs text-[color:var(--g-text-primary)] focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="h-8 w-full rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-background pl-8 pr-8 text-[13px] text-[color:var(--g-text-primary)] placeholder:text-[color:var(--g-text-muted)] hover:border-[color:var(--g-border-strong)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/20"
                       />
                       {searchQuery ? (
                         <button
@@ -922,9 +1003,9 @@ export default function AgentsPage() {
                       title="No agents yet"
                       hint="Create your first teammate to start delegating work."
                       action={
-                        <Button onClick={() => router.push("/agents/new")} className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          New Agent
+                        <Button onClick={() => router.push("/agents/new")}>
+                          <Plus className="size-4" />
+                          New agent
                         </Button>
                       }
                     />
@@ -940,8 +1021,8 @@ export default function AgentsPage() {
                   toolbar={
                     <p className="text-xs text-[color:var(--g-text-muted)]">
                       {hasActiveFilters
-                        ? "Filtered list — clear filters to drag agents between departments"
-                        : "List view — drag rows onto a department to reassign"}
+                        ? "Clear filters to move agents between departments."
+                        : "Drag a row onto a department to reassign it."}
                     </p>
                   }
                 />
@@ -949,15 +1030,12 @@ export default function AgentsPage() {
                 <div className="space-y-2">
                   {graphModel.hasLiveSwarm ? (
                     <p className="text-xs text-[color:var(--g-brand)]">
-                      Live multi-agent swarm path highlighted
+                      A multi-agent run is in progress. Its path is highlighted.
                     </p>
                   ) : (
                     <p className="text-xs text-[color:var(--g-text-muted)]">
-                      Graph shows parent links, swarm delegation, and connector usage — only
-                      edges backed by data
-                      {hasActiveFilters
-                        ? "."
-                        : ". Drag agents onto a department to reassign."}
+                      Lines show reporting, delegation, and shared connectors.
+                      {hasActiveFilters ? null : " Drag an agent onto a department to reassign it."}
                     </p>
                   )}
                   <GraphView
@@ -990,6 +1068,9 @@ export default function AgentsPage() {
             agent={visibleSelectedAgent}
             open={previewOpen}
             onOpenChange={setPreviewOpen}
+            onStart={handleStartAgent}
+            onStop={handleStopAgent}
+            isMutating={isMutatingAgent === visibleSelectedAgent.id}
             onDepartmentChange={handleDepartmentLabelChange}
           />
         ) : null}
@@ -1004,16 +1085,13 @@ export default function AgentsPage() {
             <motion.div
               key="agent-detail-panel"
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 420, opacity: 1 }}
+              animate={{ width: 380, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative z-10 hidden shrink-0 overflow-hidden border-t border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] lg:block lg:border-l lg:border-t-0"
+              aria-label={`${visibleSelectedAgent.name} details`}
+              role="complementary"
+              className="relative z-10 hidden shrink-0 overflow-hidden border-l border-[color:var(--g-border-subtle)] bg-background lg:block"
             >
-              {/* Was a full-opacity violet -> blue -> emerald rainbow strip,
-                  which read as decoration rather than as part of the product.
-                  A single brand-primary rule does the same job of capping the
-                  panel without introducing three off-palette hues. */}
-              <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
               <AnimatePresence mode="wait">
                 <TooltipProvider delayDuration={200}>
                   <AgentDetailPanel
@@ -1022,6 +1100,7 @@ export default function AgentsPage() {
                     onStart={handleStartAgent}
                     onStop={handleStopAgent}
                     onDepartmentChange={handleDepartmentLabelChange}
+                    onClose={closeDetailPanel}
                     isMutating={isMutatingAgent === visibleSelectedAgent.id}
                   />
                 </TooltipProvider>

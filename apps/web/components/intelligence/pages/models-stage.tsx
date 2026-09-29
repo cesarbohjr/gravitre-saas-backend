@@ -87,11 +87,11 @@ export function ModelsStage({
       )}
 
       <p className={cn(TYPE.meta, "text-pretty")}>
-        Create, train, evaluate, deploy, and inspect runs in{" "}
-        <Link href={APP_ROUTES.intelligenceModelStudio} className="font-medium text-[color:var(--g-brand)] hover:underline">
+        Create, evaluate, deploy, and inspect runs in{" "}
+        <Link href={APP_ROUTES.intelligenceModelStudio} className="font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]">
           Model Studio
         </Link>
-        . Training is folded there — not a separate hub tab.
+        , where you can also train them.
       </p>
 
       <IntelligenceAskCommandSurface enabled={enabled} pageSuggestedQuestions={suggestedQuestions} />

@@ -1,19 +1,35 @@
 "use client"
 
 // Connectors Page - Integration Hub with Network Topology View
-import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState } from "react"
+import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import {
+  OperatingEmpty,
+  PhaseBand,
+  type OperatingPhase,
+} from "@/components/gravitre/operating/operating-primitives"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
+import {
+  ConnectorAttentionList,
+  ConnectorInspector,
+  ConnectorOperatingRow,
+  ConnectorOperatingSummary,
+  ConnectorRowHeader,
+  deriveConnectorAttention,
+  useAgentsByVendor,
+  useVendorCapabilities,
+  type ConnectorAttention,
+} from "@/components/connectors/connector-operating"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
@@ -27,8 +43,6 @@ import {
   Settings,
   Trash2,
   ExternalLink,
-  Zap,
-  Activity,
   ArrowRight,
   Circle,
   CheckCircle2,
@@ -41,8 +55,6 @@ import {
   Wifi,
   WifiOff,
   Cable,
-  Bot,
-  Workflow,
   Filter,
   LayoutGrid,
   List,
@@ -130,19 +142,13 @@ interface Connector {
   displayStatus?: string
   environment: "production" | "staging"
   lastSync: string
-  health: number
   description: string
-  dataFlowRate?: string
-  requestsToday?: number
-  latency?: number
   category?: string
   authType?: "oauth" | "apiKey" | "webhook"
   authStatus?: string
   blockingReason?: string
   recoveryAction?: string
   availability?: ConnectorAvailability
-  usedByWorkflows?: number
-  triggeredByAgents?: number
   config?: {
     apiKey?: string
     webhookUrl?: string
@@ -216,7 +222,7 @@ function ConnectorReadinessBadges({ availability }: { availability?: ConnectorAv
         <span
           key={label}
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+            "inline-flex items-center gap-1 rounded-[4px] border px-1.5 py-0.5 text-[10px] font-medium capitalize",
             ok
               ? "border-divide text-[color:var(--g-text-secondary)]"
               : "border-divide/70 text-[color:var(--g-text-muted)] opacity-70",
@@ -297,19 +303,13 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     displayStatus: displayStatus || undefined,
     environment: environment === "production" ? "production" : "staging",
     lastSync: formatLastSync(model.lastSync ?? model.last_sync ?? model.last_sync_at),
-    health: Number(model.health ?? 0),
     description: String(model.description ?? ""),
-    dataFlowRate: String(model.dataFlowRate ?? model.data_flow_rate ?? "0 MB/s"),
-    requestsToday: Number(model.requestsToday ?? model.requests_today ?? 0),
-    latency: Number(model.latency ?? 0),
     category: String(model.category ?? lookupConnectorCategory(vendor) ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
     authStatus: authStatus || undefined,
     blockingReason: availability?.blockingReason,
     recoveryAction: availability?.recoveryAction,
     availability,
-    usedByWorkflows: Number(model.usedByWorkflows ?? model.used_by_workflows ?? 0),
-    triggeredByAgents: Number(model.triggeredByAgents ?? model.triggered_by_agents ?? 0),
     config:
       model.config && typeof model.config === "object"
         ? (model.config as Connector["config"])
@@ -499,10 +499,10 @@ function CentralHub({ connectedCount, totalCount }: { connectedCount: number; to
       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700 sm:h-24 sm:w-24">
         <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
         <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)]" />
-        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-white p-2 text-black dark:bg-neutral-900 dark:text-white">
+        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-card p-2 text-foreground">
           <Cable className="mb-0.5 h-5 w-5 text-[color:var(--color-brand)] sm:h-6 sm:w-6" />
           <div className="text-lg font-bold leading-none sm:text-xl">{connectedCount}</div>
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground sm:text-[9px]">
+          <div className="text-[9px] text-muted-foreground sm:text-[10px]">
             of {totalCount}
           </div>
         </div>
@@ -536,48 +536,17 @@ function ConnectorNode({
   onFocus?: (connector: Connector) => void
   variant?: "topology" | "list"
 }) {
-  const [isHovered, setIsHovered] = useState(false)
-  const config = statusConfig[connector.status] ?? statusConfig.disconnected
-  const StatusIcon = config.icon
   const isSyncing = connector.status === "syncing"
 
-  const handleSync = async () => {
-    await onSync(connector.id)
-  }
-
   const optionsMenu = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={`${connector.name} options`}>
-          <MoreVertical className="h-3.5 w-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-36">
-        <DropdownMenuItem onClick={onConfigure}>
-          <Settings className="h-3.5 w-3.5 mr-2" />
-          Configure
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
-          <RefreshCw className={cn("h-3.5 w-3.5 mr-2", isSyncing && "animate-spin")} />
-          Sync Now
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void onTestConnection(connector.id)}>
-          <Wifi className="h-3.5 w-3.5 mr-2" />
-          Test Connection
-        </DropdownMenuItem>
-        {connectorNeedsOAuthReconnect(connector) && onReconnect && (
-          <DropdownMenuItem onClick={() => void onReconnect(connector)}>
-            <ExternalLink className="h-3.5 w-3.5 mr-2" />
-            {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onDelete} className="text-destructive">
-          <Trash2 className="h-3.5 w-3.5 mr-2" />
-          Remove
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ConnectorOptionsMenu
+      connector={connector}
+      onConfigure={onConfigure}
+      onSync={onSync}
+      onTestConnection={onTestConnection}
+      onReconnect={onReconnect}
+      onDelete={onDelete}
+    />
   )
 
   if (variant === "list") {
@@ -601,16 +570,84 @@ function ConnectorNode({
             {isSyncing ? "Syncing" : connectorStatusLabel(connector)}
           </p>
         </button>
-        <Link
-          href={`/connectors/${connector.id}`}
-          className="shrink-0 text-xs text-[color:var(--g-text-muted)] underline-offset-4 hover:text-[color:var(--g-text-primary)] hover:underline"
-        >
-          Details
-        </Link>
         {optionsMenu}
       </div>
     )
   }
+
+  return <ConnectorTopologyCard connector={connector} position={position} optionsMenu={optionsMenu} onReconnect={onReconnect} />
+}
+
+function ConnectorOptionsMenu({
+  connector,
+  onConfigure,
+  onSync,
+  onTestConnection,
+  onReconnect,
+  onDelete,
+}: {
+  connector: Connector
+  onConfigure: () => void
+  onSync: (connectorId: string) => Promise<void>
+  onTestConnection: (connectorId: string) => Promise<void>
+  onReconnect?: (connector: Connector) => Promise<void>
+  onDelete: () => void
+}) {
+  const isSyncing = connector.status === "syncing"
+  const handleSync = async () => {
+    await onSync(connector.id)
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={`${connector.name} options`}>
+          <MoreVertical className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-36">
+        <DropdownMenuItem onClick={onConfigure}>
+          <Settings className="h-3.5 w-3.5 mr-2" />
+          Configure
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
+          <RefreshCw className={cn("h-3.5 w-3.5 mr-2", isSyncing && "animate-spin")} />
+          Sync now
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void onTestConnection(connector.id)}>
+          <Wifi className="h-3.5 w-3.5 mr-2" />
+          Test connection
+        </DropdownMenuItem>
+        {connectorNeedsOAuthReconnect(connector) && onReconnect && (
+          <DropdownMenuItem onClick={() => void onReconnect(connector)}>
+            <ExternalLink className="h-3.5 w-3.5 mr-2" />
+            {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onDelete} className="text-destructive">
+          <Trash2 className="h-3.5 w-3.5 mr-2" />
+          Remove
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function ConnectorTopologyCard({
+  connector,
+  position,
+  optionsMenu,
+  onReconnect,
+}: {
+  connector: Connector
+  position: "left" | "right"
+  optionsMenu: ReactNode
+  onReconnect?: (connector: Connector) => Promise<void>
+}) {
+  const [isHovered, setIsHovered] = useState(false)
+  const config = statusConfig[connector.status] ?? statusConfig.disconnected
+  const StatusIcon = config.icon
+  const isSyncing = connector.status === "syncing"
 
   return (
     <motion.div
@@ -694,40 +731,6 @@ function ConnectorNode({
             </ul>
           ) : null}
 
-          {/* Live metrics */}
-          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-secondary/50 mb-3">
-            <div className="text-center">
-              <div className="text-xs font-medium text-foreground">{connector.dataFlowRate}</div>
-              <div className="text-[9px] text-muted-foreground">Throughput</div>
-            </div>
-            <div className="text-center border-x border-border/50">
-              <div className="text-xs font-medium text-foreground">{connector.latency}ms</div>
-              <div className="text-[9px] text-muted-foreground">Latency</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xs font-medium text-foreground">{(connector.requestsToday || 0).toLocaleString()}</div>
-              <div className="text-[9px] text-muted-foreground">Requests</div>
-            </div>
-          </div>
-
-          {/* AI Usage Indicators */}
-          {(connector.usedByWorkflows || connector.triggeredByAgents) && connectorIsExecutable(connector) && (
-            <div className="flex items-center gap-3 mb-3 text-[10px] text-muted-foreground">
-              {connector.usedByWorkflows && connector.usedByWorkflows > 0 && (
-                <div className="flex items-center gap-1">
-                  <Workflow className="h-3 w-3 text-blue-400" />
-                  <span>{connector.usedByWorkflows} workflows</span>
-                </div>
-              )}
-              {connector.triggeredByAgents && connector.triggeredByAgents > 0 && (
-                <div className="flex items-center gap-1">
-                  <Bot className="h-3 w-3 text-[color:var(--g-signal)]" />
-                  <span>{connector.triggeredByAgents} agents</span>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Footer */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -740,7 +743,7 @@ function ConnectorNode({
               {connectorNeedsOAuthReconnect(connector) && onReconnect && (
                   <button
                     type="button"
-                    className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                    className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
                     onClick={() => void onReconnect(connector)}
                   >
                     {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
@@ -748,7 +751,7 @@ function ConnectorNode({
                 )}
               <Link 
                 href={`/connectors/${connector.id}`}
-                className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 Details
@@ -839,7 +842,7 @@ function ConfigureModal({
             </div>
           ) : (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">API Key</label>
+            <label className="text-xs font-medium text-muted-foreground">API key</label>
             <div className="relative">
               <Input
                 type={showApiKey ? "text" : "password"}
@@ -860,7 +863,7 @@ function ConfigureModal({
           )}
           {!isOAuth && (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sync Interval</label>
+            <label className="text-xs font-medium text-muted-foreground">Sync interval</label>
             <select
               value={config.syncInterval || "5m"}
               onChange={(e) => setConfig({ ...config, syncInterval: e.target.value })}
@@ -922,7 +925,7 @@ function DeleteModal({
               <AlertTriangle className="h-5 w-5 text-destructive" />
             </div>
             <div>
-              <DialogTitle>Remove Connector</DialogTitle>
+              <DialogTitle>Remove connector</DialogTitle>
               <DialogDescription>This cannot be undone</DialogDescription>
             </div>
           </div>
@@ -1420,13 +1423,13 @@ function AddConnectorModal({
                 </button>
                 {Object.entries(connectorCategories).map(([cat, data]) => {
                   const colorMap: Record<string, { active: string, inactive: string }> = {
-                    emerald: { active: "bg-emerald-500 text-white", inactive: "hover:bg-emerald-500/10 hover:text-emerald-400" },
-                    blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-400" },
+                    emerald: { active: "bg-emerald-500 text-white", inactive: "hover:bg-emerald-500/10 hover:text-emerald-800 dark:hover:text-emerald-400" },
+                    blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-800 dark:hover:text-blue-400" },
                     violet: { active: "bg-[color:var(--g-signal)] text-white", inactive: "hover:bg-[color:var(--g-signal-surface)] hover:text-[color:var(--g-signal)]" },
-                    amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-400" },
+                    amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-400" },
                     pink: { active: "bg-pink-500 text-white", inactive: "hover:bg-pink-500/10 hover:text-pink-400" },
-                    cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-400" },
-                    orange: { active: "bg-orange-500 text-white", inactive: "hover:bg-orange-500/10 hover:text-orange-400" },
+                    cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-800 dark:hover:text-cyan-400" },
+                    orange: { active: "bg-orange-500 text-white", inactive: "hover:bg-orange-500/10 hover:text-orange-800 dark:hover:text-orange-400" },
                     indigo: { active: "bg-indigo-500 text-white", inactive: "hover:bg-indigo-500/10 hover:text-indigo-400" },
                   }
                   const colors = colorMap[data.color] || colorMap.blue
@@ -1454,7 +1457,7 @@ function AddConnectorModal({
                     <p className="text-sm text-muted-foreground">No connectors found</p>
                     <button 
                       onClick={() => { setSearchQuery(""); setModalCategoryFilter("all"); }}
-                      className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-1"
                     >
                       Clear filters
                     </button>
@@ -1462,7 +1465,7 @@ function AddConnectorModal({
                 )}
                 {Object.entries(groupedConnectors).map(([category, connectors]) => (
                   <div key={category}>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    <h4 className="text-xs font-medium text-muted-foreground mb-2">
                       {category}
                     </h4>
                     <div className="grid grid-cols-2 gap-2">
@@ -1480,28 +1483,28 @@ function AddConnectorModal({
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-foreground">{connector.type}</span>
                               {connector.certified && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-success/10 text-success">
+                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
                                   Certified
                                 </span>
                               )}
                               {!connector.partner && isPartnerGatedConnector(connector) && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-warning/10 text-warning">
+                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-warning/10 text-warning">
                                   Partner
                                 </span>
                               )}
                               {!connector.partner && isShippedConnector(connector) && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-medium bg-success/10 text-success">
+                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
                                   Available
                                 </span>
                               )}
                               <span className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded uppercase font-medium",
+                                "text-xs px-1.5 py-0.5 rounded font-medium",
                                 isPartnerGatedConnector(connector)
                                   ? "bg-warning/10 text-warning"
                                   : !connector.partner && !isShippedConnector(connector)
                                   ? "bg-zinc-500/10 text-zinc-400"
                                   : connector.authType === "oauth"
-                                    ? "bg-blue-500/10 text-blue-400"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                                     : connector.authType === "webhook"
                                       ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
                                       : "bg-warning/10 text-warning"
@@ -1542,7 +1545,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 uppercase font-medium">OAuth</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">OAuth</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1564,7 +1567,7 @@ function AddConnectorModal({
                 {oauthStatus === "idle" && (
                   <div className="space-y-4">
                     <div className="mx-auto h-16 w-16 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <Globe className="h-8 w-8 text-blue-400" />
+                      <Globe className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-foreground">Connect with {selectedType}</h3>
@@ -1616,7 +1619,7 @@ function AddConnectorModal({
                             href="https://docs.apollo.io/docs/use-oauth-20-authorization-flow-to-access-apollo-user-information-partners"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                            className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                           >
                             Apollo OAuth partner guide
                             <ExternalLink className="h-3 w-3" />
@@ -1792,7 +1795,7 @@ function AddConnectorModal({
               <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <Link2 className="h-4 w-4 text-[color:var(--g-signal)]" />
-                  Webhook Endpoint
+                  Webhook endpoint
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -1817,7 +1820,7 @@ function AddConnectorModal({
 
               {/* Instructions */}
               <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                <h4 className="text-sm font-medium text-foreground">Setup Instructions</h4>
+                <h4 className="text-sm font-medium text-foreground">Setup instructions</h4>
                 <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside">
                   <li>Go to your {selectedType} settings or admin panel</li>
                   <li>Navigate to Webhooks or Integrations section</li>
@@ -1830,7 +1833,7 @@ function AddConnectorModal({
               {/* Connector Name & Environment */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Connector Name</label>
+                  <label className="text-sm font-medium text-foreground">Connector name</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -1884,7 +1887,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-warning/10 text-warning uppercase font-medium">API Key</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-warning/10 text-warning font-medium">API Key</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1903,7 +1906,7 @@ function AddConnectorModal({
               {/* Configuration Form */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Connector Name</label>
+                  <label className="text-sm font-medium text-foreground">Connector name</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -2008,7 +2011,7 @@ function AddConnectorModal({
                         href="https://university.clay.com/docs/using-clay-as-an-api"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                       >
                         Clay API guide
                         <ExternalLink className="h-3 w-3" />
@@ -2050,7 +2053,7 @@ function AddConnectorModal({
                         href="https://www.twilio.com/docs/iam/api-keys"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                       >
                         Twilio API keys guide
                         <ExternalLink className="h-3 w-3" />
@@ -2066,7 +2069,7 @@ function AddConnectorModal({
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Optional Auth Token</label>
+                      <label className="text-sm font-medium text-foreground">Optional auth token</label>
                       <Input
                         type="password"
                         value={twilioAuthToken}
@@ -2178,7 +2181,7 @@ function AddConnectorModal({
                   <button
                     type="button"
                     onClick={switchToOAuthAuth}
-                    className="text-xs text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline"
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline-offset-2 hover:underline"
                   >
                     Connect with OAuth instead
                   </button>
@@ -2228,7 +2231,7 @@ function AddConnectorModal({
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  Verify Connection
+                  Verify connection
                 </>
               )}
             </Button>
@@ -2852,6 +2855,17 @@ function ConnectorsPageContent() {
   const leftConnectors = filteredConnectors.filter((_, i) => i % 2 === 0)
   const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
 
+  const vendorCapabilities = useVendorCapabilities(Boolean(user && orgId))
+  const agentsByVendor = useAgentsByVendor(Boolean(user && orgId))
+  const attentionItems = useMemo(
+    () => connectors.map((c) => deriveConnectorAttention(c)).filter((x): x is ConnectorAttention => x !== null),
+    [connectors],
+  )
+  const attentionIds = useMemo(() => new Set(attentionItems.map((x) => x.connector.id)), [attentionItems])
+  const selectedConnector = focusedConnector
+    ? connectors.find((c) => c.id === focusedConnector.id) ?? null
+    : null
+
   const connectedCount = connectors.filter((c) => connectorIsExecutable(c)).length
   const connectedVendorKeys = useMemo(
     () => new Set(connectors.map((c) => connectorVendorKey(c.type))),
@@ -2895,11 +2909,28 @@ function ConnectorsPageContent() {
     { value: "error", label: "Error", color: "text-destructive", dot: "bg-destructive" },
     { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
   ] as const
-  const totalRequests = connectors.reduce((sum, c) => sum + (c.requestsToday || 0), 0)
-  const avgLatency = Math.round(
-    connectors.filter((c) => c.latency).reduce((sum, c) => sum + (c.latency || 0), 0) /
-    connectors.filter((c) => c.latency).length || 0
-  )
+  const withAvailability = connectors.filter((c) => c.availability)
+  const availabilityCount = (pick: (a: ConnectorAvailability) => boolean): number | null =>
+    withAvailability.length === 0 ? null : withAvailability.filter((c) => pick(c.availability!)).length
+  const capabilityPhases: OperatingPhase[] = [
+    { id: "systems", label: "Systems added", count: connectors.length, tone: "neutral" },
+    {
+      id: "authorized",
+      label: "Authorized",
+      count: availabilityCount((a) => a.authenticated && a.tokenValid),
+      tone: "done",
+      hint: "Credentials valid",
+    },
+    { id: "scoped", label: "Permissions granted", count: availabilityCount((a) => a.scopesValid), tone: "done", hint: "Required scopes" },
+    { id: "healthy", label: "Healthy", count: availabilityCount((a) => a.healthy), tone: "done" },
+    { id: "executable", label: "Can take actions", count: connectedCount, tone: "live", hint: "Agents and workflows can act" },
+    {
+      id: "blocked",
+      label: "Blocked",
+      count: withAvailability.length === 0 ? null : withAvailability.filter((c) => c.availability!.blockingReason).length,
+      tone: "risk",
+    },
+  ]
 
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
@@ -2985,7 +3016,7 @@ function ConnectorsPageContent() {
               ) : null}
               <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Connector</span>
+                <span className="hidden sm:inline">Add connector</span>
               </Button>
             </div>
           }
@@ -3034,14 +3065,14 @@ function ConnectorsPageContent() {
                       <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
                         <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                         All Categories
-                        {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-400" />}
+                        {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-600 dark:text-blue-400" />}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {Object.entries(connectorCategories).map(([cat, data]) => (
                         <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
                           <span className="flex-1">{cat}</span>
                           <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
-                          {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
+                          {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-600 dark:text-blue-400" />}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
@@ -3083,7 +3114,7 @@ function ConnectorsPageContent() {
                     <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
                       <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                       All Categories
-                      {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-400" />}
+                      {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-600 dark:text-blue-400" />}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {Object.entries(connectorCategories).map(([cat, data]) => (
@@ -3091,7 +3122,7 @@ function ConnectorsPageContent() {
                         <div className={cn("h-2 w-2 rounded-full", `bg-${data.color}-500`)} />
                         <span className="flex-1">{cat}</span>
                         <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
-                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-400" />}
+                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-600 dark:text-blue-400" />}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -3125,42 +3156,9 @@ function ConnectorsPageContent() {
 
         {!chromeCollapsed ? (
         <>
-        <details>
-          <summary className="cursor-pointer list-none border-b border-divide px-4 py-2 md:px-6">
-            <p className={TYPE.eyebrow}>Health totals</p>
-            <p className={cn(TYPE.meta, "mt-0.5")}>
-              Counts from the last refresh — after discovery and management, not instead of them.
-            </p>
-          </summary>
-        <div className="border-b border-border bg-secondary/30 px-4 md:px-6 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-4 md:gap-8">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-success" />
-                <span className="text-xs md:text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{connectedCount}</span> connected
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-3.5 w-3.5 text-warning" />
-                <span className="text-xs md:text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{totalRequests.toLocaleString()}</span> <span className="hidden sm:inline">requests</span> today
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Activity className="h-3.5 w-3.5 text-info" />
-                <span className="text-xs md:text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{avgLatency}ms</span> <span className="hidden sm:inline">avg</span> latency
-                </span>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Status from last refresh
-            </div>
-          </div>
-        </div>
-        </details>
+        {connectors.length > 0 ? (
+          <PhaseBand label="Capability fabric" phases={capabilityPhases} loading={isLoading && connectors.length === 0} />
+        ) : null}
 
         {/* Recommended connectors (AI-driven, from usage signals) */}
         <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
@@ -3201,14 +3199,18 @@ function ConnectorsPageContent() {
               <Button variant="outline" onClick={() => mutate()}>Try again</Button>
             </div>
           ) : connectors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-4">
-                <Cable className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-base font-medium text-foreground mb-1">No connectors yet</h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                Connect your CRM, analytics, and productivity tools to power workflows and agents.
-              </p>
+            <div className="py-6">
+              <OperatingEmpty
+                className="px-0 py-0 sm:px-0"
+                title="No connectors yet"
+                body="Connectors are what your agents and workflows can act on. Each one moves from connected, to authorized, to granted the permissions an action needs, before agents can use it."
+                path={["Connect a system", "Authorize access", "Grant permissions", "Agents can act"]}
+              />
+              <div className="mt-5 flex flex-wrap gap-2">
+              <Button onClick={() => openAddModal()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add your first connector
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -3219,12 +3221,9 @@ function ConnectorsPageContent() {
                 <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
                 Check live status
               </Button>
-              <Button onClick={() => openAddModal()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add your first connector
-              </Button>
+              </div>
               {availableToConnect.length > 0 && (
-                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
+                <div className="mt-6 flex max-w-2xl flex-wrap gap-2">
                   {availableToConnect.slice(0, 6).map((entry) => (
                     <Button
                       key={entry.vendorKey}
@@ -3296,53 +3295,92 @@ function ConnectorsPageContent() {
             </div>
           )}
 
-          {/* Management: compact list (default). Topology remains opt-in. */}
+          {/* Operating list (default): rows + contextual inspector. Topology remains opt-in. */}
           {viewMode === "grid" && (
             <div data-testid="connectors-list-view" data-review-surface="connectors-management">
-              <div className="mb-3">
-                <p className={TYPE.eyebrow}>Management</p>
-                <p className={cn(TYPE.meta, "mt-0.5")}>
-                  Connected systems as a dense list. Topology is optional.
-                </p>
-              </div>
-              <div className={cn("grid gap-4", focusedConnector && "lg:grid-cols-[minmax(0,1fr)_16rem]")}>
-                <div>
-              {filteredConnectors.map((connector) => (
-                <ConnectorNode
-                  key={connector.id}
-                  connector={connector}
-                  position="right"
-                  variant="list"
-                  onConfigure={() => setConfigureModal(connector)}
-                  onSync={handleSync}
-                  onTestConnection={handleTestConnection}
-                  onReconnect={handleReconnectOAuth}
-                  onDelete={() => setDeleteModal(connector)}
-                  onFocus={setFocusedConnector}
-                />
-              ))}
-                </div>
-                {focusedConnector ? (
-                  <aside className="h-fit border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] p-3 text-sm">
-                    <p className={TYPE.eyebrow}>Inspect</p>
-                    <p className="mt-2 font-medium text-foreground">{focusedConnector.name}</p>
-                    <ul className={cn(TYPE.meta, "mt-2 space-y-1")}>
-                      <li>Status: {focusedConnector.status}</li>
-                      <li>Vendor: {focusedConnector.type}</li>
-                    </ul>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="mt-3 h-8"
-                      onClick={() => setConfigureModal(focusedConnector)}
-                    >
-                      Configure
-                    </Button>
-                  </aside>
+              <ConnectorAttentionList
+                items={attentionItems}
+                onAction={(item) => {
+                  const target = connectors.find((c) => c.id === item.connector.id)
+                  if (!target) return
+                  setFocusedConnector(target)
+                  if (item.action === "reconnect") void handleReconnectOAuth(target)
+                  else if (item.action === "configure") setConfigureModal(target)
+                  else void handleTestConnection(target.id)
+                }}
+              />
+              <div
+                className={cn(
+                  "grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]",
+                  selectedConnector && "lg:grid-cols-[minmax(0,1fr)_22rem]",
+                )}
+              >
+                <section aria-labelledby="connectors-connected-heading" className="min-w-0">
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <h2 id="connectors-connected-heading" className="text-[13px] font-semibold text-foreground">
+                      Connected systems
+                    </h2>
+                    <p className={TYPE.meta}>
+                      {filteredConnectors.length} shown · select a row to inspect
+                    </p>
+                  </div>
+                  <ConnectorRowHeader />
+                  {filteredConnectors.map((connector) => (
+                    <ConnectorOperatingRow
+                      key={connector.id}
+                      connector={connector}
+                      statusLabel={connector.status === "syncing" ? "Syncing" : connectorStatusLabel(connector)}
+                      capability={vendorCapabilities.get(connector.vendorKey)}
+                      agents={agentsByVendor.get(connector.vendorKey)}
+                      attention={attentionIds.has(connector.id)}
+                      selected={selectedConnector?.id === connector.id}
+                      onSelect={() =>
+                        setFocusedConnector((prev) => (prev?.id === connector.id ? null : connector))
+                      }
+                      menu={
+                        <ConnectorOptionsMenu
+                          connector={connector}
+                          onConfigure={() => setConfigureModal(connector)}
+                          onSync={handleSync}
+                          onTestConnection={handleTestConnection}
+                          onReconnect={handleReconnectOAuth}
+                          onDelete={() => setDeleteModal(connector)}
+                        />
+                      }
+                    />
+                  ))}
+                </section>
+                {selectedConnector ? (
+                  <ConnectorInspector
+                    connector={selectedConnector}
+                    statusLabel={
+                      selectedConnector.status === "syncing" ? "Syncing" : connectorStatusLabel(selectedConnector)
+                    }
+                    capability={vendorCapabilities.get(selectedConnector.vendorKey)}
+                    agents={agentsByVendor.get(selectedConnector.vendorKey)}
+                    attention={deriveConnectorAttention(selectedConnector)}
+                    onConfigure={() => setConfigureModal(selectedConnector)}
+                    onTest={() => void handleTestConnection(selectedConnector.id)}
+                    onSync={() => void handleSync(selectedConnector.id)}
+                    onReconnect={
+                      connectorNeedsOAuthReconnect(selectedConnector)
+                        ? () => void handleReconnectOAuth(selectedConnector)
+                        : undefined
+                    }
+                    onClose={() => setFocusedConnector(null)}
+                  />
                 ) : (
-                  <p className={cn(TYPE.meta, "lg:col-span-2")}>
-                    Select a connected system — inspector stays closed until then.
-                  </p>
+                  <ConnectorOperatingSummary
+                    className="hidden xl:flex"
+                    connectors={connectors}
+                    attention={attentionItems}
+                    capabilities={vendorCapabilities}
+                    isExecutable={(c) => connectorIsExecutable(c as Connector)}
+                    onSelect={(c) => {
+                      const target = connectors.find((x) => x.id === c.id)
+                      if (target) setFocusedConnector(target)
+                    }}
+                  />
                 )}
               </div>
             </div>

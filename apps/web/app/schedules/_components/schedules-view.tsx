@@ -39,7 +39,6 @@ import {
 } from "@/lib/schedules"
 import {
   KindDot,
-  ScheduleLegend,
   addDays,
   endOfMonth,
   scheduleBoardStyle,
@@ -238,20 +237,20 @@ export function SchedulesView({
     for (const item of filteredItems) c[item.kind] += 1
     return c
   }, [filteredItems])
+  const failedCount = useMemo(() => items.filter((item) => item.status === "failed").length, [items])
 
   return (
     <div className="w-full min-w-0 space-y-4">
-      {/* Toolbar stacks period nav above view toggles so nothing can clip
-          off the right edge (AppShell uses overflow-x-hidden). */}
-      <div className="w-full min-w-0 space-y-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
-        <div className="flex w-full min-w-0 flex-col gap-3">
-          {/* Period nav (calendar + gantt) */}
+      {/* One operating toolbar: period on the left, scope + view on the right,
+          filters on a ruled line beneath. The calendar below carries the weight. */}
+      <div className="w-full min-w-0 space-y-3" data-testid="schedules-toolbar">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-3">
           {view !== "list" ? (
-            <div className="flex w-full min-w-0 items-center gap-2">
+            <div className="flex min-w-0 items-center gap-1">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
-                className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
+                className="h-10 w-10 shrink-0 rounded-[4px] sm:h-8 sm:w-8"
                 onClick={() => shiftFocus(-1)}
                 aria-label={
                   view === "calendar" && calendarScope === "day"
@@ -261,15 +260,12 @@ export function SchedulesView({
                       : "Previous month"
                 }
               >
-                <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+                <ChevronLeft className="h-4 w-4" />
               </Button>
-              <h2 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                {periodLabel}
-              </h2>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
-                className="h-10 w-10 shrink-0 rounded-full sm:h-9 sm:w-9"
+                className="h-10 w-10 shrink-0 rounded-[4px] sm:h-8 sm:w-8"
                 onClick={() => shiftFocus(1)}
                 aria-label={
                   view === "calendar" && calendarScope === "day"
@@ -279,27 +275,36 @@ export function SchedulesView({
                       : "Next month"
                 }
               >
-                <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
+              <h2 className="ml-2 min-w-0 truncate text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-[24px]">
+                {periodLabel}
+              </h2>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="h-10 shrink-0 rounded-full px-4 sm:h-9"
+                className="ml-3 h-10 shrink-0 rounded-[4px] px-3 sm:h-8"
                 onClick={goToday}
               >
                 Today
               </Button>
             </div>
           ) : (
-            <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-              All schedules
-            </h2>
+            <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-[24px]">All schedules</h2>
           )}
 
-          {/* Full-width equal grids — never sit beside period nav */}
-          <div className="grid w-full min-w-0 gap-2 sm:grid-cols-2">
+          {failedCount > 0 ? (
+            <span
+              className="inline-flex items-center gap-1.5 border-l-2 border-destructive pl-2 text-[13px] font-medium text-foreground"
+              data-testid="schedules-exceptions"
+            >
+              <span className="tabular-nums">{failedCount}</span> failed
+            </span>
+          ) : null}
+
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:ml-auto sm:w-auto">
             {view === "calendar" ? (
-              <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1">
+              <div className="flex items-center gap-4" role="group" aria-label="Calendar scope">
                 {CALENDAR_SCOPES.map((scope) => {
                   const active = calendarScope === scope.id
                   return (
@@ -308,10 +313,10 @@ export function SchedulesView({
                       type="button"
                       onClick={() => setCalendarScope(scope.id)}
                       className={cn(
-                        "inline-flex w-full min-w-0 items-center justify-center rounded-full px-2 py-1.5 text-xs font-medium transition-colors sm:text-sm",
+                        "border-b-2 py-1 text-[13px] font-medium transition-colors",
                         active
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground",
+                          ? "border-[color:var(--g-text-primary)] text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground",
                       )}
                       aria-pressed={active}
                     >
@@ -320,15 +325,12 @@ export function SchedulesView({
                   )
                 })}
               </div>
-            ) : (
-              <div className="hidden sm:block" aria-hidden />
-            )}
+            ) : null}
 
             <div
-              className={cn(
-                "grid w-full min-w-0 grid-cols-3 gap-1 rounded-full border border-border bg-muted/50 p-1",
-                view !== "calendar" && "sm:col-span-2 sm:max-w-md sm:justify-self-end",
-              )}
+              className="inline-flex items-center gap-px rounded-[4px] border border-[color:var(--g-border-default)] p-0.5"
+              role="group"
+              aria-label="View"
             >
               {VIEWS.map((v) => {
                 const Icon = v.icon
@@ -339,15 +341,15 @@ export function SchedulesView({
                     type="button"
                     onClick={() => setView(v.id)}
                     className={cn(
-                      "inline-flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-sm font-medium transition-colors sm:py-1.5",
+                      "inline-flex min-h-8 items-center gap-1.5 rounded-[2px] px-2.5 py-1 text-[13px] font-medium transition-colors",
                       active
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? "bg-[color:var(--g-text-primary)] text-background"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                     aria-pressed={active}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{v.label}</span>
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span>{v.label}</span>
                   </button>
                 )
               })}
@@ -355,65 +357,50 @@ export function SchedulesView({
           </div>
         </div>
 
-        {/* Type filters + workflow scope + legend (scrollable so Training job never clips) */}
-        <div className="flex flex-col gap-3 border-t border-border/70 pt-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Kind filters double as the legend. */}
+        <div className="flex flex-col gap-2 border-y border-[color:var(--g-border-subtle)] py-1.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Schedule types">
             {ALL_KINDS.map((kind) => {
               const active = activeKinds.has(kind)
-              const kindColor = KIND_STYLES[kind].color
               return (
                 <button
                   key={kind}
                   type="button"
                   onClick={() => toggleKind(kind)}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                    !active && "border-border text-muted-foreground hover:text-foreground",
+                    "inline-flex min-h-8 items-center gap-2 rounded-[4px] px-2 text-[13px] font-medium transition-colors hover:bg-[color:var(--g-background-muted)]",
+                    active ? "text-foreground" : "text-muted-foreground",
                   )}
-                  style={
-                    active
-                      ? {
-                          backgroundColor: `color-mix(in oklab, ${kindColor} 16%, transparent)`,
-                          borderColor: `color-mix(in oklab, ${kindColor} 45%, transparent)`,
-                          color: kindColor,
-                        }
-                      : undefined
-                  }
                   aria-pressed={active}
                 >
-                  <KindDot kind={kind} className={cn(!active && "opacity-40")} />
+                  <KindDot kind={kind} className={cn(!active && "opacity-30")} />
                   {KIND_STYLES[kind].label}
-                  <span className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-semibold tabular-nums">
-                    {counts[kind]}
-                  </span>
+                  <span className="tabular-nums text-muted-foreground">{counts[kind]}</span>
                 </button>
               )
             })}
           </div>
-          <div className="flex min-w-0 items-center gap-3 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:thin] xl:max-w-[50%] xl:justify-end">
-            {workflowOptions && workflowOptions.length > 0 && (
-              <Select
-                value={workflowId ?? "all"}
-                onValueChange={(v) => onWorkflowChange?.(v === "all" ? undefined : v)}
+          {workflowOptions && workflowOptions.length > 0 && (
+            <Select
+              value={workflowId ?? "all"}
+              onValueChange={(v) => onWorkflowChange?.(v === "all" ? undefined : v)}
+            >
+              <SelectTrigger
+                className="h-10 w-full shrink-0 rounded-[4px] text-xs sm:h-8 sm:w-[200px]"
+                aria-label="Filter by workflow"
               >
-                <SelectTrigger
-                  className="h-10 w-[180px] shrink-0 rounded-full text-xs sm:h-9 sm:w-[200px]"
-                  aria-label="Filter by workflow"
-                >
-                  <SelectValue placeholder="All workflows" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All workflows</SelectItem>
-                  {workflowOptions.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <ScheduleLegend />
-          </div>
+                <SelectValue placeholder="All workflows" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All workflows</SelectItem>
+                {workflowOptions.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>
+                    {w.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -572,7 +559,7 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
   if (view === "list") {
     return (
       <div
-        className="flex flex-col space-y-2 overflow-hidden rounded-xl border border-border bg-card p-3"
+        className="flex flex-col space-y-2 overflow-hidden rounded-[var(--np-radius-md)] border border-border bg-card p-3"
         style={scheduleBoardStyle}
       >
         {Array.from({ length: 6 }).map((_, i) => (
@@ -589,7 +576,7 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
   if (view === "gantt") {
     return (
       <div
-        className="flex flex-col space-y-3 overflow-hidden rounded-xl border border-border bg-card p-4"
+        className="flex flex-col space-y-3 overflow-hidden rounded-[var(--np-radius-md)] border border-border bg-card p-4"
         style={scheduleBoardStyle}
       >
         {Array.from({ length: 5 }).map((_, i) => (
@@ -605,28 +592,28 @@ function ViewSkeleton({ view }: { view: ViewMode }) {
     <>
       {/* Mobile: week strip + agenda */}
       <div className="space-y-4 md:hidden">
-        <Skeleton className="h-28 rounded-2xl" />
-        <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <Skeleton className="h-28 rounded-[var(--np-radius-md)]" />
+        <div className="space-y-3 rounded-[var(--np-radius-md)] border border-border bg-card p-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex items-start gap-3">
               <Skeleton className="h-4 w-12" />
               <Skeleton className="h-4 w-4 rounded-full" />
-              <Skeleton className="h-16 flex-1 rounded-xl" />
+              <Skeleton className="h-16 flex-1 rounded-[var(--np-radius-sm)]" />
             </div>
           ))}
         </div>
       </div>
       {/* Desktop: fixed-height board matching live month/week/day */}
       <div
-        className="hidden overflow-hidden rounded-2xl border border-border bg-muted/30 p-3 md:block"
+        className="hidden overflow-hidden border border-[color:var(--g-border-default)] md:block"
         style={scheduleBoardStyle}
       >
         <div
-          className="grid h-full grid-cols-7 gap-2"
+          className="grid h-full grid-cols-7 gap-px bg-[color:var(--g-border-subtle)]"
           style={{ gridTemplateRows: "repeat(6, minmax(0, 1fr))" }}
         >
           {Array.from({ length: 42 }).map((_, i) => (
-            <Skeleton key={i} className="h-full min-h-0 rounded-xl bg-card" />
+            <Skeleton key={i} className="h-full min-h-0 rounded-none bg-background" />
           ))}
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,14 +18,26 @@ import {
 import type { AgentVisibilityProfile } from "@/lib/intelligence/visibility-types"
 import { Brain, ChartLineUp, Heartbeat, ShieldCheck, Wrench } from "@phosphor-icons/react"
 
+function RailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="border-b border-[color:var(--g-border-subtle)] py-2.5 last:border-b-0">
+      <dt className="text-[12px] font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-[13px] text-foreground">{children}</dd>
+    </div>
+  )
+}
+
 export function AgentIntelligenceVisibilitySection({
   agentId,
   orgScopedKey,
   compact = false,
+  layout = "cards",
 }: {
   agentId: string
   orgScopedKey: string | null
   compact?: boolean
+  /** "rail": ruled definition list for a narrow secondary column. */
+  layout?: "cards" | "rail"
 }) {
   const { data, isLoading } = useSWR(
     orgScopedKey && agentId ? ["visibility/agent", orgScopedKey, agentId] : null,
@@ -40,6 +53,75 @@ export function AgentIntelligenceVisibilitySection({
   const capability = profile?.capability_visibility
   const outcome = profile?.outcome_summary
   const tools = capability?.capabilities ?? []
+  const recommendations = readNumber(profile?.optimization_recommendations, 0)
+
+  if (layout === "rail") {
+    return (
+      <section aria-labelledby="agent-intelligence-rail-heading" className="border-t border-[color:var(--g-border-default)] pt-3">
+        <h3 id="agent-intelligence-rail-heading" className="text-[13px] font-semibold text-foreground">
+          Knowledge and learning
+        </h3>
+        {isLoading && !profile ? (
+          <p className="mt-2 text-[12px] text-muted-foreground">Loading intelligence…</p>
+        ) : (
+          <dl className="mt-1">
+            <RailRow label="Knowledge health">
+              {readNumber(knowledge?.assignment_count, 0)} assignment(s)
+              {readNumber(knowledge?.stale_assignment_count, 0) > 0
+                ? ` · ${readNumber(knowledge?.stale_assignment_count, 0)} stale`
+                : ""}
+              <span className="block text-[12px] text-muted-foreground">{freshnessLabelText(knowledge?.freshness_status)}</span>
+            </RailRow>
+            <RailRow label="Learning state">
+              <LearningConfidenceBadge learning={profile?.learning_confidence} />
+            </RailRow>
+            <RailRow label="Freshness">{freshnessLabelText(profile?.freshness)}</RailRow>
+            <RailRow label="Domain health">
+              {domain ? (
+                <>
+                  <Badge variant="outline" className={healthLabelClass(domain.health_label)}>
+                    {readString(domain.domain, profile?.department ?? undefined)} · {healthLabelText(domain.health_label)}
+                  </Badge>
+                  <span className="mt-1 block text-[12px] text-muted-foreground">
+                    Score {domain.health_score != null ? `${formatHealthScore(domain.health_score)}/100` : "—"}
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">Not enough data yet</span>
+              )}
+            </RailRow>
+            <RailRow label="Outcomes">
+              {outcome?.status === "ok" && outcome.score != null ? (
+                <>
+                  Success rate {formatPercent(outcome.score)} · {readNumber(outcome.events_count, 0)} events
+                </>
+              ) : (
+                <span className="text-muted-foreground">
+                  Not enough data yet
+                  {outcome?.events_found != null
+                    ? ` — ${outcome.events_found} of ${outcome.min_required ?? 5} events needed`
+                    : ""}
+                </span>
+              )}
+            </RailRow>
+            <RailRow label="Capability visibility">
+              {tools.length ? (
+                <span className="text-[12.5px]">{tools.slice(0, 12).map((tool) => tool.replace(/_/g, " ")).join(" · ")}</span>
+              ) : (
+                <span className="text-muted-foreground">No capabilities configured.</span>
+              )}
+              {recommendations > 0 ? (
+                <span className="mt-1 block text-[12px] text-muted-foreground">
+                  {recommendations} optimization recommendation(s) for this agent&apos;s domain — advisory only.
+                </span>
+              ) : null}
+            </RailRow>
+          </dl>
+        )}
+        <AdvisoryOnlyNote tone="visibility" />
+      </section>
+    )
+  }
 
   return (
     <section className={`space-y-3 ${compact ? "" : "rounded-2xl border border-border/70 bg-card p-4 md:p-5"}`}>

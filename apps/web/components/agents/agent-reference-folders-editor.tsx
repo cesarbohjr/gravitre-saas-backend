@@ -232,7 +232,7 @@ export function AgentReferenceFoldersEditor({
       ) : null}
 
       <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2">
-        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
           Supported cloud apps
         </p>
         <div className="flex flex-wrap gap-2">

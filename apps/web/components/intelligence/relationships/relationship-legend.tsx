@@ -13,7 +13,7 @@ export function RelationshipLegend() {
     <div className="pointer-events-auto absolute bottom-3 left-3 z-10 max-w-[220px]">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/95 px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)] shadow-[var(--np-shadow)] backdrop-blur-sm"
+        className="flex w-full items-center justify-between gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/95 px-2.5 py-1.5 text-xs font-medium text-[color:var(--g-text-muted)] shadow-[var(--np-shadow)] backdrop-blur-sm"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >

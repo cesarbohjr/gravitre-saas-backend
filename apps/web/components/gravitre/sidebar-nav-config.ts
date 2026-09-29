@@ -15,8 +15,8 @@ import { APP_ROUTES } from "@/lib/app-routes"
  */
 const SIDEBAR_ACCENT = {
   accent: "text-primary",
-  activeBg: "bg-primary/10",
-  activeBorder: "border-l-primary",
+  activeBg: "bg-background shadow-[0_0_0_1px_var(--g-border-default)] dark:bg-sidebar-accent dark:shadow-none",
+  activeBorder: "border-l-transparent",
   activeIcon: "text-primary",
 } as const
 

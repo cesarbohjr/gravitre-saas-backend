@@ -24,6 +24,7 @@ import {
   NucleoExpand,
   NucleoFullscreen,
   NucleoMinimize,
+  NucleoPanelToggle,
 } from "@/components/icons/nucleo/semantic"
 import {
   CHAT_WINDOW_CONTROL_LABELS,
@@ -41,6 +42,8 @@ const ICONS: Record<ChatWindowControlId, (props: { className?: string }) => Reac
   exitFullscreen: (p) => <NucleoCollapse {...p} />,
   minimizeToHelper: (p) => <NucleoClose {...p} />,
   openAsFloat: (p) => <NucleoExpand {...p} />,
+  dock: (p) => <NucleoPanelToggle {...p} />,
+  undock: (p) => <NucleoPanelToggle {...p} />,
 }
 
 export function ChatWindowControls({

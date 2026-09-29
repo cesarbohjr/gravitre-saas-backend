@@ -249,7 +249,7 @@ export default function ModelsPage() {
                 Refresh
               </Button>
               <Button size="sm" asChild>
-                <Link href={APP_ROUTES.intelligenceModelStudio}>Create in Studio</Link>
+                <Link href={APP_ROUTES.intelligenceModelStudio}>Create in studio</Link>
               </Button>
             </div>
           }

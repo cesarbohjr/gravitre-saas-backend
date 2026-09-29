@@ -196,7 +196,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
       {voiceSlo ? (
         <div className="mt-4 border-t border-border/60 pt-4">
           <h4 className="text-xs font-medium tracking-tight text-muted-foreground">
-            Voice latency (two metrics — never blended)
+            Voice latency
           </h4>
           <section className="mt-2 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
             <GravitreMetric

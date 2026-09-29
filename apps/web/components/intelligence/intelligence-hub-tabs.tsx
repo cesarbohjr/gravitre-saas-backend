@@ -54,7 +54,10 @@ export function IntelligenceHubTabs({
   return (
     <nav
       aria-label="Intelligence hub"
-      className={cn("mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1", className)}
+      className={cn(
+        "-mb-px flex items-end gap-x-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        className,
+      )}
     >
       {INTELLIGENCE_HUB_TABS.map((link) => {
         const isActive = current === link.id
@@ -65,10 +68,11 @@ export function IntelligenceHubTabs({
             aria-current={isActive ? "page" : undefined}
             className={cn(
               TYPE.meta,
-              "underline-offset-4",
+              "relative shrink-0 whitespace-nowrap pb-2.5 pt-1 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-full",
               isActive
-                ? "text-[color:var(--g-text-primary)] underline"
-                : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                ? "text-[color:var(--g-text-primary)] after:bg-[color:var(--g-intelligence)]"
+                : "text-[color:var(--g-text-muted)] after:bg-transparent hover:text-[color:var(--g-text-primary)]",
             )}
           >
             {link.label}

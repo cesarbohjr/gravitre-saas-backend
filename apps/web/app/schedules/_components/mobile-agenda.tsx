@@ -96,10 +96,10 @@ export function MobileAgenda({
   return (
     <div className="space-y-4">
       {/* Week strip */}
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="rounded-[var(--np-radius-lg)] border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-xs font-semibold text-muted-foreground">
               Week of
             </p>
             <p className="truncate text-base font-semibold text-foreground">{weekLabel}</p>
@@ -143,13 +143,13 @@ export function MobileAgenda({
                   day: "numeric",
                 })}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-2xl px-0.5 py-2 transition-colors",
+                  "flex flex-col items-center gap-1 rounded-[var(--np-radius-lg)] px-0.5 py-2 transition-colors",
                   selected ? "bg-primary text-primary-foreground" : "active:bg-muted",
                 )}
               >
                 <span
                   className={cn(
-                    "text-[11px] font-medium uppercase",
+                    "text-xs font-medium",
                     selected ? "text-primary-foreground/80" : "text-muted-foreground",
                   )}
                 >
@@ -189,7 +189,7 @@ export function MobileAgenda({
       </div>
 
       {/* Agenda timeline for the selected day */}
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="rounded-[var(--np-radius-lg)] border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 className="text-base font-semibold text-foreground">
             {isSameDay(selectedDate, today)

@@ -23,21 +23,21 @@ const features: Feature[] = [
   },
   {
     id: "agents",
-    title: "Smart Agents",
+    title: "Smart agents",
     description: "Pre-trained agents for marketing, sales, and ops that understand your business.",
     icon: Users,
     color: "blue",
   },
   {
     id: "workflows",
-    title: "Workflow Builder",
+    title: "Workflow builder",
     description: "Visual automation builder with approvals, conditions, and integrations.",
     icon: Workflow,
     color: "purple",
   },
   {
     id: "analytics",
-    title: "Live Analytics",
+    title: "Live analytics",
     description: "Real-time metrics and insights on agent performance and task completion.",
     icon: BarChart3,
     color: "amber",
@@ -423,7 +423,7 @@ export function AppShowcase() {
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2 }}
           >
-            Live Preview
+            Live preview
           </motion.div>
         </motion.div>
       </div>
@@ -472,7 +472,7 @@ export function ProductScreenshot({
         <div className="aspect-[16/9] bg-gradient-to-br from-zinc-900 to-zinc-950 flex items-center justify-center">
           <div className="text-center text-zinc-600">
             <Sparkles className="h-12 w-12 mx-auto mb-2" />
-            <p className="text-sm">App Screenshot</p>
+            <p className="text-sm">App screenshot</p>
           </div>
         </div>
       </div>

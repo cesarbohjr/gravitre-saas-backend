@@ -53,7 +53,7 @@ export default function LiteTasksPage() {
 
   if (!loading && !isLoading && !user) {
     return (
-      <LitePageShell title="My Tasks" description="Sign in to continue." icon={ListTodo}>
+      <LitePageShell title="My tasks" description="Sign in to continue." icon={ListTodo}>
         <p className="text-sm text-muted-foreground">Sign in required.</p>
       </LitePageShell>
     )
@@ -63,18 +63,18 @@ export default function LiteTasksPage() {
 
   return (
     <LitePageShell
-      title="My Tasks"
+      title="My tasks"
       description="Track your AI team's progress."
       icon={ListTodo}
       loading={loading || isLoading}
       loadingLabel="Loading tasks"
       actions={
-        <Link href="/lite/assign">
-          <Button className="gap-2">
+        <Button asChild className="gap-2">
+          <Link href="/lite/assign">
             <Icon name="plus" size="sm" />
-            New Task
-          </Button>
-        </Link>
+            New task
+          </Link>
+        </Button>
       }
       headerChildren={
         <HubTabs
@@ -164,11 +164,11 @@ export default function LiteTasksPage() {
 
                 <div className="shrink-0">
                   {task.status === "completed" && (
-                    <Link href="/lite/deliverables">
-                      <Button size="sm" variant="outline">
+                    <Button asChild size="sm" variant="outline">
+                      <Link href="/lite/deliverables">
                         Deliverables
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                   {(task.status === "processing" || task.status === "pending") && (
                     <Button size="sm" variant="outline" onClick={() => handleCancel(task.id)}>

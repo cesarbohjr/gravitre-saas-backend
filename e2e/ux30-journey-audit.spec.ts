@@ -58,7 +58,7 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
 
   test("J1 — Login → Home dashboard and nav", async ({ page }) => {
     await expect(page).toHaveURL(/\/home/)
-    await expect(page.locator("aside nav")).toBeVisible()
+    await expect(page.locator('aside nav[aria-label="Primary"]')).toBeVisible()
     await expect(page.getByRole("heading", { name: /home/i }).first()).toBeVisible({ timeout: 60_000 })
     test.info().annotations.push({
       type: "journey",
@@ -77,8 +77,10 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     const i1Surface = page.getByTestId("intelligence-i1-i2")
     await expect(i1Surface).toBeVisible({ timeout: 90_000 })
 
+    // Field-primary (G-STRUCT A4): the field is the default view; Matrix is one click away.
+    await expect(page.getByTestId("intelligence-map-canvas")).toBeVisible({ timeout: 90_000 })
+    await page.getByTestId("intel-view-mode").getByRole("button", { name: "Matrix" }).click()
     await expect(page.getByTestId("intel-i3-matrix")).toBeVisible({ timeout: 90_000 })
-    await expect(page.getByTestId("intel-view-mode").getByRole("button", { name: "Matrix" })).toBeVisible()
 
     const lensBar = page
       .getByRole("tablist", { name: /Intelligence (map )?lenses/i })

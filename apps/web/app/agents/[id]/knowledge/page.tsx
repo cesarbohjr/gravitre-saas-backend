@@ -35,7 +35,7 @@ import {
 
 const TABS: { id: AgentKnowledgeTab; label: string }[] = [
   { id: "sources", label: "Sources" },
-  { id: "expert-packs", label: "Expert Packs" },
+  { id: "expert-packs", label: "Expert packs" },
   { id: "instructions", label: "Instructions" },
   { id: "retrieval", label: "Retrieval" },
 ]
@@ -128,11 +128,11 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
-        <Link href="/agents">
-          <Button variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/agents">
             Back to AI Team
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     )
   }
@@ -225,7 +225,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium">{instruction.name}</h4>
                         {instruction.is_active ? (
-                          <span className={cn("rounded border px-2 py-0.5 text-[10px] uppercase", STATUS.verified)}>
+                          <span className={cn("rounded border px-2 py-0.5 text-xs font-medium", STATUS.verified)}>
                             Active
                           </span>
                         ) : null}

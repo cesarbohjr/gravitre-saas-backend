@@ -53,11 +53,11 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
         >
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-border/70 bg-secondary/30 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Agents tracked</p>
+              <p className="text-xs font-medium text-muted-foreground">Agents tracked</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">{summaries.length}</p>
             </div>
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-emerald-800 dark:text-emerald-200">
+              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">
                 Ready to read
               </p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
@@ -65,7 +65,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
               </p>
             </div>
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-200">
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
                 Still collecting
               </p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-700 dark:text-amber-300">

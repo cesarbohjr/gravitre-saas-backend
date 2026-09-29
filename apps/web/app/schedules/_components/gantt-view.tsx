@@ -136,7 +136,7 @@ export function GanttView({
             {/* Header: day columns */}
             <div className="sticky top-0 z-30 flex border-b border-border bg-muted/40">
               <div
-                className="sticky left-0 z-40 shrink-0 border-r border-border bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                className="sticky left-0 z-40 shrink-0 border-r border-border bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground"
                 style={{ width: RAIL_WIDTH }}
               >
                 Item

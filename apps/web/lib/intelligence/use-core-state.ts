@@ -12,7 +12,11 @@ import { intelligenceApi } from "@/lib/api"
 export function useIntelligenceCoreState(enabled: boolean, windowHours = 24) {
   return useSWR(
     enabled ? ["intelligence/core-state", windowHours] : null,
-    () => intelligenceApi.coreState({ windowHours }),
+    async () => {
+      const body = await intelligenceApi.coreState({ windowHours })
+      // Consumers read `data.core.*` directly; a body without `core` is no data.
+      return body && typeof body === "object" && body.core ? body : undefined
+    },
     { revalidateOnFocus: false, refreshInterval: 20_000 },
   )
 }

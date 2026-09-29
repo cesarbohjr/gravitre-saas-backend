@@ -21,10 +21,10 @@ import { cn } from "@/lib/utils"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 
 const COUNT_LABEL: Record<RuntimeHonestyKind, string> = {
-  model_loaded: "artifact-loaded",
-  heuristic: "heuristic",
-  data_gate: "insufficient data",
-  unknown: "unknown / catalog-only",
+  model_loaded: "trained model loaded",
+  heuristic: "estimating",
+  data_gate: "need more data",
+  unknown: "not started",
 }
 
 function toneFor(kind: RuntimeHonestyKind) {
@@ -63,15 +63,12 @@ export function GibeHonestyStrip({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className={TYPE.eyebrow}>GIBE · Module C</p>
           <h2 id="gibe-honesty-heading" className={TYPE.sectionTitle}>
-            Model runtime honesty
+            Model readiness
           </h2>
           <p className={cn(TYPE.bodyMuted, "mt-1 max-w-2xl")}>
-            Live path from <span className="font-medium text-foreground">runtime_status</span> and
-            artifact load — never the catalog{" "}
-            <span className="font-medium text-foreground">TRAINED</span> label alone. Heuristic
-            scores are estimates (STA-331).
+            Which of your models are running on trained results, which are estimating, and which
+            still need more data.
           </p>
         </div>
         {entries.length > 0 ? (

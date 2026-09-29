@@ -49,7 +49,7 @@ export function ApprovalBatchPanel({
 
   return (
     <div className="mb-4 space-y-3 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-medium text-muted-foreground">
         Batch review ({batch.items.length} items)
       </p>
       <ul className="space-y-2">

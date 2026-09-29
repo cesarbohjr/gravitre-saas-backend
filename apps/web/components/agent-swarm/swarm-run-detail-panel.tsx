@@ -271,7 +271,7 @@ export function SwarmRunDetailPanel({
 
             {dissent.length > 0 ? (
               <section className="rounded-lg border border-dashed border-border/80 p-3 space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Alternate views</p>
+                <p className="text-xs font-medium text-muted-foreground">Alternate views</p>
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   {dissent.map((item) => (
                     <li key={item}>• {item}</li>

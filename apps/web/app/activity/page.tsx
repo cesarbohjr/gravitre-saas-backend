@@ -345,7 +345,7 @@ function ActivityPageInner() {
     { id: "all", label: "All", count: isLoading ? undefined : outcomes.length },
     {
       id: "objects",
-      label: "WorkObjects",
+      label: "Work objects",
       count: workObjectsLoading ? undefined : workObjects.length,
     },
     { id: "failures", label: "Failures" },
@@ -359,8 +359,8 @@ function ActivityPageInner() {
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden">
         <GravitrePageHeader
           className="shrink-0"
-          eyebrow="Execution log"
           title="Activity"
+          description="Every outcome, work object and failure your agents and workflows produced, with its evidence."
           icon={<NucleoActivity className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
@@ -386,19 +386,20 @@ function ActivityPageInner() {
             </div>
           }
         >
-          <div className="flex gap-1 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-1 sm:w-fit">
+          <div className="-mb-px flex gap-5 border-b border-[color:var(--g-border-default)]" aria-label="Activity views">
             {activityTabs.map((item) => {
               const active = tab === item.id
               return (
                 <button
                   key={item.id}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => setTab(item.id)}
                   className={cn(
-                    "rounded-md px-2.5 py-1.5 text-xs font-medium transition",
+                    "-mb-px border-b-2 pb-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active
-                      ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-sm"
-                      : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
+                      ? "border-[color:var(--g-text-primary)] text-[color:var(--g-text-primary)]"
+                      : "border-transparent text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
                   )}
                 >
                   {item.label}
@@ -424,7 +425,7 @@ function ActivityPageInner() {
                 <>
                   <HubFilterField label="Status" compact>
                     <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger className="h-8 w-[140px]">
+                      <SelectTrigger aria-label="Status" className="h-8 w-[140px]">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -439,7 +440,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Lifecycle" compact>
                     <Select value={lifecycle} onValueChange={setLifecycle}>
-                      <SelectTrigger className="h-8 w-[150px]">
+                      <SelectTrigger aria-label="Lifecycle" className="h-8 w-[150px]">
                         <SelectValue placeholder="Lifecycle" />
                       </SelectTrigger>
                       <SelectContent>
@@ -467,7 +468,7 @@ function ActivityPageInner() {
                 <>
                   <HubFilterField label="Type" compact>
                     <Select value={objectType} onValueChange={setObjectType}>
-                      <SelectTrigger className="h-8 w-[170px]">
+                      <SelectTrigger aria-label="Type" className="h-8 w-[170px]">
                         <SelectValue placeholder="Type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -489,7 +490,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Department" compact>
                     <Select value={objectDepartment} onValueChange={setObjectDepartment}>
-                      <SelectTrigger className="h-8 w-[160px]">
+                      <SelectTrigger aria-label="Department" className="h-8 w-[160px]">
                         <SelectValue placeholder="Department" />
                       </SelectTrigger>
                       <SelectContent>
@@ -509,7 +510,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Status" compact>
                     <Select value={objectStatus} onValueChange={setObjectStatus}>
-                      <SelectTrigger className="h-8 w-[150px]">
+                      <SelectTrigger aria-label="Status" className="h-8 w-[150px]">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -526,7 +527,7 @@ function ActivityPageInner() {
                   </HubFilterField>
                   <HubFilterField label="Priority" compact>
                     <Select value={objectPriority} onValueChange={setObjectPriority}>
-                      <SelectTrigger className="h-8 w-[140px]">
+                      <SelectTrigger aria-label="Priority" className="h-8 w-[140px]">
                         <SelectValue placeholder="Priority" />
                       </SelectTrigger>
                       <SelectContent>
@@ -938,7 +939,7 @@ function ActivityPageInner() {
                           </p>
                         </div>
                         <div className="space-y-2">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          <p className="text-xs font-semibold text-muted-foreground">
                             Lifecycle timeline
                           </p>
                           {workObjectEvents.length === 0 ? (

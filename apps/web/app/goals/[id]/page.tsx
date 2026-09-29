@@ -21,7 +21,7 @@ interface GoalProgressPayload {
     category?: string | null
     department?: string | null
   }
-  completionPercentage: number
+  completionPercentage: number | null
   milestoneStatus: Array<{ id: string; title: string; status: string }>
 }
 
@@ -91,14 +91,22 @@ export default function GoalDetailPage() {
               <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6">
                 <div className="mb-2 flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Progress</span>
-                  <span className="font-medium text-foreground">{data.completionPercentage}%</span>
+                  <span className="font-medium text-foreground">
+                    {data.completionPercentage == null ? "Not measured" : `${data.completionPercentage}%`}
+                  </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${Math.min(100, Math.max(0, data.completionPercentage))}%` }}
-                  />
-                </div>
+                {data.completionPercentage == null ? (
+                  <p className="text-xs text-muted-foreground">
+                    Goal progress is not tracked by runs yet. It shows 100% once the goal is marked completed.
+                  </p>
+                ) : (
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${Math.min(100, Math.max(0, data.completionPercentage))}%` }}
+                    />
+                  </div>
+                )}
               </div>
 
               {data.milestoneStatus.length > 0 ? (
@@ -118,7 +126,7 @@ export default function GoalDetailPage() {
                             milestone.status === "completed"
                               ? "border-success/30 text-success"
                               : milestone.status === "in_progress"
-                                ? "border-blue-500/30 text-blue-400"
+                                ? "border-blue-500/30 text-blue-600 dark:text-blue-400"
                                 : "border-zinc-500/30 text-zinc-400"
                           )}
                         >

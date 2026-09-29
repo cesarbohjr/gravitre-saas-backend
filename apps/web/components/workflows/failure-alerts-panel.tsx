@@ -200,7 +200,7 @@ export function FailureAlertsPanel() {
         {/* Ops summary is context, not the task — collapsed by default so alerts
             are the first thing on screen. */}
         <Collapsible open={opsOpen} onOpenChange={setOpsOpen}>
-          <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <CollapsibleTrigger className="group flex w-full items-center gap-1.5 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <ChevronDown
               className={cn("h-3.5 w-3.5 transition-transform duration-200", !opsOpen && "-rotate-90")}
               aria-hidden

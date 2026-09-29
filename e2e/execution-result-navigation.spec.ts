@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("ExecutionResult navigation buttons", () => {
-  test("View in Apollo opens external artifact URL (not connector settings)", async ({ page, context }) => {
+  test("Open in Apollo opens external artifact URL (not connector settings)", async ({ page, context }) => {
     await page.goto("/e2e/execution-result?scenario=apollo_external")
     await expect(page.getByTestId("execution-result-harness")).toBeVisible()
 
-    const viewButton = page.getByRole("link", { name: "View in Apollo" })
+    const viewButton = page.getByRole("link", { name: "Open in Apollo" })
     await expect(viewButton).toBeVisible()
     await expect(viewButton).toHaveAttribute("href", /app\.apollo\.io/)
 
@@ -40,6 +40,9 @@ test.describe("ExecutionResult navigation buttons", () => {
   test("hosted_files scenario renders Phase 2 file-reference chips", async ({ page }) => {
     await page.goto("/e2e/execution-result?scenario=hosted_files")
     await expect(page.getByTestId("execution-result-harness")).toBeVisible()
+    await expect(page.getByTestId("preview-code-pane")).toBeVisible()
+    // Artifacts sit behind a disclosure since UX Reset Phase 7 (62760765).
+    await page.getByText(/^Artifacts \(\d+\)$/).click()
     await expect(page.getByTestId("file-reference-chip").first()).toBeVisible()
     await expect(page.getByText("q3-ops-brief.md")).toBeVisible()
     await expect(page.getByText("q3-ops-brief.docx")).toBeVisible()

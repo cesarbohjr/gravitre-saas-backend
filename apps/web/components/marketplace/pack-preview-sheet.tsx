@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { PackContentsPreview } from "@/components/marketplace/marketplace-asset-commerce"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import type { MarketplaceAssetSummary } from "@/types/api"
 
 export function PackPreviewSheet({
@@ -64,8 +65,15 @@ export function PackPreviewSheet({
               <p className="mb-2 text-sm font-medium text-foreground">Required connectors</p>
               <ul className="space-y-1 text-sm text-muted-foreground">
                 {asset.connectorChecklist.map((connector) => (
-                  <li key={connector.connectorType ?? connector.label}>
-                    {connector.label ?? connector.connectorType?.replace(/_/g, " ")}
+                  <li key={connector.connectorType ?? connector.label} className="flex items-center gap-2">
+                    <ProviderLogo
+                      provider={connector.connectorType ?? connector.label}
+                      label={connector.label}
+                      size="sm"
+                      decorative
+                      className="shrink-0"
+                    />
+                    <span className="truncate">{connector.label ?? connector.connectorType?.replace(/_/g, " ")}</span>
                   </li>
                 ))}
               </ul>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
-import { syncWorkflowSchemaFromContract } from "@/lib/backend-proxy"
+import { proxyToFastApi, syncWorkflowSchemaFromContract } from "@/lib/backend-proxy"
 
 function mapWorkflowRow(input: Record<string, unknown>) {
   const model = snakeToCamel<Record<string, unknown>>(input)
@@ -21,26 +21,30 @@ function mapWorkflowRow(input: Record<string, unknown>) {
   }
 }
 
+// The workflow set, Lite-seat filtering and run stats come from the core list
+// (backend/app/routers/workflows.py list_workflows_route). Only the canvas
+// `nodes`, which the core list omits, are joined from the contract rows.
 export async function GET(request: NextRequest) {
   try {
+    const upstream = await proxyToFastApi(request, "/api/workflows")
+    if (!upstream.ok) return upstream
+    const payload = (await upstream.json()) as { workflows?: Array<Record<string, unknown>> }
+    const workflows = Array.isArray(payload.workflows) ? payload.workflows : []
+    const ids = workflows.map((w) => String(w.id ?? "")).filter(Boolean)
+    if (ids.length === 0) return NextResponse.json({ workflows })
+
     const supabase = createSupabaseRouteClient(request)
     const orgId = await resolveOrgId(supabase, request)
-    if (!orgId) {
-      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    const nodesById = new Map<string, unknown>()
+    if (orgId) {
+      const { data } = await supabase.from("workflows").select("id, nodes").eq("org_id", orgId).in("id", ids)
+      for (const row of (data ?? []) as Array<{ id: string; nodes: unknown }>) {
+        if (Array.isArray(row.nodes)) nodesById.set(String(row.id), row.nodes)
+      }
     }
-
-    const { data, error } = await supabase
-      .from("workflows")
-      .select("*")
-      .eq("org_id", orgId)
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      return NextResponse.json({ error: error.message, workflows: [] }, { status: 500 })
-    }
-
-    const workflows = (data ?? []).map((row) => mapWorkflowRow(row as Record<string, unknown>))
-    return NextResponse.json({ workflows })
+    return NextResponse.json({
+      workflows: workflows.map((w) => ({ ...w, nodes: nodesById.get(String(w.id)) })),
+    })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error", workflows: [] },

@@ -1,0 +1,182 @@
+[
+  {
+    "scheme": "light",
+    "route": "/home",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/workflows",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/approvals",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/agents",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/activity",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/connectors",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light chat-immersive",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/intelligence",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/ai",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light chat-immersive",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/marketplace/assets",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/schedules",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/sources",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/goals",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/settings/approvals",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/dev/carbon-board",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "light",
+    "route": "/e2e/shots/builder",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable light",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/home",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/workflows",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/approvals",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/agents",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/activity",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/connectors",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark chat-immersive",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/intelligence",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/ai",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark chat-immersive",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/marketplace/assets",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/schedules",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/sources",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/goals",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/settings/approvals",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/dev/carbon-board",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  },
+  {
+    "scheme": "dark",
+    "route": "/e2e/shots/builder",
+    "theme": "interdisplay_7c81a622-module__uHQeQG__variable dm_mono_40830f1c-module__7QSHkG__variable dark",
+    "violations": []
+  }
+]

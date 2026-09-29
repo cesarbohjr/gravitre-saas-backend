@@ -34,13 +34,15 @@ export type ChatWindowMode = LegacyPresentationMode
  * Every surface that can be on screen. `embedded` is not a presentation mode --
  * it is the `/ai` page rendering the chat inline -- but it is a visible chat
  * surface, so it is bound by the same "must have an exit" rule.
+ *
+ * Slice 0: `docked` is a first-class side-rail surface (G-STRUCT Option A).
  */
 /**
  * The mobile sheet deliberately has no entry of its own: it reuses the same
  * per-mode surfaces as the desktop shells, which is what stops the two from
  * drifting apart the way they already had.
  */
-export type ChatSurface = "float" | "expanded" | "fullscreen" | "embedded"
+export type ChatSurface = "float" | "floating" | "docked" | "expanded" | "fullscreen" | "embedded"
 
 export type ChatWindowControlId =
   | "expand"
@@ -49,6 +51,8 @@ export type ChatWindowControlId =
   | "exitFullscreen"
   | "minimizeToHelper"
   | "openAsFloat"
+  | "dock"
+  | "undock"
 
 /**
  * Controls that leave the user somewhere else they can act from. A surface with
@@ -64,6 +68,7 @@ const EXIT_CONTROLS: readonly ChatWindowControlId[] = [
   "exitFullscreen",
   "minimizeToHelper",
   "openAsFloat",
+  "undock",
 ]
 
 /**
@@ -73,8 +78,10 @@ const EXIT_CONTROLS: readonly ChatWindowControlId[] = [
 export const CHAT_WINDOW_CONTROLS: Record<ChatSurface, readonly ChatWindowControlId[]> = {
   // Windowed. Fullscreen is reachable directly rather than only via expanded,
   // which previously forced a two-step trip.
-  float: ["expand", "fullscreen", "minimizeToHelper"],
-  expanded: ["collapseToFloat", "fullscreen", "minimizeToHelper"],
+  float: ["expand", "dock", "fullscreen", "minimizeToHelper"],
+  floating: ["expand", "dock", "fullscreen", "minimizeToHelper"],
+  docked: ["undock", "expand", "fullscreen", "minimizeToHelper"],
+  expanded: ["collapseToFloat", "dock", "fullscreen", "minimizeToHelper"],
   fullscreen: ["exitFullscreen", "collapseToFloat", "minimizeToHelper"],
   // The /ai page. It shipped with no window controls, and because /ai also hides
   // the floating launcher by design, that was a surface with no exit at all.
@@ -90,6 +97,8 @@ export const CHAT_WINDOW_CONTROL_LABELS: Record<ChatWindowControlId, string> = {
   exitFullscreen: "Exit fullscreen",
   minimizeToHelper: "Minimize to helper",
   openAsFloat: "Open as floating window",
+  dock: "Dock to side",
+  undock: "Undock to floating window",
 }
 
 export function controlsForSurface(surface: ChatSurface): readonly ChatWindowControlId[] {
@@ -131,4 +140,17 @@ export function restoreTargetMode(
 export function modeToRemember(current: GravitrePresentationInput | ChatWindowMode): ChatWindowMode {
   const legacy = toLegacyPresentationMode(current)
   return legacy === "helper" ? "float" : legacy
+}
+
+/** Map a presentation mode onto a ChatSurface for control manifest lookup. */
+export function surfaceForPresentationMode(
+  mode: GravitrePresentationInput | ChatWindowMode | null | undefined,
+): ChatSurface {
+  const legacy = toLegacyPresentationMode(mode ?? "float")
+  if (legacy === "helper") return "float"
+  if (legacy === "float") return "float"
+  if (legacy === "floating") return "floating"
+  if (legacy === "docked") return "docked"
+  if (legacy === "expanded") return "expanded"
+  return "fullscreen"
 }

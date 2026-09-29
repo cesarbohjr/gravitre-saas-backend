@@ -17,13 +17,8 @@ import {
   Shield,
   Check,
   AlertTriangle,
-  Megaphone,
-  TrendingUp,
-  PieChart,
-  Headphones,
-  Bot,
-  type LucideIcon,
 } from "lucide-react"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
@@ -85,26 +80,6 @@ const availableSystems = AGENT_SYSTEM_OPTIONS.map((system) => ({
   connected: !["postgresql", "microsoft365"].includes(system.id),
 }))
 const guardrailOptions = AGENT_GUARDRAIL_OPTIONS
-
-// Map agent names to icons
-const agentIconMap: Record<string, LucideIcon> = {
-  "Marketing Operator": Megaphone,
-  "Sales Assistant": TrendingUp,
-  "Data Quality Agent": Database,
-  "Finance Reporter": PieChart,
-  "Support Coordinator": Headphones,
-}
-
-function getAgentIcon(agentName: string): LucideIcon {
-  // Check for partial matches
-  const lowerName = agentName.toLowerCase()
-  if (lowerName.includes("marketing")) return Megaphone
-  if (lowerName.includes("sales")) return TrendingUp
-  if (lowerName.includes("data") || lowerName.includes("quality")) return Database
-  if (lowerName.includes("finance") || lowerName.includes("report")) return PieChart
-  if (lowerName.includes("support") || lowerName.includes("customer")) return Headphones
-  return agentIconMap[agentName] || Bot
-}
 
 export default function NewAgentPage() {
   const router = useRouter()
@@ -233,11 +208,11 @@ export default function NewAgentPage() {
   }
 
   return (
-    <AppShell title="Add Team Member">
+    <AppShell title="Add team member">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           eyebrow="AI Team"
-          title="Add Team Member"
+          title="Add team member"
           description="Configure purpose, skills, apps, and limits for a new agent."
           icon={<NucleoWorkflow className="h-5 w-5" />}
           actions={
@@ -366,7 +341,7 @@ export default function NewAgentPage() {
 
                   {/* Model Selection */}
                   <div>
-                    <label className="text-sm font-medium text-foreground">Default Model</label>
+                    <label className="text-sm font-medium text-foreground">Default model</label>
                     <p className="mt-0.5 text-xs text-muted-foreground mb-2">
                       Choose the AI model that powers this agent&apos;s reasoning
                     </p>
@@ -585,16 +560,13 @@ export default function NewAgentPage() {
                 <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] divide-y divide-border">
                   {/* Name & Purpose */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name & Purpose</p>
+                    <p className="text-xs font-medium text-muted-foreground">Name & Purpose</p>
                     <div className="mt-3 flex items-start gap-4">
-                      {(() => {
-                        const AgentIcon = getAgentIcon(agentName)
-                        return (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[color:var(--g-brand)]">
-                            <AgentIcon className="h-7 w-7 text-white" />
-                          </div>
-                        )
-                      })()}
+                      <AgentIdentityAvatar
+                        agent={{ name: agentName, icon: selectedIcon, avatarColor: selectedColor, role: agentPurpose }}
+                        size="lg"
+                        showStatusDot={false}
+                      />
                       <div>
                         <p className="text-lg font-semibold text-foreground">{agentName || "Unnamed Agent"}</p>
                         <p className="mt-1 text-sm text-muted-foreground">{agentPurpose || "No description provided"}</p>
@@ -603,7 +575,7 @@ export default function NewAgentPage() {
                   </div>
 
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Personality</p>
+                    <p className="text-xs font-medium text-muted-foreground">Personality</p>
                     <ul className="mt-2 space-y-1 text-sm text-foreground">
                       <li>
                         Spoken voice:{" "}
@@ -617,7 +589,7 @@ export default function NewAgentPage() {
 
                   {/* Capabilities */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Capabilities</p>
+                    <p className="text-xs font-medium text-muted-foreground">Capabilities</p>
                     <ul className="mt-2 space-y-1">
                       {capabilityNamesFromIds(selectedCapabilities, customCapabilities).map((name) => (
                           <li key={name} className="flex items-center gap-2 text-sm text-foreground">
@@ -630,7 +602,7 @@ export default function NewAgentPage() {
 
                   {/* Connected Systems */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Connected Systems</p>
+                    <p className="text-xs font-medium text-muted-foreground">Connected systems</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {selectedSystems.map(id => {
                         const sys = availableSystems.find(s => s.id === id)
@@ -645,7 +617,7 @@ export default function NewAgentPage() {
 
                   {/* Reference Folders */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Reference Folders</p>
+                    <p className="text-xs font-medium text-muted-foreground">Reference folders</p>
                     {referenceFolders.length > 0 ? (
                       <ul className="mt-2 space-y-2">
                         {referenceFolders.map((folder) => (
@@ -664,7 +636,7 @@ export default function NewAgentPage() {
 
                   {/* Safety Rules */}
                   <div className="p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Safety Rules</p>
+                    <p className="text-xs font-medium text-muted-foreground">Safety rules</p>
                     <ul className="mt-2 space-y-1">
                       {selectedGuardrails.map(id => {
                         const guard = guardrailOptions.find(g => g.id === id)
@@ -716,7 +688,7 @@ export default function NewAgentPage() {
                 ) : (
                   <>
                     <Check className="h-4 w-4" />
-                    Create Team Member
+                    Create team member
                   </>
                 )}
               </Button>

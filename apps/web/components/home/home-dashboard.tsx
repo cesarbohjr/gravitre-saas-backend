@@ -17,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product/page-header"
+import { LiveStatus } from "@/components/gravitre/nodus-product/page-header"
+import { dashboardStatusLine } from "@/components/home/dashboard-operating"
+import { OperatingAskLine, OperatingFlow } from "@/components/home/operating-flow"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
-import { NucleoActivity, NucleoClose } from "@/components/icons/nucleo/semantic"
+import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
 import { TYPE } from "@/lib/design-system"
@@ -28,10 +30,32 @@ import { packWidgets } from "@/lib/dashboard/place-widgets"
 import type { DashboardRange, DashboardWidget } from "@/lib/dashboard/types"
 import { DASHBOARD_PRESETS, KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
 import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
-import { DashboardWidgetView } from "@/components/home/dashboard-widget-view"
+import { DashboardWidgetView, resolveKpiValue } from "@/components/home/dashboard-widget-view"
 import { KpiPickerDialog } from "@/components/home/kpi-picker-dialog"
+import { OutcomeFlowSankey } from "@/components/home/outcome-flow-sankey"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
+
+/** Widgets with their own composition; everything else is a number and joins the measure strip. */
+const RICH_WIDGETS = new Set([
+  "agents.by_status",
+  "runs.breakdown",
+  "agents.monitor",
+  "gibe.learning_query",
+  "gibe.learning_workflow",
+  "gibe.revenue_risks",
+  "gibe.predictive",
+])
+const NUMBER_VIZ = new Set(["number", "number_trend", "status", "sparkline"])
+
+// The metrics overview accepts 7d | 30d | 90d only, so shorter ranges are served as 7 days.
+const RANGE_LABEL: Record<DashboardRange, string> = {
+  "1h": "last 7 days (shortest available)",
+  "24h": "last 7 days (shortest available)",
+  "7d": "last 7 days",
+  "30d": "last 30 days",
+  "90d": "last 90 days",
+}
 
 type HomeDashboardProps = {
   roleId: WelcomeRoleId
@@ -58,7 +82,6 @@ export function HomeDashboard({
   roleId,
   roleLabel,
   showGettingStarted,
-  showRoleQuickActions = false,
   data,
   editMode,
   setEditMode,
@@ -80,10 +103,22 @@ export function HomeDashboard({
   const [dropOrder, setDropOrder] = useState<number | null>(null)
 
   const quickActions = ROLE_QUICK_ACTIONS[roleId] ?? ROLE_QUICK_ACTIONS.ops
-  const showQuickActions =
-    (showRoleQuickActions || showGettingStarted) && quickActions.length > 0 && !editMode
 
-  const placed = useMemo(() => packWidgets(widgets), [widgets])
+  const { railWidgets, boardWidgets } = useMemo(() => {
+    const rail: DashboardWidget[] = []
+    const board: DashboardWidget[] = []
+    for (const widget of [...widgets].sort((a, b) => a.order - b.order)) {
+      if (widget.metricId === "agents.monitor") continue
+      if (!RICH_WIDGETS.has(widget.metricId) && NUMBER_VIZ.has(widget.visualization)) rail.push(widget)
+      else board.push(widget)
+    }
+    return { railWidgets: rail, boardWidgets: board }
+  }, [widgets])
+  const placed = useMemo(
+    () => packWidgets(editMode ? widgets : boardWidgets),
+    [editMode, widgets, boardWidgets],
+  )
+  const status = dashboardStatusLine(data)
 
   const onDrop = (targetOrder: number) => {
     if (!dragId) return
@@ -93,111 +128,136 @@ export function HomeDashboard({
   }
 
   return (
-    <div className="relative w-full overflow-x-hidden bg-[color:var(--g-canvas)]">
-      <GravitrePageHeader
-        title="Dashboard"
-        icon={<NucleoActivity className="h-5 w-5" />}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <AskGravitreSummonButton />
-            <Select value={globalRange} onValueChange={(v) => setRange(v as DashboardRange)}>
-              <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Dashboard date range">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">Last hour</SelectItem>
-                <SelectItem value="24h">24 hours</SelectItem>
-                <SelectItem value="7d">7 days</SelectItem>
-                <SelectItem value="30d">30 days</SelectItem>
-                <SelectItem value="90d">90 days</SelectItem>
-              </SelectContent>
-            </Select>
-            {editMode ? (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={() => setPickerOpen(true)}
-                >
-                  <span className="mr-1 text-base leading-none">+</span>
-                  Add KPI
-                </Button>
-                <Select
-                  onValueChange={(presetId) => applyPreset(presetId)}
-                >
-                  <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Apply dashboard preset">
-                    <SelectValue placeholder="Presets" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DASHBOARD_PRESETS.map((preset) => (
-                      <SelectItem key={preset.id} value={preset.id} title={preset.description}>
-                        {preset.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button type="button" size="sm" variant="ghost" className="h-8" onClick={resetLayout}>
-                  Reset layout
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-8"
-                  onClick={() => setEditMode(false)}
-                >
-                  Done{saving ? "…" : ""}
-                </Button>
-              </>
-            ) : (
-              <>
-                {data.pendingApprovals > 0 ? (
-                  <Button asChild size="sm" variant="outline" className="h-8">
-                    <Link href={APP_ROUTES.approvals}>
-                      {data.pendingApprovals} approval{data.pendingApprovals === 1 ? "" : "s"}
-                    </Link>
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={() => setEditMode(true)}
-                >
-                  Customize
-                </Button>
-                {showQuickActions
-                  ? quickActions.slice(0, 2).map((action) => (
-                      <Button
-                        key={action.href}
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 text-muted-foreground"
-                      >
-                        <Link href={action.href}>{action.label}</Link>
-                      </Button>
-                    ))
-                  : null}
-              </>
-            )}
+    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-[color:var(--g-canvas)]">
+      {/* Operating command strip — identity, live state, AI command line, range and layout controls */}
+      <div
+        data-dashboard-command-strip=""
+        className="flex flex-col gap-3 border-b border-[color:var(--g-border-default)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] lg:flex-row lg:items-center lg:gap-6"
+      >
+        <div className="min-w-0 shrink-0 lg:max-w-[460px]">
+          <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">Dashboard</h1>
+          <div className="mt-0.5">
+            <LiveStatus tone={status.tone}>{status.text}</LiveStatus>
           </div>
-        }
-      />
+        </div>
+        <OperatingAskLine className="min-w-0 flex-1 lg:max-w-[560px]" />
+        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+          <AskGravitreSummonButton />
+          <Select value={globalRange} onValueChange={(v) => setRange(v as DashboardRange)}>
+            <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Dashboard date range">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1h">Last hour</SelectItem>
+              <SelectItem value="24h">24 hours</SelectItem>
+              <SelectItem value="7d">7 days</SelectItem>
+              <SelectItem value="30d">30 days</SelectItem>
+              <SelectItem value="90d">90 days</SelectItem>
+            </SelectContent>
+          </Select>
+          {editMode ? (
+            <>
+              <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setPickerOpen(true)}>
+                <span className="mr-1 text-base leading-none">+</span>
+                Add KPI
+              </Button>
+              <Select onValueChange={(presetId) => applyPreset(presetId)}>
+                <SelectTrigger className="h-8 w-[140px] text-xs" aria-label="Apply dashboard preset">
+                  <SelectValue placeholder="Presets" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DASHBOARD_PRESETS.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id} title={preset.description}>
+                      {preset.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" size="sm" variant="ghost" className="h-8" onClick={resetLayout}>
+                Reset layout
+              </Button>
+              <Button type="button" size="sm" className="h-8" onClick={() => setEditMode(false)}>
+                Done{saving ? "…" : ""}
+              </Button>
+            </>
+          ) : (
+            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setEditMode(true)}>
+              Customize
+            </Button>
+          )}
+        </div>
+      </div>
 
-      <motion.div
+      {editMode ? (
+        <p className={cn(TYPE.meta, "px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]")}>
+          Drag widgets to reorder. Use the size button to cycle widths. Your layout is saved for {roleLabel}.
+        </p>
+      ) : (
+        <OperatingFlow data={data} quickActions={quickActions} />
+      )}
+
+      {/* Measure — configured KPIs, secondary to the operation above */}
+      <motion.section
         variants={reduced ? undefined : container}
         initial="initial"
         animate="animate"
-        className="relative z-10 mx-auto max-w-[1400px] space-y-3 px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:pb-6"
+        aria-labelledby="dashboard-measure"
+        className="relative z-10 space-y-4 px-[var(--np-page-pad-sm)] pb-6 pt-4 sm:px-[var(--np-page-pad)] sm:pb-8"
       >
-        {editMode ? (
-          <p className={cn(TYPE.meta)}>
-            Drag widgets to reorder — the grid reflows automatically. Resize cycles size presets.
-            Layout saves for {roleLabel}.
-          </p>
+        {!editMode ? (
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="dashboard-measure" className="text-[13px] font-semibold text-foreground">
+              Measure
+            </h2>
+            <span className={TYPE.meta}>Configured KPIs · {RANGE_LABEL[globalRange]}</span>
+          </div>
+        ) : (
+          <h2 id="dashboard-measure" className="sr-only">
+            Measure
+          </h2>
+        )}
+
+        {!editMode && railWidgets.length > 0 ? (
+          <motion.dl
+            variants={item}
+            className="grid grid-cols-2 divide-x divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-subtle)] sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none lg:divide-y-0"
+          >
+            {railWidgets.map((widget) => {
+              const resolved = resolveKpiValue(widget.metricId, data)
+              const label = widget.title ?? KPI_BY_ID[widget.metricId]?.name ?? widget.metricId
+              return (
+                <div key={widget.id} className="relative min-w-0 px-3 py-2.5">
+                  <dt className="truncate text-[12px] text-muted-foreground">
+                    {resolved.href ? (
+                      <Link
+                        href={resolved.href}
+                        className="hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring after:absolute after:inset-0"
+                      >
+                        {label}
+                      </Link>
+                    ) : (
+                      label
+                    )}
+                  </dt>
+                  <dd
+                    className={cn(
+                      "mt-0.5 text-lg font-semibold tabular-nums tracking-[-0.01em] text-foreground",
+                      resolved.warning && "text-warning",
+                      resolved.empty && "text-muted-foreground",
+                    )}
+                  >
+                    {resolved.value}
+                  </dd>
+                </div>
+              )
+            })}
+          </motion.dl>
+        ) : null}
+
+        {!editMode ? (
+          <motion.div variants={item}>
+            <OutcomeFlowSankey />
+          </motion.div>
         ) : null}
 
         {/* Desktop / tablet grid */}
@@ -335,12 +395,12 @@ export function HomeDashboard({
           <motion.p variants={item} className={TYPE.meta}>
             Resume setup from{" "}
             <Link href={APP_ROUTES.welcome} className="underline underline-offset-2 hover:text-foreground">
-              Getting Started
+              Getting started
             </Link>
             .
           </motion.p>
         ) : null}
-      </motion.div>
+      </motion.section>
 
       <KpiPickerDialog
         open={pickerOpen}

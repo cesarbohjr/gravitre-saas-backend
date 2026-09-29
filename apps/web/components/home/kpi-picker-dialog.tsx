@@ -141,7 +141,7 @@ function KpiRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-foreground">{kpi.name}</p>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground font-medium">
             {kpi.category}
           </span>
           {displayed ? (

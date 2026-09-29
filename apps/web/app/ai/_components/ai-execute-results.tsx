@@ -225,7 +225,7 @@ export function AiExecuteResults({
         />
       ) : (
         <EmptyPanel
-          title="Suggested Actions"
+          title="Suggested actions"
           body="Action recommendations appear here when Gravitre identifies concrete next steps."
         />
       ),
@@ -233,9 +233,9 @@ export function AiExecuteResults({
       steps.length > 0 ? (
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 shadow-sm">
         <div className="border-b border-border bg-secondary/30 px-5 py-3">
-          <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <ArrowRight className="h-3 w-3" />
-            Execution Plan
+            Execution plan
           </h3>
         </div>
         <div className="space-y-4 p-5">
@@ -274,7 +274,7 @@ export function AiExecuteResults({
                 {step.status === "current" && isProcessing ? (
                   <div className="mt-2 flex items-center gap-2">
                     <Loader2 className="h-3 w-3 animate-spin text-info" />
-                    <span className="text-[10px] font-medium text-info">In Progress</span>
+                    <span className="text-[10px] font-medium text-info">In progress</span>
                   </div>
                 ) : null}
               </div>
@@ -309,7 +309,7 @@ export function AiExecuteResults({
       </div>
       ) : (
         <EmptyPanel
-          title="Execution Plan"
+          title="Execution plan"
           body="Step-by-step execution plans appear here for operational fixes and delegated tasks."
         />
       ),

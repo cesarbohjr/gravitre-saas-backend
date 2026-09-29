@@ -87,7 +87,7 @@ export function BusinessModelInspector({
       <Link
         href={model.href}
         data-review-cta="open-model"
-        className="inline-flex text-sm font-medium text-[color:var(--g-brand)] hover:underline"
+        className="inline-flex text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
       >
         Open model
       </Link>

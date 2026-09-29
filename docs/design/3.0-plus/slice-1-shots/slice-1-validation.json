@@ -1,0 +1,240 @@
+{
+  "ranAt": "2026-09-24T19:41:57.292Z",
+  "url": "http://127.0.0.1:3010/dev/slice-1-workspace",
+  "results": [
+    {
+      "area": "hydration",
+      "check": "slice-1 preview, no stored preference",
+      "result": "PASS",
+      "evidence": "0 hydration console errors over 2 loads"
+    },
+    {
+      "area": "hydration",
+      "check": "slice-1 preview, stored preference=docked",
+      "result": "PASS",
+      "evidence": "0 hydration console errors over 2 loads"
+    },
+    {
+      "area": "hydration",
+      "check": "slice-0 foundation, stored preference=expanded",
+      "result": "PASS",
+      "evidence": "0 hydration console errors over 2 loads"
+    },
+    {
+      "area": "hydration",
+      "check": "slice-0: still no hydration errors once hydrated",
+      "result": "PASS",
+      "evidence": "0"
+    },
+    {
+      "area": "hydration",
+      "check": "slice-0 preference applied after hydration",
+      "result": "PASS",
+      "evidence": "data-wm-mode-source=preference"
+    },
+    {
+      "area": "wm",
+      "check": "launcher opens at remembered preference (docked)",
+      "result": "PASS",
+      "evidence": "mode=docked"
+    },
+    {
+      "area": "wm",
+      "check": "docked keeps page usable",
+      "result": "PASS",
+      "evidence": "body padding-right=420px; field right=408 ≤ dock left=1020; typed ok=true"
+    },
+    {
+      "area": "runtime",
+      "check": "needs approval: status line + real Approve button visible in docked window",
+      "result": "PASS",
+      "evidence": "status=needs_approval; approve visible=true; log=\"fixture: Approve clicked — nothing executed\""
+    },
+    {
+      "area": "wm",
+      "check": "undock → floating window, page space released",
+      "result": "PASS",
+      "evidence": "mode=floating; body padding-right=0px"
+    },
+    {
+      "area": "composition",
+      "check": "work exists → Split by default",
+      "result": "PASS",
+      "evidence": "composition=split, runtime=completed"
+    },
+    {
+      "area": "composition",
+      "check": "Work view selectable and remembered",
+      "result": "PASS",
+      "evidence": "stored=work"
+    },
+    {
+      "area": "wm",
+      "check": "collapse expanded ? floating window",
+      "result": "PASS",
+      "evidence": "mode=float"
+    },
+    {
+      "area": "composition",
+      "check": "approval never hidden: remembered Work falls back to Split",
+      "result": "PASS",
+      "evidence": "composition=split with needs_approval; Approve visible=true"
+    },
+    {
+      "area": "wm",
+      "check": "fullscreen is a modal dialog with exit and reduce controls",
+      "result": "PASS",
+      "evidence": "aria-modal=true; exit=true; reduce=true"
+    },
+    {
+      "area": "a11y",
+      "check": "fullscreen focus trap holds over 25 Tabs",
+      "result": "PASS",
+      "evidence": "focus left dialog 0 times"
+    },
+    {
+      "area": "wm",
+      "check": "Escape returns from fullscreen to expanded",
+      "result": "PASS",
+      "evidence": "mode=expanded"
+    },
+    {
+      "area": "wm",
+      "check": "minimize → launcher visible (no trapped window)",
+      "result": "PASS",
+      "evidence": "mode=helper; stored pref=expanded"
+    },
+    {
+      "area": "wm",
+      "check": "restore returns to the mode minimized from",
+      "result": "PASS",
+      "evidence": "mode=expanded"
+    },
+    {
+      "area": "wm",
+      "check": "dock from expanded",
+      "result": "PASS",
+      "evidence": "mode=docked"
+    },
+    {
+      "area": "identity",
+      "check": "provider instance + messages array unchanged across all transitions",
+      "result": "PASS",
+      "evidence": "instance-stable=true; messages-stable=true; Mode history: docked ← expanded ← helper ← expanded ← fullscreen ← expanded ← float ← expanded ← floating ← docked ← helper"
+    },
+    {
+      "area": "identity",
+      "check": "exactly one workspace surface mounted",
+      "result": "PASS",
+      "evidence": "surfaces=1"
+    },
+    {
+      "area": "runtime",
+      "check": "failed state from executionResult.success=false",
+      "result": "PASS",
+      "evidence": "status=failed"
+    },
+    {
+      "area": "console",
+      "check": "no page errors during desktop walk",
+      "result": "PASS",
+      "evidence": "0 page errors"
+    },
+    {
+      "area": "a11y",
+      "check": "launcher opens with Enter",
+      "result": "PASS",
+      "evidence": "mode=floating (contextual default, no preference)"
+    },
+    {
+      "area": "a11y",
+      "check": "window controls have accessible names",
+      "result": "PASS",
+      "evidence": "Expand | Dock to side | Fullscreen | Minimize to helper | Voice unavailable | Send message"
+    },
+    {
+      "area": "a11y",
+      "check": "visible focus on window control",
+      "result": "PASS",
+      "evidence": "focused=\"Expand\"; :focus-visible=true; outline=none; visible ring shadow=true"
+    },
+    {
+      "area": "a11y",
+      "check": "inspector: dialog, Escape closes, focus returns to opener",
+      "result": "PASS",
+      "evidence": "aria-labelledby=radix-_R_eqatpesndd9lbH1_; focus after close=\"Evidence\""
+    },
+    {
+      "area": "a11y",
+      "check": "reduced motion: no shared-layout animation, no live pulse",
+      "result": "PASS",
+      "evidence": "layout-id=reduced-motion; pulse animation=none"
+    },
+    {
+      "area": "responsive",
+      "check": "narrow desktop 1024×768: window opens inside the viewport",
+      "result": "PASS",
+      "evidence": "mode=floating; box=26,152 572×590"
+    },
+    {
+      "area": "responsive",
+      "check": "narrow desktop 1024×768: docked width + page reservation",
+      "result": "PASS",
+      "evidence": "dock width=420; body padding-right=420px"
+    },
+    {
+      "area": "responsive",
+      "check": "narrow desktop 1024×768: identity kept",
+      "result": "PASS",
+      "evidence": "{\"instance\":\"true\",\"messages\":\"true\"}"
+    },
+    {
+      "area": "responsive",
+      "check": "tablet 834×1112: window opens inside the viewport",
+      "result": "PASS",
+      "evidence": "mode=floating; box=27,506 556×579"
+    },
+    {
+      "area": "responsive",
+      "check": "tablet 834×1112: docked width + page reservation",
+      "result": "PASS",
+      "evidence": "dock width=350; body padding-right=350.28px"
+    },
+    {
+      "area": "responsive",
+      "check": "tablet 834×1112: identity kept",
+      "result": "PASS",
+      "evidence": "{\"instance\":\"true\",\"messages\":\"true\"}"
+    },
+    {
+      "area": "responsive",
+      "check": "mobile 390×844: docked preference presents as the float sheet",
+      "result": "PASS",
+      "evidence": "sheet mode=float; provider mode=docked"
+    },
+    {
+      "area": "responsive",
+      "check": "mobile: sheet on-screen and composer reachable at the float snap",
+      "result": "PASS",
+      "evidence": "sheet top=380; composer=791–827 of 844"
+    },
+    {
+      "area": "responsive",
+      "check": "mobile: needs approval keeps Approve on-screen (no overlay covering it)",
+      "result": "PASS",
+      "evidence": "approve=681–713 of 844; work overlay open=false"
+    },
+    {
+      "area": "responsive",
+      "check": "mobile: minimize and restore recover the same conversation",
+      "result": "PASS",
+      "evidence": "{\"instance\":\"true\",\"messages\":\"true\"}"
+    },
+    {
+      "area": "responsive",
+      "check": "desktop → mobile → desktop resize keeps conversation and provider",
+      "result": "PASS",
+      "evidence": "{\"instance\":\"true\",\"messages\":\"true\"}; mode=floating"
+    }
+  ]
+}

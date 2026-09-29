@@ -107,7 +107,7 @@ export function SwarmConvergenceDiagram({
       </svg>
 
       {!compact && (
-        <div className="mt-3 flex items-center justify-between px-1 text-[10px] font-medium uppercase tracking-wide">
+        <div className="mt-3 flex items-center justify-between px-1 text-xs font-medium">
           <span className="text-primary">Objective</span>
           <span className="text-info">Parallel agents</span>
           <span className="text-success">Aggregate</span>

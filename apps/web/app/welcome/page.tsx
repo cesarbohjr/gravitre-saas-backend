@@ -228,7 +228,7 @@ export default function WelcomePage() {
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="space-y-1.5 text-left">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Job title
                   </span>
                   <input
@@ -240,7 +240,7 @@ export default function WelcomePage() {
                   />
                 </label>
                 <label className="space-y-1.5 text-left">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Department
                   </span>
                   <input
@@ -354,12 +354,13 @@ export default function WelcomePage() {
                   {selectedRole?.suggestedPrompt ?? "What should Gravitre help me with first?"}
                 </span>
               </div>
-              <Link
-                href={`${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(selectedRole?.suggestedPrompt ?? "")}`}
-                className="mt-4 inline-flex"
-              >
-                <Button>Open Gravitre AI</Button>
-              </Link>
+              <Button asChild className="mt-4">
+                <Link
+                  href={`${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(selectedRole?.suggestedPrompt ?? "")}`}
+                >
+                  Open Gravitre AI
+                </Link>
+              </Button>
             </StepShell>
           )}
 

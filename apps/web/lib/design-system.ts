@@ -23,24 +23,29 @@
 export const TYPE = {
   /** The single <h1> on a page — Nodus product scale (~20–24px), not marketing H1. */
   pageTitle:
-    "font-sans text-xl font-semibold tracking-tight text-[color:var(--g-text-primary)] sm:text-2xl",
+    "font-sans text-2xl font-semibold tracking-[-0.02em] text-[color:var(--g-text-primary)] sm:text-[28px] sm:leading-9",
+  /** Title of an immersive or expert workspace (builder, studio). */
+  workspaceTitle:
+    "font-sans text-xl font-semibold tracking-[-0.015em] text-[color:var(--g-text-primary)]",
   /** Supporting sentence under a page title. */
   pageLead: "font-sans text-sm text-pretty text-[color:var(--g-text-muted)]",
   /** Section heading inside a page (<h2>). */
   sectionTitle:
-    "font-sans text-base font-semibold tracking-tight text-[color:var(--g-text-primary)] sm:text-lg",
+    "font-sans text-[15px] font-semibold leading-6 tracking-[-0.01em] text-[color:var(--g-text-primary)]",
+  /** IDs, versions, schemas, timestamps, environment metadata. */
+  mono: "font-mono text-xs font-medium tabular-nums text-[color:var(--g-text-muted)]",
   /** Card / list-item heading (<h3>) / widget title. */
   cardTitle:
     "font-sans text-sm font-semibold leading-tight tracking-tight text-[color:var(--g-text-primary)]",
   /**
-   * Small caps label above a title or over a group of controls.
-   * One tracking value everywhere — this was the worst offender.
+   * Label above a title or over a group of controls. Sentence case, no
+   * tracking (master spec §9.1 — uppercase tracking is out).
    */
   eyebrow:
-    "font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]",
-  /** Caps label under a metric. Same tracking as eyebrow, lighter weight. */
+    "font-sans text-xs font-medium text-[color:var(--g-text-muted)]",
+  /** Label under a metric. */
   metricLabel:
-    "font-sans text-[10px] font-medium uppercase tracking-[0.14em] text-[color:var(--g-text-muted)]",
+    "font-sans text-xs font-medium text-[color:var(--g-text-muted)]",
   /** Large number in a stat card. */
   metricValue:
     "font-sans text-2xl font-semibold tabular-nums text-[color:var(--g-text-primary)]",
@@ -56,6 +61,73 @@ export const TYPE = {
   /** Table cell primary values. */
   tableCell:
     "font-sans text-sm font-medium tabular-nums text-[color:var(--g-text-primary)]",
+} as const
+
+/**
+ * Hub navigation (section tabs under a page header). Underline indicator on the
+ * header's bottom edge — pair with a header that owns the border.
+ */
+export const HUB_TABS = {
+  nav: "-mb-px flex items-end gap-x-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+  link:
+    "relative shrink-0 whitespace-nowrap pb-2.5 pt-1 font-sans text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-full",
+  active: "text-[color:var(--g-text-primary)] after:bg-[color:var(--g-text-primary)]",
+  idle: "text-[color:var(--g-text-muted)] after:bg-transparent hover:text-[color:var(--g-text-primary)]",
+} as const
+
+/**
+ * Page-introduction families (G-STRUCT A1, 2026-09-24).
+ * Not one universal header — pick by job. Route exceptions stay in coverage matrix.
+ */
+export const PAGE_FAMILY = {
+  operating: {
+    id: "operating",
+    shell: "space-y-[var(--g-space-4)]",
+    title: TYPE.pageTitle,
+    lead: TYPE.pageLead,
+    actions: "flex flex-wrap items-center gap-2",
+  },
+  expert: {
+    id: "expert",
+    shell: "space-y-[var(--g-space-2)] border-b border-[color:var(--g-border-subtle)] pb-3",
+    title: "font-sans text-lg font-semibold tracking-[-0.015em] text-[color:var(--g-text-primary)] sm:text-xl",
+    lead: "font-sans text-xs text-[color:var(--g-text-muted)]",
+    actions: "flex flex-wrap items-center gap-1.5",
+  },
+  empty: {
+    id: "empty",
+    shell: "mx-auto flex max-w-lg flex-col items-start gap-3 py-10",
+    title: TYPE.pageTitle,
+    lead: TYPE.pageLead,
+    actions: "flex flex-wrap items-center gap-2",
+  },
+  immersive: {
+    id: "immersive",
+    shell: "relative z-10 flex items-start justify-between gap-3",
+    title: "font-sans text-sm font-semibold tracking-tight text-[color:var(--g-text-primary)]",
+    lead: "font-sans text-xs text-[color:var(--g-text-muted)]",
+    actions: "flex flex-wrap items-center gap-1.5",
+  },
+} as const
+
+export type PageFamilyId = keyof typeof PAGE_FAMILY
+
+/**
+ * Full-width hub page body. The first child is the shared page header (which owns
+ * its own page padding); later sections inset to the same page gutter.
+ */
+export const PAGE_FRAME =
+  "min-w-0 space-y-6 px-[var(--np-page-pad-sm)] pb-8 sm:px-[var(--np-page-pad)] [&>*:first-child]:-mx-[var(--np-page-pad-sm)] sm:[&>*:first-child]:-mx-[var(--np-page-pad)]"
+
+/** Window Manager chrome tokens (presentation-only). */
+export const WINDOW_CHROME = {
+  frame:
+    "border border-[color:var(--g-wm-border)] bg-[color:var(--g-wm-surface)] shadow-[var(--g-wm-shadow)]",
+  header:
+    "flex h-10 shrink-0 items-center gap-2 border-b border-[color:var(--g-border-subtle)] px-3",
+  identity:
+    "font-mono text-[10px] text-[color:var(--g-text-muted)]",
+  dockWidth: "var(--g-wm-dock-width)",
 } as const
 
 /**
@@ -103,12 +175,11 @@ export const SEMANTIC = {
  * Radius roles. The audit found `rounded-lg`, `rounded-xl`, `rounded-2xl`,
  * `rounded-3xl` and `rounded-full` all used for surfaces of the same rank.
  *
- * The hierarchy is shape-by-role, and it splits "controls" in two:
+ * The hierarchy is shape-by-role (3.0 Plus visual convergence, 2026-09-25):
  *
- *   - Click targets are pills: button, badge, chip, tab trigger.
- *   - Text fields are rounded rectangles: input, textarea, select trigger.
- *     A pill wastes horizontal padding and reads oddly at wide widths, so
- *     `field` is deliberately NOT `control`.
+ *   - Controls and fields share one sharp 8px radius: button, input, select,
+ *     textarea. Pills made every action look equally loud (master spec §6.2).
+ *   - Status/meta labels are 4px tags; only presence dots and avatars are round.
  *   - Containers step up with their size: tile -> card -> panel.
  *
  * These are enforced in the primitives (components/ui/button.tsx, badge.tsx,
@@ -125,14 +196,16 @@ export const SEMANTIC = {
  *      how `sm`/`lg` buttons stayed square while `default` ones were pills.
  */
 export const RADIUS = {
-  /** Click targets: buttons, chips, badges, tab triggers. */
-  control: "rounded-full",
-  /** Text entry: input, textarea, select trigger. Intentionally not a pill. */
-  field: "rounded-md",
+  /** Click targets: buttons, chips, segmented controls. */
+  control: "rounded-[var(--np-radius-md)]",
+  /** Text entry: input, textarea, select trigger. */
+  field: "rounded-[var(--np-radius-md)]",
+  /** Status and meta tags. */
+  tag: "rounded-[4px]",
   /** Cards and list rows. */
-  card: "rounded-xl",
+  card: "rounded-[var(--np-radius-lg)]",
   /** Panels and toolbars that contain cards. */
-  panel: "rounded-2xl",
+  panel: "rounded-[var(--np-radius-lg)]",
   /** Small square affordances: icon tiles, avatars, swatches. */
   tile: "rounded-lg",
 } as const
@@ -205,29 +278,20 @@ export const MOTION_CONCEPT = {
 } as const
 
 /**
- * Semantic status chip classes — Nodus soft-pill highlights (soft fill + strong text).
- * Borderless pills match Product Image model tags / status accents.
- * Use for BO / approval / agent honesty chips — never invent TRAINED/live claims.
+ * Status label ink (Carbon: dot + label, no fill). The paired STATUS_DOT
+ * carries the hue; only states that need the reader's attention colour the
+ * label. Never invent TRAINED/live claims from these alone.
  */
 export const STATUS = {
-  pending:
-    "border border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]",
-  approved:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-  rejected:
-    "border border-transparent bg-destructive/10 text-destructive",
-  running:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-  failed:
-    "border border-transparent bg-destructive/10 text-destructive",
-  verified:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-  estimate:
-    "border border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]",
-  paused:
-    "border border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]",
-  idle:
-    "border border-transparent bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)]",
+  pending: "text-[color:var(--warning)]",
+  approved: "text-[color:var(--g-text-secondary)]",
+  rejected: "text-destructive",
+  running: "text-[color:var(--g-text-secondary)]",
+  failed: "text-destructive",
+  verified: "text-[color:var(--g-text-secondary)]",
+  estimate: "text-[color:var(--warning)]",
+  paused: "text-[color:var(--g-text-secondary)]",
+  idle: "text-[color:var(--g-text-muted)]",
 } as const
 
 export type StatusTone = keyof typeof STATUS
@@ -246,29 +310,24 @@ export const STATUS_DOT: Record<StatusTone, string> = {
 }
 
 /**
- * Soft highlight pills — use only for important status (Ready / Watch / Error).
- * Category labels (“Topic knowledge”, “Available”) stay quiet outline/neutral.
+ * Semantic label ink for important status (Ready / Watch / Error). No fills:
+ * pair with a dot or a 2px edge when the state must stand out.
  */
 export const HIGHLIGHT = {
-  brand:
-    "border border-transparent bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-  signal:
-    "border border-transparent bg-[color:var(--g-signal-soft)] text-[color:var(--g-signal)]",
-  intelligence:
-    "border border-transparent bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]",
-  warning:
-    "border border-transparent bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]",
-  danger: "border border-transparent bg-destructive/10 text-destructive",
-  neutral:
-    "border border-transparent bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)]",
+  brand: "text-[color:var(--g-brand-active)]",
+  signal: "text-[color:var(--info)]",
+  intelligence: "text-[color:var(--g-intelligence-bright)]",
+  warning: "text-[color:var(--warning)]",
+  danger: "text-destructive",
+  neutral: "text-[color:var(--g-text-secondary)]",
 } as const
 
 export type HighlightTone = keyof typeof HIGHLIGHT
 
 /** Shared geometry for highlight / status pills. */
 export const CHIP = {
-  base: "inline-flex w-fit max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
-  compact: "inline-flex w-fit max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+  base: "inline-flex w-fit max-w-full items-center gap-1.5 whitespace-nowrap text-xs font-medium",
+  compact: "inline-flex w-fit max-w-full items-center gap-1.5 whitespace-nowrap text-xs font-medium",
   /** Status column: colored dot + graphite label (no fill). */
   plain: "inline-flex w-fit max-w-full items-center gap-1.5 text-sm font-medium text-[color:var(--g-text-primary)]",
 } as const

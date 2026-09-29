@@ -1,0 +1,58 @@
+{
+  "base": "http://127.0.0.1:3011",
+  "buildId": "goTy_G31gkd9wZQVXIQHn",
+  "at": "2026-09-28T16:39:17.933Z",
+  "results": [
+    {
+      "name": "dashboard-before-light",
+      "file": "dashboard-before-light.png",
+      "route": "/e2e/shots/home",
+      "viewport": "tall",
+      "theme": "light",
+      "class": "fixture harness (dashboard, ops-summary fixture)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3011/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+        "Access to fetch at 'https://gravitre.app/login' (redirected from 'http://127.0.0.1:3011/agents/agt_deal_desk?_rsc=6jiiibleofr7aIr8') from origin 'http://127.0.0.1:3011' has been blocked by CORS policy",
+        "Failed to load resource: net::ERR_FAILED",
+        "Access to fetch at 'https://gravitre.app/login' (redirected from 'http://127.0.0.1:3011/approvals?_rsc=6jiiibleofr7aIr8') from origin 'http://127.0.0.1:3011' has been blocked by CORS policy: Response "
+      ]
+    },
+    {
+      "name": "agent-detail-before-light",
+      "file": "agent-detail-before-light.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "tall",
+      "theme": "light",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3011/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+        "Access to fetch at 'https://gravitre.app/login' (redirected from 'http://127.0.0.1:3011/home?_rsc=Qhk25lfY1YHuHObm') from origin 'http://127.0.0.1:3011' has been blocked by CORS policy: Response to pr",
+        "Failed to load resource: net::ERR_FAILED",
+        "Access to fetch at 'https://gravitre.app/login' (redirected from 'http://127.0.0.1:3011/assignments?_rsc=Qhk25lfY1YHuHObm') from origin 'http://127.0.0.1:3011' has been blocked by CORS policy: Respons"
+      ]
+    },
+    {
+      "name": "agent-detail-before-dark",
+      "file": "agent-detail-before-dark.png",
+      "route": "/e2e/shots/agent-detail",
+      "viewport": "tall",
+      "theme": "dark",
+      "class": "fixture harness (agent detail, identity + capabilities fixtures)",
+      "note": "",
+      "hScroll": false,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Refused to execute script from 'http://127.0.0.1:3011/_vercel/insights/script.js' because its MIME type ('text/plain') is not executable, and strict MIME type checking is enabled.",
+        "Access to fetch at 'https://gravitre.app/login' (redirected from 'http://127.0.0.1:3011/assignments?_rsc=Qhk25lfY1YHuHObm') from origin 'http://127.0.0.1:3011' has been blocked by CORS policy: Respons",
+        "Failed to load resource: net::ERR_FAILED",
+        "Access to fetch at 'https://gravitre.app/login' (redirected from 'http://127.0.0.1:3011/agents/agt_lead_triage/knowledge?_rsc=Qhk25lfY1YHuHObm') from origin 'http://127.0.0.1:3011' has been blocked by"
+      ]
+    }
+  ]
+}

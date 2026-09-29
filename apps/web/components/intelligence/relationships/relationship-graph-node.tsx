@@ -34,7 +34,7 @@ function RelationshipGraphNodeComponent({ data, selected }: NodeProps<Node<Graph
             <Icon className={cn("h-4 w-4", visual.iconClass)} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-medium uppercase tracking-wide text-[color:var(--g-text-muted)]">
+            <p className="truncate text-xs font-medium text-[color:var(--g-text-muted)]">
               {data.isCluster ? "Group" : data.entityTypeLabel}
             </p>
             <p className="truncate text-sm font-medium text-[color:var(--g-text-primary)]">{data.label}</p>

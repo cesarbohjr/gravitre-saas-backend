@@ -54,14 +54,13 @@ export function AgentIdentityPicker({
         <div>
           <p className="text-sm font-medium text-foreground">Agent appearance</p>
           <p className="text-xs text-muted-foreground">
-            Soft curated tiles only — no glow orbs, gradients, or freeform colors. Status stays a
-            separate corner dot.
+            Choose an icon and color so teammates can recognize this agent at a glance.
           </p>
         </div>
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Icon</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Icon</p>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
           {AGENT_ICON_OPTIONS.map((option) => {
             const roleId = LEGACY_ICON_TO_ROLE[option.id]
@@ -90,7 +89,7 @@ export function AgentIdentityPicker({
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Color</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Color</p>
         <div className="flex flex-wrap gap-2">
           {AGENT_COLOR_OPTIONS.map((option) => {
             const selected = avatarColor === option.id

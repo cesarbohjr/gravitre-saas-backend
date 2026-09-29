@@ -47,12 +47,12 @@ function MetricCell({ metric }: { metric: AgentRoiMetric }) {
   return (
     <div className={cn("space-y-1", muted && "opacity-80")}>
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground">
           {metric.label}
         </span>
         {kind ? <MetricProvenanceBadge kind={kind} /> : null}
         {muted ? (
-          <span className="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400">
+          <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
             {metric.provenance}
           </span>
         ) : null}

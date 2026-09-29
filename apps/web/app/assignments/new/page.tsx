@@ -1,6 +1,8 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import type { AgentIdentityInput } from "@/lib/agent-identity"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
@@ -27,6 +29,7 @@ interface AssignableAgent {
   name: string
   role: string
   gradient: string
+  identity: AgentIdentityInput
   trainingProgress: number
 }
 
@@ -71,7 +74,7 @@ const stepTransition = { type: "spring" as const, stiffness: 360, damping: 32 }
 
 const steps = [
   { id: 1, title: "Agent", description: "Optional — change which AI agent to assign" },
-  { id: 2, title: "Task Brief", description: "Describe what you need done" },
+  { id: 2, title: "Task brief", description: "Describe what you need done" },
   { id: 3, title: "Context", description: "Select data sources" },
   { id: 4, title: "Outputs", description: "Choose deliverables" },
   { id: 5, title: "Destination", description: "Where to send results" },
@@ -112,6 +115,14 @@ function NewAssignmentPageContent() {
         name: item.name,
         role: item.role || item.description || "Agent",
         gradient: avatarGradient(item.personality?.color ?? ""),
+        identity: {
+          name: item.name,
+          role: item.role,
+          icon: item.icon,
+          avatarColor: item.avatarColor,
+          avatarUrl: item.avatarUrl,
+          personality: item.personality,
+        },
         trainingProgress: Number.isFinite(successRate) ? Math.round(successRate) : 0,
       }
     })
@@ -234,12 +245,12 @@ function NewAssignmentPageContent() {
   }
 
   return (
-    <AppShell title="New Assignment">
+    <AppShell title="New assignment">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           className="shrink-0"
           eyebrow="Work"
-          title="New Assignment"
+          title="New assignment"
           description="Create a new task for your agent"
           icon={<NavTasks className="h-5 w-5" />}
           actions={
@@ -273,7 +284,7 @@ function NewAssignmentPageContent() {
                   ) : (
                     <>
                       <Icon name="play" size="sm" />
-                      Run Task
+                      Run task
                     </>
                   )}
                 </Button>
@@ -352,12 +363,7 @@ function NewAssignmentPageContent() {
           {agent && (
             <div className="border-t border-divide p-6">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-                  agent.gradient
-                )}>
-                  <Icon name="ai" size="sm" className="text-white" />
-                </div>
+                <AgentIdentityAvatar agent={agent.identity} size="md" showStatusDot={false} />
                 <div>
                   <p className="text-sm font-medium text-foreground">{agent.name}</p>
                   <p className="text-xs text-muted-foreground">{agent.role}</p>
@@ -416,12 +422,7 @@ function NewAssignmentPageContent() {
                           aria-hidden
                         />
                       )}
-                      <div className={cn(
-                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-                        a.gradient
-                      )}>
-                        <Icon name="ai" size="lg" className="text-white" />
-                      </div>
+                      <AgentIdentityAvatar agent={a.identity} size="lg" showStatusDot={false} />
                       <div className="flex-1">
                         <p className="font-semibold text-foreground">{a.name}</p>
                         <p className="text-sm text-muted-foreground">{a.role}</p>
@@ -561,7 +562,7 @@ function NewAssignmentPageContent() {
                           <Icon name="brain" size="md" className="text-[color:var(--g-brand)]" />
                         </div>
                         <div>
-                          <p className="font-semibold text-foreground">Use Training Knowledge</p>
+                          <p className="font-semibold text-foreground">Use training knowledge</p>
                           <p className="text-sm text-muted-foreground">
                             Apply everything the agent has learned about your business
                           </p>
@@ -585,7 +586,7 @@ function NewAssignmentPageContent() {
                   {/* Data Sources */}
                   <GravitreSurface padded={false} className="overflow-hidden">
                     <div className="border-b border-divide px-6 py-4">
-                      <h3 className="font-semibold text-foreground">Data Sources</h3>
+                      <h3 className="font-semibold text-foreground">Data sources</h3>
                       <p className="text-sm text-muted-foreground">Select systems to pull data from</p>
                     </div>
                     <div className="p-6 grid grid-cols-2 gap-3">
@@ -609,7 +610,7 @@ function NewAssignmentPageContent() {
                             <Icon 
                               name={source.icon as IconName}
                               size="sm" 
-                              className={selectedSources.includes(source.id) ? "text-blue-400" : "text-muted-foreground"} 
+                              className={selectedSources.includes(source.id) ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"} 
                             />
                           </div>
                           <div className="flex-1">
@@ -619,7 +620,7 @@ function NewAssignmentPageContent() {
                             </p>
                           </div>
                           {selectedSources.includes(source.id) && (
-                            <Icon name="check" size="sm" className="text-blue-400" />
+                            <Icon name="check" size="sm" className="text-blue-600 dark:text-blue-400" />
                           )}
                         </button>
                       ))}
@@ -662,7 +663,7 @@ function NewAssignmentPageContent() {
                           <Icon 
                             name={output.icon as IconName}
                             size="lg" 
-                            className={selectedOutputs.includes(output.id) ? "text-violet-400" : "text-muted-foreground"} 
+                            className={selectedOutputs.includes(output.id) ? "text-violet-600 dark:text-violet-400" : "text-muted-foreground"} 
                           />
                         </div>
                         <div className="text-center">
@@ -714,7 +715,7 @@ function NewAssignmentPageContent() {
                           <Icon 
                             name={dest.icon as IconName}
                             size="sm" 
-                            className={selectedDestinations.includes(dest.id) ? "text-amber-400" : "text-muted-foreground"} 
+                            className={selectedDestinations.includes(dest.id) ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"} 
                           />
                         </div>
                         <div className="flex-1">
@@ -722,7 +723,7 @@ function NewAssignmentPageContent() {
                           <p className="text-xs text-muted-foreground">{dest.description}</p>
                         </div>
                         {selectedDestinations.includes(dest.id) && (
-                          <Icon name="check" size="sm" className="text-amber-400" />
+                          <Icon name="check" size="sm" className="text-amber-700 dark:text-amber-400" />
                         )}
                       </button>
                     ))}
@@ -736,7 +737,7 @@ function NewAssignmentPageContent() {
                           <Icon name="shield" size="sm" className="text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">Require Approval Before Sending</p>
+                          <p className="font-medium text-foreground">Require approval before sending</p>
                           <p className="text-sm text-muted-foreground">
                             Review and approve outputs before they are delivered
                           </p>
@@ -774,26 +775,21 @@ function NewAssignmentPageContent() {
                   {/* Summary Card */}
                   <GravitreSurface padded={false} className="overflow-hidden">
                     <div className="border-b border-divide bg-[color:var(--g-surface-2)] px-6 py-4">
-                      <h3 className="font-semibold text-foreground">Assignment Summary</h3>
+                      <h3 className="font-semibold text-foreground">Assignment summary</h3>
                     </div>
                     <div className="divide-y divide-border">
                       {/* Agent */}
                       <div className="px-6 py-4 flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Agent</span>
                         <div className="flex items-center gap-2">
-                          <div className={cn(
-                            "flex h-6 w-6 items-center justify-center rounded-[var(--np-radius-sm)] border border-divide bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
-                            agent?.gradient
-                          )}>
-                            <Icon name="ai" size="xs" className="text-white" />
-                          </div>
+                          <AgentIdentityAvatar agent={agent?.identity ?? { name: "Agent" }} size="sm" showStatusDot={false} />
                           <span className="text-sm font-medium text-foreground">{agent?.name}</span>
                         </div>
                       </div>
                       
                       {/* Task */}
                       <div className="px-6 py-4">
-                        <span className="text-sm text-muted-foreground block mb-2">Task Brief</span>
+                        <span className="text-sm text-muted-foreground block mb-2">Task brief</span>
                         <p className="text-sm text-foreground">{taskBrief || "No task description"}</p>
                       </div>
 
@@ -804,7 +800,7 @@ function NewAssignmentPageContent() {
                       
                       {/* Context */}
                       <div className="px-6 py-4 flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Training Knowledge</span>
+                        <span className="text-sm text-muted-foreground">Training knowledge</span>
                         <span className={cn(
                           "text-sm font-medium",
                           useTrainingKnowledge ? "text-[color:var(--g-brand)]" : "text-muted-foreground"
@@ -820,7 +816,7 @@ function NewAssignmentPageContent() {
                           {selectedOutputs.map((id) => {
                             const output = outputTypes.find(o => o.id === id)
                             return output && (
-                              <span key={id} className="px-3 py-1 rounded-lg bg-violet-500/10 text-sm text-violet-400">
+                              <span key={id} className="px-3 py-1 rounded-lg bg-violet-500/10 text-sm text-violet-600 dark:text-violet-400">
                                 {output.name}
                               </span>
                             )
@@ -835,7 +831,7 @@ function NewAssignmentPageContent() {
                           {selectedDestinations.map((id) => {
                             const dest = destinations.find(d => d.id === id)
                             return dest && (
-                              <span key={id} className="px-3 py-1 rounded-lg bg-amber-500/10 text-sm text-amber-400">
+                              <span key={id} className="px-3 py-1 rounded-lg bg-amber-500/10 text-sm text-amber-700 dark:text-amber-400">
                                 {dest.name}
                               </span>
                             )
@@ -845,7 +841,7 @@ function NewAssignmentPageContent() {
                       
                       {/* Approval */}
                       <div className="px-6 py-4 flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Approval Required</span>
+                        <span className="text-sm text-muted-foreground">Approval required</span>
                         <span className={cn(
                           "text-sm font-medium",
                           requireApproval ? "text-[color:var(--g-brand)]" : "text-amber-600"
@@ -883,7 +879,7 @@ function NewAssignmentPageContent() {
 
 export default function NewAssignmentPage() {
   return (
-    <Suspense fallback={<AppShell title="New Assignment"><div /></AppShell>}>
+    <Suspense fallback={<AppShell title="New assignment"><div /></AppShell>}>
       <NewAssignmentPageContent />
     </Suspense>
   )
