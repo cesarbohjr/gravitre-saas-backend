@@ -735,9 +735,11 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("VOICE_TTS_AB_MODEL", "voice_tts_ab_model"),
     )
-    # Voice 3.0 Phase 5 — conversational polish (default OFF).
+    # Voice 3.0 Phase 5 — spoken register and played-audio reconciliation are
+    # production defaults; adaptive length remains opt-in because prior live
+    # measurements showed prompt-only ceilings were not reliably obeyed.
     voice_spoken_prompt_v2: bool = Field(
-        default=False,
+        default=True,
         validation_alias=AliasChoices("VOICE_SPOKEN_PROMPT_V2", "voice_spoken_prompt_v2"),
     )
     voice_response_length_adapt_v1: bool = Field(
@@ -748,7 +750,7 @@ class Settings(BaseSettings):
         ),
     )
     voice_played_audio_reconcile_v1: bool = Field(
-        default=False,
+        default=True,
         validation_alias=AliasChoices(
             "VOICE_PLAYED_AUDIO_RECONCILE_V1",
             "voice_played_audio_reconcile_v1",

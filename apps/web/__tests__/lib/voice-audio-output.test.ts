@@ -26,4 +26,12 @@ describe("voice duplex audible output contract", () => {
   it("does not close the shared output context when a voice session ends", () => {
     expect(hook).toMatch(/if \(!audioCtxSharedRef\.current\) \{\s*audioCtxRef\.current\?\.close\(\)/)
   })
+
+  it("fails visibly when assistant text arrives but Pipecat never sends audio", () => {
+    expect(hook).toMatch(/audioReplyWatchdogRef/)
+    expect(hook).toMatch(/audioFramesReceivedRef/)
+    expect(hook).toMatch(/Voice reply arrived, but no audio was received/)
+    expect(hook).toMatch(/armAudioReplyWatchdog\(\)/)
+    expect(hook).toMatch(/clearAudioReplyWatchdog\(\)/)
+  })
 })

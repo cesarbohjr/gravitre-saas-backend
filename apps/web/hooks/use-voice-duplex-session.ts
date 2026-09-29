@@ -243,11 +243,42 @@ export function useVoiceDuplexSession(options: Options) {
   const pcmPlayOriginRef = useRef<number | null>(null)
   const assistantTextRef = useRef("")
   const lastUserFinalRef = useRef("")
+  // Physical-output watchdog: a healthy text turn with zero audio frames is not
+  // a successful voice turn. Keep this separate from autoplay blocking: that
+  // path has audio but cannot play it; this path means TTS/audio transport never
+  // delivered anything to the browser.
+  const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const audioFramesReceivedRef = useRef(0)
   const speculativeRef = useRef<{
     text: string
     turnId: string
     startedAt: number
   } | null>(null)
+
+  const clearAudioReplyWatchdog = useCallback(() => {
+    if (audioReplyWatchdogRef.current) {
+      clearTimeout(audioReplyWatchdogRef.current)
+      audioReplyWatchdogRef.current = null
+    }
+  }, [])
+
+  const armAudioReplyWatchdog = useCallback(() => {
+    clearAudioReplyWatchdog()
+    audioReplyWatchdogRef.current = setTimeout(() => {
+      audioReplyWatchdogRef.current = null
+      if (
+        sessionWantedRef.current &&
+        activeRef.current &&
+        assistantTextRef.current.trim() &&
+        audioFramesReceivedRef.current === 0
+      ) {
+        setPresence("error")
+        optsRef.current.onError?.(
+          "Voice reply arrived, but no audio was received. Try again.",
+        )
+      }
+    }, 5000)
+  }, [clearAudioReplyWatchdog])
 
   const stopPcmPlayback = useCallback(() => {
     for (const src of pcmSourcesRef.current) {
@@ -264,6 +295,8 @@ export function useVoiceDuplexSession(options: Options) {
   }, [])
 
   const stopPlayback = useCallback(() => {
+    clearAudioReplyWatchdog()
+    audioFramesReceivedRef.current = 0
     playingRef.current = false
     audioQueueRef.current = []
     playbackWiredRef.current = false
@@ -281,7 +314,7 @@ export function useVoiceDuplexSession(options: Options) {
       }
     }
     audioElRef.current = null
-  }, [stopPcmPlayback])
+  }, [clearAudioReplyWatchdog, stopPcmPlayback])
 
   const stopMicTelemetry = useCallback(() => {
     if (telemetryTimerRef.current) {
@@ -1128,6 +1161,8 @@ export function useVoiceDuplexSession(options: Options) {
             optsRef.current.onUserFinal?.(text)
             setProvisionalTranscript("")
             setPresence("thinking")
+            clearAudioReplyWatchdog()
+            audioFramesReceivedRef.current = 0
             assistantTextRef.current = ""
           } else if (agentSpeakingRef.current) {
             void bargeIn()
@@ -1137,7 +1172,11 @@ export function useVoiceDuplexSession(options: Options) {
         if (kind === "assistant_text") {
           const delta = String(msg.delta || "")
           if (!delta) return
+          const firstAssistantText = assistantTextRef.current.length === 0
           assistantTextRef.current += delta
+          if (firstAssistantText && audioFramesReceivedRef.current === 0) {
+            armAudioReplyWatchdog()
+          }
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)
           return
         }
@@ -1161,6 +1200,10 @@ export function useVoiceDuplexSession(options: Options) {
         }
         if (kind === "audio" && typeof msg.pcm16_b64 === "string") {
           const pcm = base64ToPcm16(msg.pcm16_b64)
+          if (pcm.length > 0) {
+            audioFramesReceivedRef.current += 1
+            clearAudioReplyWatchdog()
+          }
           enqueuePcm(pcm, Number(msg.sample_rate) || 16000)
         }
       }
@@ -1234,7 +1277,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Microphone permission denied",
       )
     }
-  }, [applyMicMuted, bargeIn, cancelReconnect, enqueuePcm, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, teardownMic])
+  }, [applyMicMuted, armAudioReplyWatchdog, bargeIn, cancelReconnect, clearAudioReplyWatchdog, enqueuePcm, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, teardownMic])
 
   // Assigned after definition so handlePipecatSocketFailure can re-enter these
   // without a circular useCallback dependency.
