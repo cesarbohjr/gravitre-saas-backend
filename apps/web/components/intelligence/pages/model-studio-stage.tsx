@@ -34,6 +34,8 @@ export function ModelStudioStage({
   const router = useRouter()
   const [segment, setSegment] = useState<StudioSegment>("create")
   const [intent, setIntent] = useState<StudioIntentId | null>(null)
+  const [externalQuery, setExternalQuery] = useState("")
+  const [externalSearchTerm, setExternalSearchTerm] = useState("")
 
   const { data: modelsData, isLoading: modelsLoading } = useSWR(
     enabled && (segment === "evaluate" || segment === "deploy") ? "ml-models-list-studio" : null,
@@ -50,6 +52,18 @@ export function ModelStudioStage({
     () => trainingApi.listDatasets(),
     { revalidateOnFocus: false },
   )
+  const { data: externalProvidersData } = useSWR(
+    enabled && segment === "train" ? "external-dataset-providers-studio" : null,
+    () => trainingApi.listExternalDatasetProviders(),
+    { revalidateOnFocus: false },
+  )
+  const { data: externalSearchData, isLoading: externalSearchLoading } = useSWR(
+    enabled && segment === "train" && externalSearchTerm
+      ? ["external-dataset-search", "huggingface", externalSearchTerm]
+      : null,
+    () => trainingApi.searchExternalDatasets("huggingface", externalSearchTerm, 12),
+    { revalidateOnFocus: false },
+  )
 
   const models = modelsData?.models ?? []
   const catalog = useMemo(() => models.map(formatModelCatalogRow), [models])
@@ -61,6 +75,8 @@ export function ModelStudioStage({
   )
   const jobs = jobsData?.jobs ?? []
   const datasets = datasetsData?.datasets ?? []
+  const externalProviders = externalProvidersData?.providers ?? []
+  const externalDatasets = externalSearchData?.datasets ?? []
 
   function startCreate() {
     const params = new URLSearchParams({ action: "register" })
@@ -159,6 +175,65 @@ export function ModelStudioStage({
 
           {segment === "train" ? (
             <div className="space-y-4">
+              <section className="border-y border-divide" aria-labelledby="external-dataset-connectors">
+                <div className="flex flex-col gap-2 border-b border-divide px-3 py-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p id="external-dataset-connectors" className="text-sm font-medium text-foreground">
+                      External dataset connectors
+                    </p>
+                    <p className={cn(TYPE.meta, "mt-0.5")}>
+                      Search provider metadata by reference. Nothing is downloaded or added to training automatically.
+                    </p>
+                  </div>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {externalProviders.length > 0 ? externalProviders.map((p) => p.label).join(" · ") : "Loading providers…"}
+                  </span>
+                </div>
+                <form
+                  className="flex gap-2 px-3 py-3"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    setExternalSearchTerm(externalQuery.trim())
+                  }}
+                >
+                  <input
+                    value={externalQuery}
+                    onChange={(event) => setExternalQuery(event.target.value)}
+                    placeholder="Search Hugging Face datasets"
+                    aria-label="Search external datasets"
+                    className="min-w-0 flex-1 border border-divide bg-transparent px-3 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                  />
+                  <Button type="submit" variant="outline" disabled={!externalQuery.trim()}>
+                    Search
+                  </Button>
+                </form>
+                {externalSearchLoading ? (
+                  <p className="px-3 pb-3 text-sm text-muted-foreground">Searching provider metadata…</p>
+                ) : externalSearchTerm && externalDatasets.length === 0 ? (
+                  <p className="px-3 pb-3 text-sm text-muted-foreground">No matching external datasets.</p>
+                ) : externalDatasets.length > 0 ? (
+                  <ul className="divide-y divide-divide border-t border-divide">
+                    {externalDatasets.map((dataset) => (
+                      <li
+                        key={dataset.dataset_id}
+                        className="grid gap-1 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{dataset.dataset_id}</p>
+                          <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>
+                            {dataset.gated || dataset.private
+                              ? "Restricted provider dataset — authorization required"
+                              : dataset.description || "Public provider metadata"}
+                          </p>
+                        </div>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          REFERENCE ONLY
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </section>
               {datasetsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading datasets…</p>
               ) : datasets.length === 0 ? (

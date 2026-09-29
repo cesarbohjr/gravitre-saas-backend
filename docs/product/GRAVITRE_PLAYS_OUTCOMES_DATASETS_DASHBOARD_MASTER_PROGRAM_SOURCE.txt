@@ -1,0 +1,501 @@
+# GRAVITRE — PLAYS, OUTCOMES, DATASETS & DASHBOARD MASTER PROGRAM
+# PHASE -1 ADDENDUM — PRODUCT CONVERGENCE + CAPABILITY CONTRACT
+
+Before executing Phase 0 of the master program, establish the actual unified
+Gravitre product baseline.
+
+This step is mandatory.
+
+The core product has been consolidated onto main.
+
+The Gravitre 3.0 Plus frontend currently exists on its dedicated feature branch.
+
+Do NOT begin building Plays against assumptions about either side.
+
+First determine exactly what the existing backend/runtime provides and exactly
+what the new frontend currently consumes.
+
+The objective is to create ONE PRODUCT CONTRACT between:
+
+CORE RUNTIME
+and
+GRAVITRE 3.0 PLUS FRONTEND.
+
+No parallel runtime.
+No frontend-only fake product state.
+No duplicate backend abstraction.
+
+==================================================
+PHASE -1A — CORE CAPABILITY INVENTORY
+==================================================
+
+Inspect the current main branch.
+
+Produce an authoritative registry of what Gravitre can actually do today.
+
+Inventory at minimum:
+
+AGENTS
+- agent types;
+- agent identities;
+- departments;
+- models/providers;
+- tools;
+- permissions;
+- autonomy/trust level;
+- context;
+- knowledge;
+- memory;
+- work history;
+- outcomes where available;
+- delegation/council relationships.
+
+TOOLS / ACTIONS
+- canonical ActionSpecs;
+- tool IDs;
+- provider;
+- READ / WRITE classification;
+- risk;
+- approval requirement;
+- input schema;
+- output schema;
+- executable state;
+- connector dependency.
+
+CONNECTORS
+- provider IDs;
+- connection state;
+- authentication state;
+- capabilities;
+- available actions;
+- READ capabilities;
+- WRITE capabilities;
+- approval requirements;
+- health/live state;
+- source access;
+- sync capability.
+
+WORKFLOWS
+- schema;
+- node types;
+- triggers;
+- schedules;
+- conditions;
+- branching;
+- agents;
+- connectors/actions;
+- approvals;
+- outputs;
+- execution state;
+- run history;
+- retries;
+- cancellation;
+- artifacts;
+- Observations;
+- events.
+
+AI / COGNITIVE RUNTIME
+- conversation;
+- CognitiveTurnKernel;
+- Intent Gateway;
+- ExecutionPlan;
+- ActionSpec;
+- PendingAction;
+- Observation;
+- Response Composer;
+- follow-up continuity;
+- memory;
+- artifacts;
+- Computer Use;
+- voice.
+
+GOVERNANCE
+- RBAC;
+- tenant isolation;
+- trust/autonomy;
+- approval policy;
+- risk;
+- WRITE restrictions;
+- audit records;
+- HMAC integrity;
+- duplicate protection.
+
+KNOWLEDGE / INTELLIGENCE
+- sources;
+- knowledge graph;
+- relationships;
+- evidence;
+- provenance;
+- GIBE;
+- learning events;
+- recommendations;
+- organizational context.
+
+BUSINESS / OUTCOME DATA
+- existing outcome tables/models;
+- KPI models;
+- execution outcomes;
+- result state;
+- verification;
+- attribution;
+- business events;
+- activity records.
+
+DASHBOARD
+- every endpoint/data hook;
+- metrics;
+- filters;
+- date-range behavior;
+- outcome data;
+- execution data;
+- agent data;
+- connector data;
+- workflow data;
+- saved configuration.
+
+EVENTS
+- execution events;
+- workflow events;
+- agent events;
+- Observation events;
+- approval events;
+- connector events;
+- business/result events.
+
+For each capability record:
+
+CAPABILITY
+CANONICAL ID
+BACKEND MODULE
+API / EVENT
+SCHEMA
+TENANT-SCOPED?
+READ / WRITE
+APPROVAL?
+FRONTEND CONSUMER
+STATUS
+NOTES
+
+==================================================
+PHASE -1B — FRONTEND CAPABILITY INVENTORY
+==================================================
+
+Inspect:
+
+feat/gravitre-3.0-plus-frontend
+
+Map every major product surface to its actual backend/runtime dependency.
+
+At minimum:
+
+Dashboard
+AI Workspace
+Assignments
+Agents
+Agent Detail
+Approvals
+Workflows
+Workflow Builder
+Schedules
+Goals
+Activity
+Connectors
+Sources
+Marketplace
+Intelligence
+Model Studio
+Governance
+
+For every surface record:
+
+SURFACE
+DATA REQUIRED
+CURRENT API
+CURRENT HOOK
+CURRENT MOCK/FIXTURE
+REAL BACKEND AVAILABLE?
+WIRING GAP?
+PROTECTED CORE SEAM?
+REGRESSION RISK?
+
+Identify every place where the redesigned frontend currently relies on:
+
+- fixture-only data;
+- inferred data;
+- old endpoint;
+- deprecated API;
+- placeholder state;
+- local composition that should come from canonical runtime state.
+
+Do NOT silently replace fixture data with guessed live state.
+
+==================================================
+PHASE -1C — FRONTEND ↔ CORE CONTRACT MATRIX
+==================================================
+
+Produce one matrix:
+
+PRODUCT CONCEPT
+→ CANONICAL BACKEND SOURCE
+→ API / EVENT
+→ FRONTEND SURFACE
+→ STATUS.
+
+Examples:
+
+Agent identity
+→ canonical agent record
+→ agents API
+→ Agent Detail / Builder / Assignments
+→ WIRED / PARTIAL / MISSING
+
+Tool capability
+→ ActionSpec
+→ catalog API
+→ Connectors / Agent capabilities / Builder
+→ ...
+
+Approval
+→ PendingAction / policy
+→ approval API
+→ Approvals / AI / Builder
+→ ...
+
+Execution
+→ ExecutionPlan + Observation
+→ conversation/workflow state
+→ AI / Assignments / Dashboard
+→ ...
+
+Artifact
+→ work_artifact
+→ artifact API
+→ AI / Assignments / Dashboard
+→ ...
+
+Outcome
+→ existing outcome/result model if present
+→ outcome API
+→ Dashboard / Plays
+→ ...
+
+This becomes the product integration contract.
+
+==================================================
+PHASE -1D — CLOSE PRODUCT WIRING GAPS FIRST
+==================================================
+
+Before adding Plays, fix only integration gaps that prevent the existing core
+from being accurately represented in Gravitre 3.0 Plus.
+
+Examples may include:
+
+- canonical agent permissions not shown correctly;
+- ActionSpecs not reflected in connector capability UI;
+- approvals not bound to PendingAction;
+- workflow execution state not bound to Observations;
+- artifacts not represented consistently;
+- dashboard using stale or duplicate state;
+- Intelligence using fixture state where canonical state exists.
+
+Do NOT add new capability while fixing these seams.
+
+This is convergence, not feature expansion.
+
+==================================================
+PHASE -1E — CREATE THE GRAVITRE CAPABILITY REGISTRY
+==================================================
+
+Create one reusable internal capability registry derived from canonical systems.
+
+It should make it possible for the Play layer to ask:
+
+Which agents exist?
+
+Which connectors are available?
+
+Which tools/actions exist?
+
+Which tools can READ?
+
+Which tools can WRITE?
+
+Which actions require approval?
+
+Which workflow primitives are supported?
+
+Which signals/events exist?
+
+Which business metrics exist?
+
+Which data hooks exist?
+
+Which evidence can be produced?
+
+Which verification mechanisms exist?
+
+Do NOT hard-code a separate Play capability catalog if the canonical catalogs
+already contain this information.
+
+Compose from existing systems wherever possible.
+
+==================================================
+PHASE -1F — PLAY READINESS MATRIX
+==================================================
+
+Before building the first Play, produce:
+
+PLAY
+REQUIRED SIGNALS
+REQUIRED CONNECTORS
+OPTIONAL CONNECTORS
+REQUIRED AGENTS
+REQUIRED ACTIONS
+REQUIRED APPROVALS
+VERIFICATION SOURCE
+OUTCOME METRICS
+CURRENT READINESS
+
+for:
+
+Customer Rescue
+Revenue Recovery
+Marketing Performance.
+
+Classify each dependency:
+
+AVAILABLE
+PARTIAL
+MISSING
+EXTERNAL_CONNECTION_REQUIRED.
+
+This determines what each Play can truthfully do today.
+
+==================================================
+PHASE -1G — DO NOT REQUIRE EVERY PLAY TO BEGIN WITH WRITE
+==================================================
+
+Design Plays to provide value progressively.
+
+A Play may operate at four truthful maturity levels:
+
+OBSERVE
+Detect and assemble the opportunity/problem.
+
+RECOMMEND
+Produce an evidence-backed recommended response.
+
+ACT WITH APPROVAL
+Prepare actions and execute only after governance approval.
+
+ACT WITHIN POLICY
+Execute automatically only where the existing policy system explicitly permits.
+
+The same Play should progress through these states based on available
+connectors, permissions and policy.
+
+Do NOT build separate Play implementations for each level.
+
+==================================================
+PHASE -1H — DAY-ONE VALUE REQUIREMENT
+==================================================
+
+Every initial Play must produce useful output before full automation is
+configured.
+
+A user connecting relevant systems should quickly receive something like:
+
+CUSTOMER RESCUE
+"12 accounts show credible churn risk. 4 need attention now. Here is the
+evidence and recommended intervention."
+
+REVENUE RECOVERY
+"8 stalled or recoverable revenue opportunities were found across your
+connected systems. Here is why each qualifies."
+
+MARKETING PERFORMANCE
+"Three campaigns show material downstream inefficiency. Here is the path from
+spend to lead quality to pipeline."
+
+These are examples of EXPERIENCE, not permission to fabricate values.
+
+All displayed values must come from the user's actual connected data.
+
+A Play must remain useful in Observe/Recommend mode even if WRITE permissions
+have not yet been granted.
+
+==================================================
+PHASE -1I — NO PLAY WITHOUT EVIDENCE
+==================================================
+
+Every Play result must distinguish:
+
+SIGNAL
+what was detected.
+
+CONTEXT
+what relevant information was assembled.
+
+RECOMMENDATION
+what Gravitre thinks should happen.
+
+ACTION
+what Gravitre actually executed.
+
+VERIFICATION
+what changed afterward.
+
+OUTCOME
+what business result can be supported.
+
+Do not collapse these states into one "success" label.
+
+==================================================
+PHASE -1J — DEFER NON-CRITICAL DATASET PROVIDER WORK
+==================================================
+
+The Dataset / Model Studio audit remains part of the master program.
+
+However:
+
+Hugging Face and other external dataset-provider implementation must NOT block
+the first three Play implementations unless one of those Plays genuinely
+requires that capability.
+
+Priority order is:
+
+1. product convergence;
+2. capability registry;
+3. Play abstraction;
+4. outcome/evidence contract;
+5. first three Plays;
+6. dashboard outcome presentation;
+7. live Play proof;
+8. dataset-provider expansion.
+
+Dataset architecture may be designed earlier.
+
+Provider implementation may occur later.
+
+==================================================
+PHASE -1K — REQUIRED OUTPUT BEFORE PHASE 0 CONTINUES
+==================================================
+
+Return:
+
+1. Core capability inventory.
+2. Frontend capability inventory.
+3. Frontend ↔ core contract matrix.
+4. Wiring gaps.
+5. Capability registry architecture.
+6. Play readiness matrix.
+7. Existing outcome architecture.
+8. Existing evidence architecture.
+9. Existing dashboard data hooks.
+10. Any true architecture decisions still OPEN.
+
+Then continue directly into the existing Master Program.
+
+Do not create another roadmap.
+
+Do not stop merely because some authenticated acceptance step is unavailable.
