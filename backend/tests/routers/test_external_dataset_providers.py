@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -7,6 +8,7 @@ from app.auth.dependencies import get_current_user, get_org_context
 from app.main import app
 
 client = TestClient(app, raise_server_exceptions=False)
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(autouse=True)
@@ -106,8 +108,6 @@ def test_external_dataset_inspect_does_not_bypass_gated_access():
 
 
 def test_external_reference_mutations_are_admin_gated_in_router_source():
-    from pathlib import Path
-
     source = (ROOT / "app" / "routers" / "training.py").read_text()
     assert '@router.post("/external-datasets/references"' in source
     assert 'Depends(require_admin)' in source
@@ -115,8 +115,6 @@ def test_external_reference_mutations_are_admin_gated_in_router_source():
 
 
 def test_external_reference_migration_is_tenant_scoped_and_non_materializing():
-    from pathlib import Path
-
     migration = (
         ROOT.parent
         / "supabase"
