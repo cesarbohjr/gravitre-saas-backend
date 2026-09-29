@@ -39,16 +39,30 @@ class DatasetSourceRef:
             raise ValueError("dataset source provider is required")
         if not self.locator.strip():
             raise ValueError("dataset source locator is required")
-        lowered = " ".join(
-            [
-                self.locator.lower(),
-                str(self.source_metadata or {}).lower(),
-                str(self.provenance or {}).lower(),
-            ]
-        )
-        for marker in ("access_token", "refresh_token", "api_key", "client_secret", "password"):
-            if marker in lowered:
-                raise ValueError("dataset source metadata must not contain credentials")
+        def _contains_secret_key(value: Any) -> bool:
+            if isinstance(value, dict):
+                for key, nested in value.items():
+                    normalized = str(key).strip().lower().replace("-", "_")
+                    if normalized in {
+                        "token",
+                        "access_token",
+                        "refresh_token",
+                        "api_key",
+                        "apikey",
+                        "client_secret",
+                        "secret",
+                        "password",
+                        "authorization",
+                    }:
+                        return True
+                    if _contains_secret_key(nested):
+                        return True
+            elif isinstance(value, list):
+                return any(_contains_secret_key(item) for item in value)
+            return False
+
+        if _contains_secret_key(self.source_metadata or {}) or _contains_secret_key(self.provenance or {}):
+            raise ValueError("dataset source metadata must not contain credentials")
 
     def storage_payload(
         self,
@@ -125,3 +139,46 @@ def register_dataset_source(
         .execute()
     )
     return dict((response.data or [payload])[0])
+
+
+def get_dataset_source(
+    client: Any,
+    org_id: str,
+    dataset_id: str,
+    source_id: str,
+) -> dict[str, Any] | None:
+    rows = (
+        client.table("training_dataset_sources")
+        .select(
+            "id, dataset_id, provider, locator, revision, access_mode, status, "
+            "license_name, provenance, source_metadata, created_at, updated_at"
+        )
+        .eq("org_id", org_id)
+        .eq("dataset_id", dataset_id)
+        .eq("id", source_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return dict(rows[0]) if rows else None
+
+
+def source_ref_from_row(row: dict[str, Any]) -> DatasetSourceRef:
+    return DatasetSourceRef(
+        provider=str(row.get("provider") or ""),
+        locator=str(row.get("locator") or ""),
+        access_mode=DatasetSourceAccessMode(str(row.get("access_mode") or "")),
+        revision=(str(row.get("revision")) if row.get("revision") is not None else None),
+        license_name=(
+            str(row.get("license_name")) if row.get("license_name") is not None else None
+        ),
+        provenance=(
+            dict(row.get("provenance")) if isinstance(row.get("provenance"), dict) else {}
+        ),
+        source_metadata=(
+            dict(row.get("source_metadata"))
+            if isinstance(row.get("source_metadata"), dict)
+            else {}
+        ),
+    )
