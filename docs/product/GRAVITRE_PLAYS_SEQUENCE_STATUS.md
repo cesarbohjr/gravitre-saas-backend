@@ -49,6 +49,10 @@ IMPLEMENTED FOUNDATION.
 A business result can drill through metric/entity → Play → canonical workflow
 run → agent/action → approval → source records/evidence → verification.
 
+Source-of-record verification now appends a new verified business-result event
+from an existing org-scoped ACTIONED event. The ACTIONED event is preserved for
+audit lineage; provider acceptance is never rewritten into business success.
+
 ### Phase 6 — first three Plays
 
 IMPLEMENTED OBSERVE / RECOMMEND FOUNDATION.
@@ -125,15 +129,17 @@ live proof. No provider-specific special case has been introduced.
 
 ## CI note
 
-A prior exact-head backend run had one unrelated timing failure in
-`test_context_overlap_guard` while 6,776 backend tests passed. No Play code
-appeared in that failure. Later exact-head CI must still pass before merge.
+Exact-head CI at `9b2f95bcaacf31c78b7d2445882dbc45eba896c5`
+completed successfully before the source-verification extension.
+
+The current head must pass a fresh exact-head run before merge.
 
 ## Next sequence
 
-1. exact-head CI stabilization;
-2. API/live proof for Play readiness + observe routes;
+1. fresh exact-head CI after source-verification + router contract tests;
+2. deployed API proof for Play readiness + observe routes;
 3. prove one canonical Play workflow binding in a non-destructive environment;
-4. prove ACTIONED evidence linkage;
-5. prove source-of-record verification before any VERIFIED SUCCESS;
-6. only then expand external dataset-provider work.
+4. prove ACTIONED evidence linkage against that bound workflow;
+5. prove a real source-of-record verification event before any VERIFIED SUCCESS;
+6. then begin provider-neutral external dataset-source work; provider-specific
+   Hugging Face integration remains after the abstraction is proven.
