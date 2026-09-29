@@ -152,3 +152,57 @@ def test_source_verification_requires_measured_result():
         assert "measured result" in str(exc)
     else:
         raise AssertionError("expected missing measurement refusal")
+
+
+def test_source_success_requires_business_metric_and_baseline():
+    client = _Client([_actioned()])
+    evidence = SourceVerificationEvidence(
+        system="quickbooks",
+        record_type="invoice",
+        record_id="inv-42",
+        method="source_of_record_re_read",
+        observed_at="2026-09-29T13:00:00+00:00",
+        baseline_value=None,
+        result_value=0.0,
+        outcome_type="recovered_revenue",
+        metric_key="open_invoice_balance",
+    )
+    try:
+        record_source_verified_play_result(
+            client,
+            org_id="org-1",
+            actioned_outcome_id="out-actioned",
+            evidence=evidence,
+            success=True,
+        )
+    except ValueError as exc:
+        assert "baseline" in str(exc)
+    else:
+        raise AssertionError("expected missing baseline refusal")
+
+
+def test_action_execution_source_read_cannot_be_business_verified_success():
+    client = _Client([_actioned()])
+    evidence = SourceVerificationEvidence(
+        system="quickbooks",
+        record_type="invoice",
+        record_id="inv-42",
+        method="source_of_record_re_read",
+        observed_at="2026-09-29T13:00:00+00:00",
+        baseline_value=2500.0,
+        result_value=0.0,
+        outcome_type="action_execution",
+        metric_key="open_invoice_balance",
+    )
+    try:
+        record_source_verified_play_result(
+            client,
+            org_id="org-1",
+            actioned_outcome_id="out-actioned",
+            evidence=evidence,
+            success=True,
+        )
+    except ValueError as exc:
+        assert "business-result" in str(exc)
+    else:
+        raise AssertionError("expected action-only verification refusal")
