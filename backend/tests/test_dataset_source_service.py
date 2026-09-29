@@ -83,3 +83,21 @@ def test_provider_name_has_no_hardcoded_vendor_semantics():
         )
         assert payload["provider"] == provider
         assert payload["access_mode"] == "index"
+
+
+@pytest.mark.parametrize(
+    "uri",
+    (
+        "https://provider.example/data?access_token=secret",
+        "https://provider.example/data?api_key=secret",
+        "https://provider.example/data?client_secret=secret",
+    ),
+)
+def test_source_uri_rejects_embedded_credentials(uri):
+    with pytest.raises(ValueError, match="must not contain provider credentials"):
+        validate_source_payload(
+            provider="provider-x",
+            external_id="dataset-1",
+            access_mode="reference",
+            source_uri=uri,
+        )
