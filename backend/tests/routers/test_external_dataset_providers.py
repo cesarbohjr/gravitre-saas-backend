@@ -108,7 +108,7 @@ def test_external_dataset_inspect_does_not_bypass_gated_access():
 def test_external_reference_mutations_are_admin_gated_in_router_source():
     from pathlib import Path
 
-    source = Path("backend/app/routers/training.py").read_text()
+    source = (ROOT / "app" / "routers" / "training.py").read_text()
     assert '@router.post("/external-datasets/references"' in source
     assert 'Depends(require_admin)' in source
     assert '@router.delete("/external-datasets/references/{reference_id}")' in source
@@ -117,8 +117,11 @@ def test_external_reference_mutations_are_admin_gated_in_router_source():
 def test_external_reference_migration_is_tenant_scoped_and_non_materializing():
     from pathlib import Path
 
-    migration = Path(
-        "supabase/migrations/20260929192000_external_dataset_references.sql"
+    migration = (
+        ROOT.parent
+        / "supabase"
+        / "migrations"
+        / "20260929192000_external_dataset_references.sql"
     ).read_text()
     assert "ENABLE ROW LEVEL SECURITY" in migration
     assert "organization_members" in migration
