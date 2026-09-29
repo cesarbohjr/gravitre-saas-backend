@@ -139,3 +139,23 @@ def test_training_router_registers_source_without_starting_fetch():
     assert '/datasets/{dataset_id}/sources' in source
     assert '"fetchStarted": False' in source
     assert '"credentialsStored": False' in source
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {"token": "secret"},
+        {"authorization": "Bearer secret"},
+        {"nested": {"secret": "value"}},
+        {"nested": [{"password": "value"}]},
+    ],
+)
+def test_source_contract_rejects_generic_or_nested_secret_keys(metadata):
+    source = DatasetSourceRef(
+        provider="provider",
+        locator="dataset",
+        access_mode=DatasetSourceAccessMode.REFERENCE,
+        source_metadata=metadata,
+    )
+    with pytest.raises(ValueError, match="must not contain credentials"):
+        source.validate()
