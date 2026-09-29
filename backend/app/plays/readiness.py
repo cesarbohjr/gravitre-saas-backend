@@ -92,28 +92,53 @@ def resolve_play_readiness(
             blockers.append(f"connector group {' | '.join(vendors)}: {group_status}")
 
     action_rows: list[dict[str, Any]] = []
-    read_states: list[Readiness] = []
-    write_states: list[Readiness] = []
-    write_tools: list[str] = []
-    for tool in definition.required_actions:
-        cap = get_action(tool)
-        state = action_readiness(tool, connected_vendors)
-        row = {
-            "tool": tool,
-            "status": state,
-            "access": cap.access if cap else None,
-            "requires_approval": cap.requires_approval if cap else None,
-            "verification_mode": cap.verification_mode if cap else None,
-        }
-        action_rows.append(row)
-        status_values.append(state)
-        if cap and cap.access == "write":
-            write_states.append(state)
-            write_tools.append(tool)
+    read_group_states: list[Readiness] = []
+    write_group_states: list[Readiness] = []
+    available_write_choices: list[tuple[str, ...]] = []
+
+    def _resolve_action_group(group: tuple[str, ...], *, access: str) -> tuple[Readiness, tuple[str, ...]]:
+        tools = tuple(str(tool).strip() for tool in group if str(tool).strip())
+        states: dict[str, Readiness] = {}
+        matching_available: list[str] = []
+        for tool in tools:
+            cap = get_action(tool)
+            state = action_readiness(tool, connected_vendors)
+            if cap is None or cap.access != access:
+                state = "MISSING"
+            states[tool] = state
+            action_rows.append(
+                {
+                    "tool": tool,
+                    "group_access": access,
+                    "status": state,
+                    "access": cap.access if cap else None,
+                    "requires_approval": cap.requires_approval if cap else None,
+                    "verification_mode": cap.verification_mode if cap else None,
+                }
+            )
+            if state == "AVAILABLE":
+                matching_available.append(tool)
+        if matching_available:
+            group_status: Readiness = "AVAILABLE"
+        elif any(state == "EXTERNAL_CONNECTION_REQUIRED" for state in states.values()):
+            group_status = "EXTERNAL_CONNECTION_REQUIRED"
+        elif any(state == "PARTIAL" for state in states.values()):
+            group_status = "PARTIAL"
         else:
-            read_states.append(state)
-        if state != "AVAILABLE":
-            blockers.append(f"action {tool}: {state}")
+            group_status = "MISSING"
+        status_values.append(group_status)
+        if group_status != "AVAILABLE":
+            blockers.append(f"{access} action group {' | '.join(tools)}: {group_status}")
+        return group_status, tuple(matching_available)
+
+    for group in definition.required_read_action_groups:
+        state, _available = _resolve_action_group(group, access="read")
+        read_group_states.append(state)
+
+    for group in definition.write_action_groups:
+        state, available = _resolve_action_group(group, access="write")
+        write_group_states.append(state)
+        available_write_choices.append(available)
 
     known_signals = _known_signals()
     signal_rows: list[dict[str, Any]] = []
@@ -156,22 +181,22 @@ def resolve_play_readiness(
 
     observe_ready = (
         all(row["status"] == "AVAILABLE" for row in connector_groups)
-        and all(state == "AVAILABLE" for state in read_states)
+        and all(state == "AVAILABLE" for state in read_group_states)
         and all(row["status"] == "AVAILABLE" for row in signal_rows)
     )
     recommend_ready = observe_ready
 
     act_with_approval_ready = (
         recommend_ready
-        and bool(write_tools)
-        and all(state == "AVAILABLE" for state in write_states)
+        and bool(definition.write_action_groups)
+        and all(state == "AVAILABLE" for state in write_group_states)
     )
 
     authorized = policy_authorized_actions or set()
     act_within_policy_ready = (
         act_with_approval_ready
-        and bool(write_tools)
-        and all(tool in authorized for tool in write_tools)
+        and bool(available_write_choices)
+        and all(any(tool in authorized for tool in choices) for choices in available_write_choices)
     )
 
     dependency_status = _worst(status_values)
