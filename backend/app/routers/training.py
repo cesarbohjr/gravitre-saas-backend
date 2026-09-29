@@ -35,6 +35,22 @@ class DatasetRecordsRequest(BaseModel):
     records: list[dict]
 
 
+class DatasetBindingCreateRequest(BaseModel):
+    purpose: str = Field(
+        ...,
+        pattern="^(reference|benchmark|runtime_retrieval|rag|evaluation|testing|fine_tuning|training|synthetic|agent_benchmarking)$",
+    )
+    target_type: str = Field(
+        ...,
+        alias="targetType",
+        pattern="^(agent|model|department|evaluation|play|workflow)$",
+    )
+    target_id: str = Field(..., alias="targetId", min_length=1)
+    metadata: dict = Field(default_factory=dict)
+
+    model_config = {"populate_by_name": True}
+
+
 class DocumentImportRequest(BaseModel):
     documents: list[dict] = Field(default_factory=list)
 
@@ -152,6 +168,94 @@ async def create_dataset(
     )
     _raise_if_response_error(response)
     return dict((response.data or [{}])[0])
+
+
+@router.get("/datasets/{dataset_id}/bindings")
+async def list_dataset_bindings(
+    dataset_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    rows = (
+        client.table("training_dataset_bindings")
+        .select("id, dataset_id, purpose, target_type, target_id, metadata, created_at")
+        .eq("org_id", org_id)
+        .eq("dataset_id", dataset_id)
+        .order("created_at", desc=False)
+        .execute()
+        .data
+        or []
+    )
+    return {"bindings": list(rows), "count": len(rows)}
+
+
+@router.post("/datasets/{dataset_id}/bindings", status_code=status.HTTP_201_CREATED)
+async def create_dataset_binding(
+    dataset_id: str,
+    body: DatasetBindingCreateRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+
+    dataset = (
+        client.table("training_datasets")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("id", dataset_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    row = {
+        "org_id": org_id,
+        "dataset_id": dataset_id,
+        "purpose": body.purpose,
+        "target_type": body.target_type,
+        "target_id": body.target_id.strip(),
+        "metadata": body.metadata,
+        "created_by": user.get("user_id"),
+    }
+    response = (
+        client.table("training_dataset_bindings")
+        .upsert(
+            row,
+            on_conflict="org_id,dataset_id,purpose,target_type,target_id",
+        )
+        .execute()
+    )
+    _raise_if_response_error(response)
+    return dict((response.data or [row])[0])
+
+
+@router.delete("/datasets/{dataset_id}/bindings/{binding_id}")
+async def delete_dataset_binding(
+    dataset_id: str,
+    binding_id: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    response = (
+        client.table("training_dataset_bindings")
+        .delete()
+        .eq("org_id", org_id)
+        .eq("dataset_id", dataset_id)
+        .eq("id", binding_id)
+        .execute()
+    )
+    _raise_if_response_error(response)
+    return {"ok": True}
 
 
 @router.delete("/datasets/{dataset_id}")
