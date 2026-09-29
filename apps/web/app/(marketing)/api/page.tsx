@@ -89,30 +89,9 @@ const endpoints = [
   },
   {
     method: "POST",
-    path: "/api/operators/{id}/action-plans",
+    path: "/api/operator/action-plan",
     description: "Generate an AI action plan from natural language",
     badge: "AI",
-  },
-]
-
-const sdks = [
-  {
-    name: "Node.js",
-    install: "npm install @gravitre/sdk",
-    color: "text-green-600",
-    docs: "/docs/api/quickstart",
-  },
-  {
-    name: "Python",
-    install: "pip install gravitre",
-    color: "text-blue-600",
-    docs: "/docs/api/quickstart",
-  },
-  {
-    name: "Go",
-    install: "go get github.com/gravitre/go-sdk",
-    color: "text-cyan-700",
-    docs: "/docs/api/quickstart",
   },
 ]
 
@@ -139,28 +118,15 @@ const features = [
   },
 ]
 
-const codeExample = `import { Gravitre } from '@gravitre/sdk';
+const codeExample = `# Execute a workflow (starts a run or queues it for approval)
+curl -s -X POST "https://gravitre.app/api/workflows/execute" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"workflow_id": "WORKFLOW_UUID", "parameters": {}}'
 
-const client = new Gravitre({
-  apiKey: process.env.GRAVITRE_API_KEY,
-  orgId: process.env.GRAVITRE_ORG_ID
-});
-
-// Execute a workflow
-const run = await client.workflows.execute('wf_lead_sync', {
-  parameters: {
-    source: 'salesforce',
-    destination: 'hubspot',
-    syncMode: 'incremental'
-  }
-});
-
-// Poll for completion or use webhooks
-const result = await run.waitForCompletion();
-
-console.log(result.status); // 'completed'
-console.log(result.steps);  // Array of step outputs
-// [{ name: 'Fetch Data', status: 'completed', output: {...} }, ...]`
+# Poll the run
+curl -s "https://gravitre.app/api/runs/RUN_ID" \\
+  -H "Authorization: Bearer YOUR_API_KEY"`
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -265,7 +231,7 @@ export default function APIPage() {
         <div className="mx-auto max-w-4xl">
           <GravitreReveal className="mb-12 text-center">
             <h2 className="mb-4 text-3xl font-bold text-foreground">Simple, powerful integration</h2>
-            <p className="text-muted-foreground">Execute AI agents with just a few lines of code</p>
+            <p className="text-muted-foreground">Execute a workflow with one authenticated request</p>
           </GravitreReveal>
 
           <GravitreReveal
@@ -279,7 +245,7 @@ export default function APIPage() {
                   <div className="h-3 w-3 rounded-full bg-amber-500/80" />
                   <div className="h-3 w-3 rounded-full bg-primary/80" />
                 </div>
-                <span className="ml-2 text-xs text-muted-foreground">example.ts</span>
+                <span className="ml-2 text-xs text-muted-foreground">example.sh</span>
               </div>
               <CopyButton text={codeExample} />
             </div>
@@ -356,42 +322,6 @@ export default function APIPage() {
                 <span className="ml-auto hidden text-sm text-muted-foreground sm:block">
                   {endpoint.description}
                 </span>
-              </GravitreFlow>
-            ))}
-          </div>
-        </div>
-      </MarketingRails>
-
-      <DivideX />
-
-      <MarketingRails>
-        <div className="mx-auto max-w-4xl">
-          <GravitreReveal className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">Official SDKs</h2>
-            <p className="text-muted-foreground">Type-safe clients for your favorite languages</p>
-          </GravitreReveal>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            {sdks.map((sdk, i) => (
-              <GravitreFlow
-                key={sdk.name}
-                delay={i * 0.08}
-                className="rounded-xl border border-divide bg-gray-50 p-6"
-              >
-                <h3 className={`mb-3 text-lg font-semibold ${sdk.color}`}>{sdk.name}</h3>
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-foreground p-3">
-                  <code className="flex-1 truncate font-mono text-xs text-muted-foreground">
-                    {sdk.install}
-                  </code>
-                  <CopyButton text={sdk.install} />
-                </div>
-                <Link
-                  href={sdk.docs}
-                  className="flex items-center gap-1 text-sm text-primary hover:text-primary"
-                >
-                  Documentation
-                  <NucleoArrowRight className="h-3 w-3" />
-                </Link>
               </GravitreFlow>
             ))}
           </div>

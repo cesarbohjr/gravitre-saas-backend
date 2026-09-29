@@ -4,8 +4,9 @@ Phase -1 (product convergence + capability contract) is accepted. It precedes th
 GRAVITRE — PLAYS, OUTCOMES, DATASETS & DASHBOARD MASTER PROGRAM, whose Phases 0–17
 remain authoritative. The -1J priority list does not replace the Master Program.
 
-Master Program text: not present in this repository or in available agent
-transcripts as of 2026-09-28. It must be supplied before Phase 0 starts.
+Master Program record: `docs/product/GRAVITRE_PLAYS_OUTCOMES_DATASETS_DASHBOARD_MASTER_PROGRAM.md`
+(Phase -1 addendum, acceptance and owner-live gate stored verbatim; the Phases 0–17 body is not yet
+recorded because its text is not present in the repository or available transcripts).
 
 Full contract (inventories, matrix, readiness): `docs/platform-reconciliation/gravitre-product-contract.md`
 in local-only commit `573c249a` on `main` (not pushed; see "Core handoff").
@@ -38,6 +39,47 @@ in local-only commit `573c249a` on `main` (not pushed; see "Core handoff").
 3. Merge 3.0 Plus into `main` by the approved process.
 4. New branch from unified `main`: `feat/gravitre-plays-outcomes`. `feat/gravitre-3.0-plus-frontend` never becomes the Plays branch, and no Play or Outcome tables are built on it.
 5. Critical path: Phase 0 repo audit → Phase 2 Play architecture audit → Phase 3 Outcome audit → Phase 4 Outcome contract (if required) → Phase 5 evidence/verification wiring → capability-registry consumption → Customer Rescue → Revenue Recovery → Marketing Performance → dashboard template infrastructure → Play dashboard templates → live Play verification → dataset / Model Studio providers. Phase 1 (dataset architecture audit) may run early; Hugging Face must not block the first live Play.
+
+## Public docs and marketing claims (separate from Plays; classified 2026-09-28)
+
+Correction: the Phase -1 contract said public docs cite a "removed" `/api/operator/*` API. That was wrong.
+`backend/app/operator_module/router.py` (prefix `/api/operator`) is mounted in `backend/app/main.py:684`
+and serves `context/{run,workflow,connector,source}/{id}`, `prompts` and `action-plan`.
+
+| Item | Classification | Evidence | Action |
+|---|---|---|---|
+| `/api/operator/*` paths in `runs.mdx`, `connectors.mdx`, `ai-operator.mdx`, `api/quickstart.mdx`, `concepts/platform-overview.mdx` | VERIFIED_CORRECT (code) | router mounted, `main.py:684` | none |
+| Action-plan request bodies in `api/quickstart.mdx` (camelCase) and `ai-operator.mdx` (`instruction`, `environmentId`) | STALE | `ActionPlanRequest` = `primary_context` / `related_contexts` / `operator_goal`, no aliases (`operator_module/schemas.py:158`) | fixed to the schema |
+| Execute body `"workflowId"` in `api/quickstart.mdx` | STALE | `ExecuteRequest.workflow_id`, no alias (`routers/workflows.py:143`); Next route is a pure proxy | fixed to `workflow_id` |
+| Marketing API page action-plan path `/api/operators/{id}/action-plans` (introduced in `39ec95d5`) | STALE (regression) | `/api/operator/action-plan` is the endpoint matching "Generate an AI action plan from natural language" | reverted to `/api/operator/action-plan` |
+| Marketing API page workflow paths `/api/workflows/execute`, `/dry-run`, `/runs/{id}/approve` (`39ec95d5`) | VERIFIED_CORRECT (code) | `routers/workflows.py:1028, 1686, 2729`; the previous `{id}` variants do not exist | none |
+| `npm install @gravitre/sdk` | STALE | npm registry 404 (2026-09-28) | removed |
+| `pip install gravitre` | STALE | PyPI: no matching distribution (2026-09-28) | removed |
+| `go get github.com/gravitre/go-sdk` | STALE | GitHub repository 404 (2026-09-28) | removed |
+| Marketing API page `@gravitre/sdk` code sample | STALE | package not published | replaced with a `curl` call to `/api/workflows/execute` |
+| Changelog 2.1.3 "Official Node.js SDK" / "Official Python SDK" | STALE | same registries; docs FAQ and quickstart already say "No official SDK yet" | SDK claims removed from the entry |
+| FAQ "Is there an official SDK? Not yet." and quickstart "No official SDK yet" callout | VERIFIED_CORRECT | registries above | none |
+| API key auth (`Authorization: Bearer YOUR_API_KEY`) in public docs, "OAuth 2.0, API keys, and signed webhooks" feature line | UNVERIFIED | not checked in this pass | none — needs a separate check |
+
+Code-level only; no production HTTP call was made against these endpoints.
+
+## Billing E2E classification (CI run 36505964385, SHA `efc0c988`)
+
+INCONCLUSIVE_TIMEOUT with a known failing spec. The job hit its 20-minute `timeout-minutes` while running
+`Run billing Playwright suite` after 77 of 220 tests (63 distinct passed). Before the cutoff, one test failed at
+every width (with retry):
+
+- `e2e/creative-pilot3-knowledge-fabric-widths.spec.ts` — "technology entity convergence mounts @ {390…1440}".
+  Classification: **test/harness defect**. `/features/technology` returns 200 but no longer mounts
+  `EntityConvergenceField`; commit `720a0650` intentionally replaced it with `EntityConvergenceWorkbenchField`
+  and `__tests__/marketing/creative-experience-system.test.ts` asserts the old field is absent. Page and spec are
+  identical on `main` (pre-existing). Public marketing page, not a signed-in product surface. Each failing width
+  burned ~65 s of the job budget.
+  Fix: spec retargeted to the shipped workbench (`entity-convergence-workbench`, `kf-a-field`, honesty copy);
+  the two `kfState` freeze tests were removed because that freeze exists only on the unmounted field.
+  Local run: 7/7 passed.
+
+Tests 78–220 were not reached, so no statement is made about them. Re-classify on the next exact-SHA run.
 
 ## Core handoff (core agent owns)
 

@@ -29,6 +29,18 @@ describe("3.0 Plus final composition", () => {
     expect(src).not.toMatch(/style:\s*["']currency["']|\bUSD\b|\bROI\b|savings/)
   })
 
+  it("public API surfaces advertise no unpublished SDKs and use accepted request bodies", () => {
+    const page = read("app/(marketing)/api/page.tsx")
+    expect(page).not.toMatch(/@gravitre\/sdk|pip install gravitre|go-sdk|Official SDKs/)
+    expect(page).toMatch(/path: "\/api\/operator\/action-plan"/)
+    expect(page).toMatch(/"workflow_id": "WORKFLOW_UUID"/)
+    expect(read("app/(marketing)/changelog/page.tsx")).not.toMatch(/Official (Node\.js|Python) SDK/)
+    const quickstart = read("content/docs/public/api/quickstart.mdx")
+    expect(quickstart).toMatch(/"workflow_id": "WORKFLOW_UUID"/)
+    expect(quickstart).toMatch(/"primary_context":/)
+    expect(read("content/docs/public/guides/how-to/ai-operator.mdx")).not.toMatch(/"instruction":|"environmentId":/)
+  })
+
   it("autonomy panel states recorded policy without promising unattended writes", () => {
     const src = read("components/agents/agent-autonomy-panel.tsx")
     expect(src).toMatch(/Recorded policy: may act unattended where the runtime permits/)
