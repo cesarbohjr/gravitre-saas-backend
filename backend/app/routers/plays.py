@@ -13,6 +13,8 @@ from app.auth.dependencies import get_environment_context, require_org_member
 from app.capabilities.registry import connected_vendors
 from app.config import Settings, get_settings
 from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
+from app.plays.customer_rescue import observe_customer_rescue
+from app.plays.marketing_performance import list_marketing_performance_signals
 from app.plays.outcomes import list_play_business_results
 from app.plays.readiness import resolve_play_readiness
 from app.plays.revenue_recovery import list_revenue_recovery_signals
@@ -73,6 +75,74 @@ async def list_plays(
     }
 
 
+
+
+
+
+@router.get("/customer-rescue/observe")
+async def observe_customer_rescue_play(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=25, ge=1, le=100),
+) -> dict[str, Any]:
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    play = get_platform_play("customer-rescue")
+    assert play is not None
+    connected = connected_vendors(client, org_id, environment_name)
+    readiness = resolve_play_readiness(
+        play,
+        connected_vendors=connected,
+        client=client,
+        org_id=org_id,
+        policy_authorized_actions=set(),
+    )
+    observed = await observe_customer_rescue(
+        org_id,
+        settings=settings,
+        client=client,
+        limit=limit,
+    )
+    return {
+        "playKey": play.key,
+        "readiness": readiness.as_dict(),
+        **observed,
+    }
+
+
+@router.get("/marketing-performance/observe")
+async def observe_marketing_performance(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    play = get_platform_play("marketing-performance")
+    assert play is not None
+    connected = connected_vendors(client, org_id, environment_name)
+    readiness = resolve_play_readiness(
+        play,
+        connected_vendors=connected,
+        client=client,
+        org_id=org_id,
+        policy_authorized_actions=set(),
+    )
+    signals = list_marketing_performance_signals(client, org_id, limit=limit)
+    return {
+        "playKey": play.key,
+        "mode": "OBSERVE",
+        "readiness": readiness.as_dict(),
+        "signals": signals,
+        "count": len(signals),
+        "actionTaken": False,
+        "truthRule": (
+            "Marketing performance movement is not pipeline or revenue attribution. "
+            "Business impact requires source-linked outcome evidence."
+        ),
+    }
 
 
 @router.get("/revenue-recovery/observe")
