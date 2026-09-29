@@ -103,3 +103,27 @@ def test_external_dataset_inspect_does_not_bypass_gated_access():
             params={"provider": "huggingface", "datasetId": "private/example"},
         )
     assert response.status_code == 403
+
+
+def test_external_reference_mutations_are_admin_gated_in_router_source():
+    from pathlib import Path
+
+    source = Path("backend/app/routers/training.py").read_text()
+    assert '@router.post("/external-datasets/references"' in source
+    assert 'Depends(require_admin)' in source
+    assert '@router.delete("/external-datasets/references/{reference_id}")' in source
+
+
+def test_external_reference_migration_is_tenant_scoped_and_non_materializing():
+    from pathlib import Path
+
+    migration = Path(
+        "supabase/migrations/20260929192000_external_dataset_references.sql"
+    ).read_text()
+    assert "ENABLE ROW LEVEL SECURITY" in migration
+    assert "organization_members" in migration
+    assert "access_mode" in migration
+    assert "reference" in migration
+    assert "sample" in migration
+    assert "index" in migration
+    assert "materialized" not in migration.lower()
