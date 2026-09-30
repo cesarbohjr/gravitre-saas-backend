@@ -80,6 +80,26 @@ class MicDiagnosticsRequest(BaseModel):
     event: str | None = Field(default="periodic", description="session_start | periodic | session_end")
 
 
+class OutputDiagnosticsRequest(BaseModel):
+    """Browser audio-output lifecycle telemetry — no audio or transcript content."""
+
+    session_id: str | None = None
+    turn_id: str | None = None
+    orchestration: str | None = Field(default=None, description="pipecat | http")
+    event: str = Field(
+        ...,
+        description=(
+            "audio_missing | output_unavailable | playback_blocked | "
+            "playback_started | playback_recovered"
+        ),
+    )
+    audio_context_state: str | None = None
+    pcm_frames_received: int = Field(default=0, ge=0)
+    fallback_triggered: bool = False
+    playback_blocked: bool = False
+    browser_audio_playback_started: bool = False
+
+
 class SessionTurnRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=8000)
     conversation_id: str | None = None
@@ -202,6 +222,70 @@ def post_mic_diagnostics(
             },
         )
     except Exception:
+        pass
+    return {"status": "ok"}
+
+
+
+@router.post("/output-diagnostics")
+def post_output_diagnostics(
+    body: OutputDiagnosticsRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, str]:
+    """Persist low-volume browser playback evidence for physical voice debugging.
+
+    The payload intentionally excludes transcript text, audio samples, device
+    identifiers, access tokens, and provider secrets.
+    """
+    if not org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
+    allowed = {
+        "audio_missing",
+        "output_unavailable",
+        "playback_blocked",
+        "playback_started",
+        "playback_recovered",
+    }
+    event = str(body.event or "").strip().lower()
+    if event not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported voice output diagnostic event",
+        )
+    user_id = str(user.get("sub") or user.get("id") or user.get("user_id") or "").strip()
+    if not user_id:
+        return {"status": "skipped"}
+    try:
+        from app.workflows.audit import write_audit_event
+
+        client = get_supabase_client(settings)
+        write_audit_event(
+            client,
+            str(org_id),
+            user_id,
+            f"voice.output.{event}",
+            "conversation",
+            body.session_id or body.turn_id or str(org_id),
+            {
+                "session_id": body.session_id,
+                "turn_id": body.turn_id,
+                "orchestration": body.orchestration,
+                "audio_context_state": body.audio_context_state,
+                "pcm_frames_received": body.pcm_frames_received,
+                "fallback_triggered": body.fallback_triggered,
+                "playback_blocked": body.playback_blocked,
+                "browser_audio_playback_started": body.browser_audio_playback_started,
+                "contains_audio": False,
+                "contains_transcript": False,
+            },
+        )
+    except Exception:
+        # Diagnostics must never make a voice session fail.
         pass
     return {"status": "ok"}
 
