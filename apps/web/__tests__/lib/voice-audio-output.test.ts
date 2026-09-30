@@ -80,3 +80,19 @@ describe("voice playback proof vs provider TTFA", () => {
     expect(aiWorkspace).not.toMatch(/spokeDuringTurn = typeof result\.latency\?\.session_ttfa_ms/)
   })
 })
+
+
+describe("voice text-only fallback recovery", () => {
+  it("hands a text-only Pipecat turn to the existing HTTP TTS path", () => {
+    expect(hook).toMatch(/onAudioMissing\?: \(assistantText: string\) => void/)
+    expect(hook).toMatch(/audioFallbackTriggeredRef\.current = true/)
+    expect(hook).toMatch(/recover\(assistantText\)/)
+    expect(aiWorkspace).toMatch(/onAudioMissing: \(assistantText\)/)
+    expect(aiWorkspace).toMatch(/speakAgentVoice\(assistantText/)
+  })
+
+  it("drops late Pipecat PCM after fallback ownership transfers", () => {
+    expect(hook).toMatch(/if \(audioFallbackTriggeredRef\.current\) return/)
+    expect(hook).toMatch(/audioFallbackTriggeredRef\.current = false/)
+  })
+})
