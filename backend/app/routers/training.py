@@ -17,6 +17,7 @@ from app.services.external_dataset_providers import (
     list_external_dataset_providers,
     search_external_datasets,
 )
+from app.services.dataset_target_validation import require_dataset_target
 from app.services.training_service import (
     is_schema_unavailable_error,
     list_custom_instructions,
@@ -294,6 +295,21 @@ async def create_external_dataset_reference(
         ) from exc
 
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        require_dataset_target(
+            client,
+            org_id,
+            target_type=body.target_type,
+            target_id=body.target_id.strip(),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
     row = {
         "org_id": org_id,
         "provider": body.provider.strip().lower(),
@@ -463,6 +479,21 @@ async def create_dataset_binding(
     )
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+
+    try:
+        require_dataset_target(
+            client,
+            org_id,
+            target_type=body.target_type,
+            target_id=body.target_id.strip(),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
     row = {
         "org_id": org_id,
