@@ -1,7 +1,9 @@
 # Voice live physical acceptance — post-3.0 hardening
 
 Date: 2026-09-29
-Current production merge: `086e549d65a260e2864bd57702412d807af02958`
+Current production merge: `3ac840ff27609673a9a876c40d8ea202728b9d6d`
+`VOICE_LIVE_STATUS = CODE_HARDENED / PHYSICAL_PROOF_PENDING`
+`VOICE_LIVE_PROVEN` remains unset
 
 ## Owner-reported failure
 
@@ -156,3 +158,48 @@ samples or transcript text.
 
 This still does not set `VOICE_LIVE_PROVEN`. Physical closure requires a human
 to hear the response in production.
+
+## V7 merged to production (2026-09-30)
+
+PR [#224](https://github.com/cesarbohjr/gravitre-saas-backend/pull/224) was marked ready and merged at
+`2026-09-30T05:09:25Z`. Merge commit: `3ac840ff27609673a9a876c40d8ea202728b9d6d`
+(head SHA `03dbfaaf6570913c84709967ad8f542d3fbf640d`).
+
+Deploy evidence:
+
+- Railway backend production workflow
+  [36672116600](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36672116600):
+  SUCCESS on `3ac840ff`.
+- `GET https://api.gravitre.app/health` at `2026-09-30T05:18:08Z`:
+  `status=ok`, `environment=prod`, `git_sha=3ac840ff27609673a9a876c40d8ea202728b9d6d`.
+- Vercel production deployment `dpl_94tpoewm5PJG227QJ1nqxXewLnky` READY; aliases
+  include `gravitre.app`. Commit SHA `3ac840ff`.
+
+Required CI on the PR SHA (`03dbfaaf`) was green before merge (Web, backend
+pytest, voice gate, dependency audit, Integration Smoke, Marketing Lighthouse).
+Exact-head CI on the merge commit
+[36672116488](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/36672116488):
+SUCCESS (Web, backend pytest, voice gate, dependency audit, Integration Smoke;
+Billing E2E skipped).
+Marketing Lighthouse on this merge is **out of this workstream**. The merge-commit
+run failed home performance `0.73` vs `>=0.75` and is tracked separately in
+`docs/delivery/marketing-lighthouse-home-perf-2026-09-30.md`.
+
+Production telemetry re-query on `smyeexlrqdpymwjmgzqu` after deploy:
+
+- `audit_logs` `action LIKE 'voice.output.%'` = 0 rows
+- `audit_events` `action LIKE 'voice.output.%'` = 0 rows
+
+A signed-in production browser session was observed at
+`https://gravitre.app/intelligence` in org **Gravitre Isolated Conversation
+Smoke**. That is not an owner voice session and was not used as physical proof.
+
+`VOICE_LIVE_STATUS = CODE_HARDENED / PHYSICAL_PROOF_PENDING`
+
+`VOICE_LIVE_PROVEN` remains unset until a human hears a production reply and a
+`voice.output.*` row exists for that same Talk turn.
+
+RLS on `agent_custom_voices` and `billing_topup_events` is **out of this
+workstream** and unchanged. Tracked separately in
+`docs/delivery/supabase-rls-follow-up-2026-09-30.md`. Not a voice-acceptance
+blocker unless a Talk turn proves otherwise.
