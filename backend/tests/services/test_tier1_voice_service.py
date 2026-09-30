@@ -155,3 +155,12 @@ def test_write_confirm_policy_is_not_voice_bypass():
     status = voice_status(_settings(elevenlabs_api_key="x", deepgram_api_key="y"))
     assert status["write_confirm_policy"] == "nl_yes_same_path_as_text"
     assert "bypass" in status["write_confirm_note"].lower()
+
+
+def test_conversational_voice_settings_use_natural_baseline():
+    assert CONVERSATIONAL_VOICE_SETTINGS == {
+        "stability": 0.5,
+        "similarity_boost": 0.75,
+        "style": 0.0,
+        "use_speaker_boost": True,
+    }
