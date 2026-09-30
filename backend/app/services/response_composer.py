@@ -67,7 +67,7 @@ _FALLBACK_BY_KIND: dict[str, str] = {
     "progress": "I'm working through this now.",
     "workflow_waiting": "This workflow is waiting on you before it can continue.",
     "success": "Done.",
-    "stopped": "That response was interrupted before it finished. I haven't marked the action complete from this turn.",
+    "stopped": "You stopped me before I finished that. I didn't complete anything from that turn, so we can pick it back up from where we left off.",
 }
 
 _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -361,9 +361,11 @@ def _system_prompt(*, spoken: bool) -> str:
         "If the outcome is success, be concise. Same voice as a success message — "
         "never switch into a scripted-assistant or error-template register.\n"
         "Never answer with a bare lifecycle word such as 'Stopped.', 'Failed.', "
-        "'Pending.', 'Blocked.', or 'Complete.'. Translate system state into a "
-        "natural sentence that tells the user what happened and, when useful, the "
-        "next action. Do not expose orchestration vocabulary as dialogue.\n"
+        "'Pending.', 'Blocked.', or 'Complete.'. Translate system state into normal "
+        "conversation: say what happened in plain English, keep it brief, and give the "
+        "next useful move only when it helps. Prefer 'You stopped me before I finished' "
+        "over system-style wording such as 'The response was interrupted.' Do not expose "
+        "orchestration vocabulary as dialogue.\n"
         "Never invent record counts, revenue, tickets, deals, invoices, traffic, "
         "or workflow outcomes. Only state those facts when the envelope includes "
         "provider_result_evidence from a completed provider observation.\n"
