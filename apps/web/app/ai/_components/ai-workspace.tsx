@@ -1928,7 +1928,7 @@ export function AiWorkspace({
       if (result.cancelled && !result.assistantText.trim()) return
       setDuplexVoiceError(undefined)
       const stamp = Date.now()
-      const spokeDuringTurn = typeof result.latency?.session_ttfa_ms === "number"
+      const spokeDuringTurn = result.latency?.browser_audio_playback_started === true
       const userId = `voice-user-${result.turnId || stamp}`
       const assistantId = `voice-assistant-${result.turnId || stamp}`
       setMessages((prev) => {
@@ -1976,6 +1976,19 @@ export function AiWorkspace({
       if (result.latency?.e2e_speech_end_to_audio_start_ms != null) {
         console.info("voice.duplex.latency", result.latency)
       }
+    },
+    onAudioMissing: (assistantText) => {
+      // Pipecat produced a valid cognitive response but no audio frames. Keep the
+      // live session and synthesize the exact response through the already-shipped
+      // HTTP TTS path instead of leaving the user with silent text.
+      setDuplexVoiceError(undefined)
+      void speakAgentVoice(assistantText, {
+        messageId: `voice-audio-recovery-${Date.now()}`,
+        agentId:
+          voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
+            ? selectedVoiceAgent.id
+            : undefined,
+      })
     },
     onError: (message, billing) => {
       setDuplexVoiceError(message)

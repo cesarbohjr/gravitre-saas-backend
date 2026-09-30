@@ -69,6 +69,8 @@ export type DuplexLatencyStages = {
   speculative_start_ms?: number
   speculative_restart_ms?: number
   speculative_saved_ms?: number
+  /** Browser-side proof that audible playback was actually scheduled/started. */
+  browser_audio_playback_started?: boolean
 }
 
 export type DuplexTurnResult = {
@@ -106,6 +108,12 @@ type Options = {
   onSpeechInterrupted?: (info: SpeechInterruptedInfo) => void
   onTurnComplete?: (result: DuplexTurnResult) => void
   onError?: (message: string, billing?: boolean) => void
+  /**
+   * Recovery path when Pipecat produces assistant text but no audio frames.
+   * The caller may synthesize that exact reply through the existing HTTP TTS
+   * path; late Pipecat PCM for that turn is ignored to prevent double speech.
+   */
+  onAudioMissing?: (assistantText: string) => void
   onConversationId?: (id: string) => void
 }
 
@@ -249,6 +257,12 @@ export function useVoiceDuplexSession(options: Options) {
   // delivered anything to the browser.
   const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioFramesReceivedRef = useRef(0)
+  // Do not confuse server/provider TTFA with browser playback. This flag flips
+  // only after WebAudio/HTMLAudio successfully starts on the client.
+  const browserAudioPlaybackStartedRef = useRef(false)
+  // Once the no-audio watchdog hands the turn to HTTP TTS, suppress any late
+  // Pipecat PCM for that same turn so two voices never speak the reply at once.
+  const audioFallbackTriggeredRef = useRef(false)
   // Output-path diagnostics stay browser-local. A running AudioContext can still
   // be suspended by the browser after the initial Talk gesture; listen for that
   // transition so the UI surfaces Enable sound instead of silently losing audio.
@@ -277,6 +291,17 @@ export function useVoiceDuplexSession(options: Options) {
         assistantTextRef.current.trim() &&
         audioFramesReceivedRef.current === 0
       ) {
+        const assistantText = assistantTextRef.current.trim()
+        const recover = optsRef.current.onAudioMissing
+        if (recover && !audioFallbackTriggeredRef.current) {
+          audioFallbackTriggeredRef.current = true
+          // Keep the duplex mic's normal echo/barge-in behavior active while
+          // HTTP TTS owns audible output for this turn.
+          agentSpeakingRef.current = true
+          setPresence("speaking")
+          recover(assistantText)
+          return
+        }
         setPresence("error")
         optsRef.current.onError?.(
           "Voice reply arrived, but no audio was received. Try again.",
@@ -302,6 +327,8 @@ export function useVoiceDuplexSession(options: Options) {
   const stopPlayback = useCallback(() => {
     clearAudioReplyWatchdog()
     audioFramesReceivedRef.current = 0
+    browserAudioPlaybackStartedRef.current = false
+    audioFallbackTriggeredRef.current = false
     playingRef.current = false
     audioQueueRef.current = []
     playbackWiredRef.current = false
@@ -403,6 +430,8 @@ export function useVoiceDuplexSession(options: Options) {
       const startAt = Math.max(ctx.currentTime + 0.01, pcmNextTimeRef.current)
       try {
         src.start(startAt)
+        browserAudioPlaybackStartedRef.current = true
+        setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
       } catch {
         // A WebAudio scheduling failure used to drop this chunk silently even
         // though the server had delivered valid PCM. Hold the chunk and move the
@@ -480,6 +509,8 @@ export function useVoiceDuplexSession(options: Options) {
     el.src = url
     try {
       await el.play()
+      browserAudioPlaybackStartedRef.current = true
+      setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
     } catch (err) {
       playingRef.current = false
       URL.revokeObjectURL(url)
@@ -829,11 +860,13 @@ export function useVoiceDuplexSession(options: Options) {
       let completionDispatched = false
       let sawTextDelta = false
       const events: VoiceSessionEvent[] = []
-      const stage: DuplexLatencyStages = {}
+      const stage: DuplexLatencyStages = { browser_audio_playback_started: false }
+      browserAudioPlaybackStartedRef.current = false
 
       const dispatchTurnComplete = () => {
         if (completionDispatched) return
         completionDispatched = true
+        stage.browser_audio_playback_started = browserAudioPlaybackStartedRef.current
         optsRef.current.onTurnComplete?.({
           userText: text,
           assistantText: assistantText.trim(),
@@ -935,6 +968,7 @@ export function useVoiceDuplexSession(options: Options) {
         (typeof completeEv?.text === "string" ? completeEv.text : "") ||
         ""
       if (!completionDispatched) {
+        stage.browser_audio_playback_started = browserAudioPlaybackStartedRef.current
         optsRef.current.onTurnComplete?.({
           userText: text,
           assistantText: finalAssistant,
@@ -1208,6 +1242,9 @@ export function useVoiceDuplexSession(options: Options) {
           setProvisionalTranscript(text)
           if (msg.final) {
             lastUserFinalRef.current = text
+            browserAudioPlaybackStartedRef.current = false
+            audioFallbackTriggeredRef.current = false
+            setLatency((prev) => ({ ...prev, browser_audio_playback_started: false }))
             optsRef.current.onUserFinal?.(text)
             setProvisionalTranscript("")
             setPresence("thinking")
@@ -1249,6 +1286,9 @@ export function useVoiceDuplexSession(options: Options) {
           return
         }
         if (kind === "audio" && typeof msg.pcm16_b64 === "string") {
+          // HTTP TTS owns this turn after the no-audio watchdog fires. A late
+          // provider frame must not create overlapping speech.
+          if (audioFallbackTriggeredRef.current) return
           const pcm = base64ToPcm16(msg.pcm16_b64)
           if (pcm.length > 0) {
             audioFramesReceivedRef.current += 1
@@ -1285,7 +1325,9 @@ export function useVoiceDuplexSession(options: Options) {
             turnId: null,
             cancelled: false,
             events: [],
-            latency: {},
+            latency: {
+              browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+            },
           })
         }
       }
