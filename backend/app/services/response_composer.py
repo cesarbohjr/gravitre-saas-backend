@@ -48,6 +48,7 @@ MUST_COMPOSE_KINDS = frozenset(
         "shortcut",
         "correction",
         "request_failed",
+        "stopped",
     }
 )
 
@@ -66,7 +67,7 @@ _FALLBACK_BY_KIND: dict[str, str] = {
     "progress": "I'm working through this now.",
     "workflow_waiting": "This workflow is waiting on you before it can continue.",
     "success": "Done.",
-    "stopped": "Stopped.",
+    "stopped": "That response was interrupted before it finished. I haven't marked the action complete from this turn.",
 }
 
 _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -106,6 +107,20 @@ _SUCCESS_CLAIM = re.compile(
 )
 
 _CODE_AS_MESSAGE = re.compile(r"^[a-z][a-z0-9_]{2,}$")
+
+# Bare orchestration/lifecycle words are implementation state, not useful dialogue.
+# Force them through the Response Composer instead of surfacing strings such as
+# "Stopped.", "Failed.", or "Pending." directly in the conversation.
+_SYSTEM_STATE_ONLY = re.compile(
+    r"^\s*(?:stopped|failed|pending|blocked|cancelled|canceled|not started|"
+    r"did not complete|complete|completed)\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def looks_like_system_state_only(text: str | None) -> bool:
+    return bool(_SYSTEM_STATE_ONLY.match((text or "").strip()))
+
 
 
 def align_composed_text_to_lifecycle(
@@ -345,6 +360,10 @@ def _system_prompt(*, spoken: bool) -> str:
         "If the outcome is ambiguous, ask ONE specific clarifying question and stop.\n"
         "If the outcome is success, be concise. Same voice as a success message — "
         "never switch into a scripted-assistant or error-template register.\n"
+        "Never answer with a bare lifecycle word such as 'Stopped.', 'Failed.', "
+        "'Pending.', 'Blocked.', or 'Complete.'. Translate system state into a "
+        "natural sentence that tells the user what happened and, when useful, the "
+        "next action. Do not expose orchestration vocabulary as dialogue.\n"
         "Never invent record counts, revenue, tickets, deals, invoices, traffic, "
         "or workflow outcomes. Only state those facts when the envelope includes "
         "provider_result_evidence from a completed provider observation.\n"
@@ -475,7 +494,12 @@ async def compose_user_reply(
     if not blocks_raw and isinstance(env.get("data"), dict):
         blocks_raw = env["data"].get("response_blocks")
     structured_blocks = blocks_from_dicts(blocks_raw if isinstance(blocks_raw, list) else None)
-    must_compose = resolved_kind in MUST_COMPOSE_KINDS or looks_like_raw_backend(draft)
+    system_state_only = looks_like_system_state_only(draft)
+    must_compose = (
+        resolved_kind in MUST_COMPOSE_KINDS
+        or looks_like_raw_backend(draft)
+        or system_state_only
+    )
     if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
         must_compose = False
     if resolved_kind == "plan_hold" and draft and not looks_like_raw_backend(draft):
@@ -518,6 +542,11 @@ async def compose_user_reply(
         == "AWAITING_APPROVAL"
     ):
         must_compose = False
+    # Bare lifecycle/system-state copy must never bypass the composer, even when
+    # the surrounding outcome would normally use a prewritten canned response.
+    # This check is repeated after the bypass rules below so "Stopped." cannot be
+    # re-enabled by a literal/canned optimization.
+
     # P2: sealed operational READ already produced a complete canned draft with
     # provider evidence. A second LLM rewrite is not Composer authority — skip it.
     if (
@@ -569,6 +598,9 @@ async def compose_user_reply(
         and not looks_like_raw_backend(draft)
     ):
         must_compose = False
+    if system_state_only:
+        must_compose = True
+
     used_model = False
     fallback = False
     text = (draft or "").strip()
