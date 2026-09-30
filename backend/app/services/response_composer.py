@@ -55,17 +55,17 @@ MUST_COMPOSE_KINDS = frozenset(
 # Last-resort blocked-register copy if the compose LLM itself fails.
 # Never include the underlying error_detail. Internally labeled composer_fallback.
 _FALLBACK_BY_KIND: dict[str, str] = {
-    "permission": "You don't have permission to do that. Check access and I'll pick this back up.",
-    "timeout": "That took too long on the system side. I didn't finish it — want me to retry?",
-    "validation": "I'm missing something I need before I can do that.",
-    "clarify": "I need one specific thing before I go further — what's the target?",
-    "error": "That didn't go through. I can retry, or we can try a different approach.",
-    "request_failed": "I couldn't complete that just now. Try again in a moment.",
-    "shortcut": "Here's the short version — tell me what you want to do next.",
-    "correction": "Got it, I'll use that from here.",
-    "canned": "I have that. What should we do with it?",
-    "progress": "I'm working through this now.",
-    "workflow_waiting": "This workflow is waiting on you before it can continue.",
+    "permission": "You don't have access to do that yet. If that permission changes, I can pick it back up.",
+    "timeout": "That took too long and didn't finish. You can try it again.",
+    "validation": "I'm missing one detail before I can do that.",
+    "clarify": "I need one detail before I can continue — what's the target?",
+    "error": "That didn't go through, and I didn't complete the action.",
+    "request_failed": "I couldn't finish that just now. Try it again in a moment.",
+    "shortcut": "Here's the short version.",
+    "correction": "Got it — I'll use that from here.",
+    "canned": "I have that.",
+    "progress": "I'm working on it now.",
+    "workflow_waiting": "This is waiting for your input before it can continue.",
     "success": "Done.",
     "stopped": "You stopped me before I finished that. I didn't complete anything from that turn, so we can pick it back up from where we left off.",
 }
