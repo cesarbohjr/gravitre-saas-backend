@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest"
 const webRoot = resolve(__dirname, "../..")
 const hook = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
 const aiWorkspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+const agentPlayback = readFileSync(resolve(webRoot, "hooks/use-agent-voice-playback.ts"), "utf8")
 
 describe("voice duplex audible output contract", () => {
   it("reuses the AudioContext unlocked by the user gesture", () => {
@@ -95,5 +96,28 @@ describe("voice text-only fallback recovery", () => {
   it("drops late Pipecat PCM after fallback ownership transfers", () => {
     expect(hook).toMatch(/if \(audioFallbackTriggeredRef\.current\) return/)
     expect(hook).toMatch(/audioFallbackTriggeredRef\.current = false/)
+  })
+})
+
+
+describe("voice recovery TTS physical output", () => {
+  it("prefers the user-unlocked shared WebAudio context before HTMLAudio fallback", () => {
+    expect(agentPlayback).toMatch(/const outputCtx = await unlockVoicePlayback\(\)/)
+    expect(agentPlayback).toMatch(/outputCtx\.decodeAudioData/)
+    expect(agentPlayback).toMatch(/outputCtx\.createBufferSource\(\)/)
+    expect(agentPlayback).toMatch(/source\.connect\(outputCtx\.destination\)/)
+    expect(agentPlayback).toMatch(/source\.start\(0\)/)
+  })
+
+  it("retains HTMLAudio as codec fallback and exposes an explicit sound-recovery action", () => {
+    expect(agentPlayback).toMatch(/Fall through to the retained HTMLAudio recovery path/)
+    expect(agentPlayback).toMatch(/new Audio\(url\)/)
+    expect(agentPlayback).toMatch(/Tap Enable sound/)
+  })
+
+  it("tears down WebAudio recovery sources when playback stops", () => {
+    expect(agentPlayback).toMatch(/webAudioSourceRef/)
+    expect(agentPlayback).toMatch(/webAudioSourceRef\.current\.stop\(\)/)
+    expect(agentPlayback).toMatch(/webAudioSourceRef\.current\.disconnect\(\)/)
   })
 })
