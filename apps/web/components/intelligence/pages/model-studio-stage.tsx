@@ -80,8 +80,8 @@ export function ModelStudioStage({
   const [externalSearchTerm, setExternalSearchTerm] = useState("")
   const [externalProvider, setExternalProvider] = useState("")
   const [selectedExternalDatasetId, setSelectedExternalDatasetId] = useState("")
-  const [externalPurpose, setExternalPurpose] = useState<ExternalDatasetPurpose>("reference")
-  const [externalTargetType, setExternalTargetType] = useState<ExternalDatasetTargetType>("play")
+  const [externalPurpose, setExternalPurpose] = useState<ExternalDatasetPurpose>("training")
+  const [externalTargetType, setExternalTargetType] = useState<ExternalDatasetTargetType>("model")
   const [externalTargetId, setExternalTargetId] = useState("")
   const [externalReferenceSaving, setExternalReferenceSaving] = useState(false)
   const [externalReferenceError, setExternalReferenceError] = useState<string | null>(null)
@@ -246,7 +246,7 @@ export function ModelStudioStage({
         metadata: { source: "model_studio" },
       })
       await mutateExternalReferences()
-      setExternalReferenceSaved("Reference added. No provider content was downloaded or materialized.")
+      setExternalReferenceSaved("Dataset added to this model as a reusable provider reference.")
     } catch (error) {
       setExternalReferenceError(
         error instanceof Error ? error.message : "Could not add the dataset reference.",
@@ -347,14 +347,14 @@ export function ModelStudioStage({
 
           {segment === "train" ? (
             <div className="space-y-4">
-              <section className="border-y border-divide" aria-labelledby="external-dataset-connectors">
+              <section className="border-y border-divide" aria-labelledby="dataset-picker">
                 <div className="flex flex-col gap-2 border-b border-divide px-3 py-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p id="external-dataset-connectors" className="text-sm font-medium text-foreground">
                       External dataset connectors
                     </p>
                     <p className={cn(TYPE.meta, "mt-0.5")}>
-                      Search provider metadata by reference. Nothing is downloaded or added to training automatically.
+                      Browse free dataset providers, preview a dataset, then add it to your model.
                     </p>
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground">
@@ -378,7 +378,7 @@ export function ModelStudioStage({
                         setExternalReferenceError(null)
                         setExternalReferenceSaved(null)
                       }}
-                      aria-label="External dataset provider"
+                      aria-label="Dataset provider"
                       className="border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                     >
                       {externalProviders.map((provider) => (
@@ -392,7 +392,7 @@ export function ModelStudioStage({
                     value={externalQuery}
                     onChange={(event) => setExternalQuery(event.target.value)}
                     placeholder={`Search ${externalProviderLabel} datasets`}
-                    aria-label="Search external datasets"
+                    aria-label="Search datasets"
                     className="min-w-0 border border-divide bg-transparent px-3 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                   />
                   <Button
@@ -406,7 +406,7 @@ export function ModelStudioStage({
                 {externalSearchLoading ? (
                   <p className="px-3 pb-3 text-sm text-muted-foreground">Searching provider metadata…</p>
                 ) : externalSearchTerm && externalDatasets.length === 0 ? (
-                  <p className="px-3 pb-3 text-sm text-muted-foreground">No matching external datasets.</p>
+                  <p className="px-3 pb-3 text-sm text-muted-foreground">No matching datasets.</p>
                 ) : externalDatasets.length > 0 ? (
                   <ul className="divide-y divide-divide border-t border-divide">
                     {externalDatasets.map((dataset) => {
@@ -436,12 +436,12 @@ export function ModelStudioStage({
                               <p className="truncate text-sm font-medium text-foreground">{dataset.dataset_id}</p>
                               <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>
                                 {restricted
-                                  ? "Restricted provider dataset — authorization required"
-                                  : dataset.description || "Public provider metadata"}
+                                  ? "Restricted dataset — authorization required"
+                                  : dataset.description || "Public dataset"}
                               </p>
                             </div>
                             <span className="font-mono text-[10px] text-muted-foreground">
-                              {restricted ? "RESTRICTED" : "REFERENCE ONLY"}
+                              {restricted ? "RESTRICTED" : "PREVIEW"}
                             </span>
                           </button>
                         </li>
@@ -453,20 +453,20 @@ export function ModelStudioStage({
                 {selectedExternalDatasetId ? (
                   <div className="border-t border-divide px-3 py-3" data-review-surface="external-dataset-inspect">
                     {externalInspectLoading ? (
-                      <p className="text-sm text-muted-foreground">Inspecting provider metadata…</p>
+                      <p className="text-sm text-muted-foreground">Loading dataset preview…</p>
                     ) : selectedExternalDataset ? (
                       <div className="space-y-3">
                         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-foreground">{selectedExternalDataset.dataset_id}</p>
                             <p className={cn(TYPE.meta, "mt-0.5")}>
-                              {selectedExternalDataset.description || "Provider metadata reference"}
+                              {selectedExternalDataset.description || "Dataset preview"}
                             </p>
                             <p className={cn(TYPE.meta, "mt-1")}>
-                              {selectedExternalDataset.fileCount ?? 0} files reported · materialized: no
+                              {selectedExternalDataset.fileCount ?? 0} files · provider: {externalProviderLabel}
                             </p>
                           </div>
-                          <span className="font-mono text-[10px] text-muted-foreground">REFERENCE ONLY</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">PREVIEW</span>
                         </div>
 
                         <div className="grid gap-2 md:grid-cols-3">
@@ -533,10 +533,10 @@ export function ModelStudioStage({
                             disabled={!externalTargetId.trim() || externalReferenceSaving}
                             onClick={() => void saveExternalDatasetReference()}
                           >
-                            {externalReferenceSaving ? "Adding reference…" : "Add reference"}
+                            {externalReferenceSaving ? "Adding dataset…" : "Use dataset"}
                           </Button>
                           <p className={TYPE.meta}>
-                            This stores provider metadata and purpose only. It does not download, index, train, or fine-tune.
+                            Adds a reusable dataset reference to Gravitre. Provider files are only imported when a supported materialization step is explicitly started.
                           </p>
                         </div>
                         {externalReferenceError ? (
@@ -547,7 +547,7 @@ export function ModelStudioStage({
                         ) : null}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Provider metadata is unavailable for this dataset.</p>
+                      <p className="text-sm text-muted-foreground">Dataset preview is unavailable.</p>
                     )}
                   </div>
                 ) : null}
@@ -555,7 +555,7 @@ export function ModelStudioStage({
                 {externalReferences.length > 0 ? (
                   <div className="border-t border-divide px-3 py-2">
                     <p className={TYPE.meta}>
-                      {externalReferences.length} external dataset reference{externalReferences.length === 1 ? "" : "s"} linked in this organization.
+                      {externalReferences.length} reusable dataset{externalReferences.length === 1 ? "" : "s"} added to this workspace.
                     </p>
                   </div>
                 ) : null}
@@ -564,10 +564,10 @@ export function ModelStudioStage({
                 <p className="text-sm text-muted-foreground">Loading datasets…</p>
               ) : datasets.length === 0 ? (
                 <EmptyState
-                  title="No training datasets yet"
-                  description="Datasets and jobs still live on the Training route. Model Studio opens that workspace here."
+                  title="Choose data for your model"
+                  description="Browse Hugging Face or Kaggle above, or upload and manage your own training data in the training workspace."
                   action={{
-                    label: "Open training workspace",
+                    label: "Upload data",
                     onClick: () => {
                       window.location.href = APP_ROUTES.training
                     },
