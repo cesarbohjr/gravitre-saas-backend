@@ -103,3 +103,28 @@ This closes another silent-output class without changing the cognitive or TTS
 provider path.
 
 Physical closure still requires a human to hear production audio.
+
+
+## V6 playback evidence telemetry
+
+The browser now emits best-effort lifecycle diagnostics for the physical output
+chain:
+
+- audio_missing
+- output_unavailable
+- playback_blocked
+- playback_started
+- playback_recovered
+
+These events are authenticated and tenant-scoped and intentionally contain no
+audio samples, transcript text, access tokens, provider credentials, or device
+identifiers.
+
+The purpose is diagnostic only: they make it possible to distinguish in live
+production whether a turn reached browser playback, became blocked by the
+browser, recovered after an explicit user gesture, or never received audio at
+all.
+
+A `playback_started` event is supporting evidence that browser playback was
+scheduled/started. It still does not replace the physical acceptance rule:
+`VOICE_LIVE_PROVEN` requires a human to hear the response.

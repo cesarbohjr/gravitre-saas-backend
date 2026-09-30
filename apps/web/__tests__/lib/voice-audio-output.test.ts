@@ -136,3 +136,14 @@ describe("voice text-only recovery ownership", () => {
     expect(resets.length).toBeGreaterThanOrEqual(2)
   })
 })
+
+
+describe("voice physical-output telemetry", () => {
+  it("records browser playback lifecycle evidence without audio payloads", () => {
+    expect(hook).toMatch(/postVoiceOutputDiagnostics/)
+    expect(hook).toMatch(/emitOutputDiagnostic\("audio_missing"\)/)
+    expect(hook).toMatch(/emitOutputDiagnostic\("playback_blocked"\)/)
+    expect(hook).toMatch(/emitOutputDiagnostic\("playback_started"\)/)
+    expect(hook).toMatch(/emitOutputDiagnostic\("playback_recovered"\)/)
+  })
+})

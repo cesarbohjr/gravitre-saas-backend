@@ -47,6 +47,7 @@ import {
 } from "@/lib/voice-mic-capture"
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
 import { postMicDiagnostics } from "@/lib/voice-mic-telemetry-client"
+import { postVoiceOutputDiagnostics } from "@/lib/voice-output-telemetry-client"
 import {
   cancelVoiceSessionTurn,
   getVoiceStatus,
@@ -281,6 +282,32 @@ export function useVoiceDuplexSession(options: Options) {
     }
   }, [])
 
+  const emitOutputDiagnostic = useCallback(
+    (
+      event:
+        | "audio_missing"
+        | "output_unavailable"
+        | "playback_blocked"
+        | "playback_started"
+        | "playback_recovered",
+    ) => {
+      const ctx = audioCtxRef.current
+      void postVoiceOutputDiagnostics({
+        session_id: micSessionIdRef.current,
+        turn_id: turnIdRef.current,
+        orchestration: orchestrationRef.current,
+        event,
+        audio_context_state: ctx?.state ?? null,
+        pcm_frames_received: audioFramesReceivedRef.current,
+        fallback_triggered: audioFallbackTriggeredRef.current,
+        playback_blocked: playbackBlockedRef.current,
+        browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+      })
+    },
+    [],
+  )
+
+
   const armAudioReplyWatchdog = useCallback(() => {
     clearAudioReplyWatchdog()
     audioReplyWatchdogRef.current = setTimeout(() => {
@@ -292,6 +319,7 @@ export function useVoiceDuplexSession(options: Options) {
         audioFramesReceivedRef.current === 0
       ) {
         const assistantText = assistantTextRef.current.trim()
+        emitOutputDiagnostic("audio_missing")
         const recover = optsRef.current.onAudioMissing
         if (recover && !audioFallbackTriggeredRef.current) {
           audioFallbackTriggeredRef.current = true
@@ -308,7 +336,7 @@ export function useVoiceDuplexSession(options: Options) {
         )
       }
     }, 5000)
-  }, [clearAudioReplyWatchdog])
+  }, [clearAudioReplyWatchdog, emitOutputDiagnostic])
 
   const stopPcmPlayback = useCallback(() => {
     for (const src of pcmSourcesRef.current) {
@@ -387,6 +415,7 @@ export function useVoiceDuplexSession(options: Options) {
       if (!ctx) {
         if (!outputFailureNotifiedRef.current) {
           outputFailureNotifiedRef.current = true
+          emitOutputDiagnostic("output_unavailable")
           setPresence("error")
           optsRef.current.onError?.(
             "Voice audio output is unavailable in this browser. End the call and try again.",
@@ -395,6 +424,7 @@ export function useVoiceDuplexSession(options: Options) {
         return
       }
       if (ctx.state !== "running" || playbackBlockedRef.current) {
+        if (!playbackBlockedRef.current) emitOutputDiagnostic("playback_blocked")
         // Pipecat uses WebAudio PCM, not HTMLAudioElement.play(). Browsers can
         // suspend an AudioContext without throwing, which previously meant audio
         // frames were scheduled onto a silent clock and the user heard nothing.
@@ -430,6 +460,9 @@ export function useVoiceDuplexSession(options: Options) {
       const startAt = Math.max(ctx.currentTime + 0.01, pcmNextTimeRef.current)
       try {
         src.start(startAt)
+        if (!browserAudioPlaybackStartedRef.current) {
+          emitOutputDiagnostic("playback_started")
+        }
         browserAudioPlaybackStartedRef.current = true
         setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
       } catch {
@@ -468,7 +501,7 @@ export function useVoiceDuplexSession(options: Options) {
         }
       }
     },
-    [emitMicDiagnostics],
+    [emitMicDiagnostics, emitOutputDiagnostic],
   )
 
   const playNext = useCallback(async () => {
@@ -509,6 +542,9 @@ export function useVoiceDuplexSession(options: Options) {
     el.src = url
     try {
       await el.play()
+      if (!browserAudioPlaybackStartedRef.current) {
+        emitOutputDiagnostic("playback_started")
+      }
       browserAudioPlaybackStartedRef.current = true
       setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
     } catch (err) {
@@ -517,6 +553,7 @@ export function useVoiceDuplexSession(options: Options) {
       const blocked =
         err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")
       if (blocked) {
+        emitOutputDiagnostic("playback_blocked")
         // Keep the reply — put it back at the front of the queue rather than
         // discarding it, and stop draining until a real gesture unlocks output.
         // Immediately retrying here would just fail identically on repeat, so
@@ -532,7 +569,7 @@ export function useVoiceDuplexSession(options: Options) {
       optsRef.current.onError?.("Audio playback failed during voice reply")
       void playNext()
     }
-  }, [])
+  }, [emitOutputDiagnostic])
 
   /** Fresh user gesture (tap "Enable sound" / mic) — retry the held-back reply. */
   const resumeBlockedPlayback = useCallback(async () => {
@@ -550,12 +587,13 @@ export function useVoiceDuplexSession(options: Options) {
     playbackBlockedRef.current = false
     outputFailureNotifiedRef.current = false
     setPlaybackBlocked(false)
+    emitOutputDiagnostic("playback_recovered")
     const queuedPcm = pcmBlockedQueueRef.current.splice(0)
     for (const chunk of queuedPcm) {
       enqueuePcm(chunk.pcm, chunk.sampleRate)
     }
     void playNext()
-  }, [enqueuePcm, playNext])
+  }, [emitOutputDiagnostic, enqueuePcm, playNext])
 
   const enqueueAudio = useCallback(
     (b64: string, contentType?: string) => {
