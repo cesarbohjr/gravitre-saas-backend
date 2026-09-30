@@ -85,8 +85,9 @@ async def test_stopped_reply_never_surfaces_bare_system_state():
         compose_fn=empty,
     )
     assert text.strip().lower() != "stopped."
-    assert "interrupted" in text.lower() or "finish" in text.lower()
+    assert "stopped" in text.lower() or "finish" in text.lower()
     assert "complete" in text.lower()
+    assert "interrupted" not in text.lower()
 
 
 @pytest.mark.asyncio
