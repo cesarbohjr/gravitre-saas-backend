@@ -22,3 +22,16 @@ describe("Model Studio external dataset connectors", () => {
     expect(studio).toMatch(/Nothing is downloaded or added to training automatically/)
   })
 })
+
+
+  it("selects providers from the canonical registry instead of hardcoding one adapter", () => {
+    const studio = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
+      "utf8",
+    )
+    expect(studio).toMatch(/externalProviderId/)
+    expect(studio).toMatch(/trainingApi\.searchExternalDatasets\(externalProviderId/)
+    expect(studio).toMatch(/External dataset provider/)
+    expect(studio).not.toMatch(/searchExternalDatasets\("huggingface"/)
+    expect(studio).not.toMatch(/placeholder="Search Hugging Face datasets"/)
+  })
