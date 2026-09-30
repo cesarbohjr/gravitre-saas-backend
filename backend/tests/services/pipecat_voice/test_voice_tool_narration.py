@@ -61,10 +61,10 @@ class TestNarrateToolCompleted:
         assert narrate_tool_completed("anyTool", [1, 2, 3]) is None
 
     def test_list_result_key_produces_a_real_count(self) -> None:
-        assert narrate_tool_completed("listOpportunities", {"results": [1, 2, 3]}) == "Found 3."
+        assert narrate_tool_completed("listOpportunities", {"results": [1, 2, 3]}) == "I found 3."
 
     def test_count_key_produces_a_real_count(self) -> None:
-        assert narrate_tool_completed("x", {"totalResults": 7}) == "Found 7."
+        assert narrate_tool_completed("x", {"totalResults": 7}) == "I found 7."
 
     def test_zero_results_is_silence_not_a_fake_finding(self) -> None:
         assert narrate_tool_completed("x", {"results": []}) is None
@@ -72,15 +72,25 @@ class TestNarrateToolCompleted:
 
     def test_explicit_failure_flag_produces_honest_error_narration(self) -> None:
         out = narrate_tool_completed("updateDeal", {"success": False, "error": "vendor rejected it"})
-        assert out == "That didn't go through — vendor rejected it."
+        assert out == "I couldn't finish that step — vendor rejected it."
 
     def test_error_key_alone_without_explicit_success_flag_still_narrates_failure(self) -> None:
         out = narrate_tool_completed("updateDeal", {"error": "timeout"})
-        assert out == "That didn't go through — timeout."
+        assert out == "I couldn't finish that step — timeout."
 
     def test_failure_with_no_message_falls_back_to_tool_name(self) -> None:
         out = narrate_tool_completed("getConnectorStatus", {"success": False})
-        assert out == "That didn't go through when checking your connections."
+        assert out == "I couldn't finish that check on your connections."
+
+
+
+    def test_raw_backend_error_is_not_spoken(self) -> None:
+        out = narrate_tool_completed(
+            "updateDeal",
+            {"success": False, "error": "SQLSTATE 57014 statement timeout"},
+        )
+        assert out == "I couldn't finish that step."
+        assert "SQLSTATE" not in out
 
     def test_opaque_shape_with_no_recognizable_key_stays_silent(self) -> None:
         """MUTATION PROOF: this must return None, never an invented sentence —
