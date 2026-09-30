@@ -79,3 +79,37 @@ describe("Model Studio external dataset reference binding", () => {
     expect(studio).toMatch(/RESTRICTED/)
   })
 })
+
+
+describe("Model Studio canonical dataset targets", () => {
+  it("loads canonical agents, models, Plays and workflows for reference targets", () => {
+    const studio = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
+      "utf8",
+    )
+    expect(studio).toMatch(/agentsApi\.list\(\)/)
+    expect(studio).toMatch(/mlModelsApi\.list\(\)/)
+    expect(studio).toMatch(/playsApi\.list\(\)/)
+    expect(studio).toMatch(/workflowsApi\.list\(\)/)
+  })
+
+  it("uses existing target selectors instead of arbitrary ids where canonical lists exist", () => {
+    const studio = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
+      "utf8",
+    )
+    expect(studio).toMatch(/aria-label="Canonical dataset target"/)
+    expect(studio).toMatch(/Select an existing target/)
+    expect(studio).toMatch(/externalTargetType === "evaluation"/)
+    expect(studio).toMatch(/placeholder="Existing evaluation ID"/)
+  })
+
+  it("resets a stale target when the target type changes", () => {
+    const studio = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
+      "utf8",
+    )
+    expect(studio).toMatch(/setExternalTargetType/)
+    expect(studio).toMatch(/setExternalTargetId\(""\)/)
+  })
+})
