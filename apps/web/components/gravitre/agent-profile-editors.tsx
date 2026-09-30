@@ -152,6 +152,11 @@ export function AgentCapabilitiesEditorCard({ agent, onSaved }: AgentCapabilitie
   const [systemIds, setSystemIds] = useState(initialSystems)
   const [guardrailIds, setGuardrailIds] = useState(initialGuardrails)
   const [saving, setSaving] = useState(false)
+  const dirty =
+    JSON.stringify([...capabilityIds].sort()) !== JSON.stringify([...initialCapabilityIds].sort()) ||
+    JSON.stringify([...customCapabilities].sort()) !== JSON.stringify([...initialCustom].sort()) ||
+    JSON.stringify([...systemIds].sort()) !== JSON.stringify([...initialSystems].sort()) ||
+    JSON.stringify([...guardrailIds].sort()) !== JSON.stringify([...initialGuardrails].sort())
 
   useEffect(() => {
     setCapabilityIds(capabilityIdsFromNames(agent.capabilities ?? []))
@@ -193,8 +198,11 @@ export function AgentCapabilitiesEditorCard({ agent, onSaved }: AgentCapabilitie
         onGuardrailIdsChange={setGuardrailIds}
         knowledgeHref={`/agents/${agent.id}/knowledge`}
       />
-      <div className="flex justify-end">
-        <Button type="button" onClick={() => void handleSave()} disabled={saving}>
+      <div className="flex items-center justify-end gap-3">
+        <span aria-live="polite" className="mr-auto text-xs text-muted-foreground">
+          {dirty ? "Unsaved changes" : "All changes saved"}
+        </span>
+        <Button type="button" onClick={() => void handleSave()} disabled={saving || !dirty}>
           {saving ? "Saving…" : "Save capabilities"}
         </Button>
       </div>

@@ -324,7 +324,10 @@ export const authApi = {
       method: "POST",
       body: formData,
     })
-    if (!response.ok) throw new Error("Upload failed")
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(extractErrorMessage(error) || `Upload failed: ${response.status}`)
+    }
     return response.json() as Promise<{ avatar_url: string }>
   },
   removeAvatar: () => deleteRequest(apiUrl("/api/auth/avatar")),

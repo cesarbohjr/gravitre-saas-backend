@@ -19,10 +19,9 @@ describe("Model Studio external dataset connectors", () => {
     )
     expect(studio).toMatch(/Browse free dataset providers, preview a dataset, then add it to your model/)
     expect(studio).toMatch(/PREVIEW/)
-    expect(studio).toMatch(/Browse free dataset providers, preview a dataset, then add it to your model/)
+    expect(studio).toMatch(/Hugging Face/)
+    expect(studio).toMatch(/Kaggle/)
   })
-})
-
 
   it("selects providers from the canonical registry instead of hardcoding one adapter", () => {
     const studio = readFileSync(
@@ -35,6 +34,7 @@ describe("Model Studio external dataset connectors", () => {
     expect(studio).not.toMatch(/searchExternalDatasets\("huggingface"/)
     expect(studio).not.toMatch(/placeholder="Search Hugging Face datasets"/)
   })
+})
 
 
 describe("Model Studio external dataset reference binding", () => {

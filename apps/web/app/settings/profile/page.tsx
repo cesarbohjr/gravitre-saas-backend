@@ -29,6 +29,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useUserProfile } from "@/lib/user-profile-context"
 import { useAuth } from "@/lib/auth-context"
+import { useAccountProfile } from "@/hooks/use-account-profile"
 import { authApi } from "@/lib/api"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
@@ -56,12 +57,15 @@ export default function ProfilePage() {
   // Drives which tiers the settings rail shows; admin-only sections stay hidden
   // for non-admins.
   const { isAdmin } = useOrgAdmin()
-  const { profile, updateProfile, setAvatarImage: setContextAvatarImage, getInitials } = useUserProfile()
+  const { profile, updateProfile, setAvatarImage: setContextAvatarImage } = useUserProfile()
+  const account = useAccountProfile()
+  const hasProfilePhoto = Boolean(account.avatarUrl)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const mounted = true
   const [activeField, setActiveField] = useState<string | null>(null)
-  const [showAvatarModal, setShowAvatarModal] = useState(false)\n  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -126,6 +130,7 @@ export default function ProfilePage() {
       const response = await authApi.uploadAvatar(file)
       setContextAvatarImage(response.avatar_url)
       await globalMutate("account-profile-me")
+      await account.refresh()
       toast.success("Profile photo updated")
       setShowAvatarModal(false)
     } catch (err) {
@@ -142,6 +147,7 @@ export default function ProfilePage() {
       await authApi.removeAvatar()
       setContextAvatarImage(null)
       await globalMutate("account-profile-me")
+      await account.refresh()
       toast.success("Profile photo removed")
       setShowAvatarModal(false)
     } catch (err) {
@@ -264,6 +270,7 @@ export default function ProfilePage() {
                     onChange={handleAvatarUpload}
                     accept="image/*"
                     className="hidden"
+                    disabled={isUploadingAvatar}
                   />
                   <div className="absolute -inset-1 rounded-full bg-primary opacity-0 blur transition-all duration-500 group-hover:opacity-60" />
                   <button 
@@ -291,9 +298,9 @@ export default function ProfilePage() {
                 <div className="flex flex-wrap items-center gap-2 md:self-center">
                   <Button type="button" variant="outline" size="sm" onClick={() => setShowAvatarModal(true)}>
                     <Camera className="mr-2 h-4 w-4" />
-                    {profile.avatarImage || user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? "Change photo" : "Add photo"}
+                    {hasProfilePhoto ? "Change photo" : "Add photo"}
                   </Button>
-                  {Boolean(profile.avatarImage || user?.user_metadata?.avatar_url || user?.user_metadata?.picture) && (
+                  {hasProfilePhoto && (
                     <Button type="button" variant="ghost" size="sm" onClick={() => void handleRemoveAvatar()} className="text-destructive hover:text-destructive">
                       Remove photo
                     </Button>
@@ -329,7 +336,12 @@ export default function ProfilePage() {
                       {/* Upload options */}
                       <div className="space-y-3">
                         <button
-                          onClick={() => fileInputRef.current?.click()}
+                          type="button"
+                          disabled={isUploadingAvatar}
+                          onClick={() => {
+                            if (isUploadingAvatar) return
+                            fileInputRef.current?.click()
+                          }}
                           className="w-full flex items-center gap-3 p-4 rounded-xl border border-divide bg-[color:var(--g-surface-2)] hover:bg-secondary/50 transition-colors text-left"
                         >
                           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -341,7 +353,7 @@ export default function ProfilePage() {
                           </div>
                         </button>
 
-                        {Boolean(profile.avatarImage || user?.user_metadata?.avatar_url || user?.user_metadata?.picture) && (
+                        {hasProfilePhoto && (
                           <button
                             onClick={() => void handleRemoveAvatar()}
                             className="w-full flex items-center gap-3 p-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
