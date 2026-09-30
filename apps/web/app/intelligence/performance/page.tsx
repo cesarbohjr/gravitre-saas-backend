@@ -58,7 +58,7 @@ export default function IntelligencePerformancePage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
+      <div className="space-y-8 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}
