@@ -10,7 +10,7 @@ import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import { Button } from "@/components/ui/button"
-import { mlModelsApi, trainingApi } from "@/lib/api"
+import { agentsApi, mlModelsApi, playsApi, trainingApi, workflowsApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import {
   STUDIO_INTENTS,
@@ -88,8 +88,36 @@ export function ModelStudioStage({
   const [externalReferenceSaved, setExternalReferenceSaved] = useState<string | null>(null)
 
   const { data: modelsData, isLoading: modelsLoading } = useSWR(
-    enabled && (segment === "evaluate" || segment === "deploy") ? "ml-models-list-studio" : null,
+    enabled &&
+      (segment === "evaluate" ||
+        segment === "deploy" ||
+        (segment === "train" && externalTargetType === "model"))
+      ? "ml-models-list-studio"
+      : null,
     () => mlModelsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: externalAgentsData } = useSWR(
+    enabled &&
+      segment === "train" &&
+      (externalTargetType === "agent" || externalTargetType === "department")
+      ? "external-dataset-target-agents"
+      : null,
+    () => agentsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: externalWorkflowsData } = useSWR(
+    enabled && segment === "train" && externalTargetType === "workflow"
+      ? "external-dataset-target-workflows"
+      : null,
+    () => workflowsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: externalPlaysData } = useSWR(
+    enabled && segment === "train" && externalTargetType === "play"
+      ? "external-dataset-target-plays"
+      : null,
+    () => playsApi.list(),
     { revalidateOnFocus: false },
   )
   const { data: jobsData, isLoading: jobsLoading } = useSWR(
@@ -151,6 +179,50 @@ export function ModelStudioStage({
   const externalDatasets = externalSearchData?.datasets ?? []
   const selectedExternalDataset = externalInspectData?.dataset ?? null
   const externalReferences = externalReferencesData?.references ?? []
+  const externalTargetOptions = useMemo(() => {
+    if (externalTargetType === "agent") {
+      return (externalAgentsData?.agents ?? []).map((agent) => ({
+        id: agent.id,
+        label: agent.name || agent.role || agent.id,
+      }))
+    }
+    if (externalTargetType === "model") {
+      return (modelsData?.models ?? []).map((model) => ({
+        id: model.id,
+        label: model.name || model.id,
+      }))
+    }
+    if (externalTargetType === "workflow") {
+      return (externalWorkflowsData?.workflows ?? []).map((workflow) => ({
+        id: workflow.id,
+        label: workflow.name || workflow.id,
+      }))
+    }
+    if (externalTargetType === "play") {
+      return (externalPlaysData?.plays ?? []).map((item) => ({
+        id: item.play.key,
+        label: item.play.name || item.play.key,
+      }))
+    }
+    if (externalTargetType === "department") {
+      const departments = new Set(
+        (externalAgentsData?.agents ?? [])
+          .map((agent) => String(agent.department || "").trim())
+          .filter(Boolean),
+      )
+      return Array.from(departments).sort().map((department) => ({
+        id: department,
+        label: department,
+      }))
+    }
+    return []
+  }, [
+    externalTargetType,
+    externalAgentsData,
+    externalWorkflowsData,
+    externalPlaysData,
+    modelsData,
+  ])
 
   function startCreate() {
     const params = new URLSearchParams({ action: "register" })
@@ -414,7 +486,12 @@ export function ModelStudioStage({
                             <span className={TYPE.meta}>Use with</span>
                             <select
                               value={externalTargetType}
-                              onChange={(event) => setExternalTargetType(event.target.value as ExternalDatasetTargetType)}
+                              onChange={(event) => {
+                                setExternalTargetType(event.target.value as ExternalDatasetTargetType)
+                                setExternalTargetId("")
+                                setExternalReferenceError(null)
+                                setExternalReferenceSaved(null)
+                              }}
                               className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                             >
                               {EXTERNAL_DATASET_TARGETS.map((option) => (
@@ -423,13 +500,29 @@ export function ModelStudioStage({
                             </select>
                           </label>
                           <label className="space-y-1">
-                            <span className={TYPE.meta}>Target ID</span>
-                            <input
-                              value={externalTargetId}
-                              onChange={(event) => setExternalTargetId(event.target.value)}
-                              placeholder="Canonical agent, model, Play, or workflow ID"
-                              className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
-                            />
+                            <span className={TYPE.meta}>
+                              {externalTargetType === "evaluation" ? "Evaluation ID" : "Canonical target"}
+                            </span>
+                            {externalTargetType === "evaluation" ? (
+                              <input
+                                value={externalTargetId}
+                                onChange={(event) => setExternalTargetId(event.target.value)}
+                                placeholder="Existing evaluation ID"
+                                className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                              />
+                            ) : (
+                              <select
+                                value={externalTargetId}
+                                onChange={(event) => setExternalTargetId(event.target.value)}
+                                aria-label="Canonical dataset target"
+                                className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                              >
+                                <option value="">Select an existing target</option>
+                                {externalTargetOptions.map((option) => (
+                                  <option key={option.id} value={option.id}>{option.label}</option>
+                                ))}
+                              </select>
+                            )}
                           </label>
                         </div>
 
