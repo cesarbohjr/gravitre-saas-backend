@@ -61,7 +61,7 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false)
   const mounted = true
   const [activeField, setActiveField] = useState<string | null>(null)
-  const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)\n  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -316,7 +316,7 @@ export default function ProfilePage() {
                             <ImagePlus className="h-5 w-5 text-primary" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-foreground">Upload new photo</p>
+                            <p className="text-sm font-medium text-foreground">{isUploadingAvatar ? "Uploading…" : "Upload new photo"}</p>
                             <p className="text-xs text-muted-foreground">JPG, PNG or GIF, max 5MB</p>
                           </div>
                         </button>
