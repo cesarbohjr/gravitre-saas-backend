@@ -1970,13 +1970,15 @@ export function AiWorkspace({
               latency: result.latency,
             },
           } as (typeof prev)[number])
-          // Duplex playback proof and text-only recovery ownership are separate:
-          // - spokeDuringTurn means Pipecat/browser playback actually started;
-          // - recoveryOwnsTurn means the exact reply was handed to HTTP TTS,
-          //   which either plays it or retains it behind Enable sound.
-          // In both cases post-session auto-TTS must not create a duplicate reply.
+          // Physical playback proof and delivery ownership are separate:
+          // - spokeDuringTurn means browser playback actually started;
+          // - duplexOwnsTurn means the live Pipecat session owns delivery/recovery;
+          // - recoveryOwnsTurn means the exact reply moved to HTTP TTS fallback.
+          // Any owned turn must not replay when Talk is later closed.
           lastSpokenMessageIdRef.current =
-            (spokeDuringTurn || recoveryOwnsTurn) && !result.cancelled ? assistantId : null
+            (spokeDuringTurn || duplexOwnsTurn || recoveryOwnsTurn) && !result.cancelled
+              ? assistantId
+              : null
         }
         const conversationId = activeConversationIdRef.current || result.conversationId
         if (conversationId && next.length > 0) {
