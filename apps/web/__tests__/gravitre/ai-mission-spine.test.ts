@@ -57,8 +57,36 @@ describe("AI mission stages", () => {
       runtimeState: "completed",
       executionResult: { success: true, title: "12 reminders sent", artifacts: [{}] } as unknown as ChatExecutionResult,
     })
-    expect(states(delivered)).toMatchObject({ artifact: "available", approval: "complete", result: "available" })
+    expect(states(delivered)).toMatchObject({ artifact: "available", approval: "not_needed", result: "available" })
     expect(delivered.find((stage) => stage.id === "result")?.detail).toBe("12 reminders sent")
+  })
+
+
+  it("only marks approval resolved when approval was actually required and terminal", () => {
+    const terminal = deriveMissionStages({
+      messages: [user("Send it"), assistant("Sent")],
+      runtimeState: "failed",
+      pendingTask: {
+        type: "connector_action",
+        status: "failed",
+        params: { requires_approval: true },
+      },
+      executionResult: { success: false, body: "Provider rejected the send." },
+    })
+    expect(terminal.find((stage) => stage.id === "approval")).toMatchObject({
+      state: "complete",
+      detail: "Resolved",
+    })
+
+    const noApprovalEvidence = deriveMissionStages({
+      messages: [user("Read my inbox"), assistant("Could not load it")],
+      runtimeState: "failed",
+      executionResult: { success: false, body: "Read failed." },
+    })
+    expect(noApprovalEvidence.find((stage) => stage.id === "approval")).toMatchObject({
+      state: "not_needed",
+      detail: "Not requested",
+    })
   })
 
   it("reports failure and partial runs without claiming a result", () => {
@@ -74,7 +102,7 @@ describe("AI mission stages", () => {
       messages: [user("first"), assistant("done"), user("second", "u2")],
       runtimeState: "generating",
     })
-    expect(stages[0].detail).toBe("first")
+    expect(stages[0].detail).toBe("second")
     expect(states(stages).work).toBe("waiting")
   })
 })
