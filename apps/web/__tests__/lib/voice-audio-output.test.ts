@@ -164,3 +164,22 @@ describe("voice silent-PCM recovery", () => {
     expect(clear).toBeGreaterThan(energy)
   })
 })
+
+
+describe("voice live turn completion lifecycle", () => {
+  it("commits each Pipecat turn while the websocket remains open", () => {
+    expect(hook).toMatch(/kind === "assistant_turn\.complete"/)
+    expect(hook).toMatch(/pipecatTurnCompletionDispatchedRef/)
+    expect(hook).toMatch(/optsRef\.current\.onTurnComplete\?\.\(/)
+    expect(hook).toMatch(/duplex_transport_owned: true/)
+  })
+
+  it("uses socket close only as a fallback for an uncommitted partial turn", () => {
+    expect(hook).toMatch(/!pipecatTurnCompletionDispatchedRef\.current/)
+  })
+
+  it("prevents closing Talk from replaying a turn already owned by duplex delivery", () => {
+    expect(aiWorkspace).toMatch(/duplexOwnsTurn/)
+    expect(aiWorkspace).toMatch(/spokeDuringTurn \|\| duplexOwnsTurn \|\| recoveryOwnsTurn/)
+  })
+})
