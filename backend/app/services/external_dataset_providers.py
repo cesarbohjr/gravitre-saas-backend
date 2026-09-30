@@ -151,8 +151,118 @@ class HuggingFaceDatasetProvider:
         )
 
 
+class KaggleDatasetProvider:
+    BASE = "https://www.kaggle.com"
+    descriptor = DatasetProviderDescriptor(
+        id="kaggle",
+        label="Kaggle",
+        capabilities=("search", "inspect", "reference"),
+        auth="optional_token",
+        materialization="explicit_only",
+        notes=(
+            "Public Kaggle dataset discovery is free. Inspection is metadata-only; "
+            "restricted/private datasets are never bypassed or automatically downloaded."
+        ),
+    )
+
+    def _headers(self) -> dict[str, str]:
+        token = str(os.environ.get("KAGGLE_API_TOKEN") or os.environ.get("KAGGLE_TOKEN") or "").strip()
+        return {"Authorization": f"Bearer {token}"} if token else {}
+
+    @staticmethod
+    def _dataset_id(value: str) -> str:
+        did = str(value or "").strip().strip("/")
+        lowered = did.lower()
+        if (
+            not did
+            or did.count("/") != 1
+            or "://" in did
+            or "?" in did
+            or "#" in did
+            or any(marker in lowered for marker in ("token=", "api_key=", "apikey=", "authorization="))
+        ):
+            raise ValueError("dataset_id must be a Kaggle owner/dataset handle without credentials or URL parameters")
+        return did
+
+    def search(self, query: str, *, limit: int = 20) -> list[ExternalDatasetSummary]:
+        q = str(query or "").strip()
+        if not q:
+            return []
+        requested = max(1, min(int(limit), 50))
+        with httpx.Client(base_url=self.BASE, headers=self._headers(), timeout=20.0) as client:
+            response = client.get(
+                "/api/v1/datasets/list",
+                params={"search": q, "page": 1, "sortBy": "hottest"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        rows = payload if isinstance(payload, list) else []
+        return [self._summary(row) for row in rows[:requested] if isinstance(row, dict)]
+
+    def inspect(self, dataset_id: str) -> dict[str, Any]:
+        did = self._dataset_id(dataset_id)
+        encoded = quote(did, safe="/")
+        with httpx.Client(base_url=self.BASE, headers=self._headers(), timeout=20.0) as client:
+            response = client.get(f"/api/v1/datasets/view/{encoded}")
+            if response.status_code in {401, 403}:
+                raise PermissionError("Dataset requires authorized Kaggle access")
+            response.raise_for_status()
+            row = response.json()
+        if not isinstance(row, dict):
+            raise RuntimeError("Kaggle returned an invalid dataset payload")
+        summary = self._summary({**row, "ref": did}).as_dict()
+        files = []
+        for item in row.get("datasetFiles") or row.get("files") or []:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("ref") or "").strip()
+            if name:
+                files.append({"path": name, "size": item.get("totalBytes") or item.get("size")})
+        return {
+            **summary,
+            "title": row.get("title"),
+            "subtitle": row.get("subtitle"),
+            "license": row.get("licenseName"),
+            "totalBytes": row.get("totalBytes"),
+            "lastUpdated": row.get("lastUpdated"),
+            "files": files[:500],
+            "fileCount": len(files),
+            "materialized": False,
+            "materializationAllowed": not bool(row.get("isPrivate")),
+            "truthRule": (
+                "Inspection is metadata-only. Gravitre does not download or treat a Kaggle "
+                "dataset as training/runtime data until an explicit materialization step."
+            ),
+        }
+
+    def _summary(self, row: dict[str, Any]) -> ExternalDatasetSummary:
+        did = str(row.get("ref") or row.get("id") or "").strip()
+        author = did.split("/", 1)[0] if "/" in did else None
+        description = str(row.get("subtitle") or row.get("description") or row.get("title") or "").strip() or None
+        tags_raw = row.get("tags") or []
+        tags = tuple(
+            str(tag.get("name") if isinstance(tag, dict) else tag)
+            for tag in tags_raw
+            if isinstance(tag, (str, dict))
+        )
+        return ExternalDatasetSummary(
+            provider="kaggle",
+            dataset_id=did,
+            name=str(row.get("title") or (did.split("/", 1)[-1] if did else "dataset")),
+            author=author,
+            description=description,
+            tags=tags[:40],
+            downloads=int(row["downloadCount"]) if isinstance(row.get("downloadCount"), int) else None,
+            likes=int(row["voteCount"]) if isinstance(row.get("voteCount"), int) else None,
+            private=bool(row.get("isPrivate")),
+            gated=False,
+            reference_url=str(row.get("url") or f"{self.BASE}/datasets/{did}"),
+        )
+
+
 _PROVIDERS: dict[str, ExternalDatasetProvider] = {
     "huggingface": HuggingFaceDatasetProvider(),
+    "kaggle": KaggleDatasetProvider(),
 }
 
 
