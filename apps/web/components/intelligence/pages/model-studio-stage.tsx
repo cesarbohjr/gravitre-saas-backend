@@ -36,6 +36,7 @@ export function ModelStudioStage({
   const [intent, setIntent] = useState<StudioIntentId | null>(null)
   const [externalQuery, setExternalQuery] = useState("")
   const [externalSearchTerm, setExternalSearchTerm] = useState("")
+  const [externalProvider, setExternalProvider] = useState("")
 
   const { data: modelsData, isLoading: modelsLoading } = useSWR(
     enabled && (segment === "evaluate" || segment === "deploy") ? "ml-models-list-studio" : null,
@@ -57,11 +58,16 @@ export function ModelStudioStage({
     () => trainingApi.listExternalDatasetProviders(),
     { revalidateOnFocus: false },
   )
+  const externalProviders = externalProvidersData?.providers ?? []
+  const externalProviderId = externalProvider || externalProviders[0]?.id || ""
+  const externalProviderLabel =
+    externalProviders.find((provider) => provider.id === externalProviderId)?.label ||
+    "external provider"
   const { data: externalSearchData, isLoading: externalSearchLoading } = useSWR(
-    enabled && segment === "train" && externalSearchTerm
-      ? ["external-dataset-search", "huggingface", externalSearchTerm]
+    enabled && segment === "train" && externalProviderId && externalSearchTerm
+      ? ["external-dataset-search", externalProviderId, externalSearchTerm]
       : null,
-    () => trainingApi.searchExternalDatasets("huggingface", externalSearchTerm, 12),
+    () => trainingApi.searchExternalDatasets(externalProviderId, externalSearchTerm, 12),
     { revalidateOnFocus: false },
   )
 
@@ -75,7 +81,6 @@ export function ModelStudioStage({
   )
   const jobs = jobsData?.jobs ?? []
   const datasets = datasetsData?.datasets ?? []
-  const externalProviders = externalProvidersData?.providers ?? []
   const externalDatasets = externalSearchData?.datasets ?? []
 
   function startCreate() {
@@ -190,20 +195,41 @@ export function ModelStudioStage({
                   </span>
                 </div>
                 <form
-                  className="flex gap-2 px-3 py-3"
+                  className="grid gap-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
                   onSubmit={(event) => {
                     event.preventDefault()
                     setExternalSearchTerm(externalQuery.trim())
                   }}
                 >
+                  {externalProviders.length > 1 ? (
+                    <select
+                      value={externalProviderId}
+                      onChange={(event) => {
+                        setExternalProvider(event.target.value)
+                        setExternalSearchTerm("")
+                      }}
+                      aria-label="External dataset provider"
+                      className="border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                    >
+                      {externalProviders.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                   <input
                     value={externalQuery}
                     onChange={(event) => setExternalQuery(event.target.value)}
-                    placeholder="Search Hugging Face datasets"
+                    placeholder={`Search ${externalProviderLabel} datasets`}
                     aria-label="Search external datasets"
-                    className="min-w-0 flex-1 border border-divide bg-transparent px-3 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                    className="min-w-0 border border-divide bg-transparent px-3 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                   />
-                  <Button type="submit" variant="outline" disabled={!externalQuery.trim()}>
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={!externalQuery.trim() || !externalProviderId}
+                  >
                     Search
                   </Button>
                 </form>
