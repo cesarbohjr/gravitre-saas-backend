@@ -126,3 +126,15 @@ def test_warm_pipecat_imports_runs_off_the_event_loop_thread() -> None:
         "import here would block the whole worker during startup, defeating "
         "the point of warming it off the request path"
     )
+
+
+def test_voice_warmups_cannot_hold_health_readiness() -> None:
+    """Startup may warm providers, but health must not wait indefinitely for them."""
+    import inspect
+
+    from app import main as main_module
+
+    source = inspect.getsource(main_module.lifespan)
+    assert "asyncio.wait_for(_warm_pipecat_imports(), timeout=15.0)" in source
+    assert "voice_perceive_warmup_task = asyncio.create_task" in source
+    assert "await _warm_voice_perceive_tts()" not in source
