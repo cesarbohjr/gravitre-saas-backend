@@ -69,6 +69,8 @@ export type DuplexLatencyStages = {
   speculative_start_ms?: number
   speculative_restart_ms?: number
   speculative_saved_ms?: number
+  /** Browser-side proof that audible playback was actually scheduled/started. */
+  browser_audio_playback_started?: boolean
 }
 
 export type DuplexTurnResult = {
@@ -249,6 +251,9 @@ export function useVoiceDuplexSession(options: Options) {
   // delivered anything to the browser.
   const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioFramesReceivedRef = useRef(0)
+  // Do not confuse server/provider TTFA with browser playback. This flag flips
+  // only after WebAudio/HTMLAudio successfully starts on the client.
+  const browserAudioPlaybackStartedRef = useRef(false)
   // Output-path diagnostics stay browser-local. A running AudioContext can still
   // be suspended by the browser after the initial Talk gesture; listen for that
   // transition so the UI surfaces Enable sound instead of silently losing audio.
@@ -302,6 +307,7 @@ export function useVoiceDuplexSession(options: Options) {
   const stopPlayback = useCallback(() => {
     clearAudioReplyWatchdog()
     audioFramesReceivedRef.current = 0
+    browserAudioPlaybackStartedRef.current = false
     playingRef.current = false
     audioQueueRef.current = []
     playbackWiredRef.current = false
@@ -403,6 +409,8 @@ export function useVoiceDuplexSession(options: Options) {
       const startAt = Math.max(ctx.currentTime + 0.01, pcmNextTimeRef.current)
       try {
         src.start(startAt)
+        browserAudioPlaybackStartedRef.current = true
+        setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
       } catch {
         // A WebAudio scheduling failure used to drop this chunk silently even
         // though the server had delivered valid PCM. Hold the chunk and move the
@@ -480,6 +488,8 @@ export function useVoiceDuplexSession(options: Options) {
     el.src = url
     try {
       await el.play()
+      browserAudioPlaybackStartedRef.current = true
+      setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
     } catch (err) {
       playingRef.current = false
       URL.revokeObjectURL(url)
@@ -829,11 +839,13 @@ export function useVoiceDuplexSession(options: Options) {
       let completionDispatched = false
       let sawTextDelta = false
       const events: VoiceSessionEvent[] = []
-      const stage: DuplexLatencyStages = {}
+      const stage: DuplexLatencyStages = { browser_audio_playback_started: false }
+      browserAudioPlaybackStartedRef.current = false
 
       const dispatchTurnComplete = () => {
         if (completionDispatched) return
         completionDispatched = true
+        stage.browser_audio_playback_started = browserAudioPlaybackStartedRef.current
         optsRef.current.onTurnComplete?.({
           userText: text,
           assistantText: assistantText.trim(),
@@ -935,6 +947,7 @@ export function useVoiceDuplexSession(options: Options) {
         (typeof completeEv?.text === "string" ? completeEv.text : "") ||
         ""
       if (!completionDispatched) {
+        stage.browser_audio_playback_started = browserAudioPlaybackStartedRef.current
         optsRef.current.onTurnComplete?.({
           userText: text,
           assistantText: finalAssistant,
@@ -1208,6 +1221,8 @@ export function useVoiceDuplexSession(options: Options) {
           setProvisionalTranscript(text)
           if (msg.final) {
             lastUserFinalRef.current = text
+            browserAudioPlaybackStartedRef.current = false
+            setLatency((prev) => ({ ...prev, browser_audio_playback_started: false }))
             optsRef.current.onUserFinal?.(text)
             setProvisionalTranscript("")
             setPresence("thinking")
@@ -1285,7 +1300,9 @@ export function useVoiceDuplexSession(options: Options) {
             turnId: null,
             cancelled: false,
             events: [],
-            latency: {},
+            latency: {
+              browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+            },
           })
         }
       }
