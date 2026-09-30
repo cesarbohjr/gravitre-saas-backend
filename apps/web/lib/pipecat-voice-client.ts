@@ -95,6 +95,39 @@ export function base64ToPcm16(b64: string): Int16Array {
   return new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2))
 }
 
+export type PcmEnergy = {
+  peak: number
+  rms: number
+  audible: boolean
+}
+
+/**
+ * Browser-side guard against "audio frames arrived" being mistaken for
+ * "audible speech arrived". Providers can emit non-empty leading-silence or
+ * zeroed PCM frames. Those must not disarm the no-audio recovery watchdog.
+ *
+ * Thresholds are intentionally low relative to int16 full scale: enough to
+ * ignore digital silence / tiny transport noise without requiring normal
+ * speech loudness. A later real speech frame clears the watchdog immediately.
+ */
+export function inspectPcm16Energy(pcm: Int16Array): PcmEnergy {
+  if (!pcm.length) return { peak: 0, rms: 0, audible: false }
+
+  let peak = 0
+  let sumSquares = 0
+  for (let i = 0; i < pcm.length; i++) {
+    const sample = Math.abs(pcm[i] ?? 0)
+    if (sample > peak) peak = sample
+    sumSquares += sample * sample
+  }
+  const rms = Math.sqrt(sumSquares / pcm.length)
+  return {
+    peak,
+    rms,
+    audible: peak >= 96 && rms >= 24,
+  }
+}
+
 export function encodePipecatAudioMessage(
   pcm: Int16Array,
   sampleRate = 16000,

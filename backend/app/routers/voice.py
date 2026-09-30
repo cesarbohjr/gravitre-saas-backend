@@ -89,12 +89,14 @@ class OutputDiagnosticsRequest(BaseModel):
     event: str = Field(
         ...,
         description=(
-            "audio_missing | output_unavailable | playback_blocked | "
+            "audio_missing | audio_silent | output_unavailable | playback_blocked | "
             "playback_started | playback_recovered"
         ),
     )
     audio_context_state: str | None = None
     pcm_frames_received: int = Field(default=0, ge=0)
+    audible_pcm_frames: int = Field(default=0, ge=0)
+    max_pcm_peak: int = Field(default=0, ge=0, le=32768)
     fallback_triggered: bool = False
     playback_blocked: bool = False
     browser_audio_playback_started: bool = False
@@ -246,6 +248,7 @@ def post_output_diagnostics(
         )
     allowed = {
         "audio_missing",
+        "audio_silent",
         "output_unavailable",
         "playback_blocked",
         "playback_started",
@@ -277,6 +280,8 @@ def post_output_diagnostics(
                 "orchestration": body.orchestration,
                 "audio_context_state": body.audio_context_state,
                 "pcm_frames_received": body.pcm_frames_received,
+                "audible_pcm_frames": body.audible_pcm_frames,
+                "max_pcm_peak": body.max_pcm_peak,
                 "fallback_triggered": body.fallback_triggered,
                 "playback_blocked": body.playback_blocked,
                 "browser_audio_playback_started": body.browser_audio_playback_started,

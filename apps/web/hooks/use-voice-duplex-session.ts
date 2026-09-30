@@ -32,6 +32,7 @@ import {
   encodePipecatAudioMessage,
   encodePipecatInterrupt,
   base64ToPcm16,
+  inspectPcm16Energy,
   shouldUsePipecatVoice,
 } from "@/lib/pipecat-voice-client"
 import {
@@ -258,6 +259,11 @@ export function useVoiceDuplexSession(options: Options) {
   // delivered anything to the browser.
   const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioFramesReceivedRef = useRef(0)
+  // A non-empty PCM frame can still be digital silence. Keep transport receipt
+  // separate from audible-energy receipt so silent provider output cannot disable
+  // the recovery watchdog.
+  const audibleAudioFramesRef = useRef(0)
+  const maxPcmPeakRef = useRef(0)
   // Do not confuse server/provider TTFA with browser playback. This flag flips
   // only after WebAudio/HTMLAudio successfully starts on the client.
   const browserAudioPlaybackStartedRef = useRef(false)
@@ -286,6 +292,7 @@ export function useVoiceDuplexSession(options: Options) {
     (
       event:
         | "audio_missing"
+        | "audio_silent"
         | "output_unavailable"
         | "playback_blocked"
         | "playback_started"
@@ -299,6 +306,8 @@ export function useVoiceDuplexSession(options: Options) {
         event,
         audio_context_state: ctx?.state ?? null,
         pcm_frames_received: audioFramesReceivedRef.current,
+        audible_pcm_frames: audibleAudioFramesRef.current,
+        max_pcm_peak: maxPcmPeakRef.current,
         fallback_triggered: audioFallbackTriggeredRef.current,
         playback_blocked: playbackBlockedRef.current,
         browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
@@ -316,10 +325,12 @@ export function useVoiceDuplexSession(options: Options) {
         sessionWantedRef.current &&
         activeRef.current &&
         assistantTextRef.current.trim() &&
-        audioFramesReceivedRef.current === 0
+        audibleAudioFramesRef.current === 0
       ) {
         const assistantText = assistantTextRef.current.trim()
-        emitOutputDiagnostic("audio_missing")
+        emitOutputDiagnostic(
+          audioFramesReceivedRef.current > 0 ? "audio_silent" : "audio_missing",
+        )
         const recover = optsRef.current.onAudioMissing
         if (recover && !audioFallbackTriggeredRef.current) {
           audioFallbackTriggeredRef.current = true
@@ -332,7 +343,7 @@ export function useVoiceDuplexSession(options: Options) {
         }
         setPresence("error")
         optsRef.current.onError?.(
-          "Voice reply arrived, but no audio was received. Try again.",
+          "Voice reply arrived, but audible audio was not received. Try again.",
         )
       }
     }, 5000)
@@ -355,6 +366,8 @@ export function useVoiceDuplexSession(options: Options) {
   const stopPlayback = useCallback(() => {
     clearAudioReplyWatchdog()
     audioFramesReceivedRef.current = 0
+    audibleAudioFramesRef.current = 0
+    maxPcmPeakRef.current = 0
     browserAudioPlaybackStartedRef.current = false
     audioFallbackTriggeredRef.current = false
     playingRef.current = false
@@ -1288,6 +1301,8 @@ export function useVoiceDuplexSession(options: Options) {
             setPresence("thinking")
             clearAudioReplyWatchdog()
             audioFramesReceivedRef.current = 0
+            audibleAudioFramesRef.current = 0
+            maxPcmPeakRef.current = 0
             assistantTextRef.current = ""
           } else if (agentSpeakingRef.current) {
             void bargeIn()
@@ -1299,7 +1314,7 @@ export function useVoiceDuplexSession(options: Options) {
           if (!delta) return
           const firstAssistantText = assistantTextRef.current.length === 0
           assistantTextRef.current += delta
-          if (firstAssistantText && audioFramesReceivedRef.current === 0) {
+          if (firstAssistantText && audibleAudioFramesRef.current === 0) {
             armAudioReplyWatchdog()
           }
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)
@@ -1330,7 +1345,12 @@ export function useVoiceDuplexSession(options: Options) {
           const pcm = base64ToPcm16(msg.pcm16_b64)
           if (pcm.length > 0) {
             audioFramesReceivedRef.current += 1
-            clearAudioReplyWatchdog()
+            const energy = inspectPcm16Energy(pcm)
+            maxPcmPeakRef.current = Math.max(maxPcmPeakRef.current, energy.peak)
+            if (energy.audible) {
+              audibleAudioFramesRef.current += 1
+              clearAudioReplyWatchdog()
+            }
           }
           enqueuePcm(pcm, Number(msg.sample_rate) || 16000)
         }

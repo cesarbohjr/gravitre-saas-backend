@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/fetcher"
 
 export type VoiceOutputDiagnosticEvent =
   | "audio_missing"
+  | "audio_silent"
   | "output_unavailable"
   | "playback_blocked"
   | "playback_started"
@@ -14,6 +15,8 @@ export type VoiceOutputDiagnosticsPayload = {
   event: VoiceOutputDiagnosticEvent
   audio_context_state?: string | null
   pcm_frames_received?: number
+  audible_pcm_frames?: number
+  max_pcm_peak?: number
   fallback_triggered?: boolean
   playback_blocked?: boolean
   browser_audio_playback_started?: boolean

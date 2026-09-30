@@ -128,3 +128,31 @@ all.
 A `playback_started` event is supporting evidence that browser playback was
 scheduled/started. It still does not replace the physical acceptance rule:
 `VOICE_LIVE_PROVEN` requires a human to hear the response.
+
+
+## V7 silent-PCM physical-output hardening
+
+A non-empty PCM transport frame is not proof that useful audio reached the
+browser. A provider or transport can emit leading silence or zeroed/near-zero
+PCM while assistant text is already present.
+
+The browser now tracks separately:
+
+- total PCM frames received;
+- PCM frames with meaningful audible energy;
+- maximum observed PCM peak for the turn.
+
+The no-audio watchdog clears only after an audible-energy frame arrives. If the
+five-second window expires after assistant text and only silent PCM was received,
+the turn is classified as `audio_silent` and handed to the existing HTTP TTS
+recovery path. If zero PCM arrived, it remains `audio_missing`.
+
+The energy gate uses a deliberately low int16 threshold so normal quiet speech is
+accepted while digital silence, tiny transport noise, and isolated sample spikes
+do not falsely prove speech.
+
+Output diagnostics remain content-free: counts and peak level only, with no audio
+samples or transcript text.
+
+This still does not set `VOICE_LIVE_PROVEN`. Physical closure requires a human
+to hear the response in production.

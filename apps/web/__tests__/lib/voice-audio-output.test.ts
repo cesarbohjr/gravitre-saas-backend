@@ -34,7 +34,7 @@ describe("voice duplex audible output contract", () => {
   it("fails visibly when assistant text arrives but Pipecat never sends audio", () => {
     expect(hook).toMatch(/audioReplyWatchdogRef/)
     expect(hook).toMatch(/audioFramesReceivedRef/)
-    expect(hook).toMatch(/Voice reply arrived, but no audio was received/)
+    expect(hook).toMatch(/Voice reply arrived, but audible audio was not received/)
     expect(hook).toMatch(/armAudioReplyWatchdog\(\)/)
     expect(hook).toMatch(/clearAudioReplyWatchdog\(\)/)
   })
@@ -141,9 +141,26 @@ describe("voice text-only recovery ownership", () => {
 describe("voice physical-output telemetry", () => {
   it("records browser playback lifecycle evidence without audio payloads", () => {
     expect(hook).toMatch(/postVoiceOutputDiagnostics/)
-    expect(hook).toMatch(/emitOutputDiagnostic\("audio_missing"\)/)
+    expect(hook).toMatch(/"audio_silent" : "audio_missing"/)
     expect(hook).toMatch(/emitOutputDiagnostic\("playback_blocked"\)/)
     expect(hook).toMatch(/emitOutputDiagnostic\("playback_started"\)/)
     expect(hook).toMatch(/emitOutputDiagnostic\("playback_recovered"\)/)
+  })
+})
+
+
+describe("voice silent-PCM recovery", () => {
+  it("does not treat non-empty silent PCM as audible output", () => {
+    expect(hook).toMatch(/inspectPcm16Energy\(pcm\)/)
+    expect(hook).toMatch(/audibleAudioFramesRef/)
+    expect(hook).toMatch(/energy\.audible/)
+    expect(hook).toMatch(/audioFramesReceivedRef\.current > 0 \? "audio_silent" : "audio_missing"/)
+  })
+
+  it("clears the no-audio watchdog only after audible PCM energy arrives", () => {
+    const energy = hook.indexOf("if (energy.audible)")
+    const clear = hook.indexOf("clearAudioReplyWatchdog()", energy)
+    expect(energy).toBeGreaterThan(-1)
+    expect(clear).toBeGreaterThan(energy)
   })
 })
