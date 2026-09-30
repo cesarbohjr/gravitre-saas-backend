@@ -113,18 +113,27 @@ export default function ProfilePage() {
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      try {
-        const response = await authApi.uploadAvatar(file)
-        setContextAvatarImage(response.avatar_url)
-        await globalMutate("account-profile-me")
-        toast.success("Profile photo updated")
-        setShowAvatarModal(false)
-      } catch (err) {
-        console.error("[v0] Avatar upload failed:", err)
-        toast.error("Failed to upload profile photo")
-      }
+    const input = e.currentTarget
+    const file = input.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Profile photo must be 5MB or smaller")
+      input.value = ""
+      return
+    }
+    try {
+      setIsUploadingAvatar(true)
+      const response = await authApi.uploadAvatar(file)
+      setContextAvatarImage(response.avatar_url)
+      await globalMutate("account-profile-me")
+      toast.success("Profile photo updated")
+      setShowAvatarModal(false)
+    } catch (err) {
+      console.error("[v0] Avatar upload failed:", err)
+      toast.error(err instanceof Error ? err.message : "Failed to upload profile photo")
+    } finally {
+      setIsUploadingAvatar(false)
+      input.value = ""
     }
   }
 
