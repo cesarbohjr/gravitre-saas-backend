@@ -97,11 +97,44 @@ def test_speculative_interim_revision_is_material_change():
     assert speculative_interim_materially_changed("email sarah", "email mike") is True
 
 
-def test_split_speakable_chunks_aggressive_flushes_earlier():
-    ready_default, _ = split_speakable_chunks("Two plus two equals", min_chars=12, aggressive=False)
-    ready_aggressive, _ = split_speakable_chunks("Two plus two equals", min_chars=8, aggressive=True)
-    assert ready_default
-    assert ready_aggressive
+def test_split_speakable_chunks_keeps_partial_phrase_provisional():
+    ready_default, remainder_default = split_speakable_chunks(
+        "Two plus two equals",
+        min_chars=12,
+        aggressive=False,
+    )
+    ready_aggressive, remainder_aggressive = split_speakable_chunks(
+        "Two plus two equals",
+        min_chars=8,
+        aggressive=True,
+    )
+    assert ready_default == []
+    assert ready_aggressive == []
+    assert remainder_default == "Two plus two equals"
+    assert remainder_aggressive == "Two plus two equals"
+
+
+def test_split_speakable_chunks_releases_complete_sentence():
+    ready, remainder = split_speakable_chunks(
+        "Two plus two equals four. And",
+        min_chars=12,
+        aggressive=False,
+    )
+    assert ready == ["Two plus two equals four."]
+    assert remainder == "And"
+
+
+def test_split_speakable_chunks_has_bounded_long_text_escape_hatch():
+    text = (
+        "This is a deliberately long punctuation free spoken response that keeps adding "
+        "context about the user's request and continues with enough words to cross the "
+        "defensive ceiling without forcing every tiny streaming fragment into a new "
+        "synthetic sentence for the voice provider to restart from"
+    )
+    ready, remainder = split_speakable_chunks(text, min_chars=12, aggressive=False)
+    assert ready
+    assert remainder
+    assert len(ready[0]) >= 48
 
 
 def test_resolve_voice_tts_ab_eval_requires_allowlist():
