@@ -106,6 +106,78 @@ async def test_write_action_returns_confirm(connector_service):
 
 
 @pytest.mark.asyncio
+async def test_new_write_same_action_after_prior_success_stages_fresh_approval(connector_service):
+    """A prior successful connector action must not block a new explicit user write."""
+    prior_state = {
+        "connector_session": {
+            "stepOutputs": {
+                "send-1": {
+                    "invokeAction": "microsoft365.mail.send",
+                    "success": True,
+                    "summary": "Sent the first email.",
+                }
+            }
+        },
+        "pending_task": {
+            "type": "connector_action",
+            "status": "executed",
+            "params": {
+                "invoke_action": "microsoft365.mail.send",
+                "integration": "microsoft365",
+            },
+            "result": {"success": True, "summary": "Sent the first email."},
+        },
+    }
+    connector_service._state.get_task_state = AsyncMock(return_value=prior_state)
+
+    with patch.object(
+        connector_service,
+        "plan_action",
+        return_value=ConnectorActionPlan(
+            tool_name="microsoft365_send_mail",
+            invoke_action="microsoft365.mail.send",
+            integration="microsoft365",
+            kind="write",
+            label="Send email",
+            args={
+                "to": "stephanie@example.com",
+                "subject": "test 2",
+                "body": "This is another email from Gravitre.",
+            },
+            requires_approval=True,
+        ),
+    ), patch.object(
+        connector_service,
+        "_evaluate_risk",
+        AsyncMock(return_value={"requires_approval": True, "approval_reason": "Write action"}),
+    ), patch.object(
+        connector_service,
+        "_verify_plan_executable",
+        return_value=None,
+    ), patch.object(
+        connector_service,
+        "_user_can_approve_writes",
+        return_value=True,
+    ):
+        result = await connector_service.process_turn(
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            message="Send another email to Stephanie with subject test 2.",
+            classification={"intent": "workflow_execution", "risk_level": "medium"},
+            task_state=prior_state,
+            connected_integrations=["microsoft365"],
+            client=MagicMock(),
+        )
+
+    assert result is not None
+    assert result["dialogue_mode"] == "confirm"
+    assert result.get("replayed_write") is not True
+    assert result["pending_task"]["status"] == "awaiting_confirm"
+    assert result["pending_task"]["params"]["invoke_action"] == "microsoft365.mail.send"
+
+
+@pytest.mark.asyncio
 async def test_write_action_queues_for_non_approver(connector_service):
     with patch.object(
         connector_service,
