@@ -852,8 +852,8 @@ def _build_stream(
                 from app.services.response_composer import compose_reply_events
 
                 interrupted_copy = (
-                    "That response was interrupted before it finished. "
-                    "I haven't marked the action complete from this turn."
+                    "You stopped me before I finished that. "
+                    "I didn't complete anything from that turn, so we can pick it back up from where we left off."
                 )
                 packed = await compose_reply_events(
                     {"success": False, "data": {"text": interrupted_copy}, "cancelled": True},
