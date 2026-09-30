@@ -357,7 +357,15 @@ async def lifespan(app: FastAPI):
 
     if not _get_settings_lifespan().disable_ai:
         await _warm_unified_tool_embeds()
-    await _warm_pipecat_imports()
+
+    # Voice warmups are optimization only and must never hold Railway readiness.
+    # A cold Pipecat import previously cost the first live voice request ~13s, so
+    # still give it a short bounded head start. If it exceeds that window, let
+    # the worker become healthy while the import thread finishes in background.
+    try:
+        await asyncio.wait_for(_warm_pipecat_imports(), timeout=15.0)
+    except TimeoutError:
+        logger.warning("pipecat_warmup_timeout continuing_startup=true")
 
     async def _warm_voice_perceive_tts() -> None:
         from app.config import get_settings
@@ -372,7 +380,11 @@ async def lifespan(app: FastAPI):
         else:
             logger.debug("voice_perceive_tts_warmup_skipped")
 
-    await _warm_voice_perceive_tts()
+    # External TTS warming can be slow or provider-limited. Never await it before
+    # lifespan yields: health/readiness must represent the app, not ElevenLabs.
+    app.state.voice_perceive_warmup_task = asyncio.create_task(
+        _warm_voice_perceive_tts()
+    )
 
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
@@ -405,6 +417,15 @@ async def lifespan(app: FastAPI):
         await stop_memory_scheduler(getattr(app.state, "memory_expiration_task", None))
         await stop_cache_warming_scheduler(getattr(app.state, "cache_warming_task", None))
         await stop_agent_job_worker(getattr(app.state, "agent_job_task", None))
+        voice_warmup_task = getattr(app.state, "voice_perceive_warmup_task", None)
+        if voice_warmup_task is not None and not voice_warmup_task.done():
+            voice_warmup_task.cancel()
+            try:
+                await voice_warmup_task
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("voice_perceive_warmup_stop_skipped error=%s", exc)
         await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
 
 
