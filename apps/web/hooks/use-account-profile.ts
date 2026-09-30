@@ -37,12 +37,15 @@ export function useAccountProfile() {
         ? getInitials()
         : initialsFromDisplayName(displayName, user?.email ?? serverUser?.email)
 
-    const avatarUrl = resolveAvatarUrl(
-      serverUser?.avatar_url,
-      profileSynced ? profile.avatarImage : null,
-      user?.user_metadata?.avatar_url as string | undefined,
-      user?.user_metadata?.picture as string | undefined,
-    )
+    // Canonical photo is the server user row. Auth metadata is only a bootstrap
+    // until /api/auth/me has loaded, so Remove cannot disagree with the avatar.
+    const avatarUrl = serverUser
+      ? resolveAvatarUrl(serverUser.avatar_url, profileSynced ? profile.avatarImage : null)
+      : resolveAvatarUrl(
+          profileSynced ? profile.avatarImage : null,
+          user?.user_metadata?.avatar_url as string | undefined,
+          user?.user_metadata?.picture as string | undefined,
+        )
 
     return {
       displayName,

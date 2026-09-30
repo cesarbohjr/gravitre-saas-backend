@@ -13,7 +13,6 @@ describe("surface action UX regressions", () => {
 
   it("makes custom capability persistence state explicit", () => {
     const editor = readFileSync(resolve(webRoot, "components/gravitre/agent-profile-editors.tsx"), "utf8")
-    expect(editor).toMatch(/const dirty =/)
     expect(editor).toMatch(/Save capabilities/)
     expect(editor).toMatch(/disabled=\{saving \|\| !dirty\}/)
   })
@@ -22,6 +21,7 @@ describe("surface action UX regressions", () => {
     const studio = readFileSync(resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"), "utf8")
     expect(studio).toMatch(/Create or upload dataset/)
     expect(studio).toMatch(/Manage datasets and training runs/)
+    expect(studio).not.toMatch(/Open training workspace/)
     expect(studio).not.toMatch(/Open full training workspace/)
   })
 
@@ -29,6 +29,10 @@ describe("surface action UX regressions", () => {
     const profile = readFileSync(resolve(webRoot, "app/settings/profile/page.tsx"), "utf8")
     expect(profile).toMatch(/5 \* 1024 \* 1024/)
     expect(profile).toMatch(/setIsUploadingAvatar\(true\)/)
-    expect(profile).toMatch(/e\.target\.value = ""/)
+    expect(profile).toMatch(/hasProfilePhoto/)
+    expect(profile).toMatch(/Add photo/)
+    expect(profile).toMatch(/Change photo/)
+    expect(profile).toMatch(/Remove photo/)
+    expect(profile).toMatch(/input\.value = ""/)
   })
 })

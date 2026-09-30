@@ -17,12 +17,11 @@ describe("Model Studio external dataset connectors", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/Add data to your model/)
-    expect(studio).toMatch(/PREVIEW/)
     expect(studio).toMatch(/Browse free dataset providers, preview a dataset, then add it to your model/)
+    expect(studio).toMatch(/PREVIEW/)
+    expect(studio).toMatch(/Hugging Face/)
+    expect(studio).toMatch(/Kaggle/)
   })
-})
-
 
   it("selects providers from the canonical registry instead of hardcoding one adapter", () => {
     const studio = readFileSync(
@@ -35,6 +34,7 @@ describe("Model Studio external dataset connectors", () => {
     expect(studio).not.toMatch(/searchExternalDatasets\("huggingface"/)
     expect(studio).not.toMatch(/placeholder="Search Hugging Face datasets"/)
   })
+})
 
 
 describe("Model Studio external dataset reference binding", () => {
@@ -45,7 +45,7 @@ describe("Model Studio external dataset reference binding", () => {
     )
     expect(studio).toMatch(/trainingApi\.inspectExternalDataset\(externalProviderId, selectedExternalDatasetId\)/)
     expect(studio).toMatch(/data-review-surface="external-dataset-inspect"/)
-    expect(studio).toMatch(/materialized: no/)
+    expect(studio).toMatch(/Provider files are only imported when a supported materialization step is explicitly started/)
   })
 
   it("uses the existing admin-protected reference API with explicit purpose and target", () => {
@@ -65,7 +65,7 @@ describe("Model Studio external dataset reference binding", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/does not download, index, train, or fine-tune/)
+    expect(studio).toMatch(/Provider files are only imported when a supported materialization step is explicitly started/)
     expect(studio).not.toMatch(/materializeExternalDataset/)
     expect(studio).not.toMatch(/downloadExternalDataset/)
   })
@@ -121,10 +121,10 @@ describe("Model Studio user-first dataset picker", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/Add data to your model/)
+    expect(studio).toMatch(/Browse free dataset providers, preview a dataset, then add it to your model/)
     expect(studio).toMatch(/Search datasets/)
     expect(studio).toMatch(/Use dataset/)
-    expect(studio).toMatch(/Upload data/)
+    expect(studio).toMatch(/Create or upload dataset/)
   })
 
   it("defaults Model Studio dataset use to training with a model target", () => {
