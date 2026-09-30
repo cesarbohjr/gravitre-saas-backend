@@ -6,6 +6,10 @@ const webRoot = resolve(__dirname, "../..")
 const hook = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
 const aiWorkspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
 const agentPlayback = readFileSync(resolve(webRoot, "hooks/use-agent-voice-playback.ts"), "utf8")
+const outputDiagnosticsRoute = readFileSync(
+  resolve(webRoot, "app/api/voice/output-diagnostics/route.ts"),
+  "utf8",
+)
 
 describe("voice duplex audible output contract", () => {
   it("reuses the AudioContext unlocked by the user gesture", () => {
@@ -139,6 +143,11 @@ describe("voice text-only recovery ownership", () => {
 
 
 describe("voice physical-output telemetry", () => {
+  it("proxies browser diagnostics to the FastAPI persistence endpoint", () => {
+    expect(outputDiagnosticsRoute).toMatch(/proxyVoiceJson/)
+    expect(outputDiagnosticsRoute).toMatch(/\/api\/voice\/output-diagnostics/)
+  })
+
   it("records browser playback lifecycle evidence without audio payloads", () => {
     expect(hook).toMatch(/postVoiceOutputDiagnostics/)
     expect(hook).toMatch(/"audio_silent" : "audio_missing"/)
