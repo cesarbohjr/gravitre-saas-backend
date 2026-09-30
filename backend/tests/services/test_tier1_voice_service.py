@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.services.tier1_voice_service import (
+    CONVERSATIONAL_VOICE_SETTINGS,
     VoiceProviderError,
     normalize_elevenlabs_output_format,
     synthesize_speech,
