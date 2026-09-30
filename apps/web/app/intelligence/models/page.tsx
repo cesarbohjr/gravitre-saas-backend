@@ -135,7 +135,7 @@ export function BuiltInModelsPanel() {
 
   return (
     <div className="space-y-2">
-      <div className="px-4 pb-8 md:px-6 space-y-5">
+      <div className="space-y-5 px-[var(--np-page-pad-sm)] pb-8 sm:px-[var(--np-page-pad)]">
         {isLoading && !data ? (
           <p className="text-sm text-muted-foreground">Loading your org ML brain…</p>
         ) : items.length === 0 ? (
