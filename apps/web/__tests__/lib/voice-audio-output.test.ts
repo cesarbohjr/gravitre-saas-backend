@@ -147,3 +147,20 @@ describe("voice physical-output telemetry", () => {
     expect(hook).toMatch(/emitOutputDiagnostic\("playback_recovered"\)/)
   })
 })
+
+
+describe("voice silent-PCM recovery", () => {
+  it("does not treat non-empty silent PCM as audible output", () => {
+    expect(hook).toMatch(/inspectPcm16Energy\(pcm\)/)
+    expect(hook).toMatch(/audibleAudioFramesRef/)
+    expect(hook).toMatch(/energy\.audible/)
+    expect(hook).toMatch(/audioFramesReceivedRef\.current > 0 \? "audio_silent" : "audio_missing"/)
+  })
+
+  it("clears the no-audio watchdog only after audible PCM energy arrives", () => {
+    const energy = hook.indexOf("if (energy.audible)")
+    const clear = hook.indexOf("clearAudioReplyWatchdog()", energy)
+    expect(energy).toBeGreaterThan(-1)
+    expect(clear).toBeGreaterThan(energy)
+  })
+})
