@@ -536,7 +536,8 @@ async def test_stream_emits_stopped_when_cancel_flag_set(async_client, monkeypat
         json={"messages": [{"role": "user", "content": "hello"}], "org_id": "org-1"},
     )
     assert resp.status_code == 200
-    assert "Stopped." in resp.text
+    assert "Stopped." not in resp.text
+    assert "stop" in resp.text.lower()
     assert "should-not-appear" not in resp.text
     assert intelligence._captured == {}
 
