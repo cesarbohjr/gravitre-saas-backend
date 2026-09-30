@@ -18,6 +18,7 @@ def test_voice_output_diagnostics_only_accepts_known_lifecycle_events():
 
     for event in (
         "audio_missing",
+        "audio_silent",
         "output_unavailable",
         "playback_blocked",
         "playback_started",
@@ -26,3 +27,12 @@ def test_voice_output_diagnostics_only_accepts_known_lifecycle_events():
         assert event in source
 
     assert "Unsupported voice output diagnostic event" in source
+
+
+def test_voice_output_diagnostics_carries_pcm_energy_counts_only():
+    source = (ROOT / "app" / "routers" / "voice.py").read_text()
+
+    assert "audible_pcm_frames" in source
+    assert "max_pcm_peak" in source
+    assert '"contains_audio": False' in source
+    assert '"contains_transcript": False' in source
