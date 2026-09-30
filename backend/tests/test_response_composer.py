@@ -11,6 +11,7 @@ from app.services.response_composer import (
     compose_user_reply,
     emit_stream_error,
     looks_like_raw_backend,
+    looks_like_system_state_only,
 )
 from app.services.response_envelope import coerce_user_envelope
 from app.services.tool_types import NormalizedResult, ToolPermissionDeniedError
@@ -61,6 +62,48 @@ def test_looks_like_raw_backend_catches_known_leak_class():
     assert looks_like_raw_backend("I'd need assistant_connector_status to verify Clay.") is True
     assert looks_like_raw_backend("Call getConnectorStatus first.") is True
     assert looks_like_raw_backend('{"success": false, "error_code": "tool_error"}') is True
+
+
+def test_bare_lifecycle_words_are_detected_as_system_state_only():
+    assert looks_like_system_state_only("Stopped.")
+    assert looks_like_system_state_only("Failed")
+    assert looks_like_system_state_only("Pending.")
+    assert not looks_like_system_state_only("The email failed because the provider rejected it.")
+
+
+@pytest.mark.asyncio
+async def test_stopped_reply_never_surfaces_bare_system_state():
+    async def empty(**kwargs):
+        return ""
+
+    text = await compose_user_reply(
+        {"success": False, "cancelled": True, "data": {"text": "Stopped."}},
+        kind="stopped",
+        draft="Stopped.",
+        user_message="send the email",
+        org_id="org",
+        compose_fn=empty,
+    )
+    assert text.strip().lower() != "stopped."
+    assert "interrupted" in text.lower() or "finish" in text.lower()
+    assert "complete" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_bare_failed_canned_reply_is_composed_into_natural_language():
+    async def compose_fn(**kwargs):
+        return "I couldn't send the email because the provider rejected the request."
+
+    text = await compose_user_reply(
+        {"success": False, "data": {"text": "Failed."}},
+        kind="canned",
+        draft="Failed.",
+        user_message="send the email",
+        org_id="org",
+        compose_fn=compose_fn,
+    )
+    assert text != "Failed."
+    assert "email" in text.lower()
 
 
 def test_adopt_model_delta_drops_leaky_chunks():
