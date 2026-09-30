@@ -295,6 +295,9 @@ export function useVoiceDuplexSession(options: Options) {
         const recover = optsRef.current.onAudioMissing
         if (recover && !audioFallbackTriggeredRef.current) {
           audioFallbackTriggeredRef.current = true
+          // Keep the duplex mic's normal echo/barge-in behavior active while
+          // HTTP TTS owns audible output for this turn.
+          agentSpeakingRef.current = true
           setPresence("speaking")
           recover(assistantText)
           return
