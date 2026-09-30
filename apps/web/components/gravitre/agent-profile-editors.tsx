@@ -99,7 +99,7 @@ export function AgentPersonalityEditorCard({ agent, onSaved }: AgentPersonalityE
         department={agent.department}
         showVoiceConfigure={showVoiceConfigure}
       />
-      <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-3 border-t border-[color:var(--g-border-subtle)] bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mt-6 flex items-center justify-end gap-3 border-t border-[color:var(--g-border-subtle)] pt-4">
         <span aria-live="polite" className="mr-auto text-xs text-muted-foreground">
           {dirty ? "Unsaved changes" : "All changes saved"}
         </span>
