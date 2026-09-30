@@ -222,3 +222,38 @@ def test_write_status_sample_still_fact_consistent():
         ctx={"integration": "Gmail", "action_suffix": ""},
     )
     assert_fact_tokens_consistent(variants, ["Gmail", "Connected", "/connectors"])
+
+
+def test_conversational_banks_do_not_expose_operator_jargon():
+    keys = [
+        "conversational.greeting",
+        "conversational.small_talk",
+        "conversational.thanks",
+        "conversational.banter",
+        "conversational.venting",
+        "conversational.mixed_ack_greeting",
+    ]
+    forbidden = (
+        "connector run",
+        "one short clause of empathy",
+        "empathy first",
+        "handling the ask",
+        "connected tools, plans",
+    )
+    for key in keys:
+        for line in all_expressions(key):
+            low = line.lower()
+            assert all(token not in low for token in forbidden), (key, line)
+
+
+def test_meta_capability_bank_reads_like_conversation_not_runtime_docs():
+    variants = all_expressions(
+        "conversational.meta_capability",
+        ctx={"capability": "Connected right now: Apollo."},
+    )
+    assert variants
+    for line in variants:
+        low = line.lower()
+        assert "catalog write-authority" not in low
+        assert "decision queue" not in low
+        assert "generic chatbot" not in low
