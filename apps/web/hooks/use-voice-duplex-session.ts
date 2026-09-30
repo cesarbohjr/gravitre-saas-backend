@@ -73,6 +73,8 @@ export type DuplexLatencyStages = {
   speculative_saved_ms?: number
   /** Browser-side proof that audible playback was actually scheduled/started. */
   browser_audio_playback_started?: boolean
+  /** The live duplex path owns delivery/recovery for this turn even before audio proof arrives. */
+  duplex_transport_owned?: boolean
 }
 
 export type DuplexTurnResult = {
@@ -253,6 +255,10 @@ export function useVoiceDuplexSession(options: Options) {
   const pcmPlayOriginRef = useRef<number | null>(null)
   const assistantTextRef = useRef("")
   const lastUserFinalRef = useRef("")
+  // Pipecat keeps one websocket alive across many turns. Completion is per turn,
+  // not per socket. This guard prevents a close event from re-dispatching a turn
+  // already committed by the explicit assistant_turn.complete marker.
+  const pipecatTurnCompletionDispatchedRef = useRef(false)
   // Physical-output watchdog: a healthy text turn with zero audio frames is not
   // a successful voice turn. Keep this separate from autoplay blocking: that
   // path has audio but cannot play it; this path means TTS/audio transport never
@@ -1304,6 +1310,8 @@ export function useVoiceDuplexSession(options: Options) {
             audibleAudioFramesRef.current = 0
             maxPcmPeakRef.current = 0
             assistantTextRef.current = ""
+            turnIdRef.current = null
+            pipecatTurnCompletionDispatchedRef.current = false
           } else if (agentSpeakingRef.current) {
             void bargeIn()
           }
@@ -1318,6 +1326,27 @@ export function useVoiceDuplexSession(options: Options) {
             armAudioReplyWatchdog()
           }
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)
+          return
+        }
+        if (kind === "assistant_turn.complete") {
+          if (pipecatTurnCompletionDispatchedRef.current) return
+          const fallbackText = String(msg.text || "").trim()
+          const assistantText = assistantTextRef.current.trim() || fallbackText
+          const turnId = String(msg.turn_id || "").trim() || null
+          turnIdRef.current = turnId
+          pipecatTurnCompletionDispatchedRef.current = true
+          optsRef.current.onTurnComplete?.({
+            userText: lastUserFinalRef.current,
+            assistantText,
+            conversationId: optsRef.current.conversationId || null,
+            turnId,
+            cancelled: false,
+            events: [],
+            latency: {
+              browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+              duplex_transport_owned: true,
+            },
+          })
           return
         }
         if (kind === "speech.interrupted") {
@@ -1373,6 +1402,7 @@ export function useVoiceDuplexSession(options: Options) {
         // A completed turn is still worth reporting when the user hung up; on a
         // failure being retried it would end the turn mid-reconnect.
         if (
+          !pipecatTurnCompletionDispatchedRef.current &&
           (wasIntentional || reconnectTimerRef.current == null) &&
           (lastUserFinalRef.current || assistantTextRef.current)
         ) {
