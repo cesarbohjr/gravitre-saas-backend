@@ -288,6 +288,17 @@ export default function ProfilePage() {
                     <Camera className="h-4 w-4" />
                   </button>
                 </div>
+                <div className="flex flex-wrap items-center gap-2 md:self-center">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setShowAvatarModal(true)}>
+                    <Camera className="mr-2 h-4 w-4" />
+                    {profile.avatarImage || user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? "Change photo" : "Add photo"}
+                  </Button>
+                  {Boolean(profile.avatarImage || user?.user_metadata?.avatar_url || user?.user_metadata?.picture) && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => void handleRemoveAvatar()} className="text-destructive hover:text-destructive">
+                      Remove photo
+                    </Button>
+                  )}
+                </div>
 
                 {/* Avatar Upload Modal */}
                 {showAvatarModal && (
@@ -330,7 +341,7 @@ export default function ProfilePage() {
                           </div>
                         </button>
 
-                        {profile.avatarImage && (
+                        {Boolean(profile.avatarImage || user?.user_metadata?.avatar_url || user?.user_metadata?.picture) && (
                           <button
                             onClick={() => void handleRemoveAvatar()}
                             className="w-full flex items-center gap-3 p-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
