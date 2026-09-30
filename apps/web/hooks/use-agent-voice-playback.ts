@@ -56,10 +56,25 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
   const objectUrlRef = useRef<string | null>(null)
   const messageIdRef = useRef<string | null>(null)
   const playbackBlockedRef = useRef(false)
+  const webAudioSourceRef = useRef<AudioBufferSourceNode | null>(null)
 
   const stop = useCallback(() => {
     playbackBlockedRef.current = false
     setPlaybackBlocked(false)
+    if (webAudioSourceRef.current) {
+      try {
+        webAudioSourceRef.current.onended = null
+        webAudioSourceRef.current.stop()
+      } catch {
+        // Source may already have ended.
+      }
+      try {
+        webAudioSourceRef.current.disconnect()
+      } catch {
+        // Best-effort teardown.
+      }
+      webAudioSourceRef.current = null
+    }
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.src = ""
@@ -132,6 +147,46 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
       if (activePlaybackId && activePlaybackId !== options.messageId) {
         activeStop?.()
       }
+      // Prefer the already user-unlocked WebAudio context for synthesized
+      // recovery speech. HTMLMediaElement autoplay policy is separate from
+      // AudioContext policy, so a slow TTS round-trip could previously finish
+      // with a valid blob and still fail audio.play() after user activation
+      // expired. Decoding the same blob into the shared output context keeps
+      // recovery on the physical path unlocked by the Talk gesture.
+      const outputCtx = await unlockVoicePlayback()
+      if (outputCtx?.state === "running") {
+        try {
+          const encoded = await result.blob.arrayBuffer()
+          const buffer = await outputCtx.decodeAudioData(encoded.slice(0))
+          const source = outputCtx.createBufferSource()
+          source.buffer = buffer
+          source.connect(outputCtx.destination)
+          webAudioSourceRef.current = source
+          activePlaybackId = options.messageId
+          activeStop = stop
+          setIsSpeaking(true)
+          source.onended = () => {
+            if (webAudioSourceRef.current === source) {
+              webAudioSourceRef.current = null
+            }
+            stop()
+          }
+          source.start(0)
+          return
+        } catch {
+          // Some browsers/codecs may reject decodeAudioData for the returned
+          // container. Fall through to the retained HTMLAudio recovery path.
+          if (webAudioSourceRef.current) {
+            try {
+              webAudioSourceRef.current.disconnect()
+            } catch {
+              // Best-effort cleanup before HTMLAudio fallback.
+            }
+            webAudioSourceRef.current = null
+          }
+        }
+      }
+
       const url = URL.createObjectURL(result.blob)
       objectUrlRef.current = url
       const audio = new Audio(url)
@@ -139,7 +194,6 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
       activePlaybackId = options.messageId
       activeStop = stop
       setIsSpeaking(true)
-      await unlockVoicePlayback()
       audio.onended = () => stop()
       audio.onerror = () => {
         stop()
@@ -159,12 +213,12 @@ export function useAgentVoicePlayback(): AgentVoicePlayback {
           playbackBlockedRef.current = true
           setPlaybackBlocked(true)
           setServiceError(true)
-          setServiceDetail("Audio playback is blocked. Tap Talk once to enable sound, then try again.")
+          setServiceDetail("Audio playback is blocked. Tap Enable sound, then try again.")
           return
         }
         stop()
         setServiceError(true)
-        setServiceDetail("Audio playback is blocked. Tap Talk once to enable sound, then try again.")
+        setServiceDetail("Audio playback failed. Tap Enable sound, then try again.")
       }
     },
     [applyFailure, clearErrors, stop],

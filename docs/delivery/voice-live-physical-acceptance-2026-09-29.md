@@ -81,3 +81,25 @@ The code defect class has been hardened as far as can be established without a
 real speaker test. Do not change the status to `VOICE_LIVE_PROVEN` from CI,
 TTS provider success, transcript success, PCM receipt, or browser scheduling
 alone.
+
+
+## V5 recovery path hardening
+
+The text-only Pipecat recovery path now prefers the same user-unlocked WebAudio
+context used by duplex PCM before falling back to HTMLAudio.
+
+Why this matters:
+
+- HTTP TTS synthesis is asynchronous and can finish after the browser's transient
+  user-activation window expires.
+- `HTMLAudioElement.play()` can therefore be blocked even when the Talk gesture
+  already unlocked an AudioContext.
+- recovery TTS now decodes the returned audio blob with the shared running
+  AudioContext and schedules an AudioBufferSource directly;
+- HTMLAudio remains a codec/browser fallback;
+- if that fallback is blocked, the existing **Enable sound** recovery stays visible.
+
+This closes another silent-output class without changing the cognitive or TTS
+provider path.
+
+Physical closure still requires a human to hear production audio.
