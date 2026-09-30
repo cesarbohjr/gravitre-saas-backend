@@ -121,3 +121,18 @@ describe("voice recovery TTS physical output", () => {
     expect(agentPlayback).toMatch(/webAudioSourceRef\.current\.disconnect\(\)/)
   })
 })
+
+
+describe("voice text-only recovery ownership", () => {
+  it("prevents post-session auto-TTS from replaying a recovered turn", () => {
+    expect(aiWorkspace).toMatch(/voiceAudioRecoveryOwnsTurnRef/)
+    expect(aiWorkspace).toMatch(/voiceAudioRecoveryOwnsTurnRef\.current = true/)
+    expect(aiWorkspace).toMatch(/const recoveryOwnsTurn = voiceAudioRecoveryOwnsTurnRef\.current/)
+    expect(aiWorkspace).toMatch(/spokeDuringTurn \|\| recoveryOwnsTurn/)
+  })
+
+  it("resets recovery ownership at each new user turn and when leaving voice", () => {
+    const resets = aiWorkspace.match(/voiceAudioRecoveryOwnsTurnRef\.current = false/g) || []
+    expect(resets.length).toBeGreaterThanOrEqual(2)
+  })
+})
