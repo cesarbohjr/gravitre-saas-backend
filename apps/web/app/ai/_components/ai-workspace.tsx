@@ -1977,6 +1977,19 @@ export function AiWorkspace({
         console.info("voice.duplex.latency", result.latency)
       }
     },
+    onAudioMissing: (assistantText) => {
+      // Pipecat produced a valid cognitive response but no audio frames. Keep the
+      // live session and synthesize the exact response through the already-shipped
+      // HTTP TTS path instead of leaving the user with silent text.
+      setDuplexVoiceError(undefined)
+      void speakAgentVoice(assistantText, {
+        messageId: `voice-audio-recovery-${Date.now()}`,
+        agentId:
+          voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
+            ? selectedVoiceAgent.id
+            : undefined,
+      })
+    },
     onError: (message, billing) => {
       setDuplexVoiceError(message)
       if (billing) {
