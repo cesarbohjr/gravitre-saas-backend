@@ -10,7 +10,7 @@ import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import { Button } from "@/components/ui/button"
-import { mlModelsApi, trainingApi } from "@/lib/api"
+import { agentsApi, mlModelsApi, playsApi, trainingApi, workflowsApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import {
   STUDIO_INTENTS,
@@ -23,6 +23,48 @@ import { describeStatus } from "@/lib/intelligence/status-language"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { ArrowRight } from "@phosphor-icons/react"
+
+type ExternalDatasetPurpose =
+  | "reference"
+  | "benchmark"
+  | "runtime_retrieval"
+  | "rag"
+  | "evaluation"
+  | "testing"
+  | "fine_tuning"
+  | "training"
+  | "synthetic"
+  | "agent_benchmarking"
+
+type ExternalDatasetTargetType =
+  | "agent"
+  | "model"
+  | "department"
+  | "evaluation"
+  | "play"
+  | "workflow"
+
+const EXTERNAL_DATASET_PURPOSES: Array<{ value: ExternalDatasetPurpose; label: string }> = [
+  { value: "reference", label: "Reference" },
+  { value: "benchmark", label: "Benchmark" },
+  { value: "runtime_retrieval", label: "Runtime retrieval" },
+  { value: "rag", label: "RAG" },
+  { value: "evaluation", label: "Evaluation" },
+  { value: "testing", label: "Testing" },
+  { value: "fine_tuning", label: "Fine-tuning" },
+  { value: "training", label: "Training" },
+  { value: "synthetic", label: "Synthetic" },
+  { value: "agent_benchmarking", label: "Agent benchmarking" },
+]
+
+const EXTERNAL_DATASET_TARGETS: Array<{ value: ExternalDatasetTargetType; label: string }> = [
+  { value: "agent", label: "Agent" },
+  { value: "model", label: "Model" },
+  { value: "department", label: "Department" },
+  { value: "evaluation", label: "Evaluation" },
+  { value: "play", label: "Play" },
+  { value: "workflow", label: "Workflow" },
+]
 
 export function ModelStudioStage({
   enabled,
@@ -37,10 +79,45 @@ export function ModelStudioStage({
   const [externalQuery, setExternalQuery] = useState("")
   const [externalSearchTerm, setExternalSearchTerm] = useState("")
   const [externalProvider, setExternalProvider] = useState("")
+  const [selectedExternalDatasetId, setSelectedExternalDatasetId] = useState("")
+  const [externalPurpose, setExternalPurpose] = useState<ExternalDatasetPurpose>("reference")
+  const [externalTargetType, setExternalTargetType] = useState<ExternalDatasetTargetType>("play")
+  const [externalTargetId, setExternalTargetId] = useState("")
+  const [externalReferenceSaving, setExternalReferenceSaving] = useState(false)
+  const [externalReferenceError, setExternalReferenceError] = useState<string | null>(null)
+  const [externalReferenceSaved, setExternalReferenceSaved] = useState<string | null>(null)
 
   const { data: modelsData, isLoading: modelsLoading } = useSWR(
-    enabled && (segment === "evaluate" || segment === "deploy") ? "ml-models-list-studio" : null,
+    enabled &&
+      (segment === "evaluate" ||
+        segment === "deploy" ||
+        (segment === "train" && externalTargetType === "model"))
+      ? "ml-models-list-studio"
+      : null,
     () => mlModelsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: externalAgentsData } = useSWR(
+    enabled &&
+      segment === "train" &&
+      (externalTargetType === "agent" || externalTargetType === "department")
+      ? "external-dataset-target-agents"
+      : null,
+    () => agentsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: externalWorkflowsData } = useSWR(
+    enabled && segment === "train" && externalTargetType === "workflow"
+      ? "external-dataset-target-workflows"
+      : null,
+    () => workflowsApi.list(),
+    { revalidateOnFocus: false },
+  )
+  const { data: externalPlaysData } = useSWR(
+    enabled && segment === "train" && externalTargetType === "play"
+      ? "external-dataset-target-plays"
+      : null,
+    () => playsApi.list(),
     { revalidateOnFocus: false },
   )
   const { data: jobsData, isLoading: jobsLoading } = useSWR(
@@ -70,6 +147,24 @@ export function ModelStudioStage({
     () => trainingApi.searchExternalDatasets(externalProviderId, externalSearchTerm, 12),
     { revalidateOnFocus: false },
   )
+  const {
+    data: externalInspectData,
+    isLoading: externalInspectLoading,
+  } = useSWR(
+    enabled && segment === "train" && externalProviderId && selectedExternalDatasetId
+      ? ["external-dataset-inspect", externalProviderId, selectedExternalDatasetId]
+      : null,
+    () => trainingApi.inspectExternalDataset(externalProviderId, selectedExternalDatasetId),
+    { revalidateOnFocus: false },
+  )
+  const {
+    data: externalReferencesData,
+    mutate: mutateExternalReferences,
+  } = useSWR(
+    enabled && segment === "train" ? "external-dataset-references-studio" : null,
+    () => trainingApi.listExternalDatasetReferences(),
+    { revalidateOnFocus: false },
+  )
 
   const models = modelsData?.models ?? []
   const catalog = useMemo(() => models.map(formatModelCatalogRow), [models])
@@ -82,11 +177,83 @@ export function ModelStudioStage({
   const jobs = jobsData?.jobs ?? []
   const datasets = datasetsData?.datasets ?? []
   const externalDatasets = externalSearchData?.datasets ?? []
+  const selectedExternalDataset = externalInspectData?.dataset ?? null
+  const externalReferences = externalReferencesData?.references ?? []
+  const externalTargetOptions = useMemo(() => {
+    if (externalTargetType === "agent") {
+      return (externalAgentsData?.agents ?? []).map((agent) => ({
+        id: agent.id,
+        label: agent.name || agent.role || agent.id,
+      }))
+    }
+    if (externalTargetType === "model") {
+      return (modelsData?.models ?? []).map((model) => ({
+        id: model.id,
+        label: model.name || model.id,
+      }))
+    }
+    if (externalTargetType === "workflow") {
+      return (externalWorkflowsData?.workflows ?? []).map((workflow) => ({
+        id: workflow.id,
+        label: workflow.name || workflow.id,
+      }))
+    }
+    if (externalTargetType === "play") {
+      return (externalPlaysData?.plays ?? []).map((item) => ({
+        id: item.play.key,
+        label: item.play.name || item.play.key,
+      }))
+    }
+    if (externalTargetType === "department") {
+      const departments = new Set(
+        (externalAgentsData?.agents ?? [])
+          .map((agent) => String(agent.department || "").trim())
+          .filter(Boolean),
+      )
+      return Array.from(departments).sort().map((department) => ({
+        id: department,
+        label: department,
+      }))
+    }
+    return []
+  }, [
+    externalTargetType,
+    externalAgentsData,
+    externalWorkflowsData,
+    externalPlaysData,
+    modelsData,
+  ])
 
   function startCreate() {
     const params = new URLSearchParams({ action: "register" })
     if (intent) params.set("intent", intent)
     router.push(`${APP_ROUTES.models}?${params.toString()}`)
+  }
+
+  async function saveExternalDatasetReference() {
+    if (!externalProviderId || !selectedExternalDatasetId || !externalTargetId.trim()) return
+    setExternalReferenceSaving(true)
+    setExternalReferenceError(null)
+    setExternalReferenceSaved(null)
+    try {
+      await trainingApi.createExternalDatasetReference({
+        provider: externalProviderId,
+        datasetId: selectedExternalDatasetId,
+        purpose: externalPurpose,
+        targetType: externalTargetType,
+        targetId: externalTargetId.trim(),
+        accessMode: "reference",
+        metadata: { source: "model_studio" },
+      })
+      await mutateExternalReferences()
+      setExternalReferenceSaved("Reference added. No provider content was downloaded or materialized.")
+    } catch (error) {
+      setExternalReferenceError(
+        error instanceof Error ? error.message : "Could not add the dataset reference.",
+      )
+    } finally {
+      setExternalReferenceSaving(false)
+    }
   }
 
   return (
@@ -207,6 +374,9 @@ export function ModelStudioStage({
                       onChange={(event) => {
                         setExternalProvider(event.target.value)
                         setExternalSearchTerm("")
+                        setSelectedExternalDatasetId("")
+                        setExternalReferenceError(null)
+                        setExternalReferenceSaved(null)
                       }}
                       aria-label="External dataset provider"
                       className="border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
@@ -239,25 +409,155 @@ export function ModelStudioStage({
                   <p className="px-3 pb-3 text-sm text-muted-foreground">No matching external datasets.</p>
                 ) : externalDatasets.length > 0 ? (
                   <ul className="divide-y divide-divide border-t border-divide">
-                    {externalDatasets.map((dataset) => (
-                      <li
-                        key={dataset.dataset_id}
-                        className="grid gap-1 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{dataset.dataset_id}</p>
-                          <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>
-                            {dataset.gated || dataset.private
-                              ? "Restricted provider dataset — authorization required"
-                              : dataset.description || "Public provider metadata"}
+                    {externalDatasets.map((dataset) => {
+                      const restricted = dataset.gated || dataset.private
+                      const selected = selectedExternalDatasetId === dataset.dataset_id
+                      return (
+                        <li key={dataset.dataset_id}>
+                          <button
+                            type="button"
+                            disabled={restricted}
+                            aria-pressed={selected}
+                            onClick={() => {
+                              setSelectedExternalDatasetId(dataset.dataset_id)
+                              setExternalReferenceError(null)
+                              setExternalReferenceSaved(null)
+                            }}
+                            className={cn(
+                              "grid w-full gap-1 px-3 py-2.5 text-left sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4",
+                              restricted
+                                ? "cursor-not-allowed opacity-60"
+                                : selected
+                                  ? "bg-[color:var(--g-surface-2)]"
+                                  : "hover:bg-[color:var(--g-surface-2)]/50",
+                            )}
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">{dataset.dataset_id}</p>
+                              <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>
+                                {restricted
+                                  ? "Restricted provider dataset — authorization required"
+                                  : dataset.description || "Public provider metadata"}
+                              </p>
+                            </div>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {restricted ? "RESTRICTED" : "REFERENCE ONLY"}
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : null}
+
+                {selectedExternalDatasetId ? (
+                  <div className="border-t border-divide px-3 py-3" data-review-surface="external-dataset-inspect">
+                    {externalInspectLoading ? (
+                      <p className="text-sm text-muted-foreground">Inspecting provider metadata…</p>
+                    ) : selectedExternalDataset ? (
+                      <div className="space-y-3">
+                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{selectedExternalDataset.dataset_id}</p>
+                            <p className={cn(TYPE.meta, "mt-0.5")}>
+                              {selectedExternalDataset.description || "Provider metadata reference"}
+                            </p>
+                            <p className={cn(TYPE.meta, "mt-1")}>
+                              {selectedExternalDataset.fileCount ?? 0} files reported · materialized: no
+                            </p>
+                          </div>
+                          <span className="font-mono text-[10px] text-muted-foreground">REFERENCE ONLY</span>
+                        </div>
+
+                        <div className="grid gap-2 md:grid-cols-3">
+                          <label className="space-y-1">
+                            <span className={TYPE.meta}>Purpose</span>
+                            <select
+                              value={externalPurpose}
+                              onChange={(event) => setExternalPurpose(event.target.value as ExternalDatasetPurpose)}
+                              className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                            >
+                              {EXTERNAL_DATASET_PURPOSES.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="space-y-1">
+                            <span className={TYPE.meta}>Use with</span>
+                            <select
+                              value={externalTargetType}
+                              onChange={(event) => {
+                                setExternalTargetType(event.target.value as ExternalDatasetTargetType)
+                                setExternalTargetId("")
+                                setExternalReferenceError(null)
+                                setExternalReferenceSaved(null)
+                              }}
+                              className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                            >
+                              {EXTERNAL_DATASET_TARGETS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="space-y-1">
+                            <span className={TYPE.meta}>
+                              {externalTargetType === "evaluation" ? "Evaluation ID" : "Canonical target"}
+                            </span>
+                            {externalTargetType === "evaluation" ? (
+                              <input
+                                value={externalTargetId}
+                                onChange={(event) => setExternalTargetId(event.target.value)}
+                                placeholder="Existing evaluation ID"
+                                className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                              />
+                            ) : (
+                              <select
+                                value={externalTargetId}
+                                onChange={(event) => setExternalTargetId(event.target.value)}
+                                aria-label="Canonical dataset target"
+                                className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                              >
+                                <option value="">Select an existing target</option>
+                                {externalTargetOptions.map((option) => (
+                                  <option key={option.id} value={option.id}>{option.label}</option>
+                                ))}
+                              </select>
+                            )}
+                          </label>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!externalTargetId.trim() || externalReferenceSaving}
+                            onClick={() => void saveExternalDatasetReference()}
+                          >
+                            {externalReferenceSaving ? "Adding reference…" : "Add reference"}
+                          </Button>
+                          <p className={TYPE.meta}>
+                            This stores provider metadata and purpose only. It does not download, index, train, or fine-tune.
                           </p>
                         </div>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          REFERENCE ONLY
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                        {externalReferenceError ? (
+                          <p className="text-sm text-destructive">{externalReferenceError}</p>
+                        ) : null}
+                        {externalReferenceSaved ? (
+                          <p className="text-sm text-[color:var(--g-brand-active)]">{externalReferenceSaved}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Provider metadata is unavailable for this dataset.</p>
+                    )}
+                  </div>
+                ) : null}
+
+                {externalReferences.length > 0 ? (
+                  <div className="border-t border-divide px-3 py-2">
+                    <p className={TYPE.meta}>
+                      {externalReferences.length} external dataset reference{externalReferences.length === 1 ? "" : "s"} linked in this organization.
+                    </p>
+                  </div>
                 ) : null}
               </section>
               {datasetsLoading ? (
