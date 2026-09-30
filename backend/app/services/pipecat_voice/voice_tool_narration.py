@@ -203,8 +203,17 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
     if output.get("success") is False or output.get("error"):
         err = str(output.get("error") or output.get("message") or "").strip()
         if not err:
-            return f"That didn't go through when checking {_humanize_tool_name(tool_name)}."
-        return f"That didn't go through — {err[:140]}."
+            return f"I couldn't finish that check on {_humanize_tool_name(tool_name)}."
+        try:
+            from app.services.response_composer import looks_like_raw_backend
+            from app.services.user_facing_copy_guard import finalize_user_facing_message
+
+            cleaned = finalize_user_facing_message(err[:140], context="voice_tool_narration")
+            if cleaned and not looks_like_raw_backend(cleaned):
+                return f"I couldn't finish that step — {cleaned}."
+        except Exception:  # noqa: BLE001
+            pass
+        return "I couldn't finish that step."
     if is_write_shaped_tool_name(tool_name) and output.get("success") is True:
         # CONFIRMED — Phase 3. Only ever reached from a real, returned
         # tool-output-available observation reporting success=True; never
@@ -218,11 +227,11 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
         rows = output.get(key)
         if isinstance(rows, list):
             n = len(rows)
-            return f"Found {n}." if n else None
+            return f"I found {n}." if n else None
     for key in _COUNT_KEYS:
         val = output.get(key)
         if isinstance(val, int):
-            return f"Found {val}." if val else None
+            return f"I found {val}." if val else None
     return None
 
 

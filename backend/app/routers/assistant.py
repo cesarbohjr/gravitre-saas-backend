@@ -851,10 +851,14 @@ def _build_stream(
             if not assistant_text:
                 from app.services.response_composer import compose_reply_events
 
+                interrupted_copy = (
+                    "You stopped me before I finished that. "
+                    "I didn't complete anything from that turn, so we can pick it back up from where we left off."
+                )
                 packed = await compose_reply_events(
-                    {"success": False, "data": {"text": "Stopped."}, "cancelled": True},
+                    {"success": False, "data": {"text": interrupted_copy}, "cancelled": True},
                     kind="stopped",
-                    draft="Stopped.",
+                    draft=interrupted_copy,
                     user_message=user_text,
                     settings=settings,
                     org_id=org_id,
@@ -862,7 +866,7 @@ def _build_stream(
                     user_id=user_id,
                     conversation_id=conversation_id,
                 )
-                assistant_text = packed.text or "Stopped."
+                assistant_text = packed.text or interrupted_copy
                 for ev in packed.events:
                     yield assistant_event_to_sse_line(ev)
             logger.info(

@@ -122,6 +122,26 @@ def test_unrelated_hold_prompt_names_pending():
     assert "Send Gmail" in msg or "gmail" in msg.lower()
 
 
+def test_pending_copy_humanizes_raw_catalog_action_key():
+    state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": {
+                "invoke_action": "microsoft365.mail.send",
+                "integration": "microsoft365",
+                "requires_approval": True,
+                "args": {"to": "stephanie@example.com", "subject": "test"},
+            },
+        }
+    }
+    snap = build_pending_snapshot(state)
+    message = format_pending_meta_answer(snap)
+    assert "microsoft365.mail.send" not in message
+    assert "approval" in message.lower()
+    assert "stephanie@example.com" in message
+
+
 def test_ambiguous_asks_not_guesses():
     state = _gmail_awaiting_params_state()
     snap = build_pending_snapshot(state)

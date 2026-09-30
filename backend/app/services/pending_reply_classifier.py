@@ -149,6 +149,23 @@ def _pending_action_args(state: dict[str, Any], params: dict[str, Any]) -> dict[
     return out
 
 
+def _friendly_pending_label(snap: PendingSnapshot, fallback: str) -> str:
+    raw = str(snap.action_label or snap.invoke_action or fallback).strip()
+    if not raw:
+        return fallback
+    try:
+        from app.services.user_facing_copy_guard import humanize_catalog_action_key
+
+        human = humanize_catalog_action_key(raw)
+        if human and human != raw:
+            return human
+    except Exception:  # noqa: BLE001
+        pass
+    if "." in raw or "_" in raw:
+        return raw.replace(".", " ").replace("_", " ").strip().title()
+    return raw
+
+
 def _pending_action_proof_line(snap: PendingSnapshot) -> str:
     args = snap.action_args or {}
     to = str(args.get("to") or args.get("email") or "").strip()
@@ -550,12 +567,12 @@ def format_pending_meta_answer(snap: PendingSnapshot) -> str:
             action_label=snap.action_label or snap.invoke_action or "this action",
         )
     if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
-        label = snap.action_label or "the pending write"
+        label = _friendly_pending_label(snap, "this action")
         proof = _pending_action_proof_line(snap)
         base = (
-            f"I'm waiting for your approval to run **{label}**."
+            f"**{label}** is ready, but I still need your approval before it runs."
             + (f"\n{proof}" if proof else "")
-            + "\nReply **yes** to proceed, **cancel** to abort, or tell me what to change."
+            + "\nReply **yes** to approve it, **cancel** to drop it, or tell me what to change."
         )
         return base
     if snap.status in {"awaiting_plan_confirm", "awaiting_step_confirm"} or snap.has_current_plan:
@@ -573,8 +590,7 @@ def format_pending_meta_answer(snap: PendingSnapshot) -> str:
 
 def format_unrelated_hold_prompt(snap: PendingSnapshot, *, new_request: str) -> str:
     pending_label = (
-        snap.action_label
-        or snap.invoke_action
+        _friendly_pending_label(snap, "")
         or snap.plan_goal
         or "the previous pending request"
     )
@@ -600,12 +616,12 @@ def format_ambiguous_clarify(snap: PendingSnapshot) -> str:
             "Reply with those values, ask what format I need, or say **cancel**."
         )
     if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
-        label = snap.action_label or "the pending write"
+        label = _friendly_pending_label(snap, "this action")
         proof = _pending_action_proof_line(snap)
         return (
-            f"I still have **{label}** waiting for approval."
+            f"**{label}** is still waiting for your approval."
             + (f"\n{proof}" if proof else "")
-            + "\nSay **yes** to run it, **cancel** to drop it, or describe a change."
+            + "\nSay **yes** to approve it, **cancel** to drop it, or tell me what to change."
         )
     if snap.plan_goal or snap.status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
         goal = snap.plan_goal or "the pending plan"

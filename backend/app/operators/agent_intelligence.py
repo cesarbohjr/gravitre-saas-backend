@@ -1693,6 +1693,7 @@ class AgentIntelligence:
                         **loop_trace.to_sse(),
                     },
                 )
+                delivered_text = response_text
                 if str(response_text or "").strip():
                     spoken_hold = (
                         "I have the plan and I have not executed anything. "
@@ -1717,10 +1718,11 @@ class AgentIntelligence:
                         user_id=user_id,
                         conversation_id=conversation_id,
                     )
+                    delivered_text = packed.text
                     for ev in packed.events:
                         yield ev
                 yield AssistantStreamComplete(
-                    full_content=response_text,
+                    full_content=delivered_text,
                     tool_results=[],
                     react_result=None,
                     model="plan_hold_orchestration",
@@ -4041,6 +4043,7 @@ class AgentIntelligence:
                             kind="plan_hold",
                             existing_text_id=spoken_progress_text_id,
                         )
+                        plan_hold_full = packed.text
                         for ev in packed.events:
                             yield ev
                     yield AssistantStreamComplete(

@@ -79,3 +79,20 @@ def test_typed_prompt_still_carries_presentation() -> None:
     typed = build_module_d_unified_system_prompt(agent=agent)
     assert "### 11. Presentation (typed replies)" in typed
     assert "Register 5" not in typed or typed.count("Register 5") >= 0
+
+
+def test_system_state_language_rule_applies_platform_wide() -> None:
+    text = conversational_behavior_section()
+    assert "### 12. Translate system state into human conversation" in text
+    assert "Stopped." in text
+    assert "typed replies, voice replies, canned/shortcut replies" in text
+    assert "Truth still wins over smoothness" in text
+
+
+def test_system_state_language_rule_reaches_typed_and_spoken_prompts() -> None:
+    agent = {"id": "a1", "name": "Sales Agent", "department": "sales"}
+    typed = build_module_d_unified_system_prompt(agent=agent)
+    spoken = build_module_d_unified_system_prompt(agent=agent, spoken_mode=True)
+    marker = "Translate system state into human conversation"
+    assert marker in typed
+    assert marker in spoken

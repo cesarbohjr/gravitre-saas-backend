@@ -48,25 +48,26 @@ MUST_COMPOSE_KINDS = frozenset(
         "shortcut",
         "correction",
         "request_failed",
+        "stopped",
     }
 )
 
 # Last-resort blocked-register copy if the compose LLM itself fails.
 # Never include the underlying error_detail. Internally labeled composer_fallback.
 _FALLBACK_BY_KIND: dict[str, str] = {
-    "permission": "You don't have permission to do that. Check access and I'll pick this back up.",
-    "timeout": "That took too long on the system side. I didn't finish it — want me to retry?",
-    "validation": "I'm missing something I need before I can do that.",
-    "clarify": "I need one specific thing before I go further — what's the target?",
-    "error": "That didn't go through. I can retry, or we can try a different approach.",
-    "request_failed": "I couldn't complete that just now. Try again in a moment.",
-    "shortcut": "Here's the short version — tell me what you want to do next.",
-    "correction": "Got it, I'll use that from here.",
-    "canned": "I have that. What should we do with it?",
-    "progress": "I'm working through this now.",
-    "workflow_waiting": "This workflow is waiting on you before it can continue.",
+    "permission": "You don't have access to do that yet. If that permission changes, I can pick it back up.",
+    "timeout": "That took too long and didn't finish. You can try it again.",
+    "validation": "I'm missing one detail before I can do that.",
+    "clarify": "I need one detail before I can continue — what's the target?",
+    "error": "That didn't go through, and I didn't complete the action.",
+    "request_failed": "I couldn't finish that just now. Try it again in a moment.",
+    "shortcut": "Here's the short version.",
+    "correction": "Got it — I'll use that from here.",
+    "canned": "I have that.",
+    "progress": "I'm working on it now.",
+    "workflow_waiting": "This is waiting for your input before it can continue.",
     "success": "Done.",
-    "stopped": "Stopped.",
+    "stopped": "You stopped me before I finished that. I didn't complete anything from that turn, so we can pick it back up from where we left off.",
 }
 
 _LEAK_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -106,6 +107,20 @@ _SUCCESS_CLAIM = re.compile(
 )
 
 _CODE_AS_MESSAGE = re.compile(r"^[a-z][a-z0-9_]{2,}$")
+
+# Bare orchestration/lifecycle words are implementation state, not useful dialogue.
+# Force them through the Response Composer instead of surfacing strings such as
+# "Stopped.", "Failed.", or "Pending." directly in the conversation.
+_SYSTEM_STATE_ONLY = re.compile(
+    r"^\s*(?:stopped|failed|pending|blocked|cancelled|canceled|not started|"
+    r"did not complete|complete|completed)\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def looks_like_system_state_only(text: str | None) -> bool:
+    return bool(_SYSTEM_STATE_ONLY.match((text or "").strip()))
+
 
 
 def align_composed_text_to_lifecycle(
@@ -345,6 +360,12 @@ def _system_prompt(*, spoken: bool) -> str:
         "If the outcome is ambiguous, ask ONE specific clarifying question and stop.\n"
         "If the outcome is success, be concise. Same voice as a success message — "
         "never switch into a scripted-assistant or error-template register.\n"
+        "Never answer with a bare lifecycle word such as 'Stopped.', 'Failed.', "
+        "'Pending.', 'Blocked.', or 'Complete.'. Translate system state into normal "
+        "conversation: say what happened in plain English, keep it brief, and give the "
+        "next useful move only when it helps. Prefer 'You stopped me before I finished' "
+        "over system-style wording such as 'The response was interrupted.' Do not expose "
+        "orchestration vocabulary as dialogue.\n"
         "Never invent record counts, revenue, tickets, deals, invoices, traffic, "
         "or workflow outcomes. Only state those facts when the envelope includes "
         "provider_result_evidence from a completed provider observation.\n"
@@ -475,7 +496,12 @@ async def compose_user_reply(
     if not blocks_raw and isinstance(env.get("data"), dict):
         blocks_raw = env["data"].get("response_blocks")
     structured_blocks = blocks_from_dicts(blocks_raw if isinstance(blocks_raw, list) else None)
-    must_compose = resolved_kind in MUST_COMPOSE_KINDS or looks_like_raw_backend(draft)
+    system_state_only = looks_like_system_state_only(draft)
+    must_compose = (
+        resolved_kind in MUST_COMPOSE_KINDS
+        or looks_like_raw_backend(draft)
+        or system_state_only
+    )
     if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
         must_compose = False
     if resolved_kind == "plan_hold" and draft and not looks_like_raw_backend(draft):
@@ -518,6 +544,11 @@ async def compose_user_reply(
         == "AWAITING_APPROVAL"
     ):
         must_compose = False
+    # Bare lifecycle/system-state copy must never bypass the composer, even when
+    # the surrounding outcome would normally use a prewritten canned response.
+    # This check is repeated after the bypass rules below so "Stopped." cannot be
+    # re-enabled by a literal/canned optimization.
+
     # P2: sealed operational READ already produced a complete canned draft with
     # provider evidence. A second LLM rewrite is not Composer authority — skip it.
     if (
@@ -569,6 +600,9 @@ async def compose_user_reply(
         and not looks_like_raw_backend(draft)
     ):
         must_compose = False
+    if system_state_only:
+        must_compose = True
+
     used_model = False
     fallback = False
     text = (draft or "").strip()

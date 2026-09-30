@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unified live multi-turn verify: conversational rules 1–10 across surfaces.
+"""Unified live multi-turn verify: conversational rules across surfaces.
 
 Surfaces: Marketing, Sales, Legal, HR, Cybersecurity, default assistant (no agent_id).
 One verification round — not a separate wave2 pass.
@@ -66,6 +66,15 @@ SCRIPTED_OPEN = re.compile(
     rf"(?i)^(great question|good question|excellent question|absolutely[!.,]?|"
     rf"sure[!.,]? so you (want|need)|so you(?:{_AP}re| are) asking)"
 )
+SYSTEM_STATE_ONLY = re.compile(
+    r"(?i)^\s*(stopped|failed|pending|blocked|complete|completed|cancelled|canceled|not started)\.?\s*$"
+)
+INTERNAL_DIALOGUE_LEAK = re.compile(
+    r"(?i)\b(catalog write-authority|pending_task|execution_result|"
+    r"AWAITING_APPROVAL|EXECUTED_UNVERIFIED|OUTCOME_UNCERTAIN|"
+    r"[a-z0-9_]+\.[a-z0-9_.]+\.(send|create|update|delete))\b"
+)
+
 TRAILING_OFFER = re.compile(
     rf"(?i)(would you like me to|want me to (?:help|dig|draft|look|pull|check)|"
     rf"shall i|let me know if you(?:{_AP}d| would) like)\b.*\?\s*$"
@@ -452,6 +461,11 @@ def score_surface(
                 scripted = True
     lengths = [len((t.get("assistant") or "").split()) for t in turns]
     vary = (max(lengths) - min(lengths) >= 10) if lengths else False
+    human_state_language = all(
+        not SYSTEM_STATE_ONLY.search((turn.get("assistant") or "").strip())
+        and not INTERNAL_DIALOGUE_LEAK.search(turn.get("assistant") or "")
+        for turn in turns
+    )
     checks = {
         "ask_before_assuming": clarify,
         "reference_prior_turns": prior,
@@ -465,6 +479,7 @@ def score_surface(
         "avoid_scripted_patterns": not scripted,
         "vary_response_shape": vary,
         "dont_over_answer_signal": brief,
+        "human_state_language": human_state_language,
     }
     required = [
         "ask_before_assuming",
@@ -476,6 +491,7 @@ def score_surface(
         "push_back_when_warranted",
         "avoid_scripted_patterns",
         "vary_response_shape",
+        "human_state_language",
     ]
     checks["pass"] = all(checks[k] for k in required)
     checks["late_correction_reply"] = t8[:280]
@@ -677,7 +693,7 @@ async def main() -> int:
     all_pass = passed == total and total > 0
     artifact = {
         "feature": "conversational_behavior_all_surfaces",
-        "rules": list(range(1, 11)),
+        "rules": list(range(1, 13)),
         "label": LABEL,
         "checkedAt": utcnow(),
         "git_sha": tip,
@@ -688,7 +704,7 @@ async def main() -> int:
         "total": total,
         "results": results,
         "note": (
-            "Unified rules 1–10 multi-turn pass across Marketing, Sales, Legal, HR, "
+            "Unified conversational-behavior multi-turn pass across Marketing, Sales, Legal, HR, "
             "Cybersecurity, and default assistant. Legal/HR/Cyber seeded into isolated "
             "test org when absent."
         ),

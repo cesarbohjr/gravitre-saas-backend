@@ -150,7 +150,7 @@ class TestToolCompletedNarration:
         _, tts = _drive(events)
 
         full = " ".join(tts).lower()
-        assert "didn't go through" in full
+        assert "couldn't finish that step" in full
         assert "salesforce rejected the field update" in full
 
     def test_opaque_output_with_no_sayable_shape_stays_silent(self) -> None:
@@ -179,7 +179,7 @@ class TestToolCompletedNarration:
         # pushed spoken segment now carries a trailing space so consecutive
         # TTS frames are never glued together with no separator (see
         # `_push_spoken_text`) — assert the exact fixed value, not a substring.
-        assert tts == ["Found 1. "]
+        assert tts == ["I found 1. "]
 
 
 class TestPhase3HonestWriteStateSpeechEndToEnd:
@@ -217,7 +217,7 @@ class TestPhase3HonestWriteStateSpeechEndToEnd:
 
         assert tts == [
             "I'm updating that now. ",
-            "That didn't go through — Salesforce rejected: stage is locked. ",
+            "I couldn't finish that step — Salesforce rejected: stage is locked. ",
         ]
         assert not any("done" in c.lower() for c in tts)
 

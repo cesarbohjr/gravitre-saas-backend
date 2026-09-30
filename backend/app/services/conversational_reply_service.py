@@ -74,9 +74,9 @@ def build_capability_snapshot(
         )
     return (
         f"{connectors_line} "
-        "Writes go through catalog write-authority with explicit approval when required "
-        "(Decision Queue / reply **yes**). I can also help with multi-step plans, "
-        "run history, and marketplace intelligence packs once connectors are Connected."
+        "If you ask me to make a change in one of those systems, I'll ask for approval "
+        "when it's required. I can also help you work through multi-step tasks, review "
+        "past activity, and use the intelligence available in your workspace."
     )
 
 
@@ -101,17 +101,15 @@ def phrase_for_conversational_category(
         return text
     # Unbound / missing bank — stable house defaults (index 0 equivalents).
     defaults = {
-        "conversational.greeting": "Hey — here when you need a connector run, a plan, or a quick check.",
-        "conversational.small_talk": (
-            "Doing well — here when you need a connector run, a plan, or a quick check."
-        ),
-        "conversational.thanks": "You're welcome. Ready when you are.",
-        "conversational.banter": "Ha — noted. What should we tackle next?",
+        "conversational.greeting": "Hey — what can I help you with?",
+        "conversational.small_talk": "Doing well, thanks. What's on your mind?",
+        "conversational.thanks": "You're welcome.",
+        "conversational.banter": "Ha — fair.",
         "conversational.venting": (
-            "That's a rough spot. Tell me the one check you want first and we'll start there."
+            "That's rough. Let's start with the thing that needs attention first."
         ),
         "conversational.meta_capability": (
-            f"I am Gravitre — a calm operator for your Connected tools. {ctx.get('capability', '')}"
+            f"I'm Gravitre. I can help you think through the work and use your connected tools when you want to take action. {ctx.get('capability', '')}"
         ).strip(),
     }
     return defaults.get(key, defaults["conversational.small_talk"])
