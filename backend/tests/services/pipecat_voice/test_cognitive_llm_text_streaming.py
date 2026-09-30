@@ -192,3 +192,50 @@ def test_operator_ads_brief_uses_agent_intelligence_mode() -> None:
         asyncio.run(service._run_gravitre_turn(_FakeContext()))
 
     assert captured.get("mode") == "agent"
+
+
+def test_completed_pipecat_turn_emits_explicit_browser_completion_marker() -> None:
+    async def _fake_stream(**_kwargs: Any):
+        yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": "Hello there."})
+        yield AssistantStreamComplete(
+            full_content="Hello there.",
+            tool_results=[],
+            react_result=None,
+            model="test",
+            message_id="turn-123",
+        )
+
+    fake_intelligence = type(
+        "FakeIntelligence", (), {"execute_task_streaming": staticmethod(_fake_stream)}
+    )()
+    service = GravitreCognitiveLLMService(
+        app_settings=object(),
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+    )
+    messages: list[dict[str, Any]] = []
+
+    async def _capture_push_frame(frame: Any, *_a: Any, **_kw: Any) -> None:
+        message = getattr(frame, "message", None)
+        if isinstance(message, dict):
+            messages.append(message)
+
+    service.push_frame = AsyncMock(side_effect=_capture_push_frame)
+    service._push_llm_text = AsyncMock()
+    service.start_ttfb_metrics = AsyncMock()
+    service.stop_ttfb_metrics = AsyncMock()
+
+    class _FakeContext:
+        def get_messages(self) -> list[dict[str, Any]]:
+            return [{"role": "user", "content": "hello"}]
+
+    with patch(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        return_value=fake_intelligence,
+    ):
+        asyncio.run(service._run_gravitre_turn(_FakeContext()))
+
+    complete = [m for m in messages if m.get("type") == "assistant_turn.complete"]
+    assert len(complete) == 1
+    assert complete[0]["turn_id"] == "turn-123"
+    assert complete[0]["text"] == "Hello there."
