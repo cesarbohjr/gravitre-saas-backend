@@ -1707,24 +1707,11 @@ class ChatConnectorExecutionService:
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return self._turn_from_execution(execution, refreshed, plan)
 
-        from app.services.action_lifecycle import existing_successful_write
-
-        already_written = existing_successful_write(task_state, invoke_action=plan.invoke_action)
-        if already_written:
-            summary = str(
-                already_written.get("summary")
-                or "That write already completed. I did not run it again."
-            )
-            refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
-            return {
-                "stop_pipeline": True,
-                "dialogue_mode": "answer",
-                "message": summary,
-                "task_state": refreshed,
-                "provider_invoked": False,
-                "replayed_write": True,
-            }
-
+        # A fresh user instruction is a fresh logical action, even when it uses the
+        # same connector capability as a prior successful write. Replay protection
+        # belongs to the frozen pending action / execution claim below, not to the
+        # connector action name. Blocking here by invoke_action made legitimate
+        # follow-ups such as "send another email" look like accidental retries.
         pending_status = "awaiting_confirm" if user_can_approve else "awaiting_admin_approval"
         pending_params = {**pending_params, "status": pending_status}
         approval_id: str | None = None
