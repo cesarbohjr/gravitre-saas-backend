@@ -17,9 +17,9 @@ describe("Model Studio external dataset connectors", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/External dataset connectors/)
-    expect(studio).toMatch(/REFERENCE ONLY/)
-    expect(studio).toMatch(/Nothing is downloaded or added to training automatically/)
+    expect(studio).toMatch(/Add data to your model/)
+    expect(studio).toMatch(/PREVIEW/)
+    expect(studio).toMatch(/Browse free dataset providers, preview a dataset, then add it to your model/)
   })
 })
 
@@ -31,7 +31,7 @@ describe("Model Studio external dataset connectors", () => {
     )
     expect(studio).toMatch(/externalProviderId/)
     expect(studio).toMatch(/trainingApi\.searchExternalDatasets\(externalProviderId/)
-    expect(studio).toMatch(/External dataset provider/)
+    expect(studio).toMatch(/Dataset provider/)
     expect(studio).not.toMatch(/searchExternalDatasets\("huggingface"/)
     expect(studio).not.toMatch(/placeholder="Search Hugging Face datasets"/)
   })
@@ -111,5 +111,28 @@ describe("Model Studio canonical dataset targets", () => {
     )
     expect(studio).toMatch(/setExternalTargetType/)
     expect(studio).toMatch(/setExternalTargetId\(""\)/)
+  })
+})
+
+
+describe("Model Studio user-first dataset picker", () => {
+  it("uses task language instead of connector/reference language for primary actions", () => {
+    const studio = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
+      "utf8",
+    )
+    expect(studio).toMatch(/Add data to your model/)
+    expect(studio).toMatch(/Search datasets/)
+    expect(studio).toMatch(/Use dataset/)
+    expect(studio).toMatch(/Upload data/)
+  })
+
+  it("defaults Model Studio dataset use to training with a model target", () => {
+    const studio = readFileSync(
+      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
+      "utf8",
+    )
+    expect(studio).toMatch(/useState<ExternalDatasetPurpose>\("training"\)/)
+    expect(studio).toMatch(/useState<ExternalDatasetTargetType>\("model"\)/)
   })
 })
