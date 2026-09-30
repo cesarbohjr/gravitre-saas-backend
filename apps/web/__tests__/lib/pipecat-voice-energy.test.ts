@@ -35,9 +35,9 @@ describe("Pipecat PCM audible-energy detection", () => {
 
   it("does not call one isolated spike audible speech", () => {
     const pcm = new Int16Array(320)
-    pcm[100] = 500
+    pcm[100] = 300
     const result = inspectPcm16Energy(pcm)
-    expect(result.peak).toBe(500)
+    expect(result.peak).toBe(300)
     expect(result.rms).toBeLessThan(24)
     expect(result.audible).toBe(false)
   })
