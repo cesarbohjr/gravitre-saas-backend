@@ -132,7 +132,7 @@ describe("voice text-only recovery ownership", () => {
     expect(aiWorkspace).toMatch(/voiceAudioRecoveryOwnsTurnRef/)
     expect(aiWorkspace).toMatch(/voiceAudioRecoveryOwnsTurnRef\.current = true/)
     expect(aiWorkspace).toMatch(/const recoveryOwnsTurn = voiceAudioRecoveryOwnsTurnRef\.current/)
-    expect(aiWorkspace).toMatch(/spokeDuringTurn \|\| recoveryOwnsTurn/)
+    expect(aiWorkspace).toMatch(/spokeDuringTurn \\|\\| duplexOwnsTurn \\|\\| recoveryOwnsTurn/)
   })
 
   it("resets recovery ownership at each new user turn and when leaving voice", () => {
