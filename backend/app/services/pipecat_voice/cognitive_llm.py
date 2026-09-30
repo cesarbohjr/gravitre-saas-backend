@@ -364,6 +364,23 @@ class GravitreCognitiveLLMService(LLMService):
             tts_chunk_v2=chunk_tuning.v2_enabled,
         )
         if complete_event is not None:
+            # The websocket stays open across many spoken turns. The browser therefore
+            # cannot use socket close as a turn boundary. Emit an explicit completion
+            # marker after the final assistant text has been flushed so the live UI can
+            # commit this turn immediately without requiring the Talk orb to unmount.
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={
+                        "type": "assistant_turn.complete",
+                        "turn_id": str(getattr(complete_event, "message_id", None) or ""),
+                        # Client text deltas remain the primary transcript because they
+                        # include real narration; full_content is only a fallback when
+                        # no delta survived to the browser.
+                        "text": str(getattr(complete_event, "full_content", None) or ""),
+                    }
+                )
+            )
+
             from app.services.pipecat_voice.voice_latency_metrics import record_voice_slo_metric
             from app.services.voice_slo import METRIC_B_ID, operator_task_for_metric_b
 
