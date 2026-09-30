@@ -564,10 +564,10 @@ export function ModelStudioStage({
                 <p className="text-sm text-muted-foreground">Loading datasets…</p>
               ) : datasets.length === 0 ? (
                 <EmptyState
-                  title="Choose data for your model"
-                  description="Browse Hugging Face or Kaggle above, or upload and manage your own training data in the training workspace."
+                  title="Upload your own training data"
+                  description="Create or upload a private dataset for training. Free public datasets from Hugging Face and Kaggle can be added above."
                   action={{
-                    label: "Upload data",
+                    label: "Create or upload dataset",
                     onClick: () => {
                       window.location.href = APP_ROUTES.training
                     },
@@ -586,7 +586,7 @@ export function ModelStudioStage({
                 href={APP_ROUTES.training}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
               >
-                Open full training workspace
+                Manage datasets and training runs
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
