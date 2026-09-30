@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 
 const webRoot = resolve(__dirname, "../..")
 const hook = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
+const aiWorkspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
 
 describe("voice duplex audible output contract", () => {
   it("reuses the AudioContext unlocked by the user gesture", () => {
@@ -59,5 +60,23 @@ describe("voice physical-output failure handling", () => {
     expect(capture).toBeGreaterThan(-1)
     expect(stop).toBeGreaterThan(capture)
     expect(send).toBeGreaterThan(stop)
+  })
+})
+
+
+describe("voice playback proof vs provider TTFA", () => {
+  it("records browser playback only after WebAudio or HTMLAudio actually starts", () => {
+    expect(hook).toMatch(/browserAudioPlaybackStartedRef\.current = true/)
+    expect(hook).toMatch(/browser_audio_playback_started: true/)
+  })
+
+  it("resets browser playback proof at the beginning of a new turn", () => {
+    expect(hook).toMatch(/browserAudioPlaybackStartedRef\.current = false/)
+    expect(hook).toMatch(/browser_audio_playback_started: false/)
+  })
+
+  it("does not treat server TTFA as proof the human heard audio", () => {
+    expect(aiWorkspace).toMatch(/result\.latency\?\.browser_audio_playback_started === true/)
+    expect(aiWorkspace).not.toMatch(/spokeDuringTurn = typeof result\.latency\?\.session_ttfa_ms/)
   })
 })
