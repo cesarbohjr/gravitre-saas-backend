@@ -138,6 +138,12 @@ Production backend deployment of the dataset connector merge is confirmed.
 
 Live authenticated proof remains a distinct gate and is not replaced by CI.
 
+The GET-only production proof harness is now merged to main. It intentionally
+requires a real authenticated bearer token and tenant id; no auth bypass or
+fixture token is permitted. Until an authorized session is supplied:
+
+`PLAYS_DATASET_LIVE_API_PROOF = BLOCKED: NO AUTHORIZED SESSION`
+
 ## Governance state
 
 - tenant scope enforced in Play read models and migrations;
@@ -164,13 +170,39 @@ Dataset connector exact head:
 
 CI_PROVEN and DEPLOYED do not equal authenticated LIVE_API_PROVEN.
 
+### Live-proof harness deployment
+
+The read-only Plays + dataset proof harness was merged to main as:
+
+`28045b04899fdc5d491929ca033ddc75161e1dee`
+
+- exact-head PR CI: PASS
+- main push CI: PASS, including Integration Smoke
+- Vercel production: READY on `gravitre.app`
+- Railway deploy for this merge: SKIPPED because the merge contained harness/web
+  changes only; the backend API implementation was already deployed successfully
+  in the preceding Plays/dataset/voice production lineage.
+- live authenticated route proof: BLOCKED — no authorized bearer/org session is
+  available to the automation.
+
+The harness performs GET requests only and cannot bind workflows, execute
+connector WRITE actions, create Play outcomes, or materialize external datasets.
+
 ## Next sequence
 
-1. run the authenticated GET-only Plays + dataset live proof against production;
-2. prove one canonical Play workflow binding in a non-destructive authorized environment;
+1. when an authorized user session is available, run the already-merged
+   authenticated GET-only Plays + dataset live proof against production;
+2. in a separately authorized non-destructive environment, prove one canonical
+   Play workflow binding;
 3. prove ACTIONED evidence linkage against that bound workflow;
 4. prove a real source-of-record business measurement before any VERIFIED SUCCESS;
 5. keep external dataset references non-materializing unless an explicit later
    materialization contract is approved and implemented;
-6. keep physical voice-to-voice acceptance as a separate release-quality gate:
-   code hardening may pass CI, but closure requires a human to hear production audio.
+6. do not add dataset providers merely for breadth before the live proof;
+7. keep physical voice-to-voice acceptance as a separate release-quality gate:
+   browser/runtime hardening may pass CI, but closure requires a human to hear
+   production audio.
+
+Independent implementation work is complete enough that the remaining Play
+proof steps are authorization/data-dependent rather than reasons to invent a
+second runtime or synthetic business results.
