@@ -70,9 +70,6 @@ function hasFailedStep(result: ChatExecutionResult): boolean {
 export function deriveAiRuntimeState(input: AiRuntimeStateInput): AiRuntimeState {
   if (input.status === "error") return "failed"
 
-  const result = input.executionResult
-  if (result && result.success === false) return "failed"
-
   if (input.confirmExecuting) return "generating"
 
   if (isApprovalPanelVisible(input)) {
@@ -81,6 +78,9 @@ export function deriveAiRuntimeState(input: AiRuntimeStateInput): AiRuntimeState
 
   if (input.status === "streaming" || input.isStreaming) return "streaming"
   if (input.status === "submitted" || input.isBusy) return "generating"
+
+  const result = input.executionResult
+  if (result && result.success === false) return "failed"
 
   if (input.canContinueAfterStop) return "partial"
 
