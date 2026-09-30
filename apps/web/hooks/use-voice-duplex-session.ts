@@ -73,6 +73,8 @@ export type DuplexLatencyStages = {
   speculative_saved_ms?: number
   /** Browser-side proof that audible playback was actually scheduled/started. */
   browser_audio_playback_started?: boolean
+  /** The live duplex path owns delivery/recovery for this turn even before audio proof arrives. */
+  duplex_transport_owned?: boolean
 }
 
 export type DuplexTurnResult = {
@@ -1342,6 +1344,7 @@ export function useVoiceDuplexSession(options: Options) {
             events: [],
             latency: {
               browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+              duplex_transport_owned: true,
             },
           })
           return
