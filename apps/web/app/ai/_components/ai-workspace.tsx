@@ -387,6 +387,11 @@ export function AiWorkspace({
   const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
   const [duplexVoiceError, setDuplexVoiceError] = useState<string | undefined>()
   const lastSpokenMessageIdRef = useRef<string | null>(null)
+  // When Pipecat hands a text-only turn to HTTP TTS, that recovery path owns
+  // audible delivery for the turn even if the browser temporarily blocks it.
+  // Track ownership separately from proof-of-playback so post-session auto-TTS
+  // cannot synthesize the same assistant reply a second time.
+  const voiceAudioRecoveryOwnsTurnRef = useRef(false)
   const {
     isSpeaking: ttsSpeaking,
     billingIssue: voiceBilling,
@@ -1916,6 +1921,7 @@ export function AiWorkspace({
       modalityRef.current = "voice"
       setModality("voice")
       setDuplexVoiceError(undefined)
+      voiceAudioRecoveryOwnsTurnRef.current = false
     },
     onConversationId: (id) => {
       if (!id) return
@@ -1929,6 +1935,8 @@ export function AiWorkspace({
       setDuplexVoiceError(undefined)
       const stamp = Date.now()
       const spokeDuringTurn = result.latency?.browser_audio_playback_started === true
+      const recoveryOwnsTurn = voiceAudioRecoveryOwnsTurnRef.current
+      voiceAudioRecoveryOwnsTurnRef.current = false
       const userId = `voice-user-${result.turnId || stamp}`
       const assistantId = `voice-assistant-${result.turnId || stamp}`
       setMessages((prev) => {
@@ -1961,10 +1969,13 @@ export function AiWorkspace({
               latency: result.latency,
             },
           } as (typeof prev)[number])
-          // Only mark as already-spoken when duplex TTS actually started.
-          // If duplex audio failed, allow post-turn /api/voice/tts fallback to speak it.
+          // Duplex playback proof and text-only recovery ownership are separate:
+          // - spokeDuringTurn means Pipecat/browser playback actually started;
+          // - recoveryOwnsTurn means the exact reply was handed to HTTP TTS,
+          //   which either plays it or retains it behind Enable sound.
+          // In both cases post-session auto-TTS must not create a duplicate reply.
           lastSpokenMessageIdRef.current =
-            spokeDuringTurn && !result.cancelled ? assistantId : null
+            (spokeDuringTurn || recoveryOwnsTurn) && !result.cancelled ? assistantId : null
         }
         const conversationId = activeConversationIdRef.current || result.conversationId
         if (conversationId && next.length > 0) {
@@ -1980,7 +1991,10 @@ export function AiWorkspace({
     onAudioMissing: (assistantText) => {
       // Pipecat produced a valid cognitive response but no audio frames. Keep the
       // live session and synthesize the exact response through the already-shipped
-      // HTTP TTS path instead of leaving the user with silent text.
+      // HTTP TTS path instead of leaving the user with silent text. Ownership
+      // transfers immediately so a later session stop cannot trigger a duplicate
+      // auto-TTS replay of this same assistant message.
+      voiceAudioRecoveryOwnsTurnRef.current = true
       setDuplexVoiceError(undefined)
       void speakAgentVoice(assistantText, {
         messageId: `voice-audio-recovery-${Date.now()}`,
@@ -2048,6 +2062,7 @@ export function AiWorkspace({
       clearVoiceErrors()
       setDuplexVoiceError(undefined)
       lastSpokenMessageIdRef.current = null
+      voiceAudioRecoveryOwnsTurnRef.current = false
       if (duplexIsActive) stopDuplex()
     }
   }, [modality, stopAgentVoice, clearVoiceErrors, duplexIsActive, stopDuplex])
