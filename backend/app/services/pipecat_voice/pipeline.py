@@ -60,6 +60,10 @@ DISALLOWED_LIVE_CONVERSATIONAL_TTS_MODELS: frozenset[str] = frozenset(
     {"eleven_multilingual_v2", "eleven_turbo_v2", "eleven_turbo_v2_5"}
 )
 SAFE_LIVE_CONVERSATIONAL_TTS_MODEL = "eleven_flash_v2_5"
+# Keep STT/mic capture at 16 kHz, but synthesize browser playback at 24 kHz.
+# The frontend decodes the sample_rate carried on each PCM frame, so the two
+# directions do not need to share one rate.
+LIVE_VOICE_OUTPUT_SAMPLE_RATE = 24000
 
 
 def resolve_voice_and_tts_model(
@@ -160,7 +164,7 @@ def build_pipecat_voice_task(
             audio_in_enabled=True,
             audio_out_enabled=True,
             audio_in_sample_rate=16000,
-            audio_out_sample_rate=16000,
+            audio_out_sample_rate=LIVE_VOICE_OUTPUT_SAMPLE_RATE,
             audio_in_channels=1,
             audio_out_channels=1,
             audio_in_filter=krisp_filter,
@@ -209,7 +213,10 @@ def build_pipecat_voice_task(
         api_key=el_key,
         voice_id=voice_id,
         model=str(model),
-        sample_rate=16000,
+        sample_rate=LIVE_VOICE_OUTPUT_SAMPLE_RATE,
+        # auto_mode has the lowest latency but expects full sentences. The
+        # cognitive bridge now preserves partial phrases until sentence
+        # boundaries, so we get the latency benefit without fragmentary prosody.
         auto_mode=True,
         params=ElevenLabsTTSService.InputParams(
             stability=float(CONVERSATIONAL_VOICE_SETTINGS["stability"]),
@@ -379,6 +386,7 @@ def build_pipecat_voice_task(
         "conversation_id": conversation_id,
         "tts_model": str(model),
         "tts_transport": "websocket",
+        "tts_output_sample_rate": LIVE_VOICE_OUTPUT_SAMPLE_RATE,
         "tts_warmup": "elevenlabs_ws_preconnect",
         "tts_idle_expiry_s": 45,
         "barge_in": "elevenlabs_interrupt_report",
