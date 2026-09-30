@@ -108,6 +108,12 @@ type Options = {
   onSpeechInterrupted?: (info: SpeechInterruptedInfo) => void
   onTurnComplete?: (result: DuplexTurnResult) => void
   onError?: (message: string, billing?: boolean) => void
+  /**
+   * Recovery path when Pipecat produces assistant text but no audio frames.
+   * The caller may synthesize that exact reply through the existing HTTP TTS
+   * path; late Pipecat PCM for that turn is ignored to prevent double speech.
+   */
+  onAudioMissing?: (assistantText: string) => void
   onConversationId?: (id: string) => void
 }
 
@@ -254,6 +260,9 @@ export function useVoiceDuplexSession(options: Options) {
   // Do not confuse server/provider TTFA with browser playback. This flag flips
   // only after WebAudio/HTMLAudio successfully starts on the client.
   const browserAudioPlaybackStartedRef = useRef(false)
+  // Once the no-audio watchdog hands the turn to HTTP TTS, suppress any late
+  // Pipecat PCM for that same turn so two voices never speak the reply at once.
+  const audioFallbackTriggeredRef = useRef(false)
   // Output-path diagnostics stay browser-local. A running AudioContext can still
   // be suspended by the browser after the initial Talk gesture; listen for that
   // transition so the UI surfaces Enable sound instead of silently losing audio.
@@ -282,6 +291,14 @@ export function useVoiceDuplexSession(options: Options) {
         assistantTextRef.current.trim() &&
         audioFramesReceivedRef.current === 0
       ) {
+        const assistantText = assistantTextRef.current.trim()
+        const recover = optsRef.current.onAudioMissing
+        if (recover && !audioFallbackTriggeredRef.current) {
+          audioFallbackTriggeredRef.current = true
+          setPresence("speaking")
+          recover(assistantText)
+          return
+        }
         setPresence("error")
         optsRef.current.onError?.(
           "Voice reply arrived, but no audio was received. Try again.",
@@ -308,6 +325,7 @@ export function useVoiceDuplexSession(options: Options) {
     clearAudioReplyWatchdog()
     audioFramesReceivedRef.current = 0
     browserAudioPlaybackStartedRef.current = false
+    audioFallbackTriggeredRef.current = false
     playingRef.current = false
     audioQueueRef.current = []
     playbackWiredRef.current = false
@@ -1222,6 +1240,7 @@ export function useVoiceDuplexSession(options: Options) {
           if (msg.final) {
             lastUserFinalRef.current = text
             browserAudioPlaybackStartedRef.current = false
+            audioFallbackTriggeredRef.current = false
             setLatency((prev) => ({ ...prev, browser_audio_playback_started: false }))
             optsRef.current.onUserFinal?.(text)
             setProvisionalTranscript("")
@@ -1264,6 +1283,9 @@ export function useVoiceDuplexSession(options: Options) {
           return
         }
         if (kind === "audio" && typeof msg.pcm16_b64 === "string") {
+          // HTTP TTS owns this turn after the no-audio watchdog fires. A late
+          // provider frame must not create overlapping speech.
+          if (audioFallbackTriggeredRef.current) return
           const pcm = base64ToPcm16(msg.pcm16_b64)
           if (pcm.length > 0) {
             audioFramesReceivedRef.current += 1
