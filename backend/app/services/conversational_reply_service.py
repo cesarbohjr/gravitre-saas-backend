@@ -74,9 +74,9 @@ def build_capability_snapshot(
         )
     return (
         f"{connectors_line} "
-        "Writes go through catalog write-authority with explicit approval when required "
-        "(Decision Queue / reply **yes**). I can also help with multi-step plans, "
-        "run history, and marketplace intelligence packs once connectors are Connected."
+        "If you ask me to make a change in one of those systems, I'll ask for approval "
+        "when it's required. I can also help you work through multi-step tasks, review "
+        "past activity, and use the intelligence available in your workspace."
     )
 
 
