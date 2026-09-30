@@ -58,8 +58,8 @@ export function deriveMissionStages(input: {
   hostedFiles?: HostedFileRef[] | null
 }): MissionStage[] {
   const { messages, runtimeState, progressSteps, pendingTask, executionResult, hostedFiles } = input
-  const objective = textOf(messages.find((message) => message.role === "user"))
   const lastUserIndex = messages.map((message) => message.role).lastIndexOf("user")
+  const objective = lastUserIndex >= 0 ? textOf(messages[lastUserIndex]) : null
   const turnReplied = messages.slice(lastUserIndex + 1).some((message) => message.role === "assistant" && textOf(message))
   const planSteps = progressSteps?.length ?? pendingTask?.params?.steps?.length ?? pendingTask?.params?.total_steps ?? 0
   const artifactCount = (hostedFiles?.length ?? 0) + (executionResult?.artifacts?.length ?? 0)
@@ -72,6 +72,11 @@ export function deriveMissionStages(input: {
   const failed = runtimeState === "failed" || executionResult?.success === false
   const partial = runtimeState === "partial"
   const delivered = executionResult?.success === true && !partial
+  const pendingStatus = String(pendingTask?.status || "").toLowerCase()
+  const approvalWasRequired = pendingTask?.params?.requires_approval === true
+  const approvalResolved =
+    approvalWasRequired &&
+    ["executed", "completed", "verified", "failed", "cancelled", "rejected", "declined"].includes(pendingStatus)
 
   const stages: Record<MissionStageId, Omit<MissionStage, "id" | "label">> = {
     objective: objective ? { state: "complete", detail: objective } : { state: "pending", detail: "Waiting for your request" },
@@ -104,7 +109,7 @@ export function deriveMissionStages(input: {
         ? { state: "approval", detail: "Waiting for your decision" }
         : runtimeState === "blocked"
           ? { state: "blocked", detail: "Queued for an approver" }
-          : pendingTask || executionResult
+          : approvalResolved
             ? { state: "complete", detail: "Resolved" }
             : { state: "not_needed", detail: "Not requested" },
     result: failed

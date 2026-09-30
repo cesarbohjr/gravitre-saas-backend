@@ -658,9 +658,9 @@ export function AiWorkspace({
         return
       }
       const payload = dataPart.data as {
-        dialogueMode?: string
-        executionResult?: ChatExecutionResult
-        pendingTask?: ChatPendingTask
+        dialogueMode?: string | null
+        executionResult?: ChatExecutionResult | null
+        pendingTask?: ChatPendingTask | null
         businessSignals?: BusinessSignal[]
         strategicPlan?: typeof strategicPlan
         advisorBrief?: AdvisorBrief
@@ -674,8 +674,8 @@ export function AiWorkspace({
         userStatus?: { label?: string | null }
         connectedIntegrations?: string[]
       }
-      if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
-      if (payload.pendingTask) setPendingTask(payload.pendingTask)
+      if ("dialogueMode" in payload) setDialogueMode(payload.dialogueMode ?? null)
+      if ("pendingTask" in payload) setPendingTask(payload.pendingTask ?? null)
       if (payload.taskState) setTaskState(payload.taskState)
       if (payload.strategicPlan) setStrategicPlan(payload.strategicPlan)
       if (payload.advisorBrief) setAdvisorBrief(payload.advisorBrief)
@@ -698,9 +698,9 @@ export function AiWorkspace({
       if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
         setActiveBusinessSignals(payload.businessSignals)
       }
-      if (payload.executionResult) {
-        setExecutionResult(payload.executionResult)
-        if (payload.executionResult.success && notifications) {
+      if ("executionResult" in payload) {
+        setExecutionResult(payload.executionResult ?? null)
+        if (payload.executionResult?.success && notifications) {
           const resultUrl = payload.executionResult.result_url ?? undefined
           notifications.addNotification({
             type: "task_complete",
@@ -776,9 +776,11 @@ export function AiWorkspace({
         if (data?.task_state) {
           setTaskState(data.task_state as typeof taskState)
         }
-        const stored = data?.execution_result as ChatExecutionResult | undefined
+        const stored = data?.execution_result as ChatExecutionResult | null | undefined
         if (stored && (stored.artifacts?.length || stored.body || stored.title)) {
           setExecutionResult(stored)
+        } else if (stored === null) {
+          setExecutionResult(null)
         }
       },
     },
@@ -1659,6 +1661,7 @@ export function AiWorkspace({
         prompt ||
         "Please read the attached connected file(s) and summarize the key points I should know."
 
+      setExecutionResult(null)
       setSessionBusy(true)
       recordCanonicalChatSubmit({
         surface: agentScopeRef.current ? "agent_chat" : "ai_chat",

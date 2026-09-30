@@ -33,12 +33,14 @@ export function GravitreAIWorkCanvas({
     pendingTask?.params?.goal ||
     pendingTask?.params?.label ||
     "Work"
-  const body =
-    executionResult?.structured?.completionCard?.whatHappened ||
-    executionResult?.structured?.whatThisMeans ||
-    executionResult?.body ||
-    (pendingTask ? "Awaiting confirmation." : null)
   const ok = executionResult?.success
+  const body =
+    ok === false
+      ? executionResult?.body || executionResult?.structured?.whatThisMeans || null
+      : executionResult?.structured?.completionCard?.whatHappened ||
+        executionResult?.structured?.whatThisMeans ||
+        executionResult?.body ||
+        (pendingTask ? "Awaiting confirmation." : null)
   const rows = executionResult ? canonicalArtifactRows(executionResult) : []
   const planId = executionResult?.structured?.plan_id || executionResult?.entity_id
   const observationIds =

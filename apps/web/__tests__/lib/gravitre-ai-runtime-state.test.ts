@@ -80,6 +80,25 @@ describe("deriveAiRuntimeState — every state comes from a real bridge prop", (
     expect(deriveAiRuntimeState({ ...base, executionResult: { success: true } })).toBe("completed")
   })
 
+
+  it("lets a live new turn outrank a stale failed result", () => {
+    expect(
+      deriveAiRuntimeState({
+        ...base,
+        status: "submitted",
+        executionResult: { success: false, body: "Previous turn failed." },
+      }),
+    ).toBe("generating")
+
+    expect(
+      deriveAiRuntimeState({
+        ...base,
+        status: "streaming",
+        executionResult: { success: false, body: "Previous turn failed." },
+      }),
+    ).toBe("streaming")
+  })
+
   it("an in-flight turn outranks a stale completed result", () => {
     expect(deriveAiRuntimeState({ ...base, status: "streaming", executionResult: { success: true } })).toBe("streaming")
   })
