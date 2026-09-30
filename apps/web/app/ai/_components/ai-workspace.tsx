@@ -1935,6 +1935,7 @@ export function AiWorkspace({
       setDuplexVoiceError(undefined)
       const stamp = Date.now()
       const spokeDuringTurn = result.latency?.browser_audio_playback_started === true
+      const duplexOwnsTurn = result.latency?.duplex_transport_owned === true
       const recoveryOwnsTurn = voiceAudioRecoveryOwnsTurnRef.current
       voiceAudioRecoveryOwnsTurnRef.current = false
       const userId = `voice-user-${result.turnId || stamp}`
