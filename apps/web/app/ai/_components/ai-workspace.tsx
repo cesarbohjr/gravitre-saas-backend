@@ -1928,7 +1928,7 @@ export function AiWorkspace({
       if (result.cancelled && !result.assistantText.trim()) return
       setDuplexVoiceError(undefined)
       const stamp = Date.now()
-      const spokeDuringTurn = typeof result.latency?.session_ttfa_ms === "number"
+      const spokeDuringTurn = result.latency?.browser_audio_playback_started === true
       const userId = `voice-user-${result.turnId || stamp}`
       const assistantId = `voice-assistant-${result.turnId || stamp}`
       setMessages((prev) => {
