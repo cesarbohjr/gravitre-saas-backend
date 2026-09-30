@@ -45,7 +45,7 @@ describe("Model Studio external dataset reference binding", () => {
     )
     expect(studio).toMatch(/trainingApi\.inspectExternalDataset\(externalProviderId, selectedExternalDatasetId\)/)
     expect(studio).toMatch(/data-review-surface="external-dataset-inspect"/)
-    expect(studio).toMatch(/materialized: no/)
+    expect(studio).toMatch(/Provider files are only imported when a supported materialization step is explicitly started/)
   })
 
   it("uses the existing admin-protected reference API with explicit purpose and target", () => {
