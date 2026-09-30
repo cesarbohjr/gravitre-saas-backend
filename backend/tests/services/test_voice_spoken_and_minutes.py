@@ -51,17 +51,15 @@ def test_split_speakable_chunks_earlier_clause_flush():
     """Spoken TTFA cut: flush a long clause before the old 80-char bar."""
     buf = "Gravitre helps teams automate connected workflows across systems and agents"
     ready, rem = split_speakable_chunks(buf, min_chars=12)
-    assert ready, "expected an earlier clause flush"
-    assert len(ready[0]) >= 12
+    assert ready == []
+    assert rem == buf
 
 
 def test_split_speakable_chunks_short_answer_mid_sentence_flush():
     """Short answers must not wait for '.' — flush once a first clause exists."""
     ready, rem = split_speakable_chunks("Two plus two equals", min_chars=12)
-    assert ready, "expected mid-sentence flush before terminal punctuation"
-    assert ready[0].startswith("Two")
-    assert len(ready[0]) >= 12
-    assert rem  # remainder kept for the next delta
+    assert ready == []
+    assert rem == "Two plus two equals"
 
 
 def test_spoken_conversational_prompt_omits_few_shots():

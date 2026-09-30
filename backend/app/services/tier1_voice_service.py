@@ -76,12 +76,15 @@ LATENCY_TARGETS_MS = {
     "end_to_end_feels_human_ms": (700, 900),
 }
 
-# Medium expressiveness for live conversational TTS (HTTP + Pipecat).
-# Lower stability + moderate style = more natural variation than the old flat demo defaults.
+# Natural conversational baseline shared by HTTP + Pipecat.
+# Keep style exaggeration off: ElevenLabs recommends style=0 for general use,
+# while ~0.5 stability / ~0.75 similarity is the common starting point. The
+# previous 0.25/0.4 profile amplified per-chunk variation on an already
+# fragmented stream, which made turn-to-turn delivery less coherent.
 CONVERSATIONAL_VOICE_SETTINGS: dict[str, float | bool] = {
-    "stability": 0.25,
+    "stability": 0.5,
     "similarity_boost": 0.75,
-    "style": 0.4,
+    "style": 0.0,
     "use_speaker_boost": True,
 }
 

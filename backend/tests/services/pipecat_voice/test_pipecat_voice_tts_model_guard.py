@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from app.services.pipecat_voice.pipeline import (
     DISALLOWED_LIVE_CONVERSATIONAL_TTS_MODELS,
+    LIVE_VOICE_OUTPUT_SAMPLE_RATE,
     SAFE_LIVE_CONVERSATIONAL_TTS_MODEL,
     resolve_voice_and_tts_model,
 )
@@ -123,3 +124,7 @@ class TestVoiceIdOverrideIsHonored:
             voice_key=None,
         )
         assert voice_id == "custom-voice-123"
+
+
+def test_live_voice_output_uses_higher_fidelity_pcm_rate() -> None:
+    assert LIVE_VOICE_OUTPUT_SAMPLE_RATE == 24000

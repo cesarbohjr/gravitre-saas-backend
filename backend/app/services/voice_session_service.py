@@ -150,44 +150,48 @@ def split_speakable_chunks(
     min_chars: int = 12,
     aggressive: bool = False,
 ) -> tuple[list[str], str]:
-    """Emit speakable chunks at sentence boundaries; keep remainder provisional.
+    """Emit complete speakable thoughts and keep partial phrases provisional.
 
-    Short provisional answers (under ~48 chars) flush on a word boundary once
-    ``min_chars`` is met so TTFA does not wait for terminal punctuation
-    (e.g. "Two plus two" while "equals four." is still generating). Longer
-    buffers keep a higher clause floor to avoid a TTS round-trip per phrase.
+    ElevenLabs realtime WebSocket auto_mode is optimized for full sentences;
+    sending partial sentences markedly reduces synthesis quality. The previous
+    implementation flushed short word-boundary fragments (sometimes ~12 chars)
+    and normalize_spoken_text then made each fragment look terminal. That
+    repeatedly reset prosody and produced choppy, robotic speech.
 
-    When ``aggressive`` is True (Voice 3.0 Phase 4), short-buffer flushes use
-    a lower clause floor and may split on commas earlier for faster first audio.
+    The live path now waits for sentence punctuation. A very long unpunctuated
+    buffer gets one bounded emergency split so malformed/model-streamed text
+    cannot hold audio forever. aggressive only lowers that emergency ceiling;
+    it no longer turns ordinary partial phrases into standalone utterances.
     """
     parts = _SENTENCE_END.split(buffer)
-    if len(parts) <= 1:
-        stripped = buffer.rstrip()
-        # Complete sentence with terminal punct but no trailing whitespace yet
-        # (common for short voice answers like "Four.").
-        if stripped and stripped[-1] in ".!?" and len(stripped) >= 2:
-            return [stripped], ""
-        short_threshold = 48
-        # Short answers: early word-boundary flush. Longer: higher floor.
-        if aggressive:
-            clause_floor = min_chars
-            cut_tail = 1
-            space_tail = 1
-        else:
-            clause_floor = min_chars if len(buffer) < short_threshold else max(min_chars * 2, 40)
-            cut_tail = 2 if len(buffer) < short_threshold else 10
-            space_tail = 1 if len(buffer) < short_threshold else 5
-        if len(buffer) >= clause_floor and (" " in buffer):
-            idx = buffer.rfind(", ", 0, max(len(buffer) - cut_tail, 0))
-            if aggressive and idx < min_chars and len(buffer) >= min_chars * 2:
-                idx = buffer.rfind(",", 0, max(len(buffer) - 1, min_chars))
-            if idx < min_chars:
-                idx = buffer.rfind(" ", 0, max(len(buffer) - space_tail, min_chars))
-            if idx >= min_chars:
-                return [buffer[:idx].strip()], buffer[idx:].lstrip()
+    if len(parts) > 1:
+        ready = [p.strip() for p in parts[:-1] if p.strip()]
+        return ready, parts[-1]
+
+    stripped = buffer.rstrip()
+    if stripped and stripped[-1] in ".!?" and len(stripped) >= 2:
+        return [stripped], ""
+
+    hard_ceiling = max(120 if aggressive else 180, max(1, min_chars) * 8)
+    if len(buffer) < hard_ceiling:
         return [], buffer
-    ready = [p.strip() for p in parts[:-1] if p.strip()]
-    return ready, parts[-1]
+
+    floor = max(48, min_chars * 3)
+    search_end = max(floor + 1, hard_ceiling - 24)
+    candidates: list[int] = []
+    for marker in ("; ", ": ", ", ", " — ", " – "):
+        idx = buffer.rfind(marker, floor, search_end)
+        if idx >= floor:
+            candidates.append(idx + len(marker.rstrip()))
+    if candidates:
+        idx = max(candidates)
+        return [buffer[:idx].strip()], buffer[idx:].lstrip()
+
+    idx = buffer.rfind(" ", floor, search_end)
+    if idx >= floor:
+        return [buffer[:idx].strip()], buffer[idx:].lstrip()
+
+    return [], buffer
 
 
 def strip_markdown_inline(text: str) -> str:

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.services.tier1_voice_service import (
+    CONVERSATIONAL_VOICE_SETTINGS,
     VoiceProviderError,
     normalize_elevenlabs_output_format,
     synthesize_speech,
@@ -133,15 +134,6 @@ def test_transcribe_calls_deepgram():
     assert meta["provider"] == "deepgram"
 
 
-def test_conversational_voice_settings_are_medium_expressive():
-    from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS
-
-    assert CONVERSATIONAL_VOICE_SETTINGS["stability"] == 0.25
-    assert CONVERSATIONAL_VOICE_SETTINGS["similarity_boost"] == 0.75
-    assert CONVERSATIONAL_VOICE_SETTINGS["style"] == 0.4
-    assert CONVERSATIONAL_VOICE_SETTINGS["use_speaker_boost"] is True
-
-
 def test_resolve_voice_id_defaults_to_sarah():
     from app.services.tier1_voice_service import resolve_voice_id
 
@@ -155,3 +147,12 @@ def test_write_confirm_policy_is_not_voice_bypass():
     status = voice_status(_settings(elevenlabs_api_key="x", deepgram_api_key="y"))
     assert status["write_confirm_policy"] == "nl_yes_same_path_as_text"
     assert "bypass" in status["write_confirm_note"].lower()
+
+
+def test_conversational_voice_settings_use_natural_baseline():
+    assert CONVERSATIONAL_VOICE_SETTINGS == {
+        "stability": 0.5,
+        "similarity_boost": 0.75,
+        "style": 0.0,
+        "use_speaker_boost": True,
+    }
