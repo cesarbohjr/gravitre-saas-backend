@@ -6,6 +6,17 @@ from typing import Any
 from app.capabilities.packages import PackageInspection
 
 
+_RISK_RANK = {"low": 0, "moderate": 1, "high": 2, "blocked": 3}
+
+
+def _effective_risk(inspection_risk: str, security_scan: dict[str, Any] | None) -> str:
+    scan_risk = str((security_scan or {}).get("risk") or "low")
+    return max(
+        (inspection_risk or "low", scan_risk),
+        key=lambda value: _RISK_RANK.get(value, 1),
+    )
+
+
 def list_packages(client: Any, org_id: str) -> list[dict[str, Any]]:
     try:
         response = (
@@ -13,7 +24,7 @@ def list_packages(client: Any, org_id: str) -> list[dict[str, Any]]:
             .select(
                 "id,org_id,name,package_format,version,description,license,license_policy,"
                 "risk_level,source_type,source_uri,marketplace_source_id,publisher_name,"
-                "publisher_verified,signature_status,content_digest,inspection,status,"
+                "publisher_verified,signature_status,content_digest,inspection,security_scan,status,"
                 "installed_by,installed_at,updated_at,reviewed_by,reviewed_at,review_notes"
             )
             .eq("org_id", org_id)
@@ -43,7 +54,9 @@ def install_package(
     signature_status: str = "unsigned",
     content_digest: str | None = None,
     initial_status: str | None = None,
+    security_scan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    effective_risk = _effective_risk(inspection.risk, security_scan)
     row = {
         "org_id": org_id,
         "name": inspection.name,
@@ -52,7 +65,7 @@ def install_package(
         "description": inspection.description,
         "license": inspection.license,
         "license_policy": inspection.license_policy,
-        "risk_level": inspection.risk,
+        "risk_level": effective_risk,
         "source_type": source_type,
         "source_uri": source_uri,
         "marketplace_source_id": marketplace_source_id,
@@ -62,7 +75,8 @@ def install_package(
         "content_digest": content_digest,
         "manifest": manifest,
         "inspection": inspection.as_dict(),
-        "status": initial_status or ("quarantined" if inspection.risk == "high" else "installed"),
+        "security_scan": security_scan or {},
+        "status": initial_status or ("quarantined" if effective_risk == "high" else "installed"),
         "installed_by": user_id,
     }
     response = client.table("capability_packages").upsert(
@@ -245,7 +259,9 @@ def upsert_marketplace_candidate(
     inspection: dict[str, Any],
     content_digest: str,
     files: dict[str, str],
+    security_scan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    effective_risk = _effective_risk(str(inspection.get("risk") or "moderate"), security_scan)
     row = {
         "org_id": org_id,
         "marketplace_source_id": source_id,
@@ -256,10 +272,11 @@ def upsert_marketplace_candidate(
         "description": inspection.get("description"),
         "license": inspection.get("license"),
         "license_policy": str(inspection.get("license_policy") or "review"),
-        "risk_level": str(inspection.get("risk") or "moderate"),
+        "risk_level": effective_risk,
         "content_digest": content_digest,
         "manifest": manifest,
         "inspection": inspection,
+        "security_scan": security_scan or {},
         "files": files,
         "status": "pending_review",
     }
