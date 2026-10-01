@@ -161,7 +161,7 @@ class CapabilityPackageAssetConfig(BaseModel):
     commit_sha: str = Field(min_length=40, max_length=40)
     package_path: str = ""
     content_digest: str = Field(min_length=71, max_length=71)
-    snapshot_digest: str = Field(min_length=71, max_length=71)
+    snapshot_digest: str | None = Field(default=None, min_length=71, max_length=71)
 
     # Inert package snapshot for review/browse. Executable source contents are
     # intentionally forbidden by CapabilityPackageResource.
@@ -200,7 +200,9 @@ class CapabilityPackageAssetConfig(BaseModel):
 
     @field_validator("snapshot_digest")
     @classmethod
-    def validate_snapshot_digest(cls, value: str) -> str:
+    def validate_snapshot_digest(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         digest = value.strip().lower()
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
             raise ValueError("snapshot_digest must be sha256:<64 hex characters>")
