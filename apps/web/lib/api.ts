@@ -1496,6 +1496,16 @@ export interface CapabilityMarketplaceCandidate {
 export const portableCapabilitiesApi = {
   listPackages: () =>
     fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
+  usage: (days = 30) =>
+    fetcher<{
+      windowDays: number
+      totalEvents: number
+      reasoningSelections: number
+      mcpExecutions: number
+      topCapabilities: Array<{ packageId: string; name: string; events: number }>
+      surfaces: Record<string, number>
+      contentStored: false
+    }>(apiUrl(`/api/capabilities/usage?days=${encodeURIComponent(String(days))}`)),
   listTrustedPublishers: () =>
     fetcher<{
       items: Array<{
