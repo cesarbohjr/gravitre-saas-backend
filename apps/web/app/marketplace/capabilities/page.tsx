@@ -51,6 +51,30 @@ function canPublishPackage(item: {
   return gitPinned || trustedSigned
 }
 
+type CapabilityFilter = "all" | "skills" | "plugins" | "mcp" | "agents" | "plays" | "templates"
+
+function packageMatchesFilter(
+  item: {
+    package_format?: string
+    inspection?: Record<string, unknown>
+  },
+  filter: CapabilityFilter,
+) {
+  if (filter === "all") return true
+  const format = String(item.package_format ?? "").toLowerCase()
+  const components = Array.isArray(item.inspection?.components)
+    ? item.inspection?.components as Array<Record<string, unknown>>
+    : []
+  const kinds = new Set(components.map((row) => String(row.kind ?? "").toLowerCase()))
+  if (filter === "skills") return format === "agent_skill" || kinds.has("skill")
+  if (filter === "plugins") return format.includes("plugin") || format === "gravitre"
+  if (filter === "mcp") return format === "mcp" || kinds.has("mcp")
+  if (filter === "agents") return kinds.has("agent")
+  if (filter === "plays") return kinds.has("play")
+  if (filter === "templates") return kinds.has("template")
+  return true
+}
+
 function securitySummary(scan?: {
   findings?: Array<{ severity?: string }>
   externalHosts?: string[]
@@ -86,6 +110,7 @@ export default function CapabilityMarketplacePage() {
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [zipBusy, setZipBusy] = useState(false)
   const [zipInspection, setZipInspection] = useState<Awaited<ReturnType<typeof portableCapabilitiesApi.inspectZip>> | null>(null)
+  const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>("all")
 
   const packages = useSWR(
     user ? "portable-capability-packages" : null,
@@ -109,6 +134,7 @@ export default function CapabilityMarketplacePage() {
   )
 
   const packageRows = packages.data?.items ?? []
+  const filteredPackageRows = packageRows.filter((item) => packageMatchesFilter(item, capabilityFilter))
   const marketplaceRows = marketplaces.data?.items ?? []
   const candidateRows = candidates.data?.items ?? []
   const pendingCandidates = candidateRows.filter((row) => row.status === "pending_review")
@@ -397,10 +423,27 @@ export default function CapabilityMarketplacePage() {
           <section className="grid gap-6 lg:grid-cols-[1.45fr_0.85fr]">
             <GravitreSurface className="p-0">
               <div className="border-b border-divide px-4 py-3">
-                <h2 className="text-sm font-medium text-foreground">Installed portable capabilities</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Agent Skills, Claude/OpenAI-style plugins, MCP packages, and Gravitre-native capabilities.
-                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-medium text-foreground">Installed portable capabilities</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Agent Skills, Claude/OpenAI-style plugins, MCP packages, agents, plays, and templates.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(["all", "skills", "plugins", "mcp", "agents", "plays", "templates"] as CapabilityFilter[]).map((filter) => (
+                      <Button
+                        key={filter}
+                        type="button"
+                        size="sm"
+                        variant={capabilityFilter === filter ? "default" : "outline"}
+                        onClick={() => setCapabilityFilter(filter)}
+                      >
+                        {filter === "mcp" ? "MCP" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </div>
               {packages.error ? (
                 <div className="p-4 text-sm text-destructive">Could not load installed capabilities.</div>
@@ -412,9 +455,17 @@ export default function CapabilityMarketplacePage() {
                     hint="Inspect a package first, then install only what passes your organization policy."
                   />
                 </div>
+              ) : filteredPackageRows.length === 0 ? (
+                <div className="p-4">
+                  <GravitreEmpty
+                    icon={<Package className="h-5 w-5" />}
+                    title="No matching capabilities"
+                    hint="Try another capability type filter."
+                  />
+                </div>
               ) : (
                 <ul className="divide-y divide-divide">
-                  {packageRows.map((item) => (
+                  {filteredPackageRows.map((item) => (
                     <li key={item.id ?? `${item.name}:${item.version ?? ""}`} className="flex items-start justify-between gap-4 px-4 py-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
