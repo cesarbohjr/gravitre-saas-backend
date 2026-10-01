@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { useState } from "react"\nimport type { FormEvent } from "react"
 import useSWR from "swr"
 import { ShieldCheck, Package, GitBranch, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
