@@ -41,7 +41,7 @@ from app.capabilities.repository import (
 from app.capabilities.review import review_transition_allowed
 from app.capabilities.github_sync import sync_public_github_marketplace
 from app.capabilities.developer_kit import developer_kit_contract
-from app.capabilities.mcp_activation import prepare_mcp_dependencies
+from app.capabilities.mcp_activation import deactivate_package_mcp_dependencies, prepare_mcp_dependencies
 from app.capabilities.usage import usage_summary
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
@@ -545,11 +545,20 @@ async def rollback_portable_package_version(
         resources=list_package_resources(client, org_id, package_id),
         user_id=str(user.get("user_id") or ""),
     )
+    mcp_deactivation = None
+    if str(restored.get("status") or "") != "installed":
+        mcp_deactivation = deactivate_package_mcp_dependencies(
+            client,
+            org_id=org_id,
+            package_id=package_id,
+            activation_state="quarantined",
+        )
     return {
         "package": restored,
         "restoredFromVersionId": version_id,
         "status": restored.get("status"),
         "requiresReview": restored.get("status") == "quarantined",
+        "mcpDeactivation": mcp_deactivation,
     }
 
 
@@ -673,6 +682,14 @@ async def review_portable_package(
         target_status=body.status,
         notes=body.notes,
     )
+    mcp_deactivation = None
+    if body.status in {"quarantined", "disabled"}:
+        mcp_deactivation = deactivate_package_mcp_dependencies(
+            client,
+            org_id=org_id,
+            package_id=package_id,
+            activation_state=body.status,
+        )
     try:
         from app.workflows.audit import write_audit_event
 
@@ -694,7 +711,11 @@ async def review_portable_package(
         )
     except Exception:
         pass
-    return {"package": updated, "reviewed": True}
+    return {
+        "package": updated,
+        "reviewed": True,
+        "mcpDeactivation": mcp_deactivation,
+    }
 
 
 @router.get("/packages/{package_id}/validate")
