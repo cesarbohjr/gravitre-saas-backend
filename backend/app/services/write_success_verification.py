@@ -350,6 +350,18 @@ def schedule_write_success_verification(
                     },
                 },
             )
+            _terminalize_verified_chat_run(
+                client=client,
+                org_id=org_id,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                verified=bool(verify.verified),
+                effect=effect or verify.effect,
+                detail=verify.detail,
+                actor_id=actor_id,
+                conversation_id=conversation_id,
+                integration=integration,
+            )
             if current_status in {"running", "pending_approval", "queued", "paused", "approved"}:
                 logger.info(
                     "async_write_success_verify_params_only run_id=%s action=%s "
@@ -476,6 +488,10 @@ def _schedule_field_assert_verification(
     result_data: dict[str, Any] | None,
     request_params: dict[str, Any] | None,
     ctx: Any,
+    org_id: str,
+    actor_id: str | None,
+    conversation_id: str | None,
+    integration: str | None,
 ) -> None:
     """Read the changed field back and compare it to what was requested."""
 
@@ -499,6 +515,18 @@ def _schedule_field_assert_verification(
                     "outcome_effect": verify.effect,
                     "field_assert_verify": {**verify.as_dict(), "async": True},
                 },
+            )
+            _terminalize_verified_chat_run(
+                client=client,
+                org_id=org_id,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                verified=bool(verify.verified),
+                effect=verify.effect,
+                detail=verify.detail,
+                actor_id=actor_id,
+                conversation_id=conversation_id,
+                integration=integration,
             )
             logger.info(
                 "async_field_assert_verify run_id=%s action=%s verified=%s detail=%s",
@@ -525,6 +553,10 @@ def _schedule_entity_get_verification(
     invoke_action: str,
     result_data: dict[str, Any] | None,
     ctx: Any,
+    org_id: str,
+    actor_id: str | None,
+    conversation_id: str | None,
+    integration: str | None,
 ) -> None:
     """Run the declared sibling GET and stamp the evidence on the run."""
 
@@ -545,6 +577,18 @@ def _schedule_entity_get_verification(
                     "outcome_effect": verify.effect,
                     "entity_get_verify": {**verify.as_dict(), "async": True},
                 },
+            )
+            _terminalize_verified_chat_run(
+                client=client,
+                org_id=org_id,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                verified=bool(verify.verified),
+                effect=verify.effect,
+                detail=verify.detail,
+                actor_id=actor_id,
+                conversation_id=conversation_id,
+                integration=integration,
             )
             logger.info(
                 "async_entity_get_verify run_id=%s action=%s verified=%s detail=%s",
