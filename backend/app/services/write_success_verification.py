@@ -268,6 +268,9 @@ def schedule_write_success_verification(
     ctx: Any = None,
     environment_name: str = "production",
     request_params: dict[str, Any] | None = None,
+    actor_id: str | None = None,
+    conversation_id: str | None = None,
+    integration: str | None = None,
 ) -> None:
     """Fire-and-forget post-stream verification (must not block TTFT)."""
     if not run_id or ctx is None:
@@ -281,6 +284,10 @@ def schedule_write_success_verification(
                 invoke_action=invoke_action,
                 result_data=result_data,
                 ctx=ctx,
+                org_id=org_id,
+                actor_id=actor_id,
+                conversation_id=conversation_id,
+                integration=integration,
             )
         elif mode == "follow_up_field_assert":
             _schedule_field_assert_verification(
@@ -290,6 +297,10 @@ def schedule_write_success_verification(
                 result_data=result_data,
                 request_params=request_params,
                 ctx=ctx,
+                org_id=org_id,
+                actor_id=actor_id,
+                conversation_id=conversation_id,
+                integration=integration,
             )
         return
 
@@ -368,6 +379,81 @@ def schedule_write_success_verification(
             )
 
     _dispatch_background(_work, "write-success-verify")
+
+
+def _terminalize_verified_chat_run(
+    *,
+    client: Any,
+    org_id: str,
+    run_id: str,
+    invoke_action: str,
+    verified: bool,
+    effect: str | None,
+    detail: str | None,
+    actor_id: str | None,
+    conversation_id: str | None,
+    integration: str | None,
+) -> None:
+    """Only vendor proof may turn a verification-pending chat write terminal."""
+    try:
+        row = (
+            client.table("workflow_runs")
+            .select("status, parameters")
+            .eq("id", run_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
+        data = (row.data or [{}])[0]
+        params = data.get("parameters") if isinstance(data.get("parameters"), dict) else {}
+        lifecycle = params.get("verification_lifecycle") if isinstance(params.get("verification_lifecycle"), dict) else {}
+        if not lifecycle.get("required") or lifecycle.get("state") != "verifying":
+            return
+        from app.workflows.repository import merge_run_parameters
+        merge_run_parameters(
+            client,
+            run_id,
+            {
+                "verification_lifecycle": {
+                    **lifecycle,
+                    "state": "verified" if verified else "verification_failed",
+                    "verified": bool(verified),
+                    "detail": detail,
+                    "effect": effect,
+                }
+            },
+        )
+        from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
+        finalize_execution_outcome(
+            client,
+            org_id=org_id,
+            status="completed" if verified else "failed",
+            source="assistant_chat",
+            actor_id=actor_id,
+            run_id=run_id,
+            persist_run=True,
+            error_summary=None if verified else (detail or "Vendor verification did not confirm the requested change."),
+            verified_output=VerifiedOutputRef(
+                summary=detail or ("Vendor confirmed the requested change." if verified else "Vendor did not confirm the requested change."),
+                result_url=f"/runs/{run_id}",
+                integration=integration,
+            ),
+            metadata={
+                "conversation_id": conversation_id,
+                "invoke_action": invoke_action,
+                "integration": integration,
+                "outcome_effect": effect,
+                "verification_required": True,
+                "verification_verified": bool(verified),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "verification_lifecycle_terminalize_failed run_id=%s action=%s err=%s",
+            run_id,
+            invoke_action,
+            exc,
+        )
 
 
 def _dispatch_background(work: Any, name: str) -> None:
