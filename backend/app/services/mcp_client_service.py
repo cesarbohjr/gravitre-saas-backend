@@ -106,6 +106,22 @@ def should_enable_discovered_mcp_tool(
     return not bool(server.get("source_capability_package_id"))
 
 
+def resolve_discovered_mcp_tool_enabled(
+    server: dict[str, Any],
+    *,
+    existing_enabled: bool | None,
+    enable_discovered_tools: bool | None,
+) -> bool:
+    """Preserve reviewed package-tool state while keeping new discoveries inert."""
+    if (
+        bool(server.get("source_capability_package_id"))
+        and existing_enabled is not None
+        and enable_discovered_tools is None
+    ):
+        return bool(existing_enabled)
+    return should_enable_discovered_mcp_tool(server, enable_discovered_tools)
+
+
 def catalog_visible_mcp_tools(
     server: dict[str, Any],
     tools: list[dict[str, Any]],
@@ -306,15 +322,12 @@ class MCPClientService:
                 .data
                 or []
             )
-            discovered_enabled = (
-                bool(existing[0].get("enabled"))
-                if existing
-                and bool(server.get("source_capability_package_id"))
-                and enable_discovered_tools is None
-                else should_enable_discovered_mcp_tool(
-                    server,
-                    enable_discovered_tools,
-                )
+            discovered_enabled = resolve_discovered_mcp_tool_enabled(
+                server,
+                existing_enabled=(
+                    bool(existing[0].get("enabled")) if existing else None
+                ),
+                enable_discovered_tools=enable_discovered_tools,
             )
             row = {
                 "server_id": server_id,
