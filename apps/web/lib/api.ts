@@ -243,6 +243,22 @@ async function postJson<T>(url: string, data: unknown): Promise<T> {
   return response.json()
 }
 
+async function postForm<T>(url: string, data: FormData): Promise<T> {
+  const response = await apiFetch(url, {
+    method: "POST",
+    body: data,
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new ApiRequestError(
+      extractErrorMessage(error) || `Request failed: ${response.status}`,
+      response.status,
+      error,
+    )
+  }
+  return response.json()
+}
+
 async function patchJson<T>(url: string, data: unknown): Promise<T> {
   const response = await apiFetch(url, {
     method: "PATCH",
@@ -1545,6 +1561,36 @@ export const portableCapabilitiesApi = {
     fetcher<{ items: Array<{ id: string; path: string; kind: string; content?: string | null; executable: boolean }> }>(
       apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/resources`),
     ),
+  inspectZip: (file: File) => {
+    const form = new FormData()
+    form.append("archive", file)
+    return postForm<{
+      inspection: Record<string, unknown>
+      installationAllowed: boolean
+      activationPlan: Record<string, unknown>
+      resources: Array<{ path: string; kind: string; executable: boolean }>
+      ignoredFiles: string[]
+      fileName?: string | null
+    }>(apiUrl("/api/capabilities/packages/inspect-zip"), form)
+  },
+  installZip: (
+    file: File,
+    options?: { sourceUri?: string; signingPublicKeyPem?: string; signature?: string },
+  ) => {
+    const form = new FormData()
+    form.append("archive", file)
+    if (options?.sourceUri) form.append("sourceUri", options.sourceUri)
+    if (options?.signingPublicKeyPem) form.append("signingPublicKeyPem", options.signingPublicKeyPem)
+    if (options?.signature) form.append("signature", options.signature)
+    return postForm<{
+      package: PortableCapabilityPackage
+      inspection: Record<string, unknown>
+      activationPlan: Record<string, unknown>
+      resourceCount: number
+      directExecutionEnabled: false
+      fileName?: string | null
+    }>(apiUrl("/api/capabilities/packages/install-zip"), form)
+  },
 }
 
 // ============ Approvals ============
