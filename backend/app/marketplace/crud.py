@@ -26,6 +26,7 @@ _ASSET_TYPES = frozenset({
     "knowledge_pack",
     "department_pack",
     "connector_config",
+    "capability_package",
 })
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
