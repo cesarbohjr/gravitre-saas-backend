@@ -697,10 +697,22 @@ async def create_portable_capability_marketplace_draft(
     digest = str(package.get("content_digest") or "").strip()
     source_uri = str(package.get("source_uri") or "").strip()
     repository_url = source_uri.split("@", 1)[0].strip()
-    if not repository_url or not commit_sha or not digest:
+    git_pinned = bool(repository_url and commit_sha and digest)
+    trusted_signed = bool(
+        digest
+        and str(package.get("signature_status") or "") == "verified"
+        and (
+            bool(package.get("publisher_trusted"))
+            or bool(package.get("publisher_verified"))
+        )
+    )
+    if not git_pinned and not trusted_signed:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Only Git-pinned capability packages can be published to Marketplace",
+            detail=(
+                "Capability packages must have either exact Git provenance or "
+                "a verified signature from a trusted publisher before Marketplace publishing"
+            ),
         )
     security_scan = package.get("security_scan") if isinstance(package.get("security_scan"), dict) else {}
     if (
@@ -781,8 +793,9 @@ async def create_portable_capability_marketplace_draft(
     return {
         **result,
         "sourcePackageId": package_id,
-        "sourceCommitSha": commit_sha,
+        "sourceCommitSha": commit_sha or None,
         "contentDigest": digest,
+        "provenance": "git_pinned" if git_pinned else "trusted_signature",
         "snapshotDigest": snapshot_digest,
         "next": {
             "internalReview": f"/api/marketplace/assets/{body.slug}/submit-for-review",
