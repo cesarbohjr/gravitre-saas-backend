@@ -90,7 +90,10 @@ def import_file_bundle(files: dict[str, str]) -> ImportedBundle:
     ignored: list[str] = []
     for path, content in normalized.items():
         lower = path.lower()
-        if path == manifest_path or path == skill_path:
+        if path == manifest_path:
+            continue
+        if path == skill_path:
+            resources.append({"path": path, "kind": "reference", "content": content, "executable": False})
             continue
         if lower.endswith(SCRIPT_SUFFIXES):
             resources.append({"path": path, "kind": "script", "content": None, "executable": True})
