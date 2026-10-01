@@ -24,6 +24,14 @@ function riskLabel(value?: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+function packageHasMcp(inspection?: Record<string, unknown>) {
+  const components = inspection?.components
+  return Array.isArray(components) && components.some((component) => {
+    if (!component || typeof component !== "object") return false
+    return (component as Record<string, unknown>).kind === "mcp"
+  })
+}
+
 function hasMcpDependency(inspection?: Record<string, unknown>) {
   const components = inspection?.components
   return Array.isArray(components) && components.some(
@@ -131,6 +139,20 @@ export default function CapabilityMarketplacePage() {
       await packages.mutate()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Capability review failed")
+    } finally {
+      setPackageBusy(null)
+    }
+  }
+
+  async function prepareMcp(packageId: string) {
+    setPackageBusy(packageId)
+    try {
+      const result = await portableCapabilitiesApi.prepareMcp(packageId)
+      toast.success("MCP dependencies prepared", {
+        description: `${result.prepared.length} server${result.prepared.length === 1 ? "" : "s"} pending review${result.blocked.length ? `; ${result.blocked.length} blocked by policy` : ""}`,
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "MCP preparation failed")
     } finally {
       setPackageBusy(null)
     }
@@ -339,6 +361,16 @@ export default function CapabilityMarketplacePage() {
                                 Quarantine
                               </Button>
                             )}
+                            {item.status === "installed" && packageHasMcp(item.inspection) ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={packageBusy === item.id}
+                                onClick={() => void prepareMcp(item.id!)}
+                              >
+                                Prepare MCP
+                              </Button>
+                            ) : null}
                             <Button
                               size="sm"
                               variant="ghost"
