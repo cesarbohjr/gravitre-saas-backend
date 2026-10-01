@@ -202,8 +202,11 @@ async def install_portable_bundle(
                 signing_public_key_pem=body.signing_public_key_pem,
                 signature_b64=body.signature,
             )
+            # A valid signature proves package integrity against the supplied
+            # key. It does not establish that the key belongs to a publisher
+            # Gravitre has independently trusted.
             signature_status = "verified"
-            publisher_verified = True
+            publisher_verified = False
         except BundleSignatureError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
