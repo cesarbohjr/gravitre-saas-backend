@@ -129,3 +129,55 @@ def prepare_mcp_dependencies(
         "credentialsCopiedFromPackage": False,
         "executionOwner": "gravitre",
     }
+
+
+def deactivate_package_mcp_dependencies(
+    client: Any,
+    *,
+    org_id: str,
+    package_id: str,
+) -> dict[str, Any]:
+    """Disable all MCP dependencies owned by a portable package and refresh runtime."""
+    rows = (
+        client.table("mcp_servers")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("source_capability_package_id", package_id)
+        .execute()
+        .data
+        or []
+    )
+    server_ids = [str(row.get("id") or "") for row in rows if row.get("id")]
+    for server_id in server_ids:
+        (
+            client.table("mcp_servers")
+            .update({"enabled": False, "activation_state": "disabled"})
+            .eq("org_id", org_id)
+            .eq("id", server_id)
+            .execute()
+        )
+        (
+            client.table("mcp_tools")
+            .update({"enabled": False})
+            .eq("org_id", org_id)
+            .eq("server_id", server_id)
+            .execute()
+        )
+        try:
+            from app.services.mcp_client_service import refresh_package_mcp_runtime_registration
+
+            refresh_package_mcp_runtime_registration(
+                client,
+                org_id=org_id,
+                server_id=server_id,
+            )
+        except Exception:
+            # DB deactivation is authoritative; runtime refresh is best-effort
+            # during rolling deploys and will be rebuilt on next process load.
+            pass
+    return {
+        "packageId": package_id,
+        "serverIds": server_ids,
+        "disabledServers": len(server_ids),
+        "executionOwner": "gravitre",
+    }
