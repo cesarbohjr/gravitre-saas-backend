@@ -12,6 +12,8 @@ from typing import Any
 
 import httpx
 
+from app.config import Settings
+
 from app.capabilities.importers import import_file_bundle
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
 from app.capabilities.repository import upsert_marketplace_candidate
@@ -58,6 +60,7 @@ async def discover_public_github_packages(
     branch: str = "main",
     root_path: str = "",
     timeout_s: float = 12.0,
+    access_token: str | None = None,
 ) -> list[GithubPackageBundle]:
     owner, repo = _repo_parts(repository_url)
     root_prefix = root_path.strip().strip("/")
@@ -66,6 +69,8 @@ async def discover_public_github_packages(
         "User-Agent": "Gravitre-Capability-Sync",
         "X-GitHub-Api-Version": "2022-11-28",
     }
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
     async with httpx.AsyncClient(
         base_url="https://api.github.com",
         headers=headers,
@@ -136,12 +141,38 @@ async def sync_public_github_marketplace(
     org_id: str,
     user_id: str,
     source: dict[str, Any],
+    settings: Settings | None = None,
+    environment_name: str = "production",
 ) -> dict[str, Any]:
     """Discover packages and stage them for review; never install during sync."""
+    access_token: str | None = None
+    if settings is not None:
+        try:
+            from app.connectors.connector_tool_auth import resolve_github_access_token
+            from app.connectors.repository import get_connector_by_type
+
+            connector = get_connector_by_type(
+                client,
+                org_id,
+                "github",
+                environment_name=environment_name,
+            )
+            if connector:
+                access_token = resolve_github_access_token(
+                    client,
+                    org_id,
+                    str(connector.get("id") or ""),
+                    settings,
+                    environment_name=environment_name,
+                )
+        except Exception:
+            access_token = None
+
     bundles = await discover_public_github_packages(
         str(source.get("repository_url") or ""),
         branch=str(source.get("branch") or "main"),
         root_path=str(source.get("root_path") or ""),
+        access_token=access_token,
     )
     staged: list[dict[str, Any]] = []
     rejected: list[dict[str, str]] = []
