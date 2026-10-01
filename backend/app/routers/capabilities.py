@@ -35,6 +35,10 @@ class PackageBundleRequest(BaseModel):
     files: dict[str, str]
     source_type: Literal["manual", "github", "zip", "mcp", "marketplace"] = "manual"
     source_uri: str | None = None
+    signing_public_key_pem: str | None = Field(default=None, alias="signingPublicKeyPem")
+    signature: str | None = None
+
+    model_config = {"populate_by_name": True}
 
 
 class GitMarketplaceSourceCreateRequest(BaseModel):
@@ -166,6 +170,31 @@ async def install_portable_bundle(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"message": "Package blocked by capability policy", "inspection": inspection.as_dict()},
         )
+    signature_status = "unsigned"
+    publisher_verified = False
+    if bool(body.signing_public_key_pem) != bool(body.signature):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="signingPublicKeyPem and signature must be provided together",
+        )
+    if body.signing_public_key_pem and body.signature:
+        try:
+            from app.connectors.private.signature import BundleSignatureError, verify_bundle_signature
+
+            verify_bundle_signature(
+                manifest=bundle.manifest,
+                package_sources=body.files,
+                signing_public_key_pem=body.signing_public_key_pem,
+                signature_b64=body.signature,
+            )
+            signature_status = "verified"
+            publisher_verified = True
+        except BundleSignatureError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid capability package signature: {exc}",
+            ) from exc
+
     client = get_supabase_client(settings)
     installed = install_package(
         client,
@@ -176,8 +205,8 @@ async def install_portable_bundle(
         source_type=body.source_type,
         source_uri=body.source_uri,
         publisher_name=str(bundle.manifest.get("publisher") or bundle.manifest.get("author") or "").strip() or None,
-        signature_status="unsigned",
-        publisher_verified=False,
+        signature_status=signature_status,
+        publisher_verified=publisher_verified,
         content_digest=bundle_digest(body.files),
     )
     package_id = str(installed.get("id") or "")
