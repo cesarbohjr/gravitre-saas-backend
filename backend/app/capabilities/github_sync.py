@@ -14,7 +14,7 @@ import httpx
 
 from app.capabilities.importers import import_file_bundle
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
-from app.capabilities.repository import install_package, replace_package_resources
+from app.capabilities.repository import upsert_marketplace_candidate
 
 TEXT_SUFFIXES = {".md", ".txt", ".json", ".yaml", ".yml", ".py", ".js", ".ts", ".sh", ".bash", ".ps1"}
 MANIFEST_NAMES = {
@@ -137,13 +137,13 @@ async def sync_public_github_marketplace(
     user_id: str,
     source: dict[str, Any],
 ) -> dict[str, Any]:
+    """Discover packages and stage them for review; never install during sync."""
     bundles = await discover_public_github_packages(
         str(source.get("repository_url") or ""),
         branch=str(source.get("branch") or "main"),
         root_path=str(source.get("root_path") or ""),
     )
-    approval_required = bool(source.get("approval_required", True))
-    installed: list[dict[str, Any]] = []
+    staged: list[dict[str, Any]] = []
     rejected: list[dict[str, str]] = []
 
     for item in bundles:
@@ -152,35 +152,23 @@ async def sync_public_github_marketplace(
         if inspection.license_policy == "block" or inspection.risk == "blocked":
             rejected.append({"root": item.root, "name": inspection.name, "reason": "blocked_by_policy"})
             continue
-        row = install_package(
+        row = upsert_marketplace_candidate(
             client,
             org_id=org_id,
-            user_id=user_id,
-            inspection=inspection,
+            source_id=str(source.get("id") or ""),
+            package_path=item.root or ".",
             manifest=bundle.manifest,
-            source_type="marketplace",
-            source_uri=f"{source.get('repository_url')}#/{item.root}",
-            marketplace_source_id=str(source.get("id") or "") or None,
-            publisher_name=str(source.get("repository_url") or "").removeprefix("https://github.com/").split("/", 1)[0] or None,
-            publisher_verified=False,
-            signature_status="unsigned",
+            inspection=inspection.as_dict(),
             content_digest=bundle_digest(item.files),
-            initial_status="quarantined" if approval_required or inspection.risk == "high" else "installed",
+            files=item.files,
         )
-        package_id = str(row.get("id") or "")
-        if package_id:
-            replace_package_resources(
-                client,
-                package_id=package_id,
-                org_id=org_id,
-                resources=list(bundle.resources),
-            )
-        installed.append(row)
+        staged.append(row)
 
     return {
         "discovered": len(bundles),
-        "ingested": len(installed),
+        "ingested": len(staged),
         "rejected": rejected,
-        "packages": installed,
-        "approvalRequired": approval_required,
+        "candidates": staged,
+        "approvalRequired": True,
+        "installed": 0,
     }
