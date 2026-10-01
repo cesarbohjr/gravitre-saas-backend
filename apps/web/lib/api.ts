@@ -1521,20 +1521,6 @@ export interface MCPAdminTool {
 export const mcpAdminApi = {
   listServers: () =>
     fetcher<{ servers: MCPAdminServer[] }>(apiUrl("/api/admin/mcp/servers")),
-  createServer: (body: {
-    serverName: string
-    serverUrl: string
-    transport: "http" | "sse"
-    enabled?: boolean
-  }) =>
-    postJson<{ server: MCPAdminServer }>(
-      apiUrl("/api/admin/mcp/servers"),
-      {
-        ...body,
-        authType: "none",
-        authConfig: {},
-      },
-    ),
   patchServer: (serverId: string, enabled: boolean) =>
     patchJson<{ server: MCPAdminServer }>(
       apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}`),
