@@ -395,7 +395,7 @@ def _verification_terminal_status(*, verified: bool, effect: str | None, detail:
         return "failed"
     if normalized_effect == "unknown":
         return "failed"
-    return "partial_success"
+    return "verification_inconclusive"
 
 
 def _finalize_verified_write_run(
