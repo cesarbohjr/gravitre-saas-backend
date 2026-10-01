@@ -103,6 +103,9 @@ export default function CapabilityMarketplacePage() {
   const [busy, setBusy] = useState(false)
   const [packageBusy, setPackageBusy] = useState<string | null>(null)
   const [sourceBusy, setSourceBusy] = useState<string | null>(null)
+  const [mcpCredentialInputs, setMcpCredentialInputs] = useState<
+    Record<string, { secret: string; header: string }>
+  >({})
   const [mcpBusy, setMcpBusy] = useState<string | null>(null)
   const [historyPackageId, setHistoryPackageId] = useState<string | null>(null)
   const [historyBusy, setHistoryBusy] = useState<string | null>(null)
@@ -320,6 +323,37 @@ export default function CapabilityMarketplacePage() {
       await mcpTools.mutate()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "MCP discovery failed")
+    } finally {
+      setMcpBusy(null)
+    }
+  }
+
+  async function saveMcpCredentials(server: MCPAdminServer) {
+    const values = mcpCredentialInputs[server.id] ?? { secret: "", header: "X-API-Key" }
+    if (server.auth_type !== "bearer" && server.auth_type !== "api_key") return
+    if (!values.secret.trim()) {
+      toast.error(server.auth_type === "bearer" ? "Enter a bearer token" : "Enter an API key")
+      return
+    }
+    setMcpBusy(server.id)
+    try {
+      await mcpAdminApi.configureServerAuth(server.id, {
+        authType: server.auth_type,
+        authConfig:
+          server.auth_type === "bearer"
+            ? { bearer_token: values.secret.trim() }
+            : {
+                api_key: values.secret.trim(),
+                header: values.header.trim() || "X-API-Key",
+              },
+      })
+      setMcpCredentialInputs((current) => ({
+        ...current,
+        [server.id]: { secret: "", header: values.header || "X-API-Key" },
+      }))
+      toast.success("MCP credentials stored securely")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "MCP credential update failed")
     } finally {
       setMcpBusy(null)
     }
@@ -996,6 +1030,53 @@ export default function CapabilityMarketplacePage() {
                             <p className="mt-1 text-[11px] text-muted-foreground">
                               {server.transport} · {server.activation_state ?? "pending review"} · {server.enabled ? "server enabled" : "server disabled"}
                             </p>
+                            {server.auth_type !== "none" ? (
+                              <div className="mt-2 grid max-w-xl gap-2 sm:grid-cols-[1fr_auto_auto]">
+                                <Input
+                                  type="password"
+                                  autoComplete="off"
+                                  value={mcpCredentialInputs[server.id]?.secret ?? ""}
+                                  onChange={(event) =>
+                                    setMcpCredentialInputs((current) => ({
+                                      ...current,
+                                      [server.id]: {
+                                        secret: event.target.value,
+                                        header: current[server.id]?.header ?? "X-API-Key",
+                                      },
+                                    }))
+                                  }
+                                  placeholder={server.auth_type === "bearer" ? "Bearer token" : "API key"}
+                                  aria-label={server.auth_type === "bearer" ? "MCP bearer token" : "MCP API key"}
+                                />
+                                {server.auth_type === "api_key" ? (
+                                  <Input
+                                    value={mcpCredentialInputs[server.id]?.header ?? "X-API-Key"}
+                                    onChange={(event) =>
+                                      setMcpCredentialInputs((current) => ({
+                                        ...current,
+                                        [server.id]: {
+                                          secret: current[server.id]?.secret ?? "",
+                                          header: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    placeholder="Header"
+                                    aria-label="MCP API key header"
+                                  />
+                                ) : null}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={
+                                    mcpBusy === server.id ||
+                                    !(mcpCredentialInputs[server.id]?.secret ?? "").trim()
+                                  }
+                                  onClick={() => void saveMcpCredentials(server)}
+                                >
+                                  Save credentials
+                                </Button>
+                              </div>
+                            ) : null}
                           </div>
                           <div className="flex shrink-0 flex-wrap gap-1.5">
                             <Button
