@@ -1,4 +1,4 @@
-from app.capabilities.mcp_activation import declared_mcp_dependencies
+from app.capabilities.mcp_activation import declared_mcp_dependencies, prepare_mcp_dependencies
 
 
 def test_remote_https_mcp_dependency_can_be_prepared() -> None:
@@ -35,3 +35,55 @@ def test_unsupported_streamable_transport_is_blocked_until_runtime_supports_it()
         }
     )
     assert rows[0]["registrationAllowed"] is False
+
+
+class _Query:
+    def __init__(self, rows=None):
+        self.rows = rows or []
+
+    def select(self, *_args, **_kwargs):
+        return self
+
+    def eq(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, *_args, **_kwargs):
+        return self
+
+    def insert(self, payload):
+        self.rows = [{**payload, "id": "server-1"}]
+        return self
+
+    def execute(self):
+        class Result:
+            data = self.rows
+        return Result()
+
+
+class _Client:
+    def table(self, name: str):
+        assert name == "mcp_servers"
+        return _Query([])
+
+
+def test_prepare_mcp_dependencies_returns_pending_review_and_never_enables() -> None:
+    result = prepare_mcp_dependencies(
+        _Client(),
+        org_id="org-1",
+        package_id="pkg-1",
+        manifest={
+            "mcpServers": {
+                "crm": {
+                    "url": "https://mcp.example.com/mcp",
+                    "transport": "http",
+                }
+            }
+        },
+        user_id="user-1",
+    )
+
+    assert result["activationState"] == "pending_review"
+    assert result["enabled"] == 0
+    assert result["credentialsCopiedFromPackage"] is False
+    assert result["prepared"][0]["enabled"] is False
+    assert result["prepared"][0]["activation_state"] == "pending_review"
