@@ -116,6 +116,71 @@ def catalog_visible_mcp_tools(
     return [row for row in tools if bool(row.get("enabled"))]
 
 
+def refresh_package_mcp_runtime_registration(
+    client: Any,
+    *,
+    org_id: str,
+    server_id: str,
+) -> None:
+    """Rebuild one package-managed MCP server's runtime catalog from reviewed DB state."""
+    server_rows = (
+        client.table("mcp_servers")
+        .select("id,server_name,source_capability_package_id")
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not server_rows:
+        return
+    server = dict(server_rows[0])
+    if not bool(server.get("source_capability_package_id")):
+        return
+
+    tools = list(
+        client.table("mcp_tools")
+        .select("id,tool_name,tool_description,input_schema,capability_tier,enabled")
+        .eq("server_id", server_id)
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    server_name = str(server.get("server_name") or server_id)
+
+    from app.services.mcp_catalog_sync import sync_mcp_server_to_catalog
+    sync_mcp_server_to_catalog(
+        server_name=server_name,
+        server_id=server_id,
+        tools=catalog_visible_mcp_tools(server, tools),
+    )
+
+    from app.connectors.action_catalog.extensions import (
+        register_action_schemas,
+        unregister_action_schemas,
+    )
+    all_keys = [
+        mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+        for row in tools
+        if str(row.get("tool_name") or "").strip()
+    ]
+    unregister_action_schemas(all_keys)
+
+    enabled_schemas: dict[str, dict[str, Any]] = {}
+    for row in tools:
+        if not bool(row.get("enabled")):
+            continue
+        schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
+        if not schema:
+            continue
+        key = mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+        enabled_schemas[key] = schema
+    if enabled_schemas:
+        register_action_schemas(enabled_schemas)
+
+
 class MCPClientService:
     """Org-scoped MCP tool discovery and execution with mandatory write approval."""
 
