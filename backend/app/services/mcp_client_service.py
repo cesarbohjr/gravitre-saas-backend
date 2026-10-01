@@ -295,7 +295,7 @@ class MCPClientService:
         client = self._client()
         rows = (
             client.table("mcp_tools")
-            .select("*, mcp_servers(server_name)")
+            .select("*, mcp_servers(server_name,enabled,activation_state)")
             .eq("org_id", org_id)
             .eq("enabled", True)
             .execute()
@@ -307,6 +307,10 @@ class MCPClientService:
             server_name = ""
             nested = row.get("mcp_servers")
             if isinstance(nested, dict):
+                if not bool(nested.get("enabled", True)):
+                    continue
+                if str(nested.get("activation_state") or "configured") in {"pending_review", "disabled"}:
+                    continue
                 server_name = str(nested.get("server_name") or "")
             from app.services.catalog_write_authority import (
                 mcp_hints_from_schema,
