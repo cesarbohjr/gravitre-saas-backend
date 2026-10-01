@@ -37,11 +37,13 @@ def provenance_summary(
     publisher_name: str | None = None,
     signature_status: str = "unsigned",
     publisher_verified: bool = False,
+    publisher_trusted: bool = False,
     source_uri: str | None = None,
 ) -> dict[str, object]:
     return {
         "publisherName": (publisher_name or "").strip() or None,
         "publisherVerified": bool(publisher_verified),
+        "publisherTrusted": bool(publisher_trusted),
         "signatureStatus": signature_status,
         "contentDigest": bundle_digest(files or {}) if files else None,
         "sourceUri": source_uri,
