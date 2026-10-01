@@ -78,6 +78,30 @@ function packageMatchesFilter(
   return true
 }
 
+function nativeBindableComponents(item?: {
+  inspection?: Record<string, unknown>
+}) {
+  const rows = Array.isArray(item?.inspection?.components)
+    ? item?.inspection?.components as Array<Record<string, unknown>>
+    : []
+  return rows
+    .map((row) => ({
+      kind: String(row.kind ?? ""),
+      name: String(row.name ?? ""),
+    }))
+    .filter(
+      (row): row is { kind: "agent" | "play" | "template" | "trigger"; name: string } =>
+        ["agent", "play", "template", "trigger"].includes(row.kind) && Boolean(row.name),
+    )
+}
+
+function targetTypesForComponent(kind: "agent" | "play" | "template" | "trigger") {
+  if (kind === "agent") return ["agent"] as const
+  if (kind === "play") return ["play", "workflow"] as const
+  if (kind === "template") return ["marketplace_asset"] as const
+  return ["workflow_schedule"] as const
+}
+
 function securitySummary(scan?: {
   findings?: Array<{ severity?: string }>
   externalHosts?: string[]
@@ -123,6 +147,11 @@ export default function CapabilityMarketplacePage() {
   const [zipInspection, setZipInspection] = useState<Awaited<ReturnType<typeof portableCapabilitiesApi.inspectZip>> | null>(null)
   const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>("all")
   const [publishValidation, setPublishValidation] = useState<Record<string, Awaited<ReturnType<typeof portableCapabilitiesApi.validatePackage>>>>({})
+  const [bindingPackageId, setBindingPackageId] = useState<string | null>(null)
+  const [bindingComponentKey, setBindingComponentKey] = useState("")
+  const [bindingTargetType, setBindingTargetType] = useState("")
+  const [bindingTargetId, setBindingTargetId] = useState("")
+  const [bindingBusy, setBindingBusy] = useState(false)
 
   const developerKit = useSWR(
     user ? "portable-capability-developer-kit" : null,
@@ -160,6 +189,10 @@ export default function CapabilityMarketplacePage() {
     user && historyPackageId ? ["portable-capability-versions", historyPackageId] : null,
     () => portableCapabilitiesApi.listVersions(historyPackageId!),
   )
+  const nativeBindings = useSWR(
+    user && bindingPackageId ? ["portable-capability-bindings", bindingPackageId] : null,
+    () => portableCapabilitiesApi.listBindings(bindingPackageId!),
+  )
 
   const packageRows = packages.data?.items ?? []
   const filteredPackageRows = packageRows.filter((item) => packageMatchesFilter(item, capabilityFilter))
@@ -172,6 +205,52 @@ export default function CapabilityMarketplacePage() {
   const pendingCandidates = candidateRows.filter((row) => row.status === "pending_review")
   const quarantined = packageRows.filter((row) => row.status === "quarantined").length
   const signed = packageRows.filter((row) => row.signature_status === "verified").length
+  const bindablePackages = packageRows.filter(
+    (item) => item.status === "installed" && nativeBindableComponents(item).length > 0,
+  )
+  const bindingPackage = packageRows.find((item) => item.id === bindingPackageId)
+  const bindingComponents = nativeBindableComponents(bindingPackage)
+  const selectedBindingComponent = bindingComponents.find(
+    (row) => `${row.kind}:${row.name}` === bindingComponentKey,
+  )
+  const bindingTargetTypes = selectedBindingComponent
+    ? targetTypesForComponent(selectedBindingComponent.kind)
+    : []
+
+  async function createNativeBinding(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!bindingPackageId || !selectedBindingComponent || !bindingTargetType || !bindingTargetId.trim()) return
+    setBindingBusy(true)
+    try {
+      await portableCapabilitiesApi.createBinding(bindingPackageId, {
+        componentKind: selectedBindingComponent.kind,
+        componentName: selectedBindingComponent.name,
+        targetType: bindingTargetType as "agent" | "play" | "workflow" | "workflow_schedule" | "marketplace_asset",
+        targetId: bindingTargetId.trim(),
+      })
+      toast.success("Native capability binding created")
+      setBindingTargetId("")
+      await nativeBindings.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create native binding")
+    } finally {
+      setBindingBusy(false)
+    }
+  }
+
+  async function deleteNativeBinding(bindingId: string) {
+    if (!bindingPackageId) return
+    setBindingBusy(true)
+    try {
+      await portableCapabilitiesApi.deleteBinding(bindingPackageId, bindingId)
+      toast.success("Native capability binding removed")
+      await nativeBindings.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove native binding")
+    } finally {
+      setBindingBusy(false)
+    }
+  }
 
   async function inspectZip() {
     if (!zipFile) return
@@ -996,6 +1075,147 @@ export default function CapabilityMarketplacePage() {
               </div>
             </GravitreSurface>
           </section>
+
+          <GravitreSurface>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-sm font-medium text-foreground">Native component bindings</h2>
+              <p className="text-xs text-muted-foreground">
+                Bind declared package agents, plays, templates, and triggers to existing Gravitre entities. Bindings never create or execute targets.
+              </p>
+            </div>
+            {bindablePackages.length === 0 ? (
+              <div className="mt-4">
+                <GravitreEmpty
+                  icon={<Package className="h-5 w-5" />}
+                  title="No native-bindable declarations"
+                  hint="Installed packages with agent, play, template, or trigger declarations will appear here."
+                />
+              </div>
+            ) : (
+              <form className="mt-4 grid gap-3 lg:grid-cols-4" onSubmit={createNativeBinding}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="native-binding-package">Package</Label>
+                  <select
+                    id="native-binding-package"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={bindingPackageId ?? ""}
+                    onChange={(event) => {
+                      const value = event.target.value || null
+                      setBindingPackageId(value)
+                      setBindingComponentKey("")
+                      setBindingTargetType("")
+                      setBindingTargetId("")
+                    }}
+                  >
+                    <option value="">Select package</option>
+                    {bindablePackages.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="native-binding-component">Component</Label>
+                  <select
+                    id="native-binding-component"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={bindingComponentKey}
+                    disabled={!bindingPackageId}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      setBindingComponentKey(value)
+                      const selected = bindingComponents.find((row) => `${row.kind}:${row.name}` === value)
+                      setBindingTargetType(selected ? targetTypesForComponent(selected.kind)[0] : "")
+                    }}
+                  >
+                    <option value="">Select declaration</option>
+                    {bindingComponents.map((row) => (
+                      <option key={`${row.kind}:${row.name}`} value={`${row.kind}:${row.name}`}>
+                        {row.kind} · {row.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="native-binding-target-type">Target type</Label>
+                  <select
+                    id="native-binding-target-type"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={bindingTargetType}
+                    disabled={!selectedBindingComponent}
+                    onChange={(event) => setBindingTargetType(event.target.value)}
+                  >
+                    <option value="">Select target</option>
+                    {bindingTargetTypes.map((target) => (
+                      <option key={target} value={target}>
+                        {target.replace(/_/g, " ")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="native-binding-target-id">Existing target ID / key</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="native-binding-target-id"
+                      value={bindingTargetId}
+                      onChange={(event) => setBindingTargetId(event.target.value)}
+                      placeholder="Existing Gravitre ID or Play key"
+                      disabled={!bindingTargetType}
+                    />
+                    {isAdmin ? (
+                      <Button
+                        type="submit"
+                        disabled={
+                          bindingBusy ||
+                          !bindingPackageId ||
+                          !selectedBindingComponent ||
+                          !bindingTargetType ||
+                          !bindingTargetId.trim()
+                        }
+                      >
+                        Bind
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </form>
+            )}
+            {bindingPackageId && (nativeBindings.data?.items ?? []).length ? (
+              <div className="mt-4 border-t border-divide pt-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Current bindings</p>
+                <ul className="space-y-2">
+                  {(nativeBindings.data?.items ?? []).map((binding) => (
+                    <li
+                      key={binding.id}
+                      className="flex flex-col gap-2 rounded border border-divide p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="text-xs">
+                        <p className="font-medium text-foreground">
+                          {binding.component_kind} · {binding.component_name}
+                        </p>
+                        <p className="mt-0.5 text-muted-foreground">
+                          {binding.target_type.replace(/_/g, " ")} · {binding.target_id} · {binding.enabled ? "active" : "disabled"}
+                        </p>
+                      </div>
+                      {isAdmin ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={bindingBusy}
+                          onClick={() => void deleteNativeBinding(binding.id)}
+                        >
+                          Remove
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </GravitreSurface>
 
           {historyPackageId ? (
             <GravitreSurface className="p-0">
