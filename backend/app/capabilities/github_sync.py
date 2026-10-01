@@ -33,6 +33,7 @@ MAX_FILES_PER_PACKAGE = 80
 class GithubPackageBundle:
     root: str
     files: dict[str, str]
+    commit_sha: str
 
 
 def _repo_parts(repository_url: str) -> tuple[str, str]:
@@ -77,11 +78,19 @@ async def discover_public_github_packages(
         timeout=timeout_s,
         follow_redirects=False,
     ) as client:
-        tree = await client.get(f"/repos/{owner}/{repo}/git/trees/{branch}", params={"recursive": "1"})
-        if tree.status_code in {401, 403, 404}:
+        commit_response = await client.get(f"/repos/{owner}/{repo}/commits/{branch}")
+        if commit_response.status_code in {401, 403, 404}:
             raise ValueError(
-                "GitHub repository is unavailable to anonymous sync; connect an authorized GitHub source for private repositories."
+                "GitHub repository is unavailable; connect an authorized GitHub source for private repositories."
             )
+        commit_response.raise_for_status()
+        commit_payload = commit_response.json() or {}
+        commit_sha = str(commit_payload.get("sha") or "")
+        tree_sha = str(((commit_payload.get("commit") or {}).get("tree") or {}).get("sha") or "")
+        if not commit_sha or not tree_sha:
+            raise ValueError("GitHub branch could not be resolved to an immutable commit")
+
+        tree = await client.get(f"/repos/{owner}/{repo}/git/trees/{tree_sha}", params={"recursive": "1"})
         tree.raise_for_status()
         rows = list((tree.json() or {}).get("tree") or [])
         file_paths = [
@@ -135,7 +144,7 @@ async def discover_public_github_packages(
                     import_file_bundle(files)
                 except ValueError:
                     continue
-                packages.append(GithubPackageBundle(root=root, files=files))
+                packages.append(GithubPackageBundle(root=root, files=files, commit_sha=commit_sha))
         return packages
 
 
@@ -209,6 +218,8 @@ async def sync_public_github_marketplace(
             content_digest=bundle_digest(item.files),
             files=item.files,
             security_scan=bundle.security_scan,
+            source_commit_sha=item.commit_sha,
+            source_package_path=item.root or ".",
         )
         staged.append(row)
 
