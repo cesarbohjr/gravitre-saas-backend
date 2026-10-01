@@ -1009,7 +1009,10 @@ export default function CapabilityMarketplacePage() {
                             <Button
                               size="sm"
                               variant={server.enabled ? "ghost" : "outline"}
-                              disabled={mcpBusy === server.id}
+                              disabled={
+                                mcpBusy === server.id ||
+                                (!server.enabled && serverTools.length === 0)
+                              }
                               onClick={() => void setMcpServerEnabled(server.id, !server.enabled)}
                             >
                               {server.enabled ? "Disable server" : "Approve server"}
