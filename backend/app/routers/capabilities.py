@@ -807,9 +807,11 @@ async def create_portable_capability_marketplace_draft(
             title=body.title or str(package.get("name") or "Portable capability"),
             asset_type="capability_package",
             config={
-                "repository_url": repository_url,
-                "commit_sha": commit_sha,
-                "package_path": package_path,
+                "source_package_id": package_id,
+                "provenance_mode": "git_pinned" if git_pinned else "trusted_signature",
+                "repository_url": repository_url if git_pinned else None,
+                "commit_sha": commit_sha if git_pinned else None,
+                "package_path": package_path if git_pinned else "",
                 "content_digest": digest,
                 "snapshot_digest": snapshot_digest,
                 "package_format": str(package.get("package_format") or "unknown"),
@@ -817,6 +819,15 @@ async def create_portable_capability_marketplace_draft(
                 "license_policy": str(package.get("license_policy") or "review"),
                 "risk_level": str(package.get("risk_level") or "moderate"),
                 "signature_status": str(package.get("signature_status") or "unsigned"),
+                "publisher_name": package.get("publisher_name"),
+                "publisher_trust_scope": (
+                    "marketplace_verified"
+                    if bool(package.get("publisher_verified"))
+                    else str(package.get("publisher_trust_scope") or "none")
+                ),
+                "marketplace_publisher_id": (
+                    str(package.get("marketplace_publisher_id") or "") or None
+                ),
                 "security_scan": security_scan,
                 "manifest": manifest_snapshot,
                 "resources": resource_snapshot,
