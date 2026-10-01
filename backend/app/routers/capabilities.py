@@ -10,7 +10,7 @@ from app.auth.dependencies import get_environment_context, require_admin, requir
 from app.capabilities.activation import build_activation_plan
 from app.capabilities.importers import import_file_bundle, read_zip_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
-from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
+from app.capabilities.provenance import bundle_digest, inert_snapshot_digest, normalize_github_repository_url
 from app.capabilities.publisher_trust import (
     list_trusted_publishers,
     publisher_trust_details,
@@ -720,6 +720,24 @@ async def create_portable_capability_marketplace_draft(
     if any(isinstance(row, dict) and row.get("kind") == "mcp" for row in components):
         tags.append("mcp")
 
+    manifest_snapshot = package.get("manifest") if isinstance(package.get("manifest"), dict) else {}
+    resource_snapshot = [
+        {
+            "path": str(row.get("path") or ""),
+            "kind": str(row.get("kind") or "reference"),
+            "content": None
+            if bool(row.get("executable")) or str(row.get("kind") or "") == "script"
+            else row.get("content"),
+            "executable": bool(row.get("executable")),
+        }
+        for row in list_package_resources(client, org_id, package_id)
+        if str(row.get("path") or "").strip()
+    ]
+    snapshot_digest = inert_snapshot_digest(
+        manifest=manifest_snapshot,
+        resources=resource_snapshot,
+    )
+
     from app.marketplace.crud import MarketplaceCrudError, create_org_asset
 
     try:
@@ -735,25 +753,15 @@ async def create_portable_capability_marketplace_draft(
                 "commit_sha": commit_sha,
                 "package_path": package_path,
                 "content_digest": digest,
+                "snapshot_digest": snapshot_digest,
                 "package_format": str(package.get("package_format") or "unknown"),
                 "license": package.get("license"),
                 "license_policy": str(package.get("license_policy") or "review"),
                 "risk_level": str(package.get("risk_level") or "moderate"),
                 "signature_status": str(package.get("signature_status") or "unsigned"),
                 "security_scan": security_scan,
-                "manifest": package.get("manifest") if isinstance(package.get("manifest"), dict) else {},
-                "resources": [
-                {
-                    "path": str(row.get("path") or ""),
-                    "kind": str(row.get("kind") or "reference"),
-                    "content": None
-                    if bool(row.get("executable")) or str(row.get("kind") or "") == "script"
-                    else row.get("content"),
-                    "executable": bool(row.get("executable")),
-                }
-                for row in list_package_resources(client, org_id, package_id)
-                if str(row.get("path") or "").strip()
-            ],
+                "manifest": manifest_snapshot,
+                "resources": resource_snapshot,
             },
             description=body.description or package.get("description"),
             category=body.category,
@@ -775,6 +783,7 @@ async def create_portable_capability_marketplace_draft(
         "sourcePackageId": package_id,
         "sourceCommitSha": commit_sha,
         "contentDigest": digest,
+        "snapshotDigest": snapshot_digest,
         "next": {
             "internalReview": f"/api/marketplace/assets/{body.slug}/submit-for-review",
             "publicReview": f"/api/marketplace/assets/{body.slug}/submit-for-public-review",
