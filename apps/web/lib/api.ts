@@ -1456,6 +1456,25 @@ export const portableCapabilitiesApi = {
       apiUrl("/api/capabilities/marketplaces"),
       body,
     ),
+  syncMarketplace: (sourceId: string) =>
+    postJson<{
+      sync: {
+        discovered: number
+        ingested: number
+        rejected: Array<{ root: string; name: string; reason: string }>
+        approvalRequired: boolean
+      }
+      sourceId: string
+      status: string
+    }>(apiUrl(`/api/capabilities/marketplaces/${encodeURIComponent(sourceId)}/sync`), {}),
+  reviewPackage: (
+    packageId: string,
+    body: { status: "installed" | "quarantined" | "disabled"; notes?: string },
+  ) =>
+    postJson<{ package: PortableCapabilityPackage; reviewed: boolean }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/review`),
+      body,
+    ),
   inspectBundle: (body: {
     files: Record<string, string>
     sourceType?: "manual" | "github" | "zip" | "mcp" | "marketplace"
