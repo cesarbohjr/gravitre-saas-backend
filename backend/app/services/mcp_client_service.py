@@ -120,6 +120,7 @@ class MCPClientService:
         org_id: str,
         *,
         allow_disabled_server: bool = False,
+        enable_discovered_tools: bool | None = None,
     ) -> list[dict[str, Any]]:
         server = await self._load_server(
             server_id,
@@ -152,6 +153,11 @@ class MCPClientService:
                 or []
             )
             package_managed = bool(server.get("source_capability_package_id"))
+            discovered_enabled = (
+                bool(enable_discovered_tools)
+                if enable_discovered_tools is not None
+                else not package_managed
+            )
             row = {
                 "server_id": server_id,
                 "org_id": org_id,
@@ -161,7 +167,7 @@ class MCPClientService:
                 "capability_tier": capability,
                 # Capability-package tools are discovered inert. Admins must
                 # explicitly activate the reviewed server and individual tools.
-                "enabled": False if package_managed else True,
+                "enabled": discovered_enabled,
                 "risk_level": "high" if capability == "write" else "low",
             }
             if existing:
