@@ -8,9 +8,11 @@ from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_environment_context, require_admin, require_org_member
 from app.capabilities.activation import build_activation_plan
+from app.capabilities.github_marketplace import discover_public_github_packages
 from app.capabilities.importers import import_file_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
+from app.connectors.private.signature import BundleSignatureError, verify_bundle_signature
 from app.capabilities.registry import tenant_capability_snapshot
 from app.capabilities.repository import (
     create_marketplace_source,
@@ -392,3 +394,211 @@ async def sync_capability_marketplace(
         synced=True,
     )
     return {"sync": result, "sourceId": source_id, "status": "completed"}
+
+
+@router.post("/packages/install-signed-bundle")
+async def install_signed_portable_bundle(
+    body: SignedPackageBundleRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    try:
+        bundle = import_file_bundle(body.files)
+        verify_bundle_signature(
+            manifest=bundle.manifest,
+            package_sources=body.files,
+            signing_public_key_pem=body.signing_public_key_pem,
+            signature_b64=body.signature,
+        )
+    except (ValueError, BundleSignatureError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    inspection = bundle.inspection
+    if not installation_allowed(inspection):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Package blocked by capability policy", "inspection": inspection.as_dict()},
+        )
+    client = get_supabase_client(settings)
+    installed = install_package(
+        client,
+        org_id=org_id,
+        user_id=str(user.get("user_id") or ""),
+        inspection=inspection,
+        manifest=bundle.manifest,
+        source_type=body.source_type,
+        source_uri=body.source_uri,
+        publisher_name=str(bundle.manifest.get("publisher") or bundle.manifest.get("author") or "").strip() or None,
+        publisher_verified=True,
+        signature_status="verified",
+        content_digest=bundle_digest(body.files),
+    )
+    package_id = str(installed.get("id") or "")
+    if package_id:
+        replace_package_resources(
+            client,
+            package_id=package_id,
+            org_id=org_id,
+            resources=list(bundle.resources),
+        )
+    return {
+        "package": installed,
+        "inspection": inspection.as_dict(),
+        "signatureStatus": "verified",
+        "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
+        "directExecutionEnabled": False,
+    }
+
+
+@router.post("/marketplaces/{source_id}/sync")
+async def sync_capability_marketplace(
+    source_id: str,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = get_supabase_client(settings)
+    source = get_marketplace_source(client, org_id, source_id)
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability marketplace not found")
+    try:
+        discovered = await discover_public_github_packages(
+            repository_url=str(source.get("repository_url") or ""),
+            branch=str(source.get("branch") or "main"),
+            root_path=str(source.get("root_path") or ""),
+        )
+        staged = [
+            upsert_marketplace_candidate(
+                client,
+                org_id=org_id,
+                source_id=source_id,
+                package_path=str(row.get("packagePath") or "."),
+                manifest=dict(row.get("manifest") or {}),
+                inspection=dict(row.get("inspection") or {}),
+                content_digest=str(row.get("contentDigest") or ""),
+                files=dict(row.get("files") or {}),
+            )
+            for row in discovered
+        ]
+        update_marketplace_sync_status(
+            client,
+            org_id=org_id,
+            source_id=source_id,
+            status="success",
+            error=None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        update_marketplace_sync_status(
+            client,
+            org_id=org_id,
+            source_id=source_id,
+            status="error",
+            error=str(exc)[:500],
+        )
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    return {
+        "marketplaceId": source_id,
+        "discovered": len(staged),
+        "candidates": staged,
+        "installed": 0,
+        "requiresReview": True,
+    }
+
+
+@router.get("/marketplace-candidates")
+async def get_capability_marketplace_candidates(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    source_id: str | None = None,
+    candidate_status: str | None = None,
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    return {
+        "items": list_marketplace_candidates(
+            client,
+            org_id,
+            source_id=source_id,
+            status=candidate_status,
+        )
+    }
+
+
+@router.post("/marketplace-candidates/{candidate_id}/review")
+async def review_capability_marketplace_candidate(
+    candidate_id: str,
+    body: CandidateReviewRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    row = review_marketplace_candidate(
+        client,
+        org_id=org_id,
+        candidate_id=candidate_id,
+        user_id=str(user.get("user_id") or ""),
+        decision=body.decision,
+        notes=body.notes,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability candidate not found")
+    return {"candidate": row}
+
+
+@router.post("/marketplace-candidates/{candidate_id}/install")
+async def install_capability_marketplace_candidate(
+    candidate_id: str,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    candidate = get_marketplace_candidate(client, org_id, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability candidate not found")
+    if str(candidate.get("status") or "") != "approved":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Capability candidate must be approved before installation",
+        )
+    files = dict(candidate.get("files") or {})
+    bundle = import_file_bundle(files)
+    inspection = bundle.inspection
+    if not installation_allowed(inspection):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Candidate is blocked by capability policy")
+    source = get_marketplace_source(
+        client,
+        org_id,
+        str(candidate.get("marketplace_source_id") or ""),
+    ) or {}
+    installed = install_package(
+        client,
+        org_id=org_id,
+        user_id=str(user.get("user_id") or ""),
+        inspection=inspection,
+        manifest=bundle.manifest,
+        source_type="marketplace",
+        source_uri=str(source.get("repository_url") or "") or None,
+        marketplace_source_id=str(candidate.get("marketplace_source_id") or "") or None,
+        publisher_name=str(bundle.manifest.get("publisher") or bundle.manifest.get("author") or "").strip() or None,
+        publisher_verified=False,
+        signature_status="unsigned",
+        content_digest=str(candidate.get("content_digest") or bundle_digest(files)),
+    )
+    package_id = str(installed.get("id") or "")
+    if package_id:
+        replace_package_resources(client, package_id=package_id, org_id=org_id, resources=list(bundle.resources))
+    (
+        client.table("capability_marketplace_candidates")
+        .update({"status": "installed"})
+        .eq("org_id", org_id)
+        .eq("id", candidate_id)
+        .execute()
+    )
+    return {
+        "package": installed,
+        "candidateId": candidate_id,
+        "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
+        "directExecutionEnabled": False,
+    }
