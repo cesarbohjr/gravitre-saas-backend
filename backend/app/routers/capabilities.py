@@ -30,6 +30,7 @@ from app.capabilities.repository import (
 )
 from app.capabilities.review import review_transition_allowed
 from app.capabilities.github_sync import sync_public_github_marketplace
+from app.capabilities.mcp_activation import prepare_mcp_dependencies
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
