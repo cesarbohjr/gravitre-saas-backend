@@ -142,14 +142,9 @@ def remove_component_binding(client: Any, *, org_id: str, package_id: str, bindi
 
 def deactivate_component_bindings(client: Any, *, org_id: str, package_id: str) -> int:
     try:
-        response = (
-            client.table("capability_component_bindings")
-            .update({"enabled": False})
-            .eq("org_id", org_id)
-            .eq("package_id", package_id)
-            .eq("enabled", True)
-            .execute()
-        )
+        query = client.table("capability_component_bindings")
+        query = query.eq("org_id", org_id).eq("package_id", package_id).eq("enabled", True)
+        response = query.update({"enabled": False}).execute()
         return len(response.data or [])
     except Exception:
         return 0
