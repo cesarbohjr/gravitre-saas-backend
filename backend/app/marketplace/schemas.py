@@ -141,6 +141,43 @@ class ConnectorConfigAssetConfig(BaseModel):
     connect_path: str = "/connectors"
 
 
+class CapabilityPackageResource(BaseModel):
+    path: str = Field(min_length=1)
+    kind: Literal["reference", "script", "asset"]
+    content: str | None = None
+    executable: bool = False
+
+    @model_validator(mode="after")
+    def script_content_must_remain_inert(self) -> "CapabilityPackageResource":
+        if self.executable or self.kind == "script":
+            if self.content not in (None, ""):
+                raise ValueError("executable capability resources must not embed script content")
+        return self
+
+
+class CapabilityPackageAssetConfig(BaseModel):
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    resources: list[CapabilityPackageResource] = Field(default_factory=list)
+    package_format: str = Field(min_length=1)
+    license: str | None = None
+    license_policy: str = "review"
+    risk_level: str = "moderate"
+    signature_status: str = "unsigned"
+    content_digest: str = Field(min_length=1)
+    repository_url: str | None = None
+    commit_sha: str | None = None
+    package_path: str | None = None
+    security_scan: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_portable_snapshot(self) -> "CapabilityPackageAssetConfig":
+        if self.license_policy == "block" or self.risk_level == "blocked":
+            raise ValueError("blocked capability packages cannot be published")
+        if bool(self.security_scan.get("blocked")):
+            raise ValueError("security-blocked capability packages cannot be published")
+        return self
+
+
 class CapabilityPackageAssetConfig(BaseModel):
     repository_url: str = Field(min_length=1)
     commit_sha: str = Field(min_length=40, max_length=40)
