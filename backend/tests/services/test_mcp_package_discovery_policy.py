@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.mcp_client_service import should_enable_discovered_mcp_tool
+from app.services.mcp_client_service import catalog_visible_mcp_tools, should_enable_discovered_mcp_tool
 
 
 def test_new_portable_package_tools_default_disabled() -> None:
@@ -17,3 +17,18 @@ def test_explicit_discovery_override_wins() -> None:
     server = {"source_capability_package_id": "pkg-1"}
     assert should_enable_discovered_mcp_tool(server, True) is True
     assert should_enable_discovered_mcp_tool(server, False) is False
+
+
+def test_portable_package_catalog_exposes_only_admin_enabled_tools() -> None:
+    server = {"source_capability_package_id": "pkg-1"}
+    tools = [
+        {"id": "new", "enabled": False},
+        {"id": "approved", "enabled": True},
+    ]
+    assert catalog_visible_mcp_tools(server, tools) == [{"id": "approved", "enabled": True}]
+
+
+def test_manual_mcp_catalog_behavior_is_unchanged() -> None:
+    server = {"source_capability_package_id": None}
+    tools = [{"id": "a", "enabled": False}, {"id": "b", "enabled": True}]
+    assert catalog_visible_mcp_tools(server, tools) is tools
