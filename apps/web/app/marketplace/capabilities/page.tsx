@@ -120,6 +120,10 @@ export default function CapabilityMarketplacePage() {
     user ? "portable-capability-packages" : null,
     () => portableCapabilitiesApi.listPackages(),
   )
+  const usage = useSWR(
+    user ? "portable-capability-usage-30d" : null,
+    () => portableCapabilitiesApi.usage(30),
+  )
   const marketplaces = useSWR(
     user ? "portable-capability-marketplaces" : null,
     () => portableCapabilitiesApi.listMarketplaces(),
@@ -371,11 +375,32 @@ export default function CapabilityMarketplacePage() {
         />
 
         <div className="mx-auto w-full max-w-6xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
-          <section className="grid gap-[var(--np-kpi-gap)] sm:grid-cols-3">
+          <section className="grid gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
             <GravitreMetric label="Installed capabilities" value={packageRows.length} icon={<Package className="h-4 w-4" />} />
+            <GravitreMetric label="Reasoning selections · 30d" value={usage.data?.reasoningSelections ?? 0} icon={<CheckCircle2 className="h-4 w-4" />} />
             <GravitreMetric label="Signed packages" value={signed} icon={<ShieldCheck className="h-4 w-4" />} />
             <GravitreMetric label="Quarantined" value={quarantined} icon={<AlertTriangle className="h-4 w-4" />} />
           </section>
+
+          {usage.data?.topCapabilities?.length ? (
+            <GravitreSurface>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-medium text-foreground">Capability usage · last 30 days</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Privacy-minimized adoption telemetry. Prompt and skill contents are not stored.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  {usage.data.topCapabilities.slice(0, 5).map((item) => (
+                    <span key={item.packageId} className="rounded border border-divide px-2 py-1">
+                      {item.name}: {item.events}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </GravitreSurface>
+          ) : null}
 
           <GravitreSurface>
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
