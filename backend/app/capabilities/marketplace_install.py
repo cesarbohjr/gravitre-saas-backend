@@ -138,10 +138,12 @@ def install_marketplace_capability_package(
     settings: Any,
     environment_name: str,
 ) -> dict[str, Any]:
-    manifest = config.manifest if isinstance(config.manifest, dict) else {}
+    raw_manifest = getattr(config, "manifest", {})
+    manifest = raw_manifest if isinstance(raw_manifest, dict) else {}
+    raw_resources = getattr(config, "resources", []) or []
     resource_rows = [
         row.model_dump(mode="json") if hasattr(row, "model_dump") else dict(row)
-        for row in (config.resources or [])
+        for row in raw_resources
     ]
     skill_md = next(
         (
@@ -161,17 +163,19 @@ def install_marketplace_capability_package(
             manifest=manifest,
             resources=resource_rows,
         )
-        if actual_snapshot_digest != str(config.snapshot_digest):
+        expected_snapshot_digest = str(getattr(config, "snapshot_digest", "") or "")
+        if not expected_snapshot_digest or actual_snapshot_digest != expected_snapshot_digest:
             raise CapabilityMarketplaceInstallError(
                 "Capability Marketplace snapshot digest does not match the reviewed artifact"
             )
         inspection = inspect_package(manifest, skill_md=skill_md)
-        security_scan = config.security_scan if isinstance(config.security_scan, dict) else {}
+        raw_security_scan = getattr(config, "security_scan", {})
+        security_scan = raw_security_scan if isinstance(raw_security_scan, dict) else {}
         if (
             not installation_allowed(inspection)
             or bool(security_scan.get("blocked"))
-            or str(config.license_policy or "") == "block"
-            or str(config.risk_level or "") == "blocked"
+            or str(getattr(config, "license_policy", "") or "") == "block"
+            or str(getattr(config, "risk_level", "") or "") == "blocked"
         ):
             raise CapabilityMarketplaceInstallError(
                 "Capability package does not pass the destination organization's current security/license policy"
