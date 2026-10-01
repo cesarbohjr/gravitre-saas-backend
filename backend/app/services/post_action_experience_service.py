@@ -111,6 +111,12 @@ def what_this_means(
         return "This action did not change vendor state — fix the blocker, then retry."
 
     structured = result.structured if isinstance(result.structured, dict) else {}
+    verification = structured.get("verification") if isinstance(structured.get("verification"), dict) else {}
+    if verification.get("required") and not verification.get("verified"):
+        return (
+            "The connected system accepted the action. Gravitre is verifying the "
+            "result in the source system before calling it complete."
+        )
     action = str(plan.invoke_action if plan else "") or ""
     integration = str(plan.integration if plan else result.integration or "").strip().lower()
 
@@ -159,6 +165,10 @@ def build_post_action_recommendation(
 ) -> dict[str, Any] | None:
     """Suggest-only recommendation fired off a Module A completion outcome."""
     if not result.success:
+        return None
+    structured = result.structured if isinstance(result.structured, dict) else {}
+    verification = structured.get("verification") if isinstance(structured.get("verification"), dict) else {}
+    if verification.get("required") and not verification.get("verified"):
         return None
     action = str(plan.invoke_action if plan else "").strip()
     template = _WRITE_NEXT_STEPS.get(action)
