@@ -32,11 +32,20 @@ function packageHasMcp(inspection?: Record<string, unknown>) {
   })
 }
 
-function hasMcpDependency(inspection?: Record<string, unknown>) {
-  const components = inspection?.components
-  return Array.isArray(components) && components.some(
-    (component) => component && typeof component === "object" && (component as { kind?: unknown }).kind === "mcp",
-  )
+function securitySummary(scan?: {
+  findings?: Array<{ severity?: string }>
+  externalHosts?: string[]
+  oauthScopes?: string[]
+  requiredSecrets?: string[]
+}) {
+  const findings = scan?.findings ?? []
+  const important = findings.filter((row) => row.severity === "critical" || row.severity === "high").length
+  return {
+    important,
+    hosts: scan?.externalHosts?.length ?? 0,
+    scopes: scan?.oauthScopes?.length ?? 0,
+    secrets: scan?.requiredSecrets?.length ?? 0,
+  }
 }
 
 export default function CapabilityMarketplacePage() {
@@ -163,7 +172,7 @@ export default function CapabilityMarketplacePage() {
     try {
       const result = await portableCapabilitiesApi.syncMarketplace(sourceId)
       toast.success("Capability marketplace synced", {
-        description: `${result.sync.ingested} package${result.sync.ingested === 1 ? "" : "s"} ingested`,
+        description: `${result.sync.ingested} package${result.sync.ingested === 1 ? "" : "s"} staged for review`,
       })
       await Promise.all([marketplaces.mutate(), packages.mutate(), candidates.mutate()])
     } catch (error) {
@@ -194,20 +203,6 @@ export default function CapabilityMarketplacePage() {
       await Promise.all([candidates.mutate(), packages.mutate()])
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Capability install failed")
-    } finally {
-      setPackageBusy(null)
-    }
-  }
-
-  async function prepareMcp(packageId: string) {
-    setPackageBusy(packageId)
-    try {
-      const result = await portableCapabilitiesApi.prepareMcp(packageId)
-      toast.success("MCP dependencies prepared", {
-        description: `${result.prepared.length} server${result.prepared.length === 1 ? "" : "s"} added disabled for review`,
-      })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "MCP preparation failed")
     } finally {
       setPackageBusy(null)
     }
@@ -279,6 +274,7 @@ export default function CapabilityMarketplacePage() {
                   </span>
                   <span>License: {String(zipInspection.inspection.license ?? "Review required")}</span>
                   <span>Risk: {riskLabel(String(zipInspection.inspection.risk ?? "unknown"))}</span>
+                  <span>Security: {riskLabel(String(zipInspection.securityScan?.risk ?? "unknown"))}</span>
                   <span>{zipInspection.resources.length} resources</span>
                 </div>
                 <p className="mt-2">
@@ -336,6 +332,14 @@ export default function CapabilityMarketplacePage() {
                         <p className="mt-1 text-xs text-muted-foreground">
                           License: {item.license ?? "Review required"} · Risk: {riskLabel(item.risk_level)} · Status: {item.status ?? "installed"}
                         </p>
+                        {item.security_scan ? (() => {
+                          const summary = securitySummary(item.security_scan)
+                          return (
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Security scan: {summary.important} high/critical findings · {summary.hosts} external hosts · {summary.scopes} scopes · {summary.secrets} secret requirements
+                            </p>
+                          )
+                        })() : null}
                       </div>
                       <div className="shrink-0 space-y-2 text-right text-[11px] text-muted-foreground">
                         {item.publisher_name ? <p>{item.publisher_name}</p> : null}
@@ -379,16 +383,6 @@ export default function CapabilityMarketplacePage() {
                             >
                               Disable
                             </Button>
-                            {item.status === "installed" && hasMcpDependency(item.inspection) ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={packageBusy === item.id}
-                                onClick={() => void prepareMcp(item.id!)}
-                              >
-                                Prepare MCP
-                              </Button>
-                            ) : null}
                           </div>
                         ) : null}
                       </div>
@@ -512,6 +506,14 @@ export default function CapabilityMarketplacePage() {
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         License: {candidate.license ?? "Review required"} · Risk: {riskLabel(candidate.risk_level)}
                       </p>
+                      {candidate.security_scan ? (() => {
+                        const summary = securitySummary(candidate.security_scan)
+                        return (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Security scan: {summary.important} high/critical findings · {summary.hosts} external hosts · {summary.scopes} scopes · {summary.secrets} secret requirements
+                          </p>
+                        )
+                      })() : null}
                     </div>
                     {isAdmin ? (
                       <div className="flex shrink-0 flex-wrap gap-1.5">
