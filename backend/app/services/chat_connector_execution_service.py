@@ -2806,7 +2806,7 @@ class ChatConnectorExecutionService:
             is_already_existed_effect,
         )
         from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
-        from app.workflows.repository import create_run, create_step, merge_run_parameters, update_step
+        from app.workflows.repository import create_run, create_step, merge_run_parameters, update_run, update_step
 
         structured = result.structured if isinstance(result.structured, dict) else {}
         already_existed = is_already_existed_effect(structured)
@@ -3041,9 +3041,6 @@ class ChatConnectorExecutionService:
         ):
             if can_schedule_verification and run_id:
                 try:
-                    # workflow_runs has no separate "verifying" enum. Keep the
-                    # canonical run nonterminal as running and expose the semantic
-                    # lifecycle through parameters for Runs/Activity/voice.
                     merge_run_parameters(
                         client,
                         run_id,
@@ -3063,6 +3060,7 @@ class ChatConnectorExecutionService:
                             },
                         },
                     )
+                    update_run(client, run_id, "verifying")
                 except Exception as verify_state_exc:  # noqa: BLE001
                     logger.warning(
                         "write verify state persist skipped run_id=%s action=%s err=%s",
@@ -3071,60 +3069,69 @@ class ChatConnectorExecutionService:
                         verify_state_exc,
                     )
             else:
-                # No verifier can run (accepted_async mode or missing tool context).
-                # Terminalize honestly as partial rather than claiming completion or
-                # leaving the run stuck forever in a nonterminal state.
-                status = "partial_success"
+                # Provider acceptance without an independent source check is not
+                # success. Terminalize explicitly as inconclusive.
+                status = "verification_inconclusive"
 
         should_finalize_now = not can_schedule_verification
-        try:
-            if not should_finalize_now:
-                raise StopIteration
-            finalize_execution_outcome(
-                client,
-                org_id=org_id,
-                status=status,
-                source="assistant_chat",
-                actor_id=user_id,
-                run_id=run_id,
-                persist_run=bool(run_id),
-                error_summary=None if result.success else (result.body or "Connector action failed"),
-                verified_output=VerifiedOutputRef(
-                    summary=(result.body or "")[:2000] or None,
-                    result_url=primary_result_url,
-                    external_url=result.external_url,
-                    entity_type=result.entity_type or "connector",
-                    entity_id=result.entity_id or run_id or None,
-                    integration=result.integration or plan.integration,
-                ),
-                notification_body=(result.body or "")[:2000] or None,
-                metadata={
-                    "conversation_id": conversation_id,
-                    "invoke_action": plan.invoke_action,
-                    "tool_name": plan.tool_name,
-                    "integration": plan.integration,
-                    "path": "chat_connector_execute_plan",
-                    "error_code": getattr(result, "error_code", None),
-                    "action_args": _proof_args_for_run(plan),
-                    "already_existed": already_existed,
-                    "outcome_effect": outcome_effect,
-                    "structured": structured,
-                },
-            )
-        except StopIteration:
+        if should_finalize_now:
+            try:
+                finalize_execution_outcome(
+                    client,
+                    org_id=org_id,
+                    status=status,
+                    source="assistant_chat",
+                    actor_id=user_id,
+                    run_id=run_id,
+                    persist_run=bool(run_id),
+                    error_summary=(
+                        "Source-of-record verification is unavailable for this action."
+                        if status == "verification_inconclusive"
+                        else (None if result.success else (result.body or "Connector action failed"))
+                    ),
+                    verified_output=VerifiedOutputRef(
+                        summary=(result.body or "")[:2000] or None,
+                        result_url=primary_result_url,
+                        external_url=result.external_url,
+                        entity_type=result.entity_type or "connector",
+                        entity_id=result.entity_id or run_id or None,
+                        integration=result.integration or plan.integration,
+                    ),
+                    notification_body=(result.body or "")[:2000] or None,
+                    metadata={
+                        "conversation_id": conversation_id,
+                        "invoke_action": plan.invoke_action,
+                        "tool_name": plan.tool_name,
+                        "integration": plan.integration,
+                        "path": "chat_connector_execute_plan",
+                        "error_code": getattr(result, "error_code", None),
+                        "action_args": _proof_args_for_run(plan),
+                        "already_existed": already_existed,
+                        "outcome_effect": outcome_effect,
+                        "structured": structured,
+                        "verification_status": (
+                            "inconclusive"
+                            if status == "verification_inconclusive"
+                            else ("verified" if inline_source_verified else None)
+                        ),
+                        "execution_lifecycle": status,
+                        "provider_acceptance_is_terminal_success": False,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "chat connector outcome finalize skipped org_id=%s action=%s error=%s",
+                    org_id,
+                    plan.invoke_action,
+                    exc,
+                )
+        else:
             logger.info(
                 "chat connector write awaiting verification org_id=%s run_id=%s action=%s mode=%s",
                 org_id,
                 run_id,
                 plan.invoke_action,
                 verification_mode,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "chat connector outcome finalize skipped org_id=%s action=%s error=%s",
-                org_id,
-                plan.invoke_action,
-                exc,
             )
 
         # Phase 3 — verification runs after provider acceptance without blocking
