@@ -153,7 +153,7 @@ class MCPClientService:
             )
             existing = (
                 client.table("mcp_tools")
-                .select("id")
+                .select("id,enabled")
                 .eq("org_id", org_id)
                 .eq("server_id", server_id)
                 .eq("tool_name", name)
@@ -162,9 +162,15 @@ class MCPClientService:
                 .data
                 or []
             )
-            discovered_enabled = should_enable_discovered_mcp_tool(
-                server,
-                enable_discovered_tools,
+            discovered_enabled = (
+                bool(existing[0].get("enabled"))
+                if existing
+                and bool(server.get("source_capability_package_id"))
+                and enable_discovered_tools is None
+                else should_enable_discovered_mcp_tool(
+                    server,
+                    enable_discovered_tools,
+                )
             )
             row = {
                 "server_id": server_id,
