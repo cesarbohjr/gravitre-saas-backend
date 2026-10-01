@@ -96,6 +96,16 @@ def mcp_openai_tool_name(server_name: str, tool_name: str) -> str:
     return f"mcp_{safe_server}_{safe_tool}"[:128]
 
 
+def should_enable_discovered_mcp_tool(
+    server: dict[str, Any],
+    enable_discovered_tools: bool | None,
+) -> bool:
+    """Manual MCP keeps legacy auto-enable; portable-package MCP defaults inert."""
+    if enable_discovered_tools is not None:
+        return bool(enable_discovered_tools)
+    return not bool(server.get("source_capability_package_id"))
+
+
 class MCPClientService:
     """Org-scoped MCP tool discovery and execution with mandatory write approval."""
 
@@ -152,11 +162,9 @@ class MCPClientService:
                 .data
                 or []
             )
-            package_managed = bool(server.get("source_capability_package_id"))
-            discovered_enabled = (
-                bool(enable_discovered_tools)
-                if enable_discovered_tools is not None
-                else not package_managed
+            discovered_enabled = should_enable_discovered_mcp_tool(
+                server,
+                enable_discovered_tools,
             )
             row = {
                 "server_id": server_id,
