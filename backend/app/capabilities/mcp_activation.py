@@ -127,7 +127,7 @@ def prepare_mcp_dependencies(
         "blocked": blocked,
         "enabled": 0,
         "credentialsCopiedFromPackage": False,
-        "activationState": activation_state,
+        "activationState": "pending_review",
         "executionOwner": "gravitre",
     }
 
