@@ -195,8 +195,10 @@ const stepStatusColors: Record<StepStatus, string> = {
 const statusVariants: Record<string, "success" | "error" | "warning" | "info"> = {
   completed: "success",
   partial_success: "warning",
+  verification_inconclusive: "warning",
   failed: "error",
   running: "info",
+  verifying: "info",
   pending: "warning",
   paused: "warning",
   cancelled: "error",
@@ -234,7 +236,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
     {
       refreshInterval: (latest) => {
         const status = String(latest?.run?.status ?? "").toLowerCase()
-        return ["running", "paused", "awaiting_approval", "pending_approval"].includes(status) ? 2000 : 0
+        return ["running", "verifying", "paused", "awaiting_approval", "pending_approval"].includes(status) ? 2000 : 0
       },
     },
   )
@@ -265,6 +267,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
   const canInterrupt =
     run.status === "running" ||
+    run.status === "verifying" ||
     run.status === "paused" ||
     run.status === "pending" ||
     run.status === "pending_approval" ||
@@ -272,6 +275,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const canPause = run.status === "running"
   const canCancel =
     run.status === "running" ||
+    run.status === "verifying" ||
     run.status === "paused" ||
     run.status === "pending" ||
     run.status === "pending_approval" ||
