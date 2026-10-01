@@ -1727,6 +1727,42 @@ export const portableCapabilitiesApi = {
       apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/prepare-mcp`),
       {},
     ),
+  listBindings: (packageId: string) =>
+    fetcher<{
+      items: Array<{
+        id: string
+        package_id: string
+        component_kind: "agent" | "play" | "template" | "trigger"
+        component_name: string
+        target_type: "agent" | "play" | "workflow" | "workflow_schedule" | "marketplace_asset"
+        target_id: string
+        enabled: boolean
+        created_at?: string
+      }>
+    }>(apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/bindings`)),
+  createBinding: (
+    packageId: string,
+    body: {
+      componentKind: "agent" | "play" | "template" | "trigger"
+      componentName: string
+      targetType: "agent" | "play" | "workflow" | "workflow_schedule" | "marketplace_asset"
+      targetId: string
+    },
+  ) =>
+    postJson<{
+      binding: Record<string, unknown>
+      executionOwner: string
+      targetCreated: false
+    }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/bindings`),
+      body,
+    ),
+  deleteBinding: (packageId: string, bindingId: string) =>
+    deleteJson<{ deleted: boolean; bindingId: string }>(
+      apiUrl(
+        `/api/capabilities/packages/${encodeURIComponent(packageId)}/bindings/${encodeURIComponent(bindingId)}`,
+      ),
+    ),
   createMarketplaceDraft: (
     packageId: string,
     body: {
