@@ -24,7 +24,7 @@ def list_packages(client: Any, org_id: str) -> list[dict[str, Any]]:
             .select(
                 "id,org_id,name,package_format,version,description,license,license_policy,"
                 "risk_level,source_type,source_uri,source_commit_sha,source_package_path,marketplace_source_id,publisher_name,"
-                "publisher_verified,signature_status,content_digest,inspection,security_scan,status,"
+                "publisher_trusted,publisher_trust_scope,publisher_verified,marketplace_publisher_id,signature_status,content_digest,inspection,security_scan,status,"
                 "installed_by,installed_at,updated_at,reviewed_by,reviewed_at,review_notes"
             )
             .eq("org_id", org_id)
@@ -50,7 +50,10 @@ def install_package(
     source_uri: str | None = None,
     marketplace_source_id: str | None = None,
     publisher_name: str | None = None,
+    publisher_trusted: bool = False,
+    publisher_trust_scope: str = "none",
     publisher_verified: bool = False,
+    marketplace_publisher_id: str | None = None,
     signature_status: str = "unsigned",
     content_digest: str | None = None,
     initial_status: str | None = None,
@@ -74,7 +77,10 @@ def install_package(
         "source_package_path": source_package_path,
         "marketplace_source_id": marketplace_source_id,
         "publisher_name": publisher_name,
-        "publisher_verified": publisher_verified,
+        "publisher_trusted": bool(publisher_trusted),
+        "publisher_trust_scope": publisher_trust_scope,
+        "publisher_verified": bool(publisher_verified),
+        "marketplace_publisher_id": marketplace_publisher_id,
         "signature_status": signature_status,
         "content_digest": content_digest,
         "manifest": manifest,
@@ -367,7 +373,10 @@ _PACKAGE_SNAPSHOT_FIELDS = (
     "source_uri",
     "marketplace_source_id",
     "publisher_name",
+    "publisher_trusted",
+    "publisher_trust_scope",
     "publisher_verified",
+    "marketplace_publisher_id",
     "signature_status",
     "content_digest",
     "manifest",
