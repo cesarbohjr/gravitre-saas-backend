@@ -48,6 +48,7 @@ from app.routers import (
     billing_sync,
     business_outcomes,
     connector_oauth,
+    managed_connector_auth,
     connectors,
     capabilities,
     connected_files,
@@ -638,6 +639,7 @@ app.include_router(capabilities.router)
 app.include_router(plays.router)
 app.include_router(connected_files.router)
 app.include_router(connector_oauth.router)
+app.include_router(managed_connector_auth.router)
 app.include_router(marketplace.router)
 app.include_router(rag.router)
 app.include_router(rag_admin.router)
