@@ -213,13 +213,7 @@ export function WorkflowCard({
                 </span>
               ) : null}
               {/* Environment badge */}
-              <div className={`
-                flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium
-                ${environment === "production" 
-                  ? "bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)] ring-1 ring-[color:var(--g-emerald)]/20" 
-                  : "bg-[color:var(--g-approval)]/10 text-[color:var(--g-approval)] ring-1 ring-[color:var(--g-approval)]/20"
-                }
-              `}>
+              <div className="flex items-center gap-1 border border-divide bg-[color:var(--g-surface-2)] px-2 py-0.5 text-xs font-medium text-[color:var(--g-text-secondary)]">
                 <Icon 
                   name={environment === "production" ? "production" : "staging"} 
                   size="xs" 
