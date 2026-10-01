@@ -98,6 +98,8 @@ export default function CapabilityMarketplacePage() {
   const [name, setName] = useState("")
   const [repositoryUrl, setRepositoryUrl] = useState("")
   const [branch, setBranch] = useState("main")
+  const [marketplaceRootPath, setMarketplaceRootPath] = useState("")
+  const [marketplaceAutoSync, setMarketplaceAutoSync] = useState(false)
   const [busy, setBusy] = useState(false)
   const [packageBusy, setPackageBusy] = useState<string | null>(null)
   const [sourceBusy, setSourceBusy] = useState<string | null>(null)
@@ -108,6 +110,8 @@ export default function CapabilityMarketplacePage() {
   const [trustedPublisherMarketplaceSlug, setTrustedPublisherMarketplaceSlug] = useState("")
   const [trustBusy, setTrustBusy] = useState(false)
   const [zipFile, setZipFile] = useState<File | null>(null)
+  const [zipSigningPublicKey, setZipSigningPublicKey] = useState("")
+  const [zipSignature, setZipSignature] = useState("")
   const [zipBusy, setZipBusy] = useState(false)
   const [zipInspection, setZipInspection] = useState<Awaited<ReturnType<typeof portableCapabilitiesApi.inspectZip>> | null>(null)
   const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>("all")
@@ -164,9 +168,19 @@ export default function CapabilityMarketplacePage() {
     if (!zipFile || !zipInspection?.installationAllowed || !isAdmin) return
     setZipBusy(true)
     try {
-      await portableCapabilitiesApi.installZip(zipFile)
+      const hasSignatureInputs = Boolean(zipSigningPublicKey.trim() || zipSignature.trim())
+      if (hasSignatureInputs && (!zipSigningPublicKey.trim() || !zipSignature.trim())) {
+        toast.error("Provide both the publisher public key and signature, or leave both blank")
+        return
+      }
+      await portableCapabilitiesApi.installZip(zipFile, {
+        signingPublicKeyPem: zipSigningPublicKey.trim() || undefined,
+        signature: zipSignature.trim() || undefined,
+      })
       toast.success("Portable capability installed")
       setZipFile(null)
+      setZipSigningPublicKey("")
+      setZipSignature("")
       setZipInspection(null)
       await packages.mutate()
     } catch (error) {
@@ -207,12 +221,16 @@ export default function CapabilityMarketplacePage() {
         name: name.trim(),
         repositoryUrl: repositoryUrl.trim(),
         branch: branch.trim() || "main",
+        rootPath: marketplaceRootPath.trim() || undefined,
+        autoSync: marketplaceAutoSync,
         approvalRequired: true,
       })
       toast.success("Private capability marketplace added")
       setName("")
       setRepositoryUrl("")
       setBranch("main")
+      setMarketplaceRootPath("")
+      setMarketplaceAutoSync(false)
       await marketplaces.mutate()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add marketplace")
@@ -379,6 +397,36 @@ export default function CapabilityMarketplacePage() {
                     }}
                   />
                 </div>
+                <details className="mt-3 max-w-xl rounded border border-divide p-3">
+                  <summary className="cursor-pointer text-xs font-medium text-foreground">
+                    Signed package verification (optional)
+                  </summary>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Provide both values to verify the ZIP at install time. A valid signature proves package integrity; publisher trust is evaluated separately.
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <Label htmlFor="portable-capability-signing-key">Publisher public key (PEM)</Label>
+                      <Textarea
+                        id="portable-capability-signing-key"
+                        className="mt-1.5 min-h-24 font-mono text-xs"
+                        value={zipSigningPublicKey}
+                        onChange={(event) => setZipSigningPublicKey(event.target.value)}
+                        placeholder="-----BEGIN PUBLIC KEY-----"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="portable-capability-signature">Signature</Label>
+                      <Textarea
+                        id="portable-capability-signature"
+                        className="mt-1.5 min-h-20 font-mono text-xs"
+                        value={zipSignature}
+                        onChange={(event) => setZipSignature(event.target.value)}
+                        placeholder="Base64 signature"
+                      />
+                    </div>
+                  </div>
+                </details>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -612,6 +660,32 @@ export default function CapabilityMarketplacePage() {
                     placeholder="main"
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="capability-marketplace-root">Root path (optional)</Label>
+                  <Input
+                    id="capability-marketplace-root"
+                    value={marketplaceRootPath}
+                    onChange={(event) => setMarketplaceRootPath(event.target.value)}
+                    placeholder="capabilities/"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Limit discovery to a folder in the repository.
+                  </p>
+                </div>
+                <label className="flex cursor-pointer items-start gap-2 rounded border border-divide p-2.5">
+                  <input
+                    className="mt-0.5 h-4 w-4"
+                    type="checkbox"
+                    checked={marketplaceAutoSync}
+                    onChange={(event) => setMarketplaceAutoSync(event.target.checked)}
+                  />
+                  <span>
+                    <span className="block text-xs font-medium text-foreground">Auto-sync catalog</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      Periodically discover changes. New packages are still staged for review before installation.
+                    </span>
+                  </span>
+                </label>
                 <Button type="submit" disabled={busy || !name.trim() || !repositoryUrl.trim()}>
                   {busy ? "Adding…" : "Add marketplace"}
                 </Button>
