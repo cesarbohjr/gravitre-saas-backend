@@ -35,7 +35,9 @@ class _Query:
 
     def update(self, payload):
         self.payload = payload
-        self.client.updates.append((self.table_name, payload, list(self.filters)))
+        # Keep the same filter list object so chained .eq(...) calls after
+        # update are visible to the assertion, matching PostgREST builder use.
+        self.client.updates.append((self.table_name, payload, self.filters))
         self.rows = [{"id": "binding-1"}]
         return self
 
