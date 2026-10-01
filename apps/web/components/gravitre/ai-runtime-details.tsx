@@ -131,9 +131,15 @@ export function GravitreAIRuntimeDetails({
           description={AI_RUNTIME_STATE_COPY[state].detail}
         >
           {state === "failed" ? (
-            <GravitreInspectorNotice tone="error" title="This turn did not report completion to your browser">
-              The conversation shows what was received. Reopen it to load what Gravitre saved.
-            </GravitreInspectorNotice>
+            executionResult?.success === false ? (
+              <GravitreInspectorNotice tone="error" title="The requested action did not complete">
+                Gravitre received the turn, but the action itself failed. The Result section below shows the action and record that failed; retry only after the underlying integration or action error is resolved.
+              </GravitreInspectorNotice>
+            ) : (
+              <GravitreInspectorNotice tone="error" title="The reply connection ended before completion was confirmed">
+                Gravitre did not receive a reliable browser-side completion signal. Reopen the conversation to recover any reply that was saved before retrying the action.
+              </GravitreInspectorNotice>
+            )
           ) : state === "needs_approval" || state === "blocked" ? (
             <GravitreInspectorNotice tone="approval" title={AI_RUNTIME_STATE_COPY[state].label}>
               Approve or reject in the conversation. Nothing runs from this panel.
