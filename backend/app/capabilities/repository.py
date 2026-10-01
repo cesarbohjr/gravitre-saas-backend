@@ -233,3 +233,129 @@ def update_marketplace_sync_status(
         .eq("org_id", org_id)
         .execute()
     )
+
+
+def get_marketplace_source(client: Any, org_id: str, source_id: str) -> dict[str, Any] | None:
+    response = (
+        client.table("capability_marketplace_sources")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("id", source_id)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return rows[0] if rows else None
+
+
+def update_marketplace_sync_status(
+    client: Any,
+    *,
+    org_id: str,
+    source_id: str,
+    status: str,
+    error: str | None = None,
+) -> None:
+    from datetime import datetime, timezone
+
+    payload = {
+        "last_synced_at": datetime.now(timezone.utc).isoformat(),
+        "last_sync_status": status,
+        "last_sync_error": error,
+    }
+    client.table("capability_marketplace_sources").update(payload).eq("org_id", org_id).eq("id", source_id).execute()
+
+
+def upsert_marketplace_candidate(
+    client: Any,
+    *,
+    org_id: str,
+    source_id: str,
+    package_path: str,
+    manifest: dict[str, Any],
+    inspection: dict[str, Any],
+    content_digest: str,
+    files: dict[str, str],
+) -> dict[str, Any]:
+    row = {
+        "org_id": org_id,
+        "marketplace_source_id": source_id,
+        "package_path": package_path,
+        "name": str(inspection.get("name") or "unnamed-capability"),
+        "package_format": str(inspection.get("format") or "unknown"),
+        "version": inspection.get("version"),
+        "description": inspection.get("description"),
+        "license": inspection.get("license"),
+        "license_policy": str(inspection.get("license_policy") or "review"),
+        "risk_level": str(inspection.get("risk") or "moderate"),
+        "content_digest": content_digest,
+        "manifest": manifest,
+        "inspection": inspection,
+        "files": files,
+        "status": "pending_review",
+    }
+    response = client.table("capability_marketplace_candidates").upsert(
+        row,
+        on_conflict="marketplace_source_id,package_path,content_digest",
+    ).execute()
+    rows = list(response.data or [])
+    return rows[0] if rows else row
+
+
+def list_marketplace_candidates(
+    client: Any,
+    org_id: str,
+    *,
+    source_id: str | None = None,
+    status: str | None = None,
+) -> list[dict[str, Any]]:
+    query = client.table("capability_marketplace_candidates").select("*").eq("org_id", org_id)
+    if source_id:
+        query = query.eq("marketplace_source_id", source_id)
+    if status:
+        query = query.eq("status", status)
+    response = query.order("discovered_at", desc=True).execute()
+    return list(response.data or [])
+
+
+def get_marketplace_candidate(client: Any, org_id: str, candidate_id: str) -> dict[str, Any] | None:
+    response = (
+        client.table("capability_marketplace_candidates")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("id", candidate_id)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return rows[0] if rows else None
+
+
+def review_marketplace_candidate(
+    client: Any,
+    *,
+    org_id: str,
+    candidate_id: str,
+    user_id: str,
+    decision: str,
+    notes: str | None = None,
+) -> dict[str, Any] | None:
+    from datetime import datetime, timezone
+
+    status = "approved" if decision == "approve" else "rejected"
+    response = (
+        client.table("capability_marketplace_candidates")
+        .update(
+            {
+                "status": status,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "reviewed_by": user_id or None,
+                "review_notes": notes,
+            }
+        )
+        .eq("org_id", org_id)
+        .eq("id", candidate_id)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return rows[0] if rows else None
