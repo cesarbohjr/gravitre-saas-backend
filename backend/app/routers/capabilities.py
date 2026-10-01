@@ -737,6 +737,7 @@ async def review_portable_package(
         "package": updated,
         "reviewed": True,
         "mcpDeactivation": mcp_deactivation,
+        "nativeBindingsDisabled": native_binding_deactivation,
     }
 
 
