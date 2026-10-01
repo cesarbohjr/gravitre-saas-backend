@@ -110,9 +110,13 @@ def catalog_visible_mcp_tools(
     server: dict[str, Any],
     tools: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Portable-package tools enter the action catalog only after admin enablement."""
+    """Portable-package tools enter runtime only after server + tool review."""
     if not bool(server.get("source_capability_package_id")):
         return tools
+    if not bool(server.get("enabled")):
+        return []
+    if str(server.get("activation_state") or "configured") in {"pending_review", "disabled"}:
+        return []
     return [row for row in tools if bool(row.get("enabled"))]
 
 
@@ -140,7 +144,7 @@ def refresh_package_mcp_runtime_registration(
     """Rebuild one package-managed MCP server's runtime catalog from reviewed DB state."""
     server_rows = (
         client.table("mcp_servers")
-        .select("id,server_name,source_capability_package_id")
+        .select("id,server_name,enabled,activation_state,source_capability_package_id")
         .eq("id", server_id)
         .eq("org_id", org_id)
         .limit(1)
@@ -165,11 +169,13 @@ def refresh_package_mcp_runtime_registration(
     )
     server_name = str(server.get("server_name") or server_id)
 
+    visible_tools = catalog_visible_mcp_tools(server, tools)
+
     from app.services.mcp_catalog_sync import sync_mcp_server_to_catalog
     sync_mcp_server_to_catalog(
         server_name=server_name,
         server_id=server_id,
-        tools=catalog_visible_mcp_tools(server, tools),
+        tools=visible_tools,
     )
 
     from app.connectors.action_catalog.extensions import (
@@ -184,9 +190,7 @@ def refresh_package_mcp_runtime_registration(
     unregister_action_schemas(all_keys)
 
     enabled_schemas: dict[str, dict[str, Any]] = {}
-    for row in tools:
-        if not bool(row.get("enabled")):
-            continue
+    for row in visible_tools:
         schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
         if not schema:
             continue
