@@ -32,6 +32,7 @@ _ASSET_TYPES = frozenset({
     "knowledge_pack",
     "department_pack",
     "connector_config",
+    "capability_package",
 })
 _PRICING_TYPES = frozenset({"free", "paid", "subscription"})
 
