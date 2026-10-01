@@ -167,7 +167,7 @@ def catalog_visible_mcp_tools(
     """Portable-package tools enter runtime only after server + tool review."""
     if not bool(server.get("source_capability_package_id")):
         return tools
-    if not bool(server.get("enabled")):
+    if not bool(server.get("enabled", True)):
         return []
     if str(server.get("activation_state") or "configured") in {"pending_review", "disabled"}:
         return []
@@ -194,21 +194,25 @@ def refresh_package_mcp_runtime_registration(
     *,
     org_id: str,
     server_id: str,
+    server: dict[str, Any] | None = None,
 ) -> None:
     """Rebuild one package-managed MCP server's runtime catalog from reviewed DB state."""
-    server_rows = (
-        client.table("mcp_servers")
-        .select("id,server_name,enabled,activation_state,source_capability_package_id")
-        .eq("id", server_id)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-    if not server_rows:
-        return
-    server = dict(server_rows[0])
+    if server is None:
+        server_rows = (
+            client.table("mcp_servers")
+            .select("id,server_name,enabled,activation_state,source_capability_package_id")
+            .eq("id", server_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not server_rows:
+            return
+        server = dict(server_rows[0])
+    else:
+        server = dict(server)
     if not bool(server.get("source_capability_package_id")):
         return
 
@@ -422,6 +426,7 @@ class MCPClientService:
                 client,
                 org_id=org_id,
                 server_id=server_id,
+                server=server,
             )
         else:
             from app.services.mcp_catalog_sync import sync_mcp_server_to_catalog
@@ -921,7 +926,11 @@ class MCPClientService:
 
         url = str(server.get("server_url") or "")
         headers = self._auth_headers(server)
-        async with sse_client(url, headers=headers) as (read, write):
+        async with sse_client(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, input_data)
@@ -938,7 +947,11 @@ class MCPClientService:
         url = str(server.get("server_url") or "")
         headers = self._auth_headers(server)
         client_factory = _streamable_http_client()
-        async with client_factory(url, headers=headers) as streams:
+        async with client_factory(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
