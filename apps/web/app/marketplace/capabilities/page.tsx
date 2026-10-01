@@ -52,7 +52,7 @@ function canPublishPackage(item: {
   return gitPinned || trustedSigned
 }
 
-type CapabilityFilter = "all" | "skills" | "plugins" | "mcp" | "connectors" | "agents" | "plays" | "templates"
+type CapabilityFilter = "all" | "skills" | "plugins" | "mcp" | "connectors" | "agents" | "plays" | "templates" | "triggers"
 
 function packageMatchesFilter(
   item: {
@@ -74,6 +74,7 @@ function packageMatchesFilter(
   if (filter === "agents") return kinds.has("agent")
   if (filter === "plays") return kinds.has("play")
   if (filter === "templates") return kinds.has("template")
+  if (filter === "triggers") return kinds.has("trigger")
   return true
 }
 
@@ -658,11 +659,11 @@ export default function CapabilityMarketplacePage() {
                   <div>
                     <h2 className="text-sm font-medium text-foreground">Installed portable capabilities</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Agent Skills, Claude/OpenAI-style plugins, MCP packages, connectors, agents, plays, and templates.
+                      Agent Skills, Claude/OpenAI-style plugins, MCP packages, connectors, agents, plays, templates, and event triggers.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {(["all", "skills", "plugins", "mcp", "connectors", "agents", "plays", "templates"] as CapabilityFilter[]).map((filter) => (
+                    {(["all", "skills", "plugins", "mcp", "connectors", "agents", "plays", "templates", "triggers"] as CapabilityFilter[]).map((filter) => (
                       <Button
                         key={filter}
                         type="button"
