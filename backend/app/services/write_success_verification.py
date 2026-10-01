@@ -403,17 +403,26 @@ def _schedule_field_assert_verification(
                 request_params=request_params,
                 ctx=ctx,
             )
-            from app.workflows.repository import merge_run_parameters
+            from app.workflows.repository import merge_run_parameters, update_run
 
-            # Params only — never terminalize a run from a verification adapter.
             merge_run_parameters(
                 client,
                 run_id,
                 {
                     "outcome_effect": verify.effect,
                     "field_assert_verify": {**verify.as_dict(), "async": True},
+                    "vendor_verification": {
+                        "verified": verify.verified,
+                        "status": "verified" if verify.verified else "unverified",
+                        "detail": verify.detail,
+                    },
                 },
             )
+            if verify.verified:
+                row = client.table("workflow_runs").select("status").eq("id", run_id).limit(1).execute()
+                current = str(((row.data or [{}])[0] or {}).get("status") or "")
+                if current == "partial_success":
+                    update_run(client, run_id, "completed")
             logger.info(
                 "async_field_assert_verify run_id=%s action=%s verified=%s detail=%s",
                 run_id,
@@ -449,17 +458,26 @@ def _schedule_entity_get_verification(
             verify = verify_entity_get(
                 invoke_action=invoke_action, result_data=result_data, ctx=ctx
             )
-            from app.workflows.repository import merge_run_parameters
+            from app.workflows.repository import merge_run_parameters, update_run
 
-            # Params only — never terminalize a run from a verification adapter.
             merge_run_parameters(
                 client,
                 run_id,
                 {
                     "outcome_effect": verify.effect,
                     "entity_get_verify": {**verify.as_dict(), "async": True},
+                    "vendor_verification": {
+                        "verified": verify.verified,
+                        "status": "verified" if verify.verified else "unverified",
+                        "detail": verify.detail,
+                    },
                 },
             )
+            if verify.verified:
+                row = client.table("workflow_runs").select("status").eq("id", run_id).limit(1).execute()
+                current = str(((row.data or [{}])[0] or {}).get("status") or "")
+                if current == "partial_success":
+                    update_run(client, run_id, "completed")
             logger.info(
                 "async_entity_get_verify run_id=%s action=%s verified=%s detail=%s",
                 run_id,
