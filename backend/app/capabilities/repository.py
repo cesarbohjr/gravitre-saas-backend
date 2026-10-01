@@ -27,6 +27,11 @@ def install_package(
     manifest: dict[str, Any],
     source_type: str = "manual",
     source_uri: str | None = None,
+    marketplace_source_id: str | None = None,
+    publisher_name: str | None = None,
+    publisher_verified: bool = False,
+    signature_status: str = "unsigned",
+    content_digest: str | None = None,
 ) -> dict[str, Any]:
     row = {
         "org_id": org_id,
@@ -39,6 +44,11 @@ def install_package(
         "risk_level": inspection.risk,
         "source_type": source_type,
         "source_uri": source_uri,
+        "marketplace_source_id": marketplace_source_id,
+        "publisher_name": publisher_name,
+        "publisher_verified": publisher_verified,
+        "signature_status": signature_status,
+        "content_digest": content_digest,
         "manifest": manifest,
         "inspection": inspection.as_dict(),
         "status": "quarantined" if inspection.risk == "high" else "installed",
@@ -86,3 +96,44 @@ def list_package_resources(client: Any, org_id: str, package_id: str) -> list[di
         .execute()
     )
     return list(response.data or [])
+
+
+def list_marketplace_sources(client: Any, org_id: str) -> list[dict[str, Any]]:
+    response = (
+        client.table("capability_marketplace_sources")
+        .select("id,name,source_type,repository_url,branch,root_path,auto_sync,approval_required,status,last_synced_at,last_sync_status,last_sync_error,created_by,created_at,updated_at")
+        .eq("org_id", org_id)
+        .neq("status", "removed")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return list(response.data or [])
+
+
+def create_marketplace_source(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    name: str,
+    repository_url: str,
+    branch: str = "main",
+    root_path: str = "",
+    auto_sync: bool = False,
+    approval_required: bool = True,
+) -> dict[str, Any]:
+    row = {
+        "org_id": org_id,
+        "name": name.strip(),
+        "source_type": "github",
+        "repository_url": repository_url,
+        "branch": branch.strip() or "main",
+        "root_path": root_path.strip().strip("/"),
+        "auto_sync": bool(auto_sync),
+        "approval_required": bool(approval_required),
+        "status": "active",
+        "created_by": user_id or None,
+    }
+    response = client.table("capability_marketplace_sources").insert(row).execute()
+    data = list(response.data or [])
+    return data[0] if data else row
