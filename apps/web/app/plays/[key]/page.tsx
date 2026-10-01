@@ -1,0 +1,113 @@
+"use client"
+
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import useSWR from "swr"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { fetcher } from "@/lib/fetcher"
+import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, PlayCircle } from "lucide-react"
+
+type Readiness = {
+  observe_ready?: boolean
+  recommend_ready?: boolean
+  act_with_approval_ready?: boolean
+  blockers?: string[]
+  connector_groups?: Array<Record<string, unknown>>
+  actions?: Array<Record<string, unknown>>
+  signals?: Array<Record<string, unknown>>
+}
+type Payload = {
+  play: { key: string; name: string; objective: string; version: string }
+  readiness: Readiness
+  workflowBindings: Array<Record<string, unknown>>
+  workflowBindingCount: number
+}
+
+function mode(readiness: Readiness): string {
+  if (readiness.act_with_approval_ready) return "Act with approval"
+  if (readiness.recommend_ready) return "Recommend"
+  if (readiness.observe_ready) return "Observe"
+  return "Setup required"
+}
+
+export default function PlayDetailPage() {
+  const params = useParams<{ key: string }>()
+  const key = params.key
+  const { data, error, isLoading, mutate } = useSWR<Payload>(key ? `/api/plays/${key}/readiness` : null, fetcher)
+
+  return (
+    <AppShell title={data?.play.name ?? "Play"}>
+      <div className="mx-auto max-w-4xl space-y-6 pb-8">
+        <GravitrePageHeader
+          eyebrow="Plays"
+          title={isLoading ? "Loading…" : data?.play.name ?? "Play"}
+          description={data?.play.objective}
+          icon={<PlayCircle className="h-5 w-5" />}
+          actions={<Button variant="ghost" size="sm" asChild><Link href="/plays"><ArrowLeft className="size-4" />Back to plays</Link></Button>}
+        >
+          {data ? <Badge variant="outline">{mode(data.readiness)}</Badge> : null}
+        </GravitrePageHeader>
+
+        <div className="space-y-5 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
+          {error ? (
+            <WorkSectionErrorCard title="Could not load play" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
+          ) : isLoading || !data ? <Skeleton className="h-72 rounded-xl" /> : (
+            <>
+              <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Readiness</p>
+                    <h2 className="mt-1 text-base font-semibold">{data.readiness.observe_ready ? "Ready with your workspace" : "Finish setup to use this play"}</h2>
+                  </div>
+                  {data.readiness.observe_ready ? <CheckCircle2 className="size-5 text-success" /> : <CircleAlert className="size-5 text-warning" />}
+                </div>
+                {(data.readiness.blockers?.length ?? 0) > 0 ? (
+                  <ul className="mt-4 space-y-2">
+                    {data.readiness.blockers!.map((blocker) => <li key={blocker} className="rounded-lg border border-divide px-3 py-2 text-sm text-muted-foreground">{blocker}</li>)}
+                  </ul>
+                ) : null}
+                {!data.readiness.observe_ready ? (
+                  <div className="mt-4 flex gap-2">
+                    <Button size="sm" asChild><Link href="/connectors">Connect data <ArrowRight className="size-4" /></Link></Button>
+                    <Button size="sm" variant="outline" asChild><Link href="/workflows">Review workflows</Link></Button>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">How this play works</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                  {["Detect", "Understand", "Decide", "Approve", "Act", "Measure"].map((stage, index) => (
+                    <div key={stage} className="rounded-lg border border-divide p-3">
+                      <p className="text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>
+                      <p className="mt-1 text-sm font-medium">{stage}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs text-muted-foreground">This Play coordinates existing Gravitre capabilities. Workflows remain the execution authority, and verified business results require source-of-record evidence.</p>
+              </section>
+
+              <section className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
+                  <p className="text-xs text-muted-foreground">Linked workflows</p>
+                  <p className="mt-1 text-2xl font-semibold">{data.workflowBindingCount}</p>
+                  <Button className="mt-4" variant="ghost" size="sm" asChild><Link href="/workflows">View workflows <ArrowRight className="size-4" /></Link></Button>
+                </div>
+                <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
+                  <p className="text-xs text-muted-foreground">Current operating capability</p>
+                  <p className="mt-1 text-lg font-semibold">{mode(data.readiness)}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Execution controls arrive only after setup and governance are validated.</p>
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+    </AppShell>
+  )
+}
