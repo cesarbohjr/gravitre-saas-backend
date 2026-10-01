@@ -1449,7 +1449,10 @@ export interface PortableCapabilityPackage {
   source_commit_sha?: string | null
   source_package_path?: string | null
   publisher_name?: string | null
+  publisher_trusted?: boolean
+  publisher_trust_scope?: "none" | "organization" | "marketplace_verified" | string
   publisher_verified?: boolean
+  marketplace_publisher_id?: string | null
   signature_status?: string
   content_digest?: string | null
   status?: string
@@ -1503,7 +1506,7 @@ export const portableCapabilitiesApi = {
         created_at?: string
       }>
     }>(apiUrl("/api/capabilities/trusted-publishers")),
-  addTrustedPublisher: (body: { publisherName: string; publicKeyPem: string }) =>
+  addTrustedPublisher: (body: { publisherName: string; publicKeyPem: string; marketplacePublisherSlug?: string }) =>
     postJson<{
       publisher: {
         id?: string
