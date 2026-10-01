@@ -32,6 +32,7 @@ _LEGACY_TO_CONTRACT_RUN_STATUS = {
     "pending": "queued",
     "queued": "queued",
     "running": "running",
+    "verifying": "running",
     "completed": "completed",
     "success": "completed",
     "failed": "failed",
@@ -41,6 +42,7 @@ _LEGACY_TO_CONTRACT_RUN_STATUS = {
     "pending_approval": "needs_approval",
     "needs_approval": "needs_approval",
     "awaiting_approval": "needs_approval",
+    "verification_inconclusive": "failed",
 }
 
 _LEGACY_TO_CONTRACT_STEP_STATUS = {

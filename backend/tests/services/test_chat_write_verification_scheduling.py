@@ -49,9 +49,12 @@ def _ok_result(integration: str) -> ExecutionResult:
 
 
 def _finalize(plan: ConnectorActionPlan, result: ExecutionResult):
-    """Run the real chat finalize path; return the verification scheduler spy."""
+    """Run the real chat finalize path and expose lifecycle write spies."""
     service = ChatConnectorExecutionService()
     scheduler = MagicMock()
+    terminalizer = MagicMock()
+    update_run = MagicMock()
+    merge_params = MagicMock()
     tool_ctx = MagicMock()
     tool_ctx.connector_id = "conn-1"
     tool_ctx.environment_name = "production"
@@ -61,7 +64,11 @@ def _finalize(plan: ConnectorActionPlan, result: ExecutionResult):
     ), patch("app.workflows.repository.create_step", MagicMock()), patch(
         "app.workflows.repository.update_step", MagicMock()
     ), patch(
-        "app.services.execution_outcome.finalize_execution_outcome", MagicMock()
+        "app.workflows.repository.update_run", update_run
+    ), patch(
+        "app.workflows.repository.merge_run_parameters", merge_params
+    ), patch(
+        "app.services.execution_outcome.finalize_execution_outcome", terminalizer
     ), patch(
         "app.services.write_success_verification.schedule_write_success_verification",
         scheduler,
@@ -76,7 +83,12 @@ def _finalize(plan: ConnectorActionPlan, result: ExecutionResult):
             tool_ctx=tool_ctx,
             connector_id="conn-1",
         )
-    return scheduler
+    return {
+        "scheduler": scheduler,
+        "terminalizer": terminalizer,
+        "update_run": update_run,
+        "merge_params": merge_params,
+    }
 
 
 def test_entity_get_write_from_chat_is_scheduled_for_verification():
@@ -86,13 +98,31 @@ def test_entity_get_write_from_chat_is_scheduled_for_verification():
         "hubspot",
         {"properties": {"email": "a@b.co", "firstname": "A"}},
     )
-    scheduler = _finalize(plan, _ok_result("hubspot"))
+    spies = _finalize(plan, _ok_result("hubspot"))
+    scheduler = spies["scheduler"]
 
     scheduler.assert_called_once()
     kwargs = scheduler.call_args.kwargs
     assert kwargs["invoke_action"] == "hubspot.contacts.create"
     assert kwargs["run_id"] == "run-1"
     assert kwargs["ctx"] is not None
+
+
+def test_provider_acceptance_enters_verifying_before_terminal_success():
+    plan = _plan(
+        "hubspot.contacts.create",
+        "hubspot",
+        {"properties": {"email": "a@b.co", "firstname": "A"}},
+    )
+    spies = _finalize(plan, _ok_result("hubspot"))
+
+    # Provider acceptance may update a run into VERIFYING, but it must not
+    # emit terminal fanout until the source-of-record verifier returns.
+    spies["terminalizer"].assert_not_called()
+    assert spies["update_run"].call_count == 1
+    assert spies["update_run"].call_args.args[1:] == ("run-1", "verifying")
+    assert spies["merge_params"].call_args.args[1] == "run-1"
+    assert spies["merge_params"].call_args.args[2]["verification_status"] == "pending"
 
 
 def test_field_assert_write_from_chat_passes_the_requested_value():
@@ -102,7 +132,8 @@ def test_field_assert_write_from_chat_passes_the_requested_value():
         "hubspot",
         {"deal_id": "42", "stage": "closedwon"},
     )
-    scheduler = _finalize(plan, _ok_result("hubspot"))
+    spies = _finalize(plan, _ok_result("hubspot"))
+    scheduler = spies["scheduler"]
 
     scheduler.assert_called_once()
     kwargs = scheduler.call_args.kwargs
@@ -123,7 +154,7 @@ def test_failed_write_is_not_scheduled_for_verification():
         body="Vendor rejected the write.",
         task_label="Failed",
     )
-    _finalize(plan, failed).assert_not_called()
+    _finalize(plan, failed)["scheduler"].assert_not_called()
 
 
 def test_accepted_async_write_is_not_scheduled():
@@ -134,7 +165,10 @@ def test_accepted_async_write_is_not_scheduled():
     assert resolve_success_verification(action).mode == "accepted_async"
 
     plan = _plan(action, "slack", {"channel": "C1", "text": "hi"})
-    _finalize(plan, _ok_result("slack")).assert_not_called()
+    spies = _finalize(plan, _ok_result("slack"))
+    spies["scheduler"].assert_not_called()
+    spies["terminalizer"].assert_called_once()
+    assert spies["terminalizer"].call_args.kwargs["status"] == "verification_inconclusive"
 
 
 @pytest.mark.parametrize(

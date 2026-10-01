@@ -29,6 +29,7 @@ SemanticStage = Literal[
     "AWAITING_APPROVAL",
     "APPROVED",
     "EXECUTING",
+    "VERIFYING",
     "EXECUTED_UNVERIFIED",
     "VERIFIED",
     "COMPLETED",
@@ -72,6 +73,8 @@ def semantic_stage_from_state(task_state: dict[str, Any] | None) -> SemanticStag
         return "OUTCOME_UNCERTAIN"
     if status == "awaiting_reconciliation":
         return "AWAITING_RECONCILIATION"
+    if status == "verifying" or str(pending.get("lifecycle") or "").strip().upper() == "VERIFYING":
+        return "VERIFYING"
     pending_invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
     obs = _latest_observation(state)
     obs_structured = obs.get("structured") if isinstance(obs, dict) and isinstance(obs.get("structured"), dict) else {}
@@ -374,9 +377,12 @@ def persist_write_outcome_patch(
     if success and verification and verification.get("verified"):
         pending["status"] = "executed"
         pending["lifecycle"] = "COMPLETED"
-    elif success:
+    elif success and verification and verification.get("terminal_inconclusive"):
         pending["status"] = "executed"
         pending["lifecycle"] = "EXECUTED_UNVERIFIED"
+    elif success:
+        pending["status"] = "verifying"
+        pending["lifecycle"] = "VERIFYING"
     else:
         pending["status"] = "failed"
         pending["lifecycle"] = "FAILED"
@@ -536,6 +542,7 @@ def composer_envelope_from_turn(
     ) == "uncertain"
     evidence = bool(state.get("execution_observations")) or verified or stage in {
         "COMPLETED",
+        "VERIFYING",
         "EXECUTED_UNVERIFIED",
         "FAILED",
         "OUTCOME_UNCERTAIN",
