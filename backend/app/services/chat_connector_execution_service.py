@@ -2826,6 +2826,20 @@ class ChatConnectorExecutionService:
                 schedule_async_verification = action_requires_followup_read(
                     plan.invoke_action
                 )
+                if schedule_async_verification and status == "completed":
+                    # Provider acceptance is not vendor proof. Keep the canonical
+                    # run non-success until the declared read-back verifier confirms
+                    # the side effect in the connected system.
+                    status = "partial_success"
+                    outcome_effect = "accepted_async"
+                    structured = {
+                        **structured,
+                        "vendor_verification": {
+                            "verified": False,
+                            "status": "pending",
+                            "invoke_action": plan.invoke_action,
+                        },
+                    }
             except Exception as mode_exc:  # noqa: BLE001
                 logger.warning(
                     "write verification mode lookup skipped action=%s err=%s",
