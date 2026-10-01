@@ -12,6 +12,7 @@ from app.services.mcp_client_service import (
     MCPClientService,
     encrypt_auth_config,
     get_mcp_client_service,
+    refresh_package_mcp_runtime_registration,
 )
 from app.workflows.repository import get_supabase_client
 
@@ -157,6 +158,12 @@ async def patch_mcp_server(
             .eq("org_id", org_id)
             .execute()
         )
+    if current.get("source_capability_package_id"):
+        refresh_package_mcp_runtime_registration(
+            client,
+            org_id=org_id,
+            server_id=server_id,
+        )
     return {"server": updated.data[0] if updated.data else {**current, **patch}}
 
 
@@ -228,30 +235,31 @@ async def patch_mcp_tool(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     client = get_supabase_client(settings)
+    tool_rows = (
+        client.table("mcp_tools")
+        .select("id,server_id")
+        .eq("id", tool_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not tool_rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+    server_id = str(tool_rows[0].get("server_id") or "")
+    server_rows = (
+        client.table("mcp_servers")
+        .select("id,enabled,activation_state,source_capability_package_id")
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    server = server_rows[0] if server_rows else {}
     if body.enabled:
-        tool_rows = (
-            client.table("mcp_tools")
-            .select("id,server_id")
-            .eq("id", tool_id)
-            .eq("org_id", org_id)
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-        if not tool_rows:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
-        server_rows = (
-            client.table("mcp_servers")
-            .select("id,enabled,activation_state")
-            .eq("id", str(tool_rows[0].get("server_id") or ""))
-            .eq("org_id", org_id)
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-        server = server_rows[0] if server_rows else {}
         if not bool(server.get("enabled")) or str(server.get("activation_state") or "configured") in {"pending_review", "disabled"}:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -266,4 +274,10 @@ async def patch_mcp_tool(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+    if server.get("source_capability_package_id"):
+        refresh_package_mcp_runtime_registration(
+            client,
+            org_id=org_id,
+            server_id=server_id,
+        )
     return {"tool": updated.data[0]}
