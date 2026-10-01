@@ -23,7 +23,7 @@ _BLOCKED_LICENSE_MARKERS = ("proprietary", "all rights reserved", "no redistribu
 
 @dataclass(frozen=True)
 class PackageComponent:
-    kind: Literal["skill", "mcp", "connector", "agent", "play", "template", "command", "hook", "ui_extension"]
+    kind: Literal["skill", "mcp", "connector", "agent", "play", "template", "trigger", "command", "hook", "ui_extension"]
     name: str
     source: str | None = None
     executable: bool = False
@@ -105,7 +105,8 @@ def _components_from_manifest(manifest: dict[str, Any], skill_md: str | None) ->
     aliases = {
         "skills": "skill", "mcpServers": "mcp", "mcp_servers": "mcp",
         "connectors": "connector", "agents": "agent", "plays": "play",
-        "templates": "template", "commands": "command", "hooks": "hook",
+        "templates": "template", "triggers": "trigger", "eventTriggers": "trigger",
+        "event_triggers": "trigger", "commands": "command", "hooks": "hook",
         "apps": "ui_extension", "extensions": "ui_extension",
     }
     for key, kind in aliases.items():
