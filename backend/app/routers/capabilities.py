@@ -807,7 +807,13 @@ async def install_capability_marketplace_candidate(
         inspection=inspection,
         manifest=bundle.manifest,
         source_type="marketplace",
-        source_uri=str(source.get("repository_url") or "") or None,
+        source_uri=(
+            f"{source.get('repository_url')}@{candidate.get('source_commit_sha')}#/{candidate.get('source_package_path') or candidate.get('package_path') or ''}"
+            if source.get("repository_url") and candidate.get("source_commit_sha")
+            else str(source.get("repository_url") or "") or None
+        ),
+        source_commit_sha=str(candidate.get("source_commit_sha") or "") or None,
+        source_package_path=str(candidate.get("source_package_path") or candidate.get("package_path") or "") or None,
         marketplace_source_id=str(candidate.get("marketplace_source_id") or "") or None,
         publisher_name=str(bundle.manifest.get("publisher") or bundle.manifest.get("author") or "").strip() or None,
         publisher_verified=False,
