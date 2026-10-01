@@ -142,7 +142,7 @@ def test_marketplace_snapshot_installs_inert_content_without_git_fetch() -> None
     config = _snapshot_config()
     installed = {
         "id": "pkg-1",
-        "status": "installed",
+        "status": "quarantined",
         "risk_level": "low",
     }
 
@@ -164,8 +164,9 @@ def test_marketplace_snapshot_installs_inert_content_without_git_fetch() -> None
 
     fetch.assert_not_called()
     assert result["capabilityPackageId"] == "pkg-1"
-    assert result["requiresReview"] is False
+    assert result["requiresReview"] is True
     install.assert_called_once()
+    assert install.call_args.kwargs["initial_status"] == "quarantined"
     resources = replace.call_args.kwargs["resources"]
     script = next(row for row in resources if row["kind"] == "script")
     assert script["content"] is None
