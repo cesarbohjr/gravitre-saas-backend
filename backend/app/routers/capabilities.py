@@ -101,6 +101,18 @@ class TrustedPublisherCreateRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class CapabilityMarketplaceDraftRequest(BaseModel):
+    slug: str = Field(min_length=1, max_length=120)
+    title: str | None = Field(default=None, max_length=160)
+    description: str | None = Field(default=None, max_length=2000)
+    category: str | None = None
+    department: str | None = None
+    pricing_type: Literal["free", "paid", "subscription"] = Field(default="free", alias="pricingType")
+    price_cents: int = Field(default=0, ge=0, alias="priceCents")
+
+    model_config = {"populate_by_name": True}
+
+
 class GitMarketplaceSourceCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     repository_url: str = Field(alias="repositoryUrl")
