@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Any
 
 from app.capabilities.packages import PackageInspection
-from app.capabilities.provenance import resolve_org_marketplace_publisher
 
 
 _RISK_RANK = {"low": 0, "moderate": 1, "high": 2, "blocked": 3}
@@ -24,7 +23,7 @@ def list_packages(client: Any, org_id: str) -> list[dict[str, Any]]:
             client.table("capability_packages")
             .select(
                 "id,org_id,name,package_format,version,description,license,license_policy,"
-                "risk_level,source_type,source_uri,marketplace_source_id,marketplace_publisher_id,publisher_name,"
+                "risk_level,source_type,source_uri,marketplace_source_id,publisher_name,"
                 "publisher_verified,signature_status,content_digest,inspection,security_scan,status,"
                 "installed_by,installed_at,updated_at,reviewed_by,reviewed_at,review_notes"
             )
@@ -58,14 +57,6 @@ def install_package(
     security_scan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     effective_risk = _effective_risk(inspection.risk, security_scan)
-    marketplace_publisher = resolve_org_marketplace_publisher(
-        client,
-        org_id=org_id,
-        manifest=manifest,
-    )
-    if marketplace_publisher:
-        publisher_name = str(marketplace_publisher.get("display_name") or publisher_name or "").strip() or None
-        publisher_verified = bool(marketplace_publisher.get("verified"))
     row = {
         "org_id": org_id,
         "name": inspection.name,
@@ -78,11 +69,6 @@ def install_package(
         "source_type": source_type,
         "source_uri": source_uri,
         "marketplace_source_id": marketplace_source_id,
-        "marketplace_publisher_id": (
-            str(marketplace_publisher.get("id"))
-            if marketplace_publisher and marketplace_publisher.get("id")
-            else None
-        ),
         "publisher_name": publisher_name,
         "publisher_verified": publisher_verified,
         "signature_status": signature_status,
