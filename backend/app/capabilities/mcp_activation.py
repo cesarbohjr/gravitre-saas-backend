@@ -63,7 +63,7 @@ def declared_mcp_dependencies(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             and not parsed.username
             and not parsed.password
         )
-        registration_allowed = remote_https and transport in {"http", "https", "sse", "streamable_http"}
+        registration_allowed = remote_https and transport in {"http", "sse"}
         out.append(
             {
                 "name": str(name).strip() or "mcp-server",
@@ -74,7 +74,7 @@ def declared_mcp_dependencies(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                 "blockedReason": (
                     None
                     if registration_allowed
-                    else "Only reviewed remote HTTPS MCP dependencies on non-private hosts can be prepared automatically; local/stdio execution requires separate review."
+                    else "Only reviewed remote HTTPS MCP dependencies using Gravitre-supported HTTP/SSE transport can be prepared automatically; local, private-network, stdio, or unsupported transports require separate review."
                 ),
             }
         )
