@@ -2672,16 +2672,47 @@ class ChatConnectorExecutionService:
         verification: dict[str, Any] | None = None
         if result.success and plan.kind == "write":
             try:
-                from app.services.entity_get_verify import verify_entity_get
+                from app.services.write_success_verification import resolve_success_verification
 
-                verification = verify_entity_get(
-                    invoke_action=plan.invoke_action,
-                    result_data=structured,
-                    ctx=ctx,
-                    settle=False,
-                ).as_dict()
+                verification_spec = resolve_success_verification(plan.invoke_action)
+                if verification_spec.mode == "follow_up_entity_get":
+                    from app.services.entity_get_verify import verify_entity_get
+
+                    verification = verify_entity_get(
+                        invoke_action=plan.invoke_action,
+                        result_data=structured,
+                        ctx=ctx,
+                        settle=False,
+                    ).as_dict()
+                elif verification_spec.mode == "follow_up_field_assert":
+                    from app.services.field_assert_verify import verify_field_assert
+
+                    verification = verify_field_assert(
+                        invoke_action=plan.invoke_action,
+                        result_data=structured,
+                        request_params=dict(plan.args or {}),
+                        ctx=ctx,
+                        settle=False,
+                    ).as_dict()
+                elif verification_spec.mode == "follow_up_membership":
+                    verification = {
+                        "verified": False,
+                        "detail": "verification_pending",
+                        "follow_up_attempted": False,
+                    }
+                else:
+                    verification = {
+                        "verified": False,
+                        "detail": "verification_unavailable",
+                        "follow_up_attempted": False,
+                        "terminal_inconclusive": True,
+                    }
             except Exception:  # noqa: BLE001
-                verification = {"verified": False, "detail": "verification_error", "follow_up_attempted": True}
+                verification = {
+                    "verified": False,
+                    "detail": "verification_error",
+                    "follow_up_attempted": True,
+                }
         if result.structured is None:
             result = replace(result, structured={})
         if verification:
