@@ -18,6 +18,7 @@ from app.plays.customer_rescue import observe_customer_rescue
 from app.plays.evidence import build_play_evidence_chain
 from app.plays.marketing_performance import list_marketing_performance_signals
 from app.plays.outcomes import list_play_business_results
+from app.plays.impact import play_impact_summary
 from app.plays.readiness import resolve_play_readiness
 from app.plays.revenue_recovery import list_revenue_recovery_signals
 from app.plays.workflow_bindings import (
@@ -493,6 +494,16 @@ async def delete_play_workflow_binding(
         metadata={"play_key": play_key, "environment": environment_name},
     )
     return result
+
+
+@router.get("/impact")
+async def get_play_impact(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    return play_impact_summary(client, org_id)
 
 
 @router.get("/{play_key}/outcomes/{outcome_id}/evidence")
