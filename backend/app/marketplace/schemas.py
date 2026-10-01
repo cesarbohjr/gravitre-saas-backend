@@ -157,8 +157,8 @@ class CapabilityPackageResource(BaseModel):
 
 class CapabilityPackageAssetConfig(BaseModel):
     # Every Marketplace capability originates from a vetted installed package.
-    source_package_id: str = Field(min_length=1)
-    provenance_mode: Literal["git_pinned", "trusted_signature"]
+    source_package_id: str | None = Field(default=None, min_length=1)
+    provenance_mode: Literal["git_pinned", "trusted_signature"] | None = None
 
     # Git provenance is required for git_pinned assets and omitted for trusted
     # signed snapshots.
@@ -225,14 +225,25 @@ class CapabilityPackageAssetConfig(BaseModel):
         if has_repo != has_commit:
             raise ValueError("Git provenance must include both repository_url and commit_sha")
 
-        if self.provenance_mode == "git_pinned":
+        effective_mode = self.provenance_mode or (
+            "git_pinned" if has_repo and has_commit else None
+        )
+        if effective_mode == "git_pinned":
             if not has_repo or not has_commit:
                 raise ValueError("git_pinned capability packages require exact Git provenance")
-        elif self.provenance_mode == "trusted_signature":
+        elif effective_mode == "trusted_signature":
             if self.signature_status != "verified":
                 raise ValueError("trusted_signature capability packages require a verified signature")
             if self.publisher_trust_scope not in {"organization", "marketplace_verified"}:
                 raise ValueError("trusted_signature capability packages require current publisher trust")
+        else:
+            raise ValueError("capability package provenance is required")
+
+        # Legacy Git-pinned Marketplace assets may predate source_package_id and
+        # provenance_mode. They remain readable/installable, but the publish
+        # workflow requires a live source package before any new publication.
+        if not self.source_package_id and effective_mode != "git_pinned":
+            raise ValueError("trusted signed capability packages require source_package_id")
 
         if not self.manifest and not self.resources:
             raise ValueError("capability Marketplace assets require an inert package snapshot")
