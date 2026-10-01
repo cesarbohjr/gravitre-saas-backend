@@ -104,3 +104,20 @@ def test_iteration_budget_stops_loop():
     )
     assert d.action == "stop"
     assert d.reason == "iteration_budget"
+
+
+def test_observe_bridge_reconciles_then_decides():
+    from app.services.execution_plan_service import ExecutionObservation, decide_after_observations
+
+    p = plan(
+        ExecutionStep("r1", "read first", "read", status="running"),
+        ExecutionStep("r2", "read second", "read", status="pending"),
+    )
+    updated, decision = decide_after_observations(
+        p,
+        [ExecutionObservation("r1", "hubspot", True, "found records")],
+        task_state={},
+    )
+    assert updated.steps[0].status == "completed"
+    assert decision["action"] == "continue"
+    assert decision["next_step_id"] == "r2"
