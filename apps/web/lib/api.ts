@@ -1564,6 +1564,61 @@ export const portableCapabilitiesApi = {
     }>(apiUrl("/api/capabilities/developer-kit")),
   listPackages: () =>
     fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
+  listCommunityCatalog: (params?: { query?: string; sourceKey?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.query) query.set("query", params.query)
+    if (params?.sourceKey) query.set("source_key", params.sourceKey)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{
+      items: Array<{
+        id: string
+        name: string
+        kind: "skill" | "plugin" | "mcp" | string
+        publisher: string
+        sourceKey: string
+        sourceName: string
+        repositoryUrl: string
+        branch: string
+        packagePath: string
+        sourceUrl: string
+        trust: string
+        status: string
+        runtimeEnabled: false
+        commitSha: string
+      }>
+      sources: Array<{
+        key: string
+        name: string
+        publisher: string
+        repositoryUrl: string
+        branch: string
+        rootPath: string
+        kind: string
+        trust: string
+      }>
+      errors: Array<{ sourceKey: string; message: string }>
+      adminOnly: true
+      activationPolicy: "review_required"
+    }>(apiUrl(`/api/capabilities/community-catalog${suffix}`))
+  },
+  stageCommunityCatalog: (sourceKey: string) =>
+    postJson<{
+      sourceId: string
+      sourceKey: string
+      status: string
+      sync: {
+        discovered: number
+        ingested: number
+        rejected: Array<{ root: string; name: string; reason: string }>
+        candidates?: CapabilityMarketplaceCandidate[]
+        installed?: number
+      }
+      approvalRequired: true
+      installed: 0
+    }>(
+      apiUrl(`/api/capabilities/community-catalog/${encodeURIComponent(sourceKey)}/stage`),
+      {},
+    ),
   usage: (days = 30) =>
     fetcher<{
       windowDays: number
