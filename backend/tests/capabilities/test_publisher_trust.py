@@ -12,3 +12,18 @@ def test_public_key_fingerprint_is_stable() -> None:
     ).decode("utf-8")
     assert public_key_fingerprint(pem) == public_key_fingerprint(pem)
     assert public_key_fingerprint(pem).startswith("sha256:")
+
+
+def test_provenance_does_not_equate_signature_with_publisher_verification() -> None:
+    from app.capabilities.provenance import provenance_summary
+
+    summary = provenance_summary(
+        files={"SKILL.md": "---\nname: test\n---\n"},
+        publisher_name="Acme",
+        signature_status="verified",
+        source_uri="https://github.com/acme/capabilities",
+    )
+    assert summary["signatureStatus"] == "verified"
+    assert summary["publisherVerified"] is False
+    assert summary["publisherTrusted"] is False
+    assert summary["publisherTrustScope"] == "none"
