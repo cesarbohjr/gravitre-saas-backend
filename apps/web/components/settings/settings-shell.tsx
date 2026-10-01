@@ -49,7 +49,7 @@ export function SettingsShell({
   const flatNav = tiers.flatMap((tier) => settingsSectionsForTier(tier, isAdmin))
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col md:flex-row">
+    <div className="relative flex h-full min-h-0 flex-col bg-[color:var(--g-surface-1)] md:flex-row">
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur md:hidden">
         <div className="min-w-0 flex-1">
           <h1 className={cn(TYPE.pageTitle, "truncate text-lg sm:text-lg")}>{activeMeta?.title}</h1>
@@ -85,7 +85,7 @@ export function SettingsShell({
         </div>
       ) : null}
 
-      <aside className="relative z-30 hidden w-64 shrink-0 border-r border-divide bg-[color:var(--g-surface-1)]/95 p-4 backdrop-blur-sm md:block">
+      <aside className="relative z-30 hidden min-h-full w-64 shrink-0 self-stretch border-r border-divide bg-[color:var(--g-surface-1)] p-4 md:block">
         <nav className="space-y-4" aria-label="Settings sections">
           {tiers.map((tier) => {
             const sections = settingsSectionsForTier(tier, isAdmin)
