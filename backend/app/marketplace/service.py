@@ -1687,14 +1687,10 @@ def preview_install(
                 "action_url": f"/marketplace/assets/{asset.get('slug')}?purchase=1",
             }
         )
-    capability_requires_review = False
-    if str(asset.get("asset_type") or "") == "capability_package":
-        capability_config = asset.get("config") if isinstance(asset.get("config"), dict) else {}
-        scan = capability_config.get("security_scan") if isinstance(capability_config.get("security_scan"), dict) else {}
-        capability_requires_review = (
-            str(capability_config.get("risk_level") or "").lower() == "high"
-            or str(scan.get("risk") or "").lower() == "high"
-        )
+    # Public Marketplace distribution never substitutes for the destination
+    # organization's capability activation decision. Every portable capability
+    # enters quarantine after install, regardless of publisher/risk metadata.
+    capability_requires_review = str(asset.get("asset_type") or "") == "capability_package"
 
     return {
         "assetId": asset_id,
