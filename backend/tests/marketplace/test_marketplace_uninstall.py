@@ -74,3 +74,46 @@ def test_uninstall_requires_active_install(mock_resolve):
     with pytest.raises(MarketplaceSupportError) as exc:
         uninstall_marketplace_asset(client, ORG_ID, "sales-pack", actor_id="admin-1")
     assert exc.value.code == "NOT_FOUND"
+
+
+@patch("app.marketplace.support.resolve_browsable_asset")
+def test_uninstall_disables_capability_package_and_its_mcp_servers(mock_resolve):
+    mock_resolve.return_value = {"id": "asset-cap", "slug": "seo-capability"}
+    installs = _chain(
+        [
+            {
+                "id": "install-cap",
+                "status": "active",
+                "installed_entity_type": "capability_package",
+                "installed_entity_id": "pkg-1",
+                "metadata": {},
+            }
+        ]
+    )
+    packages = _chain()
+    mcp_servers = _chain([{"id": "mcp-1"}])
+
+    def table(name):
+        if name == "marketplace_installs":
+            return installs
+        if name == "capability_packages":
+            return packages
+        if name == "mcp_servers":
+            return mcp_servers
+        return _chain()
+
+    client = MagicMock()
+    client.table.side_effect = table
+
+    result = uninstall_marketplace_asset(
+        client,
+        ORG_ID,
+        "seo-capability",
+        actor_id="admin-1",
+    )
+
+    assert result["uninstalled"] is True
+    assert "pkg-1" in result["deactivated"]["capabilityPackages"]
+    assert "mcp-1" in result["deactivated"]["mcpServers"]
+    packages.update.assert_called()
+    mcp_servers.update.assert_called()
