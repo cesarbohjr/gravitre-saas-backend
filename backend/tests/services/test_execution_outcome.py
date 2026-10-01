@@ -64,7 +64,9 @@ def test_is_terminal_run_status() -> None:
     assert is_terminal_run_status("failed")
     assert is_terminal_run_status("cancelled")
     assert is_terminal_run_status("partial_success")
+    assert is_terminal_run_status("verification_inconclusive")
     assert not is_terminal_run_status("running")
+    assert not is_terminal_run_status("verifying")
     assert not is_terminal_run_status("paused")
 
 

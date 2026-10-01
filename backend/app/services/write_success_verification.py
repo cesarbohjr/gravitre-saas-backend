@@ -277,6 +277,7 @@ def schedule_write_success_verification(
         if mode == "follow_up_entity_get":
             _schedule_entity_get_verification(
                 client=client,
+                org_id=org_id,
                 run_id=run_id,
                 invoke_action=invoke_action,
                 result_data=result_data,
@@ -285,6 +286,7 @@ def schedule_write_success_verification(
         elif mode == "follow_up_field_assert":
             _schedule_field_assert_verification(
                 client=client,
+                org_id=org_id,
                 run_id=run_id,
                 invoke_action=invoke_action,
                 result_data=result_data,
@@ -307,7 +309,7 @@ def schedule_write_success_verification(
             )
             if verify is None:
                 return
-            from app.workflows.repository import merge_run_parameters, update_run
+            from app.workflows.repository import merge_run_parameters
 
             # Stamp verify evidence always. Never terminalize an in-flight multi-step
             # execute — mid-step writes (e.g. apollo.lists.add) used to mark the whole
@@ -339,19 +341,20 @@ def schedule_write_success_verification(
                     },
                 },
             )
-            if current_status in {"running", "pending_approval", "queued", "paused", "approved"}:
-                logger.info(
-                    "async_write_success_verify_params_only run_id=%s action=%s "
-                    "current_status=%s verified=%s detail=%s",
-                    run_id,
-                    invoke_action,
-                    current_status,
-                    verify.verified,
-                    verify.detail,
-                )
-                return
-
-            update_run(client, run_id, status)
+            _finalize_verified_write_run(
+                client=client,
+                org_id=org_id,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                verification_kind="membership",
+                verification={
+                    "verified": verify.verified,
+                    "effect": verify.effect,
+                    "membership_count": verify.membership_count,
+                    "detail": verify.detail,
+                    "follow_up_attempted": verify.follow_up_attempted,
+                },
+            )
             logger.info(
                 "async_write_success_verify run_id=%s action=%s verified=%s detail=%s",
                 run_id,
@@ -382,9 +385,173 @@ def _dispatch_background(work: Any, name: str) -> None:
         threading.Thread(target=work, name=name, daemon=True).start()
 
 
+def _verification_terminal_status(*, verified: bool, effect: str | None, detail: str | None) -> str:
+    """Map proof to a truthful terminal. Only positive source proof may complete."""
+    if verified:
+        return "completed"
+    normalized_detail = str(detail or "").strip().lower()
+    normalized_effect = str(effect or "").strip().lower()
+    if normalized_detail.startswith("entity_id_mismatch") or normalized_detail == "field_value_mismatch":
+        return "failed"
+    if normalized_effect == "unknown":
+        return "failed"
+    return "verification_inconclusive"
+
+
+def _finalize_verified_write_run(
+    *,
+    client: Any,
+    org_id: str,
+    run_id: str,
+    invoke_action: str,
+    verification_kind: str,
+    verification: dict[str, Any],
+) -> None:
+    """Terminalize a verifying write only after source-of-record proof returns."""
+    from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome, is_terminal_run_status
+
+    row = (
+        client.table("workflow_runs")
+        .select("status, triggered_by, parameters")
+        .eq("id", run_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    data = (row.data or [{}])[0] or {}
+    current_status = str(data.get("status") or "").strip().lower()
+    if is_terminal_run_status(current_status):
+        logger.info(
+            "write_verify_terminal_skip run_id=%s action=%s current_status=%s",
+            run_id,
+            invoke_action,
+            current_status,
+        )
+        return
+
+    params = data.get("parameters") if isinstance(data.get("parameters"), dict) else {}
+    # Multi-step executes stay running until the workflow engine terminalizes.
+    # Only chat lightweight writes (verification_owns_terminal) parked in
+    # verifying — or still running because persist raced — may be terminalized here.
+    mid_step = current_status in {
+        "running",
+        "pending_approval",
+        "awaiting_approval",
+        "queued",
+        "paused",
+        "approved",
+    }
+    owns_terminal = bool(params.get("verification_owns_terminal"))
+    if mid_step and not owns_terminal:
+        logger.info(
+            "write_verify_params_only run_id=%s action=%s current_status=%s",
+            run_id,
+            invoke_action,
+            current_status,
+        )
+        return
+    if current_status not in {"verifying", "running"} and not owns_terminal:
+        logger.info(
+            "write_verify_evidence_only run_id=%s action=%s current_status=%s",
+            run_id,
+            invoke_action,
+            current_status,
+        )
+        return
+    verified = bool(verification.get("verified"))
+    detail = str(verification.get("detail") or "")
+    effect = str(verification.get("effect") or "")
+    terminal = _verification_terminal_status(
+        verified=verified,
+        effect=effect,
+        detail=detail,
+    )
+    verification_payload = {
+        **verification,
+        "kind": verification_kind,
+        "async": True,
+        "status": "verified" if verified else (
+            "failed" if terminal == "failed" else "inconclusive"
+        ),
+    }
+
+    from app.workflows.repository import merge_run_parameters
+
+    merge_run_parameters(
+        client,
+        run_id,
+        {
+            "execution_lifecycle": (
+                "completed"
+                if terminal == "completed"
+                else ("failed" if terminal == "failed" else "verification_inconclusive")
+            ),
+            "verification_status": verification_payload["status"],
+            "verification": verification_payload,
+            "outcome_effect": effect or params.get("outcome_effect"),
+        },
+    )
+
+    if not owns_terminal:
+        logger.info(
+            "write_verify_evidence_only run_id=%s action=%s terminal_candidate=%s",
+            run_id,
+            invoke_action,
+            terminal,
+        )
+        return
+
+    integration = str(params.get("integration") or "").strip() or None
+    label = str(params.get("label") or invoke_action).strip()
+    entity_id = str(
+        verification.get("entity_id")
+        or verification.get("list_id")
+        or ""
+    ).strip() or None
+    if terminal == "completed":
+        body = f"{label} is verified in the source system."
+        error_summary = None
+    elif terminal == "failed":
+        body = f"{label} was accepted by the provider, but source verification showed the requested change did not take effect."
+        error_summary = detail or "Source-of-record verification failed."
+    else:
+        body = f"{label} was accepted by the provider, but Gravitre could not independently verify the final source state."
+        error_summary = detail or "Source-of-record verification was inconclusive."
+
+    finalize_execution_outcome(
+        client,
+        org_id=org_id,
+        status=terminal,
+        source="assistant_chat",
+        actor_id=str(data.get("triggered_by") or "").strip() or None,
+        run_id=run_id,
+        persist_run=True,
+        error_summary=error_summary,
+        verified_output=VerifiedOutputRef(
+            summary=body,
+            result_url=f"/runs/{run_id}",
+            entity_type="connector",
+            entity_id=entity_id or run_id,
+            integration=integration,
+        ),
+        notification_body=body,
+        metadata={
+            "conversation_id": params.get("conversation_id"),
+            "invoke_action": invoke_action,
+            "tool_name": params.get("tool_name"),
+            "integration": integration,
+            "action_args": params.get("action_args"),
+            "outcome_effect": effect or params.get("outcome_effect"),
+            "verification": verification_payload,
+            "provider_acceptance_is_terminal_success": False,
+        },
+    )
+
+
 def _schedule_field_assert_verification(
     *,
     client: Any,
+    org_id: str,
     run_id: str,
     invoke_action: str,
     result_data: dict[str, Any] | None,
@@ -405,7 +572,6 @@ def _schedule_field_assert_verification(
             )
             from app.workflows.repository import merge_run_parameters
 
-            # Params only — never terminalize a run from a verification adapter.
             merge_run_parameters(
                 client,
                 run_id,
@@ -413,6 +579,14 @@ def _schedule_field_assert_verification(
                     "outcome_effect": verify.effect,
                     "field_assert_verify": {**verify.as_dict(), "async": True},
                 },
+            )
+            _finalize_verified_write_run(
+                client=client,
+                org_id=org_id,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                verification_kind="field_assert",
+                verification=verify.as_dict(),
             )
             logger.info(
                 "async_field_assert_verify run_id=%s action=%s verified=%s detail=%s",
@@ -435,6 +609,7 @@ def _schedule_field_assert_verification(
 def _schedule_entity_get_verification(
     *,
     client: Any,
+    org_id: str,
     run_id: str,
     invoke_action: str,
     result_data: dict[str, Any] | None,
@@ -451,7 +626,6 @@ def _schedule_entity_get_verification(
             )
             from app.workflows.repository import merge_run_parameters
 
-            # Params only — never terminalize a run from a verification adapter.
             merge_run_parameters(
                 client,
                 run_id,
@@ -459,6 +633,14 @@ def _schedule_entity_get_verification(
                     "outcome_effect": verify.effect,
                     "entity_get_verify": {**verify.as_dict(), "async": True},
                 },
+            )
+            _finalize_verified_write_run(
+                client=client,
+                org_id=org_id,
+                run_id=run_id,
+                invoke_action=invoke_action,
+                verification_kind="entity_get",
+                verification=verify.as_dict(),
             )
             logger.info(
                 "async_entity_get_verify run_id=%s action=%s verified=%s detail=%s",

@@ -257,7 +257,7 @@ def coerce_terminal_status_for_effect(
     normalized = str(status or "").strip().lower()
     effect_norm = str(effect or "").strip().lower()
     # Phase 4 — never upgrade/downgrade away from explicit review flags.
-    if normalized == "flagged_for_review":
+    if normalized in {"flagged_for_review", "verification_inconclusive", "verifying"}:
         return status
     if (
         normalized == "completed"

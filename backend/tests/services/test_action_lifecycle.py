@@ -86,7 +86,9 @@ def test_b_observation_persisted_after_invoke() -> None:
     assert obs
     assert obs[-1]["structured"]["provider_record_id"] == "278948763624"
     assert patch["execution_plan"]["terminal_status"] != "running"
-    assert patch["pending_task"]["lifecycle"] == "EXECUTED_UNVERIFIED"
+    assert patch["pending_task"]["lifecycle"] == "VERIFYING"
+    assert patch["pending_task"]["status"] == "verifying"
+    assert semantic_stage_from_state(patch) == "VERIFYING"
 
 
 def test_c_observation_then_terminalize() -> None:

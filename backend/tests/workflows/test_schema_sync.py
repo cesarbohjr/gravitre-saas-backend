@@ -33,6 +33,8 @@ def test_legacy_workflow_status_maps_contract_values():
 def test_contract_run_status_maps_pending_approval():
     assert contract_run_status("pending_approval") == "needs_approval"
     assert contract_run_status("success") == "completed"
+    assert contract_run_status("verifying") == "running"
+    assert contract_run_status("verification_inconclusive") == "failed"
 
 
 def test_contract_step_and_approval_status():

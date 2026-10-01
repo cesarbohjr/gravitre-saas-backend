@@ -34,6 +34,7 @@ from app.workflows.constants import (
     RUN_STATUS_COMPLETED,
     RUN_STATUS_FAILED,
     RUN_STATUS_FLAGGED_FOR_REVIEW,
+    RUN_STATUS_VERIFICATION_INCONCLUSIVE,
     RUN_STATUS_PARTIAL_SUCCESS,
 )
 
@@ -44,7 +45,8 @@ logger = get_logger(__name__)
 OUTCOME_SCHEMA_VERSION = "1.0.0"
 
 TerminalStatus = Literal[
-    "completed", "failed", "cancelled", "partial_success", "flagged_for_review"
+    "completed", "failed", "cancelled", "partial_success", "flagged_for_review",
+    "verification_inconclusive",
 ]
 OutcomeSource = Literal[
     "chat_orch",
@@ -63,6 +65,7 @@ TERMINAL_STATUSES = frozenset(
         RUN_STATUS_CANCELLED,
         RUN_STATUS_PARTIAL_SUCCESS,
         RUN_STATUS_FLAGGED_FOR_REVIEW,
+        RUN_STATUS_VERIFICATION_INCONCLUSIVE,
     }
 )
 
@@ -168,6 +171,8 @@ def _normalize_status(status: str) -> TerminalStatus:
         return "partial_success"
     if normalized == RUN_STATUS_FLAGGED_FOR_REVIEW:
         return "flagged_for_review"
+    if normalized == RUN_STATUS_VERIFICATION_INCONCLUSIVE:
+        return "verification_inconclusive"
     if normalized == RUN_STATUS_CANCELLED:
         return "cancelled"
     if normalized == RUN_STATUS_FAILED:
@@ -190,6 +195,8 @@ def _audit_action_for(status: TerminalStatus) -> str:
         return "workflow.execute.cancelled"
     if status == "flagged_for_review":
         return "workflow.execute.flagged_for_review"
+    if status == "verification_inconclusive":
+        return "workflow.execute.verification_inconclusive"
     return "workflow.execute.completed"
 
 
@@ -200,6 +207,8 @@ def _notification_event_for(status: TerminalStatus) -> str:
         return "run_cancelled"
     if status == "flagged_for_review":
         return "run_flagged_for_review"
+    if status == "verification_inconclusive":
+        return "run_verification_inconclusive"
     return "run_completed"
 
 
@@ -210,10 +219,14 @@ def _learning_event_for(status: TerminalStatus) -> str:
         return "workflow_cancelled"
     if status == "flagged_for_review":
         return "workflow_flagged_for_review"
+    if status == "verification_inconclusive":
+        return "workflow_verification_inconclusive"
     return "workflow_executed"
 
 
 def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
+    if status == "verification_inconclusive":
+        return "Verification inconclusive"
     from app.services.gravitre_voice import format_operator_message
 
     return format_operator_message(
@@ -224,6 +237,12 @@ def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
 
 
 def _default_body(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str:
+    if status == "verification_inconclusive":
+        return (
+            event.notification_body
+            or event.error_summary
+            or "The provider accepted the action, but Gravitre could not independently verify the final source state."
+        )
     from app.services.gravitre_voice import format_operator_message
 
     verified_summary = (
@@ -303,6 +322,9 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             "connector_output_refs",
             "batch_degeneracy",
             "population_verify",
+            "verification",
+            "verification_status",
+            "execution_lifecycle",
         ):
             if key in meta and meta[key] is not None:
                 patch[key] = meta[key]
@@ -730,6 +752,10 @@ def finalize_execution_outcome(
         str(meta.get("invoke_action") or meta.get("action_type") or meta.get("tool_name") or "")
         or None
     )
+    verification_meta = (
+        meta.get("verification") if isinstance(meta.get("verification"), dict) else {}
+    )
+    source_verified = bool(verification_meta.get("verified"))
     result_bag: dict[str, Any] = {}
     for key in ("result_data", "structured", "data"):
         nested = meta.get(key)
@@ -754,6 +780,8 @@ def finalize_execution_outcome(
             "external_url": vo.external_url,
             "result_url": vo.result_url,
         }
+    if source_verified and verification_meta.get("entity_id"):
+        result_bag.setdefault("id", verification_meta.get("entity_id"))
     # Prefer explicit outcome_effect already on metadata.
     effect = classify_write_effect(
         invoke_action=invoke_action,
@@ -762,11 +790,14 @@ def finalize_execution_outcome(
         and terminal != "flagged_for_review",
         metadata=meta,
     )
-    coerced = coerce_terminal_status_for_effect(
-        status=terminal,
-        effect=effect,
-        invoke_action=invoke_action,
-    )
+    if source_verified:
+        coerced = terminal
+    else:
+        coerced = coerce_terminal_status_for_effect(
+            status=terminal,
+            effect=effect,
+            invoke_action=invoke_action,
+        )
     if coerced != terminal:
         logger.info(
             "execution_outcome_effect_gate_coerced run_id=%s status=%s→%s effect=%s action=%s",
