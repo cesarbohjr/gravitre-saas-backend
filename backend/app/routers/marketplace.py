@@ -1112,6 +1112,14 @@ async def create_marketplace_asset_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
+    if body.asset_type == "capability_package":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Capability package Marketplace drafts must be created from an "
+                "installed capability through /api/capabilities/packages/{id}/marketplace-draft"
+            ),
+        )
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     try:
         return create_org_asset(

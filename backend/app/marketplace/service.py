@@ -8,6 +8,7 @@ from typing import Any
 from app.billing.service import get_plan_for_org
 from app.marketplace.schemas import (
     AgentAssetConfig,
+    CapabilityPackageAssetConfig,
     ConnectorConfigAssetConfig,
     DepartmentPackAssetConfig,
     KnowledgePackAssetConfig,
@@ -887,6 +888,39 @@ def _install_connector_config(
     }
 
 
+def _install_capability_package(
+    client: Any,
+    org_id: str,
+    asset: dict[str, Any],
+    config: CapabilityPackageAssetConfig,
+    *,
+    actor_id: str,
+    environment_name: str,
+) -> dict[str, Any]:
+    from app.capabilities.marketplace_install import (
+        CapabilityMarketplaceInstallError,
+        install_marketplace_capability_package,
+    )
+    from app.config import get_settings
+
+    try:
+        return install_marketplace_capability_package(
+            client,
+            org_id=org_id,
+            actor_id=actor_id,
+            asset=asset,
+            config=config,
+            settings=get_settings(),
+            environment_name=environment_name,
+        )
+    except CapabilityMarketplaceInstallError as exc:
+        raise MarketplaceError(
+            str(exc),
+            code="VALIDATION_ERROR",
+            details={"capabilityPackage": True},
+        ) from exc
+
+
 def _install_intelligence_pack_asset(
     client: Any,
     org_id: str,
@@ -1528,6 +1562,15 @@ def install_asset(
             parsed,  # type: ignore[arg-type]
             environment_name=environment_name,
         )
+    elif asset_type == "capability_package":
+        installed = _install_capability_package(
+            client,
+            org_id,
+            asset,
+            parsed,  # type: ignore[arg-type]
+            actor_id=actor_id,
+            environment_name=environment_name,
+        )
     elif asset_type == "intelligence_pack":
         from app.config import get_settings
 
@@ -1644,12 +1687,18 @@ def preview_install(
                 "action_url": f"/marketplace/assets/{asset.get('slug')}?purchase=1",
             }
         )
+    # Public Marketplace distribution never substitutes for the destination
+    # organization's capability activation decision. Every portable capability
+    # enters quarantine after install, regardless of publisher/risk metadata.
+    capability_requires_review = str(asset.get("asset_type") or "") == "capability_package"
+
     return {
         "assetId": asset_id,
         "slug": asset.get("slug"),
         "assetType": asset.get("asset_type"),
         "canInstall": can_install,
         "installReady": ready["installReady"],
+        "requiresReviewAfterInstall": capability_requires_review,
         "installReadyErrors": ready["installReadyErrors"],
         "manualSetupRequired": ready["manualSetupRequired"],
         "blockers": validation["blockers"] + payment_blockers + ready["bindingBlockers"],

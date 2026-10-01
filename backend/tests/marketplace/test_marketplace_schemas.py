@@ -235,3 +235,155 @@ def test_assert_no_forbidden_secrets_reports_field_label():
     with pytest.raises(MarketplaceValidationError) as exc:
         assert_no_forbidden_secrets({"password": "x"}, field_label="install_variables")
     assert "install_variables must not contain secret" in exc.value.message
+
+
+def _valid_capability_config() -> dict:
+    return {
+        "source_package_id": "pkg-1",
+        "provenance_mode": "git_pinned",
+        "repository_url": "https://github.com/acme/capabilities",
+        "commit_sha": "a" * 40,
+        "package_path": "skills/seo",
+        "content_digest": "sha256:" + "b" * 64,
+        "snapshot_digest": "sha256:" + "c" * 64,
+        "package_format": "agent_skill",
+        "license": "MIT",
+        "license_policy": "allow",
+        "risk_level": "low",
+        "signature_status": "unsigned",
+        "publisher_trust_scope": "none",
+        "security_scan": {"blocked": False, "risk": "low"},
+        "manifest": {"name": "SEO skill"},
+        "resources": [
+            {
+                "path": "SKILL.md",
+                "kind": "reference",
+                "content": "Use evidence.",
+                "executable": False,
+            },
+            {
+                "path": "scripts/run.py",
+                "kind": "script",
+                "content": None,
+                "executable": True,
+            },
+        ],
+    }
+
+
+def test_capability_package_requires_immutable_git_source() -> None:
+    parsed = parse_asset_config(
+        "capability_package",
+        _valid_capability_config(),
+        publish=True,
+    )
+    assert parsed.commit_sha == "a" * 40
+    assert parsed.content_digest == "sha256:" + "b" * 64
+    assert parsed.snapshot_digest == "sha256:" + "c" * 64
+
+
+def test_capability_package_accepts_trusted_signed_snapshot_without_git() -> None:
+    config = _valid_capability_config()
+    config.update(
+        {
+            "provenance_mode": "trusted_signature",
+            "repository_url": None,
+            "commit_sha": None,
+            "package_path": "",
+            "signature_status": "verified",
+            "publisher_name": "Acme",
+            "publisher_trust_scope": "organization",
+        }
+    )
+    parsed = parse_asset_config("capability_package", config, publish=True)
+    assert parsed.provenance_mode == "trusted_signature"
+    assert parsed.repository_url is None
+
+
+def test_capability_package_rejects_untrusted_signed_snapshot() -> None:
+    config = _valid_capability_config()
+    config.update(
+        {
+            "provenance_mode": "trusted_signature",
+            "repository_url": None,
+            "commit_sha": None,
+            "package_path": "",
+            "signature_status": "verified",
+            "publisher_trust_scope": "none",
+        }
+    )
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("capability_package", config, publish=True)
+
+
+def test_capability_package_rejects_partial_git_provenance() -> None:
+    config = _valid_capability_config()
+    config["commit_sha"] = None
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("capability_package", config, publish=True)
+
+
+def test_capability_package_rejects_moving_branch_or_bad_digest() -> None:
+    config = _valid_capability_config()
+    config["commit_sha"] = "main"
+    config["content_digest"] = "sha256:not-a-digest"
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("capability_package", config, publish=True)
+
+
+def test_capability_package_rejects_blocked_security_scan() -> None:
+    config = _valid_capability_config()
+    config["security_scan"] = {"blocked": True, "risk": "blocked"}
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("capability_package", config, publish=True)
+
+
+def test_capability_package_preserves_inert_snapshot_fields() -> None:
+    parsed = parse_asset_config(
+        "capability_package",
+        _valid_capability_config(),
+        publish=True,
+    )
+    dumped = parsed.model_dump(mode="json")
+    assert dumped["manifest"]["name"] == "SEO skill"
+    assert dumped["resources"][0]["content"] == "Use evidence."
+    assert dumped["resources"][1]["content"] is None
+
+
+def test_capability_package_rejects_embedded_executable_source_content() -> None:
+    config = _valid_capability_config()
+    config["resources"] = [
+        {
+            "path": "scripts/run.py",
+            "kind": "script",
+            "content": "print('must not persist')",
+            "executable": True,
+        }
+    ]
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("capability_package", config, publish=True)
+
+
+def test_capability_package_rejects_invalid_snapshot_digest() -> None:
+    config = _valid_capability_config()
+    config["snapshot_digest"] = "sha256:not-a-digest"
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("capability_package", config, publish=True)
+
+
+def test_capability_package_requires_snapshot_content() -> None:
+    config = _valid_capability_config()
+    config["manifest"] = {}
+    config["resources"] = []
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("capability_package", config, publish=True)
+
+
+
+def test_capability_package_legacy_git_asset_remains_readable() -> None:
+    config = _valid_capability_config()
+    config.pop("source_package_id")
+    config.pop("provenance_mode")
+    parsed = parse_asset_config("capability_package", config, publish=False)
+    assert parsed.repository_url == "https://github.com/acme/capabilities"
+    assert parsed.commit_sha == "a" * 40

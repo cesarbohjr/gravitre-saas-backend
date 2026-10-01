@@ -5,6 +5,11 @@ import asyncio
 import json
 import re
 import time
+import socket
+import ipaddress
+from urllib.parse import urlparse
+
+import httpx
 from datetime import datetime, timezone
 from typing import Any
 
@@ -96,6 +101,260 @@ def mcp_openai_tool_name(server_name: str, tool_name: str) -> str:
     return f"mcp_{safe_server}_{safe_tool}"[:128]
 
 
+def _streamable_http_client():
+    """Return the Streamable HTTP client for the installed MCP SDK line.
+
+    Gravitre currently pins mcp<2. MCP 1.x uses streamablehttp_client;
+    MCP 2.x renamed it to streamable_http_client. Prefer the modern symbol
+    when present so the runtime is migration-ready without changing behavior.
+    """
+    try:
+        from mcp.client.streamable_http import streamable_http_client
+
+        return streamable_http_client
+    except ImportError:
+        from mcp.client.streamable_http import streamablehttp_client
+
+        return streamablehttp_client
+
+
+async def _validate_portable_mcp_runtime_endpoint(server: dict[str, Any]) -> None:
+    """Re-resolve package-managed MCP endpoints immediately before network use.
+
+    Registration-time URL checks are insufficient because DNS can later resolve
+    a public hostname to loopback/private/link-local space.
+    """
+    if not bool(server.get("source_capability_package_id")):
+        return
+    raw_url = str(server.get("server_url") or "").strip()
+    parsed = urlparse(raw_url)
+    host = (parsed.hostname or "").strip().lower()
+    if parsed.scheme != "https" or not host or parsed.username or parsed.password:
+        raise ValueError("Portable MCP endpoint is no longer a valid reviewed HTTPS URL")
+    try:
+        literal = ipaddress.ip_address(host)
+        addresses = {literal}
+    except ValueError:
+        try:
+            rows = await asyncio.to_thread(socket.getaddrinfo, host, parsed.port or 443, type=socket.SOCK_STREAM)
+        except OSError as exc:
+            raise ValueError("Portable MCP endpoint DNS resolution failed") from exc
+        addresses = set()
+        for row in rows:
+            sockaddr = row[4]
+            if not sockaddr:
+                continue
+            try:
+                addresses.add(ipaddress.ip_address(str(sockaddr[0])))
+            except ValueError:
+                continue
+        if not addresses:
+            raise ValueError("Portable MCP endpoint resolved to no usable address")
+    for address in addresses:
+        if (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_multicast
+            or address.is_reserved
+            or address.is_unspecified
+        ):
+            raise ValueError("Portable MCP endpoint resolved to private or reserved network space")
+
+
+def _restricted_mcp_httpx_client_factory(
+    headers: dict[str, str] | None = None,
+    timeout: Any = None,
+    auth: Any = None,
+) -> httpx.AsyncClient:
+    """MCP v1 HTTP client that never follows redirects automatically.
+
+    Portable MCP endpoints are validated before registration. Refusing redirects
+    prevents a reviewed public endpoint from redirecting the agent into a local,
+    link-local, or private-network target.
+    """
+    return httpx.AsyncClient(
+        headers=headers,
+        timeout=timeout,
+        auth=auth,
+        follow_redirects=False,
+    )
+
+
+def should_enable_discovered_mcp_tool(
+    server: dict[str, Any],
+    enable_discovered_tools: bool | None,
+) -> bool:
+    """Manual MCP keeps legacy auto-enable; portable-package MCP defaults inert."""
+    if enable_discovered_tools is not None:
+        return bool(enable_discovered_tools)
+    return not bool(server.get("source_capability_package_id"))
+
+
+def resolve_discovered_mcp_tool_enabled(
+    server: dict[str, Any],
+    *,
+    existing_enabled: bool | None,
+    enable_discovered_tools: bool | None,
+) -> bool:
+    """Preserve reviewed package-tool state while keeping new discoveries inert."""
+    if (
+        bool(server.get("source_capability_package_id"))
+        and existing_enabled is not None
+        and enable_discovered_tools is None
+    ):
+        return bool(existing_enabled)
+    return should_enable_discovered_mcp_tool(server, enable_discovered_tools)
+
+
+def catalog_visible_mcp_tools(
+    server: dict[str, Any],
+    tools: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Portable-package tools enter runtime only after server + tool review."""
+    if not bool(server.get("source_capability_package_id")):
+        return tools
+    if not bool(server.get("enabled", True)):
+        return []
+    if str(server.get("activation_state") or "configured") in {"pending_review", "disabled"}:
+        return []
+    return [row for row in tools if bool(row.get("enabled"))]
+
+
+def stale_package_mcp_tool_ids(
+    persisted_tools: list[dict[str, Any]],
+    discovered_names: set[str],
+) -> list[str]:
+    """Return reviewed package-tool rows that disappeared from the remote server."""
+    return [
+        str(row.get("id") or "")
+        for row in persisted_tools
+        if str(row.get("id") or "").strip()
+        and str(row.get("tool_name") or "").strip()
+        and str(row.get("tool_name") or "").strip() not in discovered_names
+        and bool(row.get("enabled"))
+    ]
+
+
+def refresh_package_mcp_runtime_registration(
+    client: Any,
+    *,
+    org_id: str,
+    server_id: str,
+    server: dict[str, Any] | None = None,
+) -> None:
+    """Rebuild one package-managed MCP server's runtime catalog from reviewed DB state."""
+    if server is None:
+        server_rows = (
+            client.table("mcp_servers")
+            .select("id,server_name,enabled,activation_state,source_capability_package_id")
+            .eq("id", server_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not server_rows:
+            return
+        server = dict(server_rows[0])
+    else:
+        server = dict(server)
+    if not bool(server.get("source_capability_package_id")):
+        return
+
+    tools = list(
+        client.table("mcp_tools")
+        .select("id,tool_name,tool_description,input_schema,capability_tier,enabled")
+        .eq("server_id", server_id)
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    server_name = str(server.get("server_name") or server_id)
+
+    visible_tools = catalog_visible_mcp_tools(server, tools)
+
+    from app.services.mcp_catalog_sync import sync_mcp_server_to_catalog
+    sync_mcp_server_to_catalog(
+        server_name=server_name,
+        server_id=server_id,
+        tools=visible_tools,
+    )
+
+    from app.connectors.action_catalog.extensions import (
+        register_action_schemas,
+        unregister_action_schemas,
+    )
+    all_keys = [
+        mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+        for row in tools
+        if str(row.get("tool_name") or "").strip()
+    ]
+    unregister_action_schemas(all_keys)
+
+    enabled_schemas: dict[str, dict[str, Any]] = {}
+    for row in visible_tools:
+        schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
+        if not schema:
+            continue
+        key = mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+        enabled_schemas[key] = schema
+    if enabled_schemas:
+        register_action_schemas(enabled_schemas)
+
+
+def remove_package_mcp_runtime_registration(
+    client: Any,
+    *,
+    org_id: str,
+    server_id: str,
+) -> None:
+    """Remove runtime catalog/schema entries for a package-managed MCP server."""
+    server_rows = (
+        client.table("mcp_servers")
+        .select("id,server_name,source_capability_package_id")
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not server_rows:
+        return
+    server = dict(server_rows[0])
+    if not bool(server.get("source_capability_package_id")):
+        return
+
+    tools = list(
+        client.table("mcp_tools")
+        .select("tool_name")
+        .eq("server_id", server_id)
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    server_name = str(server.get("server_name") or server_id)
+
+    from app.connectors.action_catalog.extensions import (
+        unregister_action_schemas,
+        unregister_vendor_extension,
+    )
+    from app.services.mcp_catalog_sync import vendor_slug_for_mcp_server
+
+    unregister_action_schemas(
+        [
+            mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+            for row in tools
+            if str(row.get("tool_name") or "").strip()
+        ]
+    )
+    unregister_vendor_extension(vendor_slug_for_mcp_server(server_name, server_id))
+
+
 class MCPClientService:
     """Org-scoped MCP tool discovery and execution with mandatory write approval."""
 
@@ -114,8 +373,19 @@ class MCPClientService:
             raise ValueError("CONNECTOR_SECRETS_ENCRYPTION_KEY is required for MCP server auth")
         return str(key)
 
-    async def discover_tools(self, server_id: str, org_id: str) -> list[dict[str, Any]]:
-        server = await self._load_server(server_id, org_id)
+    async def discover_tools(
+        self,
+        server_id: str,
+        org_id: str,
+        *,
+        allow_disabled_server: bool = False,
+        enable_discovered_tools: bool | None = None,
+    ) -> list[dict[str, Any]]:
+        server = await self._load_server(
+            server_id,
+            org_id,
+            allow_disabled=allow_disabled_server,
+        )
         remote_tools = await self._list_remote_tools(server)
         client = self._client()
         upserted: list[dict[str, Any]] = []
@@ -132,7 +402,7 @@ class MCPClientService:
             )
             existing = (
                 client.table("mcp_tools")
-                .select("id")
+                .select("id,enabled")
                 .eq("org_id", org_id)
                 .eq("server_id", server_id)
                 .eq("tool_name", name)
@@ -141,6 +411,13 @@ class MCPClientService:
                 .data
                 or []
             )
+            discovered_enabled = resolve_discovered_mcp_tool_enabled(
+                server,
+                existing_enabled=(
+                    bool(existing[0].get("enabled")) if existing else None
+                ),
+                enable_discovered_tools=enable_discovered_tools,
+            )
             row = {
                 "server_id": server_id,
                 "org_id": org_id,
@@ -148,7 +425,9 @@ class MCPClientService:
                 "tool_description": description,
                 "input_schema": schema,
                 "capability_tier": capability,
-                "enabled": True,
+                # Capability-package tools are discovered inert. Admins must
+                # explicitly activate the reviewed server and individual tools.
+                "enabled": discovered_enabled,
                 "risk_level": "high" if capability == "write" else "low",
             }
             if existing:
@@ -164,23 +443,58 @@ class MCPClientService:
                 inserted = client.table("mcp_tools").insert(row).execute()
                 upserted.append(inserted.data[0] if inserted.data else row)
         server_name = str(server.get("server_name") or server_id)
-        from app.services.mcp_catalog_sync import sync_mcp_server_to_catalog
+        if bool(server.get("source_capability_package_id")):
+            discovered_names = {
+                str(row.get("tool_name") or "").strip()
+                for row in upserted
+                if str(row.get("tool_name") or "").strip()
+            }
+            persisted = (
+                client.table("mcp_tools")
+                .select("id,tool_name,enabled")
+                .eq("org_id", org_id)
+                .eq("server_id", server_id)
+                .execute()
+                .data
+                or []
+            )
+            for stale_tool_id in stale_package_mcp_tool_ids(
+                list(persisted),
+                discovered_names,
+            ):
+                (
+                    client.table("mcp_tools")
+                    .update({"enabled": False})
+                    .eq("id", stale_tool_id)
+                    .eq("org_id", org_id)
+                    .execute()
+                )
+            refresh_package_mcp_runtime_registration(
+                client,
+                org_id=org_id,
+                server_id=server_id,
+                server=server,
+            )
+        else:
+            from app.services.mcp_catalog_sync import sync_mcp_server_to_catalog
 
-        sync_mcp_server_to_catalog(
-            server_name=server_name,
-            server_id=server_id,
-            tools=upserted,
-        )
-        from app.connectors.action_catalog.extensions import register_action_schemas
+            sync_mcp_server_to_catalog(
+                server_name=server_name,
+                server_id=server_id,
+                tools=upserted,
+            )
+            from app.connectors.action_catalog.extensions import register_action_schemas
 
-        mcp_schemas: dict[str, dict] = {}
-        for row in upserted:
-            schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
-            if schema:
-                openai_name = mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
-                mcp_schemas[openai_name] = schema
-        if mcp_schemas:
-            register_action_schemas(mcp_schemas)
+            mcp_schemas: dict[str, dict] = {}
+            for row in upserted:
+                if not bool(row.get("enabled")):
+                    continue
+                schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
+                if schema:
+                    openai_name = mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+                    mcp_schemas[openai_name] = schema
+            if mcp_schemas:
+                register_action_schemas(mcp_schemas)
         return upserted
 
     async def execute_tool(
@@ -235,6 +549,22 @@ class MCPClientService:
         try:
             result = await self._call_mcp_server(server, str(tool["tool_name"]), input_data)
             latency_ms = int((time.perf_counter() - started) * 1000)
+            source_package_id = str(server.get("source_capability_package_id") or "").strip()
+            execution_status = "completed"
+            verification = None
+            if source_package_id and requires_write:
+                # A portable package does not get to define terminal success by
+                # returning a successful MCP response. Until Gravitre has an
+                # independent source-of-record verifier for this dynamic MCP
+                # write, provider acceptance remains explicitly non-terminal.
+                execution_status = "verification_inconclusive"
+                verification = {
+                    "status": "verification_inconclusive",
+                    "verified": False,
+                    "providerAccepted": True,
+                    "providerAcceptanceIsTerminalSuccess": False,
+                    "reason": "portable_mcp_write_has_no_independent_source_verifier",
+                }
             await self._log_execution(
                 tool_id=tool_id,
                 org_id=org_id,
@@ -242,13 +572,32 @@ class MCPClientService:
                 workflow_run_id=workflow_run_id,
                 input_data=input_data,
                 output=result,
-                status="completed",
+                status=execution_status,
                 approval_id=approval_id,
                 latency_ms=latency_ms,
                 capability_tier=str(tool.get("capability_tier") or ""),
             )
             await self._audit_execution(org_id, tool, approval_id)
-            return {"status": "completed", "result": result, "latency_ms": latency_ms}
+            if source_package_id:
+                from app.capabilities.usage import record_mcp_execution
+
+                asyncio.create_task(
+                    asyncio.to_thread(
+                        record_mcp_execution,
+                        self._client(),
+                        org_id=org_id,
+                        package_id=source_package_id,
+                        workflow_run_id=workflow_run_id,
+                    )
+                )
+            response = {
+                "status": execution_status,
+                "result": result,
+                "latency_ms": latency_ms,
+            }
+            if verification is not None:
+                response["verification"] = verification
+            return response
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
             await self._log_execution(
@@ -270,7 +619,7 @@ class MCPClientService:
         client = self._client()
         rows = (
             client.table("mcp_tools")
-            .select("*, mcp_servers(server_name)")
+            .select("*, mcp_servers(server_name,enabled,activation_state)")
             .eq("org_id", org_id)
             .eq("enabled", True)
             .execute()
@@ -282,6 +631,10 @@ class MCPClientService:
             server_name = ""
             nested = row.get("mcp_servers")
             if isinstance(nested, dict):
+                if not bool(nested.get("enabled", True)):
+                    continue
+                if str(nested.get("activation_state") or "configured") in {"pending_review", "disabled"}:
+                    continue
                 server_name = str(nested.get("server_name") or "")
             from app.services.catalog_write_authority import (
                 mcp_hints_from_schema,
@@ -314,7 +667,13 @@ class MCPClientService:
             )
         return tools
 
-    async def _load_server(self, server_id: str, org_id: str) -> dict[str, Any]:
+    async def _load_server(
+        self,
+        server_id: str,
+        org_id: str,
+        *,
+        allow_disabled: bool = False,
+    ) -> dict[str, Any]:
         client = self._client()
         rows = (
             client.table("mcp_servers")
@@ -329,7 +688,7 @@ class MCPClientService:
         if not rows:
             raise ValueError("MCP server not found for org")
         server = dict(rows[0])
-        if not server.get("enabled", True):
+        if not server.get("enabled", True) and not allow_disabled:
             raise ValueError("MCP server is disabled")
         auth_config = server.get("auth_config") if isinstance(server.get("auth_config"), dict) else {}
         if auth_config.get("_encrypted"):
@@ -518,6 +877,8 @@ class MCPClientService:
             return await self._list_tools_stdio(server)
         if transport in {"sse", "http"}:
             return await self._list_tools_http(server)
+        if transport in {"streamable_http", "streamable-http"}:
+            return await self._list_tools_streamable_http(server)
         raise ValueError(f"Unsupported MCP transport: {transport}")
 
     async def _call_mcp_server(
@@ -531,6 +892,8 @@ class MCPClientService:
             return await self._call_stdio(server, tool_name, input_data)
         if transport in {"sse", "http"}:
             return await self._call_http(server, tool_name, input_data)
+        if transport in {"streamable_http", "streamable-http"}:
+            return await self._call_streamable_http(server, tool_name, input_data)
         raise ValueError(f"Unsupported MCP transport: {transport}")
 
     async def _list_tools_stdio(self, server: dict[str, Any]) -> list[dict[str, Any]]:
@@ -559,10 +922,40 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
         headers = self._auth_headers(server)
-        async with sse_client(url, headers=headers) as (read, write):
+        async with sse_client(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as (read, write):
             from mcp import ClientSession
 
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                listed = await session.list_tools()
+                return [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "inputSchema": tool.inputSchema,
+                    }
+                    for tool in listed.tools
+                ]
+
+    async def _list_tools_streamable_http(self, server: dict[str, Any]) -> list[dict[str, Any]]:
+        from mcp import ClientSession
+
+        url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
+        headers = self._auth_headers(server)
+        client_factory = _streamable_http_client()
+        async with client_factory(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as streams:
+            read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 listed = await session.list_tools()
@@ -603,8 +996,36 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
         headers = self._auth_headers(server)
-        async with sse_client(url, headers=headers) as (read, write):
+        async with sse_client(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(tool_name, input_data)
+                return {"content": [block.model_dump() for block in result.content]}
+
+    async def _call_streamable_http(
+        self,
+        server: dict[str, Any],
+        tool_name: str,
+        input_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        from mcp import ClientSession
+
+        url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
+        headers = self._auth_headers(server)
+        client_factory = _streamable_http_client()
+        async with client_factory(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as streams:
+            read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, input_data)

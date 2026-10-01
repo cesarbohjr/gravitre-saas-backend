@@ -1,6 +1,7 @@
 """Phase B/E4 — canonical reasoning context assembly (classical + unified LIVE)."""
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Literal
@@ -182,6 +183,35 @@ def _estimate_tokens(text: str) -> int:
     return max(0, len(text or "") // 4)
 
 
+async def _record_portable_usage_safely(
+    *,
+    client: Any,
+    org_id: str,
+    package_ids: list[str],
+    user_id: str,
+    conversation_id: str | None,
+    surface: str | None,
+) -> None:
+    try:
+        from app.capabilities.usage import record_reasoning_selection
+
+        await asyncio.to_thread(
+            record_reasoning_selection,
+            client,
+            org_id=org_id,
+            package_ids=package_ids,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            surface=surface,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(
+            "portable_skill_usage_telemetry_failed org_id=%s error=%s",
+            org_id,
+            exc,
+        )
+
+
 async def compile_unified_reasoning_context(
     *,
     org_id: str,
@@ -318,6 +348,45 @@ async def compile_unified_reasoning_context(
         _record("prior_recommendations", "INCLUDE", "remind_me_turn")
     else:
         _record("prior_recommendations", "EXCLUDE", "not_remind_me")
+
+    portable_skill_meta: dict[str, Any] | None = None
+    if client is not None and org_id and not remind_me:
+        try:
+            from app.capabilities.runtime import build_portable_skill_context
+
+            portable_skill_block, portable_skill_meta = build_portable_skill_context(
+                client,
+                org_id=org_id,
+                prompt=message or "",
+            )
+            selected_package_ids = (
+                portable_skill_meta.get("selectedPackageIds")
+                if isinstance(portable_skill_meta, dict)
+                else []
+            )
+            if isinstance(selected_package_ids, list) and selected_package_ids:
+                asyncio.create_task(
+                    _record_portable_usage_safely(
+                        client=client,
+                        org_id=org_id,
+                        package_ids=[str(value) for value in selected_package_ids],
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        surface=surface,
+                    )
+                )
+            if portable_skill_block:
+                _add_part("portable_skills", portable_skill_block)
+                _record("portable_skills", "RETRIEVE", "installed_relevant_skills")
+            else:
+                _record("portable_skills", "EXCLUDE", "no_relevant_installed_skill")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("context_compiler_portable_skills_unavailable org_id=%s error=%s", org_id, exc)
+            _record("portable_skills", "DEFER", "portable_skill_lookup_failed")
+    elif remind_me:
+        _record("portable_skills", "EXCLUDE", "remind_me_turn")
+    else:
+        _record("portable_skills", "EXCLUDE", "missing_client_or_org")
 
     cognitive_prompt_sections: dict[str, str] = {}
     if cognitive_context is not None and not remind_me:
@@ -474,5 +543,6 @@ async def compile_unified_reasoning_context(
             "surface": surface or "assistant",
             "workspace_focus": workspace_focus or None,
             "compiled_task_included": bool(compiled_task_block),
+            "portable_skills": portable_skill_meta,
         },
     )

@@ -22,6 +22,20 @@ def register_vendor_extension(spec: VendorCatalogSpec) -> None:
     _invalidate_schema_caches()
 
 
+def unregister_vendor_extension(vendor: str) -> None:
+    """Remove one runtime vendor extension and invalidate derived catalog caches."""
+    global VENDOR_CATALOG_EXTENSIONS
+    before = len(VENDOR_CATALOG_EXTENSIONS)
+    VENDOR_CATALOG_EXTENSIONS = tuple(
+        spec for spec in VENDOR_CATALOG_EXTENSIONS if spec.vendor != vendor
+    )
+    if len(VENDOR_CATALOG_EXTENSIONS) != before:
+        from app.connectors.action_catalog.registry import get_vendor_catalog
+
+        get_vendor_catalog.cache_clear()
+        _invalidate_schema_caches()
+
+
 def register_action_schema(action_key: str, schema: dict[str, Any]) -> None:
     """Register or replace JSON Schema for a single action (future/partner connectors)."""
     ACTION_SCHEMA_EXTENSIONS[action_key] = schema
@@ -32,6 +46,16 @@ def register_action_schemas(schemas: dict[str, dict[str, Any]]) -> None:
     """Bulk-register action schemas from a partner manifest or MCP discovery."""
     ACTION_SCHEMA_EXTENSIONS.update(schemas)
     _invalidate_schema_caches()
+
+
+def unregister_action_schemas(action_keys: list[str] | tuple[str, ...] | set[str]) -> None:
+    """Remove runtime action schemas and invalidate derived schema caches."""
+    changed = False
+    for action_key in action_keys:
+        if ACTION_SCHEMA_EXTENSIONS.pop(str(action_key), None) is not None:
+            changed = True
+    if changed:
+        _invalidate_schema_caches()
 
 
 def _invalidate_schema_caches() -> None:

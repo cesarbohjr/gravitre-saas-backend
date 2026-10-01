@@ -113,6 +113,8 @@ export function InstallSuccessPanel({
     }
   }
 
+  const requiresReview = Boolean(entities?.requiresReview)
+
   return (
     <motion.div
       initial={reduced ? false : { opacity: 0, y: 10, scale: 0.98 }}
@@ -130,14 +132,15 @@ export function InstallSuccessPanel({
           </span>
           <div>
             <p className="text-xs font-semibold text-success/80">
-              Live in your workspace
+              {requiresReview ? "Installed · review required" : "Live in your workspace"}
             </p>
             <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
               {assetTitle} is installed
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              We added it to your Gravitre instance. A confirmation is in your notifications
-              {links.length ? " — jump in below." : "."}
+              {requiresReview
+                ? "Gravitre installed this capability in quarantine. Review and approve it before the skill or declared tools can be used."
+                : `We added it to your Gravitre instance. A confirmation is in your notifications${links.length ? " — jump in below." : "."}`}
             </p>
           </div>
         </div>
@@ -248,7 +251,12 @@ export function InstallStepperSheet({
       setInstallResult(result)
       setStep("done")
       onComplete()
-      toast.success(`${asset.title} is live in your workspace`)
+      const requiresReview = Boolean(result.entities?.requiresReview)
+      toast.success(
+        requiresReview
+          ? `${asset.title} is installed and requires review`
+          : `${asset.title} is live in your workspace`,
+      )
     } catch (err) {
       toastMarketplaceInstallFailure(err, {
         blockerActionUrl: check?.blockers?.[0]?.action_url,
@@ -271,7 +279,9 @@ export function InstallStepperSheet({
           </p>
           <SheetTitle className="text-xl tracking-tight">{asset?.title ?? "Asset"}</SheetTitle>
           <SheetDescription>
-            We&apos;ll provision agents, workflows, and knowledge — then notify you when it&apos;s ready.
+            {asset?.assetType === "capability_package"
+              ? "Gravitre will install the reviewed capability snapshot in quarantine for your organization to approve. MCP activation stays separate."
+              : "We’ll provision agents, workflows, and knowledge — then notify you when it’s ready."}
           </SheetDescription>
         </SheetHeader>
 
@@ -327,8 +337,9 @@ export function InstallStepperSheet({
           {!checkLoading && (activeStep === "confirm" || step === "installing") ? (
             <>
               <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear
-                immediately.
+                {asset?.assetType === "capability_package"
+                  ? "Confirm to add this reviewed capability snapshot in quarantine. An org admin must approve it before the skill can be used; imported scripts remain inert and MCP dependencies are not activated automatically."
+                  : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
               </div>
               <ConnectorChecklist items={checklist} />
             </>

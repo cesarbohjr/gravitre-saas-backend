@@ -2154,6 +2154,7 @@ export interface MarketplaceAssetInstallCheck {
   requiredConnectorsTotal?: number
   requiresPayment?: boolean
   hasEntitlement?: boolean
+  requiresReviewAfterInstall?: boolean
   pricingType?: string
   priceCents?: number
   currency?: string

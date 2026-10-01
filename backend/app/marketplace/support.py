@@ -45,6 +45,8 @@ def _entity_deep_link(entity_type: str, entity_id: str, metadata: dict[str, Any]
         if connector_type:
             return f"/connectors?type={connector_type}"
         return "/connectors"
+    if entity_type == "capability_package":
+        return "/marketplace/capabilities"
     return None
 
 
@@ -245,9 +247,16 @@ def _deactivate_install_entities(
     entity_id: str | None,
     metadata: dict[str, Any],
 ) -> dict[str, list[str]]:
-    """Soft-deactivate agents/workflows/RAG spawned by a marketplace install."""
+    """Soft-deactivate entities spawned by a marketplace install."""
     now = _now()
-    deactivated: dict[str, list[str]] = {"agents": [], "workflows": [], "ragSources": []}
+    deactivated: dict[str, list[str]] = {
+        "agents": [],
+        "workflows": [],
+        "ragSources": [],
+        "capabilityPackages": [],
+        "mcpServers": [],
+        "nativeBindings": [],
+    }
 
     agent_ids: list[str] = []
     for raw in metadata.get("agentIds") or []:
@@ -296,6 +305,53 @@ def _deactivate_install_entities(
             deactivated["ragSources"].append(rag_id)
         except Exception:  # noqa: BLE001
             continue
+
+    if entity_type == "capability_package" and entity_id:
+        capability_id = str(entity_id)
+        try:
+            client.table("capability_packages").update(
+                {"status": "disabled", "updated_at": now}
+            ).eq("id", capability_id).eq("org_id", org_id).execute()
+            deactivated["capabilityPackages"].append(capability_id)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from app.capabilities.mcp_activation import deactivate_package_mcp_dependencies
+
+            mcp_result = deactivate_package_mcp_dependencies(
+                client,
+                org_id=org_id,
+                package_id=capability_id,
+                activation_state="disabled",
+            )
+            deactivated["mcpServers"].extend(mcp_result.get("serverIds") or [])
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            binding_rows = (
+                client.table("capability_component_bindings")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("package_id", capability_id)
+                .eq("enabled", True)
+                .execute()
+            )
+            binding_ids = [
+                str(row.get("id"))
+                for row in (binding_rows.data or [])
+                if row.get("id")
+            ]
+            (
+                client.table("capability_component_bindings")
+                .update({"enabled": False})
+                .eq("org_id", org_id)
+                .eq("package_id", capability_id)
+                .eq("enabled", True)
+                .execute()
+            )
+            deactivated["nativeBindings"].extend(binding_ids)
+        except Exception:  # noqa: BLE001
+            pass
 
     return deactivated
 

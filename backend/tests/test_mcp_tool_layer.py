@@ -11,6 +11,7 @@ from app.services.mcp_client_service import (
     MCPClientService,
     classify_mcp_tool_capability,
     mcp_openai_tool_name,
+    refresh_package_mcp_runtime_registration,
 )
 from app.services.tool_registry import ToolRegistry
 from app.services.tool_types import ToolContext
@@ -267,3 +268,157 @@ def test_mcp_openai_tool_name_format():
     name = mcp_openai_tool_name("My Server", "Get Data")
     assert name.startswith("mcp_")
     assert "get_data" in name
+
+
+
+@pytest.mark.asyncio
+async def test_enabled_tool_on_disabled_imported_server_is_hidden(mcp_service):
+    tool = {
+        "id": "tool-pending",
+        "server_id": "srv-pending",
+        "tool_name": "search_records",
+        "tool_description": "Search records",
+        "capability_tier": "read",
+        "enabled": True,
+        "input_schema": {"type": "object", "properties": {}},
+        "mcp_servers": {
+            "server_name": "Imported MCP",
+            "enabled": False,
+            "activation_state": "pending_review",
+        },
+    }
+    client = _mock_supabase(tools=[tool])
+    with patch.object(mcp_service, "_client", return_value=client):
+        available = await mcp_service.get_enabled_tools_for_org("org-1")
+    assert available == []
+
+
+@pytest.mark.asyncio
+async def test_imported_server_discovery_can_persist_tools_disabled(mcp_service):
+    server = {
+        "id": "srv-pending",
+        "server_name": "Imported MCP",
+        "server_url": "https://mcp.example.com/sse",
+        "transport": "sse",
+        "enabled": False,
+        "activation_state": "pending_review",
+        "auth_config": {},
+    }
+    client = _mock_supabase(tools=[], servers=[server])
+    with (
+        patch.object(mcp_service, "_client", return_value=client),
+        patch.object(mcp_service, "_load_server", new=AsyncMock(return_value=server)) as load_server,
+        patch.object(
+            mcp_service,
+            "_list_remote_tools",
+            new=AsyncMock(
+                return_value=[
+                    {
+                        "name": "search_records",
+                        "description": "Search records",
+                        "inputSchema": {"type": "object", "properties": {}},
+                    }
+                ]
+            ),
+        ),
+        patch("app.services.mcp_catalog_sync.sync_mcp_server_to_catalog"),
+        patch("app.connectors.action_catalog.extensions.register_action_schemas"),
+    ):
+        await mcp_service.discover_tools(
+            "srv-pending",
+            "org-1",
+            allow_disabled_server=True,
+        )
+    load_server.assert_awaited_once_with(
+        "srv-pending",
+        "org-1",
+        allow_disabled=True,
+    )
+    inserted = client.table("mcp_tools").insert.call_args
+    if inserted is not None:
+        assert inserted.args[0]["enabled"] is False
+
+
+
+def test_refresh_package_mcp_runtime_removes_disabled_tool_schema() -> None:
+    server = {
+        "id": "srv-package",
+        "server_name": "Package MCP",
+        "source_capability_package_id": "pkg-1",
+    }
+    tool = {
+        "id": "tool-1",
+        "server_id": "srv-package",
+        "tool_name": "search_records",
+        "tool_description": "Search records",
+        "input_schema": {"type": "object", "properties": {}},
+        "capability_tier": "read",
+        "enabled": False,
+    }
+    client = _mock_supabase(tools=[tool], servers=[server])
+    with (
+        patch("app.services.mcp_catalog_sync.sync_mcp_server_to_catalog") as sync_catalog,
+        patch("app.connectors.action_catalog.extensions.unregister_action_schemas") as unregister,
+        patch("app.connectors.action_catalog.extensions.register_action_schemas") as register,
+    ):
+        refresh_package_mcp_runtime_registration(
+            client,
+            org_id="org-1",
+            server_id="srv-package",
+        )
+
+    sync_catalog.assert_called_once()
+    assert sync_catalog.call_args.kwargs["tools"] == []
+    expected_key = mcp_openai_tool_name("Package MCP", "search_records")
+    unregister.assert_called_once_with([expected_key])
+    register.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_portable_mcp_verification_inconclusive_stays_non_success(settings):
+    registry = ToolRegistry()
+    registry._mcp_meta = {
+        "mcp_portable_create": {
+            "mcp_tool_id": "tool-1",
+            "capability_tier": "write",
+        }
+    }
+    ctx = ToolContext(
+        settings=settings,
+        client=MagicMock(),
+        org_id="org-1",
+        actor_id="user-1",
+    )
+    with patch(
+        "app.services.mcp_client_service.get_mcp_client_service"
+    ) as get_svc:
+        get_svc.return_value.get_enabled_tools_for_org = AsyncMock(
+            return_value=[
+                {
+                    "name": "mcp_portable_create",
+                    "mcp_tool_id": "tool-1",
+                }
+            ]
+        )
+        get_svc.return_value.execute_tool = AsyncMock(
+            return_value={
+                "status": "verification_inconclusive",
+                "result": {"id": "remote-1"},
+                "verification": {
+                    "providerAccepted": True,
+                    "providerAcceptanceIsTerminalSuccess": False,
+                },
+                "latency_ms": 10,
+            }
+        )
+        raw = await registry._execute_mcp_tool(
+            ctx,
+            "mcp_portable_create",
+            {"name": "Ada", "approval_id": "approval-1"},
+        )
+
+    assert raw["success"] is False
+    assert raw["error_code"] == "verification_inconclusive"
+    assert raw["provider_accepted"] is True
+    assert raw["verification_inconclusive"] is True
+    assert raw["result"]["id"] == "remote-1"

@@ -872,6 +872,7 @@ async def run_unified_turn_shadow(
         context_parts.append((label, text))
 
     unified_turn_knowledge_meta: dict[str, Any] | None = None
+    portable_skill_meta: dict[str, Any] | None = None
     if _compiled_ctx is not None:
         context_parts = list(_compiled_ctx.context_parts())
         unified_turn_knowledge_meta = (
@@ -954,6 +955,19 @@ async def run_unified_turn_shadow(
 
     if _compiled_ctx is None:
         _add_part("tools_list_note", tools_list_note)
+        if client is not None and org_id:
+            try:
+                from app.capabilities.runtime import build_portable_skill_context
+
+                portable_skill_block, portable_skill_meta = build_portable_skill_context(
+                    client,
+                    org_id=org_id,
+                    prompt=message or "",
+                )
+                if portable_skill_block:
+                    _add_part("portable_skills", portable_skill_block)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("portable_skill_context_unavailable org_id=%s error=%s", org_id, exc)
         remind_me = _is_remind_me_turn(message)
         standing = _standing_user_corrections_block(conversation_history)
         if standing:

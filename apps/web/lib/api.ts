@@ -243,6 +243,22 @@ async function postJson<T>(url: string, data: unknown): Promise<T> {
   return response.json()
 }
 
+async function postForm<T>(url: string, data: FormData): Promise<T> {
+  const response = await apiFetch(url, {
+    method: "POST",
+    body: data,
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new ApiRequestError(
+      extractErrorMessage(error) || `Request failed: ${response.status}`,
+      response.status,
+      error,
+    )
+  }
+  return response.json()
+}
+
 async function patchJson<T>(url: string, data: unknown): Promise<T> {
   const response = await apiFetch(url, {
     method: "PATCH",
@@ -1240,7 +1256,7 @@ export const marketplaceApi = {
   createOrgAsset: (body: {
     slug: string
     title: string
-    assetType: "ai_agent" | "workflow" | "knowledge_pack" | "department_pack" | "connector_config"
+    assetType: "ai_agent" | "workflow" | "knowledge_pack" | "department_pack" | "connector_config" | "capability_package"
     config: Record<string, unknown>
     description?: string
     category?: string
@@ -1404,6 +1420,404 @@ export const marketplaceApi = {
       apiUrl(`/api/marketplace/platform/assets/${encodeURIComponent(assetRef)}/pricing`),
       body,
     ),
+}
+
+export interface PortableCapabilitySecurityScan {
+  risk?: "low" | "moderate" | "high" | "blocked" | string
+  blocked?: boolean
+  findings?: Array<{ severity?: string; code?: string; path?: string | null; detail?: string }>
+  externalHosts?: string[]
+  oauthScopes?: string[]
+  requiredSecrets?: string[]
+  scriptsScanned?: number
+  promptFilesScanned?: number
+  executionPerformed?: boolean
+  limitations?: string
+}
+
+export interface PortableCapabilityPackage {
+  id?: string
+  name: string
+  package_format?: string
+  version?: string | null
+  description?: string | null
+  license?: string | null
+  license_policy?: "allow" | "review" | "block" | string
+  risk_level?: "low" | "moderate" | "high" | "blocked" | string
+  source_type?: string
+  source_uri?: string | null
+  source_commit_sha?: string | null
+  source_package_path?: string | null
+  publisher_name?: string | null
+  publisher_trusted?: boolean
+  publisher_trust_scope?: "none" | "organization" | "marketplace_verified" | string
+  publisher_verified?: boolean
+  marketplace_publisher_id?: string | null
+  signature_status?: string
+  content_digest?: string | null
+  status?: string
+  installed_at?: string
+  inspection?: Record<string, unknown>
+  security_scan?: PortableCapabilitySecurityScan
+}
+
+export interface CapabilityMarketplaceSource {
+  id?: string
+  name: string
+  repository_url: string
+  branch: string
+  root_path?: string
+  auto_sync?: boolean
+  approval_required?: boolean
+  status?: string
+  last_synced_at?: string | null
+  last_sync_status?: string | null
+}
+
+export interface CapabilityMarketplaceCandidate {
+  id: string
+  marketplace_source_id: string
+  package_path: string
+  name: string
+  package_format: string
+  version?: string | null
+  description?: string | null
+  license?: string | null
+  license_policy: string
+  risk_level: string
+  content_digest?: string | null
+  status: "pending_review" | "approved" | "rejected" | "installed" | "stale" | string
+  inspection?: Record<string, unknown>
+  security_scan?: PortableCapabilitySecurityScan
+  discovered_at?: string
+  review_notes?: string | null
+}
+
+export interface MCPAdminServer {
+  id: string
+  server_name: string
+  server_url: string
+  transport: string
+  auth_type: string
+  enabled: boolean
+  verified_by_gravitre?: boolean
+  source_capability_package_id?: string | null
+  activation_state?: "pending_review" | "configured" | "disabled" | string
+  created_at?: string
+}
+
+export interface MCPAdminTool {
+  id: string
+  server_id: string
+  tool_name: string
+  tool_description?: string | null
+  capability_tier: "read" | "write" | string
+  requires_approval?: boolean
+  enabled: boolean
+  risk_level?: string
+  created_at?: string
+}
+
+export const mcpAdminApi = {
+  listServers: () =>
+    fetcher<{ servers: MCPAdminServer[] }>(apiUrl("/api/admin/mcp/servers")),
+  patchServer: (serverId: string, enabled: boolean) =>
+    patchJson<{ server: MCPAdminServer }>(
+      apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}`),
+      { enabled },
+    ),
+  configureServerAuth: (
+    serverId: string,
+    body: {
+      authType: "none" | "bearer" | "api_key"
+      authConfig?: { bearer_token?: string; api_key?: string; header?: string }
+    },
+  ) =>
+    patchJson<{ server: MCPAdminServer; credentialsStored: boolean }>(
+      apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}/auth`),
+      body,
+    ),
+  discoverTools: (serverId: string) =>
+    postJson<{ tools: MCPAdminTool[]; count: number }>(
+      apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}/discover`),
+      {},
+    ),
+  listTools: () =>
+    fetcher<{ tools: MCPAdminTool[] }>(apiUrl("/api/admin/mcp/tools")),
+  patchTool: (toolId: string, enabled: boolean) =>
+    patchJson<{ tool: MCPAdminTool }>(
+      apiUrl(`/api/admin/mcp/tools/${encodeURIComponent(toolId)}`),
+      { enabled },
+    ),
+}
+
+export const portableCapabilitiesApi = {
+  developerKit: () =>
+    fetcher<{
+      manifestSchema: string
+      schemaVersion: string
+      template: Record<string, unknown>
+      supportedPortableActivation: Record<string, string>
+      declarationOnly: Record<string, string>
+      security: Record<string, unknown>
+      distribution: Record<string, boolean>
+    }>(apiUrl("/api/capabilities/developer-kit")),
+  listPackages: () =>
+    fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
+  usage: (days = 30) =>
+    fetcher<{
+      windowDays: number
+      totalEvents: number
+      reasoningSelections: number
+      mcpExecutions: number
+      topCapabilities: Array<{ packageId: string; name: string; events: number }>
+      surfaces: Record<string, number>
+      contentStored: false
+    }>(apiUrl(`/api/capabilities/usage?days=${encodeURIComponent(String(days))}`)),
+  listTrustedPublishers: () =>
+    fetcher<{
+      items: Array<{
+        id: string
+        publisher_name: string
+        key_fingerprint: string
+        status: string
+        created_at?: string
+      }>
+    }>(apiUrl("/api/capabilities/trusted-publishers")),
+  addTrustedPublisher: (body: { publisherName: string; publicKeyPem: string; marketplacePublisherSlug?: string }) =>
+    postJson<{
+      publisher: {
+        id?: string
+        publisher_name: string
+        key_fingerprint: string
+        status: string
+      }
+    }>(apiUrl("/api/capabilities/trusted-publishers"), body),
+  listMarketplaces: () =>
+    fetcher<{ items: CapabilityMarketplaceSource[] }>(apiUrl("/api/capabilities/marketplaces")),
+  addMarketplace: (body: {
+    name: string
+    repositoryUrl: string
+    branch?: string
+    rootPath?: string
+    autoSync?: boolean
+    approvalRequired?: boolean
+  }) =>
+    postJson<{ marketplace: CapabilityMarketplaceSource }>(
+      apiUrl("/api/capabilities/marketplaces"),
+      body,
+    ),
+  syncMarketplace: (sourceId: string) =>
+    postJson<{
+      sync: {
+        discovered: number
+        ingested: number
+        rejected: Array<{ root: string; name: string; reason: string }>
+        candidates?: CapabilityMarketplaceCandidate[]
+        approvalRequired: boolean
+        installed?: number
+      }
+      sourceId: string
+      status: string
+    }>(apiUrl(`/api/capabilities/marketplaces/${encodeURIComponent(sourceId)}/sync`), {}),
+  listCandidates: (params?: { sourceId?: string; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.sourceId) query.set("source_id", params.sourceId)
+    if (params?.status) query.set("candidate_status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ items: CapabilityMarketplaceCandidate[] }>(
+      apiUrl(`/api/capabilities/marketplace-candidates${suffix}`),
+    )
+  },
+  reviewCandidate: (
+    candidateId: string,
+    body: { decision: "approve" | "reject"; notes?: string },
+  ) =>
+    postJson<{ candidate: CapabilityMarketplaceCandidate }>(
+      apiUrl(`/api/capabilities/marketplace-candidates/${encodeURIComponent(candidateId)}/review`),
+      body,
+    ),
+  installCandidate: (candidateId: string) =>
+    postJson<{ package: PortableCapabilityPackage; candidateId: string }>(
+      apiUrl(`/api/capabilities/marketplace-candidates/${encodeURIComponent(candidateId)}/install`),
+      {},
+    ),
+  reviewPackage: (
+    packageId: string,
+    body: { status: "installed" | "quarantined" | "disabled"; notes?: string },
+  ) =>
+    postJson<{ package: PortableCapabilityPackage; reviewed: boolean }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/review`),
+      body,
+    ),
+  inspectBundle: (body: {
+    files: Record<string, string>
+    sourceType?: "manual" | "github" | "zip" | "mcp" | "marketplace"
+    sourceUri?: string
+  }) =>
+    postJson<{
+      inspection: Record<string, unknown>
+      installationAllowed: boolean
+      activationPlan: Record<string, unknown>
+      resources: Array<{ path: string; kind: string; executable: boolean }>
+      ignoredFiles: string[]
+    }>(apiUrl("/api/capabilities/packages/inspect-bundle"), body),
+  installBundle: (body: {
+    files: Record<string, string>
+    sourceType?: "manual" | "github" | "zip" | "mcp" | "marketplace"
+    sourceUri?: string
+  }) =>
+    postJson<{
+      package: PortableCapabilityPackage
+      inspection: Record<string, unknown>
+      activationPlan: Record<string, unknown>
+      resourceCount: number
+      directExecutionEnabled: false
+    }>(apiUrl("/api/capabilities/packages/install-bundle"), body),
+  listResources: (packageId: string) =>
+    fetcher<{ items: Array<{ id: string; path: string; kind: string; content?: string | null; executable: boolean }> }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/resources`),
+    ),
+  validatePackage: (packageId: string) =>
+    fetcher<{
+      packageId: string
+      readyForMarketplace: boolean
+      errorCount: number
+      warningCount: number
+      executionPerformed: false
+      checks: Array<{
+        key: string
+        passed: boolean
+        severity: "error" | "warning" | "info" | string
+        message: string
+      }>
+    }>(apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/validate`)),
+  listVersions: (packageId: string) =>
+    fetcher<{
+      items: Array<{
+        id: string
+        package_id: string
+        content_digest?: string | null
+        package_version?: string | null
+        snapshot?: Record<string, unknown>
+        recorded_by?: string | null
+        recorded_at?: string | null
+      }>
+    }>(apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/versions`)),
+  rollbackVersion: (packageId: string, versionId: string) =>
+    postJson<{
+      package: PortableCapabilityPackage
+      restoredFromVersionId: string
+      status?: string
+      requiresReview: boolean
+    }>(
+      apiUrl(
+        `/api/capabilities/packages/${encodeURIComponent(packageId)}/versions/${encodeURIComponent(versionId)}/rollback`,
+      ),
+      {},
+    ),
+  prepareMcp: (packageId: string) =>
+    postJson<{
+      prepared: Array<Record<string, unknown>>
+      blocked: Array<Record<string, unknown>>
+      enabled: number
+      credentialsCopiedFromPackage: boolean
+      executionOwner: string
+    }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/prepare-mcp`),
+      {},
+    ),
+  listBindings: (packageId: string) =>
+    fetcher<{
+      items: Array<{
+        id: string
+        package_id: string
+        component_kind: "agent" | "play" | "template" | "trigger"
+        component_name: string
+        target_type: "agent" | "play" | "workflow" | "workflow_schedule" | "marketplace_asset"
+        target_id: string
+        enabled: boolean
+        created_at?: string
+      }>
+    }>(apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/bindings`)),
+  createBinding: (
+    packageId: string,
+    body: {
+      componentKind: "agent" | "play" | "template" | "trigger"
+      componentName: string
+      targetType: "agent" | "play" | "workflow" | "workflow_schedule" | "marketplace_asset"
+      targetId: string
+    },
+  ) =>
+    postJson<{
+      binding: Record<string, unknown>
+      executionOwner: string
+      targetCreated: false
+    }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/bindings`),
+      body,
+    ),
+  deleteBinding: (packageId: string, bindingId: string) =>
+    deleteJson<{ deleted: boolean; bindingId: string }>(
+      apiUrl(
+        `/api/capabilities/packages/${encodeURIComponent(packageId)}/bindings/${encodeURIComponent(bindingId)}`,
+      ),
+    ),
+  createMarketplaceDraft: (
+    packageId: string,
+    body: {
+      slug: string
+      title?: string
+      description?: string
+      category?: string
+      department?: string
+      pricingType?: "free" | "paid" | "subscription"
+      priceCents?: number
+    },
+  ) =>
+    postJson<{
+      created: boolean
+      asset: MarketplaceAssetDetail
+      sourcePackageId: string
+      sourceCommitSha: string
+      contentDigest: string
+      next: { internalReview: string; publicReview: string }
+    }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/marketplace-draft`),
+      body,
+    ),
+  inspectZip: (file: File) => {
+    const form = new FormData()
+    form.append("archive", file)
+    return postForm<{
+      inspection: Record<string, unknown>
+      installationAllowed: boolean
+      securityScan?: PortableCapabilitySecurityScan
+      activationPlan: Record<string, unknown>
+      resources: Array<{ path: string; kind: string; executable: boolean }>
+      ignoredFiles: string[]
+      fileName?: string | null
+    }>(apiUrl("/api/capabilities/packages/inspect-zip"), form)
+  },
+  installZip: (
+    file: File,
+    options?: { sourceUri?: string; signingPublicKeyPem?: string; signature?: string },
+  ) => {
+    const form = new FormData()
+    form.append("archive", file)
+    if (options?.sourceUri) form.append("sourceUri", options.sourceUri)
+    if (options?.signingPublicKeyPem) form.append("signingPublicKeyPem", options.signingPublicKeyPem)
+    if (options?.signature) form.append("signature", options.signature)
+    return postForm<{
+      package: PortableCapabilityPackage
+      inspection: Record<string, unknown>
+      activationPlan: Record<string, unknown>
+      resourceCount: number
+      securityScan?: PortableCapabilitySecurityScan
+      directExecutionEnabled: false
+      fileName?: string | null
+    }>(apiUrl("/api/capabilities/packages/install-zip"), form)
+  },
 }
 
 // ============ Approvals ============

@@ -1048,6 +1048,21 @@ class ToolRegistry:
                 "result": payload.get("result"),
                 "latency_ms": payload.get("latency_ms"),
             }
+        if payload.get("status") == "verification_inconclusive":
+            return {
+                "success": False,
+                "tool": tool_name,
+                "result": payload.get("result"),
+                "latency_ms": payload.get("latency_ms"),
+                "verification": payload.get("verification"),
+                "verification_inconclusive": True,
+                "provider_accepted": True,
+                "error_code": "verification_inconclusive",
+                "error": (
+                    "The MCP provider accepted the write, but Gravitre could not "
+                    "independently verify the final source state."
+                ),
+            }
         return {
             "success": False,
             "tool": tool_name,

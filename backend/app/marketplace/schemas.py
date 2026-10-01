@@ -15,6 +15,7 @@ AssetType = Literal[
     "knowledge_pack",
     "department_pack",
     "connector_config",
+    "capability_package",
 ]
 
 FORBIDDEN_SECRET_KEYS = frozenset({
@@ -140,6 +141,119 @@ class ConnectorConfigAssetConfig(BaseModel):
     connect_path: str = "/connectors"
 
 
+class CapabilityPackageResource(BaseModel):
+    path: str = Field(min_length=1)
+    kind: Literal["reference", "script", "asset"]
+    content: str | None = None
+    executable: bool = False
+
+    @model_validator(mode="after")
+    def script_content_must_remain_inert(self) -> "CapabilityPackageResource":
+        if self.executable or self.kind == "script":
+            if self.content not in (None, ""):
+                raise ValueError("executable capability resources must not embed script content")
+        return self
+
+
+class CapabilityPackageAssetConfig(BaseModel):
+    # Every Marketplace capability originates from a vetted installed package.
+    source_package_id: str | None = Field(default=None, min_length=1)
+    provenance_mode: Literal["git_pinned", "trusted_signature"] | None = None
+
+    # Git provenance is required for git_pinned assets and omitted for trusted
+    # signed snapshots.
+    repository_url: str | None = None
+    commit_sha: str | None = None
+    package_path: str = ""
+    content_digest: str = Field(min_length=71, max_length=71)
+    snapshot_digest: str = Field(min_length=71, max_length=71)
+
+    # Inert package snapshot for review/browse. Executable source contents are
+    # intentionally forbidden by CapabilityPackageResource.
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    resources: list[CapabilityPackageResource] = Field(default_factory=list)
+
+    package_format: str = Field(min_length=1)
+    license: str | None = None
+    license_policy: str = "review"
+    risk_level: str = "moderate"
+    signature_status: str = "unsigned"
+    publisher_name: str | None = None
+    publisher_trust_scope: Literal["none", "organization", "marketplace_verified"] = "none"
+    marketplace_publisher_id: str | None = None
+    security_scan: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("repository_url")
+    @classmethod
+    def validate_repository_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        from app.capabilities.provenance import normalize_github_repository_url
+
+        return normalize_github_repository_url(value)
+
+    @field_validator("commit_sha")
+    @classmethod
+    def validate_commit_sha(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        commit = value.strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise ValueError("commit_sha must be an exact 40-character Git commit SHA")
+        return commit
+
+    @field_validator("content_digest", "snapshot_digest")
+    @classmethod
+    def validate_digest(cls, value: str) -> str:
+        digest = value.strip().lower()
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+            raise ValueError("digest must be sha256:<64 hex characters>")
+        return digest
+
+    @field_validator("package_path")
+    @classmethod
+    def validate_package_path(cls, value: str) -> str:
+        path = value.strip().strip("/")
+        if ".." in path.split("/"):
+            raise ValueError("package_path must not contain path traversal")
+        return path
+
+    @model_validator(mode="after")
+    def validate_provenance_and_policy(self) -> "CapabilityPackageAssetConfig":
+        has_repo = bool(self.repository_url)
+        has_commit = bool(self.commit_sha)
+        if has_repo != has_commit:
+            raise ValueError("Git provenance must include both repository_url and commit_sha")
+
+        effective_mode = self.provenance_mode or (
+            "git_pinned" if has_repo and has_commit else None
+        )
+        if effective_mode == "git_pinned":
+            if not has_repo or not has_commit:
+                raise ValueError("git_pinned capability packages require exact Git provenance")
+        elif effective_mode == "trusted_signature":
+            if self.signature_status != "verified":
+                raise ValueError("trusted_signature capability packages require a verified signature")
+            if self.publisher_trust_scope not in {"organization", "marketplace_verified"}:
+                raise ValueError("trusted_signature capability packages require current publisher trust")
+        else:
+            raise ValueError("capability package provenance is required")
+
+        # Legacy Git-pinned Marketplace assets may predate source_package_id and
+        # provenance_mode. They remain readable/installable, but the publish
+        # workflow requires a live source package before any new publication.
+        if not self.source_package_id and effective_mode != "git_pinned":
+            raise ValueError("trusted signed capability packages require source_package_id")
+
+        if not self.manifest and not self.resources:
+            raise ValueError("capability Marketplace assets require an inert package snapshot")
+        if self.license_policy == "block" or self.risk_level == "blocked":
+            raise ValueError("blocked capability packages cannot be published")
+        if bool((self.security_scan or {}).get("blocked")):
+            raise ValueError("capability package security scan is blocked")
+        return self
+
+
 class IntelligencePackAssignmentConfig(BaseModel):
     source_type: str = Field(min_length=1)
     source_id: str = Field(min_length=1)
@@ -163,6 +277,7 @@ ASSET_CONFIG_MODELS: dict[str, type[BaseModel]] = {
     "knowledge_pack": KnowledgePackAssetConfig,
     "department_pack": DepartmentPackAssetConfig,
     "connector_config": ConnectorConfigAssetConfig,
+    "capability_package": CapabilityPackageAssetConfig,
     "intelligence_pack": IntelligencePackAssetConfig,
 }
 

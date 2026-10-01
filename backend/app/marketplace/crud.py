@@ -26,6 +26,7 @@ _ASSET_TYPES = frozenset({
     "knowledge_pack",
     "department_pack",
     "connector_config",
+    "capability_package",
 })
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -316,6 +317,12 @@ def update_org_asset(
     if status not in _EDITABLE_STATUSES:
         raise MarketplaceCrudError(
             "Published assets cannot be patched directly; use version rollback or publish workflow",
+            code="FORBIDDEN",
+        )
+
+    if str(asset.get("asset_type") or "") == "capability_package" and "config" in patch:
+        raise MarketplaceCrudError(
+            "Capability package provenance and inert snapshot are immutable; recreate the draft from the installed capability to change them",
             code="FORBIDDEN",
         )
 
