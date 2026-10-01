@@ -10,7 +10,13 @@ import httpx
 from app.capabilities.importers import MAX_FILES, RESOURCE_SUFFIXES, SCRIPT_SUFFIXES, import_file_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.provenance import bundle_digest, inert_snapshot_digest, normalize_github_repository_url
-from app.capabilities.repository import install_package, record_package_version, replace_package_resources
+from app.capabilities.repository import (
+    PackageVersionConflict,
+    install_package,
+    record_package_version,
+    replace_package_resources,
+)
+from app.capabilities.security_scan import scan_bundle_security
 
 _MAX_PACKAGE_FILES = min(MAX_FILES, 100)
 _ALLOWED_SUFFIXES = set(RESOURCE_SUFFIXES) | set(SCRIPT_SUFFIXES)
@@ -18,6 +24,47 @@ _ALLOWED_SUFFIXES = set(RESOURCE_SUFFIXES) | set(SCRIPT_SUFFIXES)
 
 class CapabilityMarketplaceInstallError(ValueError):
     pass
+
+
+_RISK_RANK = {"low": 0, "moderate": 1, "high": 2, "blocked": 3}
+
+
+def _merge_snapshot_security_scan(
+    *,
+    manifest: dict[str, Any],
+    resource_rows: list[dict[str, Any]],
+    stored_scan: dict[str, Any],
+) -> dict[str, Any]:
+    """Re-evaluate current inert text policy while retaining original evidence."""
+    files = {
+        str(row.get("path") or ""): str(row.get("content") or "")
+        for row in resource_rows
+        if str(row.get("path") or "").strip()
+        and not bool(row.get("executable"))
+        and str(row.get("kind") or "") != "script"
+        and row.get("content") is not None
+    }
+    current = scan_bundle_security(files, manifest)
+    stored_risk = str(stored_scan.get("risk") or "low")
+    current_risk = str(current.get("risk") or "low")
+    effective_risk = max(
+        (stored_risk, current_risk),
+        key=lambda value: _RISK_RANK.get(value, 1),
+    )
+    merged_findings = []
+    for source, scan in (("published", stored_scan), ("current", current)):
+        rows = scan.get("findings") if isinstance(scan.get("findings"), list) else []
+        for row in rows:
+            if isinstance(row, dict):
+                merged_findings.append({**row, "evidenceSource": source})
+    return {
+        **stored_scan,
+        "risk": effective_risk,
+        "blocked": bool(stored_scan.get("blocked")) or bool(current.get("blocked")),
+        "findings": merged_findings,
+        "currentPolicyScan": current,
+        "executionPerformed": False,
+    }
 
 
 def _repo_parts(repository_url: str) -> tuple[str, str]:
@@ -177,7 +224,12 @@ def install_marketplace_capability_package(
             )
         inspection = inspect_package(manifest, skill_md=skill_md)
         raw_security_scan = getattr(config, "security_scan", {})
-        security_scan = raw_security_scan if isinstance(raw_security_scan, dict) else {}
+        stored_security_scan = raw_security_scan if isinstance(raw_security_scan, dict) else {}
+        security_scan = _merge_snapshot_security_scan(
+            manifest=manifest,
+            resource_rows=resource_rows,
+            stored_scan=stored_security_scan,
+        )
         if (
             not installation_allowed(inspection)
             or bool(security_scan.get("blocked"))
@@ -249,8 +301,9 @@ def install_marketplace_capability_package(
         except Exception:
             pass
 
-    installed = install_package(
-        client,
+    try:
+        installed = install_package(
+            client,
         org_id=org_id,
         user_id=actor_id,
         inspection=inspection,
@@ -275,7 +328,9 @@ def install_marketplace_capability_package(
         # until an org admin explicitly approves the package.
         initial_status="quarantined",
         security_scan=security_scan,
-    )
+        )
+    except PackageVersionConflict as exc:
+        raise CapabilityMarketplaceInstallError(str(exc)) from exc
     package_id = str(installed.get("id") or "")
     if not package_id:
         raise CapabilityMarketplaceInstallError("Capability package install did not return an id")
