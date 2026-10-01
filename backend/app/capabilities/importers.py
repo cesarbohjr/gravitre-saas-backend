@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
+from app.capabilities.license_detection import detect_bundle_license
 from app.capabilities.packages import PackageInspection, inspect_package
 from app.capabilities.security_scan import scan_bundle_security
 
@@ -81,6 +82,10 @@ def import_file_bundle(files: dict[str, str]) -> ImportedBundle:
             raise ValueError("Package contains unsafe path traversal")
         normalized[str(parsed)] = str(content)
     manifest, manifest_path = _pick_manifest(normalized)
+    if not str(manifest.get("license") or "").strip():
+        detected_license = detect_bundle_license(normalized)
+        if detected_license:
+            manifest = {**manifest, "license": detected_license}
     skill_path = next(
         (path for path in normalized if path.lower() == "skill.md" or path.lower().endswith("/skill.md")),
         None,
@@ -160,7 +165,7 @@ def read_zip_bundle(data: bytes) -> dict[str, str]:
             supported = (
                 suffix in RESOURCE_SUFFIXES
                 or suffix in SCRIPT_SUFFIXES
-                or lower_name in {"skill.md", "plugin.json", "gravitre-plugin.json", ".mcp.json", "mcp.json"}
+                or lower_name in {"skill.md", "plugin.json", "gravitre-plugin.json", ".mcp.json", "mcp.json", "license", "license.txt", "license.md", "copying", "copying.txt"}
             )
             if not supported:
                 continue
