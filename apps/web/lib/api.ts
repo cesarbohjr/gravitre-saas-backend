@@ -1561,6 +1561,17 @@ export const portableCapabilitiesApi = {
     fetcher<{ items: Array<{ id: string; path: string; kind: string; content?: string | null; executable: boolean }> }>(
       apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/resources`),
     ),
+  prepareMcp: (packageId: string) =>
+    postJson<{
+      prepared: Array<Record<string, unknown>>
+      blocked: Array<Record<string, unknown>>
+      enabled: number
+      credentialsCopiedFromPackage: boolean
+      executionOwner: string
+    }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/prepare-mcp`),
+      {},
+    ),
   inspectZip: (file: File) => {
     const form = new FormData()
     form.append("archive", file)
