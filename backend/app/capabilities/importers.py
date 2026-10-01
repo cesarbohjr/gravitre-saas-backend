@@ -56,8 +56,16 @@ def _pick_manifest(files: dict[str, str]) -> tuple[dict[str, Any], str | None]:
     )
     lowered = {path.lower(): path for path in files}
     for candidate in candidates:
-        path = lowered.get(candidate.lower())
-        if path:
+        exact = lowered.get(candidate.lower())
+        if exact:
+            return _parse_json(files[exact], exact), exact
+        suffix = "/" + candidate.lower()
+        nested = sorted(
+            (original for lower, original in lowered.items() if lower.endswith(suffix)),
+            key=lambda value: (value.count("/"), len(value), value.lower()),
+        )
+        if nested:
+            path = nested[0]
             return _parse_json(files[path], path), path
     return {}, None
 
@@ -92,13 +100,23 @@ def import_file_bundle(files: dict[str, str]) -> ImportedBundle:
     )
     skill_md = normalized.get(skill_path) if skill_path else None
 
-    # Add format hints without mutating source files.
-    if manifest_path == ".codex-plugin/plugin.json":
+    # Add format hints without mutating source files. Nested paths are
+    # common in GitHub-generated ZIPs (repo-name/.codex-plugin/plugin.json).
+    manifest_lower = str(manifest_path or "").lower()
+    if manifest_lower == ".codex-plugin/plugin.json" or manifest_lower.endswith("/.codex-plugin/plugin.json"):
         manifest = {**manifest, "format": manifest.get("format") or "openai-codex-plugin"}
-    elif manifest_path == ".claude-plugin/plugin.json":
+    elif manifest_lower == ".claude-plugin/plugin.json" or manifest_lower.endswith("/.claude-plugin/plugin.json"):
         manifest = {**manifest, "format": manifest.get("format") or "claude-plugin"}
-    elif manifest_path in {".mcp.json", "mcp.json"}:
-        manifest = {"name": manifest.get("name") or "mcp-package", "format": "mcp", "mcpServers": manifest.get("mcpServers") or manifest}
+    elif (
+        manifest_lower in {".mcp.json", "mcp.json"}
+        or manifest_lower.endswith("/.mcp.json")
+        or manifest_lower.endswith("/mcp.json")
+    ):
+        manifest = {
+            "name": manifest.get("name") or "mcp-package",
+            "format": "mcp",
+            "mcpServers": manifest.get("mcpServers") or manifest,
+        }
 
     inspection = inspect_package(manifest, skill_md=skill_md)
     security_scan = scan_bundle_security(normalized, manifest)
