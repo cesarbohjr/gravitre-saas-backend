@@ -76,6 +76,36 @@ describe("deriveAiRuntimeState — every state comes from a real bridge prop", (
     ).toBe("partial")
   })
 
+  it("keeps successful provider writes non-terminal while proof is pending", () => {
+    expect(
+      deriveAiRuntimeState({
+        ...base,
+        executionResult: {
+          success: true,
+          structured: {
+            verification_status: "verification_pending",
+            verification: { state: "verifying", verified: false },
+          },
+        },
+      }),
+    ).toBe("verifying")
+  })
+
+  it("does not render accepted-but-unverified writes as completed", () => {
+    expect(
+      deriveAiRuntimeState({
+        ...base,
+        executionResult: {
+          success: true,
+          structured: {
+            verification_status: "accepted_unverified",
+            verification: { state: "accepted_unverified", verified: false },
+          },
+        },
+      }),
+    ).toBe("partial")
+  })
+
   it("completed from a successful execution result", () => {
     expect(deriveAiRuntimeState({ ...base, executionResult: { success: true } })).toBe("completed")
   })
