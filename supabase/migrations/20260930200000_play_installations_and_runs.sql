@@ -48,13 +48,13 @@ alter table public.play_runs enable row level security;
 
 drop policy if exists play_installations_org_scope on public.play_installations;
 create policy play_installations_org_scope on public.play_installations
-  for all using (org_id = public.current_org_id())
-  with check (org_id = public.current_org_id());
+  for all using (org_id IN (SELECT org_id FROM public.organization_members WHERE user_id = auth.uid()))
+  with check (org_id IN (SELECT org_id FROM public.organization_members WHERE user_id = auth.uid()));
 
 drop policy if exists play_runs_org_scope on public.play_runs;
 create policy play_runs_org_scope on public.play_runs
-  for all using (org_id = public.current_org_id())
-  with check (org_id = public.current_org_id());
+  for all using (org_id IN (SELECT org_id FROM public.organization_members WHERE user_id = auth.uid()))
+  with check (org_id IN (SELECT org_id FROM public.organization_members WHERE user_id = auth.uid()));
 
 comment on table public.play_installations is
   'Tenant configuration for a versioned Play definition. Execution remains in canonical workflow runtime.';
