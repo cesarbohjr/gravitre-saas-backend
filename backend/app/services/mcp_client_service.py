@@ -502,6 +502,22 @@ class MCPClientService:
         try:
             result = await self._call_mcp_server(server, str(tool["tool_name"]), input_data)
             latency_ms = int((time.perf_counter() - started) * 1000)
+            source_package_id = str(server.get("source_capability_package_id") or "").strip()
+            execution_status = "completed"
+            verification = None
+            if source_package_id and requires_write:
+                # A portable package does not get to define terminal success by
+                # returning a successful MCP response. Until Gravitre has an
+                # independent source-of-record verifier for this dynamic MCP
+                # write, provider acceptance remains explicitly non-terminal.
+                execution_status = "verification_inconclusive"
+                verification = {
+                    "status": "verification_inconclusive",
+                    "verified": False,
+                    "providerAccepted": True,
+                    "providerAcceptanceIsTerminalSuccess": False,
+                    "reason": "portable_mcp_write_has_no_independent_source_verifier",
+                }
             await self._log_execution(
                 tool_id=tool_id,
                 org_id=org_id,
@@ -509,13 +525,12 @@ class MCPClientService:
                 workflow_run_id=workflow_run_id,
                 input_data=input_data,
                 output=result,
-                status="completed",
+                status=execution_status,
                 approval_id=approval_id,
                 latency_ms=latency_ms,
                 capability_tier=str(tool.get("capability_tier") or ""),
             )
             await self._audit_execution(org_id, tool, approval_id)
-            source_package_id = str(server.get("source_capability_package_id") or "").strip()
             if source_package_id:
                 from app.capabilities.usage import record_mcp_execution
 
@@ -528,7 +543,14 @@ class MCPClientService:
                         workflow_run_id=workflow_run_id,
                     )
                 )
-            return {"status": "completed", "result": result, "latency_ms": latency_ms}
+            response = {
+                "status": execution_status,
+                "result": result,
+                "latency_ms": latency_ms,
+            }
+            if verification is not None:
+                response["verification"] = verification
+            return response
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
             await self._log_execution(
