@@ -50,3 +50,39 @@ def install_package(
     ).execute()
     data = list(response.data or [])
     return data[0] if data else row
+
+
+def replace_package_resources(
+    client: Any,
+    *,
+    package_id: str,
+    org_id: str,
+    resources: list[dict[str, Any]],
+) -> None:
+    client.table("capability_package_resources").delete().eq("package_id", package_id).eq("org_id", org_id).execute()
+    rows = [
+        {
+            "package_id": package_id,
+            "org_id": org_id,
+            "path": str(row.get("path") or ""),
+            "kind": str(row.get("kind") or "reference"),
+            "content": row.get("content"),
+            "executable": bool(row.get("executable")),
+        }
+        for row in resources
+        if str(row.get("path") or "").strip()
+    ]
+    if rows:
+        client.table("capability_package_resources").insert(rows).execute()
+
+
+def list_package_resources(client: Any, org_id: str, package_id: str) -> list[dict[str, Any]]:
+    response = (
+        client.table("capability_package_resources")
+        .select("id,package_id,path,kind,content,executable,created_at")
+        .eq("org_id", org_id)
+        .eq("package_id", package_id)
+        .order("path")
+        .execute()
+    )
+    return list(response.data or [])
