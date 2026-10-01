@@ -58,6 +58,8 @@ export default function CapabilityMarketplacePage() {
   const [busy, setBusy] = useState(false)
   const [packageBusy, setPackageBusy] = useState<string | null>(null)
   const [sourceBusy, setSourceBusy] = useState<string | null>(null)
+  const [historyPackageId, setHistoryPackageId] = useState<string | null>(null)
+  const [historyBusy, setHistoryBusy] = useState<string | null>(null)
   const [trustedPublisherName, setTrustedPublisherName] = useState("")
   const [trustedPublisherKey, setTrustedPublisherKey] = useState("")
   const [trustBusy, setTrustBusy] = useState(false)
@@ -80,6 +82,10 @@ export default function CapabilityMarketplacePage() {
   const candidates = useSWR(
     user ? "portable-capability-marketplace-candidates" : null,
     () => portableCapabilitiesApi.listCandidates(),
+  )
+  const packageVersions = useSWR(
+    user && historyPackageId ? ["portable-capability-versions", historyPackageId] : null,
+    () => portableCapabilitiesApi.listVersions(historyPackageId!),
   )
 
   const packageRows = packages.data?.items ?? []
@@ -233,6 +239,23 @@ export default function CapabilityMarketplacePage() {
       toast.error(error instanceof Error ? error.message : "Capability install failed")
     } finally {
       setPackageBusy(null)
+    }
+  }
+
+  async function rollbackVersion(packageId: string, versionId: string) {
+    setHistoryBusy(versionId)
+    try {
+      const result = await portableCapabilitiesApi.rollbackVersion(packageId, versionId)
+      toast.success("Capability version restored", {
+        description: result.requiresReview
+          ? "The restored package is quarantined and requires review before use."
+          : "The restored package is active.",
+      })
+      await Promise.all([packages.mutate(), packageVersions.mutate()])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Capability rollback failed")
+    } finally {
+      setHistoryBusy(null)
     }
   }
 
@@ -407,6 +430,14 @@ export default function CapabilityMarketplacePage() {
                               size="sm"
                               variant="ghost"
                               disabled={packageBusy === item.id}
+                              onClick={() => setHistoryPackageId(historyPackageId === item.id ? null : item.id!)}
+                            >
+                              {historyPackageId === item.id ? "Hide history" : "History"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={packageBusy === item.id}
                               onClick={() => void reviewPackage(item.id!, "disabled")}
                             >
                               Disable
@@ -541,6 +572,63 @@ export default function CapabilityMarketplacePage() {
               </div>
             </GravitreSurface>
           </section>
+
+          {historyPackageId ? (
+            <GravitreSurface className="p-0">
+              <div className="flex items-start justify-between gap-4 border-b border-divide px-4 py-3">
+                <div>
+                  <h2 className="text-sm font-medium text-foreground">Capability version history</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Immutable package snapshots. Rollback restores the selected package content and inert resources.
+                  </p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => setHistoryPackageId(null)}>
+                  Close
+                </Button>
+              </div>
+              {packageVersions.error ? (
+                <div className="p-4 text-sm text-destructive">Could not load capability versions.</div>
+              ) : (packageVersions.data?.items ?? []).length === 0 ? (
+                <div className="p-4">
+                  <GravitreEmpty
+                    icon={<Package className="h-5 w-5" />}
+                    title="No version snapshots yet"
+                    hint="A snapshot is recorded when this capability is installed or updated."
+                  />
+                </div>
+              ) : (
+                <ul className="divide-y divide-divide">
+                  {(packageVersions.data?.items ?? []).map((version) => (
+                    <li key={version.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {version.package_version || "Unversioned package"}
+                        </p>
+                        <p className="mt-0.5 max-w-2xl truncate font-mono text-[11px] text-muted-foreground">
+                          {version.content_digest || "No content digest recorded"}
+                        </p>
+                        {version.recorded_at ? (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Recorded {new Date(version.recorded_at).toLocaleString()}
+                          </p>
+                        ) : null}
+                      </div>
+                      {isAdmin ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={historyBusy === version.id}
+                          onClick={() => void rollbackVersion(historyPackageId, version.id)}
+                        >
+                          {historyBusy === version.id ? "Restoring…" : "Rollback"}
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </GravitreSurface>
+          ) : null}
 
           <GravitreSurface className="p-0">
             <div className="flex items-start justify-between gap-4 border-b border-divide px-4 py-3">
