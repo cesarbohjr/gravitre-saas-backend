@@ -497,9 +497,13 @@ def restore_package_version(
         if key in snapshot and key != "status"
     }
     patch["status"] = rollback_status_for_snapshot(snapshot)
-    # Trust is time-sensitive: a publisher key may have been revoked since this
-    # snapshot was recorded. Never resurrect trusted-publisher state blindly.
+    # Trust is time-sensitive: a publisher key or Marketplace verification may
+    # have changed since this snapshot was recorded. Never resurrect trust
+    # state from historical package content.
+    patch["publisher_trusted"] = False
+    patch["publisher_trust_scope"] = "none"
     patch["publisher_verified"] = False
+    patch["marketplace_publisher_id"] = None
     patch["installed_by"] = user_id or None
     response = (
         client.table("capability_packages")
