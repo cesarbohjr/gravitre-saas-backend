@@ -84,6 +84,11 @@ def declared_mcp_dependencies(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def package_mcp_server_name(dependency_name: str, package_id: str) -> str:
+    namespace = str(package_id or "").replace("-", "")[:8] or "package"
+    return f"{str(dependency_name or 'mcp-server').strip() or 'mcp-server'} · {namespace}"
+
+
 def prepare_mcp_dependencies(
     client: Any,
     *,
@@ -98,13 +103,12 @@ def prepare_mcp_dependencies(
         if not dependency["registrationAllowed"]:
             blocked.append(dependency)
             continue
-        package_namespace = str(package_id or "").replace("-", "")[:8] or "package"
         row = {
             "org_id": org_id,
             # Package-managed MCP names must be unique in the runtime catalog;
             # otherwise two packages declaring the same server/tool names can
             # overwrite each other's action schemas.
-            "server_name": f"{dependency['name']} · {package_namespace}",
+            "server_name": package_mcp_server_name(dependency["name"], package_id),
             "server_url": dependency["url"],
             "transport": dependency["transport"],
             "auth_type": dependency["authType"],
