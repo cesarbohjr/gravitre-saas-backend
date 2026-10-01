@@ -96,6 +96,23 @@ def mcp_openai_tool_name(server_name: str, tool_name: str) -> str:
     return f"mcp_{safe_server}_{safe_tool}"[:128]
 
 
+def _streamable_http_client():
+    """Return the Streamable HTTP client for the installed MCP SDK line.
+
+    Gravitre currently pins mcp<2. MCP 1.x uses streamablehttp_client;
+    MCP 2.x renamed it to streamable_http_client. Prefer the modern symbol
+    when present so the runtime is migration-ready without changing behavior.
+    """
+    try:
+        from mcp.client.streamable_http import streamable_http_client
+
+        return streamable_http_client
+    except ImportError:
+        from mcp.client.streamable_http import streamablehttp_client
+
+        return streamablehttp_client
+
+
 def should_enable_discovered_mcp_tool(
     server: dict[str, Any],
     enable_discovered_tools: bool | None,
@@ -827,14 +844,12 @@ class MCPClientService:
                 ]
 
     async def _list_tools_streamable_http(self, server: dict[str, Any]) -> list[dict[str, Any]]:
-        # MCP v1 exposes streamablehttp_client; v2 renames it, but this
-        # repository intentionally pins mcp<2.0 for runtime compatibility.
         from mcp import ClientSession
-        from mcp.client.streamable_http import streamablehttp_client
 
         url = str(server.get("server_url") or "")
         headers = self._auth_headers(server)
-        async with streamablehttp_client(url, headers=headers) as streams:
+        client_factory = _streamable_http_client()
+        async with client_factory(url, headers=headers) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
@@ -890,11 +905,11 @@ class MCPClientService:
         input_data: dict[str, Any],
     ) -> dict[str, Any]:
         from mcp import ClientSession
-        from mcp.client.streamable_http import streamablehttp_client
 
         url = str(server.get("server_url") or "")
         headers = self._auth_headers(server)
-        async with streamablehttp_client(url, headers=headers) as streams:
+        client_factory = _streamable_http_client()
+        async with client_factory(url, headers=headers) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
