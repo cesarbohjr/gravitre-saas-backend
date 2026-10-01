@@ -8,9 +8,10 @@ from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_environment_context, require_admin, require_org_member
 from app.capabilities.activation import build_activation_plan
+from app.capabilities.importers import import_file_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.registry import tenant_capability_snapshot
-from app.capabilities.repository import install_package, list_packages
+from app.capabilities.repository import install_package, list_packages, list_package_resources, replace_package_resources
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
@@ -20,6 +21,12 @@ router = APIRouter(prefix="/api/capabilities", tags=["capabilities"])
 class PackageInspectRequest(BaseModel):
     manifest: dict[str, Any] = Field(default_factory=dict)
     skill_md: str | None = None
+
+
+class PackageBundleRequest(BaseModel):
+    files: dict[str, str]
+    source_type: Literal["manual", "github", "zip", "mcp", "marketplace"] = "manual"
+    source_uri: str | None = None
 
 
 class PackageInstallRequest(PackageInspectRequest):
@@ -99,3 +106,80 @@ async def install_portable_package(
         "directExecutionEnabled": False,
         "activationPlan": build_activation_plan(body.manifest, inspection.as_dict()),
     }
+
+
+@router.post("/packages/inspect-bundle")
+async def inspect_portable_bundle(
+    body: PackageBundleRequest,
+    _member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+) -> dict:
+    try:
+        bundle = import_file_bundle(body.files)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    inspection = bundle.inspection
+    return {
+        "inspection": inspection.as_dict(),
+        "installationAllowed": installation_allowed(inspection),
+        "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
+        "resources": [
+            {"path": row["path"], "kind": row["kind"], "executable": row["executable"]}
+            for row in bundle.resources
+        ],
+        "ignoredFiles": list(bundle.ignored_files),
+    }
+
+
+@router.post("/packages/install-bundle")
+async def install_portable_bundle(
+    body: PackageBundleRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    try:
+        bundle = import_file_bundle(body.files)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    inspection = bundle.inspection
+    if not installation_allowed(inspection):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Package blocked by capability policy", "inspection": inspection.as_dict()},
+        )
+    client = get_supabase_client(settings)
+    installed = install_package(
+        client,
+        org_id=org_id,
+        user_id=str(user.get("user_id") or ""),
+        inspection=inspection,
+        manifest=bundle.manifest,
+        source_type=body.source_type,
+        source_uri=body.source_uri,
+    )
+    package_id = str(installed.get("id") or "")
+    if package_id:
+        replace_package_resources(
+            client,
+            package_id=package_id,
+            org_id=org_id,
+            resources=list(bundle.resources),
+        )
+    return {
+        "package": installed,
+        "inspection": inspection.as_dict(),
+        "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
+        "resourceCount": len(bundle.resources),
+        "directExecutionEnabled": False,
+    }
+
+
+@router.get("/packages/{package_id}/resources")
+async def get_portable_package_resources(
+    package_id: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    return {"items": list_package_resources(client, org_id, package_id)}
