@@ -599,3 +599,40 @@ def apply_observations_to_plan(
     elif any_failed and observations:
         plan.terminal_status = "partial" if any(o.success for o in observations) else "failed"
     return plan
+
+
+def decide_after_observations(
+    plan: ExecutionPlan,
+    observations: list[ExecutionObservation],
+    *,
+    task_state: dict[str, Any] | None = None,
+    iterations_used: int = 0,
+    iteration_budget: int = 8,
+    tools_used: int = 0,
+    tool_budget: int = 12,
+    elapsed_ms: int | None = None,
+    time_budget_ms: int = 120_000,
+    alternate_read_steps: list[ExecutionStep] | None = None,
+) -> tuple[ExecutionPlan, dict[str, Any]]:
+    """OBSERVE -> loop decision bridge used by every E5 execution surface.
+
+    Keeps observation reconciliation and autonomous control in one canonical
+    post-tool boundary. The caller remains responsible for invoking the next
+    already-resolved step; this bridge never executes a connector itself.
+    """
+    observed = apply_observations_to_plan(plan, observations)
+    from app.services.autonomous_execution_loop import decide_execution_loop
+
+    decision = decide_execution_loop(
+        plan=observed,
+        task_state=task_state,
+        observations=[row.as_dict() for row in observations],
+        iterations_used=iterations_used,
+        iteration_budget=iteration_budget,
+        tools_used=tools_used,
+        tool_budget=tool_budget,
+        elapsed_ms=elapsed_ms,
+        time_budget_ms=time_budget_ms,
+        alternate_read_steps=alternate_read_steps,
+    )
+    return decision.plan, decision.as_dict()

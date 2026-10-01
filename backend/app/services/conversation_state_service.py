@@ -78,6 +78,8 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "computer_browser_evidence": None,
     # Canonical projection consumed by text/voice planning. Source fields remain authoritative.
     "execution_context": None,
+    # Phase 3 deterministic post-observation loop decision for UI/audit/resume.
+    "execution_loop": None,
 }
 
 
