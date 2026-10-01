@@ -9,6 +9,10 @@ from app.capabilities.packages import PackageInspection
 _RISK_RANK = {"low": 0, "moderate": 1, "high": 2, "blocked": 3}
 
 
+class PackageVersionConflict(ValueError):
+    """Same package name/version already exists with different immutable content."""
+
+
 def _effective_risk(inspection_risk: str, security_scan: dict[str, Any] | None) -> str:
     scan_risk = str((security_scan or {}).get("risk") or "low")
     return max(
@@ -61,12 +65,43 @@ def install_package(
     source_commit_sha: str | None = None,
     source_package_path: str | None = None,
 ) -> dict[str, Any]:
+    normalized_version = inspection.version or "0.0.0"
+    existing = (
+        client.table("capability_packages")
+        .select("id,content_digest,source_uri,source_commit_sha,source_package_path")
+        .eq("org_id", org_id)
+        .eq("name", inspection.name)
+        .eq("version", normalized_version)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if existing:
+        current = dict(existing[0])
+        current_digest = str(current.get("content_digest") or "").strip()
+        incoming_digest = str(content_digest or "").strip()
+        current_source = str(current.get("source_uri") or "").strip()
+        incoming_source = str(source_uri or "").strip()
+        content_changed = bool(current_digest and incoming_digest and current_digest != incoming_digest)
+        source_changed_without_digest = bool(
+            not current_digest
+            and not incoming_digest
+            and current_source
+            and incoming_source
+            and current_source != incoming_source
+        )
+        if content_changed or source_changed_without_digest:
+            raise PackageVersionConflict(
+                f"Capability {inspection.name!r} version {normalized_version!r} already exists with different content; publish a new version instead."
+            )
+
     effective_risk = _effective_risk(inspection.risk, security_scan)
     row = {
         "org_id": org_id,
         "name": inspection.name,
         "package_format": inspection.format,
-        "version": inspection.version or "0.0.0",
+        "version": normalized_version,
         "description": inspection.description,
         "license": inspection.license,
         "license_policy": inspection.license_policy,
