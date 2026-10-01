@@ -180,8 +180,20 @@ async def sync_public_github_marketplace(
     for item in bundles:
         bundle = import_file_bundle(item.files)
         inspection = bundle.inspection
-        if inspection.license_policy == "block" or inspection.risk == "blocked":
-            rejected.append({"root": item.root, "name": inspection.name, "reason": "blocked_by_policy"})
+        if (
+            inspection.license_policy == "block"
+            or inspection.risk == "blocked"
+            or bool(bundle.security_scan.get("blocked"))
+        ):
+            rejected.append(
+                {
+                    "root": item.root,
+                    "name": inspection.name,
+                    "reason": "blocked_by_security_policy"
+                    if bundle.security_scan.get("blocked")
+                    else "blocked_by_policy",
+                }
+            )
             continue
         row = upsert_marketplace_candidate(
             client,
@@ -192,6 +204,7 @@ async def sync_public_github_marketplace(
             inspection=inspection.as_dict(),
             content_digest=bundle_digest(item.files),
             files=item.files,
+            security_scan=bundle.security_scan,
         )
         staged.append(row)
 
