@@ -115,6 +115,7 @@ export default function CapabilityMarketplacePage() {
   const [zipBusy, setZipBusy] = useState(false)
   const [zipInspection, setZipInspection] = useState<Awaited<ReturnType<typeof portableCapabilitiesApi.inspectZip>> | null>(null)
   const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>("all")
+  const [publishValidation, setPublishValidation] = useState<Record<string, Awaited<ReturnType<typeof portableCapabilitiesApi.validatePackage>>>>({})
 
   const packages = useSWR(
     user ? "portable-capability-packages" : null,
@@ -252,6 +253,30 @@ export default function CapabilityMarketplacePage() {
       await packages.mutate()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Capability review failed")
+    } finally {
+      setPackageBusy(null)
+    }
+  }
+
+  async function validatePackage(packageId: string) {
+    setPackageBusy(packageId)
+    try {
+      const report = await portableCapabilitiesApi.validatePackage(packageId)
+      setPublishValidation((current) => ({ ...current, [packageId]: report }))
+      toast.success(
+        report.readyForMarketplace
+          ? "Capability passes Marketplace preflight"
+          : "Capability needs changes before publishing",
+        {
+          description: report.readyForMarketplace
+            ? report.warningCount
+              ? `${report.warningCount} warning${report.warningCount === 1 ? "" : "s"} to review`
+              : "All required static checks passed"
+            : `${report.errorCount} blocking check${report.errorCount === 1 ? "" : "s"} failed`,
+        },
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Capability validation failed")
     } finally {
       setPackageBusy(null)
     }
@@ -577,6 +602,25 @@ export default function CapabilityMarketplacePage() {
                             </p>
                           )
                         })() : null}
+                        {item.id && publishValidation[item.id] ? (
+                          <div className="mt-2 rounded border border-divide p-2 text-[11px] text-muted-foreground">
+                            <p className="font-medium text-foreground">
+                              Marketplace preflight: {publishValidation[item.id].readyForMarketplace ? "ready" : "changes required"}
+                            </p>
+                            <p className="mt-0.5">
+                              {publishValidation[item.id].errorCount} errors · {publishValidation[item.id].warningCount} warnings · no package code executed
+                            </p>
+                            {publishValidation[item.id].checks.some((check) => !check.passed) ? (
+                              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                                {publishValidation[item.id].checks
+                                  .filter((check) => !check.passed)
+                                  .map((check) => (
+                                    <li key={check.key}>{check.message}</li>
+                                  ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                       <div className="shrink-0 space-y-2 text-right text-[11px] text-muted-foreground">
                         {item.publisher_name ? <p>{item.publisher_name}</p> : null}
@@ -602,6 +646,16 @@ export default function CapabilityMarketplacePage() {
                                 Quarantine
                               </Button>
                             )}
+                            {item.status === "installed" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={packageBusy === item.id}
+                                onClick={() => void validatePackage(item.id!)}
+                              >
+                                Validate
+                              </Button>
+                            ) : null}
                             {item.status === "installed" && packageHasMcp(item.inspection) ? (
                               <Button
                                 size="sm"
