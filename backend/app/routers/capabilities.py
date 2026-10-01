@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_environment_context, require_admin, require_org_member
+from app.capabilities.activation import build_activation_plan
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.registry import tenant_capability_snapshot
 from app.capabilities.repository import install_package, list_packages
@@ -54,7 +55,7 @@ async def inspect_portable_package(
 ) -> dict:
     """Inspect a package without installing or executing it."""
     inspection = inspect_package(body.manifest, skill_md=body.skill_md)
-    return {"inspection": inspection.as_dict(), "installationAllowed": installation_allowed(inspection)}
+    return {"inspection": inspection.as_dict(), "installationAllowed": installation_allowed(inspection), "activationPlan": build_activation_plan(body.manifest, inspection.as_dict())}
 
 
 @router.get("/packages")
@@ -96,4 +97,5 @@ async def install_portable_package(
         "inspection": inspection.as_dict(),
         "executionOwner": "gravitre",
         "directExecutionEnabled": False,
+        "activationPlan": build_activation_plan(body.manifest, inspection.as_dict()),
     }
