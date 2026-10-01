@@ -235,19 +235,6 @@ def update_marketplace_sync_status(
     )
 
 
-def get_marketplace_source(client: Any, org_id: str, source_id: str) -> dict[str, Any] | None:
-    response = (
-        client.table("capability_marketplace_sources")
-        .select("*")
-        .eq("org_id", org_id)
-        .eq("id", source_id)
-        .limit(1)
-        .execute()
-    )
-    rows = list(response.data or [])
-    return rows[0] if rows else None
-
-
 def upsert_marketplace_candidate(
     client: Any,
     *,
