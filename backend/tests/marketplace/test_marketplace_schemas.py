@@ -235,3 +235,54 @@ def test_assert_no_forbidden_secrets_reports_field_label():
     with pytest.raises(MarketplaceValidationError) as exc:
         assert_no_forbidden_secrets({"password": "x"}, field_label="install_variables")
     assert "install_variables must not contain secret" in exc.value.message
+
+
+def test_capability_package_requires_immutable_git_source() -> None:
+    parsed = parse_asset_config(
+        "capability_package",
+        {
+            "repository_url": "https://github.com/acme/capabilities",
+            "commit_sha": "a" * 40,
+            "package_path": "skills/seo",
+            "content_digest": "sha256:" + "b" * 64,
+            "package_format": "agent_skill",
+            "license": "MIT",
+            "license_policy": "allow",
+            "risk_level": "low",
+            "security_scan": {"blocked": False, "risk": "low"},
+        },
+        publish=True,
+    )
+    assert parsed.commit_sha == "a" * 40
+    assert parsed.content_digest == "sha256:" + "b" * 64
+
+
+def test_capability_package_rejects_moving_branch_or_bad_digest() -> None:
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config(
+            "capability_package",
+            {
+                "repository_url": "https://github.com/acme/capabilities",
+                "commit_sha": "main",
+                "content_digest": "sha256:not-a-digest",
+                "package_format": "agent_skill",
+            },
+            publish=True,
+        )
+
+
+def test_capability_package_rejects_blocked_security_scan() -> None:
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config(
+            "capability_package",
+            {
+                "repository_url": "https://github.com/acme/capabilities",
+                "commit_sha": "a" * 40,
+                "content_digest": "sha256:" + "b" * 64,
+                "package_format": "agent_skill",
+                "license_policy": "allow",
+                "risk_level": "low",
+                "security_scan": {"blocked": True, "risk": "blocked"},
+            },
+            publish=True,
+        )
