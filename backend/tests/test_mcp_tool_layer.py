@@ -384,9 +384,10 @@ async def test_portable_mcp_verification_inconclusive_stays_non_success(settings
         }
     }
     ctx = ToolContext(
-        org_id="org-1",
-        user_id="user-1",
         settings=settings,
+        client=MagicMock(),
+        org_id="org-1",
+        actor_id="user-1",
     )
     with patch(
         "app.services.mcp_client_service.get_mcp_client_service"
