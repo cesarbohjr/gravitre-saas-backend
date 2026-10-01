@@ -7,12 +7,12 @@ from urllib.parse import urlparse
 
 import httpx
 
-from app.capabilities.importers import MAX_FILES, TEXT_SUFFIXES, SCRIPT_SUFFIXES, import_file_bundle
+from app.capabilities.importers import MAX_FILES, RESOURCE_SUFFIXES, SCRIPT_SUFFIXES, import_file_bundle
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
 from app.capabilities.repository import install_package, replace_package_resources
 
 _MAX_PACKAGE_FILES = min(MAX_FILES, 100)
-_ALLOWED_SUFFIXES = set(TEXT_SUFFIXES) | set(SCRIPT_SUFFIXES)
+_ALLOWED_SUFFIXES = set(RESOURCE_SUFFIXES) | set(SCRIPT_SUFFIXES)
 
 
 class CapabilityMarketplaceInstallError(ValueError):
