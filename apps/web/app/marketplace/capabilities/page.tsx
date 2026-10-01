@@ -368,7 +368,12 @@ export default function CapabilityMarketplacePage() {
                           {item.publisher_verified ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
                               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                              Trusted publisher
+                              Verified Marketplace publisher
+                            </span>
+                          ) : item.publisher_trusted ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                              Org-trusted publisher
                             </span>
                           ) : item.signature_status === "verified" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
