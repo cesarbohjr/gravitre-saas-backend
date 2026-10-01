@@ -637,6 +637,16 @@ export function ChatExecutionPanel({
       null
     const steps = executionResult.structured?.stepBreakdown || []
     const isPreview = Boolean(executionResult.structured?.inlinePreview)
+    const proofPayload = executionResult.structured as Record<string, unknown> | null | undefined
+    const entityVerify = proofPayload?.entity_get_verify as { verified?: boolean } | undefined
+    const fieldVerify = proofPayload?.field_assert_verify as { verified?: boolean } | undefined
+    const populationVerify = proofPayload?.population_verify as { verified?: boolean } | undefined
+    const vendorVerified = Boolean(
+      entityVerify?.verified === true ||
+      fieldVerify?.verified === true ||
+      populationVerify?.verified === true ||
+      proofPayload?.vendor_verified === true
+    )
     return (
       <div
         className={cn(
@@ -650,7 +660,7 @@ export function ChatExecutionPanel({
             <p className="font-medium text-foreground">
               {isPreview
                 ? "Live vendor preview"
-                : executionResult.task_label || executionResult.title || "Task completed"}
+                : executionResult.task_label || executionResult.title || (vendorVerified ? "Task completed" : "Execution recorded")}
             </p>
             {executionResult.body ? (
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{executionResult.body}</p>
@@ -670,9 +680,11 @@ export function ChatExecutionPanel({
               </p>
             ) : (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                {resultUrl
-                  ? "Verified — open the run overview for a durable audit trail."
-                  : "Completed with inline summary only (no deep link returned)."}
+                {vendorVerified
+                  ? "Verified against the connected system. Open the run for the durable proof trail."
+                  : resultUrl
+                    ? "Execution recorded. Open the run to see its current vendor verification status."
+                    : "Execution returned a result, but no independent vendor proof is attached yet."}
               </p>
             )}
             {steps.length > 1 ? (
