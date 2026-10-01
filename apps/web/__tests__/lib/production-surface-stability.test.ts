@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
 const read=(p:string)=>fs.readFileSync(path.join(process.cwd(),p),"utf8")
