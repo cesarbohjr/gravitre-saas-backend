@@ -12,8 +12,8 @@ from app.capabilities.importers import import_file_bundle, read_zip_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
 from app.capabilities.publisher_trust import (
-    is_trusted_publisher_key,
     list_trusted_publishers,
+    publisher_trust_details,
     trust_publisher_key,
 )
 from app.capabilities.registry import tenant_capability_snapshot
@@ -96,6 +96,7 @@ class PackageReviewRequest(BaseModel):
 class TrustedPublisherCreateRequest(BaseModel):
     publisher_name: str = Field(min_length=1, max_length=160, alias="publisherName")
     public_key_pem: str = Field(min_length=1, alias="publicKeyPem")
+    marketplace_publisher_slug: str | None = Field(default=None, alias="marketplacePublisherSlug")
 
     model_config = {"populate_by_name": True}
 
@@ -242,7 +243,10 @@ async def install_portable_bundle(
             },
         )
     signature_status = "unsigned"
+    publisher_trusted = False
+    publisher_trust_scope = "none"
     publisher_verified = False
+    marketplace_publisher_id = None
     if bool(body.signing_public_key_pem) != bool(body.signature):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -272,12 +276,16 @@ async def install_portable_bundle(
         bundle.manifest.get("publisher") or bundle.manifest.get("author") or ""
     ).strip() or None
     if signature_status == "verified" and body.signing_public_key_pem:
-        publisher_verified = is_trusted_publisher_key(
+        trust = publisher_trust_details(
             client,
             org_id=org_id,
             publisher_name=publisher_name,
             public_key_pem=body.signing_public_key_pem,
         )
+        publisher_trusted = bool(trust["organizationTrusted"])
+        publisher_trust_scope = str(trust["trustScope"])
+        publisher_verified = bool(trust["marketplaceVerified"])
+        marketplace_publisher_id = trust["marketplacePublisherId"]
     installed = install_package(
         client,
         org_id=org_id,
@@ -287,8 +295,11 @@ async def install_portable_bundle(
         source_type=body.source_type,
         source_uri=body.source_uri,
         publisher_name=publisher_name,
-        signature_status=signature_status,
+        publisher_trusted=publisher_trusted,
+        publisher_trust_scope=publisher_trust_scope,
         publisher_verified=publisher_verified,
+        marketplace_publisher_id=marketplace_publisher_id,
+        signature_status=signature_status,
         content_digest=bundle_digest(body.files),
         security_scan=bundle.security_scan,
     )
@@ -372,6 +383,10 @@ async def install_portable_zip(
         )
 
     signature_status = "unsigned"
+    publisher_trusted = False
+    publisher_trust_scope = "none"
+    publisher_verified = False
+    marketplace_publisher_id = None
     if bool(signing_public_key_pem) != bool(signature):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -401,14 +416,17 @@ async def install_portable_zip(
     publisher_name = str(
         bundle.manifest.get("publisher") or bundle.manifest.get("author") or ""
     ).strip() or None
-    publisher_verified = False
     if signature_status == "verified" and signing_public_key_pem:
-        publisher_verified = is_trusted_publisher_key(
+        trust = publisher_trust_details(
             client,
             org_id=org_id,
             publisher_name=publisher_name,
             public_key_pem=signing_public_key_pem,
         )
+        publisher_trusted = bool(trust["organizationTrusted"])
+        publisher_trust_scope = str(trust["trustScope"])
+        publisher_verified = bool(trust["marketplaceVerified"])
+        marketplace_publisher_id = trust["marketplacePublisherId"]
     installed = install_package(
         client,
         org_id=org_id,
@@ -418,8 +436,11 @@ async def install_portable_zip(
         source_type="zip",
         source_uri=source_uri or archive.filename,
         publisher_name=publisher_name,
-        signature_status=signature_status,
+        publisher_trusted=publisher_trusted,
+        publisher_trust_scope=publisher_trust_scope,
         publisher_verified=publisher_verified,
+        marketplace_publisher_id=marketplace_publisher_id,
+        signature_status=signature_status,
         content_digest=bundle_digest(files),
         security_scan=bundle.security_scan,
     )
@@ -534,6 +555,7 @@ async def add_trusted_capability_publisher(
             publisher_name=body.publisher_name,
             public_key_pem=body.public_key_pem,
             user_id=str(user.get("user_id") or ""),
+            marketplace_publisher_slug=body.marketplace_publisher_slug,
         )
     except ValueError as exc:
         raise HTTPException(
