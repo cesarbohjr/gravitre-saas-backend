@@ -62,6 +62,7 @@ export default function CapabilityMarketplacePage() {
   const [historyBusy, setHistoryBusy] = useState<string | null>(null)
   const [trustedPublisherName, setTrustedPublisherName] = useState("")
   const [trustedPublisherKey, setTrustedPublisherKey] = useState("")
+  const [trustedPublisherMarketplaceSlug, setTrustedPublisherMarketplaceSlug] = useState("")
   const [trustBusy, setTrustBusy] = useState(false)
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [zipBusy, setZipBusy] = useState(false)
@@ -138,10 +139,12 @@ export default function CapabilityMarketplacePage() {
       await portableCapabilitiesApi.addTrustedPublisher({
         publisherName: trustedPublisherName.trim(),
         publicKeyPem: trustedPublisherKey.trim(),
+        marketplacePublisherSlug: trustedPublisherMarketplaceSlug.trim() || undefined,
       })
       toast.success("Publisher signing key trusted")
       setTrustedPublisherName("")
       setTrustedPublisherKey("")
+      setTrustedPublisherMarketplaceSlug("")
       await trustedPublishers.mutate()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not trust publisher key")
@@ -535,7 +538,7 @@ export default function CapabilityMarketplacePage() {
               <div className="mt-5 border-t border-divide pt-4">
                 <h3 className="text-xs font-medium text-foreground">Trusted publisher keys</h3>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Trust a publisher&apos;s public signing key. A matching valid signature can then be shown as a trusted publisher.
+                  Trust a publisher&apos;s public signing key for this organization. Optionally link the key to an existing Marketplace publisher slug so Gravitre can distinguish org trust from platform verification.
                 </p>
                 {isAdmin ? (
                   <form className="mt-3 space-y-2" onSubmit={addTrustedPublisher}>
@@ -551,6 +554,12 @@ export default function CapabilityMarketplacePage() {
                       placeholder="-----BEGIN PUBLIC KEY-----"
                       aria-label="Publisher public signing key"
                       rows={4}
+                    />
+                    <Input
+                      value={trustedPublisherMarketplaceSlug}
+                      onChange={(event) => setTrustedPublisherMarketplaceSlug(event.target.value)}
+                      placeholder="Marketplace publisher slug (optional)"
+                      aria-label="Marketplace publisher slug"
                     />
                     <Button
                       type="submit"
