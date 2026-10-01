@@ -804,6 +804,25 @@ async def create_portable_capability_marketplace_draft(
     inspection = package.get("inspection") if isinstance(package.get("inspection"), dict) else {}
     permissions = inspection.get("permissions") if isinstance(inspection.get("permissions"), list) else []
     components = inspection.get("components") if isinstance(inspection.get("components"), list) else []
+    connector_names = sorted(
+        {
+            str(row.get("name") or "").strip()
+            for row in components
+            if isinstance(row, dict)
+            and str(row.get("kind") or "") == "connector"
+            and str(row.get("name") or "").strip()
+        }
+    )
+    required_connectors = [
+        {
+            "connectorType": name,
+            "label": name.replace("_", " ").replace("-", " ").title(),
+            "required": True,
+            "connectPath": "/connectors",
+            "requirementNote": "Required by this portable capability package",
+        }
+        for name in connector_names
+    ]
     tags = ["portable-capability", str(package.get("package_format") or "package").replace("_", "-")]
     if any(isinstance(row, dict) and row.get("kind") == "mcp" for row in components):
         tags.append("mcp")
@@ -867,7 +886,7 @@ async def create_portable_capability_marketplace_draft(
             department=body.department,
             tags=tags,
             required_permissions=permissions,
-            required_connectors=[],
+            required_connectors=required_connectors,
             pricing_type=body.pricing_type,
             price_cents=body.price_cents,
         )
