@@ -116,6 +116,21 @@ def catalog_visible_mcp_tools(
     return [row for row in tools if bool(row.get("enabled"))]
 
 
+def stale_package_mcp_tool_ids(
+    persisted_tools: list[dict[str, Any]],
+    discovered_names: set[str],
+) -> list[str]:
+    """Return reviewed package-tool rows that disappeared from the remote server."""
+    return [
+        str(row.get("id") or "")
+        for row in persisted_tools
+        if str(row.get("id") or "").strip()
+        and str(row.get("tool_name") or "").strip()
+        and str(row.get("tool_name") or "").strip() not in discovered_names
+        and bool(row.get("enabled"))
+    ]
+
+
 def refresh_package_mcp_runtime_registration(
     client: Any,
     *,
@@ -287,16 +302,17 @@ class MCPClientService:
                 .data
                 or []
             )
-            for row in persisted:
-                tool_name = str(row.get("tool_name") or "").strip()
-                if tool_name and tool_name not in discovered_names and bool(row.get("enabled")):
-                    (
-                        client.table("mcp_tools")
-                        .update({"enabled": False})
-                        .eq("id", str(row.get("id") or ""))
-                        .eq("org_id", org_id)
-                        .execute()
-                    )
+            for stale_tool_id in stale_package_mcp_tool_ids(
+                list(persisted),
+                discovered_names,
+            ):
+                (
+                    client.table("mcp_tools")
+                    .update({"enabled": False})
+                    .eq("id", stale_tool_id)
+                    .eq("org_id", org_id)
+                    .execute()
+                )
             refresh_package_mcp_runtime_registration(
                 client,
                 org_id=org_id,
