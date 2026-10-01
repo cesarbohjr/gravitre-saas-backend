@@ -302,10 +302,52 @@ export default function CapabilityMarketplacePage() {
       toast.success("MCP dependencies prepared", {
         description: `${result.prepared.length} server${result.prepared.length === 1 ? "" : "s"} pending review${result.blocked.length ? `; ${result.blocked.length} blocked by policy` : ""}`,
       })
+      await Promise.all([mcpServers.mutate(), mcpTools.mutate()])
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "MCP preparation failed")
     } finally {
       setPackageBusy(null)
+    }
+  }
+
+  async function discoverMcp(serverId: string) {
+    setMcpBusy(serverId)
+    try {
+      const result = await mcpAdminApi.discoverTools(serverId)
+      toast.success("MCP tools discovered", {
+        description: `${result.count} tool${result.count === 1 ? "" : "s"} found. Portable-package tools remain disabled until approved.`,
+      })
+      await mcpTools.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "MCP discovery failed")
+    } finally {
+      setMcpBusy(null)
+    }
+  }
+
+  async function setMcpServerEnabled(serverId: string, enabled: boolean) {
+    setMcpBusy(serverId)
+    try {
+      await mcpAdminApi.patchServer(serverId, enabled)
+      toast.success(enabled ? "MCP server approved" : "MCP server disabled")
+      await mcpServers.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "MCP server update failed")
+    } finally {
+      setMcpBusy(null)
+    }
+  }
+
+  async function setMcpToolEnabled(toolId: string, enabled: boolean) {
+    setMcpBusy(toolId)
+    try {
+      await mcpAdminApi.patchTool(toolId, enabled)
+      toast.success(enabled ? "MCP tool enabled" : "MCP tool disabled")
+      await mcpTools.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "MCP tool update failed")
+    } finally {
+      setMcpBusy(null)
     }
   }
 
