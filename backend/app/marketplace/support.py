@@ -255,6 +255,7 @@ def _deactivate_install_entities(
         "ragSources": [],
         "capabilityPackages": [],
         "mcpServers": [],
+        "nativeBindings": [],
     }
 
     agent_ids: list[str] = []
@@ -331,6 +332,31 @@ def _deactivate_install_entities(
                 .execute()
             )
             deactivated["mcpServers"].extend(mcp_ids)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            binding_rows = (
+                client.table("capability_component_bindings")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("package_id", capability_id)
+                .eq("enabled", True)
+                .execute()
+            )
+            binding_ids = [
+                str(row.get("id"))
+                for row in (binding_rows.data or [])
+                if row.get("id")
+            ]
+            (
+                client.table("capability_component_bindings")
+                .update({"enabled": False})
+                .eq("org_id", org_id)
+                .eq("package_id", capability_id)
+                .eq("enabled", True)
+                .execute()
+            )
+            deactivated["nativeBindings"].extend(binding_ids)
         except Exception:  # noqa: BLE001
             pass
 
