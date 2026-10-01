@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
@@ -120,7 +120,7 @@ function securitySummary(scan?: {
 
 export default function CapabilityMarketplacePage() {
   const { user } = useAuth()
-  const { isAdmin } = useOrgAdmin()
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
   const router = useRouter()
   const [name, setName] = useState("")
   const [repositoryUrl, setRepositoryUrl] = useState("")
@@ -152,29 +152,36 @@ export default function CapabilityMarketplacePage() {
   const [bindingTargetType, setBindingTargetType] = useState("")
   const [bindingTargetId, setBindingTargetId] = useState("")
   const [bindingBusy, setBindingBusy] = useState(false)
+  const [communitySearch, setCommunitySearch] = useState("")
+  const [communityBusy, setCommunityBusy] = useState<string | null>(null)
 
   const developerKit = useSWR(
-    user ? "portable-capability-developer-kit" : null,
+    user && isAdmin ? "portable-capability-developer-kit" : null,
     () => portableCapabilitiesApi.developerKit(),
   )
+  const communityCatalog = useSWR(
+    user && isAdmin ? "portable-capability-community-catalog" : null,
+    () => portableCapabilitiesApi.listCommunityCatalog(),
+    { revalidateOnFocus: false },
+  )
   const packages = useSWR(
-    user ? "portable-capability-packages" : null,
+    user && isAdmin ? "portable-capability-packages" : null,
     () => portableCapabilitiesApi.listPackages(),
   )
   const usage = useSWR(
-    user ? "portable-capability-usage-30d" : null,
+    user && isAdmin ? "portable-capability-usage-30d" : null,
     () => portableCapabilitiesApi.usage(30),
   )
   const marketplaces = useSWR(
-    user ? "portable-capability-marketplaces" : null,
+    user && isAdmin ? "portable-capability-marketplaces" : null,
     () => portableCapabilitiesApi.listMarketplaces(),
   )
   const trustedPublishers = useSWR(
-    user ? "portable-capability-trusted-publishers" : null,
+    user && isAdmin ? "portable-capability-trusted-publishers" : null,
     () => portableCapabilitiesApi.listTrustedPublishers(),
   )
   const candidates = useSWR(
-    user ? "portable-capability-marketplace-candidates" : null,
+    user && isAdmin ? "portable-capability-marketplace-candidates" : null,
     () => portableCapabilitiesApi.listCandidates(),
   )
   const mcpServers = useSWR(
@@ -186,15 +193,25 @@ export default function CapabilityMarketplacePage() {
     () => mcpAdminApi.listTools(),
   )
   const packageVersions = useSWR(
-    user && historyPackageId ? ["portable-capability-versions", historyPackageId] : null,
+    user && isAdmin && historyPackageId ? ["portable-capability-versions", historyPackageId] : null,
     () => portableCapabilitiesApi.listVersions(historyPackageId!),
   )
   const nativeBindings = useSWR(
-    user && bindingPackageId ? ["portable-capability-bindings", bindingPackageId] : null,
+    user && isAdmin && bindingPackageId ? ["portable-capability-bindings", bindingPackageId] : null,
     () => portableCapabilitiesApi.listBindings(bindingPackageId!),
   )
 
   const packageRows = packages.data?.items ?? []
+  const normalizedCommunitySearch = communitySearch.trim().toLowerCase()
+  const communityItems = useMemo(() => {
+    const rows = communityCatalog.data?.items ?? []
+    if (!normalizedCommunitySearch) return rows
+    return rows.filter((item) =>
+      item.name.toLowerCase().includes(normalizedCommunitySearch) ||
+      item.publisher.toLowerCase().includes(normalizedCommunitySearch) ||
+      item.packagePath.toLowerCase().includes(normalizedCommunitySearch),
+    )
+  }, [communityCatalog.data?.items, normalizedCommunitySearch])
   const filteredPackageRows = packageRows.filter((item) => packageMatchesFilter(item, capabilityFilter))
   const marketplaceRows = marketplaces.data?.items ?? []
   const candidateRows = candidates.data?.items ?? []
@@ -216,6 +233,27 @@ export default function CapabilityMarketplacePage() {
   const bindingTargetTypes = selectedBindingComponent
     ? targetTypesForComponent(selectedBindingComponent.kind)
     : []
+
+  useEffect(() => {
+    if (user && !adminLoading && !isAdmin) {
+      router.replace("/marketplace/assets")
+    }
+  }, [adminLoading, isAdmin, router, user])
+
+  async function stageCommunitySource(sourceKey: string) {
+    setCommunityBusy(sourceKey)
+    try {
+      const result = await portableCapabilitiesApi.stageCommunityCatalog(sourceKey)
+      toast.success("Official capability catalog staged", {
+        description: `${result.sync.ingested} package${result.sync.ingested === 1 ? "" : "s"} added to the admin review queue. Nothing was installed automatically.`,
+      })
+      await Promise.all([communityCatalog.mutate(), marketplaces.mutate(), candidates.mutate()])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not stage official capability catalog")
+    } finally {
+      setCommunityBusy(null)
+    }
+  }
 
   async function createNativeBinding(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -564,6 +602,16 @@ export default function CapabilityMarketplacePage() {
   }
 
 
+  if (adminLoading || !isAdmin) {
+    return (
+      <AppShell title="Capabilities">
+        <div className="grid min-h-[50vh] place-items-center px-4 text-sm text-muted-foreground">
+          {adminLoading ? "Checking administrator access…" : "Redirecting to Marketplace…"}
+        </div>
+      </AppShell>
+    )
+  }
+
   return (
     <AppShell title="Capabilities">
       <div className="bg-[color:var(--g-canvas)]">
@@ -581,6 +629,107 @@ export default function CapabilityMarketplacePage() {
             <GravitreMetric label="Signed packages" value={signed} icon={<ShieldCheck className="h-4 w-4" />} />
             <GravitreMetric label="Quarantined" value={quarantined} icon={<AlertTriangle className="h-4 w-4" />} />
           </section>
+
+          <GravitreSurface>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-sm font-medium text-foreground">Official community skills</h2>
+                    <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      Admin only
+                    </span>
+                  </div>
+                  <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
+                    Browse compatible skills from official OpenAI and Anthropic catalogs. Discovery is read-only; staging sends packages through Gravitre security scanning and the existing admin review queue before anything can be installed or activated.
+                  </p>
+                </div>
+                <div className="w-full lg:max-w-xs">
+                  <Label htmlFor="community-capability-search" className="sr-only">Search community skills</Label>
+                  <Input
+                    id="community-capability-search"
+                    value={communitySearch}
+                    onChange={(event) => setCommunitySearch(event.target.value)}
+                    placeholder="Search official skills…"
+                    aria-label="Search official community skills"
+                  />
+                </div>
+              </div>
+
+              {communityCatalog.error ? (
+                <div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                  Official catalog discovery is temporarily unavailable. Installed and staged capabilities remain unaffected.
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {(communityCatalog.data?.sources ?? []).map((source) => {
+                      const count = (communityCatalog.data?.items ?? []).filter((item) => item.sourceKey === source.key).length
+                      return (
+                        <div key={source.key} className="min-w-0 rounded border border-divide p-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">{source.name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {source.publisher} · {count} discovered skill{count === 1 ? "" : "s"} · official source
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={communityBusy === source.key}
+                              onClick={() => void stageCommunitySource(source.key)}
+                            >
+                              {communityBusy === source.key ? "Staging…" : "Stage for review"}
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {communityCatalog.isLoading ? (
+                    <p className="text-xs text-muted-foreground">Loading official skill catalogs…</p>
+                  ) : communityItems.length === 0 ? (
+                    <GravitreEmpty
+                      icon={<Package className="h-5 w-5" />}
+                      title={normalizedCommunitySearch ? "No official skills match your search" : "No official skills discovered"}
+                      hint="Catalog availability is independent from installed capabilities. Retry discovery or add a private Git catalog below."
+                    />
+                  ) : (
+                    <div className="max-h-[420px] overflow-y-auto rounded border border-divide">
+                      <ul className="divide-y divide-divide">
+                        {communityItems.slice(0, 200).map((item) => (
+                          <li key={item.id} className="flex min-w-0 flex-col gap-1 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+                                <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  {item.kind}
+                                </span>
+                                <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  {item.publisher}
+                                </span>
+                              </div>
+                              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{item.packagePath}</p>
+                            </div>
+                            <span className="shrink-0 text-[11px] text-muted-foreground">Review required</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {(communityCatalog.data?.errors ?? []).length ? (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      Some official sources could not be refreshed. Gravitre did not substitute unverified community sources.
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </GravitreSurface>
 
           <GravitreSurface>
             <details>
