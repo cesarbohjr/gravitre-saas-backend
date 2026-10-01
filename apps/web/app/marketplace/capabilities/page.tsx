@@ -46,7 +46,7 @@ export default function CapabilityMarketplacePage() {
   const packageRows = packages.data?.items ?? []
   const marketplaceRows = marketplaces.data?.items ?? []
   const quarantined = packageRows.filter((row) => row.status === "quarantined").length
-  const verified = packageRows.filter((row) => row.publisher_verified || row.signature_status === "verified").length
+  const signed = packageRows.filter((row) => row.signature_status === "verified").length
 
   async function addMarketplace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -113,7 +113,7 @@ export default function CapabilityMarketplacePage() {
         <div className="mx-auto w-full max-w-6xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
           <section className="grid gap-[var(--np-kpi-gap)] sm:grid-cols-3">
             <GravitreMetric label="Installed capabilities" value={packageRows.length} icon={<Package className="h-4 w-4" />} />
-            <GravitreMetric label="Verified publishers" value={verified} icon={<ShieldCheck className="h-4 w-4" />} />
+            <GravitreMetric label="Signed packages" value={signed} icon={<ShieldCheck className="h-4 w-4" />} />
             <GravitreMetric label="Quarantined" value={quarantined} icon={<AlertTriangle className="h-4 w-4" />} />
           </section>
 
@@ -148,7 +148,12 @@ export default function CapabilityMarketplacePage() {
                           {item.publisher_verified ? (
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
                               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                              Verified publisher
+                              Trusted publisher
+                            </span>
+                          ) : item.signature_status === "verified" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                              Signed package
                             </span>
                           ) : null}
                         </div>
