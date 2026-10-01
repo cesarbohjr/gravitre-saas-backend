@@ -329,6 +329,22 @@ async def compile_unified_reasoning_context(
                 org_id=org_id,
                 prompt=message or "",
             )
+            selected_package_ids = (
+                portable_skill_meta.get("selectedPackageIds")
+                if isinstance(portable_skill_meta, dict)
+                else []
+            )
+            if isinstance(selected_package_ids, list) and selected_package_ids:
+                from app.capabilities.usage import record_reasoning_selection
+
+                record_reasoning_selection(
+                    client,
+                    org_id=org_id,
+                    package_ids=[str(value) for value in selected_package_ids],
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    surface=surface,
+                )
             if portable_skill_block:
                 _add_part("portable_skills", portable_skill_block)
                 _record("portable_skills", "RETRIEVE", "installed_relevant_skills")
