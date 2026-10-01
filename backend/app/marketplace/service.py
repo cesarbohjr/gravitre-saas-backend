@@ -1497,14 +1497,32 @@ def install_asset(
 
     _check_plan_limits(client, org_id, str(asset["asset_type"]))
     resolved = _resolve_asset_payload(asset, install_variables)
+    portable_capability_install = None
     try:
-        parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=True)
-    except MarketplaceValidationError as exc:
+        from app.capabilities.marketplace_bridge import install_marketplace_capability_snapshot
+
+        portable_capability_install = install_marketplace_capability_snapshot(
+            client,
+            org_id=org_id,
+            actor_id=actor_id,
+            asset=asset,
+        )
+    except ValueError as exc:
         raise MarketplaceError(
-            exc.message,
+            str(exc),
             code="VALIDATION_ERROR",
-            details={"errors": exc.errors},
         ) from exc
+
+    parsed = None
+    if portable_capability_install is None:
+        try:
+            parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=True)
+        except MarketplaceValidationError as exc:
+            raise MarketplaceError(
+                exc.message,
+                code="VALIDATION_ERROR",
+                details={"errors": exc.errors},
+            ) from exc
     connector_ids = {
         item["connectorType"]: _find_active_connector_id(
             client,
@@ -1517,7 +1535,9 @@ def install_asset(
     }
 
     asset_type = str(asset["asset_type"])
-    if asset_type == "ai_agent":
+    if portable_capability_install is not None:
+        installed = portable_capability_install
+    elif asset_type == "ai_agent":
         installed = _install_ai_agent(
             client,
             org_id,
