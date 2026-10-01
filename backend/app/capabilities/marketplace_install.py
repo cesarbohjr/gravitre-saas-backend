@@ -270,6 +270,10 @@ def install_marketplace_capability_package(
         marketplace_publisher_id=marketplace_publisher_id,
         signature_status=str(config.signature_status or "unsigned"),
         content_digest=source_digest,
+        # Marketplace distribution never substitutes for the destination
+        # organization's activation decision. Installed content remains inert
+        # until an org admin explicitly approves the package.
+        initial_status="quarantined",
         security_scan=security_scan,
     )
     package_id = str(installed.get("id") or "")
