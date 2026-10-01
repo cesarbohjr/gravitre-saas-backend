@@ -42,6 +42,12 @@ from app.capabilities.review import review_transition_allowed
 from app.capabilities.github_sync import sync_public_github_marketplace
 from app.capabilities.developer_kit import developer_kit_contract
 from app.capabilities.mcp_activation import deactivate_package_mcp_dependencies, prepare_mcp_dependencies
+from app.capabilities.native_bindings import (
+    bind_component,
+    deactivate_component_bindings,
+    list_component_bindings,
+    remove_component_binding,
+)
 from app.capabilities.usage import usage_summary
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
@@ -94,6 +100,15 @@ class PackageBundleRequest(BaseModel):
 class PackageReviewRequest(BaseModel):
     status: Literal["installed", "quarantined", "disabled"]
     notes: str | None = Field(default=None, max_length=2000)
+
+
+class NativeComponentBindingRequest(BaseModel):
+    component_kind: Literal["agent", "play", "template", "trigger"] = Field(alias="componentKind")
+    component_name: str = Field(min_length=1, max_length=160, alias="componentName")
+    target_type: Literal["agent", "play", "workflow", "workflow_schedule", "marketplace_asset"] = Field(alias="targetType")
+    target_id: str = Field(min_length=1, max_length=255, alias="targetId")
+
+    model_config = {"populate_by_name": True}
 
 
 class TrustedPublisherCreateRequest(BaseModel):
@@ -559,6 +574,7 @@ async def rollback_portable_package_version(
         "status": restored.get("status"),
         "requiresReview": restored.get("status") == "quarantined",
         "mcpDeactivation": mcp_deactivation,
+        "nativeBindingsDeactivated": native_bindings_deactivated,
     }
 
 
@@ -683,12 +699,18 @@ async def review_portable_package(
         notes=body.notes,
     )
     mcp_deactivation = None
+    native_bindings_deactivated = 0
     if body.status in {"quarantined", "disabled"}:
         mcp_deactivation = deactivate_package_mcp_dependencies(
             client,
             org_id=org_id,
             package_id=package_id,
             activation_state=body.status,
+        )
+        native_bindings_deactivated = deactivate_component_bindings(
+            client,
+            org_id=org_id,
+            package_id=package_id,
         )
     try:
         from app.workflows.audit import write_audit_event
@@ -716,6 +738,67 @@ async def review_portable_package(
         "reviewed": True,
         "mcpDeactivation": mcp_deactivation,
     }
+
+
+@router.get("/packages/{package_id}/bindings")
+async def get_portable_component_bindings(
+    package_id: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    if not get_package(client, org_id, package_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
+    return {"items": list_component_bindings(client, org_id=org_id, package_id=package_id)}
+
+
+@router.post("/packages/{package_id}/bindings")
+async def create_portable_component_binding(
+    package_id: str,
+    body: NativeComponentBindingRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    package = get_package(client, org_id, package_id)
+    if not package:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
+    try:
+        binding = bind_component(
+            client,
+            org_id=org_id,
+            package=package,
+            component_kind=body.component_kind,
+            component_name=body.component_name,
+            target_type=body.target_type,
+            target_id=body.target_id,
+            user_id=str(user.get("user_id") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    return {"binding": binding, "executionOwner": "gravitre", "targetCreated": False}
+
+
+@router.delete("/packages/{package_id}/bindings/{binding_id}")
+async def delete_portable_component_binding(
+    package_id: str,
+    binding_id: str,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = get_supabase_client(settings)
+    deleted = remove_component_binding(
+        client,
+        org_id=org_id,
+        package_id=package_id,
+        binding_id=binding_id,
+    )
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability binding not found")
+    return {"deleted": True, "bindingId": binding_id}
 
 
 @router.get("/packages/{package_id}/validate")
