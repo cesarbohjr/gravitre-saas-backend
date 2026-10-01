@@ -42,9 +42,15 @@ export default function CapabilityMarketplacePage() {
     user ? "portable-capability-marketplaces" : null,
     () => portableCapabilitiesApi.listMarketplaces(),
   )
+  const candidates = useSWR(
+    user ? "portable-capability-marketplace-candidates" : null,
+    () => portableCapabilitiesApi.listCandidates(),
+  )
 
   const packageRows = packages.data?.items ?? []
   const marketplaceRows = marketplaces.data?.items ?? []
+  const candidateRows = candidates.data?.items ?? []
+  const pendingCandidates = candidateRows.filter((row) => row.status === "pending_review")
   const quarantined = packageRows.filter((row) => row.status === "quarantined").length
   const signed = packageRows.filter((row) => row.signature_status === "verified").length
 
@@ -92,11 +98,37 @@ export default function CapabilityMarketplacePage() {
       toast.success("Capability marketplace synced", {
         description: `${result.sync.ingested} package${result.sync.ingested === 1 ? "" : "s"} ingested`,
       })
-      await Promise.all([marketplaces.mutate(), packages.mutate()])
+      await Promise.all([marketplaces.mutate(), packages.mutate(), candidates.mutate()])
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Marketplace sync failed")
     } finally {
       setSourceBusy(null)
+    }
+  }
+
+  async function decideCandidate(candidateId: string, decision: "approve" | "reject") {
+    setPackageBusy(candidateId)
+    try {
+      await portableCapabilitiesApi.reviewCandidate(candidateId, { decision })
+      toast.success(decision === "approve" ? "Capability candidate approved" : "Capability candidate rejected")
+      await candidates.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Candidate review failed")
+    } finally {
+      setPackageBusy(null)
+    }
+  }
+
+  async function installCandidate(candidateId: string) {
+    setPackageBusy(candidateId)
+    try {
+      await portableCapabilitiesApi.installCandidate(candidateId)
+      toast.success("Capability installed")
+      await Promise.all([candidates.mutate(), packages.mutate()])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Capability install failed")
+    } finally {
+      setPackageBusy(null)
     }
   }
 
@@ -282,6 +314,82 @@ export default function CapabilityMarketplacePage() {
               ) : null}
             </GravitreSurface>
           </section>
+
+          <GravitreSurface className="p-0">
+            <div className="flex items-start justify-between gap-4 border-b border-divide px-4 py-3">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">Marketplace review queue</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Repository sync only discovers packages. Review is required before installation.
+                </p>
+              </div>
+              <span className="text-xs text-muted-foreground">{pendingCandidates.length} pending</span>
+            </div>
+            {candidateRows.length === 0 ? (
+              <div className="p-4">
+                <GravitreEmpty
+                  icon={<ShieldCheck className="h-5 w-5" />}
+                  title="No capability candidates"
+                  hint="Sync a Git marketplace to discover skills and plugins for review."
+                />
+              </div>
+            ) : (
+              <ul className="divide-y divide-divide">
+                {candidateRows.map((candidate) => (
+                  <li key={candidate.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-foreground">{candidate.name}</p>
+                        <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {candidate.package_format.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{candidate.status.replace(/_/g, " ")}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {candidate.description || candidate.package_path}
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        License: {candidate.license ?? "Review required"} · Risk: {riskLabel(candidate.risk_level)}
+                      </p>
+                    </div>
+                    {isAdmin ? (
+                      <div className="flex shrink-0 flex-wrap gap-1.5">
+                        {candidate.status === "pending_review" ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={packageBusy === candidate.id || candidate.license_policy === "block" || candidate.risk_level === "blocked"}
+                              onClick={() => void decideCandidate(candidate.id, "approve")}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={packageBusy === candidate.id}
+                              onClick={() => void decideCandidate(candidate.id, "reject")}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        ) : null}
+                        {candidate.status === "approved" ? (
+                          <Button
+                            size="sm"
+                            disabled={packageBusy === candidate.id}
+                            onClick={() => void installCandidate(candidate.id)}
+                          >
+                            {packageBusy === candidate.id ? "Installing…" : "Install"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </GravitreSurface>
         </div>
       </div>
     </AppShell>
