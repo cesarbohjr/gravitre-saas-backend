@@ -15,6 +15,7 @@ AssetType = Literal[
     "knowledge_pack",
     "department_pack",
     "connector_config",
+    "capability_package",
 ]
 
 FORBIDDEN_SECRET_KEYS = frozenset({
@@ -140,6 +141,58 @@ class ConnectorConfigAssetConfig(BaseModel):
     connect_path: str = "/connectors"
 
 
+class CapabilityPackageAssetConfig(BaseModel):
+    repository_url: str = Field(min_length=1)
+    commit_sha: str = Field(min_length=40, max_length=40)
+    package_path: str = ""
+    content_digest: str = Field(min_length=71, max_length=71)
+    package_format: str = Field(min_length=1)
+    license: str | None = None
+    license_policy: str = "review"
+    risk_level: str = "moderate"
+    signature_status: str = "unsigned"
+    security_scan: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("repository_url")
+    @classmethod
+    def validate_repository_url(cls, value: str) -> str:
+        from app.capabilities.provenance import normalize_github_repository_url
+
+        return normalize_github_repository_url(value)
+
+    @field_validator("commit_sha")
+    @classmethod
+    def validate_commit_sha(cls, value: str) -> str:
+        commit = value.strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise ValueError("commit_sha must be an exact 40-character Git commit SHA")
+        return commit
+
+    @field_validator("content_digest")
+    @classmethod
+    def validate_content_digest(cls, value: str) -> str:
+        digest = value.strip().lower()
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+            raise ValueError("content_digest must be sha256:<64 hex characters>")
+        return digest
+
+    @field_validator("package_path")
+    @classmethod
+    def validate_package_path(cls, value: str) -> str:
+        path = value.strip().strip("/")
+        if ".." in path.split("/"):
+            raise ValueError("package_path must not contain path traversal")
+        return path
+
+    @model_validator(mode="after")
+    def validate_policy(self) -> "CapabilityPackageAssetConfig":
+        if self.license_policy == "block" or self.risk_level == "blocked":
+            raise ValueError("blocked capability packages cannot be published")
+        if bool((self.security_scan or {}).get("blocked")):
+            raise ValueError("capability package security scan is blocked")
+        return self
+
+
 class IntelligencePackAssignmentConfig(BaseModel):
     source_type: str = Field(min_length=1)
     source_id: str = Field(min_length=1)
@@ -163,6 +216,7 @@ ASSET_CONFIG_MODELS: dict[str, type[BaseModel]] = {
     "knowledge_pack": KnowledgePackAssetConfig,
     "department_pack": DepartmentPackAssetConfig,
     "connector_config": ConnectorConfigAssetConfig,
+    "capability_package": CapabilityPackageAssetConfig,
     "intelligence_pack": IntelligencePackAssetConfig,
 }
 
