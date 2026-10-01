@@ -1552,6 +1552,16 @@ export const mcpAdminApi = {
 }
 
 export const portableCapabilitiesApi = {
+  developerKit: () =>
+    fetcher<{
+      manifestSchema: string
+      schemaVersion: string
+      template: Record<string, unknown>
+      supportedPortableActivation: Record<string, string>
+      declarationOnly: Record<string, string>
+      security: Record<string, unknown>
+      distribution: Record<string, boolean>
+    }>(apiUrl("/api/capabilities/developer-kit")),
   listPackages: () =>
     fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
   usage: (days = 30) =>
