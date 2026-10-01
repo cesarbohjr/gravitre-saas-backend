@@ -320,6 +320,12 @@ def update_org_asset(
             code="FORBIDDEN",
         )
 
+    if str(asset.get("asset_type") or "") == "capability_package" and "config" in patch:
+        raise MarketplaceCrudError(
+            "Capability package provenance and inert snapshot are immutable; recreate the draft from the installed capability to change them",
+            code="FORBIDDEN",
+        )
+
     asset_type = str(patch.get("asset_type") or asset.get("asset_type"))
     config = patch.get("config", asset.get("config") or {})
     install_variables = patch.get("install_variables", asset.get("install_variables"))
