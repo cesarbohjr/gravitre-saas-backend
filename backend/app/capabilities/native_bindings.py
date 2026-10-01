@@ -37,16 +37,37 @@ def _target_exists(client: Any, *, org_id: str, target_type: str, target_id: str
     table = table_map.get(target_type)
     if not table:
         return False
-    query = client.table(table).select("id").eq("id", target_id)
-    # Marketplace assets may be platform-public or org-owned; all other targets
-    # must belong to the installing organization.
-    if target_type != "marketplace_asset":
-        query = query.eq("org_id", org_id)
-    else:
-        # Prefer org-owned assets; public asset existence is still acceptable
-        # for a template reference and carries no execution authority.
-        pass
-    rows = query.limit(1).execute().data or []
+    if target_type == "marketplace_asset":
+        rows = (
+            client.table(table)
+            .select("id,org_id,visibility,status")
+            .eq("id", target_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            return False
+        row = rows[0]
+        return (
+            str(row.get("org_id") or "") == org_id
+            or (
+                str(row.get("visibility") or "") == "public"
+                and str(row.get("status") or "") == "published"
+            )
+        )
+
+    rows = (
+        client.table(table)
+        .select("id")
+        .eq("id", target_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
     return bool(rows)
 
 
