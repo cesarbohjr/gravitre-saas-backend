@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { portableCapabilitiesApi } from "@/lib/api"
+import { mcpAdminApi, portableCapabilitiesApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { toast } from "sonner"
@@ -103,6 +103,7 @@ export default function CapabilityMarketplacePage() {
   const [busy, setBusy] = useState(false)
   const [packageBusy, setPackageBusy] = useState<string | null>(null)
   const [sourceBusy, setSourceBusy] = useState<string | null>(null)
+  const [mcpBusy, setMcpBusy] = useState<string | null>(null)
   const [historyPackageId, setHistoryPackageId] = useState<string | null>(null)
   const [historyBusy, setHistoryBusy] = useState<string | null>(null)
   const [trustedPublisherName, setTrustedPublisherName] = useState("")
@@ -137,6 +138,14 @@ export default function CapabilityMarketplacePage() {
     user ? "portable-capability-marketplace-candidates" : null,
     () => portableCapabilitiesApi.listCandidates(),
   )
+  const mcpServers = useSWR(
+    user && isAdmin ? "portable-capability-mcp-servers" : null,
+    () => mcpAdminApi.listServers(),
+  )
+  const mcpTools = useSWR(
+    user && isAdmin ? "portable-capability-mcp-tools" : null,
+    () => mcpAdminApi.listTools(),
+  )
   const packageVersions = useSWR(
     user && historyPackageId ? ["portable-capability-versions", historyPackageId] : null,
     () => portableCapabilitiesApi.listVersions(historyPackageId!),
@@ -146,6 +155,10 @@ export default function CapabilityMarketplacePage() {
   const filteredPackageRows = packageRows.filter((item) => packageMatchesFilter(item, capabilityFilter))
   const marketplaceRows = marketplaces.data?.items ?? []
   const candidateRows = candidates.data?.items ?? []
+  const portableMcpServers = (mcpServers.data?.servers ?? []).filter(
+    (server) => Boolean(server.source_capability_package_id),
+  )
+  const portableMcpTools = mcpTools.data?.tools ?? []
   const pendingCandidates = candidateRows.filter((row) => row.status === "pending_review")
   const quarantined = packageRows.filter((row) => row.status === "quarantined").length
   const signed = packageRows.filter((row) => row.signature_status === "verified").length
