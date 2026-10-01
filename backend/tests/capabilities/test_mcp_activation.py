@@ -23,18 +23,18 @@ def test_private_network_mcp_dependency_is_blocked() -> None:
     assert rows[0]["registrationAllowed"] is False
 
 
-def test_unsupported_streamable_transport_is_blocked_until_runtime_supports_it() -> None:
+def test_streamable_http_dependency_can_be_prepared() -> None:
     rows = declared_mcp_dependencies(
         {
             "mcpServers": {
-                "future": {
+                "modern": {
                     "url": "https://mcp.example.com/mcp",
                     "transport": "streamable_http",
                 }
             }
         }
     )
-    assert rows[0]["registrationAllowed"] is False
+    assert rows[0]["registrationAllowed"] is True
 
 
 class _Query:
