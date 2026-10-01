@@ -16,3 +16,14 @@ def test_bundle_digest_is_stable_across_input_order() -> None:
     a = bundle_digest({"b.txt": "2", "a.txt": "1"})
     b = bundle_digest({"a.txt": "1", "b.txt": "2"})
     assert a == b
+
+
+def test_signature_does_not_imply_publisher_trust() -> None:
+    from app.capabilities.provenance import provenance_summary
+
+    summary = provenance_summary(
+        publisher_name="Acme",
+        signature_status="verified",
+    )
+    assert summary["signatureStatus"] == "verified"
+    assert summary["publisherVerified"] is False
