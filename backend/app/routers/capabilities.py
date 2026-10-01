@@ -41,6 +41,7 @@ from app.capabilities.repository import (
 )
 from app.capabilities.review import review_transition_allowed
 from app.capabilities.github_sync import sync_public_github_marketplace
+from app.capabilities.community_catalog import community_source, list_official_community_catalog
 from app.capabilities.developer_kit import developer_kit_contract
 from app.capabilities.mcp_activation import deactivate_package_mcp_dependencies, prepare_mcp_dependencies
 from app.capabilities.native_bindings import (
@@ -200,21 +201,21 @@ async def inspect_portable_package(
 
 @router.get("/usage")
 async def get_portable_capability_usage(
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     days: int = 30,
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     return usage_summary(client, org_id=org_id, days=days)
 
 
 @router.get("/packages")
 async def get_portable_packages(
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     return {"items": list_packages(client, org_id)}
 
@@ -526,10 +527,10 @@ async def install_portable_zip(
 @router.get("/packages/{package_id}/versions")
 async def get_portable_package_versions(
     package_id: str,
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     if not get_package(client, org_id, package_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
@@ -599,20 +600,20 @@ async def rollback_portable_package_version(
 @router.get("/packages/{package_id}/resources")
 async def get_portable_package_resources(
     package_id: str,
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     return {"items": list_package_resources(client, org_id, package_id)}
 
 
 @router.get("/trusted-publishers")
 async def get_trusted_capability_publishers(
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     return {"items": list_trusted_publishers(client, org_id)}
 
@@ -642,12 +643,105 @@ async def add_trusted_capability_publisher(
     return {"publisher": row}
 
 
+@router.get("/community-catalog")
+async def get_community_capability_catalog(
+    _admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    query: str | None = None,
+    source_key: str | None = None,
+) -> dict:
+    """Browse approved official external catalogs. Discovery never activates packages."""
+    return await list_official_community_catalog(query=query, source_key=source_key)
+
+
+@router.post("/community-catalog/{source_key}/stage")
+async def stage_community_capability_catalog(
+    source_key: str,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+) -> dict:
+    """Stage an official catalog into the existing admin review queue; never auto-install."""
+    user, org_id = admin
+    source_spec = community_source(source_key)
+    if not source_spec:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Community capability source not found")
+
+    client = get_supabase_client(settings)
+    existing = next(
+        (
+            row for row in list_marketplace_sources(client, org_id)
+            if str(row.get("repository_url") or "").rstrip("/") == source_spec.repository_url
+            and str(row.get("branch") or "main") == source_spec.branch
+            and str(row.get("root_path") or "").strip("/") == source_spec.root_path
+        ),
+        None,
+    )
+    source = existing or create_marketplace_source(
+        client,
+        org_id=org_id,
+        user_id=str(user.get("user_id") or ""),
+        name=source_spec.name,
+        repository_url=source_spec.repository_url,
+        branch=source_spec.branch,
+        root_path=source_spec.root_path,
+        auto_sync=False,
+        approval_required=True,
+    )
+    source_id = str(source.get("id") or "")
+    if not source_id:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Capability source could not be created")
+
+    update_marketplace_sync_status(
+        client,
+        org_id=org_id,
+        source_id=source_id,
+        sync_status="syncing",
+    )
+    try:
+        result = await sync_public_github_marketplace(
+            client,
+            org_id=org_id,
+            user_id=str(user.get("user_id") or ""),
+            source=source,
+            settings=settings,
+            environment_name=environment_name,
+        )
+    except Exception as exc:  # noqa: BLE001
+        update_marketplace_sync_status(
+            client,
+            org_id=org_id,
+            source_id=source_id,
+            sync_status="failed",
+            error=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Community capability sync failed: {exc}",
+        ) from exc
+
+    update_marketplace_sync_status(
+        client,
+        org_id=org_id,
+        source_id=source_id,
+        sync_status="completed",
+        synced=True,
+    )
+    return {
+        "sourceId": source_id,
+        "sourceKey": source_key,
+        "status": "completed",
+        "sync": result,
+        "approvalRequired": True,
+        "installed": 0,
+    }
+
+
 @router.get("/marketplaces")
 async def get_capability_marketplaces(
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     return {"items": list_marketplace_sources(client, org_id)}
 
@@ -762,10 +856,10 @@ async def review_portable_package(
 @router.get("/packages/{package_id}/bindings")
 async def get_portable_component_bindings(
     package_id: str,
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     if not get_package(client, org_id, package_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
@@ -823,10 +917,10 @@ async def delete_portable_component_binding(
 @router.get("/packages/{package_id}/validate")
 async def validate_portable_capability_for_publish(
     package_id: str,
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     package = get_package(client, org_id, package_id)
     if not package:
@@ -1089,12 +1183,12 @@ async def sync_capability_marketplace(
 
 @router.get("/marketplace-candidates")
 async def get_capability_marketplace_candidates(
-    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     source_id: str | None = None,
     candidate_status: str | None = None,
 ) -> dict:
-    _user, org_id, _role = member
+    _user, org_id = admin
     client = get_supabase_client(settings)
     return {
         "items": list_marketplace_candidates(
