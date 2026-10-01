@@ -372,3 +372,52 @@ def test_refresh_package_mcp_runtime_removes_disabled_tool_schema() -> None:
     expected_key = mcp_openai_tool_name("Package MCP", "search_records")
     unregister.assert_called_once_with([expected_key])
     register.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_portable_mcp_verification_inconclusive_stays_non_success(settings):
+    registry = ToolRegistry()
+    registry._mcp_meta = {
+        "mcp_portable_create": {
+            "mcp_tool_id": "tool-1",
+            "capability_tier": "write",
+        }
+    }
+    ctx = ToolContext(
+        org_id="org-1",
+        user_id="user-1",
+        settings=settings,
+    )
+    with patch(
+        "app.services.mcp_client_service.get_mcp_client_service"
+    ) as get_svc:
+        get_svc.return_value.get_enabled_tools_for_org = AsyncMock(
+            return_value=[
+                {
+                    "name": "mcp_portable_create",
+                    "mcp_tool_id": "tool-1",
+                }
+            ]
+        )
+        get_svc.return_value.execute_tool = AsyncMock(
+            return_value={
+                "status": "verification_inconclusive",
+                "result": {"id": "remote-1"},
+                "verification": {
+                    "providerAccepted": True,
+                    "providerAcceptanceIsTerminalSuccess": False,
+                },
+                "latency_ms": 10,
+            }
+        )
+        raw = await registry._execute_mcp_tool(
+            ctx,
+            "mcp_portable_create",
+            {"name": "Ada", "approval_id": "approval-1"},
+        )
+
+    assert raw["success"] is False
+    assert raw["error_code"] == "verification_inconclusive"
+    assert raw["provider_accepted"] is True
+    assert raw["verification_inconclusive"] is True
+    assert raw["result"]["id"] == "remote-1"
