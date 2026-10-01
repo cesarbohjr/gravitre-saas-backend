@@ -1422,6 +1422,19 @@ export const marketplaceApi = {
     ),
 }
 
+export interface PortableCapabilitySecurityScan {
+  risk?: "low" | "moderate" | "high" | "blocked" | string
+  blocked?: boolean
+  findings?: Array<{ severity?: string; code?: string; path?: string | null; detail?: string }>
+  externalHosts?: string[]
+  oauthScopes?: string[]
+  requiredSecrets?: string[]
+  scriptsScanned?: number
+  promptFilesScanned?: number
+  executionPerformed?: boolean
+  limitations?: string
+}
+
 export interface PortableCapabilityPackage {
   id?: string
   name: string
@@ -1440,6 +1453,7 @@ export interface PortableCapabilityPackage {
   status?: string
   installed_at?: string
   inspection?: Record<string, unknown>
+  security_scan?: PortableCapabilitySecurityScan
 }
 
 export interface CapabilityMarketplaceSource {
@@ -1469,6 +1483,7 @@ export interface CapabilityMarketplaceCandidate {
   content_digest?: string | null
   status: "pending_review" | "approved" | "rejected" | "installed" | "stale" | string
   inspection?: Record<string, unknown>
+  security_scan?: PortableCapabilitySecurityScan
   discovered_at?: string
   review_notes?: string | null
 }
