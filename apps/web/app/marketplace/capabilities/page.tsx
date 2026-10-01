@@ -33,6 +33,9 @@ export default function CapabilityMarketplacePage() {
   const [busy, setBusy] = useState(false)
   const [packageBusy, setPackageBusy] = useState<string | null>(null)
   const [sourceBusy, setSourceBusy] = useState<string | null>(null)
+  const [zipFile, setZipFile] = useState<File | null>(null)
+  const [zipBusy, setZipBusy] = useState(false)
+  const [zipInspection, setZipInspection] = useState<Awaited<ReturnType<typeof portableCapabilitiesApi.inspectZip>> | null>(null)
 
   const packages = useSWR(
     user ? "portable-capability-packages" : null,
@@ -53,6 +56,41 @@ export default function CapabilityMarketplacePage() {
   const pendingCandidates = candidateRows.filter((row) => row.status === "pending_review")
   const quarantined = packageRows.filter((row) => row.status === "quarantined").length
   const signed = packageRows.filter((row) => row.signature_status === "verified").length
+
+  async function inspectZip() {
+    if (!zipFile) return
+    setZipBusy(true)
+    try {
+      const result = await portableCapabilitiesApi.inspectZip(zipFile)
+      setZipInspection(result)
+      if (result.installationAllowed) {
+        toast.success("ZIP inspection complete")
+      } else {
+        toast.error("This package is blocked by capability policy")
+      }
+    } catch (error) {
+      setZipInspection(null)
+      toast.error(error instanceof Error ? error.message : "ZIP inspection failed")
+    } finally {
+      setZipBusy(false)
+    }
+  }
+
+  async function installZip() {
+    if (!zipFile || !zipInspection?.installationAllowed || !isAdmin) return
+    setZipBusy(true)
+    try {
+      await portableCapabilitiesApi.installZip(zipFile)
+      toast.success("Portable capability installed")
+      setZipFile(null)
+      setZipInspection(null)
+      await packages.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ZIP install failed")
+    } finally {
+      setZipBusy(false)
+    }
+  }
 
   async function addMarketplace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -148,6 +186,66 @@ export default function CapabilityMarketplacePage() {
             <GravitreMetric label="Signed packages" value={signed} icon={<ShieldCheck className="h-4 w-4" />} />
             <GravitreMetric label="Quarantined" value={quarantined} icon={<AlertTriangle className="h-4 w-4" />} />
           </section>
+
+          <GravitreSurface>
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">Import a skill or plugin ZIP</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Gravitre inspects the package before installation. Scripts remain inert and cannot bypass approvals or verified execution.
+                </p>
+                <div className="mt-3 max-w-xl">
+                  <Label htmlFor="portable-capability-zip">Package ZIP</Label>
+                  <Input
+                    id="portable-capability-zip"
+                    className="mt-1.5"
+                    type="file"
+                    accept=".zip,application/zip"
+                    onChange={(event) => {
+                      setZipFile(event.target.files?.[0] ?? null)
+                      setZipInspection(null)
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!zipFile || zipBusy}
+                  onClick={() => void inspectZip()}
+                >
+                  {zipBusy ? "Inspecting…" : "Inspect"}
+                </Button>
+                {isAdmin && zipInspection?.installationAllowed ? (
+                  <Button
+                    type="button"
+                    disabled={!zipFile || zipBusy}
+                    onClick={() => void installZip()}
+                  >
+                    {zipBusy ? "Installing…" : "Install"}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            {zipInspection ? (
+              <div className="mt-4 rounded border border-divide p-3 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>
+                    Format: {String(zipInspection.inspection.format ?? "unknown").replace(/_/g, " ")}
+                  </span>
+                  <span>License: {String(zipInspection.inspection.license ?? "Review required")}</span>
+                  <span>Risk: {riskLabel(String(zipInspection.inspection.risk ?? "unknown"))}</span>
+                  <span>{zipInspection.resources.length} resources</span>
+                </div>
+                <p className="mt-2">
+                  {zipInspection.installationAllowed
+                    ? "Policy check passed. Installation still remains subject to Gravitre runtime permissions and verification."
+                    : "Installation is blocked by the current license or security policy."}
+                </p>
+              </div>
+            ) : null}
+          </GravitreSurface>
 
           <section className="grid gap-6 lg:grid-cols-[1.45fr_0.85fr]">
             <GravitreSurface className="p-0">
