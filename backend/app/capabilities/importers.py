@@ -15,6 +15,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from app.capabilities.packages import PackageInspection, inspect_package
+from app.capabilities.security_scan import scan_bundle_security
 
 MAX_FILES = 250
 MAX_TEXT_BYTES = 2_000_000
@@ -28,6 +29,7 @@ class ImportedBundle:
     manifest: dict[str, Any]
     skill_md: str | None
     inspection: PackageInspection
+    security_scan: dict[str, Any]
     resources: tuple[dict[str, Any], ...]
     ignored_files: tuple[str, ...]
 
@@ -94,6 +96,7 @@ def import_file_bundle(files: dict[str, str]) -> ImportedBundle:
         manifest = {"name": manifest.get("name") or "mcp-package", "format": "mcp", "mcpServers": manifest.get("mcpServers") or manifest}
 
     inspection = inspect_package(manifest, skill_md=skill_md)
+    security_scan = scan_bundle_security(normalized, manifest)
 
     resources: list[dict[str, Any]] = []
     ignored: list[str] = []
@@ -116,6 +119,7 @@ def import_file_bundle(files: dict[str, str]) -> ImportedBundle:
         manifest=manifest,
         skill_md=skill_md,
         inspection=inspection,
+        security_scan=security_scan,
         resources=tuple(resources),
         ignored_files=tuple(sorted(ignored)),
     )
