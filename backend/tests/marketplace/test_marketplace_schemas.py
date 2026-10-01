@@ -348,3 +348,21 @@ def test_capability_package_rejects_embedded_executable_source_content() -> None
             },
             publish=True,
         )
+
+
+def test_capability_package_rejects_invalid_snapshot_digest() -> None:
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config(
+            "capability_package",
+            {
+                "repository_url": "https://github.com/acme/capabilities",
+                "commit_sha": "a" * 40,
+                "content_digest": "sha256:" + "b" * 64,
+                "snapshot_digest": "sha256:not-a-digest",
+                "package_format": "agent_skill",
+                "license_policy": "allow",
+                "risk_level": "low",
+                "security_scan": {"blocked": False, "risk": "low"},
+            },
+            publish=True,
+        )
