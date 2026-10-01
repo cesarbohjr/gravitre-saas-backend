@@ -1,16 +1,29 @@
-"""Read-only tenant capability snapshot for frontend consumption."""
+"""Tenant capability registry and portable package ingestion."""
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
-from app.auth.dependencies import get_environment_context, require_org_member
+from app.auth.dependencies import get_environment_context, require_admin, require_org_member
+from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.registry import tenant_capability_snapshot
+from app.capabilities.repository import install_package, list_packages
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
 router = APIRouter(prefix="/api/capabilities", tags=["capabilities"])
+
+
+class PackageInspectRequest(BaseModel):
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    skill_md: str | None = None
+
+
+class PackageInstallRequest(PackageInspectRequest):
+    source_type: Literal["manual", "github", "zip", "mcp", "marketplace"] = "manual"
+    source_uri: str | None = None
 
 
 @router.get("")
@@ -21,13 +34,66 @@ async def get_capabilities(
 ) -> dict:
     _user, org_id, _role = member
     if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    snapshot = tenant_capability_snapshot(client, org_id, environment_name=environment_name)
+    snapshot["portablePackages"] = list_packages(client, org_id)
+    snapshot["portablePackagePolicy"] = {
+        "executionOwner": "gravitre",
+        "directImportedCodeExecution": False,
+        "writeActions": "canonical approval + verified-write lifecycle",
+        "supportedFormats": ["agent_skill", "openai_plugin", "claude_plugin", "gravitre", "mcp"],
+    }
+    return snapshot
+
+
+@router.post("/packages/inspect")
+async def inspect_portable_package(
+    body: PackageInspectRequest,
+    _member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+) -> dict:
+    """Inspect a package without installing or executing it."""
+    inspection = inspect_package(body.manifest, skill_md=body.skill_md)
+    return {"inspection": inspection.as_dict(), "installationAllowed": installation_allowed(inspection)}
+
+
+@router.get("/packages")
+async def get_portable_packages(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    return {"items": list_packages(client, org_id)}
+
+
+@router.post("/packages/install")
+async def install_portable_package(
+    body: PackageInstallRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Install inert package metadata. High-risk packages are quarantined."""
+    user, org_id = admin
+    inspection = inspect_package(body.manifest, skill_md=body.skill_md)
+    if not installation_allowed(inspection):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Organization context required",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Package blocked by capability policy", "inspection": inspection.as_dict()},
         )
     client = get_supabase_client(settings)
-    return tenant_capability_snapshot(
+    installed = install_package(
         client,
-        org_id,
-        environment_name=environment_name,
+        org_id=org_id,
+        user_id=str(user.get("user_id") or ""),
+        inspection=inspection,
+        manifest=body.manifest,
+        source_type=body.source_type,
+        source_uri=body.source_uri,
     )
+    return {
+        "package": installed,
+        "inspection": inspection.as_dict(),
+        "executionOwner": "gravitre",
+        "directExecutionEnabled": False,
+    }
