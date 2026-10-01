@@ -159,7 +159,8 @@ async def inspect_portable_bundle(
     inspection = bundle.inspection
     return {
         "inspection": inspection.as_dict(),
-        "installationAllowed": installation_allowed(inspection),
+        "installationAllowed": installation_allowed(inspection) and not bool(bundle.security_scan.get("blocked")),
+        "securityScan": bundle.security_scan,
         "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
         "resources": [
             {"path": row["path"], "kind": row["kind"], "executable": row["executable"]}
@@ -181,10 +182,14 @@ async def install_portable_bundle(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     inspection = bundle.inspection
-    if not installation_allowed(inspection):
+    if not installation_allowed(inspection) or bool(bundle.security_scan.get("blocked")):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": "Package blocked by capability policy", "inspection": inspection.as_dict()},
+            detail={
+                "message": "Package blocked by capability security policy",
+                "inspection": inspection.as_dict(),
+                "securityScan": bundle.security_scan,
+            },
         )
     signature_status = "unsigned"
     publisher_verified = False
@@ -227,6 +232,7 @@ async def install_portable_bundle(
         signature_status=signature_status,
         publisher_verified=publisher_verified,
         content_digest=bundle_digest(body.files),
+        security_scan=bundle.security_scan,
     )
     package_id = str(installed.get("id") or "")
     if package_id:
@@ -241,6 +247,7 @@ async def install_portable_bundle(
         "inspection": inspection.as_dict(),
         "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
         "resourceCount": len(bundle.resources),
+        "securityScan": bundle.security_scan,
         "directExecutionEnabled": False,
     }
 
@@ -263,7 +270,8 @@ async def inspect_portable_zip(
     inspection = bundle.inspection
     return {
         "inspection": inspection.as_dict(),
-        "installationAllowed": installation_allowed(inspection),
+        "installationAllowed": installation_allowed(inspection) and not bool(bundle.security_scan.get("blocked")),
+        "securityScan": bundle.security_scan,
         "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
         "resources": [
             {"path": row["path"], "kind": row["kind"], "executable": row["executable"]}
@@ -296,12 +304,13 @@ async def install_portable_zip(
         ) from exc
 
     inspection = bundle.inspection
-    if not installation_allowed(inspection):
+    if not installation_allowed(inspection) or bool(bundle.security_scan.get("blocked")):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
-                "message": "Package blocked by capability policy",
+                "message": "Package blocked by capability security policy",
                 "inspection": inspection.as_dict(),
+                "securityScan": bundle.security_scan,
             },
         )
 
@@ -348,6 +357,7 @@ async def install_portable_zip(
         # Signature validity proves integrity, not publisher identity.
         publisher_verified=False,
         content_digest=bundle_digest(files),
+        security_scan=bundle.security_scan,
     )
     package_id = str(installed.get("id") or "")
     if package_id:
@@ -362,6 +372,7 @@ async def install_portable_zip(
         "inspection": inspection.as_dict(),
         "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
         "resourceCount": len(bundle.resources),
+        "securityScan": bundle.security_scan,
         "directExecutionEnabled": False,
         "fileName": archive.filename,
     }
@@ -579,6 +590,20 @@ async def review_capability_marketplace_candidate(
 ) -> dict:
     user, org_id = admin
     client = get_supabase_client(settings)
+    candidate = get_marketplace_candidate(client, org_id, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability candidate not found")
+    if body.decision == "approve":
+        security_scan = candidate.get("security_scan") if isinstance(candidate.get("security_scan"), dict) else {}
+        if (
+            str(candidate.get("license_policy") or "") == "block"
+            or str(candidate.get("risk_level") or "") == "blocked"
+            or bool(security_scan.get("blocked"))
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Blocked capability candidate cannot be approved",
+            )
     row = review_marketplace_candidate(
         client,
         org_id=org_id,
@@ -611,8 +636,11 @@ async def install_capability_marketplace_candidate(
     files = dict(candidate.get("files") or {})
     bundle = import_file_bundle(files)
     inspection = bundle.inspection
-    if not installation_allowed(inspection):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Candidate is blocked by capability policy")
+    if not installation_allowed(inspection) or bool(bundle.security_scan.get("blocked")):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Candidate is blocked by capability security policy",
+        )
     source = get_marketplace_source(
         client,
         org_id,
@@ -631,6 +659,7 @@ async def install_capability_marketplace_candidate(
         publisher_verified=False,
         signature_status="unsigned",
         content_digest=str(candidate.get("content_digest") or bundle_digest(files)),
+        security_scan=bundle.security_scan,
     )
     package_id = str(installed.get("id") or "")
     if package_id:
@@ -646,5 +675,6 @@ async def install_capability_marketplace_candidate(
         "package": installed,
         "candidateId": candidate_id,
         "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
+        "securityScan": bundle.security_scan,
         "directExecutionEnabled": False,
     }
