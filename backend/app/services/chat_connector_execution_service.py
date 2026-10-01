@@ -2775,7 +2775,7 @@ class ChatConnectorExecutionService:
             is_already_existed_effect,
         )
         from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
-        from app.workflows.repository import create_run, create_step, update_run, update_step
+        from app.workflows.repository import create_run, create_step, merge_run_parameters, update_step
 
         structured = result.structured if isinstance(result.structured, dict) else {}
         already_existed = is_already_existed_effect(structured)
@@ -2992,6 +2992,15 @@ class ChatConnectorExecutionService:
             if run_id and result.success
             else (result.result_url or (f"/runs/{run_id}" if run_id else None))
         )
+        can_schedule_verification = bool(
+            result.success
+            and plan.kind == "write"
+            and schedule_async_verification
+            and run_id
+            and tool_ctx is not None
+            and not inline_source_verified
+            and status != "flagged_for_review"
+        )
         if (
             result.success
             and plan.kind == "write"
@@ -2999,29 +3008,28 @@ class ChatConnectorExecutionService:
             and status != "flagged_for_review"
             and not inline_source_verified
         ):
-            if schedule_async_verification and run_id:
+            if can_schedule_verification and run_id:
                 try:
-                    update_run(
+                    # workflow_runs has no separate "verifying" enum. Keep the
+                    # canonical run nonterminal as running and expose the semantic
+                    # lifecycle through parameters for Runs/Activity/voice.
+                    merge_run_parameters(
                         client,
                         run_id,
-                        "verifying",
-                        parameters={
-                            **(
-                                (
-                                    client.table("workflow_runs")
-                                    .select("parameters")
-                                    .eq("id", run_id)
-                                    .limit(1)
-                                    .execute()
-                                    .data
-                                    or [{}]
-                                )[0].get("parameters", {})
-                            ),
+                        {
                             "execution_lifecycle": "verifying",
                             "verification_status": "pending",
                             "verification_mode": verification_mode,
                             "provider_accepted": True,
                             "provider_acceptance_is_terminal_success": False,
+                            "verification_context": {
+                                "summary": (result.body or "")[:2000] or None,
+                                "result_url": primary_result_url,
+                                "external_url": result.external_url,
+                                "entity_type": result.entity_type or "connector",
+                                "entity_id": result.entity_id or None,
+                                "integration": result.integration or plan.integration,
+                            },
                         },
                     )
                 except Exception as verify_state_exc:  # noqa: BLE001
@@ -3031,17 +3039,13 @@ class ChatConnectorExecutionService:
                         plan.invoke_action,
                         verify_state_exc,
                     )
-            elif verification_mode == "accepted_async":
-                status = "verification_inconclusive"
+            else:
+                # No verifier can run (accepted_async mode or missing tool context).
+                # Terminalize honestly as partial rather than claiming completion or
+                # leaving the run stuck forever in a nonterminal state.
+                status = "partial_success"
 
-        should_finalize_now = not (
-            result.success
-            and plan.kind == "write"
-            and schedule_async_verification
-            and run_id
-            and not inline_source_verified
-            and status != "flagged_for_review"
-        )
+        should_finalize_now = not can_schedule_verification
         try:
             if not should_finalize_now:
                 raise StopIteration
@@ -3095,7 +3099,7 @@ class ChatConnectorExecutionService:
         # Phase 3 — verification runs after provider acceptance without blocking
         # conversational delivery. The run remains VERIFYING until this worker
         # attaches source proof and terminalizes it.
-        if schedule_async_verification and run_id and tool_ctx is not None:
+        if can_schedule_verification and run_id and tool_ctx is not None:
             try:
                 from app.services.tool_types import ToolContext as _TC
                 from app.services.write_success_verification import (
