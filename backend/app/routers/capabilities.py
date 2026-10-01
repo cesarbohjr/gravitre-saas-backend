@@ -39,8 +39,8 @@ class PackageInspectRequest(BaseModel):
 
 class PackageBundleRequest(BaseModel):
     files: dict[str, str]
-    source_type: Literal["manual", "github", "zip", "mcp", "marketplace"] = "manual"
-    source_uri: str | None = None
+    source_type: Literal["manual", "github", "zip", "mcp", "marketplace"] = Field(default="manual", alias="sourceType")
+    source_uri: str | None = Field(default=None, alias="sourceUri")
     signing_public_key_pem: str | None = Field(default=None, alias="signingPublicKeyPem")
     signature: str | None = None
 
