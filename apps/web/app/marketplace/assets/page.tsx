@@ -310,7 +310,11 @@ function MarketplaceAssetsContent() {
   const initialDepartment = searchParams.get("department")
   const initialPrice = searchParams.get("price")
   const { isAdmin } = useOrgAdmin()
-  const validTypes = useMemo(() => new Set(TYPE_FILTERS.map((filter) => filter.id)), [])
+  const visibleTypeFilters = useMemo(
+    () => isAdmin ? TYPE_FILTERS : TYPE_FILTERS.filter((filter) => filter.id !== "capability_package"),
+    [isAdmin],
+  )
+  const validTypes = useMemo(() => new Set(visibleTypeFilters.map((filter) => filter.id)), [visibleTypeFilters])
   const [typeFilter, setTypeFilter] = useState<string>(
     initialType && validTypes.has(initialType as (typeof TYPE_FILTERS)[number]["id"]) ? initialType : "all",
   )
@@ -351,6 +355,12 @@ function MarketplaceAssetsContent() {
   useEffect(() => {
     syncFiltersToUrl()
   }, [syncFiltersToUrl])
+
+  useEffect(() => {
+    if (!isAdmin && typeFilter === "capability_package") {
+      setTypeFilter("all")
+    }
+  }, [isAdmin, typeFilter])
 
   const swrKey = user
     ? (["marketplace-assets", typeFilter, departmentFilter, debouncedSearch] as const)
@@ -511,12 +521,14 @@ function MarketplaceAssetsContent() {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <AskGravitreSummonButton />
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/marketplace/capabilities">
-                    Skills & plugins
-                    <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
+                {isAdmin ? (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/marketplace/capabilities">
+                      Skills & plugins
+                      <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+                    </Link>
+                  </Button>
+                ) : null}
                 <Button asChild size="sm" variant="outline">
                   <Link href="/marketplace/installed">
                     View installed
@@ -538,7 +550,7 @@ function MarketplaceAssetsContent() {
             </div>
 
             <div role="group" aria-label="Asset type" className={cn(HUB_TABS.nav, "mt-6")}>
-              {TYPE_FILTERS.map((filter) => {
+              {visibleTypeFilters.map((filter) => {
                 const count =
                   filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
                 return (
