@@ -60,4 +60,17 @@ async def test_official_catalog_does_not_substitute_failed_sources(monkeypatch):
 def test_community_source_only_allows_curated_official_sources():
     assert community_catalog.community_source("openai-skills") is not None
     assert community_catalog.community_source("anthropic-skills") is not None
+    assert community_catalog.community_source("openai-plugins") is not None
+    assert community_catalog.community_source("anthropic-plugins") is not None
+    assert community_catalog.community_source("anthropic-partner-plugins") is not None
     assert community_catalog.community_source("arbitrary-github") is None
+
+
+def test_official_catalog_includes_skill_and_plugin_sources():
+    kinds = {source.kind for source in community_catalog.OFFICIAL_COMMUNITY_SOURCES}
+    assert kinds == {"skill", "plugin"}
+    plugin_sources = {
+        source.key for source in community_catalog.OFFICIAL_COMMUNITY_SOURCES
+        if source.kind == "plugin"
+    }
+    assert {"openai-plugins", "anthropic-plugins", "anthropic-partner-plugins"} <= plugin_sources
