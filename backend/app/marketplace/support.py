@@ -45,6 +45,8 @@ def _entity_deep_link(entity_type: str, entity_id: str, metadata: dict[str, Any]
         if connector_type:
             return f"/connectors?type={connector_type}"
         return "/connectors"
+    if entity_type == "capability_package":
+        return "/marketplace/capabilities"
     return None
 
 
