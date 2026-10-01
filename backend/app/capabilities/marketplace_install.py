@@ -9,7 +9,7 @@ import httpx
 
 from app.capabilities.importers import MAX_FILES, RESOURCE_SUFFIXES, SCRIPT_SUFFIXES, import_file_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
-from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
+from app.capabilities.provenance import bundle_digest, inert_snapshot_digest, normalize_github_repository_url
 from app.capabilities.repository import install_package, record_package_version, replace_package_resources
 
 _MAX_PACKAGE_FILES = min(MAX_FILES, 100)
@@ -157,6 +157,14 @@ def install_marketplace_capability_package(
     # New Marketplace assets are immutable inert snapshots. Older assets that
     # predate snapshotting may fall back to their exact Git commit.
     if manifest or resource_rows:
+        actual_snapshot_digest = inert_snapshot_digest(
+            manifest=manifest,
+            resources=resource_rows,
+        )
+        if actual_snapshot_digest != str(config.snapshot_digest):
+            raise CapabilityMarketplaceInstallError(
+                "Capability Marketplace snapshot digest does not match the reviewed artifact"
+            )
         inspection = inspect_package(manifest, skill_md=skill_md)
         security_scan = config.security_scan if isinstance(config.security_scan, dict) else {}
         if (
