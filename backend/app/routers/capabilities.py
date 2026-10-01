@@ -641,6 +641,100 @@ async def review_portable_package(
     return {"package": updated, "reviewed": True}
 
 
+@router.post("/packages/{package_id}/marketplace-draft")
+async def create_portable_capability_marketplace_draft(
+    package_id: str,
+    body: CapabilityMarketplaceDraftRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    package = get_package(client, org_id, package_id)
+    if not package:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
+    if str(package.get("status") or "") != "installed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Capability package must be approved and installed before publishing",
+        )
+    commit_sha = str(package.get("source_commit_sha") or "").strip()
+    package_path = str(package.get("source_package_path") or "").strip()
+    digest = str(package.get("content_digest") or "").strip()
+    source_uri = str(package.get("source_uri") or "").strip()
+    repository_url = source_uri.split("@", 1)[0].strip()
+    if not repository_url or not commit_sha or not digest:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only Git-pinned capability packages can be published to Marketplace",
+        )
+    security_scan = package.get("security_scan") if isinstance(package.get("security_scan"), dict) else {}
+    if (
+        str(package.get("license_policy") or "") == "block"
+        or str(package.get("risk_level") or "") == "blocked"
+        or bool(security_scan.get("blocked"))
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Blocked capability packages cannot be published",
+        )
+
+    inspection = package.get("inspection") if isinstance(package.get("inspection"), dict) else {}
+    permissions = inspection.get("permissions") if isinstance(inspection.get("permissions"), list) else []
+    components = inspection.get("components") if isinstance(inspection.get("components"), list) else []
+    tags = ["portable-capability", str(package.get("package_format") or "package").replace("_", "-")]
+    if any(isinstance(row, dict) and row.get("kind") == "mcp" for row in components):
+        tags.append("mcp")
+
+    from app.marketplace.crud import MarketplaceCrudError, create_org_asset
+
+    try:
+        result = create_org_asset(
+            client,
+            org_id,
+            actor_id=str(user.get("user_id") or ""),
+            slug=body.slug,
+            title=body.title or str(package.get("name") or "Portable capability"),
+            asset_type="capability_package",
+            config={
+                "repository_url": repository_url,
+                "commit_sha": commit_sha,
+                "package_path": package_path,
+                "content_digest": digest,
+                "package_format": str(package.get("package_format") or "unknown"),
+                "license": package.get("license"),
+                "license_policy": str(package.get("license_policy") or "review"),
+                "risk_level": str(package.get("risk_level") or "moderate"),
+                "signature_status": str(package.get("signature_status") or "unsigned"),
+                "security_scan": security_scan,
+            },
+            description=body.description or package.get("description"),
+            category=body.category,
+            department=body.department,
+            tags=tags,
+            required_permissions=permissions,
+            required_connectors=[],
+            pricing_type=body.pricing_type,
+            price_cents=body.price_cents,
+        )
+    except MarketplaceCrudError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": str(exc), "code": exc.code},
+        ) from exc
+
+    return {
+        **result,
+        "sourcePackageId": package_id,
+        "sourceCommitSha": commit_sha,
+        "contentDigest": digest,
+        "next": {
+            "internalReview": f"/api/marketplace/assets/{body.slug}/submit-for-review",
+            "publicReview": f"/api/marketplace/assets/{body.slug}/submit-for-public-review",
+        },
+    }
+
+
 @router.post("/packages/{package_id}/prepare-mcp")
 async def prepare_portable_package_mcp(
     package_id: str,
