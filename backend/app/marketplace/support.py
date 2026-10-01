@@ -247,9 +247,15 @@ def _deactivate_install_entities(
     entity_id: str | None,
     metadata: dict[str, Any],
 ) -> dict[str, list[str]]:
-    """Soft-deactivate agents/workflows/RAG spawned by a marketplace install."""
+    """Soft-deactivate entities spawned by a marketplace install."""
     now = _now()
-    deactivated: dict[str, list[str]] = {"agents": [], "workflows": [], "ragSources": []}
+    deactivated: dict[str, list[str]] = {
+        "agents": [],
+        "workflows": [],
+        "ragSources": [],
+        "capabilityPackages": [],
+        "mcpServers": [],
+    }
 
     agent_ids: list[str] = []
     for raw in metadata.get("agentIds") or []:
@@ -298,6 +304,35 @@ def _deactivate_install_entities(
             deactivated["ragSources"].append(rag_id)
         except Exception:  # noqa: BLE001
             continue
+
+    if entity_type == "capability_package" and entity_id:
+        capability_id = str(entity_id)
+        try:
+            client.table("capability_packages").update(
+                {"status": "disabled", "updated_at": now}
+            ).eq("id", capability_id).eq("org_id", org_id).execute()
+            deactivated["capabilityPackages"].append(capability_id)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            rows = (
+                client.table("mcp_servers")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("source_capability_package_id", capability_id)
+                .execute()
+            )
+            mcp_ids = [str(row.get("id")) for row in (rows.data or []) if row.get("id")]
+            (
+                client.table("mcp_servers")
+                .update({"enabled": False, "activation_state": "disabled"})
+                .eq("org_id", org_id)
+                .eq("source_capability_package_id", capability_id)
+                .execute()
+            )
+            deactivated["mcpServers"].extend(mcp_ids)
+        except Exception:  # noqa: BLE001
+            pass
 
     return deactivated
 
