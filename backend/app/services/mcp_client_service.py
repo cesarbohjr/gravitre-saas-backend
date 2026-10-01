@@ -200,6 +200,56 @@ def refresh_package_mcp_runtime_registration(
         register_action_schemas(enabled_schemas)
 
 
+def remove_package_mcp_runtime_registration(
+    client: Any,
+    *,
+    org_id: str,
+    server_id: str,
+) -> None:
+    """Remove runtime catalog/schema entries for a package-managed MCP server."""
+    server_rows = (
+        client.table("mcp_servers")
+        .select("id,server_name,source_capability_package_id")
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not server_rows:
+        return
+    server = dict(server_rows[0])
+    if not bool(server.get("source_capability_package_id")):
+        return
+
+    tools = list(
+        client.table("mcp_tools")
+        .select("tool_name")
+        .eq("server_id", server_id)
+        .eq("org_id", org_id)
+        .execute()
+        .data
+        or []
+    )
+    server_name = str(server.get("server_name") or server_id)
+
+    from app.connectors.action_catalog.extensions import (
+        unregister_action_schemas,
+        unregister_vendor_extension,
+    )
+    from app.services.mcp_catalog_sync import vendor_slug_for_mcp_server
+
+    unregister_action_schemas(
+        [
+            mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
+            for row in tools
+            if str(row.get("tool_name") or "").strip()
+        ]
+    )
+    unregister_vendor_extension(vendor_slug_for_mcp_server(server_name, server_id))
+
+
 class MCPClientService:
     """Org-scoped MCP tool discovery and execution with mandatory write approval."""
 
