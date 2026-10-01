@@ -474,6 +474,14 @@ def get_package_version(
     return rows[0] if rows else None
 
 
+def _clear_time_sensitive_publisher_trust(patch: dict[str, Any]) -> dict[str, Any]:
+    patch["publisher_trusted"] = False
+    patch["publisher_trust_scope"] = "none"
+    patch["publisher_verified"] = False
+    patch["marketplace_publisher_id"] = None
+    return patch
+
+
 def rollback_status_for_snapshot(snapshot: dict[str, Any]) -> str:
     if str(snapshot.get("license_policy") or "") == "block":
         return "quarantined"
@@ -500,10 +508,7 @@ def restore_package_version(
     # Trust is time-sensitive: a publisher key or Marketplace verification may
     # have changed since this snapshot was recorded. Never resurrect trust
     # state from historical package content.
-    patch["publisher_trusted"] = False
-    patch["publisher_trust_scope"] = "none"
-    patch["publisher_verified"] = False
-    patch["marketplace_publisher_id"] = None
+    _clear_time_sensitive_publisher_trust(patch)
     patch["installed_by"] = user_id or None
     response = (
         client.table("capability_packages")
