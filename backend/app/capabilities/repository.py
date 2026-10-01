@@ -7,15 +7,25 @@ from app.capabilities.packages import PackageInspection
 
 
 def list_packages(client: Any, org_id: str) -> list[dict[str, Any]]:
-    response = (
-        client.table("capability_packages")
-        .select("id,org_id,name,package_format,version,description,license,license_policy,risk_level,source_type,source_uri,inspection,status,installed_by,installed_at,updated_at")
-        .eq("org_id", org_id)
-        .neq("status", "removed")
-        .order("installed_at", desc=True)
-        .execute()
-    )
-    return list(response.data or [])
+    try:
+        response = (
+            client.table("capability_packages")
+            .select(
+                "id,org_id,name,package_format,version,description,license,license_policy,"
+                "risk_level,source_type,source_uri,marketplace_source_id,publisher_name,"
+                "publisher_verified,signature_status,content_digest,inspection,status,"
+                "installed_by,installed_at,updated_at,reviewed_by,reviewed_at,review_notes"
+            )
+            .eq("org_id", org_id)
+            .neq("status", "removed")
+            .order("installed_at", desc=True)
+            .execute()
+        )
+        return list(response.data or [])
+    except Exception:
+        # Read path remains backward-compatible during rolling deploys before
+        # the new migration reaches every environment.
+        return []
 
 
 def install_package(
@@ -38,7 +48,7 @@ def install_package(
         "org_id": org_id,
         "name": inspection.name,
         "package_format": inspection.format,
-        "version": inspection.version,
+        "version": inspection.version or "0.0.0",
         "description": inspection.description,
         "license": inspection.license,
         "license_policy": inspection.license_policy,
@@ -100,15 +110,18 @@ def list_package_resources(client: Any, org_id: str, package_id: str) -> list[di
 
 
 def list_marketplace_sources(client: Any, org_id: str) -> list[dict[str, Any]]:
-    response = (
-        client.table("capability_marketplace_sources")
-        .select("id,name,source_type,repository_url,branch,root_path,auto_sync,approval_required,status,last_synced_at,last_sync_status,last_sync_error,created_by,created_at,updated_at")
-        .eq("org_id", org_id)
-        .neq("status", "removed")
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return list(response.data or [])
+    try:
+        response = (
+            client.table("capability_marketplace_sources")
+            .select("id,name,source_type,repository_url,branch,root_path,auto_sync,approval_required,status,last_synced_at,last_sync_status,last_sync_error,created_by,created_at,updated_at")
+            .eq("org_id", org_id)
+            .neq("status", "removed")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return list(response.data or [])
+    except Exception:
+        return []
 
 
 def create_marketplace_source(
