@@ -1439,6 +1439,24 @@ export interface CapabilityMarketplaceSource {
   last_sync_status?: string | null
 }
 
+export interface CapabilityMarketplaceCandidate {
+  id: string
+  marketplace_source_id: string
+  package_path: string
+  name: string
+  package_format: string
+  version?: string | null
+  description?: string | null
+  license?: string | null
+  license_policy: string
+  risk_level: string
+  content_digest?: string | null
+  status: "pending_review" | "approved" | "rejected" | "installed" | "stale" | string
+  inspection?: Record<string, unknown>
+  discovered_at?: string
+  review_notes?: string | null
+}
+
 export const portableCapabilitiesApi = {
   listPackages: () =>
     fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
@@ -1462,11 +1480,35 @@ export const portableCapabilitiesApi = {
         discovered: number
         ingested: number
         rejected: Array<{ root: string; name: string; reason: string }>
+        candidates?: CapabilityMarketplaceCandidate[]
         approvalRequired: boolean
+        installed?: number
       }
       sourceId: string
       status: string
     }>(apiUrl(`/api/capabilities/marketplaces/${encodeURIComponent(sourceId)}/sync`), {}),
+  listCandidates: (params?: { sourceId?: string; status?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.sourceId) query.set("source_id", params.sourceId)
+    if (params?.status) query.set("candidate_status", params.status)
+    const suffix = query.toString() ? `?${query.toString()}` : ""
+    return fetcher<{ items: CapabilityMarketplaceCandidate[] }>(
+      apiUrl(`/api/capabilities/marketplace-candidates${suffix}`),
+    )
+  },
+  reviewCandidate: (
+    candidateId: string,
+    body: { decision: "approve" | "reject"; notes?: string },
+  ) =>
+    postJson<{ candidate: CapabilityMarketplaceCandidate }>(
+      apiUrl(`/api/capabilities/marketplace-candidates/${encodeURIComponent(candidateId)}/review`),
+      body,
+    ),
+  installCandidate: (candidateId: string) =>
+    postJson<{ package: PortableCapabilityPackage; candidateId: string }>(
+      apiUrl(`/api/capabilities/marketplace-candidates/${encodeURIComponent(candidateId)}/install`),
+      {},
+    ),
   reviewPackage: (
     packageId: string,
     body: { status: "installed" | "quarantined" | "disabled"; notes?: string },
