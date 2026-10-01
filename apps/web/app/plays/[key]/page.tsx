@@ -11,11 +11,13 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetcher } from "@/lib/fetcher"
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, PlayCircle } from "lucide-react"
+import { PlaySetup } from "@/components/plays/play-setup"
 
 type Readiness = {
   observe_ready?: boolean
   recommend_ready?: boolean
   act_with_approval_ready?: boolean
+  act_within_policy_ready?: boolean
   blockers?: string[]
   connector_groups?: Array<Record<string, unknown>>
   actions?: Array<Record<string, unknown>>
@@ -92,6 +94,8 @@ export default function PlayDetailPage() {
                 <p className="mt-4 text-xs text-muted-foreground">This Play coordinates existing Gravitre capabilities. Workflows remain the execution authority, and verified business results require source-of-record evidence.</p>
               </section>
 
+              <PlaySetup playKey={data.play.key} playVersion={data.play.version} readiness={data.readiness} />
+
               <section className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
                   <p className="text-xs text-muted-foreground">Linked workflows</p>
@@ -101,7 +105,7 @@ export default function PlayDetailPage() {
                 <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
                   <p className="text-xs text-muted-foreground">Current operating capability</p>
                   <p className="mt-1 text-lg font-semibold">{mode(data.readiness)}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">Execution controls arrive only after setup and governance are validated.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">This reflects current readiness. Saved authority can never exceed these validated controls.</p>
                 </div>
               </section>
             </>
