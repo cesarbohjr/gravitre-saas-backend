@@ -5,6 +5,8 @@ import asyncio
 import json
 import re
 import time
+
+import httpx
 from datetime import datetime, timezone
 from typing import Any
 
@@ -111,6 +113,25 @@ def _streamable_http_client():
         from mcp.client.streamable_http import streamablehttp_client
 
         return streamablehttp_client
+
+
+def _restricted_mcp_httpx_client_factory(
+    headers: dict[str, str] | None = None,
+    timeout: Any = None,
+    auth: Any = None,
+) -> httpx.AsyncClient:
+    """MCP v1 HTTP client that never follows redirects automatically.
+
+    Portable MCP endpoints are validated before registration. Refusing redirects
+    prevents a reviewed public endpoint from redirecting the agent into a local,
+    link-local, or private-network target.
+    """
+    return httpx.AsyncClient(
+        headers=headers,
+        timeout=timeout,
+        auth=auth,
+        follow_redirects=False,
+    )
 
 
 def should_enable_discovered_mcp_tool(
@@ -828,7 +849,11 @@ class MCPClientService:
 
         url = str(server.get("server_url") or "")
         headers = self._auth_headers(server)
-        async with sse_client(url, headers=headers) as (read, write):
+        async with sse_client(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as (read, write):
             from mcp import ClientSession
 
             async with ClientSession(read, write) as session:
@@ -849,7 +874,11 @@ class MCPClientService:
         url = str(server.get("server_url") or "")
         headers = self._auth_headers(server)
         client_factory = _streamable_http_client()
-        async with client_factory(url, headers=headers) as streams:
+        async with client_factory(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
