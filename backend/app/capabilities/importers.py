@@ -6,14 +6,19 @@ executed here.
 """
 from __future__ import annotations
 
+import io
 import json
+import stat
+import zipfile
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Any
 
 from app.capabilities.packages import PackageInspection, inspect_package
 
 MAX_FILES = 250
 MAX_TEXT_BYTES = 2_000_000
+MAX_ZIP_BYTES = 10_000_000
 RESOURCE_SUFFIXES = (".md", ".txt", ".json", ".yaml", ".yml")
 SCRIPT_SUFFIXES = (".py", ".js", ".ts", ".sh", ".bash", ".ps1")
 
@@ -64,11 +69,15 @@ def import_file_bundle(files: dict[str, str]) -> ImportedBundle:
     if total > MAX_TEXT_BYTES:
         raise ValueError("Package textual content exceeds size limit")
 
-    normalized = {
-        str(path).strip().replace("\\", "/").lstrip("/"): str(content)
-        for path, content in files.items()
-        if str(path).strip()
-    }
+    normalized: dict[str, str] = {}
+    for raw_path, content in files.items():
+        path = str(raw_path).strip().replace("\\", "/")
+        if not path:
+            continue
+        parsed = PurePosixPath(path)
+        if parsed.is_absolute() or ".." in parsed.parts:
+            raise ValueError("Package contains unsafe path traversal")
+        normalized[str(parsed)] = str(content)
     manifest, manifest_path = _pick_manifest(normalized)
     skill_path = next(
         (path for path in normalized if path.lower() == "skill.md" or path.lower().endswith("/skill.md")),
@@ -110,3 +119,60 @@ def import_file_bundle(files: dict[str, str]) -> ImportedBundle:
         resources=tuple(resources),
         ignored_files=tuple(sorted(ignored)),
     )
+
+
+def read_zip_bundle(data: bytes) -> dict[str, str]:
+    """Extract supported UTF-8 capability files from a ZIP without executing them."""
+    if not data:
+        raise ValueError("ZIP package is empty")
+    if len(data) > MAX_ZIP_BYTES:
+        raise ValueError("ZIP package exceeds 10MB upload limit")
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile as exc:
+        raise ValueError("Invalid ZIP package") from exc
+
+    files: dict[str, str] = {}
+    total_text_bytes = 0
+    with archive:
+        infos = archive.infolist()
+        if len(infos) > MAX_FILES * 4:
+            raise ValueError("ZIP package contains too many entries")
+        for info in infos:
+            if info.is_dir():
+                continue
+            raw_path = str(info.filename or "").replace("\\", "/")
+            path = PurePosixPath(raw_path)
+            if not raw_path or path.is_absolute() or ".." in path.parts:
+                raise ValueError("ZIP contains unsafe path traversal")
+            mode = (info.external_attr >> 16) & 0xFFFF
+            if mode and stat.S_ISLNK(mode):
+                raise ValueError("ZIP symbolic links are not allowed")
+            if info.file_size > MAX_TEXT_BYTES:
+                raise ValueError("ZIP entry exceeds text size limit")
+
+            lower_name = path.name.lower()
+            suffix = path.suffix.lower()
+            supported = (
+                suffix in RESOURCE_SUFFIXES
+                or suffix in SCRIPT_SUFFIXES
+                or lower_name in {"skill.md", "plugin.json", "gravitre-plugin.json", ".mcp.json", "mcp.json"}
+            )
+            if not supported:
+                continue
+
+            payload = archive.read(info)
+            total_text_bytes += len(payload)
+            if total_text_bytes > MAX_TEXT_BYTES:
+                raise ValueError("ZIP textual content exceeds size limit")
+            try:
+                text_value = payload.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            files[str(path)] = text_value
+            if len(files) > MAX_FILES:
+                raise ValueError(f"ZIP package exceeds {MAX_FILES} supported text files")
+
+    if not files:
+        raise ValueError("ZIP contains no supported capability files")
+    return files
