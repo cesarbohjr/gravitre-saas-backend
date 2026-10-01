@@ -281,11 +281,14 @@ class MCPClientService:
             if source_package_id:
                 from app.capabilities.usage import record_mcp_execution
 
-                record_mcp_execution(
-                    self._client(),
-                    org_id=org_id,
-                    package_id=source_package_id,
-                    workflow_run_id=workflow_run_id,
+                asyncio.create_task(
+                    asyncio.to_thread(
+                        record_mcp_execution,
+                        self._client(),
+                        org_id=org_id,
+                        package_id=source_package_id,
+                        workflow_run_id=workflow_run_id,
+                    )
                 )
             return {"status": "completed", "result": result, "latency_ms": latency_ms}
         except Exception as exc:  # noqa: BLE001
