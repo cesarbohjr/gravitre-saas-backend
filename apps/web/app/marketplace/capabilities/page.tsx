@@ -121,6 +121,10 @@ export default function CapabilityMarketplacePage() {
   const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>("all")
   const [publishValidation, setPublishValidation] = useState<Record<string, Awaited<ReturnType<typeof portableCapabilitiesApi.validatePackage>>>>({})
 
+  const developerKit = useSWR(
+    user ? "portable-capability-developer-kit" : null,
+    () => portableCapabilitiesApi.developerKit(),
+  )
   const packages = useSWR(
     user ? "portable-capability-packages" : null,
     () => portableCapabilitiesApi.listPackages(),
@@ -495,6 +499,44 @@ export default function CapabilityMarketplacePage() {
             <GravitreMetric label="Signed packages" value={signed} icon={<ShieldCheck className="h-4 w-4" />} />
             <GravitreMetric label="Quarantined" value={quarantined} icon={<AlertTriangle className="h-4 w-4" />} />
           </section>
+
+          <GravitreSurface>
+            <details>
+              <summary className="cursor-pointer text-sm font-medium text-foreground">
+                Build portable capabilities for Gravitre
+              </summary>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Use the same open package model Gravitre consumes: Agent Skills, MCP declarations, and Gravitre plugin manifests.
+              </p>
+              {developerKit.data ? (
+                <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                  <div className="rounded border border-divide p-3">
+                    <p className="text-xs font-medium text-foreground">Manifest</p>
+                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                      {developerKit.data.manifestSchema} · v{developerKit.data.schemaVersion}
+                    </p>
+                  </div>
+                  <div className="rounded border border-divide p-3">
+                    <p className="text-xs font-medium text-foreground">Native activation</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {Object.entries(developerKit.data.supportedPortableActivation)
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                  <div className="rounded border border-divide p-3">
+                    <p className="text-xs font-medium text-foreground">Distribution</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {Object.entries(developerKit.data.distribution)
+                        .filter(([, enabled]) => enabled)
+                        .map(([key]) => key)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </details>
+          </GravitreSurface>
 
           {usage.data?.topCapabilities?.length ? (
             <GravitreSurface>
