@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_environment_context, require_admin, require_org_member
 from app.capabilities.activation import build_activation_plan
-from app.capabilities.importers import import_file_bundle
+from app.capabilities.importers import import_file_bundle, read_zip_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
 from app.capabilities.registry import tenant_capability_snapshot
@@ -241,6 +241,128 @@ async def install_portable_bundle(
         "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
         "resourceCount": len(bundle.resources),
         "directExecutionEnabled": False,
+    }
+
+
+@router.post("/packages/inspect-zip")
+async def inspect_portable_zip(
+    archive: Annotated[UploadFile, File(...)],
+    _member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+) -> dict:
+    """Inspect a ZIP package without persisting or executing its contents."""
+    payload = await archive.read()
+    try:
+        files = read_zip_bundle(payload)
+        bundle = import_file_bundle(files)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    inspection = bundle.inspection
+    return {
+        "inspection": inspection.as_dict(),
+        "installationAllowed": installation_allowed(inspection),
+        "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
+        "resources": [
+            {"path": row["path"], "kind": row["kind"], "executable": row["executable"]}
+            for row in bundle.resources
+        ],
+        "ignoredFiles": list(bundle.ignored_files),
+        "fileName": archive.filename,
+    }
+
+
+@router.post("/packages/install-zip")
+async def install_portable_zip(
+    archive: Annotated[UploadFile, File(...)],
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    source_uri: Annotated[str | None, Form(alias="sourceUri")] = None,
+    signing_public_key_pem: Annotated[str | None, Form(alias="signingPublicKeyPem")] = None,
+    signature: Annotated[str | None, Form()] = None,
+) -> dict:
+    """Install a ZIP through the same inert package policy as JSON bundles."""
+    user, org_id = admin
+    payload = await archive.read()
+    try:
+        files = read_zip_bundle(payload)
+        bundle = import_file_bundle(files)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    inspection = bundle.inspection
+    if not installation_allowed(inspection):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "message": "Package blocked by capability policy",
+                "inspection": inspection.as_dict(),
+            },
+        )
+
+    signature_status = "unsigned"
+    if bool(signing_public_key_pem) != bool(signature):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="signingPublicKeyPem and signature must be provided together",
+        )
+    if signing_public_key_pem and signature:
+        try:
+            from app.connectors.private.signature import (
+                BundleSignatureError,
+                verify_bundle_signature,
+            )
+
+            verify_bundle_signature(
+                manifest=bundle.manifest,
+                package_sources=files,
+                signing_public_key_pem=signing_public_key_pem,
+                signature_b64=signature,
+            )
+            signature_status = "verified"
+        except BundleSignatureError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid capability package signature: {exc}",
+            ) from exc
+
+    client = get_supabase_client(settings)
+    installed = install_package(
+        client,
+        org_id=org_id,
+        user_id=str(user.get("user_id") or ""),
+        inspection=inspection,
+        manifest=bundle.manifest,
+        source_type="zip",
+        source_uri=source_uri or archive.filename,
+        publisher_name=str(
+            bundle.manifest.get("publisher") or bundle.manifest.get("author") or ""
+        ).strip()
+        or None,
+        signature_status=signature_status,
+        # Signature validity proves integrity, not publisher identity.
+        publisher_verified=False,
+        content_digest=bundle_digest(files),
+    )
+    package_id = str(installed.get("id") or "")
+    if package_id:
+        replace_package_resources(
+            client,
+            package_id=package_id,
+            org_id=org_id,
+            resources=list(bundle.resources),
+        )
+    return {
+        "package": installed,
+        "inspection": inspection.as_dict(),
+        "activationPlan": build_activation_plan(bundle.manifest, inspection.as_dict()),
+        "resourceCount": len(bundle.resources),
+        "directExecutionEnabled": False,
+        "fileName": archive.filename,
     }
 
 
