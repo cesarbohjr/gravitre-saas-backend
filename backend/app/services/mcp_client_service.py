@@ -5,6 +5,9 @@ import asyncio
 import json
 import re
 import time
+import socket
+import ipaddress
+from urllib.parse import urlparse
 
 import httpx
 from datetime import datetime, timezone
@@ -113,6 +116,50 @@ def _streamable_http_client():
         from mcp.client.streamable_http import streamablehttp_client
 
         return streamablehttp_client
+
+
+async def _validate_portable_mcp_runtime_endpoint(server: dict[str, Any]) -> None:
+    """Re-resolve package-managed MCP endpoints immediately before network use.
+
+    Registration-time URL checks are insufficient because DNS can later resolve
+    a public hostname to loopback/private/link-local space.
+    """
+    if not bool(server.get("source_capability_package_id")):
+        return
+    raw_url = str(server.get("server_url") or "").strip()
+    parsed = urlparse(raw_url)
+    host = (parsed.hostname or "").strip().lower()
+    if parsed.scheme != "https" or not host or parsed.username or parsed.password:
+        raise ValueError("Portable MCP endpoint is no longer a valid reviewed HTTPS URL")
+    try:
+        literal = ipaddress.ip_address(host)
+        addresses = {literal}
+    except ValueError:
+        try:
+            rows = await asyncio.to_thread(socket.getaddrinfo, host, parsed.port or 443, type=socket.SOCK_STREAM)
+        except OSError as exc:
+            raise ValueError("Portable MCP endpoint DNS resolution failed") from exc
+        addresses = set()
+        for row in rows:
+            sockaddr = row[4]
+            if not sockaddr:
+                continue
+            try:
+                addresses.add(ipaddress.ip_address(str(sockaddr[0])))
+            except ValueError:
+                continue
+        if not addresses:
+            raise ValueError("Portable MCP endpoint resolved to no usable address")
+    for address in addresses:
+        if (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_multicast
+            or address.is_reserved
+            or address.is_unspecified
+        ):
+            raise ValueError("Portable MCP endpoint resolved to private or reserved network space")
 
 
 def _restricted_mcp_httpx_client_factory(
@@ -875,6 +922,7 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
         headers = self._auth_headers(server)
         async with sse_client(
             url,
@@ -899,6 +947,7 @@ class MCPClientService:
         from mcp import ClientSession
 
         url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
         headers = self._auth_headers(server)
         client_factory = _streamable_http_client()
         async with client_factory(
@@ -947,6 +996,7 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
         headers = self._auth_headers(server)
         async with sse_client(
             url,
@@ -967,6 +1017,7 @@ class MCPClientService:
         from mcp import ClientSession
 
         url = str(server.get("server_url") or "")
+        await _validate_portable_mcp_runtime_endpoint(server)
         headers = self._auth_headers(server)
         client_factory = _streamable_http_client()
         async with client_factory(
