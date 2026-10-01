@@ -1493,6 +1493,53 @@ export interface CapabilityMarketplaceCandidate {
   review_notes?: string | null
 }
 
+export interface MCPAdminServer {
+  id: string
+  server_name: string
+  server_url: string
+  transport: string
+  auth_type: string
+  enabled: boolean
+  verified_by_gravitre?: boolean
+  source_capability_package_id?: string | null
+  activation_state?: "pending_review" | "configured" | "disabled" | string
+  created_at?: string
+}
+
+export interface MCPAdminTool {
+  id: string
+  server_id: string
+  tool_name: string
+  tool_description?: string | null
+  capability_tier: "read" | "write" | string
+  requires_approval?: boolean
+  enabled: boolean
+  risk_level?: string
+  created_at?: string
+}
+
+export const mcpAdminApi = {
+  listServers: () =>
+    fetcher<{ servers: MCPAdminServer[] }>(apiUrl("/api/admin/mcp/servers")),
+  patchServer: (serverId: string, enabled: boolean) =>
+    patchJson<{ server: MCPAdminServer }>(
+      apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}`),
+      { enabled },
+    ),
+  discoverTools: (serverId: string) =>
+    postJson<{ tools: MCPAdminTool[]; count: number }>(
+      apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}/discover`),
+      {},
+    ),
+  listTools: () =>
+    fetcher<{ tools: MCPAdminTool[] }>(apiUrl("/api/admin/mcp/tools")),
+  patchTool: (toolId: string, enabled: boolean) =>
+    patchJson<{ tool: MCPAdminTool }>(
+      apiUrl(`/api/admin/mcp/tools/${encodeURIComponent(toolId)}`),
+      { enabled },
+    ),
+}
+
 export const portableCapabilitiesApi = {
   listPackages: () =>
     fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
