@@ -13,6 +13,7 @@ from app.services.mcp_client_service import (
     encrypt_auth_config,
     get_mcp_client_service,
     refresh_package_mcp_runtime_registration,
+    remove_package_mcp_runtime_registration,
 )
 from app.workflows.repository import get_supabase_client
 
@@ -109,14 +110,7 @@ async def delete_mcp_server(
         or []
     )
     if rows and rows[0].get("source_capability_package_id"):
-        (
-            client.table("mcp_tools")
-            .update({"enabled": False})
-            .eq("server_id", server_id)
-            .eq("org_id", org_id)
-            .execute()
-        )
-        refresh_package_mcp_runtime_registration(
+        remove_package_mcp_runtime_registration(
             client,
             org_id=org_id,
             server_id=server_id,
