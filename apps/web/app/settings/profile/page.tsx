@@ -39,6 +39,13 @@ import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { TYPE } from "@/lib/design-system"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface AuthSession {
   id: string
@@ -228,6 +235,62 @@ export default function ProfilePage() {
   return (
     <AppShell title="Settings">
       <SettingsShell activeSection="profile" isAdmin={isAdmin} hideHeader>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleAvatarUpload}
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          className="sr-only"
+          tabIndex={-1}
+          disabled={isUploadingAvatar}
+        />
+        <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{hasProfilePhoto ? "Change photo" : "Add photo"}</DialogTitle>
+              <DialogDescription>
+                Your photo appears in Chat, the header menu, and team member lists.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center">
+              <UserAccountAvatar useCurrentUser className="h-28 w-28 text-3xl" fallbackClassName="text-3xl" />
+            </div>
+            <button
+              type="button"
+              disabled={isUploadingAvatar}
+              onClick={() => {
+                if (isUploadingAvatar) return
+                fileInputRef.current?.click()
+              }}
+              className="flex w-full items-center gap-3 rounded-xl border border-divide bg-[color:var(--g-surface-2)] p-4 text-left transition-colors hover:bg-secondary/50 disabled:opacity-60"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <ImagePlus className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {isUploadingAvatar ? "Uploading…" : "Upload photo"}
+                </p>
+                <p className="text-xs text-muted-foreground">JPG, PNG, GIF, or WebP, max 5MB</p>
+              </div>
+            </button>
+            {hasProfilePhoto ? (
+              <button
+                type="button"
+                onClick={() => void handleRemoveAvatar()}
+                className="flex w-full items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-left transition-colors hover:bg-destructive/10"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
+                  <X className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-destructive">Remove photo</p>
+                  <p className="text-xs text-muted-foreground">Revert to initials</p>
+                </div>
+              </button>
+            ) : null}
+          </DialogContent>
+        </Dialog>
         <div className="flex-1 overflow-auto">
         {/* Hero Header with gradient */}
         <div className="relative overflow-hidden">
@@ -264,19 +327,11 @@ export default function ProfilePage() {
               )}>
                 {/* Avatar with upload functionality */}
                 <div className="relative group">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleAvatarUpload}
-                    accept="image/*"
-                    className="hidden"
-                    disabled={isUploadingAvatar}
-                  />
                   <div className="absolute -inset-1 rounded-full bg-primary opacity-0 blur transition-all duration-500 group-hover:opacity-60" />
                   <button 
                     type="button"
                     onClick={() => setShowAvatarModal(true)}
-                    aria-label="Change profile photo"
+                    aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
                     className="relative flex h-24 w-24 items-center justify-center rounded-full ring-4 ring-background overflow-hidden cursor-pointer"
                   >
                     <UserAccountAvatar useCurrentUser className="h-24 w-24 text-2xl" fallbackClassName="text-2xl" />
@@ -306,73 +361,6 @@ export default function ProfilePage() {
                     </Button>
                   )}
                 </div>
-
-                {/* Avatar Upload Modal */}
-                {showAvatarModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowAvatarModal(false)}>
-                    <div 
-                      className="bg-[color:var(--g-surface-1)] border border-divide rounded-[var(--np-radius-lg)] shadow-[var(--np-shadow)] p-6 w-full max-w-sm mx-4 shadow-2xl"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-semibold text-foreground">Update profile photo</h3>
-                        <button 
-                          onClick={() => setShowAvatarModal(false)}
-                          className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
-                        >
-                          <X className="h-5 w-5 text-muted-foreground" />
-                        </button>
-                      </div>
-
-                      <p className="mb-6 text-center text-xs text-muted-foreground">
-                        Your photo appears in Chat, the header menu, and team member lists.
-                      </p>
-
-                      {/* Current avatar preview */}
-                      <div className="flex justify-center mb-6">
-                        <UserAccountAvatar useCurrentUser className="h-28 w-28 text-3xl" fallbackClassName="text-3xl" />
-                      </div>
-
-                      {/* Upload options */}
-                      <div className="space-y-3">
-                        <button
-                          type="button"
-                          disabled={isUploadingAvatar}
-                          onClick={() => {
-                            if (isUploadingAvatar) return
-                            fileInputRef.current?.click()
-                          }}
-                          className="w-full flex items-center gap-3 p-4 rounded-xl border border-divide bg-[color:var(--g-surface-2)] hover:bg-secondary/50 transition-colors text-left"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <ImagePlus className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{isUploadingAvatar ? "Uploading…" : "Upload new photo"}</p>
-                            <p className="text-xs text-muted-foreground">JPG, PNG or GIF, max 5MB</p>
-                          </div>
-                        </button>
-
-                        {hasProfilePhoto && (
-                          <button
-                            onClick={() => void handleRemoveAvatar()}
-                            className="w-full flex items-center gap-3 p-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
-                          >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
-                              <X className="h-5 w-5 text-destructive" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-destructive">Remove photo</p>
-                              {/* Was text-red-400/70 — a light tint at 70% opacity
-                                  on a light background, which failed contrast. */}
-                              <p className="text-xs text-muted-foreground">Revert to initials</p>
-                            </div>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">

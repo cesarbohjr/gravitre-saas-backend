@@ -33,6 +33,8 @@ describe("surface action UX regressions", () => {
     expect(profile).toMatch(/Add photo/)
     expect(profile).toMatch(/Change photo/)
     expect(profile).toMatch(/Remove photo/)
+    expect(profile).toMatch(/Upload photo/)
+    expect(profile).toMatch(/<Dialog /)
     expect(profile).toMatch(/input\.value = ""/)
   })
 })
