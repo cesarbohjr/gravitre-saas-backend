@@ -561,12 +561,18 @@ async def rollback_portable_package_version(
         user_id=str(user.get("user_id") or ""),
     )
     mcp_deactivation = None
+    native_bindings_deactivated = 0
     if str(restored.get("status") or "") != "installed":
         mcp_deactivation = deactivate_package_mcp_dependencies(
             client,
             org_id=org_id,
             package_id=package_id,
             activation_state="quarantined",
+        )
+        native_bindings_deactivated = deactivate_component_bindings(
+            client,
+            org_id=org_id,
+            package_id=package_id,
         )
     return {
         "package": restored,
@@ -737,7 +743,7 @@ async def review_portable_package(
         "package": updated,
         "reviewed": True,
         "mcpDeactivation": mcp_deactivation,
-        "nativeBindingsDisabled": native_binding_deactivation,
+        "nativeBindingsDeactivated": native_bindings_deactivated,
     }
 
 
