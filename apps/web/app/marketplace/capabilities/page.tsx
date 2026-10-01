@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { portableCapabilitiesApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -57,6 +58,9 @@ export default function CapabilityMarketplacePage() {
   const [busy, setBusy] = useState(false)
   const [packageBusy, setPackageBusy] = useState<string | null>(null)
   const [sourceBusy, setSourceBusy] = useState<string | null>(null)
+  const [trustedPublisherName, setTrustedPublisherName] = useState("")
+  const [trustedPublisherKey, setTrustedPublisherKey] = useState("")
+  const [trustBusy, setTrustBusy] = useState(false)
   const [zipFile, setZipFile] = useState<File | null>(null)
   const [zipBusy, setZipBusy] = useState(false)
   const [zipInspection, setZipInspection] = useState<Awaited<ReturnType<typeof portableCapabilitiesApi.inspectZip>> | null>(null)
@@ -68,6 +72,10 @@ export default function CapabilityMarketplacePage() {
   const marketplaces = useSWR(
     user ? "portable-capability-marketplaces" : null,
     () => portableCapabilitiesApi.listMarketplaces(),
+  )
+  const trustedPublishers = useSWR(
+    user ? "portable-capability-trusted-publishers" : null,
+    () => portableCapabilitiesApi.listTrustedPublishers(),
   )
   const candidates = useSWR(
     user ? "portable-capability-marketplace-candidates" : null,
@@ -113,6 +121,26 @@ export default function CapabilityMarketplacePage() {
       toast.error(error instanceof Error ? error.message : "ZIP install failed")
     } finally {
       setZipBusy(false)
+    }
+  }
+
+  async function addTrustedPublisher(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!trustedPublisherName.trim() || !trustedPublisherKey.trim()) return
+    setTrustBusy(true)
+    try {
+      await portableCapabilitiesApi.addTrustedPublisher({
+        publisherName: trustedPublisherName.trim(),
+        publicKeyPem: trustedPublisherKey.trim(),
+      })
+      toast.success("Publisher signing key trusted")
+      setTrustedPublisherName("")
+      setTrustedPublisherKey("")
+      await trustedPublishers.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not trust publisher key")
+    } finally {
+      setTrustBusy(false)
     }
   }
 
@@ -467,6 +495,50 @@ export default function CapabilityMarketplacePage() {
                   </ul>
                 </div>
               ) : null}
+
+              <div className="mt-5 border-t border-divide pt-4">
+                <h3 className="text-xs font-medium text-foreground">Trusted publisher keys</h3>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Trust a publisher&apos;s public signing key. A matching valid signature can then be shown as a trusted publisher.
+                </p>
+                {isAdmin ? (
+                  <form className="mt-3 space-y-2" onSubmit={addTrustedPublisher}>
+                    <Input
+                      value={trustedPublisherName}
+                      onChange={(event) => setTrustedPublisherName(event.target.value)}
+                      placeholder="Publisher name"
+                      aria-label="Publisher name"
+                    />
+                    <Textarea
+                      value={trustedPublisherKey}
+                      onChange={(event) => setTrustedPublisherKey(event.target.value)}
+                      placeholder="-----BEGIN PUBLIC KEY-----"
+                      aria-label="Publisher public signing key"
+                      rows={4}
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="outline"
+                      disabled={trustBusy || !trustedPublisherName.trim() || !trustedPublisherKey.trim()}
+                    >
+                      {trustBusy ? "Trusting…" : "Trust key"}
+                    </Button>
+                  </form>
+                ) : null}
+                {(trustedPublishers.data?.items ?? []).length ? (
+                  <ul className="mt-3 space-y-2">
+                    {(trustedPublishers.data?.items ?? []).map((publisher) => (
+                      <li key={publisher.id} className="rounded border border-divide p-2">
+                        <p className="text-xs font-medium text-foreground">{publisher.publisher_name}</p>
+                        <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                          {publisher.key_fingerprint}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             </GravitreSurface>
           </section>
 
