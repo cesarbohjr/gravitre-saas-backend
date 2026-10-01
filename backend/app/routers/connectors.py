@@ -28,6 +28,7 @@ from app.core.supabase_response import response_error
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
+from app.connectors.nango_registry import NANGO_CONNECTOR_VENDORS
 from app.connectors.platform import (
     is_connector_type_schema_error,
     masked_api_key_for_response,
@@ -181,7 +182,7 @@ ALLOWED_CONNECTOR_VENDORS = frozenset(
         "meta_marketing",
         "connectwise",
     }
-)
+) | NANGO_CONNECTOR_VENDORS
 
 
 class ConnectorCreateRequest(BaseModel):
