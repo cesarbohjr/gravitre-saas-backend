@@ -113,7 +113,11 @@ async def discover_public_github_packages(
             candidate_paths = [
                 path for path in file_paths
                 if path.startswith(prefix)
-                and PurePosixPath(path).suffix.lower() in TEXT_SUFFIXES
+                and (
+                    PurePosixPath(path).suffix.lower() in TEXT_SUFFIXES
+                    or PurePosixPath(path).name.lower()
+                    in {"license", "license.txt", "license.md", "copying", "copying.txt"}
+                )
             ][:MAX_FILES_PER_PACKAGE]
             files: dict[str, str] = {}
             for path in candidate_paths:
