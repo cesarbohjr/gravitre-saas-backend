@@ -11,6 +11,7 @@ from app.capabilities.activation import build_activation_plan
 from app.capabilities.importers import import_file_bundle, read_zip_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.provenance import bundle_digest, inert_snapshot_digest, normalize_github_repository_url
+from app.capabilities.publish_validation import validate_capability_for_publish
 from app.capabilities.publisher_trust import (
     list_trusted_publishers,
     publisher_trust_details,
@@ -675,6 +676,27 @@ async def review_portable_package(
     return {"package": updated, "reviewed": True}
 
 
+@router.get("/packages/{package_id}/validate")
+async def validate_portable_capability_for_publish(
+    package_id: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    package = get_package(client, org_id, package_id)
+    if not package:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Capability package not found",
+        )
+    resources = list_package_resources(client, org_id, package_id)
+    return {
+        "packageId": package_id,
+        **validate_capability_for_publish(package, resources),
+    }
+
+
 @router.post("/packages/{package_id}/marketplace-draft")
 async def create_portable_capability_marketplace_draft(
     package_id: str,
@@ -691,6 +713,18 @@ async def create_portable_capability_marketplace_draft(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Capability package must be approved and installed before publishing",
+        )
+    publish_validation = validate_capability_for_publish(
+        package,
+        list_package_resources(client, org_id, package_id),
+    )
+    if not publish_validation["readyForMarketplace"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "Capability package is not ready for Marketplace publishing",
+                "validation": publish_validation,
+            },
         )
     commit_sha = str(package.get("source_commit_sha") or "").strip()
     package_path = str(package.get("source_package_path") or "").strip()
