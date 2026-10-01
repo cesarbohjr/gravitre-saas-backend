@@ -180,3 +180,43 @@ def review_package(
     )
     rows = list(response.data or [])
     return rows[0] if rows else None
+
+
+def get_marketplace_source(client: Any, org_id: str, source_id: str) -> dict[str, Any] | None:
+    response = (
+        client.table("capability_marketplace_sources")
+        .select("*")
+        .eq("id", source_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return rows[0] if rows else None
+
+
+def update_marketplace_sync_status(
+    client: Any,
+    *,
+    org_id: str,
+    source_id: str,
+    sync_status: str,
+    error: str | None = None,
+    synced: bool = False,
+) -> None:
+    from datetime import datetime, timezone
+
+    patch = {
+        "last_sync_status": sync_status,
+        "last_sync_error": (error or "")[:2000] or None,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if synced:
+        patch["last_synced_at"] = datetime.now(timezone.utc).isoformat()
+    (
+        client.table("capability_marketplace_sources")
+        .update(patch)
+        .eq("id", source_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
