@@ -1491,6 +1491,25 @@ export interface CapabilityMarketplaceCandidate {
 export const portableCapabilitiesApi = {
   listPackages: () =>
     fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
+  listTrustedPublishers: () =>
+    fetcher<{
+      items: Array<{
+        id: string
+        publisher_name: string
+        key_fingerprint: string
+        status: string
+        created_at?: string
+      }>
+    }>(apiUrl("/api/capabilities/trusted-publishers")),
+  addTrustedPublisher: (body: { publisherName: string; publicKeyPem: string }) =>
+    postJson<{
+      publisher: {
+        id?: string
+        publisher_name: string
+        key_fingerprint: string
+        status: string
+      }
+    }>(apiUrl("/api/capabilities/trusted-publishers"), body),
   listMarketplaces: () =>
     fetcher<{ items: CapabilityMarketplaceSource[] }>(apiUrl("/api/capabilities/marketplaces")),
   addMarketplace: (body: {
