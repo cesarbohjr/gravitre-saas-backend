@@ -1664,6 +1664,7 @@ export const portableCapabilitiesApi = {
     return postForm<{
       inspection: Record<string, unknown>
       installationAllowed: boolean
+      securityScan?: PortableCapabilitySecurityScan
       activationPlan: Record<string, unknown>
       resources: Array<{ path: string; kind: string; executable: boolean }>
       ignoredFiles: string[]
@@ -1684,6 +1685,7 @@ export const portableCapabilitiesApi = {
       inspection: Record<string, unknown>
       activationPlan: Record<string, unknown>
       resourceCount: number
+      securityScan?: PortableCapabilitySecurityScan
       directExecutionEnabled: false
       fileName?: string | null
     }>(apiUrl("/api/capabilities/packages/install-zip"), form)
