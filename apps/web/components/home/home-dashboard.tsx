@@ -260,6 +260,36 @@ export function HomeDashboard({
           </motion.div>
         ) : null}
 
+        {!editMode && data.playImpact && (data.playImpact.verifiedResultCount > 0 || data.playImpact.pendingVerificationCount > 0) ? (
+          <motion.section variants={item} aria-labelledby="dashboard-play-impact" className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 id="dashboard-play-impact" className="text-sm font-semibold text-foreground">Verified Play impact</h3>
+                <p className={cn(TYPE.meta, "mt-1")}>Business results confirmed by a source of record. Workflow completion is not counted as impact.</p>
+              </div>
+              <Link href={APP_ROUTES.plays} className="text-xs font-medium text-foreground underline-offset-4 hover:underline">View Plays</Link>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-divide p-3">
+                <p className={TYPE.meta}>Verified results</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{data.playImpact.verifiedResultCount}</p>
+              </div>
+              <div className="rounded-lg border border-divide p-3">
+                <p className={TYPE.meta}>Pending verification</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums">{data.playImpact.pendingVerificationCount}</p>
+              </div>
+              <div className="rounded-lg border border-divide p-3">
+                <p className={TYPE.meta}>Verified measured impact</p>
+                {data.playImpact.verifiedMetrics.length ? data.playImpact.verifiedMetrics.slice(0, 2).map((metric) => (
+                  <p key={`${metric.metricKey}-${metric.currency ?? ""}`} className="mt-1 text-sm font-semibold tabular-nums">
+                    {metric.currency ? `${metric.currency} ` : ""}{metric.value.toLocaleString()} <span className="font-normal text-muted-foreground">{metric.metricKey.replaceAll("_", " ")}</span>
+                  </p>
+                )) : <p className="mt-1 text-sm text-muted-foreground">No verified measured delta yet</p>}
+              </div>
+            </div>
+          </motion.section>
+        ) : null}
+
         {!editMode && data.plays.length > 0 ? (
           <motion.section
             variants={item}
