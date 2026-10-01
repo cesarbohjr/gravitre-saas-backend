@@ -526,6 +526,7 @@ async def sync_capability_marketplace(
             org_id=org_id,
             user_id=str(user.get("user_id") or ""),
             source=source,
+            settings=settings,
         )
     except Exception as exc:  # noqa: BLE001
         update_marketplace_sync_status(
