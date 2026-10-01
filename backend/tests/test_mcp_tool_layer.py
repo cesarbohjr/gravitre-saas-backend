@@ -267,3 +267,73 @@ def test_mcp_openai_tool_name_format():
     name = mcp_openai_tool_name("My Server", "Get Data")
     assert name.startswith("mcp_")
     assert "get_data" in name
+
+
+
+@pytest.mark.asyncio
+async def test_enabled_tool_on_disabled_imported_server_is_hidden(mcp_service):
+    tool = {
+        "id": "tool-pending",
+        "server_id": "srv-pending",
+        "tool_name": "search_records",
+        "tool_description": "Search records",
+        "capability_tier": "read",
+        "enabled": True,
+        "input_schema": {"type": "object", "properties": {}},
+        "mcp_servers": {
+            "server_name": "Imported MCP",
+            "enabled": False,
+            "activation_state": "pending_review",
+        },
+    }
+    client = _mock_supabase(tools=[tool])
+    with patch.object(mcp_service, "_client", return_value=client):
+        available = await mcp_service.get_enabled_tools_for_org("org-1")
+    assert available == []
+
+
+@pytest.mark.asyncio
+async def test_imported_server_discovery_can_persist_tools_disabled(mcp_service):
+    server = {
+        "id": "srv-pending",
+        "server_name": "Imported MCP",
+        "server_url": "https://mcp.example.com/sse",
+        "transport": "sse",
+        "enabled": False,
+        "activation_state": "pending_review",
+        "auth_config": {},
+    }
+    client = _mock_supabase(tools=[], servers=[server])
+    with (
+        patch.object(mcp_service, "_client", return_value=client),
+        patch.object(mcp_service, "_load_server", new=AsyncMock(return_value=server)) as load_server,
+        patch.object(
+            mcp_service,
+            "_list_remote_tools",
+            new=AsyncMock(
+                return_value=[
+                    {
+                        "name": "search_records",
+                        "description": "Search records",
+                        "inputSchema": {"type": "object", "properties": {}},
+                    }
+                ]
+            ),
+        ),
+        patch("app.services.mcp_catalog_sync.sync_mcp_server_to_catalog"),
+        patch("app.connectors.action_catalog.extensions.register_action_schemas"),
+    ):
+        await mcp_service.discover_tools(
+            "srv-pending",
+            "org-1",
+            allow_disabled_server=True,
+            enable_discovered_tools=False,
+        )
+    load_server.assert_awaited_once_with(
+        "srv-pending",
+        "org-1",
+        allow_disabled=True,
+    )
+    inserted = client.table("mcp_tools").insert.call_args
+    if inserted is not None:
+        assert inserted.args[0]["enabled"] is False
