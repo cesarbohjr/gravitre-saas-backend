@@ -411,12 +411,19 @@ def record_package_version(
         "recorded_by": user_id or None,
     }
     if digest:
-        response = client.table("capability_package_versions").upsert(
-            row,
-            on_conflict="package_id,content_digest",
-        ).execute()
-    else:
-        response = client.table("capability_package_versions").insert(row).execute()
+        existing = (
+            client.table("capability_package_versions")
+            .select("*")
+            .eq("package_id", package_id)
+            .eq("org_id", org_id)
+            .eq("content_digest", digest)
+            .limit(1)
+            .execute()
+        )
+        existing_rows = list(existing.data or [])
+        if existing_rows:
+            return existing_rows[0]
+    response = client.table("capability_package_versions").insert(row).execute()
     rows = list(response.data or [])
     return rows[0] if rows else row
 
