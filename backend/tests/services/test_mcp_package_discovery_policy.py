@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.mcp_client_service import catalog_visible_mcp_tools, should_enable_discovered_mcp_tool
+from app.services.mcp_client_service import catalog_visible_mcp_tools, should_enable_discovered_mcp_tool, stale_package_mcp_tool_ids
 
 
 def test_new_portable_package_tools_default_disabled() -> None:
@@ -32,3 +32,12 @@ def test_manual_mcp_catalog_behavior_is_unchanged() -> None:
     server = {"source_capability_package_id": None}
     tools = [{"id": "a", "enabled": False}, {"id": "b", "enabled": True}]
     assert catalog_visible_mcp_tools(server, tools) is tools
+
+
+def test_removed_remote_tool_is_marked_stale_only_when_previously_enabled() -> None:
+    persisted = [
+        {"id": "keep", "tool_name": "lookup", "enabled": True},
+        {"id": "removed-enabled", "tool_name": "create", "enabled": True},
+        {"id": "removed-disabled", "tool_name": "delete", "enabled": False},
+    ]
+    assert stale_package_mcp_tool_ids(persisted, {"lookup"}) == ["removed-enabled"]
