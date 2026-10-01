@@ -31,6 +31,9 @@ def declared_mcp_dependencies(manifest: dict[str, Any]) -> list[dict[str, Any]]:
         elif isinstance(spec, dict):
             url = str(spec.get("url") or spec.get("serverUrl") or "").strip()
             transport = str(spec.get("transport") or ("http" if url else "stdio")).strip().lower()
+            transport = transport.replace("-", "_")
+            if transport == "streamablehttp":
+                transport = "streamable_http"
             auth = spec.get("auth")
             auth_type = (
                 str(auth.get("type") or "none").strip().lower()
@@ -63,7 +66,7 @@ def declared_mcp_dependencies(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             and not parsed.username
             and not parsed.password
         )
-        registration_allowed = remote_https and transport in {"http", "sse", "streamable_http", "streamable-http"}
+        registration_allowed = remote_https and transport in {"http", "sse", "streamable_http"}
         out.append(
             {
                 "name": str(name).strip() or "mcp-server",
