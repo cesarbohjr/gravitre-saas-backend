@@ -34,6 +34,7 @@ from app.workflows.constants import (
     RUN_STATUS_COMPLETED,
     RUN_STATUS_FAILED,
     RUN_STATUS_FLAGGED_FOR_REVIEW,
+    RUN_STATUS_VERIFICATION_INCONCLUSIVE,
     RUN_STATUS_PARTIAL_SUCCESS,
 )
 
@@ -44,7 +45,8 @@ logger = get_logger(__name__)
 OUTCOME_SCHEMA_VERSION = "1.0.0"
 
 TerminalStatus = Literal[
-    "completed", "failed", "cancelled", "partial_success", "flagged_for_review"
+    "completed", "failed", "cancelled", "partial_success", "flagged_for_review",
+    "verification_inconclusive",
 ]
 OutcomeSource = Literal[
     "chat_orch",
@@ -63,6 +65,7 @@ TERMINAL_STATUSES = frozenset(
         RUN_STATUS_CANCELLED,
         RUN_STATUS_PARTIAL_SUCCESS,
         RUN_STATUS_FLAGGED_FOR_REVIEW,
+        RUN_STATUS_VERIFICATION_INCONCLUSIVE,
     }
 )
 
@@ -168,6 +171,8 @@ def _normalize_status(status: str) -> TerminalStatus:
         return "partial_success"
     if normalized == RUN_STATUS_FLAGGED_FOR_REVIEW:
         return "flagged_for_review"
+    if normalized == RUN_STATUS_VERIFICATION_INCONCLUSIVE:
+        return "verification_inconclusive"
     if normalized == RUN_STATUS_CANCELLED:
         return "cancelled"
     if normalized == RUN_STATUS_FAILED:
@@ -190,6 +195,8 @@ def _audit_action_for(status: TerminalStatus) -> str:
         return "workflow.execute.cancelled"
     if status == "flagged_for_review":
         return "workflow.execute.flagged_for_review"
+    if status == "verification_inconclusive":
+        return "workflow.execute.verification_inconclusive"
     return "workflow.execute.completed"
 
 
@@ -200,6 +207,8 @@ def _notification_event_for(status: TerminalStatus) -> str:
         return "run_cancelled"
     if status == "flagged_for_review":
         return "run_flagged_for_review"
+    if status == "verification_inconclusive":
+        return "run_verification_inconclusive"
     return "run_completed"
 
 
@@ -210,6 +219,8 @@ def _learning_event_for(status: TerminalStatus) -> str:
         return "workflow_cancelled"
     if status == "flagged_for_review":
         return "workflow_flagged_for_review"
+    if status == "verification_inconclusive":
+        return "workflow_verification_inconclusive"
     return "workflow_executed"
 
 
