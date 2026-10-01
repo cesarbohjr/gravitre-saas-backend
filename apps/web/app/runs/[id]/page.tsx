@@ -716,13 +716,17 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 <span>
                   {run.status === "running"
                     ? "Progress"
-                    : run.status === "completed"
-                      ? "Finished"
-                      : run.status === "failed"
-                        ? "Stopped after failure"
-                        : run.status === "cancelled"
-                          ? "Cancelled"
-                          : "Progress"}
+                    : run.status === "verifying"
+                      ? "Verifying source-of-record proof"
+                      : run.status === "completed"
+                        ? "Finished"
+                        : run.status === "verification_inconclusive"
+                          ? "Verification inconclusive"
+                          : run.status === "failed"
+                            ? "Stopped after failure"
+                            : run.status === "cancelled"
+                              ? "Cancelled"
+                              : "Progress"}
                 </span>
                 <span className="font-mono text-foreground">
                   {run.stepsCompleted}/{run.stepsTotal} steps
@@ -735,9 +739,11 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                       ? "h-full rounded-full bg-[color:var(--status-failed)] transition-all"
                       : run.status === "cancelled"
                         ? "h-full rounded-full bg-muted-foreground transition-all"
-                        : run.status === "running"
+                        : run.status === "running" || run.status === "verifying"
                           ? "h-full rounded-full bg-[color:var(--status-running)] transition-all"
-                          : "h-full rounded-full bg-[color:var(--status-verified)] transition-all"
+                          : run.status === "verification_inconclusive"
+                            ? "h-full rounded-full bg-warning transition-all"
+                            : "h-full rounded-full bg-[color:var(--status-verified)] transition-all"
                   }
                   style={{
                     width: `${Math.min(
