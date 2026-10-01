@@ -342,6 +342,16 @@ class Settings(BaseSettings):
     # Public API base for OAuth callbacks (defaults to same host as app in dev)
     api_public_url: str = ""
 
+    # Nango long-tail connector infrastructure. Secret key is backend-only.
+    nango_secret_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("NANGO_SECRET_KEY", "NANGO_API_KEY", "nango_secret_key"),
+    )
+    nango_api_base_url: str = Field(
+        default="https://api.nango.dev",
+        validation_alias=AliasChoices("NANGO_API_BASE_URL", "nango_api_base_url"),
+    )
+
     # HubSpot OAuth (STA-13 / STA-14) — production app
     hubspot_client_id: str = ""
     hubspot_client_secret: str = ""
