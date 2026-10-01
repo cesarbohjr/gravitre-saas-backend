@@ -11,6 +11,7 @@ from app.services.mcp_client_service import (
     MCPClientService,
     classify_mcp_tool_capability,
     mcp_openai_tool_name,
+    refresh_package_mcp_runtime_registration,
 )
 from app.services.tool_registry import ToolRegistry
 from app.services.tool_types import ToolContext
@@ -336,3 +337,38 @@ async def test_imported_server_discovery_can_persist_tools_disabled(mcp_service)
     inserted = client.table("mcp_tools").insert.call_args
     if inserted is not None:
         assert inserted.args[0]["enabled"] is False
+
+
+
+def test_refresh_package_mcp_runtime_removes_disabled_tool_schema() -> None:
+    server = {
+        "id": "srv-package",
+        "server_name": "Package MCP",
+        "source_capability_package_id": "pkg-1",
+    }
+    tool = {
+        "id": "tool-1",
+        "server_id": "srv-package",
+        "tool_name": "search_records",
+        "tool_description": "Search records",
+        "input_schema": {"type": "object", "properties": {}},
+        "capability_tier": "read",
+        "enabled": False,
+    }
+    client = _mock_supabase(tools=[tool], servers=[server])
+    with (
+        patch("app.services.mcp_catalog_sync.sync_mcp_server_to_catalog") as sync_catalog,
+        patch("app.connectors.action_catalog.extensions.unregister_action_schemas") as unregister,
+        patch("app.connectors.action_catalog.extensions.register_action_schemas") as register,
+    ):
+        refresh_package_mcp_runtime_registration(
+            client,
+            org_id="org-1",
+            server_id="srv-package",
+        )
+
+    sync_catalog.assert_called_once()
+    assert sync_catalog.call_args.kwargs["tools"] == []
+    expected_key = mcp_openai_tool_name("Package MCP", "search_records")
+    unregister.assert_called_once_with([expected_key])
+    register.assert_not_called()
