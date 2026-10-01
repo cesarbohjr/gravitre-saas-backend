@@ -8,6 +8,7 @@
  */
 
 import { useCallback } from "react"
+import { motion } from "framer-motion"
 import useSWR from "swr"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { ADMIN_SIDEBAR_NAV, isSidebarItemActive } from "@/components/gravitre/sidebar-nav-config"
@@ -153,14 +154,18 @@ export function GravitreAIHelper() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
+        <motion.button
           ref={focusOnMount}
+          drag
+          dragMomentum={false}
+          dragElastic={0.08}
+          whileDrag={{ scale: 1.015 }}
           type="button"
           onClick={handleOpen}
           data-gravitre-ai-helper=""
           data-gravitre-ai-dock={onBuilder ? "canvas" : "workspace"}
           className={cn(
-            "dark fixed left-5 z-40 flex items-center gap-2.5 rounded-[8px] border border-[color:var(--g-frame-rule)] text-foreground",
+            "dark fixed left-5 z-40 flex touch-none cursor-grab items-center gap-2.5 rounded-[8px] border border-[color:var(--g-frame-rule)] text-foreground",
             "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
             onBuilder
               ? "md:left-[calc(var(--np-sidebar-rail)+12px)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]"
@@ -172,7 +177,7 @@ export function GravitreAIHelper() {
                 ),
             // Ink command dock: part of the graphite frame, not a floating support bubble.
             "bg-[color:var(--g-frame)] px-2 py-1.5 shadow-[0_8px_20px_-12px_rgb(0_0_0/0.4)] transition-colors",
-            "hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
+            "active:cursor-grabbing hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]/40",
           )}
           aria-label={accessibleName}
           aria-expanded={false}
@@ -228,7 +233,7 @@ export function GravitreAIHelper() {
               ) : null}
             </span>
           )}
-        </button>
+        </motion.button>
       </TooltipTrigger>
       <TooltipContent side="top">AI Chat</TooltipContent>
     </Tooltip>
