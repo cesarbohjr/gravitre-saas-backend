@@ -8,8 +8,9 @@ from urllib.parse import urlparse
 import httpx
 
 from app.capabilities.importers import MAX_FILES, RESOURCE_SUFFIXES, SCRIPT_SUFFIXES, import_file_bundle
+from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
-from app.capabilities.repository import install_package, replace_package_resources
+from app.capabilities.repository import install_package, record_package_version, replace_package_resources
 
 _MAX_PACKAGE_FILES = min(MAX_FILES, 100)
 _ALLOWED_SUFFIXES = set(RESOURCE_SUFFIXES) | set(SCRIPT_SUFFIXES)
@@ -137,43 +138,93 @@ def install_marketplace_capability_package(
     settings: Any,
     environment_name: str,
 ) -> dict[str, Any]:
-    access_token = resolve_org_github_token(
-        client,
-        org_id=org_id,
-        settings=settings,
-        environment_name=environment_name,
+    manifest = config.manifest if isinstance(config.manifest, dict) else {}
+    resource_rows = [
+        row.model_dump(mode="json") if hasattr(row, "model_dump") else dict(row)
+        for row in (config.resources or [])
+    ]
+    skill_md = next(
+        (
+            str(row.get("content") or "")
+            for row in resource_rows
+            if str(row.get("path") or "").lower().endswith("skill.md")
+            and not bool(row.get("executable"))
+            and row.get("content")
+        ),
+        None,
     )
-    files = fetch_pinned_capability_files(
-        repository_url=str(config.repository_url),
-        commit_sha=str(config.commit_sha),
-        package_path=str(config.package_path or ""),
-        access_token=access_token,
-    )
-    actual_digest = bundle_digest(files)
-    if actual_digest != str(config.content_digest):
-        raise CapabilityMarketplaceInstallError(
-            "Capability package digest does not match the published Marketplace artifact"
-        )
 
-    bundle = import_file_bundle(files)
-    if bool(bundle.security_scan.get("blocked")) or bundle.inspection.license_policy == "block":
-        raise CapabilityMarketplaceInstallError(
-            "Capability package no longer passes Gravitre security/license policy"
+    # New Marketplace assets are immutable inert snapshots. Older assets that
+    # predate snapshotting may fall back to their exact Git commit.
+    if manifest or resource_rows:
+        inspection = inspect_package(manifest, skill_md=skill_md)
+        security_scan = config.security_scan if isinstance(config.security_scan, dict) else {}
+        if (
+            not installation_allowed(inspection)
+            or bool(security_scan.get("blocked"))
+            or str(config.license_policy or "") == "block"
+            or str(config.risk_level or "") == "blocked"
+        ):
+            raise CapabilityMarketplaceInstallError(
+                "Capability package does not pass the destination organization's current security/license policy"
+            )
+        resources = [
+            {
+                "path": str(row.get("path") or ""),
+                "kind": str(row.get("kind") or "reference"),
+                "content": None
+                if bool(row.get("executable")) or str(row.get("kind") or "") == "script"
+                else row.get("content"),
+                "executable": bool(row.get("executable")),
+            }
+            for row in resource_rows
+            if str(row.get("path") or "").strip()
+        ]
+        source_digest = str(config.content_digest)
+    else:
+        access_token = resolve_org_github_token(
+            client,
+            org_id=org_id,
+            settings=settings,
+            environment_name=environment_name,
         )
+        files = fetch_pinned_capability_files(
+            repository_url=str(config.repository_url),
+            commit_sha=str(config.commit_sha),
+            package_path=str(config.package_path or ""),
+            access_token=access_token,
+        )
+        actual_digest = bundle_digest(files)
+        if actual_digest != str(config.content_digest):
+            raise CapabilityMarketplaceInstallError(
+                "Capability package digest does not match the published Marketplace artifact"
+            )
+        bundle = import_file_bundle(files)
+        if not installation_allowed(bundle.inspection) or bool(bundle.security_scan.get("blocked")):
+            raise CapabilityMarketplaceInstallError(
+                "Capability package no longer passes Gravitre security/license policy"
+            )
+        inspection = bundle.inspection
+        manifest = bundle.manifest
+        security_scan = bundle.security_scan
+        resources = list(bundle.resources)
+        source_digest = actual_digest
 
     publisher_verified = False
     publisher_name: str | None = None
+    marketplace_publisher_id: str | None = None
     publisher_id = str(asset.get("publisher_id") or "")
     if publisher_id:
         try:
             row = (
                 client.table("marketplace_publishers")
-                .select("display_name,verified")
+                .select("id,display_name,verified")
                 .eq("id", publisher_id)
                 .limit(1)
                 .execute()
             )
             if row.data:
+                marketplace_publisher_id = str(row.data[0].get("id") or "") or None
                 publisher_name = str(row.data[0].get("display_name") or "") or None
                 publisher_verified = bool(row.data[0].get("verified"))
         except Exception:
@@ -183,31 +234,50 @@ def install_marketplace_capability_package(
         client,
         org_id=org_id,
         user_id=actor_id,
-        inspection=bundle.inspection,
-        manifest=bundle.manifest,
+        inspection=inspection,
+        manifest=manifest,
         source_type="marketplace",
-        source_uri=f"{config.repository_url}@{config.commit_sha}#/{config.package_path or ''}",
-        source_commit_sha=str(config.commit_sha),
-        source_package_path=str(config.package_path or ""),
+        source_uri=(
+            f"{config.repository_url}@{config.commit_sha}#/{config.package_path or ''}"
+            if config.repository_url and config.commit_sha
+            else f"marketplace:{asset.get('slug') or asset.get('id')}"
+        ),
+        source_commit_sha=str(config.commit_sha or "") or None,
+        source_package_path=str(config.package_path or "") or None,
         publisher_name=publisher_name,
+        publisher_trusted=publisher_verified,
+        publisher_trust_scope="marketplace_verified" if publisher_verified else "none",
         publisher_verified=publisher_verified,
+        marketplace_publisher_id=marketplace_publisher_id,
         signature_status=str(config.signature_status or "unsigned"),
-        content_digest=actual_digest,
-        security_scan=bundle.security_scan,
+        content_digest=source_digest,
+        security_scan=security_scan,
     )
     package_id = str(installed.get("id") or "")
     if not package_id:
         raise CapabilityMarketplaceInstallError("Capability package install did not return an id")
+
     replace_package_resources(
         client,
         package_id=package_id,
         org_id=org_id,
-        resources=list(bundle.resources),
+        resources=resources,
     )
+    record_package_version(
+        client,
+        org_id=org_id,
+        package=installed,
+        resources=resources,
+        user_id=actor_id,
+    )
+    package_status = str(installed.get("status") or "installed")
     return {
         "entityType": "capability_package",
         "entityId": package_id,
         "capabilityPackageId": package_id,
         "securityRisk": installed.get("risk_level"),
         "publisherVerified": publisher_verified,
+        "status": package_status,
+        "requiresReview": package_status == "quarantined",
+        "mcpPrepared": False,
     }
