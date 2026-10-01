@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from urllib.parse import urlparse
 
@@ -45,3 +46,37 @@ def provenance_summary(
         "contentDigest": bundle_digest(files or {}) if files else None,
         "sourceUri": source_uri,
     }
+
+
+def inert_snapshot_digest(
+    *,
+    manifest: dict[str, object] | None,
+    resources: list[dict[str, object]] | None,
+) -> str:
+    """Digest the reviewed inert Marketplace snapshot, never executable bytes."""
+    normalized_resources = []
+    for row in resources or []:
+        path = str(row.get("path") or "").replace("\\", "/").lstrip("/")
+        if not path:
+            continue
+        executable = bool(row.get("executable"))
+        kind = str(row.get("kind") or "reference")
+        normalized_resources.append(
+            {
+                "path": path,
+                "kind": kind,
+                "content": None if executable or kind == "script" else row.get("content"),
+                "executable": executable,
+            }
+        )
+    payload = {
+        "manifest": manifest or {},
+        "resources": sorted(normalized_resources, key=lambda row: row["path"]),
+    }
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
