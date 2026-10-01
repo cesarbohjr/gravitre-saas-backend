@@ -23,7 +23,7 @@ def list_packages(client: Any, org_id: str) -> list[dict[str, Any]]:
             client.table("capability_packages")
             .select(
                 "id,org_id,name,package_format,version,description,license,license_policy,"
-                "risk_level,source_type,source_uri,marketplace_source_id,publisher_name,"
+                "risk_level,source_type,source_uri,source_commit_sha,source_package_path,marketplace_source_id,publisher_name,"
                 "publisher_verified,signature_status,content_digest,inspection,security_scan,status,"
                 "installed_by,installed_at,updated_at,reviewed_by,reviewed_at,review_notes"
             )
@@ -55,6 +55,8 @@ def install_package(
     content_digest: str | None = None,
     initial_status: str | None = None,
     security_scan: dict[str, Any] | None = None,
+    source_commit_sha: str | None = None,
+    source_package_path: str | None = None,
 ) -> dict[str, Any]:
     effective_risk = _effective_risk(inspection.risk, security_scan)
     row = {
@@ -68,6 +70,8 @@ def install_package(
         "risk_level": effective_risk,
         "source_type": source_type,
         "source_uri": source_uri,
+        "source_commit_sha": source_commit_sha,
+        "source_package_path": source_package_path,
         "marketplace_source_id": marketplace_source_id,
         "publisher_name": publisher_name,
         "publisher_verified": publisher_verified,
@@ -260,6 +264,8 @@ def upsert_marketplace_candidate(
     content_digest: str,
     files: dict[str, str],
     security_scan: dict[str, Any] | None = None,
+    source_commit_sha: str | None = None,
+    source_package_path: str | None = None,
 ) -> dict[str, Any]:
     effective_risk = _effective_risk(str(inspection.get("risk") or "moderate"), security_scan)
     row = {
@@ -278,6 +284,8 @@ def upsert_marketplace_candidate(
         "inspection": inspection,
         "security_scan": security_scan or {},
         "files": files,
+        "source_commit_sha": source_commit_sha,
+        "source_package_path": source_package_path or package_path,
         "status": "pending_review",
     }
     response = client.table("capability_marketplace_candidates").upsert(
