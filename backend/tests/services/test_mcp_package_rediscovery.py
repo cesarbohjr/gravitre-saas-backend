@@ -6,9 +6,10 @@ from app.services.mcp_client_service import MCPClientService
 
 
 class _Query:
-    def __init__(self, rows):
+    def __init__(self, rows, parent=None):
         self.rows = rows
         self.updated = None
+        self.parent = parent
 
     def select(self, *_args, **_kwargs):
         return self
@@ -21,26 +22,41 @@ class _Query:
 
     def update(self, payload):
         self.updated = payload
+        if self.parent is not None:
+            self.parent.tool_updates.append(payload)
         return self
 
     def insert(self, payload):
         self.updated = payload
+        if self.parent is not None:
+            self.parent.tool_updates.append(payload)
         return self
 
     def execute(self):
         class R:
-            data = self.rows
-        return R()
+            pass
+
+        result = R()
+        if self.updated is not None:
+            base = dict(self.rows[0]) if self.rows else {}
+            result.data = [{**base, **self.updated}]
+        else:
+            result.data = self.rows
+        return result
 
 
 class _Client:
     def __init__(self, existing_enabled: bool):
         self.existing_enabled = existing_enabled
         self.last_tool_query = None
+        self.tool_updates: list[dict] = []
 
     def table(self, name: str):
         if name == "mcp_tools":
-            q = _Query([{"id": "tool-1", "enabled": self.existing_enabled}])
+            q = _Query(
+                [{"id": "tool-1", "enabled": self.existing_enabled, "tool_name": "lookup_contact"}],
+                parent=self,
+            )
             self.last_tool_query = q
             return q
         raise AssertionError(name)
@@ -77,4 +93,5 @@ async def test_package_mcp_rediscovery_preserves_reviewed_tool_state(existing_en
         rows = await service.discover_tools("server-1", "org-1")
 
     assert rows[0]["enabled"] is existing_enabled
-    assert client.last_tool_query.updated["enabled"] is existing_enabled
+    assert client.tool_updates
+    assert client.tool_updates[0]["enabled"] is existing_enabled

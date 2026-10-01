@@ -66,16 +66,16 @@ def build_activation_plan(manifest: dict[str, Any], inspection: dict[str, Any]) 
             supported = True
         elif kind == "agent":
             activation = "admin_bind_to_existing_agent"
-            supported = False
+            supported = True
         elif kind == "play":
             activation = "admin_bind_to_existing_play_or_workflow"
-            supported = False
+            supported = True
         elif kind == "template":
             activation = "admin_bind_to_existing_marketplace_asset"
-            supported = False
+            supported = True
         elif kind == "trigger":
             activation = "admin_bind_to_existing_workflow_schedule"
-            supported = False
+            supported = True
         elif kind == "ui_extension":
             activation = "declaration_only_native_adapter_required"
             supported = False
