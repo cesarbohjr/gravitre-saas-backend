@@ -507,6 +507,12 @@ function MarketplaceAssetsContent() {
               <div className="flex flex-wrap items-center gap-3">
                 <AskGravitreSummonButton />
                 <Button asChild size="sm" variant="outline">
+                  <Link href="/marketplace/capabilities">
+                    Skills & plugins
+                    <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
                   <Link href="/marketplace/installed">
                     View installed
                     <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
