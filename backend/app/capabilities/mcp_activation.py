@@ -98,9 +98,13 @@ def prepare_mcp_dependencies(
         if not dependency["registrationAllowed"]:
             blocked.append(dependency)
             continue
+        package_namespace = str(package_id or "").replace("-", "")[:8] or "package"
         row = {
             "org_id": org_id,
-            "server_name": dependency["name"],
+            # Package-managed MCP names must be unique in the runtime catalog;
+            # otherwise two packages declaring the same server/tool names can
+            # overwrite each other's action schemas.
+            "server_name": f"{dependency['name']} · {package_namespace}",
             "server_url": dependency["url"],
             "transport": dependency["transport"],
             "auth_type": dependency["authType"],
@@ -121,7 +125,18 @@ def prepare_mcp_dependencies(
             .execute()
         )
         if existing.data:
-            created.append(existing.data[0])
+            existing_row = dict(existing.data[0])
+            desired_name = row["server_name"]
+            if str(existing_row.get("server_name") or "") != desired_name:
+                updated = (
+                    client.table("mcp_servers")
+                    .update({"server_name": desired_name})
+                    .eq("org_id", org_id)
+                    .eq("id", existing_row["id"])
+                    .execute()
+                )
+                existing_row = dict((updated.data or [existing_row])[0])
+            created.append(existing_row)
             continue
         inserted = client.table("mcp_servers").insert(row).execute()
         created.append((inserted.data or [row])[0])
