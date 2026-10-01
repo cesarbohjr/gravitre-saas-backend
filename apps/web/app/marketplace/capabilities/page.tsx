@@ -24,6 +24,13 @@ function riskLabel(value?: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+function hasMcpDependency(inspection?: Record<string, unknown>) {
+  const components = inspection?.components
+  return Array.isArray(components) && components.some(
+    (component) => component && typeof component === "object" && (component as { kind?: unknown }).kind === "mcp",
+  )
+}
+
 export default function CapabilityMarketplacePage() {
   const { user } = useAuth()
   const { isAdmin } = useOrgAdmin()
@@ -165,6 +172,20 @@ export default function CapabilityMarketplacePage() {
       await Promise.all([candidates.mutate(), packages.mutate()])
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Capability install failed")
+    } finally {
+      setPackageBusy(null)
+    }
+  }
+
+  async function prepareMcp(packageId: string) {
+    setPackageBusy(packageId)
+    try {
+      const result = await portableCapabilitiesApi.prepareMcp(packageId)
+      toast.success("MCP dependencies prepared", {
+        description: `${result.prepared.length} server${result.prepared.length === 1 ? "" : "s"} added disabled for review`,
+      })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "MCP preparation failed")
     } finally {
       setPackageBusy(null)
     }
@@ -326,6 +347,16 @@ export default function CapabilityMarketplacePage() {
                             >
                               Disable
                             </Button>
+                            {item.status === "installed" && hasMcpDependency(item.inspection) ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={packageBusy === item.id}
+                                onClick={() => void prepareMcp(item.id!)}
+                              >
+                                Prepare MCP
+                              </Button>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
