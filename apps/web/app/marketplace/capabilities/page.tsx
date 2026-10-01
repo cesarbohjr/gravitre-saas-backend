@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import type { FormEvent } from "react"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { ShieldCheck, Package, GitBranch, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -52,6 +53,7 @@ function securitySummary(scan?: {
 export default function CapabilityMarketplacePage() {
   const { user } = useAuth()
   const { isAdmin } = useOrgAdmin()
+  const router = useRouter()
   const [name, setName] = useState("")
   const [repositoryUrl, setRepositoryUrl] = useState("")
   const [branch, setBranch] = useState("main")
@@ -261,6 +263,41 @@ export default function CapabilityMarketplacePage() {
       setHistoryBusy(null)
     }
   }
+  async function createMarketplaceDraft(item: {
+    id?: string
+    name: string
+    description?: string | null
+    source_commit_sha?: string | null
+    content_digest?: string | null
+    source_uri?: string | null
+  }) {
+    if (!item.id) return
+    const baseSlug =
+      item.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 90) || "portable-capability"
+    const suffix = item.id.replace(/-/g, "").slice(0, 6).toLowerCase()
+    const slug = `${baseSlug}-${suffix}`
+    setPackageBusy(item.id)
+    try {
+      const result = await portableCapabilitiesApi.createMarketplaceDraft(item.id, {
+        slug,
+        title: item.name,
+        description: item.description || undefined,
+      })
+      toast.success("Marketplace draft created", {
+        description: "Review the listing, then submit it through Gravitre's existing publisher review flow.",
+      })
+      router.push(`/marketplace/assets/${encodeURIComponent(result.asset.slug)}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create Marketplace draft")
+    } finally {
+      setPackageBusy(null)
+    }
+  }
+
 
   return (
     <AppShell title="Capabilities">
@@ -432,6 +469,19 @@ export default function CapabilityMarketplacePage() {
                                 onClick={() => void prepareMcp(item.id!)}
                               >
                                 Prepare MCP
+                              </Button>
+                            ) : null}
+                            {item.status === "installed" &&
+                            item.source_commit_sha &&
+                            item.content_digest &&
+                            item.source_uri ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={packageBusy === item.id}
+                                onClick={() => void createMarketplaceDraft(item)}
+                              >
+                                Publish draft
                               </Button>
                             ) : null}
                             <Button
