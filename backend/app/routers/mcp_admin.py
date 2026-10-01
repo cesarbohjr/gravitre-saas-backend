@@ -39,6 +39,13 @@ class MCPServerPatchRequest(BaseModel):
     enabled: bool
 
 
+class MCPServerAuthPatchRequest(BaseModel):
+    auth_type: str = Field(..., alias="authType")
+    auth_config: dict[str, Any] = Field(default_factory=dict, alias="authConfig")
+
+    model_config = {"populate_by_name": True}
+
+
 @router.get("/servers")
 async def list_mcp_servers(
     org_id: Annotated[str, Depends(get_org_context)],
@@ -182,6 +189,82 @@ async def patch_mcp_server(
             server_id=server_id,
         )
     return {"server": updated.data[0] if updated.data else {**current, **patch}}
+
+
+@router.patch("/servers/{server_id}/auth")
+async def patch_mcp_server_auth(
+    server_id: str,
+    body: MCPServerAuthPatchRequest,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    client = get_supabase_client(settings)
+    rows = (
+        client.table("mcp_servers")
+        .select("id,source_capability_package_id,auth_type")
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP server not found")
+
+    auth_type = str(body.auth_type or "none").strip().lower()
+    if auth_type not in {"none", "bearer", "api_key"}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Supported MCP auth types are none, bearer, and api_key",
+        )
+
+    auth_config: dict[str, Any] = {}
+    if auth_type != "none":
+        raw = dict(body.auth_config or {})
+        if auth_type == "bearer":
+            token = str(raw.get("bearer_token") or raw.get("token") or "").strip()
+            if not token:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Bearer token is required",
+                )
+            auth_config = {"bearer_token": token}
+        elif auth_type == "api_key":
+            api_key = str(raw.get("api_key") or "").strip()
+            if not api_key:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="API key is required",
+                )
+            header = str(raw.get("header") or "X-API-Key").strip() or "X-API-Key"
+            if "\n" in header or "\r" in header:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid API key header",
+                )
+            auth_config = {"api_key": api_key, "header": header}
+
+        key = getattr(settings, "connector_secrets_encryption_key", None) or ""
+        if not key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CONNECTOR_SECRETS_ENCRYPTION_KEY required to store MCP auth",
+            )
+        auth_config = encrypt_auth_config(auth_config, str(key))
+
+    updated = (
+        client.table("mcp_servers")
+        .update({"auth_type": auth_type, "auth_config": auth_config})
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    row = updated.data[0] if updated.data else {**rows[0], "auth_type": auth_type}
+    # Never return encrypted or plaintext auth material.
+    row = {k: v for k, v in dict(row).items() if k != "auth_config"}
+    return {"server": row, "credentialsStored": auth_type != "none"}
 
 
 @router.post("/servers/{server_id}/discover")
