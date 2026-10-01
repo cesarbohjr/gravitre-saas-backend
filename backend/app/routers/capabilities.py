@@ -41,6 +41,7 @@ from app.capabilities.repository import (
 from app.capabilities.review import review_transition_allowed
 from app.capabilities.github_sync import sync_public_github_marketplace
 from app.capabilities.mcp_activation import prepare_mcp_dependencies
+from app.capabilities.usage import usage_summary
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
@@ -159,6 +160,17 @@ async def inspect_portable_package(
     """Inspect a package without installing or executing it."""
     inspection = inspect_package(body.manifest, skill_md=body.skill_md)
     return {"inspection": inspection.as_dict(), "installationAllowed": installation_allowed(inspection), "activationPlan": build_activation_plan(body.manifest, inspection.as_dict())}
+
+
+@router.get("/usage")
+async def get_portable_capability_usage(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    days: int = 30,
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    return usage_summary(client, org_id=org_id, days=days)
 
 
 @router.get("/packages")
