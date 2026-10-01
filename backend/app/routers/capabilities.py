@@ -25,6 +25,7 @@ from app.capabilities.repository import (
     get_package,
     get_package_version,
     install_package,
+    PackageVersionConflict,
     list_marketplace_candidates,
     list_marketplace_sources,
     list_package_resources,
@@ -54,6 +55,16 @@ from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.repository import get_supabase_client
 
 router = APIRouter(prefix="/api/capabilities", tags=["capabilities"])
+
+
+def _install_package_with_conflict(client: Any, **kwargs: Any) -> dict[str, Any]:
+    try:
+        return install_package(client, **kwargs)
+    except PackageVersionConflict as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
 
 
 def _persist_resources_and_version(
@@ -223,7 +234,7 @@ async def install_portable_package(
             detail={"message": "Package blocked by capability policy", "inspection": inspection.as_dict()},
         )
     client = get_supabase_client(settings)
-    installed = install_package(
+    installed = _install_package_with_conflict(
         client,
         org_id=org_id,
         user_id=str(user.get("user_id") or ""),
@@ -336,7 +347,7 @@ async def install_portable_bundle(
         publisher_trust_scope = str(trust["trustScope"])
         publisher_verified = bool(trust["marketplaceVerified"])
         marketplace_publisher_id = trust["marketplacePublisherId"]
-    installed = install_package(
+    installed = _install_package_with_conflict(
         client,
         org_id=org_id,
         user_id=str(user.get("user_id") or ""),
@@ -477,7 +488,7 @@ async def install_portable_zip(
         publisher_trust_scope = str(trust["trustScope"])
         publisher_verified = bool(trust["marketplaceVerified"])
         marketplace_publisher_id = trust["marketplacePublisherId"]
-    installed = install_package(
+    installed = _install_package_with_conflict(
         client,
         org_id=org_id,
         user_id=str(user.get("user_id") or ""),
@@ -1160,7 +1171,7 @@ async def install_capability_marketplace_candidate(
         org_id,
         str(candidate.get("marketplace_source_id") or ""),
     ) or {}
-    installed = install_package(
+    installed = _install_package_with_conflict(
         client,
         org_id=org_id,
         user_id=str(user.get("user_id") or ""),
