@@ -92,6 +92,7 @@ def test_uninstall_disables_capability_package_and_its_mcp_servers(mock_resolve)
     )
     packages = _chain()
     mcp_servers = _chain([{"id": "mcp-1"}])
+    mcp_tools = _chain()
     native_bindings = _chain([{"id": "binding-1"}])
 
     def table(name):
@@ -101,6 +102,8 @@ def test_uninstall_disables_capability_package_and_its_mcp_servers(mock_resolve)
             return packages
         if name == "mcp_servers":
             return mcp_servers
+        if name == "mcp_tools":
+            return mcp_tools
         if name == "capability_component_bindings":
             return native_bindings
         return _chain()
@@ -121,4 +124,5 @@ def test_uninstall_disables_capability_package_and_its_mcp_servers(mock_resolve)
     assert "binding-1" in result["deactivated"]["nativeBindings"]
     packages.update.assert_called()
     mcp_servers.update.assert_called()
+    mcp_tools.update.assert_called()
     native_bindings.update.assert_called()
