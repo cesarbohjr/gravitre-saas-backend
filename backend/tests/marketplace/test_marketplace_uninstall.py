@@ -92,6 +92,7 @@ def test_uninstall_disables_capability_package_and_its_mcp_servers(mock_resolve)
     )
     packages = _chain()
     mcp_servers = _chain([{"id": "mcp-1"}])
+    native_bindings = _chain([{"id": "binding-1"}])
 
     def table(name):
         if name == "marketplace_installs":
@@ -100,6 +101,8 @@ def test_uninstall_disables_capability_package_and_its_mcp_servers(mock_resolve)
             return packages
         if name == "mcp_servers":
             return mcp_servers
+        if name == "capability_component_bindings":
+            return native_bindings
         return _chain()
 
     client = MagicMock()
@@ -115,5 +118,7 @@ def test_uninstall_disables_capability_package_and_its_mcp_servers(mock_resolve)
     assert result["uninstalled"] is True
     assert "pkg-1" in result["deactivated"]["capabilityPackages"]
     assert "mcp-1" in result["deactivated"]["mcpServers"]
+    assert "binding-1" in result["deactivated"]["nativeBindings"]
     packages.update.assert_called()
     mcp_servers.update.assert_called()
+    native_bindings.update.assert_called()
