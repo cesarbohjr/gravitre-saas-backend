@@ -225,6 +225,7 @@ export type RunStatus =
   | "awaiting_approval"
   | "approved"
   | "running"
+  | "verifying"
   | "paused"
   | "completed"
   | "partial_success"
