@@ -114,8 +114,18 @@ class MCPClientService:
             raise ValueError("CONNECTOR_SECRETS_ENCRYPTION_KEY is required for MCP server auth")
         return str(key)
 
-    async def discover_tools(self, server_id: str, org_id: str) -> list[dict[str, Any]]:
-        server = await self._load_server(server_id, org_id)
+    async def discover_tools(
+        self,
+        server_id: str,
+        org_id: str,
+        *,
+        allow_disabled_server: bool = False,
+    ) -> list[dict[str, Any]]:
+        server = await self._load_server(
+            server_id,
+            org_id,
+            allow_disabled=allow_disabled_server,
+        )
         remote_tools = await self._list_remote_tools(server)
         client = self._client()
         upserted: list[dict[str, Any]] = []
@@ -141,6 +151,7 @@ class MCPClientService:
                 .data
                 or []
             )
+            package_managed = bool(server.get("source_capability_package_id"))
             row = {
                 "server_id": server_id,
                 "org_id": org_id,
@@ -148,7 +159,9 @@ class MCPClientService:
                 "tool_description": description,
                 "input_schema": schema,
                 "capability_tier": capability,
-                "enabled": True,
+                # Capability-package tools are discovered inert. Admins must
+                # explicitly activate the reviewed server and individual tools.
+                "enabled": False if package_managed else True,
                 "risk_level": "high" if capability == "write" else "low",
             }
             if existing:
@@ -175,6 +188,8 @@ class MCPClientService:
 
         mcp_schemas: dict[str, dict] = {}
         for row in upserted:
+            if not bool(row.get("enabled")):
+                continue
             schema = row.get("input_schema") if isinstance(row.get("input_schema"), dict) else {}
             if schema:
                 openai_name = mcp_openai_tool_name(server_name, str(row.get("tool_name") or ""))
@@ -314,7 +329,13 @@ class MCPClientService:
             )
         return tools
 
-    async def _load_server(self, server_id: str, org_id: str) -> dict[str, Any]:
+    async def _load_server(
+        self,
+        server_id: str,
+        org_id: str,
+        *,
+        allow_disabled: bool = False,
+    ) -> dict[str, Any]:
         client = self._client()
         rows = (
             client.table("mcp_servers")
@@ -329,7 +350,7 @@ class MCPClientService:
         if not rows:
             raise ValueError("MCP server not found for org")
         server = dict(rows[0])
-        if not server.get("enabled", True):
+        if not server.get("enabled", True) and not allow_disabled:
             raise ValueError("MCP server is disabled")
         auth_config = server.get("auth_config") if isinstance(server.get("auth_config"), dict) else {}
         if auth_config.get("_encrypted"):
