@@ -6,7 +6,6 @@ Private repositories require a future org-owned GitHub connector path.
 from __future__ import annotations
 
 import base64
-from collections import defaultdict
 from typing import Any
 from urllib.parse import urlparse
 
