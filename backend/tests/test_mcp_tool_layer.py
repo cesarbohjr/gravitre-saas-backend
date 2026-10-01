@@ -327,7 +327,6 @@ async def test_imported_server_discovery_can_persist_tools_disabled(mcp_service)
             "srv-pending",
             "org-1",
             allow_disabled_server=True,
-            enable_discovered_tools=False,
         )
     load_server.assert_awaited_once_with(
         "srv-pending",
