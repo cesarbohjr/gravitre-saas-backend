@@ -9,6 +9,7 @@ export const APP_ROUTES = {
   gravitreAiChat: "/ai?mode=chat",
   universalSearch: "/search",
   agents: "/agents",
+  plays: "/plays",
   /** Training deep-link (Agents hub tab — not primary nav) */
   training: "/training",
   /** Model registry — Intelligence hub section (page remains at /models) */

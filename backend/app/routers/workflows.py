@@ -1760,9 +1760,11 @@ async def execute_workflow(
         environment_name=environment_name,
     )
     if play_binding is not None:
+        requested_play = parameters.get("play") if isinstance(parameters.get("play"), dict) else {}
         parameters = {
             **parameters,
             "play": {
+                **requested_play,
                 "key": play_binding.get("key"),
                 "version": play_binding.get("version"),
                 "execution_authority": "canonical_workflow_runtime",

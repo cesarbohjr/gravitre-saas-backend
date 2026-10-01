@@ -14,6 +14,7 @@ export const ADMIN_APP_NAV_ITEMS: AppNavItem[] = [
   { name: "Agents", href: "/agents", expectedPathPrefix: "/agents" },
   { name: "Assignments", href: "/assignments", expectedPathPrefix: "/assignments" },
   { name: "Goals", href: "/goals", expectedPathPrefix: "/goals" },
+  { name: "Plays", href: "/plays", expectedPathPrefix: "/plays" },
   { name: "Marketplace", href: "/marketplace/assets", expectedPathPrefix: "/marketplace" },
   { name: "Workflows", href: "/workflows", expectedPathPrefix: "/workflows" },
   { name: "Connectors", href: "/connectors", expectedPathPrefix: "/connectors" },
