@@ -225,6 +225,8 @@ def _learning_event_for(status: TerminalStatus) -> str:
 
 
 def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
+    if status == "verification_inconclusive":
+        return "Verification inconclusive"
     from app.services.gravitre_voice import format_operator_message
 
     return format_operator_message(
@@ -235,6 +237,12 @@ def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
 
 
 def _default_body(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str:
+    if status == "verification_inconclusive":
+        return (
+            event.notification_body
+            or event.error_summary
+            or "The provider accepted the action, but Gravitre could not independently verify the final source state."
+        )
     from app.services.gravitre_voice import format_operator_message
 
     verified_summary = (
@@ -314,6 +322,9 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             "connector_output_refs",
             "batch_degeneracy",
             "population_verify",
+            "verification",
+            "verification_status",
+            "execution_lifecycle",
         ):
             if key in meta and meta[key] is not None:
                 patch[key] = meta[key]
