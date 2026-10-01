@@ -310,11 +310,7 @@ function MarketplaceAssetsContent() {
   const initialDepartment = searchParams.get("department")
   const initialPrice = searchParams.get("price")
   const { isAdmin } = useOrgAdmin()
-  const visibleTypeFilters = useMemo(
-    () => isAdmin ? TYPE_FILTERS : TYPE_FILTERS.filter((filter) => filter.id !== "capability_package"),
-    [isAdmin],
-  )
-  const validTypes = useMemo(() => new Set(visibleTypeFilters.map((filter) => filter.id)), [visibleTypeFilters])
+  const validTypes = useMemo(() => new Set(TYPE_FILTERS.map((filter) => filter.id)), [])
   const [typeFilter, setTypeFilter] = useState<string>(
     initialType && validTypes.has(initialType as (typeof TYPE_FILTERS)[number]["id"]) ? initialType : "all",
   )
@@ -550,7 +546,8 @@ function MarketplaceAssetsContent() {
             </div>
 
             <div role="group" aria-label="Asset type" className={cn(HUB_TABS.nav, "mt-6")}>
-              {visibleTypeFilters.map((filter) => {
+              {TYPE_FILTERS.map((filter) => {
+                if (!isAdmin && filter.id === "capability_package") return null
                 const count =
                   filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
                 return (
