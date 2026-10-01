@@ -4,32 +4,39 @@ import pytest
 from pydantic import ValidationError
 
 from app.capabilities.marketplace_install import install_marketplace_capability_package
+from app.capabilities.provenance import inert_snapshot_digest
 from app.marketplace.schemas import CapabilityPackageAssetConfig
 
 
 def _config() -> CapabilityPackageAssetConfig:
+    manifest = {"name": "SEO analyst", "license": "MIT"}
+    resources = [
+        {
+            "path": "SKILL.md",
+            "kind": "reference",
+            "content": "---\nname: seo-analyst\ndescription: Audit SEO\n---\nUse evidence.",
+            "executable": False,
+        },
+        {
+            "path": "scripts/run.py",
+            "kind": "script",
+            "content": None,
+            "executable": True,
+        },
+    ]
     return CapabilityPackageAssetConfig(
-        manifest={"name": "SEO analyst", "license": "MIT"},
-        resources=[
-            {
-                "path": "SKILL.md",
-                "kind": "reference",
-                "content": "---\nname: seo-analyst\ndescription: Audit SEO\n---\nUse evidence.",
-                "executable": False,
-            },
-            {
-                "path": "scripts/run.py",
-                "kind": "script",
-                "content": None,
-                "executable": True,
-            },
-        ],
+        source_package_id="pkg-source-1",
+        provenance_mode="git_pinned",
+        manifest=manifest,
+        resources=resources,
         package_format="agent_skill",
         license="MIT",
         license_policy="allow",
         risk_level="low",
         signature_status="unsigned",
-        content_digest="sha256:reviewed-snapshot",
+        publisher_trust_scope="none",
+        content_digest="sha256:" + "b" * 64,
+        snapshot_digest=inert_snapshot_digest(manifest=manifest, resources=resources),
         repository_url="https://github.com/acme/capabilities",
         commit_sha="a" * 40,
         package_path="skills/seo",
@@ -40,6 +47,12 @@ def _config() -> CapabilityPackageAssetConfig:
 def test_marketplace_snapshot_rejects_embedded_executable_content() -> None:
     with pytest.raises(ValidationError):
         CapabilityPackageAssetConfig(
+            source_package_id="pkg-source-1",
+            provenance_mode="git_pinned",
+            repository_url="https://github.com/acme/capabilities",
+            commit_sha="a" * 40,
+            content_digest="sha256:" + "b" * 64,
+            snapshot_digest="sha256:" + "c" * 64,
             manifest={"name": "unsafe", "license": "MIT"},
             resources=[
                 {
@@ -52,7 +65,6 @@ def test_marketplace_snapshot_rejects_embedded_executable_content() -> None:
             package_format="agent_skill",
             license_policy="allow",
             risk_level="low",
-            content_digest="sha256:test",
         )
 
 
