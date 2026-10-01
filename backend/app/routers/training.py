@@ -23,7 +23,7 @@ from app.services.training_service import (
     list_custom_instructions,
     list_training_datasets,
     list_training_jobs,
-    list_workflow_agents,
+    list_workflow_agents as list_training_workflow_agents,
 )
 from app.workers.queue import enqueue_training_job
 from app.workers.training_worker import create_training_worker
@@ -1126,7 +1126,7 @@ async def list_workflow_agents(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     try:
-        return {"agents": list_workflow_agents(client, org_id)}
+        return {"agents": list_training_workflow_agents(client, org_id)}
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

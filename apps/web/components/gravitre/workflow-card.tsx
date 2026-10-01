@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from "framer-motion"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -104,10 +104,7 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
               {/* Node */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: index * 0.05 }}
+                  <div
                     className={`
                       relative flex h-8 w-8 items-center justify-center rounded-lg border cursor-help
                       ${colors}
@@ -126,7 +123,7 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
                         ${node.status === "pending" ? "bg-muted-foreground" : ""}
                       `} />
                     )}
-                  </motion.div>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
                   <span className="font-medium">{node.name}</span>
@@ -138,14 +135,7 @@ function WorkflowDiagram({ nodes }: { nodes: WorkflowNode[] }) {
 
               {/* Connector line */}
               {!isLast && (
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ delay: index * 0.05 + 0.1 }}
-                  className="relative h-[2px] w-4 origin-left bg-[color:var(--g-border-subtle)]"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[color:var(--g-signal)]/40 to-transparent" />
-                </motion.div>
+                <div className="h-px w-4 bg-[color:var(--g-border-default)]" />
               )}
             </div>
           )
@@ -188,22 +178,11 @@ export function WorkflowCard({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      whileHover={{ 
-        y: -4, 
-        scale: 1.01,
-        transition: { duration: 0.15, ease: [0.2, 0, 0, 1] }
-      }}
-      whileTap={{ scale: 0.99 }}
-      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-      className="group relative"
-    >
+    <div className="group relative">
       <Link href={`/workflows/${id}`}>
         <div className={`
           relative cursor-pointer rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-3 shadow-[var(--np-shadow)] transition-all duration-200
-          hover:border-[color:var(--g-border-active)] hover:shadow-[var(--g-shadow-elevated)]
+          hover:border-[color:var(--g-border-active)]
           ${isRunning ? "border-[color:var(--g-signal)]/35" : "border-divide"}
         `}>
           {isRunning ? (
@@ -218,7 +197,7 @@ export function WorkflowCard({
               </StatusChip>
               
               <div className="min-w-0">
-                <h3 className="truncate text-sm font-medium text-[color:var(--g-text-primary)] transition-colors group-hover:text-[color:var(--g-emerald)]">
+                <h3 className="truncate text-sm font-semibold text-[color:var(--g-text-primary)]">
                   {name}
                 </h3>
                 <p className="mt-0.5 line-clamp-1 text-xs text-[color:var(--g-text-muted)]">
@@ -234,13 +213,7 @@ export function WorkflowCard({
                 </span>
               ) : null}
               {/* Environment badge */}
-              <div className={`
-                flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium
-                ${environment === "production" 
-                  ? "bg-[color:var(--g-emerald)]/10 text-[color:var(--g-emerald)] ring-1 ring-[color:var(--g-emerald)]/20" 
-                  : "bg-[color:var(--g-approval)]/10 text-[color:var(--g-approval)] ring-1 ring-[color:var(--g-approval)]/20"
-                }
-              `}>
+              <div className="flex items-center gap-1 border border-divide bg-[color:var(--g-surface-2)] px-2 py-0.5 text-xs font-medium text-[color:var(--g-text-secondary)]">
                 <Icon 
                   name={environment === "production" ? "production" : "staging"} 
                   size="xs" 
@@ -386,7 +359,7 @@ export function WorkflowCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </motion.div>
+    </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         <ContextMenuItem
