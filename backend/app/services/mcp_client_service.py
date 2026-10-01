@@ -106,6 +106,16 @@ def should_enable_discovered_mcp_tool(
     return not bool(server.get("source_capability_package_id"))
 
 
+def catalog_visible_mcp_tools(
+    server: dict[str, Any],
+    tools: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Portable-package tools enter the action catalog only after admin enablement."""
+    if not bool(server.get("source_capability_package_id")):
+        return tools
+    return [row for row in tools if bool(row.get("enabled"))]
+
+
 class MCPClientService:
     """Org-scoped MCP tool discovery and execution with mandatory write approval."""
 
@@ -202,7 +212,7 @@ class MCPClientService:
         sync_mcp_server_to_catalog(
             server_name=server_name,
             server_id=server_id,
-            tools=upserted,
+            tools=catalog_visible_mcp_tools(server, upserted),
         )
         from app.connectors.action_catalog.extensions import register_action_schemas
 
