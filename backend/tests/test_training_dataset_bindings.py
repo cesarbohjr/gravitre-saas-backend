@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_dataset_binding_migration_keeps_provider_neutral_purposes():
-    sql = (ROOT.parent / "supabase" / "migrations" / "20260929134000_training_dataset_bindings.sql").read_text()
+    sql = (ROOT.parent / "supabase" / "migrations" / "20260929144607_training_dataset_bindings.sql").read_text()
     for purpose in (
         "reference",
         "benchmark",

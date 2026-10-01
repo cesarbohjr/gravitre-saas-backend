@@ -37,7 +37,7 @@ def test_play_dataset_binding_table_is_tenant_scoped_with_rls():
         ROOT.parent
         / "supabase"
         / "migrations"
-        / "20260929134000_training_dataset_bindings.sql"
+        / "20260929144607_training_dataset_bindings.sql"
     ).read_text()
     assert "ENABLE ROW LEVEL SECURITY" in migration
     assert "organization_members" in migration

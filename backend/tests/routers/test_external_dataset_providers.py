@@ -119,7 +119,7 @@ def test_external_reference_migration_is_tenant_scoped_and_non_materializing():
         ROOT.parent
         / "supabase"
         / "migrations"
-        / "20260929192000_external_dataset_references.sql"
+        / "20260929211911_external_dataset_references.sql"
     ).read_text()
     assert "ENABLE ROW LEVEL SECURITY" in migration
     assert "organization_members" in migration
