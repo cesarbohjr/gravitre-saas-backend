@@ -128,6 +128,16 @@ def resolve_org_github_token(
         return None
 
 
+def _resource_row_to_dict(row: Any) -> dict[str, Any]:
+    if isinstance(row, dict):
+        return dict(row)
+    if hasattr(row, "model_dump"):
+        dumped = row.model_dump(mode="json")
+        return dumped if isinstance(dumped, dict) else {}
+    values = vars(row) if hasattr(row, "__dict__") else {}
+    return dict(values) if isinstance(values, dict) else {}
+
+
 def install_marketplace_capability_package(
     client: Any,
     *,
@@ -141,10 +151,7 @@ def install_marketplace_capability_package(
     raw_manifest = getattr(config, "manifest", {})
     manifest = raw_manifest if isinstance(raw_manifest, dict) else {}
     raw_resources = getattr(config, "resources", []) or []
-    resource_rows = [
-        row.model_dump(mode="json") if hasattr(row, "model_dump") else dict(row)
-        for row in raw_resources
-    ]
+    resource_rows = [_resource_row_to_dict(row) for row in raw_resources]
     skill_md = next(
         (
             str(row.get("content") or "")
