@@ -34,6 +34,7 @@ async def _sync_source(client, source: dict, settings: Settings) -> None:
             org_id=org_id,
             user_id=str(source.get("created_by") or ""),
             source=source,
+            settings=settings,
         )
     except Exception as exc:  # noqa: BLE001
         update_marketplace_sync_status(
