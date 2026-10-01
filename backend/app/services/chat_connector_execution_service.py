@@ -2940,6 +2940,10 @@ class ChatConnectorExecutionService:
                     "action_args": _proof_args_for_run(plan),
                     "already_existed": already_existed,
                     "outcome_effect": outcome_effect,
+                    # This lightweight chat run represents exactly one connector write,
+                    # so its verifier owns the eventual terminal transition. Multi-step
+                    # workflow runs deliberately omit this flag.
+                    "verification_owns_terminal": bool(plan.kind == "write"),
                     # Phase 6 — durable Phase 4 finding for Activity/BusinessOutcome.
                     **(
                         {"batch_degeneracy": structured.get("batch_degeneracy")}
