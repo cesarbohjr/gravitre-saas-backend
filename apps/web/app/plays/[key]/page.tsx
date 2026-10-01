@@ -13,6 +13,7 @@ import { fetcher } from "@/lib/fetcher"
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, PlayCircle } from "lucide-react"
 import { PlaySetup } from "@/components/plays/play-setup"
 import { PlayRunControl } from "@/components/plays/play-run-control"
+import { PlayResults } from "@/components/plays/play-results"
 
 type Readiness = {
   observe_ready?: boolean
@@ -99,6 +100,8 @@ export default function PlayDetailPage() {
               <PlaySetup playKey={data.play.key} playVersion={data.play.version} readiness={data.readiness} />
 
               <PlayRunControl playKey={data.play.key} installation={installationData?.installation ?? null} readiness={data.readiness} />
+
+              <PlayResults playKey={data.play.key} />
 
               <section className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
