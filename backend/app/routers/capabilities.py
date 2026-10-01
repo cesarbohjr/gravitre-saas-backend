@@ -11,6 +11,11 @@ from app.capabilities.activation import build_activation_plan
 from app.capabilities.importers import import_file_bundle, read_zip_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
 from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
+from app.capabilities.publisher_trust import (
+    is_trusted_publisher_key,
+    list_trusted_publishers,
+    trust_publisher_key,
+)
 from app.capabilities.registry import tenant_capability_snapshot
 from app.capabilities.repository import (
     create_marketplace_source,
@@ -55,6 +60,13 @@ class PackageBundleRequest(BaseModel):
 class PackageReviewRequest(BaseModel):
     status: Literal["installed", "quarantined", "disabled"]
     notes: str | None = Field(default=None, max_length=2000)
+
+
+class TrustedPublisherCreateRequest(BaseModel):
+    publisher_name: str = Field(min_length=1, max_length=160, alias="publisherName")
+    public_key_pem: str = Field(min_length=1, alias="publicKeyPem")
+
+    model_config = {"populate_by_name": True}
 
 
 class GitMarketplaceSourceCreateRequest(BaseModel):
@@ -208,11 +220,9 @@ async def install_portable_bundle(
                 signing_public_key_pem=body.signing_public_key_pem,
                 signature_b64=body.signature,
             )
-            # A valid signature proves package integrity against the supplied
-            # key. It does not establish that the key belongs to a publisher
-            # Gravitre has independently trusted.
+            # Signature validity proves integrity. Publisher identity is trusted
+            # only when this org has explicitly pinned the same signing key.
             signature_status = "verified"
-            publisher_verified = False
         except BundleSignatureError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -220,6 +230,16 @@ async def install_portable_bundle(
             ) from exc
 
     client = get_supabase_client(settings)
+    publisher_name = str(
+        bundle.manifest.get("publisher") or bundle.manifest.get("author") or ""
+    ).strip() or None
+    if signature_status == "verified" and body.signing_public_key_pem:
+        publisher_verified = is_trusted_publisher_key(
+            client,
+            org_id=org_id,
+            publisher_name=publisher_name,
+            public_key_pem=body.signing_public_key_pem,
+        )
     installed = install_package(
         client,
         org_id=org_id,
@@ -228,7 +248,7 @@ async def install_portable_bundle(
         manifest=bundle.manifest,
         source_type=body.source_type,
         source_uri=body.source_uri,
-        publisher_name=str(bundle.manifest.get("publisher") or bundle.manifest.get("author") or "").strip() or None,
+        publisher_name=publisher_name,
         signature_status=signature_status,
         publisher_verified=publisher_verified,
         content_digest=bundle_digest(body.files),
@@ -341,6 +361,17 @@ async def install_portable_zip(
             ) from exc
 
     client = get_supabase_client(settings)
+    publisher_name = str(
+        bundle.manifest.get("publisher") or bundle.manifest.get("author") or ""
+    ).strip() or None
+    publisher_verified = False
+    if signature_status == "verified" and signing_public_key_pem:
+        publisher_verified = is_trusted_publisher_key(
+            client,
+            org_id=org_id,
+            publisher_name=publisher_name,
+            public_key_pem=signing_public_key_pem,
+        )
     installed = install_package(
         client,
         org_id=org_id,
@@ -349,13 +380,9 @@ async def install_portable_zip(
         manifest=bundle.manifest,
         source_type="zip",
         source_uri=source_uri or archive.filename,
-        publisher_name=str(
-            bundle.manifest.get("publisher") or bundle.manifest.get("author") or ""
-        ).strip()
-        or None,
+        publisher_name=publisher_name,
         signature_status=signature_status,
-        # Signature validity proves integrity, not publisher identity.
-        publisher_verified=False,
+        publisher_verified=publisher_verified,
         content_digest=bundle_digest(files),
         security_scan=bundle.security_scan,
     )
@@ -387,6 +414,40 @@ async def get_portable_package_resources(
     _user, org_id, _role = member
     client = get_supabase_client(settings)
     return {"items": list_package_resources(client, org_id, package_id)}
+
+
+@router.get("/trusted-publishers")
+async def get_trusted_capability_publishers(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    return {"items": list_trusted_publishers(client, org_id)}
+
+
+@router.post("/trusted-publishers")
+async def add_trusted_capability_publisher(
+    body: TrustedPublisherCreateRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    try:
+        row = trust_publisher_key(
+            client,
+            org_id=org_id,
+            publisher_name=body.publisher_name,
+            public_key_pem=body.public_key_pem,
+            user_id=str(user.get("user_id") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return {"publisher": row}
 
 
 @router.get("/marketplaces")
