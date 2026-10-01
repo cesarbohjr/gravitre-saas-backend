@@ -14,6 +14,7 @@ from app.capabilities.provenance import bundle_digest, normalize_github_reposito
 from app.capabilities.registry import tenant_capability_snapshot
 from app.capabilities.repository import (
     create_marketplace_source,
+    get_marketplace_source,
     get_package,
     install_package,
     list_marketplace_sources,
@@ -21,8 +22,10 @@ from app.capabilities.repository import (
     list_packages,
     replace_package_resources,
     review_package,
+    update_marketplace_sync_status,
 )
 from app.capabilities.review import review_transition_allowed
+from app.capabilities.github_sync import sync_public_github_marketplace
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
@@ -341,3 +344,51 @@ async def review_portable_package(
     except Exception:
         pass
     return {"package": updated, "reviewed": True}
+
+
+@router.post("/marketplaces/{source_id}/sync")
+async def sync_capability_marketplace(
+    source_id: str,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    source = get_marketplace_source(client, org_id, source_id)
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability marketplace not found")
+    if str(source.get("source_type") or "") != "github":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Unsupported marketplace source type")
+    update_marketplace_sync_status(
+        client,
+        org_id=org_id,
+        source_id=source_id,
+        sync_status="syncing",
+    )
+    try:
+        result = await sync_public_github_marketplace(
+            client,
+            org_id=org_id,
+            user_id=str(user.get("user_id") or ""),
+            source=source,
+        )
+    except Exception as exc:  # noqa: BLE001
+        update_marketplace_sync_status(
+            client,
+            org_id=org_id,
+            source_id=source_id,
+            sync_status="failed",
+            error=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Capability marketplace sync failed: {exc}",
+        ) from exc
+    update_marketplace_sync_status(
+        client,
+        org_id=org_id,
+        source_id=source_id,
+        sync_status="completed",
+        synced=True,
+    )
+    return {"sync": result, "sourceId": source_id, "status": "completed"}
