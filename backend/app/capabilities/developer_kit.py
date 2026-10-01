@@ -18,8 +18,8 @@ def gravitre_plugin_template() -> dict[str, Any]:
         "skills": ["skills/example"],
         "mcpServers": {
             "example": {
-                "url": "https://mcp.example.com/sse",
-                "transport": "sse",
+                "url": "https://mcp.example.com/mcp",
+                "transport": "streamable_http",
                 "auth": {"type": "bearer"},
             }
         },
