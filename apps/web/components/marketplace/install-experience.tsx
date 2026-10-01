@@ -280,7 +280,7 @@ export function InstallStepperSheet({
           <SheetTitle className="text-xl tracking-tight">{asset?.title ?? "Asset"}</SheetTitle>
           <SheetDescription>
             {asset?.assetType === "capability_package"
-              ? "Gravitre will install the reviewed capability snapshot, re-check destination policy, and keep MCP activation separate."
+              ? "Gravitre will install the reviewed capability snapshot in quarantine for your organization to approve. MCP activation stays separate."
               : "We’ll provision agents, workflows, and knowledge — then notify you when it’s ready."}
           </SheetDescription>
         </SheetHeader>
@@ -338,9 +338,7 @@ export function InstallStepperSheet({
             <>
               <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
                 {asset?.assetType === "capability_package"
-                  ? check?.requiresReviewAfterInstall
-                    ? "This capability can be installed, but its current risk profile means it will enter quarantine for admin review before use."
-                    : "Confirm to add this reviewed capability snapshot. Imported scripts remain inert and MCP dependencies are not activated automatically."
+                  ? "Confirm to add this reviewed capability snapshot in quarantine. An org admin must approve it before the skill can be used; imported scripts remain inert and MCP dependencies are not activated automatically."
                   : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
               </div>
               <ConnectorChecklist items={checklist} />
