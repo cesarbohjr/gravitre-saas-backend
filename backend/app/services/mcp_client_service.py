@@ -765,6 +765,8 @@ class MCPClientService:
             return await self._list_tools_stdio(server)
         if transport in {"sse", "http"}:
             return await self._list_tools_http(server)
+        if transport in {"streamable_http", "streamable-http"}:
+            return await self._list_tools_streamable_http(server)
         raise ValueError(f"Unsupported MCP transport: {transport}")
 
     async def _call_mcp_server(
@@ -778,6 +780,8 @@ class MCPClientService:
             return await self._call_stdio(server, tool_name, input_data)
         if transport in {"sse", "http"}:
             return await self._call_http(server, tool_name, input_data)
+        if transport in {"streamable_http", "streamable-http"}:
+            return await self._call_streamable_http(server, tool_name, input_data)
         raise ValueError(f"Unsupported MCP transport: {transport}")
 
     async def _list_tools_stdio(self, server: dict[str, Any]) -> list[dict[str, Any]]:
@@ -822,6 +826,28 @@ class MCPClientService:
                     for tool in listed.tools
                 ]
 
+    async def _list_tools_streamable_http(self, server: dict[str, Any]) -> list[dict[str, Any]]:
+        # MCP v1 exposes streamablehttp_client; v2 renames it, but this
+        # repository intentionally pins mcp<2.0 for runtime compatibility.
+        from mcp import ClientSession
+        from mcp.client.streamable_http import streamablehttp_client
+
+        url = str(server.get("server_url") or "")
+        headers = self._auth_headers(server)
+        async with streamablehttp_client(url, headers=headers) as streams:
+            read, write = streams[0], streams[1]
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                listed = await session.list_tools()
+                return [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "inputSchema": tool.inputSchema,
+                    }
+                    for tool in listed.tools
+                ]
+
     async def _call_stdio(
         self,
         server: dict[str, Any],
@@ -852,6 +878,24 @@ class MCPClientService:
         url = str(server.get("server_url") or "")
         headers = self._auth_headers(server)
         async with sse_client(url, headers=headers) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(tool_name, input_data)
+                return {"content": [block.model_dump() for block in result.content]}
+
+    async def _call_streamable_http(
+        self,
+        server: dict[str, Any],
+        tool_name: str,
+        input_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        from mcp import ClientSession
+        from mcp.client.streamable_http import streamablehttp_client
+
+        url = str(server.get("server_url") or "")
+        headers = self._auth_headers(server)
+        async with streamablehttp_client(url, headers=headers) as streams:
+            read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, input_data)
