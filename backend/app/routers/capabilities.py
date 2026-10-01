@@ -14,12 +14,15 @@ from app.capabilities.provenance import bundle_digest, normalize_github_reposito
 from app.capabilities.registry import tenant_capability_snapshot
 from app.capabilities.repository import (
     create_marketplace_source,
+    get_package,
     install_package,
     list_marketplace_sources,
     list_package_resources,
     list_packages,
     replace_package_resources,
+    review_package,
 )
+from app.capabilities.review import review_transition_allowed
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
@@ -39,6 +42,11 @@ class PackageBundleRequest(BaseModel):
     signature: str | None = None
 
     model_config = {"populate_by_name": True}
+
+
+class PackageReviewRequest(BaseModel):
+    status: Literal["installed", "quarantined", "disabled"]
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class GitMarketplaceSourceCreateRequest(BaseModel):
@@ -278,3 +286,58 @@ async def add_capability_marketplace(
             "executionOwner": "gravitre",
         },
     }
+
+
+@router.post("/packages/{package_id}/review")
+async def review_portable_package(
+    package_id: str,
+    body: PackageReviewRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    package = get_package(client, org_id, package_id)
+    if not package:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
+    if not review_transition_allowed(
+        current_status=str(package.get("status") or ""),
+        target_status=body.status,
+        risk_level=str(package.get("risk_level") or ""),
+        license_policy=str(package.get("license_policy") or ""),
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Requested package review transition is not allowed",
+        )
+    reviewer_id = str(user.get("user_id") or "")
+    updated = review_package(
+        client,
+        org_id=org_id,
+        package_id=package_id,
+        reviewer_id=reviewer_id,
+        target_status=body.status,
+        notes=body.notes,
+    )
+    try:
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            client,
+            org_id,
+            reviewer_id,
+            "capability.package.reviewed",
+            "capability_package",
+            package_id,
+            {
+                "previousStatus": package.get("status"),
+                "status": body.status,
+                "riskLevel": package.get("risk_level"),
+                "licensePolicy": package.get("license_policy"),
+                "signatureStatus": package.get("signature_status"),
+                "notes": body.notes,
+            },
+        )
+    except Exception:
+        pass
+    return {"package": updated, "reviewed": True}
