@@ -402,7 +402,7 @@ export default function CapabilityMarketplacePage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-medium text-foreground">{item.name}</p>
-                          <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] text-muted-foreground">
                             {(item.package_format ?? "package").replace(/_/g, " ")}
                           </span>
                           {item.publisher_verified ? (
@@ -719,7 +719,7 @@ export default function CapabilityMarketplacePage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-medium text-foreground">{candidate.name}</p>
-                        <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] text-muted-foreground">
                           {candidate.package_format.replace(/_/g, " ")}
                         </span>
                         <span className="text-xs text-muted-foreground">{candidate.status.replace(/_/g, " ")}</span>
