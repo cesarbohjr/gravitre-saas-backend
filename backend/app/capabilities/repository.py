@@ -345,3 +345,150 @@ def review_marketplace_candidate(
     )
     rows = list(response.data or [])
     return rows[0] if rows else None
+
+
+_PACKAGE_SNAPSHOT_FIELDS = (
+    "name",
+    "package_format",
+    "version",
+    "description",
+    "license",
+    "license_policy",
+    "risk_level",
+    "source_type",
+    "source_uri",
+    "marketplace_source_id",
+    "publisher_name",
+    "publisher_verified",
+    "signature_status",
+    "content_digest",
+    "manifest",
+    "inspection",
+    "security_scan",
+    "status",
+)
+
+
+def record_package_version(
+    client: Any,
+    *,
+    org_id: str,
+    package: dict[str, Any],
+    resources: list[dict[str, Any]],
+    user_id: str,
+) -> dict[str, Any] | None:
+    package_id = str(package.get("id") or "")
+    if not package_id:
+        return None
+    snapshot = {
+        key: package.get(key)
+        for key in _PACKAGE_SNAPSHOT_FIELDS
+    }
+    digest = str(package.get("content_digest") or "").strip() or None
+    row = {
+        "package_id": package_id,
+        "org_id": org_id,
+        "content_digest": digest,
+        "package_version": package.get("version"),
+        "snapshot": snapshot,
+        "resources": [
+            {
+                "path": resource.get("path"),
+                "kind": resource.get("kind"),
+                "content": resource.get("content"),
+                "executable": bool(resource.get("executable")),
+            }
+            for resource in resources
+        ],
+        "recorded_by": user_id or None,
+    }
+    if digest:
+        response = client.table("capability_package_versions").upsert(
+            row,
+            on_conflict="package_id,content_digest",
+        ).execute()
+    else:
+        response = client.table("capability_package_versions").insert(row).execute()
+    rows = list(response.data or [])
+    return rows[0] if rows else row
+
+
+def list_package_versions(
+    client: Any,
+    *,
+    org_id: str,
+    package_id: str,
+) -> list[dict[str, Any]]:
+    response = (
+        client.table("capability_package_versions")
+        .select("id,package_id,content_digest,package_version,snapshot,recorded_by,recorded_at")
+        .eq("org_id", org_id)
+        .eq("package_id", package_id)
+        .order("recorded_at", desc=True)
+        .execute()
+    )
+    return list(response.data or [])
+
+
+def get_package_version(
+    client: Any,
+    *,
+    org_id: str,
+    package_id: str,
+    version_id: str,
+) -> dict[str, Any] | None:
+    response = (
+        client.table("capability_package_versions")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("package_id", package_id)
+        .eq("id", version_id)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return rows[0] if rows else None
+
+
+def rollback_status_for_snapshot(snapshot: dict[str, Any]) -> str:
+    if str(snapshot.get("license_policy") or "") == "block":
+        return "quarantined"
+    if str(snapshot.get("risk_level") or "") in {"high", "blocked"}:
+        return "quarantined"
+    return "installed"
+
+
+def restore_package_version(
+    client: Any,
+    *,
+    org_id: str,
+    package_id: str,
+    version_row: dict[str, Any],
+    user_id: str,
+) -> dict[str, Any] | None:
+    snapshot = version_row.get("snapshot") if isinstance(version_row.get("snapshot"), dict) else {}
+    patch = {
+        key: snapshot.get(key)
+        for key in _PACKAGE_SNAPSHOT_FIELDS
+        if key in snapshot and key != "status"
+    }
+    patch["status"] = rollback_status_for_snapshot(snapshot)
+    patch["installed_by"] = user_id or None
+    response = (
+        client.table("capability_packages")
+        .update(patch)
+        .eq("org_id", org_id)
+        .eq("id", package_id)
+        .execute()
+    )
+    rows = list(response.data or [])
+    if not rows:
+        return None
+    resources = version_row.get("resources") if isinstance(version_row.get("resources"), list) else []
+    replace_package_resources(
+        client,
+        package_id=package_id,
+        org_id=org_id,
+        resources=[row for row in resources if isinstance(row, dict)],
+    )
+    return rows[0]
