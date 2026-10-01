@@ -309,7 +309,7 @@ def schedule_write_success_verification(
             )
             if verify is None:
                 return
-            from app.workflows.repository import merge_run_parameters, update_run
+            from app.workflows.repository import merge_run_parameters
 
             # Stamp verify evidence always. Never terminalize an in-flight multi-step
             # execute — mid-step writes (e.g. apollo.lists.add) used to mark the whole
@@ -341,18 +341,6 @@ def schedule_write_success_verification(
                     },
                 },
             )
-            if current_status in {"running", "pending_approval", "queued", "paused", "approved"}:
-                logger.info(
-                    "async_write_success_verify_params_only run_id=%s action=%s "
-                    "current_status=%s verified=%s detail=%s",
-                    run_id,
-                    invoke_action,
-                    current_status,
-                    verify.verified,
-                    verify.detail,
-                )
-                return
-
             _finalize_verified_write_run(
                 client=client,
                 org_id=org_id,
@@ -405,11 +393,9 @@ def _verification_terminal_status(*, verified: bool, effect: str | None, detail:
     normalized_effect = str(effect or "").strip().lower()
     if normalized_detail.startswith("entity_id_mismatch") or normalized_detail == "field_value_mismatch":
         return "failed"
-    if normalized_effect == "unknown" and normalized_detail in {
-        "field_value_mismatch",
-    }:
+    if normalized_effect == "unknown":
         return "failed"
-    return "verification_inconclusive"
+    return "partial_success"
 
 
 def _finalize_verified_write_run(
