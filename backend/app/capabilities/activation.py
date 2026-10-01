@@ -46,14 +46,52 @@ def _mcp_servers(manifest: dict[str, Any]) -> list[dict[str, Any]]:
 def build_activation_plan(manifest: dict[str, Any], inspection: dict[str, Any]) -> dict[str, Any]:
     components = inspection.get("components") if isinstance(inspection.get("components"), list) else []
     connectors = [
-        c.get("name") for c in components
-        if isinstance(c, dict) and c.get("kind") == "connector" and c.get("name")
+        row.get("name") for row in components
+        if isinstance(row, dict) and row.get("kind") == "connector" and row.get("name")
     ]
+    component_plan: list[dict[str, Any]] = []
+    for row in components:
+        if not isinstance(row, dict):
+            continue
+        kind = str(row.get("kind") or "")
+        name = str(row.get("name") or "")
+        if kind == "skill":
+            activation = "lazy_context"
+            supported = True
+        elif kind == "mcp":
+            activation = "admin_prepare_discover_enable"
+            supported = True
+        elif kind == "connector":
+            activation = "existing_connector_oauth_or_credentials"
+            supported = True
+        elif kind == "play":
+            activation = "declaration_only_bind_to_native_play_and_workflow"
+            supported = False
+        elif kind in {"agent", "template", "ui_extension"}:
+            activation = "declaration_only_native_adapter_required"
+            supported = False
+        elif kind in {"command", "hook"}:
+            activation = "inert_script_metadata_only"
+            supported = False
+        else:
+            activation = "declaration_only"
+            supported = False
+        component_plan.append(
+            {
+                "kind": kind,
+                "name": name,
+                "supportedActivation": supported,
+                "activation": activation,
+                "executable": bool(row.get("executable")),
+            }
+        )
+
     return {
         "executionOwner": "gravitre",
         "directImportedCodeExecution": False,
         "packageRisk": inspection.get("risk"),
         "requiresSecurityReview": inspection.get("risk") in {"high", "blocked"},
+        "components": component_plan,
         "mcpServers": _mcp_servers(manifest),
         "connectors": [
             {
@@ -69,4 +107,5 @@ def build_activation_plan(manifest: dict[str, Any], inspection: dict[str, Any]) 
             "providerAcceptanceIsSuccess": False,
         },
         "skillLoading": "lazy relevance selection",
+        "unsupportedDeclarationsRemainInert": True,
     }
