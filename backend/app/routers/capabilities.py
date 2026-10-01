@@ -475,6 +475,32 @@ async def review_portable_package(
     return {"package": updated, "reviewed": True}
 
 
+@router.post("/packages/{package_id}/prepare-mcp")
+async def prepare_portable_package_mcp(
+    package_id: str,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    package = get_package(client, org_id, package_id)
+    if not package:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
+    if str(package.get("status") or "") != "installed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Capability package must be approved and installed before MCP dependencies are prepared",
+        )
+    manifest = package.get("manifest") if isinstance(package.get("manifest"), dict) else {}
+    return prepare_mcp_dependencies(
+        client,
+        org_id=org_id,
+        package_id=package_id,
+        manifest=manifest,
+        user_id=str(user.get("user_id") or ""),
+    )
+
+
 @router.post("/marketplaces/{source_id}/sync")
 async def sync_capability_marketplace(
     source_id: str,
