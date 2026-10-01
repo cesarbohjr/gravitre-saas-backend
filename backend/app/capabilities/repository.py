@@ -497,6 +497,9 @@ def restore_package_version(
         if key in snapshot and key != "status"
     }
     patch["status"] = rollback_status_for_snapshot(snapshot)
+    # Trust is time-sensitive: a publisher key may have been revoked since this
+    # snapshot was recorded. Never resurrect trusted-publisher state blindly.
+    patch["publisher_verified"] = False
     patch["installed_by"] = user_id or None
     response = (
         client.table("capability_packages")
@@ -515,4 +518,18 @@ def restore_package_version(
         org_id=org_id,
         resources=[row for row in resources if isinstance(row, dict)],
     )
+    # MCP dependencies are version-specific external capabilities. Force them
+    # back through review whenever package content is restored.
+    try:
+        (
+            client.table("mcp_servers")
+            .update({"enabled": False, "activation_state": "pending_review"})
+            .eq("org_id", org_id)
+            .eq("source_capability_package_id", package_id)
+            .execute()
+        )
+    except Exception:
+        # Rolling deployments may reach this code before the provenance
+        # migration exists; package rollback must still restore inert content.
+        pass
     return rows[0]
