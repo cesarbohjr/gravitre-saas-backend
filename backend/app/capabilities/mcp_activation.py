@@ -127,6 +127,7 @@ def prepare_mcp_dependencies(
         "blocked": blocked,
         "enabled": 0,
         "credentialsCopiedFromPackage": False,
+        "activationState": activation_state,
         "executionOwner": "gravitre",
     }
 
@@ -136,6 +137,7 @@ def deactivate_package_mcp_dependencies(
     *,
     org_id: str,
     package_id: str,
+    activation_state: str = "disabled",
 ) -> dict[str, Any]:
     """Disable all MCP dependencies owned by a portable package and refresh runtime."""
     rows = (
@@ -151,7 +153,7 @@ def deactivate_package_mcp_dependencies(
     for server_id in server_ids:
         (
             client.table("mcp_servers")
-            .update({"enabled": False, "activation_state": "disabled"})
+            .update({"enabled": False, "activation_state": activation_state})
             .eq("org_id", org_id)
             .eq("id", server_id)
             .execute()
