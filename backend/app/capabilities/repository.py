@@ -248,24 +248,6 @@ def get_marketplace_source(client: Any, org_id: str, source_id: str) -> dict[str
     return rows[0] if rows else None
 
 
-def update_marketplace_sync_status(
-    client: Any,
-    *,
-    org_id: str,
-    source_id: str,
-    status: str,
-    error: str | None = None,
-) -> None:
-    from datetime import datetime, timezone
-
-    payload = {
-        "last_synced_at": datetime.now(timezone.utc).isoformat(),
-        "last_sync_status": status,
-        "last_sync_error": error,
-    }
-    client.table("capability_marketplace_sources").update(payload).eq("org_id", org_id).eq("id", source_id).execute()
-
-
 def upsert_marketplace_candidate(
     client: Any,
     *,
