@@ -1,4 +1,4 @@
-from app.capabilities.mcp_activation import declared_mcp_dependencies, prepare_mcp_dependencies
+from app.capabilities.mcp_activation import deactivate_package_mcp_dependencies, declared_mcp_dependencies, prepare_mcp_dependencies
 
 
 def test_remote_https_mcp_dependency_can_be_prepared() -> None:
@@ -87,3 +87,54 @@ def test_prepare_mcp_dependencies_returns_pending_review_and_never_enables() -> 
     assert result["credentialsCopiedFromPackage"] is False
     assert result["prepared"][0]["enabled"] is False
     assert result["prepared"][0]["activation_state"] == "pending_review"
+
+
+class _DeactivateQuery:
+    def __init__(self, client, table_name: str):
+        self.client = client
+        self.table_name = table_name
+        self.payload = None
+        self.filters = []
+
+    def select(self, *_args, **_kwargs):
+        return self
+
+    def eq(self, key, value):
+        self.filters.append((key, value))
+        return self
+
+    def update(self, payload):
+        self.payload = payload
+        self.client.updates.append((self.table_name, payload))
+        return self
+
+    def execute(self):
+        class Result:
+            data = (
+                [{"id": "server-1"}]
+                if self.table_name == "mcp_servers" and self.payload is None
+                else []
+            )
+        return Result()
+
+
+class _DeactivateClient:
+    def __init__(self):
+        self.updates = []
+
+    def table(self, name: str):
+        return _DeactivateQuery(self, name)
+
+
+def test_deactivate_package_mcp_dependencies_disables_server_and_tools() -> None:
+    client = _DeactivateClient()
+    result = deactivate_package_mcp_dependencies(
+        client,
+        org_id="org-1",
+        package_id="pkg-1",
+        activation_state="quarantined",
+    )
+
+    assert result["disabledServers"] == 1
+    assert ("mcp_servers", {"enabled": False, "activation_state": "quarantined"}) in client.updates
+    assert ("mcp_tools", {"enabled": False}) in client.updates
