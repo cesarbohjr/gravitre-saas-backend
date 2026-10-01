@@ -2291,27 +2291,6 @@ class ChatConnectorExecutionService:
             return failed
 
         summary = self._summarize_result(plan, result_data, observation)
-        if plan.kind == "write":
-            try:
-                from app.services.write_success_verification import resolve_success_verification
-
-                verification_contract = resolve_success_verification(plan.invoke_action)
-                vendor_label = (plan.integration or "provider").replace("_", " ").title()
-                if verification_contract.mode == "accepted_async":
-                    summary = (
-                        f"{plan.label} was accepted by {vendor_label}, but Gravitre "
-                        "does not yet have an independent source-of-record check for this action."
-                    )
-                else:
-                    summary = (
-                        f"{plan.label} was accepted by {vendor_label}. "
-                        "I’m verifying the final source state now."
-                    )
-            except Exception:  # noqa: BLE001
-                summary = (
-                    f"{plan.label} was accepted by the provider. "
-                    "I’m verifying the final source state now."
-                )
         from app.services.connector_outcome_effects import (
             classify_write_effect,
             is_already_existed_effect,
