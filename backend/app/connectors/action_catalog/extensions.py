@@ -34,6 +34,16 @@ def register_action_schemas(schemas: dict[str, dict[str, Any]]) -> None:
     _invalidate_schema_caches()
 
 
+def unregister_action_schemas(action_keys: list[str] | tuple[str, ...] | set[str]) -> None:
+    """Remove runtime action schemas and invalidate derived schema caches."""
+    changed = False
+    for action_key in action_keys:
+        if ACTION_SCHEMA_EXTENSIONS.pop(str(action_key), None) is not None:
+            changed = True
+    if changed:
+        _invalidate_schema_caches()
+
+
 def _invalidate_schema_caches() -> None:
     from app.connectors.action_catalog.action_parameters import (
         clear_action_schema_cache,
