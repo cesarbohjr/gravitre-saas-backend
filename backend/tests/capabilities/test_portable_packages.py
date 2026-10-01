@@ -47,3 +47,16 @@ def test_proprietary_redistribution_restriction_blocks_install() -> None:
     assert result.license_policy == "block"
     assert result.risk == "blocked"
     assert not installation_allowed(result)
+
+
+def test_event_trigger_declarations_are_normalized_but_not_executable() -> None:
+    result = inspect_package(
+        {
+            "name": "event-pack",
+            "license": "MIT",
+            "triggers": [{"name": "daily-sync", "event": "schedule.daily"}],
+        }
+    )
+    trigger = next(component for component in result.components if component.kind == "trigger")
+    assert trigger.name == "daily-sync"
+    assert trigger.executable is False
