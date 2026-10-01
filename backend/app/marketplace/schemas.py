@@ -218,6 +218,8 @@ class CapabilityPackageAssetConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_policy(self) -> "CapabilityPackageAssetConfig":
+        if (self.manifest or self.resources) and not self.snapshot_digest:
+            raise ValueError("snapshot_digest is required when an inert capability snapshot is embedded")
         if self.license_policy == "block" or self.risk_level == "blocked":
             raise ValueError("blocked capability packages cannot be published")
         if bool((self.security_scan or {}).get("blocked")):
