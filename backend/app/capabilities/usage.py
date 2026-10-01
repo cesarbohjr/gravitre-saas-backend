@@ -112,3 +112,28 @@ def usage_summary(
         "surfaces": dict(surfaces),
         "contentStored": False,
     }
+
+
+def record_mcp_execution(
+    client: Any,
+    *,
+    org_id: str,
+    package_id: str | None,
+    workflow_run_id: str | None = None,
+) -> None:
+    if not package_id:
+        return
+    row = {
+        "org_id": org_id,
+        "package_id": str(package_id),
+        "event_type": "mcp_tool_executed",
+        "surface": "mcp",
+        "metadata": {
+            "contentStored": False,
+            "workflowRunId": workflow_run_id or None,
+        },
+    }
+    try:
+        client.table("capability_usage_events").insert(row).execute()
+    except Exception:
+        return
