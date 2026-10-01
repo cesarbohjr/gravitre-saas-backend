@@ -57,6 +57,7 @@ def developer_kit_contract() -> dict[str, Any]:
             "packageSignature": "Ed25519 detached signature verified against a supplied public key",
             "publisherTrust": "separate explicit org/platform trust decision",
             "writes": "canonical Gravitre approval and source-of-record verification",
+            "portableMcpWriteWithoutVerifier": "verification_inconclusive; provider acceptance is never terminal success",
         },
         "distribution": {
             "github": True,
