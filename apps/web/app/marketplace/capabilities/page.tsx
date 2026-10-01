@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { portableCapabilitiesApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { toast } from "sonner"
 
 function riskLabel(value?: string) {
@@ -24,10 +25,13 @@ function riskLabel(value?: string) {
 
 export default function CapabilityMarketplacePage() {
   const { user } = useAuth()
+  const { isAdmin } = useOrgAdmin()
   const [name, setName] = useState("")
   const [repositoryUrl, setRepositoryUrl] = useState("")
   const [branch, setBranch] = useState("main")
   const [busy, setBusy] = useState(false)
+  const [packageBusy, setPackageBusy] = useState<string | null>(null)
+  const [sourceBusy, setSourceBusy] = useState<string | null>(null)
 
   const packages = useSWR(
     user ? "portable-capability-packages" : null,
@@ -63,6 +67,35 @@ export default function CapabilityMarketplacePage() {
       toast.error(error instanceof Error ? error.message : "Could not add marketplace")
     } finally {
       setBusy(false)
+    }
+  }
+
+
+  async function reviewPackage(packageId: string, status: "installed" | "quarantined" | "disabled") {
+    setPackageBusy(packageId)
+    try {
+      await portableCapabilitiesApi.reviewPackage(packageId, { status })
+      toast.success(status === "installed" ? "Capability approved" : status === "disabled" ? "Capability disabled" : "Capability quarantined")
+      await packages.mutate()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Capability review failed")
+    } finally {
+      setPackageBusy(null)
+    }
+  }
+
+  async function syncMarketplace(sourceId: string) {
+    setSourceBusy(sourceId)
+    try {
+      const result = await portableCapabilitiesApi.syncMarketplace(sourceId)
+      toast.success("Capability marketplace synced", {
+        description: `${result.sync.ingested} package${result.sync.ingested === 1 ? "" : "s"} ingested`,
+      })
+      await Promise.all([marketplaces.mutate(), packages.mutate()])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Marketplace sync failed")
+    } finally {
+      setSourceBusy(null)
     }
   }
 
@@ -125,9 +158,40 @@ export default function CapabilityMarketplacePage() {
                           License: {item.license ?? "Review required"} · Risk: {riskLabel(item.risk_level)} · Status: {item.status ?? "installed"}
                         </p>
                       </div>
-                      <div className="shrink-0 text-right text-[11px] text-muted-foreground">
+                      <div className="shrink-0 space-y-2 text-right text-[11px] text-muted-foreground">
                         {item.publisher_name ? <p>{item.publisher_name}</p> : null}
                         {item.content_digest ? <p className="max-w-[150px] truncate font-mono">{item.content_digest}</p> : null}
+                        {isAdmin && item.id ? (
+                          <div className="flex justify-end gap-1">
+                            {item.status !== "installed" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={packageBusy === item.id || item.license_policy === "block" || item.risk_level === "blocked"}
+                                onClick={() => void reviewPackage(item.id!, "installed")}
+                              >
+                                Approve
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={packageBusy === item.id}
+                                onClick={() => void reviewPackage(item.id!, "quarantined")}
+                              >
+                                Quarantine
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={packageBusy === item.id}
+                              onClick={() => void reviewPackage(item.id!, "disabled")}
+                            >
+                              Disable
+                            </Button>
+                          </div>
+                        ) : null}
                       </div>
                     </li>
                   ))}
@@ -189,6 +253,22 @@ export default function CapabilityMarketplacePage() {
                         <p className="mt-1 text-[11px] text-muted-foreground">
                           {source.branch || "main"} · approval {source.approval_required === false ? "optional" : "required"} · {source.status || "active"}
                         </p>
+                        {source.last_sync_status ? (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Last sync: {source.last_sync_status}
+                          </p>
+                        ) : null}
+                        {isAdmin && source.id ? (
+                          <Button
+                            className="mt-2"
+                            size="sm"
+                            variant="outline"
+                            disabled={sourceBusy === source.id}
+                            onClick={() => void syncMarketplace(source.id!)}
+                          >
+                            {sourceBusy === source.id ? "Syncing…" : "Sync now"}
+                          </Button>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
