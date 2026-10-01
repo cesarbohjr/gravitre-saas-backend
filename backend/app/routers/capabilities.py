@@ -50,6 +50,7 @@ from app.capabilities.native_bindings import (
 )
 from app.capabilities.usage import usage_summary
 from app.config import Settings, get_settings
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.repository import get_supabase_client
 
 router = APIRouter(prefix="/api/capabilities", tags=["capabilities"])
@@ -1146,7 +1147,7 @@ async def install_capability_marketplace_candidate(
             status_code=status.HTTP_409_CONFLICT,
             detail="Capability candidate must be approved before installation",
         )
-    files = dict(candidate.get("files") or {})
+    files = safe_normalize_stored_dict(candidate, key="files")
     bundle = import_file_bundle(files)
     inspection = bundle.inspection
     if not installation_allowed(inspection) or bool(bundle.security_scan.get("blocked")):
