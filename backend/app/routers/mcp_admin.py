@@ -183,7 +183,6 @@ async def discover_mcp_tools(
             server_id,
             org_id,
             allow_disabled_server=imported_pending,
-            enable_discovered_tools=not imported_pending,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
