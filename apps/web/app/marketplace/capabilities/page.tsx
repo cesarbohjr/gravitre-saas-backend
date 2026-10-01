@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"\nimport type { FormEvent } from "react"
+import { useState } from "react"
+import type { FormEvent } from "react"
 import useSWR from "swr"
 import { ShieldCheck, Package, GitBranch, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -137,7 +138,7 @@ export default function CapabilityMarketplacePage() {
               ) : (
                 <ul className="divide-y divide-divide">
                   {packageRows.map((item) => (
-                    <li key={item.id ?? \`\${item.name}:\${item.version ?? ""}\`} className="flex items-start justify-between gap-4 px-4 py-3">
+                    <li key={item.id ?? `${item.name}:${item.version ?? ""}`} className="flex items-start justify-between gap-4 px-4 py-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-medium text-foreground">{item.name}</p>
