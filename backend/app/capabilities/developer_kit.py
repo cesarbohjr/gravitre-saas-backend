@@ -27,6 +27,7 @@ def gravitre_plugin_template() -> dict[str, Any]:
         "agents": [],
         "plays": [],
         "templates": [],
+        "triggers": [],
         "permissions": [],
     }
 
@@ -45,6 +46,7 @@ def developer_kit_contract() -> dict[str, Any]:
             "agent": "native adapter required",
             "play": "bind to a native Gravitre Play/workflow",
             "template": "native adapter required",
+            "trigger": "bind to a native Gravitre event/schedule adapter after review",
             "ui_extension": "native adapter required",
             "command": "inert metadata only",
             "hook": "inert metadata only",
