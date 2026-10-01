@@ -378,3 +378,12 @@ def test_capability_package_requires_snapshot_content() -> None:
     with pytest.raises(MarketplaceValidationError):
         parse_asset_config("capability_package", config, publish=True)
 
+
+
+def test_capability_package_legacy_git_asset_remains_readable() -> None:
+    config = _valid_capability_config()
+    config.pop("source_package_id")
+    config.pop("provenance_mode")
+    parsed = parse_asset_config("capability_package", config, publish=False)
+    assert parsed.repository_url == "https://github.com/acme/capabilities"
+    assert parsed.commit_sha == "a" * 40
