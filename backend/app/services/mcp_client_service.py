@@ -263,6 +263,16 @@ class MCPClientService:
                 capability_tier=str(tool.get("capability_tier") or ""),
             )
             await self._audit_execution(org_id, tool, approval_id)
+            source_package_id = str(server.get("source_capability_package_id") or "").strip()
+            if source_package_id:
+                from app.capabilities.usage import record_mcp_execution
+
+                record_mcp_execution(
+                    self._client(),
+                    org_id=org_id,
+                    package_id=source_package_id,
+                    workflow_run_id=workflow_run_id,
+                )
             return {"status": "completed", "result": result, "latency_ms": latency_ms}
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
