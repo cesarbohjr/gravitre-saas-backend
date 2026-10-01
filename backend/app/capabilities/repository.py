@@ -137,3 +137,45 @@ def create_marketplace_source(
     response = client.table("capability_marketplace_sources").insert(row).execute()
     data = list(response.data or [])
     return data[0] if data else row
+
+
+def get_package(client: Any, org_id: str, package_id: str) -> dict[str, Any] | None:
+    response = (
+        client.table("capability_packages")
+        .select("*")
+        .eq("id", package_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return rows[0] if rows else None
+
+
+def review_package(
+    client: Any,
+    *,
+    org_id: str,
+    package_id: str,
+    reviewer_id: str,
+    target_status: str,
+    notes: str | None = None,
+) -> dict[str, Any] | None:
+    from datetime import datetime, timezone
+
+    response = (
+        client.table("capability_packages")
+        .update(
+            {
+                "status": target_status,
+                "reviewed_by": reviewer_id or None,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                "review_notes": (notes or "").strip() or None,
+            }
+        )
+        .eq("id", package_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return rows[0] if rows else None
