@@ -22,12 +22,16 @@ from app.capabilities.repository import (
     get_marketplace_candidate,
     get_marketplace_source,
     get_package,
+    get_package_version,
     install_package,
     list_marketplace_candidates,
     list_marketplace_sources,
     list_package_resources,
+    list_package_versions,
     list_packages,
+    record_package_version,
     replace_package_resources,
+    restore_package_version,
     review_marketplace_candidate,
     review_package,
     update_marketplace_sync_status,
@@ -40,6 +44,33 @@ from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
 router = APIRouter(prefix="/api/capabilities", tags=["capabilities"])
+
+
+def _persist_resources_and_version(
+    client: Any,
+    *,
+    org_id: str,
+    package: dict[str, Any],
+    resources: list[dict[str, Any]],
+    user_id: str,
+) -> None:
+    package_id = str(package.get("id") or "")
+    if not package_id:
+        return
+    replace_package_resources(
+        client,
+        package_id=package_id,
+        org_id=org_id,
+        resources=resources,
+    )
+    record_package_version(
+        client,
+        org_id=org_id,
+        package=package,
+        resources=resources,
+        user_id=user_id,
+    )
+
 
 
 class PackageInspectRequest(BaseModel):
@@ -150,6 +181,13 @@ async def install_portable_package(
         source_type=body.source_type,
         source_uri=body.source_uri,
     )
+    record_package_version(
+        client,
+        org_id=org_id,
+        package=installed,
+        resources=[],
+        user_id=str(user.get("user_id") or ""),
+    )
     return {
         "package": installed,
         "inspection": inspection.as_dict(),
@@ -254,14 +292,13 @@ async def install_portable_bundle(
         content_digest=bundle_digest(body.files),
         security_scan=bundle.security_scan,
     )
-    package_id = str(installed.get("id") or "")
-    if package_id:
-        replace_package_resources(
-            client,
-            package_id=package_id,
-            org_id=org_id,
-            resources=list(bundle.resources),
-        )
+    _persist_resources_and_version(
+        client,
+        org_id=org_id,
+        package=installed,
+        resources=list(bundle.resources),
+        user_id=str(user.get("user_id") or ""),
+    )
     return {
         "package": installed,
         "inspection": inspection.as_dict(),
@@ -386,14 +423,13 @@ async def install_portable_zip(
         content_digest=bundle_digest(files),
         security_scan=bundle.security_scan,
     )
-    package_id = str(installed.get("id") or "")
-    if package_id:
-        replace_package_resources(
-            client,
-            package_id=package_id,
-            org_id=org_id,
-            resources=list(bundle.resources),
-        )
+    _persist_resources_and_version(
+        client,
+        org_id=org_id,
+        package=installed,
+        resources=list(bundle.resources),
+        user_id=str(user.get("user_id") or ""),
+    )
     return {
         "package": installed,
         "inspection": inspection.as_dict(),
@@ -402,6 +438,63 @@ async def install_portable_zip(
         "securityScan": bundle.security_scan,
         "directExecutionEnabled": False,
         "fileName": archive.filename,
+    }
+
+
+@router.get("/packages/{package_id}/versions")
+async def get_portable_package_versions(
+    package_id: str,
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    if not get_package(client, org_id, package_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
+    return {"items": list_package_versions(client, org_id=org_id, package_id=package_id)}
+
+
+@router.post("/packages/{package_id}/versions/{version_id}/rollback")
+async def rollback_portable_package_version(
+    package_id: str,
+    version_id: str,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = get_supabase_client(settings)
+    current = get_package(client, org_id, package_id)
+    if not current:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package not found")
+    version_row = get_package_version(
+        client,
+        org_id=org_id,
+        package_id=package_id,
+        version_id=version_id,
+    )
+    if not version_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capability package version not found")
+    restored = restore_package_version(
+        client,
+        org_id=org_id,
+        package_id=package_id,
+        version_row=version_row,
+        user_id=str(user.get("user_id") or ""),
+    )
+    if not restored:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Capability rollback did not persist")
+    record_package_version(
+        client,
+        org_id=org_id,
+        package=restored,
+        resources=list_package_resources(client, org_id, package_id),
+        user_id=str(user.get("user_id") or ""),
+    )
+    return {
+        "package": restored,
+        "restoredFromVersionId": version_id,
+        "status": restored.get("status"),
+        "requiresReview": restored.get("status") == "quarantined",
     }
 
 
@@ -722,9 +815,13 @@ async def install_capability_marketplace_candidate(
         content_digest=str(candidate.get("content_digest") or bundle_digest(files)),
         security_scan=bundle.security_scan,
     )
-    package_id = str(installed.get("id") or "")
-    if package_id:
-        replace_package_resources(client, package_id=package_id, org_id=org_id, resources=list(bundle.resources))
+    _persist_resources_and_version(
+        client,
+        org_id=org_id,
+        package=installed,
+        resources=list(bundle.resources),
+        user_id=str(user.get("user_id") or ""),
+    )
     (
         client.table("capability_marketplace_candidates")
         .update({"status": "installed"})
