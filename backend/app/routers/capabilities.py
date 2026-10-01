@@ -741,6 +741,19 @@ async def create_portable_capability_marketplace_draft(
                 "risk_level": str(package.get("risk_level") or "moderate"),
                 "signature_status": str(package.get("signature_status") or "unsigned"),
                 "security_scan": security_scan,
+                "manifest": package.get("manifest") if isinstance(package.get("manifest"), dict) else {},
+                "resources": [
+                {
+                    "path": str(row.get("path") or ""),
+                    "kind": str(row.get("kind") or "reference"),
+                    "content": None
+                    if bool(row.get("executable")) or str(row.get("kind") or "") == "script"
+                    else row.get("content"),
+                    "executable": bool(row.get("executable")),
+                }
+                for row in list_package_resources(client, org_id, package_id)
+                if str(row.get("path") or "").strip()
+            ],
             },
             description=body.description or package.get("description"),
             category=body.category,
