@@ -8,6 +8,8 @@ from typing import Any
 from app.marketplace.crud import MarketplaceCrudError, _fetch_asset, _serialize_asset, _assert_org_owns_asset
 from app.marketplace.publishers import assert_org_can_publish_publicly
 from app.marketplace.schemas import MarketplaceValidationError, validate_asset_payload
+from app.capabilities.provenance import inert_snapshot_digest, normalize_github_repository_url
+from app.capabilities.repository import list_package_resources
 from app.workflows.audit import write_audit_event
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,136 @@ def _now() -> str:
 
 def _crud_to_publish(exc: MarketplaceCrudError) -> MarketplacePublishError:
     return MarketplacePublishError(str(exc), code=exc.code)
+
+
+def _assert_capability_provenance_current(
+    client: Any,
+    asset: dict[str, Any],
+) -> None:
+    if str(asset.get("asset_type") or "") != "capability_package":
+        return
+
+    config = asset.get("config") if isinstance(asset.get("config"), dict) else {}
+    source_package_id = str(config.get("source_package_id") or "").strip()
+    asset_org_id = str(asset.get("org_id") or "").strip()
+    if not source_package_id or not asset_org_id:
+        raise MarketplacePublishError(
+            "Capability Marketplace asset is missing source-package provenance",
+            code="VALIDATION_ERROR",
+        )
+
+    rows = (
+        client.table("capability_packages")
+        .select("*")
+        .eq("id", source_package_id)
+        .eq("org_id", asset_org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        raise MarketplacePublishError(
+            "Source capability package no longer exists for this organization",
+            code="VALIDATION_ERROR",
+        )
+    package = dict(rows[0])
+    if str(package.get("status") or "") != "installed":
+        raise MarketplacePublishError(
+            "Source capability package is not currently approved and installed",
+            code="VALIDATION_ERROR",
+        )
+
+    security_scan = package.get("security_scan") if isinstance(package.get("security_scan"), dict) else {}
+    if (
+        str(package.get("license_policy") or "") == "block"
+        or str(package.get("risk_level") or "") == "blocked"
+        or bool(security_scan.get("blocked"))
+    ):
+        raise MarketplacePublishError(
+            "Source capability package no longer passes security or license policy",
+            code="VALIDATION_ERROR",
+        )
+
+    current_digest = str(package.get("content_digest") or "").strip()
+    if not current_digest or current_digest != str(config.get("content_digest") or "").strip():
+        raise MarketplacePublishError(
+            "Source capability content changed after the Marketplace draft was created",
+            code="VALIDATION_ERROR",
+        )
+
+    manifest = package.get("manifest") if isinstance(package.get("manifest"), dict) else {}
+    resources = [
+        {
+            "path": str(row.get("path") or ""),
+            "kind": str(row.get("kind") or "reference"),
+            "content": None
+            if bool(row.get("executable")) or str(row.get("kind") or "") == "script"
+            else row.get("content"),
+            "executable": bool(row.get("executable")),
+        }
+        for row in list_package_resources(client, asset_org_id, source_package_id)
+        if str(row.get("path") or "").strip()
+    ]
+    current_snapshot_digest = inert_snapshot_digest(
+        manifest=manifest,
+        resources=resources,
+    )
+    if current_snapshot_digest != str(config.get("snapshot_digest") or "").strip():
+        raise MarketplacePublishError(
+            "Source capability snapshot changed after the Marketplace draft was created",
+            code="VALIDATION_ERROR",
+        )
+
+    mode = str(config.get("provenance_mode") or "").strip()
+    if mode == "git_pinned":
+        source_uri = str(package.get("source_uri") or "").strip()
+        source_repo = source_uri.split("@", 1)[0].strip()
+        try:
+            source_repo = normalize_github_repository_url(source_repo)
+        except ValueError as exc:
+            raise MarketplacePublishError(
+                "Source capability no longer has valid Git provenance",
+                code="VALIDATION_ERROR",
+            ) from exc
+        if source_repo != str(config.get("repository_url") or "").strip():
+            raise MarketplacePublishError(
+                "Source capability repository changed after draft creation",
+                code="VALIDATION_ERROR",
+            )
+        if str(package.get("source_commit_sha") or "").strip().lower() != str(
+            config.get("commit_sha") or ""
+        ).strip().lower():
+            raise MarketplacePublishError(
+                "Source capability commit changed after draft creation",
+                code="VALIDATION_ERROR",
+            )
+        if str(package.get("source_package_path") or "").strip().strip("/") != str(
+            config.get("package_path") or ""
+        ).strip().strip("/"):
+            raise MarketplacePublishError(
+                "Source capability package path changed after draft creation",
+                code="VALIDATION_ERROR",
+            )
+    elif mode == "trusted_signature":
+        if str(package.get("signature_status") or "") != "verified":
+            raise MarketplacePublishError(
+                "Source capability signature is no longer verified",
+                code="VALIDATION_ERROR",
+            )
+        if not (
+            bool(package.get("publisher_trusted"))
+            or bool(package.get("publisher_verified"))
+        ):
+            raise MarketplacePublishError(
+                "Source capability publisher trust was revoked before publication",
+                code="VALIDATION_ERROR",
+            )
+    else:
+        raise MarketplacePublishError(
+            "Capability Marketplace asset has unsupported provenance mode",
+            code="VALIDATION_ERROR",
+        )
 
 
 def _snapshot_version(
@@ -78,6 +210,8 @@ def submit_asset_for_review(
             "Only draft assets can be submitted for review",
             code="VALIDATION_ERROR",
         )
+
+    _assert_capability_provenance_current(client, asset)
 
     try:
         validated = validate_asset_payload(
@@ -138,6 +272,8 @@ def approve_asset_for_internal_publish(
             "Public submissions are reviewed by Gravitre platform admins",
             code="VALIDATION_ERROR",
         )
+
+    _assert_capability_provenance_current(client, asset)
 
     try:
         validated = validate_asset_payload(
@@ -260,6 +396,8 @@ def submit_asset_for_public_review(
             code="VALIDATION_ERROR",
         )
 
+    _assert_capability_provenance_current(client, asset)
+
     try:
         validated = validate_asset_payload(
             asset_type=str(asset["asset_type"]),
@@ -375,6 +513,8 @@ def approve_asset_for_public_publish(
             "Only public pending_review assets can be approved",
             code="VALIDATION_ERROR",
         )
+
+    _assert_capability_provenance_current(client, asset)
 
     try:
         validated = validate_asset_payload(
