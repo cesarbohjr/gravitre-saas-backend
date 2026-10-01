@@ -1,6 +1,7 @@
 """Prepare portable package MCP dependencies inside Gravitre governance."""
 from __future__ import annotations
 
+import ipaddress
 from typing import Any
 from urllib.parse import urlparse
 
@@ -40,18 +41,40 @@ def declared_mcp_dependencies(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             continue
 
         parsed = urlparse(url) if url else None
-        remote_https = bool(parsed and parsed.scheme == "https" and parsed.hostname)
+        hostname = (parsed.hostname or "").lower() if parsed else ""
+        safe_host = bool(hostname) and hostname not in {"localhost", "localhost.localdomain"} and not hostname.endswith(".local")
+        if safe_host:
+            try:
+                address = ipaddress.ip_address(hostname)
+            except ValueError:
+                address = None
+            if address and (
+                address.is_private
+                or address.is_loopback
+                or address.is_link_local
+                or address.is_multicast
+                or address.is_reserved
+            ):
+                safe_host = False
+        remote_https = bool(
+            parsed
+            and parsed.scheme == "https"
+            and safe_host
+            and not parsed.username
+            and not parsed.password
+        )
+        registration_allowed = remote_https and transport in {"http", "https", "sse", "streamable_http"}
         out.append(
             {
                 "name": str(name).strip() or "mcp-server",
                 "url": url or None,
                 "transport": transport,
                 "authType": auth_type or "none",
-                "registrationAllowed": remote_https and transport in {"http", "https", "sse", "streamable_http"},
+                "registrationAllowed": registration_allowed,
                 "blockedReason": (
                     None
-                    if remote_https and transport in {"http", "https", "sse", "streamable_http"}
-                    else "Only remote HTTPS MCP dependencies can be prepared automatically; local/stdio execution requires separate review."
+                    if registration_allowed
+                    else "Only reviewed remote HTTPS MCP dependencies on non-private hosts can be prepared automatically; local/stdio execution requires separate review."
                 ),
             }
         )
