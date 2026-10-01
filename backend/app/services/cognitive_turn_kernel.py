@@ -146,12 +146,33 @@ class CognitiveTurnKernel:
         # 1 RETRIEVE
         t0 = time.perf_counter()
         ctx.identity = _identity_from_request(request)
+        # Normalize durable task/conversation signals once before planning so text,
+        # LIVE voice, approvals and replanning share one execution-context contract.
+        from app.services.execution_context import build_execution_context
+
+        execution_context = build_execution_context(
+            task_state=request.task_state,
+            conversation_history=request.conversation_history,
+            surface=request.surface,
+            entry_point=request.entry_point,
+            originating_modality="voice" if request.spoken_mode else "text",
+        )
+        ctx.identity["execution_context"] = execution_context
+        request.task_state = {
+            **(request.task_state or {}),
+            "execution_context": execution_context,
+        }
         ctx.stages.append(
             StageRecord(
                 stage="RETRIEVE",
                 ok=True,
                 ms=_elapsed_ms(t0),
-                meta={"surface": request.surface, "entry_point": request.entry_point},
+                meta={
+                    "surface": request.surface,
+                    "entry_point": request.entry_point,
+                    "execution_context_version": execution_context.get("version"),
+                    "originating_modality": execution_context.get("originating_modality"),
+                },
             )
         )
 
