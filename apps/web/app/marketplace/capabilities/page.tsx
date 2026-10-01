@@ -804,7 +804,15 @@ export default function CapabilityMarketplacePage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={packageBusy === item.id}
+                                disabled={
+                                  packageBusy === item.id ||
+                                  !publishValidation[item.id]?.readyForMarketplace
+                                }
+                                title={
+                                  publishValidation[item.id]?.readyForMarketplace
+                                    ? "Create a canonical Marketplace draft"
+                                    : "Run Validate and resolve all blocking preflight checks first"
+                                }
                                 onClick={() => void createMarketplaceDraft(item)}
                               >
                                 Publish draft
