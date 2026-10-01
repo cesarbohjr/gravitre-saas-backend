@@ -149,6 +149,14 @@ async def patch_mcp_server(
         .eq("org_id", org_id)
         .execute()
     )
+    if not body.enabled:
+        (
+            client.table("mcp_tools")
+            .update({"enabled": False})
+            .eq("server_id", server_id)
+            .eq("org_id", org_id)
+            .execute()
+        )
     return {"server": updated.data[0] if updated.data else {**current, **patch}}
 
 
