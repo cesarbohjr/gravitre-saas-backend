@@ -40,6 +40,7 @@ from app.capabilities.repository import (
 )
 from app.capabilities.review import review_transition_allowed
 from app.capabilities.github_sync import sync_public_github_marketplace
+from app.capabilities.developer_kit import developer_kit_contract
 from app.capabilities.mcp_activation import prepare_mcp_dependencies
 from app.capabilities.usage import usage_summary
 from app.config import Settings, get_settings
@@ -129,6 +130,14 @@ class GitMarketplaceSourceCreateRequest(BaseModel):
 class PackageInstallRequest(PackageInspectRequest):
     source_type: Literal["manual", "github", "zip", "mcp", "marketplace"] = "manual"
     source_uri: str | None = None
+
+
+@router.get("/developer-kit")
+async def get_capability_developer_kit(
+    _member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+) -> dict:
+    """Return the stable portable capability packaging contract."""
+    return developer_kit_contract()
 
 
 @router.get("")
