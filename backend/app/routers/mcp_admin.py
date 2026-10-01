@@ -123,6 +123,22 @@ async def patch_mcp_server(
     if not rows:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP server not found")
     current = rows[0]
+    if body.enabled and current.get("source_capability_package_id"):
+        tool_rows = (
+            client.table("mcp_tools")
+            .select("id")
+            .eq("org_id", org_id)
+            .eq("server_id", server_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not tool_rows:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Discover and review MCP tools before enabling this capability server",
+            )
     patch: dict[str, Any] = {"enabled": bool(body.enabled)}
     if current.get("source_capability_package_id"):
         patch["activation_state"] = "configured" if body.enabled else "disabled"
@@ -143,12 +159,31 @@ async def discover_mcp_tools(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    client = get_supabase_client(settings)
+    server_rows = (
+        client.table("mcp_servers")
+        .select("id,enabled,source_capability_package_id,activation_state")
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not server_rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP server not found")
+    server = server_rows[0]
+    imported_pending = bool(server.get("source_capability_package_id")) and (
+        not bool(server.get("enabled"))
+        or str(server.get("activation_state") or "") in {"pending_review", "disabled"}
+    )
     service = get_mcp_client_service(settings)
     try:
         tools = await service.discover_tools(
             server_id,
             org_id,
-            allow_disabled_server=True,
+            allow_disabled_server=imported_pending,
+            enable_discovered_tools=not imported_pending,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
@@ -186,6 +221,35 @@ async def patch_mcp_tool(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     client = get_supabase_client(settings)
+    if body.enabled:
+        tool_rows = (
+            client.table("mcp_tools")
+            .select("id,server_id")
+            .eq("id", tool_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not tool_rows:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tool not found")
+        server_rows = (
+            client.table("mcp_servers")
+            .select("id,enabled,activation_state")
+            .eq("id", str(tool_rows[0].get("server_id") or ""))
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        server = server_rows[0] if server_rows else {}
+        if not bool(server.get("enabled")) or str(server.get("activation_state") or "configured") in {"pending_review", "disabled"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Enable and approve the MCP server before enabling its tools",
+            )
     updated = (
         client.table("mcp_tools")
         .update({"enabled": body.enabled})
