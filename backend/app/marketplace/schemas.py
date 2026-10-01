@@ -156,33 +156,17 @@ class CapabilityPackageResource(BaseModel):
 
 
 class CapabilityPackageAssetConfig(BaseModel):
-    manifest: dict[str, Any] = Field(default_factory=dict)
-    resources: list[CapabilityPackageResource] = Field(default_factory=list)
-    package_format: str = Field(min_length=1)
-    license: str | None = None
-    license_policy: str = "review"
-    risk_level: str = "moderate"
-    signature_status: str = "unsigned"
-    content_digest: str = Field(min_length=1)
-    repository_url: str | None = None
-    commit_sha: str | None = None
-    package_path: str | None = None
-    security_scan: dict[str, Any] = Field(default_factory=dict)
-
-    @model_validator(mode="after")
-    def validate_portable_snapshot(self) -> "CapabilityPackageAssetConfig":
-        if self.license_policy == "block" or self.risk_level == "blocked":
-            raise ValueError("blocked capability packages cannot be published")
-        if bool(self.security_scan.get("blocked")):
-            raise ValueError("security-blocked capability packages cannot be published")
-        return self
-
-
-class CapabilityPackageAssetConfig(BaseModel):
+    # Immutable source identity used for Marketplace re-fetch and digest proof.
     repository_url: str = Field(min_length=1)
     commit_sha: str = Field(min_length=40, max_length=40)
     package_path: str = ""
     content_digest: str = Field(min_length=71, max_length=71)
+
+    # Inert package snapshot for review/browse. Executable source contents are
+    # intentionally forbidden by CapabilityPackageResource.
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    resources: list[CapabilityPackageResource] = Field(default_factory=list)
+
     package_format: str = Field(min_length=1)
     license: str | None = None
     license_policy: str = "review"
