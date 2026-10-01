@@ -1540,6 +1540,17 @@ export const mcpAdminApi = {
       apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}`),
       { enabled },
     ),
+  configureServerAuth: (
+    serverId: string,
+    body: {
+      authType: "none" | "bearer" | "api_key"
+      authConfig?: { bearer_token?: string; api_key?: string; header?: string }
+    },
+  ) =>
+    patchJson<{ server: MCPAdminServer; credentialsStored: boolean }>(
+      apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}/auth`),
+      body,
+    ),
   discoverTools: (serverId: string) =>
     postJson<{ tools: MCPAdminTool[]; count: number }>(
       apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}/discover`),
