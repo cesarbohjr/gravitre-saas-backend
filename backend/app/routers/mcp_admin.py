@@ -20,6 +20,18 @@ from app.workflows.repository import get_supabase_client
 router = APIRouter(prefix="/api/admin/mcp", tags=["mcp-admin"])
 
 
+_SUPPORTED_MCP_TRANSPORTS = {"stdio", "sse", "http", "streamable_http"}
+
+
+def _normalize_mcp_transport(value: str | None) -> str:
+    transport = str(value or "stdio").strip().lower().replace("-", "_")
+    if transport == "streamablehttp":
+        transport = "streamable_http"
+    if transport not in _SUPPORTED_MCP_TRANSPORTS:
+        raise ValueError(f"Unsupported MCP transport: {transport}")
+    return transport
+
+
 class MCPServerCreateRequest(BaseModel):
     server_name: str = Field(..., min_length=1, alias="serverName")
     server_url: str = Field(..., min_length=1, alias="serverUrl")
@@ -84,11 +96,18 @@ async def create_mcp_server(
                 detail="CONNECTOR_SECRETS_ENCRYPTION_KEY required to store MCP auth",
             )
         auth_config = encrypt_auth_config(auth_config, str(key))
+    try:
+        transport = _normalize_mcp_transport(body.transport)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     row = {
         "org_id": org_id,
         "server_name": body.server_name.strip(),
         "server_url": body.server_url.strip(),
-        "transport": body.transport,
+        "transport": transport,
         "auth_type": body.auth_type,
         "auth_config": auth_config,
         "enabled": body.enabled,
