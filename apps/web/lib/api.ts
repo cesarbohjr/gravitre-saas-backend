@@ -1595,6 +1595,30 @@ export const portableCapabilitiesApi = {
     fetcher<{ items: Array<{ id: string; path: string; kind: string; content?: string | null; executable: boolean }> }>(
       apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/resources`),
     ),
+  listVersions: (packageId: string) =>
+    fetcher<{
+      items: Array<{
+        id: string
+        package_id: string
+        content_digest?: string | null
+        package_version?: string | null
+        snapshot?: Record<string, unknown>
+        recorded_by?: string | null
+        recorded_at?: string | null
+      }>
+    }>(apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/versions`)),
+  rollbackVersion: (packageId: string, versionId: string) =>
+    postJson<{
+      package: PortableCapabilityPackage
+      restoredFromVersionId: string
+      status?: string
+      requiresReview: boolean
+    }>(
+      apiUrl(
+        `/api/capabilities/packages/${encodeURIComponent(packageId)}/versions/${encodeURIComponent(versionId)}/rollback`,
+      ),
+      {},
+    ),
   prepareMcp: (packageId: string) =>
     postJson<{
       prepared: Array<Record<string, unknown>>
