@@ -635,13 +635,13 @@ export default function CapabilityMarketplacePage() {
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-sm font-medium text-foreground">Official community skills</h2>
+                    <h2 className="text-sm font-medium text-foreground">Official skills & plugins</h2>
                     <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                       Admin only
                     </span>
                   </div>
                   <p className="mt-1 max-w-3xl text-xs text-muted-foreground">
-                    Browse compatible skills from official OpenAI and Anthropic catalogs. Discovery is read-only; staging sends packages through Gravitre security scanning and the existing admin review queue before anything can be installed or activated.
+                    Browse compatible skills and plugins from official OpenAI and Anthropic catalogs. Discovery is read-only; staging sends packages through Gravitre security scanning and the existing admin review queue before anything can be installed or activated.
                   </p>
                 </div>
                 <div className="w-full lg:max-w-xs">
@@ -650,8 +650,8 @@ export default function CapabilityMarketplacePage() {
                     id="community-capability-search"
                     value={communitySearch}
                     onChange={(event) => setCommunitySearch(event.target.value)}
-                    placeholder="Search official skills…"
-                    aria-label="Search official community skills"
+                    placeholder="Search official skills & plugins…"
+                    aria-label="Search official skills and plugins"
                   />
                 </div>
               </div>
@@ -671,7 +671,7 @@ export default function CapabilityMarketplacePage() {
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium text-foreground">{source.name}</p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {source.publisher} · {count} discovered skill{count === 1 ? "" : "s"} · official source
+                                {source.publisher} · {count} discovered {source.kind === "plugin" ? "plugin" : "skill"}{count === 1 ? "" : "s"} · official source
                               </p>
                             </div>
                             <Button
@@ -690,11 +690,11 @@ export default function CapabilityMarketplacePage() {
                   </div>
 
                   {communityCatalog.isLoading ? (
-                    <p className="text-xs text-muted-foreground">Loading official skill catalogs…</p>
+                    <p className="text-xs text-muted-foreground">Loading official capability catalogs…</p>
                   ) : communityItems.length === 0 ? (
                     <GravitreEmpty
                       icon={<Package className="h-5 w-5" />}
-                      title={normalizedCommunitySearch ? "No official skills match your search" : "No official skills discovered"}
+                      title={normalizedCommunitySearch ? "No official skills or plugins match your search" : "No official skills or plugins discovered"}
                       hint="Catalog availability is independent from installed capabilities. Retry discovery or add a private Git catalog below."
                     />
                   ) : (
