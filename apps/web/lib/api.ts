@@ -1256,7 +1256,7 @@ export const marketplaceApi = {
   createOrgAsset: (body: {
     slug: string
     title: string
-    assetType: "ai_agent" | "workflow" | "knowledge_pack" | "department_pack" | "connector_config"
+    assetType: "ai_agent" | "workflow" | "knowledge_pack" | "department_pack" | "connector_config" | "capability_package"
     config: Record<string, unknown>
     description?: string
     category?: string
@@ -1629,6 +1629,29 @@ export const portableCapabilitiesApi = {
     }>(
       apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/prepare-mcp`),
       {},
+    ),
+  createMarketplaceDraft: (
+    packageId: string,
+    body: {
+      slug: string
+      title?: string
+      description?: string
+      category?: string
+      department?: string
+      pricingType?: "free" | "paid" | "subscription"
+      priceCents?: number
+    },
+  ) =>
+    postJson<{
+      created: boolean
+      asset: MarketplaceAssetDetail
+      sourcePackageId: string
+      sourceCommitSha: string
+      contentDigest: string
+      next: { internalReview: string; publicReview: string }
+    }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/marketplace-draft`),
+      body,
     ),
   inspectZip: (file: File) => {
     const form = new FormData()
