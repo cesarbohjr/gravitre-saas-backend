@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { fetcher } from "@/lib/fetcher"
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, PlayCircle } from "lucide-react"
 import { PlaySetup } from "@/components/plays/play-setup"
+import { PlayRunControl } from "@/components/plays/play-run-control"
 
 type Readiness = {
   observe_ready?: boolean
@@ -41,6 +42,7 @@ export default function PlayDetailPage() {
   const params = useParams<{ key: string }>()
   const key = params.key
   const { data, error, isLoading, mutate } = useSWR<Payload>(key ? `/api/plays/${key}/readiness` : null, fetcher)
+  const { data: installationData } = useSWR<{ installation: { id: string; operatingMode: string; status: string } | null }>(key ? `/api/plays/${key}/installation` : null, fetcher)
 
   return (
     <AppShell title={data?.play.name ?? "Play"}>
@@ -95,6 +97,8 @@ export default function PlayDetailPage() {
               </section>
 
               <PlaySetup playKey={data.play.key} playVersion={data.play.version} readiness={data.readiness} />
+
+              <PlayRunControl playKey={data.play.key} installation={installationData?.installation ?? null} readiness={data.readiness} />
 
               <section className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
