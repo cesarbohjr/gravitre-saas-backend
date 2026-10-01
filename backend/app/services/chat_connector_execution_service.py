@@ -2326,6 +2326,35 @@ class ChatConnectorExecutionService:
             structured=structured_payload or None,
             assumption_notes=_assumption_notes_from_plan(plan),
         )
+        if plan.kind == "write" and result.success:
+            try:
+                from app.services.write_success_verification import resolve_success_verification
+
+                declared_verification = resolve_success_verification(plan.invoke_action)
+                if declared_verification.mode in {"follow_up_entity_get", "follow_up_field_assert", "follow_up_membership"}:
+                    structured_payload["verification_status"] = "verification_pending"
+                    structured_payload["verification"] = {
+                        "verified": False,
+                        "state": "verifying",
+                        "mode": declared_verification.mode,
+                        "follow_up_attempted": True,
+                    }
+                else:
+                    structured_payload["verification_status"] = "accepted_unverified"
+                    structured_payload["verification"] = {
+                        "verified": False,
+                        "state": "accepted_unverified",
+                        "mode": declared_verification.mode,
+                        "follow_up_attempted": False,
+                    }
+                result = replace(result, structured=dict(structured_payload))
+            except Exception as verify_mode_exc:  # noqa: BLE001
+                logger.warning(
+                    "connector verification presentation lookup skipped action=%s err=%s",
+                    plan.invoke_action,
+                    verify_mode_exc,
+                )
+
         if plan.kind == "write":
             from app.services.connector_output_contract import assert_execution_result_verifiable
 
