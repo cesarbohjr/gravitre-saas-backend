@@ -10,8 +10,16 @@ from app.auth.dependencies import get_environment_context, require_admin, requir
 from app.capabilities.activation import build_activation_plan
 from app.capabilities.importers import import_file_bundle
 from app.capabilities.packages import inspect_package, installation_allowed
+from app.capabilities.provenance import bundle_digest, normalize_github_repository_url
 from app.capabilities.registry import tenant_capability_snapshot
-from app.capabilities.repository import install_package, list_packages, list_package_resources, replace_package_resources
+from app.capabilities.repository import (
+    create_marketplace_source,
+    install_package,
+    list_marketplace_sources,
+    list_package_resources,
+    list_packages,
+    replace_package_resources,
+)
 from app.config import Settings, get_settings
 from app.workflows.repository import get_supabase_client
 
@@ -27,6 +35,17 @@ class PackageBundleRequest(BaseModel):
     files: dict[str, str]
     source_type: Literal["manual", "github", "zip", "mcp", "marketplace"] = "manual"
     source_uri: str | None = None
+
+
+class GitMarketplaceSourceCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    repository_url: str = Field(alias="repositoryUrl")
+    branch: str = "main"
+    root_path: str = Field(default="", alias="rootPath")
+    auto_sync: bool = Field(default=False, alias="autoSync")
+    approval_required: bool = Field(default=True, alias="approvalRequired")
+
+    model_config = {"populate_by_name": True}
 
 
 class PackageInstallRequest(PackageInspectRequest):
@@ -156,6 +175,10 @@ async def install_portable_bundle(
         manifest=bundle.manifest,
         source_type=body.source_type,
         source_uri=body.source_uri,
+        publisher_name=str(bundle.manifest.get("publisher") or bundle.manifest.get("author") or "").strip() or None,
+        signature_status="unsigned",
+        publisher_verified=False,
+        content_digest=bundle_digest(body.files),
     )
     package_id = str(installed.get("id") or "")
     if package_id:
@@ -183,3 +206,46 @@ async def get_portable_package_resources(
     _user, org_id, _role = member
     client = get_supabase_client(settings)
     return {"items": list_package_resources(client, org_id, package_id)}
+
+
+@router.get("/marketplaces")
+async def get_capability_marketplaces(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    return {"items": list_marketplace_sources(client, org_id)}
+
+
+@router.post("/marketplaces")
+async def add_capability_marketplace(
+    body: GitMarketplaceSourceCreateRequest,
+    admin: Annotated[tuple[dict, str], Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    try:
+        repository_url = normalize_github_repository_url(body.repository_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    client = get_supabase_client(settings)
+    source = create_marketplace_source(
+        client,
+        org_id=org_id,
+        user_id=str(user.get("user_id") or ""),
+        name=body.name,
+        repository_url=repository_url,
+        branch=body.branch,
+        root_path=body.root_path,
+        auto_sync=body.auto_sync,
+        approval_required=body.approval_required,
+    )
+    return {
+        "marketplace": source,
+        "sync": {
+            "automatic": bool(body.auto_sync),
+            "approvalRequired": bool(body.approval_required),
+            "executionOwner": "gravitre",
+        },
+    }
