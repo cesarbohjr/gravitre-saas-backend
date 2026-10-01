@@ -286,3 +286,65 @@ def test_capability_package_rejects_blocked_security_scan() -> None:
             },
             publish=True,
         )
+
+
+def test_capability_package_preserves_inert_snapshot_fields() -> None:
+    parsed = parse_asset_config(
+        "capability_package",
+        {
+            "repository_url": "https://github.com/acme/capabilities",
+            "commit_sha": "a" * 40,
+            "package_path": "skills/seo",
+            "content_digest": "sha256:" + "b" * 64,
+            "package_format": "agent_skill",
+            "license": "MIT",
+            "license_policy": "allow",
+            "risk_level": "low",
+            "security_scan": {"blocked": False, "risk": "low"},
+            "manifest": {"name": "SEO skill"},
+            "resources": [
+                {
+                    "path": "SKILL.md",
+                    "kind": "reference",
+                    "content": "Use evidence.",
+                    "executable": False,
+                },
+                {
+                    "path": "scripts/run.py",
+                    "kind": "script",
+                    "content": None,
+                    "executable": True,
+                },
+            ],
+        },
+        publish=True,
+    )
+    dumped = parsed.model_dump(mode="json")
+    assert dumped["manifest"]["name"] == "SEO skill"
+    assert dumped["resources"][0]["content"] == "Use evidence."
+    assert dumped["resources"][1]["content"] is None
+
+
+def test_capability_package_rejects_embedded_executable_source_content() -> None:
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config(
+            "capability_package",
+            {
+                "repository_url": "https://github.com/acme/capabilities",
+                "commit_sha": "a" * 40,
+                "content_digest": "sha256:" + "b" * 64,
+                "package_format": "agent_skill",
+                "license_policy": "allow",
+                "risk_level": "low",
+                "security_scan": {"blocked": False, "risk": "low"},
+                "resources": [
+                    {
+                        "path": "scripts/run.py",
+                        "kind": "script",
+                        "content": "print('must not persist')",
+                        "executable": True,
+                    }
+                ],
+            },
+            publish=True,
+        )
