@@ -1600,6 +1600,20 @@ export const portableCapabilitiesApi = {
     fetcher<{ items: Array<{ id: string; path: string; kind: string; content?: string | null; executable: boolean }> }>(
       apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/resources`),
     ),
+  validatePackage: (packageId: string) =>
+    fetcher<{
+      packageId: string
+      readyForMarketplace: boolean
+      errorCount: number
+      warningCount: number
+      executionPerformed: false
+      checks: Array<{
+        key: string
+        passed: boolean
+        severity: "error" | "warning" | "info" | string
+        message: string
+      }>
+    }>(apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/validate`)),
   listVersions: (packageId: string) =>
     fetcher<{
       items: Array<{
