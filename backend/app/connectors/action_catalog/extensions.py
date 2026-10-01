@@ -22,6 +22,20 @@ def register_vendor_extension(spec: VendorCatalogSpec) -> None:
     _invalidate_schema_caches()
 
 
+def unregister_vendor_extension(vendor: str) -> None:
+    """Remove one runtime vendor extension and invalidate derived catalog caches."""
+    global VENDOR_CATALOG_EXTENSIONS
+    before = len(VENDOR_CATALOG_EXTENSIONS)
+    VENDOR_CATALOG_EXTENSIONS = tuple(
+        spec for spec in VENDOR_CATALOG_EXTENSIONS if spec.vendor != vendor
+    )
+    if len(VENDOR_CATALOG_EXTENSIONS) != before:
+        from app.connectors.action_catalog.registry import get_vendor_catalog
+
+        get_vendor_catalog.cache_clear()
+        _invalidate_schema_caches()
+
+
 def register_action_schema(action_key: str, schema: dict[str, Any]) -> None:
     """Register or replace JSON Schema for a single action (future/partner connectors)."""
     ACTION_SCHEMA_EXTENSIONS[action_key] = schema
