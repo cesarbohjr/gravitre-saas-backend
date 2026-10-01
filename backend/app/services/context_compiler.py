@@ -183,6 +183,35 @@ def _estimate_tokens(text: str) -> int:
     return max(0, len(text or "") // 4)
 
 
+async def _record_portable_usage_safely(
+    *,
+    client: Any,
+    org_id: str,
+    package_ids: list[str],
+    user_id: str,
+    conversation_id: str | None,
+    surface: str | None,
+) -> None:
+    try:
+        from app.capabilities.usage import record_reasoning_selection
+
+        await asyncio.to_thread(
+            record_reasoning_selection,
+            client,
+            org_id=org_id,
+            package_ids=package_ids,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            surface=surface,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(
+            "portable_skill_usage_telemetry_failed org_id=%s error=%s",
+            org_id,
+            exc,
+        )
+
+
 async def compile_unified_reasoning_context(
     *,
     org_id: str,
@@ -336,12 +365,9 @@ async def compile_unified_reasoning_context(
                 else []
             )
             if isinstance(selected_package_ids, list) and selected_package_ids:
-                from app.capabilities.usage import record_reasoning_selection
-
                 asyncio.create_task(
-                    asyncio.to_thread(
-                        record_reasoning_selection,
-                        client,
+                    _record_portable_usage_safely(
+                        client=client,
                         org_id=org_id,
                         package_ids=[str(value) for value in selected_package_ids],
                         user_id=user_id,
