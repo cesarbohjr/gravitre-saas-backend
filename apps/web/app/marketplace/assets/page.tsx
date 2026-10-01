@@ -59,6 +59,7 @@ const TYPE_FILTERS = [
   { id: "knowledge_pack", label: "Knowledge", icon: BookOpen },
   { id: "department_pack", label: "Department packs", icon: Package },
   { id: "connector_config", label: "Partner connectors", icon: Plug },
+  { id: "capability_package", label: "Skills & plugins", icon: Package },
 ] as const
 
 const PRICE_FILTERS = [
@@ -71,6 +72,9 @@ type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
 
 /** Asset mark: vendor logo for partner connectors, role/kind glyph otherwise. */
 function AssetMark({ asset }: { asset: MarketplaceAssetSummary }) {
+  if (asset.assetType === "capability_package") {
+    return <Package className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-label="Skill or plugin" />
+  }
   if (asset.assetType === "connector_config") {
     const vendor = asset.vendor || asset.connectorChecklist?.[0]?.connectorType
     if (vendor) return <ProviderLogo provider={vendor} size="sm" className="mt-0.5 shrink-0" />
@@ -103,6 +107,7 @@ const CAPABILITY_NOUN: Record<string, [string, string]> = {
   knowledge: ["knowledge base", "knowledge bases"],
   connector_config: ["connector setup", "connector setups"],
   department_pack: ["department pack", "department packs"],
+  capability_package: ["skill/plugin", "skills/plugins"],
 }
 
 /** What installing the asset adds to the workspace, from its catalogued contents only. */
@@ -526,7 +531,7 @@ function MarketplaceAssetsContent() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search agents, workflows, knowledge and packs…"
+                placeholder="Search agents, workflows, skills, plugins, knowledge and packs…"
                 aria-label="Search marketplace"
                 className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
               />
