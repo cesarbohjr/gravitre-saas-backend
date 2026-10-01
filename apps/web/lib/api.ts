@@ -1446,6 +1446,8 @@ export interface PortableCapabilityPackage {
   risk_level?: "low" | "moderate" | "high" | "blocked" | string
   source_type?: string
   source_uri?: string | null
+  source_commit_sha?: string | null
+  source_package_path?: string | null
   publisher_name?: string | null
   publisher_verified?: boolean
   signature_status?: string
