@@ -74,6 +74,7 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
       },
       { name: "Assignments", href: "/assignments", icon: "clipboardList" },
       { name: "Goals", href: "/goals", icon: "target" },
+      { name: "Plays", href: APP_ROUTES.plays, icon: "play" },
     ],
   },
   {
