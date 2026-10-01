@@ -1406,6 +1406,86 @@ export const marketplaceApi = {
     ),
 }
 
+export interface PortableCapabilityPackage {
+  id?: string
+  name: string
+  package_format?: string
+  version?: string | null
+  description?: string | null
+  license?: string | null
+  license_policy?: "allow" | "review" | "block" | string
+  risk_level?: "low" | "moderate" | "high" | "blocked" | string
+  source_type?: string
+  source_uri?: string | null
+  publisher_name?: string | null
+  publisher_verified?: boolean
+  signature_status?: string
+  content_digest?: string | null
+  status?: string
+  installed_at?: string
+  inspection?: Record<string, unknown>
+}
+
+export interface CapabilityMarketplaceSource {
+  id?: string
+  name: string
+  repository_url: string
+  branch: string
+  root_path?: string
+  auto_sync?: boolean
+  approval_required?: boolean
+  status?: string
+  last_synced_at?: string | null
+  last_sync_status?: string | null
+}
+
+export const portableCapabilitiesApi = {
+  listPackages: () =>
+    fetcher<{ items: PortableCapabilityPackage[] }>(apiUrl("/api/capabilities/packages")),
+  listMarketplaces: () =>
+    fetcher<{ items: CapabilityMarketplaceSource[] }>(apiUrl("/api/capabilities/marketplaces")),
+  addMarketplace: (body: {
+    name: string
+    repositoryUrl: string
+    branch?: string
+    rootPath?: string
+    autoSync?: boolean
+    approvalRequired?: boolean
+  }) =>
+    postJson<{ marketplace: CapabilityMarketplaceSource }>(
+      apiUrl("/api/capabilities/marketplaces"),
+      body,
+    ),
+  inspectBundle: (body: {
+    files: Record<string, string>
+    sourceType?: "manual" | "github" | "zip" | "mcp" | "marketplace"
+    sourceUri?: string
+  }) =>
+    postJson<{
+      inspection: Record<string, unknown>
+      installationAllowed: boolean
+      activationPlan: Record<string, unknown>
+      resources: Array<{ path: string; kind: string; executable: boolean }>
+      ignoredFiles: string[]
+    }>(apiUrl("/api/capabilities/packages/inspect-bundle"), body),
+  installBundle: (body: {
+    files: Record<string, string>
+    sourceType?: "manual" | "github" | "zip" | "mcp" | "marketplace"
+    sourceUri?: string
+  }) =>
+    postJson<{
+      package: PortableCapabilityPackage
+      inspection: Record<string, unknown>
+      activationPlan: Record<string, unknown>
+      resourceCount: number
+      directExecutionEnabled: false
+    }>(apiUrl("/api/capabilities/packages/install-bundle"), body),
+  listResources: (packageId: string) =>
+    fetcher<{ items: Array<{ id: string; path: string; kind: string; content?: string | null; executable: boolean }> }>(
+      apiUrl(`/api/capabilities/packages/${encodeURIComponent(packageId)}/resources`),
+    ),
+}
+
 // ============ Approvals ============
 export const approvalsApi = {
   list: () => fetcher<{ approvals: Run[] }>(apiUrl("/api/approvals")),
