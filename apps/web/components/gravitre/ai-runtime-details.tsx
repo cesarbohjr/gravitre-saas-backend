@@ -57,6 +57,7 @@ export function runtimeInspectorFields({
     ? present([
         { label: "Outcome", value: executionResult.success === true ? "Succeeded" : executionResult.success === false ? "Failed" : undefined },
         { label: "Action", value: executionResult.task_label ?? executionResult.title },
+        executionResult.success === false && { label: "Reason", value: executionResult.body || "The action failed before a more specific reason was returned." },
         { label: "Integration", value: executionResult.integration ?? undefined },
         Boolean(executionResult.entity_id) && {
           label: "Record",
