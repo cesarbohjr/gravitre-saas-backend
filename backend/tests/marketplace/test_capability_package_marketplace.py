@@ -72,7 +72,7 @@ def test_marketplace_install_prefers_inert_snapshot_and_does_not_refetch_source(
     installed = {
         "id": "pkg-1",
         "name": "SEO analyst",
-        "status": "installed",
+        "status": "quarantined",
         "risk_level": "low",
         "version": "0.0.0",
         "content_digest": "sha256:reviewed-snapshot",
@@ -100,9 +100,10 @@ def test_marketplace_install_prefers_inert_snapshot_and_does_not_refetch_source(
         )
 
     assert result["capabilityPackageId"] == "pkg-1"
-    assert result["requiresReview"] is False
+    assert result["requiresReview"] is True
     assert result["mcpPrepared"] is False
     assert install.call_args.kwargs["source_type"] == "marketplace"
+    assert install.call_args.kwargs["initial_status"] == "quarantined"
     saved_resources = resources.call_args.kwargs["resources"]
     script = next(row for row in saved_resources if row["kind"] == "script")
     assert script["content"] is None
