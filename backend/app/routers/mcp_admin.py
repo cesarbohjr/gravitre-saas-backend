@@ -33,6 +33,10 @@ class MCPToolPatchRequest(BaseModel):
     enabled: bool
 
 
+class MCPServerPatchRequest(BaseModel):
+    enabled: bool
+
+
 @router.get("/servers")
 async def list_mcp_servers(
     org_id: Annotated[str, Depends(get_org_context)],
@@ -42,7 +46,7 @@ async def list_mcp_servers(
     client = get_supabase_client(settings)
     rows = (
         client.table("mcp_servers")
-        .select("id, server_name, server_url, transport, auth_type, enabled, verified_by_gravitre, created_at")
+        .select("id, server_name, server_url, transport, auth_type, enabled, verified_by_gravitre, source_capability_package_id, activation_state, created_at")
         .eq("org_id", org_id)
         .order("created_at", desc=True)
         .execute()
@@ -97,6 +101,41 @@ async def delete_mcp_server(
     return {"deleted": True, "serverId": server_id}
 
 
+@router.patch("/servers/{server_id}")
+async def patch_mcp_server(
+    server_id: str,
+    body: MCPServerPatchRequest,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    client = get_supabase_client(settings)
+    rows = (
+        client.table("mcp_servers")
+        .select("id,source_capability_package_id,activation_state")
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP server not found")
+    current = rows[0]
+    patch: dict[str, Any] = {"enabled": bool(body.enabled)}
+    if current.get("source_capability_package_id"):
+        patch["activation_state"] = "configured" if body.enabled else "disabled"
+    updated = (
+        client.table("mcp_servers")
+        .update(patch)
+        .eq("id", server_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    return {"server": updated.data[0] if updated.data else {**current, **patch}}
+
+
 @router.post("/servers/{server_id}/discover")
 async def discover_mcp_tools(
     server_id: str,
@@ -106,7 +145,11 @@ async def discover_mcp_tools(
 ) -> dict[str, Any]:
     service = get_mcp_client_service(settings)
     try:
-        tools = await service.discover_tools(server_id, org_id)
+        tools = await service.discover_tools(
+            server_id,
+            org_id,
+            allow_disabled_server=True,
+        )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     return {"tools": tools, "count": len(tools)}
