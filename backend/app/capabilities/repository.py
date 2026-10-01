@@ -43,6 +43,27 @@ def list_packages(client: Any, org_id: str) -> list[dict[str, Any]]:
         return []
 
 
+def package_version_conflicts(
+    existing: dict[str, Any],
+    *,
+    incoming_digest: str | None,
+    incoming_source_uri: str | None,
+) -> bool:
+    current_digest = str(existing.get("content_digest") or "").strip()
+    next_digest = str(incoming_digest or "").strip()
+    current_source = str(existing.get("source_uri") or "").strip()
+    next_source = str(incoming_source_uri or "").strip()
+    if current_digest and next_digest:
+        return current_digest != next_digest
+    return bool(
+        not current_digest
+        and not next_digest
+        and current_source
+        and next_source
+        and current_source != next_source
+    )
+
+
 def install_package(
     client: Any,
     *,
@@ -79,19 +100,11 @@ def install_package(
     )
     if existing:
         current = dict(existing[0])
-        current_digest = str(current.get("content_digest") or "").strip()
-        incoming_digest = str(content_digest or "").strip()
-        current_source = str(current.get("source_uri") or "").strip()
-        incoming_source = str(source_uri or "").strip()
-        content_changed = bool(current_digest and incoming_digest and current_digest != incoming_digest)
-        source_changed_without_digest = bool(
-            not current_digest
-            and not incoming_digest
-            and current_source
-            and incoming_source
-            and current_source != incoming_source
-        )
-        if content_changed or source_changed_without_digest:
+        if package_version_conflicts(
+            current,
+            incoming_digest=content_digest,
+            incoming_source_uri=source_uri,
+        ):
             raise PackageVersionConflict(
                 f"Capability {inspection.name!r} version {normalized_version!r} already exists with different content; publish a new version instead."
             )
