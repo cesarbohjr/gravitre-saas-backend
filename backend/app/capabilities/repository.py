@@ -32,6 +32,7 @@ def install_package(
     publisher_verified: bool = False,
     signature_status: str = "unsigned",
     content_digest: str | None = None,
+    initial_status: str | None = None,
 ) -> dict[str, Any]:
     row = {
         "org_id": org_id,
@@ -51,7 +52,7 @@ def install_package(
         "content_digest": content_digest,
         "manifest": manifest,
         "inspection": inspection.as_dict(),
-        "status": "quarantined" if inspection.risk == "high" else "installed",
+        "status": initial_status or ("quarantined" if inspection.risk == "high" else "installed"),
         "installed_by": user_id,
     }
     response = client.table("capability_packages").upsert(
