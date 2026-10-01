@@ -464,6 +464,15 @@ def _finalize_verified_write_run(
         },
     )
 
+    if not bool(params.get("verification_owns_terminal")):
+        logger.info(
+            "write_verify_evidence_only run_id=%s action=%s terminal_candidate=%s",
+            run_id,
+            invoke_action,
+            terminal,
+        )
+        return
+
     integration = str(params.get("integration") or "").strip() or None
     label = str(params.get("label") or invoke_action).strip()
     entity_id = str(
