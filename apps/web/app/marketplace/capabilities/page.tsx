@@ -34,6 +34,23 @@ function packageHasMcp(inspection?: Record<string, unknown>) {
   })
 }
 
+function canPublishPackage(item: {
+  source_uri?: string | null
+  source_commit_sha?: string | null
+  content_digest?: string | null
+  signature_status?: string
+  publisher_trusted?: boolean
+  publisher_verified?: boolean
+}) {
+  const gitPinned = Boolean(item.source_uri && item.source_commit_sha && item.content_digest)
+  const trustedSigned = Boolean(
+    item.content_digest &&
+    item.signature_status === "verified" &&
+    (item.publisher_trusted || item.publisher_verified),
+  )
+  return gitPinned || trustedSigned
+}
+
 function securitySummary(scan?: {
   findings?: Array<{ severity?: string }>
   externalHosts?: string[]
@@ -471,10 +488,7 @@ export default function CapabilityMarketplacePage() {
                                 Prepare MCP
                               </Button>
                             ) : null}
-                            {item.status === "installed" &&
-                            item.source_commit_sha &&
-                            item.content_digest &&
-                            item.source_uri ? (
+                            {item.status === "installed" && canPublishPackage(item) ? (
                               <Button
                                 size="sm"
                                 variant="outline"
