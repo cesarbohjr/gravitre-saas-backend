@@ -2135,6 +2135,10 @@ export type PlayListItem = {
   workflowBindingCount: number
 }
 
+export type PlayImpactMetric = { metricKey: string; value: number; unit?: string | null; currency?: string | null }
+export type PlayImpactItem = { playKey: string; verifiedSuccessCount: number; verifiedFailureCount: number; pendingVerificationCount: number; actionedCount: number; verifiedMetrics: PlayImpactMetric[]; latestResultAt?: string | null }
+export type PlayImpactSummary = { plays: PlayImpactItem[]; verifiedResultCount: number; pendingVerificationCount: number; verifiedMetrics: PlayImpactMetric[]; truthRule: string }
+
 export const playsApi = {
   list: () =>
     fetcher<{
@@ -2143,6 +2147,8 @@ export const playsApi = {
       executionAuthority: string
       policyNote: string
     }>(apiUrl("/api/plays")),
+  impact: () => fetcher<PlayImpactSummary>(apiUrl("/api/plays/impact")),
+  outcomes: (playKey: string) => fetcher<{ playKey: string; outcomes: Array<Record<string, unknown>>; count: number; truthRule: string }>(apiUrl(`/api/plays/${encodeURIComponent(playKey)}/outcomes`)),
 }
 
 // ============ Metrics ============

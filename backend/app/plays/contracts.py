@@ -75,4 +75,23 @@ class PlayReadiness:
     blockers: tuple[str, ...] = field(default_factory=tuple)
 
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        payload = asdict(self)
+        payload["blockers"] = [
+            _humanize_readiness_blocker(str(blocker)) for blocker in self.blockers
+        ]
+        return payload
+
+
+_READINESS_STATUS_LABELS = {
+    "EXTERNAL_CONNECTION_REQUIRED": "setup required",
+    "MISSING": "not configured",
+    "PARTIAL": "needs attention",
+    "AVAILABLE": "ready",
+}
+
+
+def _humanize_readiness_blocker(text: str) -> str:
+    out = text
+    for raw, label in _READINESS_STATUS_LABELS.items():
+        out = out.replace(raw, label)
+    return out

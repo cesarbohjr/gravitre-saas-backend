@@ -90,8 +90,8 @@ describe("Outcome plays dashboard integration", () => {
   it("renders Play readiness inside the existing Dashboard Measure surface", () => {
     const dashboard = readFileSync(resolve(__dirname, "../components/home/home-dashboard.tsx"), "utf8")
     expect(dashboard).toMatch(/Outcome plays/)
-    expect(dashboard).toMatch(/ACT WITH APPROVAL/)
-    expect(dashboard).toMatch(/ACT WITHIN POLICY/)
+    expect(dashboard).toMatch(/Act with approval/)
+    expect(dashboard).toMatch(/Act within policy/)
     expect(dashboard).toMatch(/No canonical workflow bound yet/)
     expect(dashboard).not.toMatch(/verified revenue recovered/i)
   })

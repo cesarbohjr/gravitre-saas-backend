@@ -142,6 +142,8 @@ def build_play_evidence_chain(
             "key": metadata.get("play_key"),
             "version": metadata.get("play_version"),
             "instanceId": metadata.get("play_instance_id"),
+            "runId": metadata.get("play_run_id") or metadata.get("run_id"),
+            "installationId": metadata.get("installation_id"),
             "outcomeType": metadata.get("outcome_type"),
         },
         "workflow": {

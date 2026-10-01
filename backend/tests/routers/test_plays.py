@@ -108,3 +108,88 @@ def test_play_outcomes_are_org_scoped():
     listing.assert_called_once()
     assert listing.call_args.args[1] == "org-tenant-a"
     assert response.json()["outcomes"] == []
+
+
+def test_play_impact_is_org_scoped():
+    _auth("org-tenant-b")
+    with patch("app.routers.plays.get_supabase_client", return_value="client"), patch(
+        "app.routers.plays.play_impact_summary",
+        return_value={
+            "plays": [],
+            "verifiedResultCount": 0,
+            "pendingVerificationCount": 0,
+            "verifiedMetrics": [],
+            "truthRule": "Only source-of-record VERIFIED SUCCESS results contribute to verified impact totals.",
+        },
+    ) as summary:
+        response = client.get("/api/plays/impact")
+    assert response.status_code == 200
+    summary.assert_called_once_with("client", "org-tenant-b")
+    assert "VERIFIED SUCCESS" in response.json()["truthRule"]
+
+
+def test_installation_read_is_org_scoped():
+    _auth("org-tenant-a")
+    fake_client = MagicMock()
+    query = fake_client.table.return_value.select.return_value
+    query.eq.return_value = query
+    query.limit.return_value.execute.return_value.data = []
+    with patch("app.routers.plays.get_supabase_client", return_value=fake_client):
+        response = client.get("/api/plays/customer-rescue/installation")
+    assert response.status_code == 200
+    fake_client.table.assert_called_with("play_installations")
+    org_filters = [call.args for call in query.eq.call_args_list]
+    assert ("org_id", "org-tenant-a") in org_filters
+    assert response.json()["installation"] is None
+
+
+def test_installation_put_rejects_unearned_act_within_policy():
+    _auth()
+    ready = MagicMock(
+        observe_ready=True,
+        recommend_ready=True,
+        act_with_approval_ready=True,
+        act_within_policy_ready=False,
+    )
+    with patch("app.routers.plays.get_supabase_client"), patch(
+        "app.routers.plays._resolve_current_readiness",
+        return_value=ready,
+    ):
+        response = client.put(
+            "/api/plays/customer-rescue/installation",
+            json={"playVersion": "1.0.0", "operatingMode": "ACT WITHIN POLICY"},
+        )
+    assert response.status_code == 409
+    assert "effective runtime action authorization" in response.json()["detail"] or "has not earned" in response.json()["detail"]
+
+
+def test_observe_mode_cannot_start_a_play_run():
+    _auth()
+    with patch("app.routers.plays.get_supabase_client"), patch(
+        "app.routers.plays._load_installation",
+        return_value={"id": "inst-1", "operating_mode": "OBSERVE", "status": "ready"},
+    ):
+        response = client.post(
+            "/api/plays/customer-rescue/runs",
+            json={"installationId": "inst-1"},
+        )
+    assert response.status_code == 409
+    assert "does not permit external actions" in response.json()["detail"]
+
+
+def test_act_within_policy_run_fails_closed():
+    _auth()
+    ready = MagicMock(act_with_approval_ready=True)
+    with patch("app.routers.plays.get_supabase_client"), patch(
+        "app.routers.plays._load_installation",
+        return_value={"id": "inst-1", "operating_mode": "ACT WITHIN POLICY", "status": "ready"},
+    ), patch("app.routers.plays.connected_vendors", return_value=set()), patch(
+        "app.routers.plays.resolve_play_readiness",
+        return_value=ready,
+    ):
+        response = client.post(
+            "/api/plays/customer-rescue/runs",
+            json={"installationId": "inst-1"},
+        )
+    assert response.status_code == 409
+    assert "effective runtime action authorization" in response.json()["detail"]

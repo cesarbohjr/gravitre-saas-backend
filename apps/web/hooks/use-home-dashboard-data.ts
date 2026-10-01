@@ -9,6 +9,7 @@ import {
   agentsApi,
   playsApi,
   type PlayListItem,
+  type PlayImpactSummary,
 } from "@/lib/api"
 import {
   normalizeAiOsStatus,
@@ -43,6 +44,7 @@ export type HomeDashboardData = {
   learningVelocity: string | null
   mostUsedModel: string | null
   plays: PlayListItem[]
+  playImpact: PlayImpactSummary | null
 }
 
 function computeMostUsedModel(agents: Agent[]): string | null {
@@ -133,6 +135,11 @@ export function useHomeDashboardData(enabled: boolean, range: DashboardRange = "
     () => agentsApi.list(),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
+  const { data: playImpact } = useSWR(
+    enabled ? "home/play-impact" : null,
+    () => playsApi.impact(),
+    { revalidateOnFocus: false, shouldRetryOnError: false, refreshInterval: 60_000 },
+  )
   const { data: playsData } = useSWR(
     enabled ? "home/plays" : null,
     () => playsApi.list(),
@@ -198,6 +205,7 @@ export function useHomeDashboardData(enabled: boolean, range: DashboardRange = "
         : null,
     mostUsedModel: agents.length > 0 ? computeMostUsedModel(agents) : null,
     plays: playsData?.plays ?? [],
+    playImpact: playImpact ?? null,
   }
 
   return data
