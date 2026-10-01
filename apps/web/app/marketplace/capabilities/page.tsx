@@ -967,6 +967,87 @@ export default function CapabilityMarketplacePage() {
             </GravitreSurface>
           ) : null}
 
+          {isAdmin ? (
+            <GravitreSurface className="p-0">
+              <div className="border-b border-divide px-4 py-3">
+                <h2 className="text-sm font-medium text-foreground">Portable MCP review</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Capability-declared MCP servers are prepared disabled. Discover tools first, then explicitly enable the server and only the tools you approve.
+                </p>
+              </div>
+              {portableMcpServers.length === 0 ? (
+                <div className="p-4">
+                  <GravitreEmpty
+                    icon={<ShieldCheck className="h-5 w-5" />}
+                    title="No prepared MCP dependencies"
+                    hint="Use Prepare MCP on an installed capability that declares remote MCP servers."
+                  />
+                </div>
+              ) : (
+                <ul className="divide-y divide-divide">
+                  {portableMcpServers.map((server) => {
+                    const serverTools = portableMcpTools.filter((tool) => tool.server_id === server.id)
+                    return (
+                      <li key={server.id} className="space-y-3 px-4 py-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{server.server_name}</p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">{server.server_url}</p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {server.transport} · {server.activation_state ?? "pending review"} · {server.enabled ? "server enabled" : "server disabled"}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-wrap gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={mcpBusy === server.id}
+                              onClick={() => void discoverMcp(server.id)}
+                            >
+                              {mcpBusy === server.id ? "Checking…" : "Discover tools"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={server.enabled ? "ghost" : "outline"}
+                              disabled={mcpBusy === server.id}
+                              onClick={() => void setMcpServerEnabled(server.id, !server.enabled)}
+                            >
+                              {server.enabled ? "Disable server" : "Approve server"}
+                            </Button>
+                          </div>
+                        </div>
+                        {serverTools.length ? (
+                          <div className="rounded border border-divide">
+                            <ul className="divide-y divide-divide">
+                              {serverTools.map((tool) => (
+                                <li key={tool.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-medium text-foreground">{tool.tool_name}</p>
+                                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                      {tool.capability_tier} · {tool.requires_approval ? "approval required" : "no write approval required"} · {tool.risk_level ?? "unrated"} risk
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={mcpBusy === tool.id || (!server.enabled && !tool.enabled)}
+                                    onClick={() => void setMcpToolEnabled(tool.id, !tool.enabled)}
+                                  >
+                                    {tool.enabled ? "Disable" : "Enable"}
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </GravitreSurface>
+          ) : null}
+
           <GravitreSurface className="p-0">
             <div className="flex items-start justify-between gap-4 border-b border-divide px-4 py-3">
               <div>
