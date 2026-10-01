@@ -316,22 +316,15 @@ def _deactivate_install_entities(
         except Exception:  # noqa: BLE001
             pass
         try:
-            rows = (
-                client.table("mcp_servers")
-                .select("id")
-                .eq("org_id", org_id)
-                .eq("source_capability_package_id", capability_id)
-                .execute()
+            from app.capabilities.mcp_activation import deactivate_package_mcp_dependencies
+
+            mcp_result = deactivate_package_mcp_dependencies(
+                client,
+                org_id=org_id,
+                package_id=capability_id,
+                activation_state="disabled",
             )
-            mcp_ids = [str(row.get("id")) for row in (rows.data or []) if row.get("id")]
-            (
-                client.table("mcp_servers")
-                .update({"enabled": False, "activation_state": "disabled"})
-                .eq("org_id", org_id)
-                .eq("source_capability_package_id", capability_id)
-                .execute()
-            )
-            deactivated["mcpServers"].extend(mcp_ids)
+            deactivated["mcpServers"].extend(mcp_result.get("serverIds") or [])
         except Exception:  # noqa: BLE001
             pass
         try:
