@@ -2832,6 +2832,33 @@ class ChatConnectorExecutionService:
                     plan.invoke_action,
                     mode_exc,
                 )
+        # Execution-standard boundary: provider acceptance is not terminal proof.
+        # Keep the fast response, but explicitly mark the result as VERIFYING so
+        # every surface can avoid rendering a false Completed state while the
+        # declared source-of-record read-back runs in the background.
+        if schedule_async_verification and result.success:
+            from app.services.write_success_verification import resolve_success_verification
+
+            verification_spec = resolve_success_verification(plan.invoke_action)
+            structured = {
+                **structured,
+                "verification": {
+                    "required": True,
+                    "verified": False,
+                    "state": "verifying",
+                    "mode": verification_spec.mode,
+                    "read_action": verification_spec.read_action,
+                    "provider_accepted": True,
+                },
+                "canonical_lifecycle": "EXECUTED_UNVERIFIED",
+                "execution_verified": False,
+            }
+            result.structured = structured
+            result.body = (
+                f"{plan.label or 'The action'} was accepted by {plan.integration.title()}. "
+                "I'm verifying it in the source system before I call it complete."
+            )
+
         # Phase 4 — statistical batch degeneracy (independent of schema / Phase 3).
         try:
             from app.services.batch_degeneracy import apply_batch_degeneracy_to_status
