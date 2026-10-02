@@ -52,7 +52,7 @@ export function OrganizedIntelligenceField({ className }: { className?: string }
           </motion.g>
         ))}
       </svg>
-      <div className="absolute bottom-3 left-3 rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[9px] font-semibold uppercase tracking-[.16em] text-white/65 backdrop-blur-sm">
+      <div className="absolute bottom-3 left-3 rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[9px] font-semibold text-white/65 backdrop-blur-sm">
         Fragmented → coordinated
       </div>
     </div>
