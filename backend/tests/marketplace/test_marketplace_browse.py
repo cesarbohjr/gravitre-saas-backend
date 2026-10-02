@@ -183,3 +183,33 @@ def test_marketplace3_insights_exposes_outcome_kpis_and_certification() -> None:
         "production_verified",
         "outcome_verified",
     }
+
+
+def test_marketplace_search_includes_business_outcome_and_use_case() -> None:
+    assets = _table([ASSET_ROW], count=1)
+    installs = _table([])
+    entitlements = _table([])
+    connectors = _table([{"type": "hubspot"}])
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_assets":
+            return assets
+        if name == "marketplace_installs":
+            return installs
+        if name == "marketplace_asset_entitlements":
+            return entitlements
+        if name == "connectors":
+            return connectors
+        return _table([])
+
+    client.table.side_effect = table
+    list_marketplace_assets(client, "org-1", search="manual reporting")
+
+    search_calls = [
+        str(call.args[0])
+        for call in assets.or_.call_args_list
+        if call.args
+    ]
+    assert any("business_outcome.ilike" in value for value in search_calls)
+    assert any("use_case.ilike" in value for value in search_calls)
