@@ -228,6 +228,7 @@ class OutcomePackAssetConfig(BaseModel):
     dashboard: DashboardPackAssetConfig
     skills: list[str] = Field(default_factory=list)
     skill_requirements: list[str] = Field(default_factory=list)
+    skill_bindings: dict[str, str] = Field(default_factory=dict)
     runtime_profiles: list[OutcomeRuntimeProfileConfig] = Field(default_factory=list)
     connector_alternatives: list[list[str]] = Field(default_factory=list)
 
@@ -251,6 +252,16 @@ class OutcomePackAssetConfig(BaseModel):
             for profile in self.runtime_profiles
             for action in profile.actions
         }
+        undeclared_skill_bindings = sorted(
+            set(self.skill_bindings) - set(self.skill_requirements)
+        )
+        if undeclared_skill_bindings:
+            raise ValueError(
+                "skill bindings reference undeclared requirements: "
+                + ", ".join(undeclared_skill_bindings)
+            )
+        if any(not str(package_id).strip() for package_id in self.skill_bindings.values()):
+            raise ValueError("skill bindings require non-empty package ids")
         for play in self.plays:
             missing = sorted(set(play.kpi_keys) - declared_kpis)
             if missing:
@@ -602,6 +613,20 @@ def _assert_publish_ready(asset_type: str, parsed: BaseModel) -> None:
             raise MarketplaceValidationError(
                 "Marketplace 3.0 outcome packs require at least six meaningful plays",
                 errors=["minimum_six_plays_required"],
+            )
+        from app.marketplace.marketplace3.certification import certify_outcome_pack
+
+        certification = certify_outcome_pack(pack)  # type: ignore[arg-type]
+        if not certification.publish_ready:
+            blocking = [
+                finding.code
+                for finding in certification.findings
+                if finding.blocking
+            ]
+            raise MarketplaceValidationError(
+                "Marketplace 3.0 outcome pack is not production certified",
+                errors=[f"certification:{code}" for code in blocking]
+                or [f"certification_level:{certification.level}"],
             )
 
 
