@@ -5,7 +5,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from app.marketplace.schemas import validate_asset_payload
+from app.marketplace.schemas import OutcomePackAssetConfig, validate_asset_payload
+from app.marketplace.marketplace3.certification import certify_outcome_pack
 from app.marketplace.seed_catalog import LEGACY_PACK_SLUG_MAP, CatalogAsset, list_catalog_assets
 from app.services.department_pack_catalog import pack_seed_id
 
@@ -70,6 +71,7 @@ def upsert_catalog_asset(
     publisher_id: str,
     asset: CatalogAsset,
 ) -> dict[str, Any]:
+    _assert_seed_outcome_pack_certified(asset)
     validated = validate_asset_payload(
         asset_type=asset.asset_type,
         config=asset.config,
@@ -134,8 +136,26 @@ def sync_pack_items(client: Any, pack: CatalogAsset, slug_to_id: dict[str, str])
     return len(rows)
 
 
+def _assert_seed_outcome_pack_certified(asset: CatalogAsset) -> str | None:
+    if asset.asset_type != "outcome_pack":
+        return None
+    report = certify_outcome_pack(OutcomePackAssetConfig.model_validate(asset.config))
+    if not report.publish_ready:
+        blockers = [
+            finding.code
+            for finding in report.findings
+            if finding.blocking
+        ]
+        raise RuntimeError(
+            f"Marketplace 3.0 seed pack {asset.slug} is not production verified: "
+            f"{', '.join(blockers) or report.level}"
+        )
+    return report.level
+
+
 def validate_catalog_assets(assets: list[CatalogAsset] | None = None) -> dict[str, Any]:
     catalog = assets or list_catalog_assets()
+    certified_outcome_packs = 0
     for asset in catalog:
         validate_asset_payload(
             asset_type=asset.asset_type,
@@ -144,6 +164,9 @@ def validate_catalog_assets(assets: list[CatalogAsset] | None = None) -> dict[st
             required_connectors=asset.required_connectors,
             publish=True,
         )
+        certification = _assert_seed_outcome_pack_certified(asset)
+        if certification in {"production_verified", "outcome_verified"}:
+            certified_outcome_packs += 1
     pack_item_count = sum(
         len(asset.pack_children)
         for asset in catalog
@@ -152,6 +175,8 @@ def validate_catalog_assets(assets: list[CatalogAsset] | None = None) -> dict[st
     return {
         "asset_count": len(catalog),
         "pack_item_count": pack_item_count,
+        "outcome_pack_count": sum(1 for asset in catalog if asset.asset_type == "outcome_pack"),
+        "certified_outcome_pack_count": certified_outcome_packs,
     }
 
 
