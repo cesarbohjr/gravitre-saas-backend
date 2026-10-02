@@ -28,6 +28,9 @@ business metrics.
 - Deal, ticket, invoice, subscription, and employee reviews use explicit
   `param_sources` aliases and declared `runtime_inputs`. Record-specific reviews
   start manually; scheduled cohort reviews retain their existing cadences.
+- Play installation passes those runtime declarations into workflow binding
+  validation and persists them in workflow and Play configuration. Undeclared
+  aliases still fail before any workflow is written.
 - Discovery requires every source used by a Play to be connected. It exposes
   missing systems and required runtime input names. Connection support does not
   assert that tenant inputs or data coverage are complete.
@@ -91,5 +94,6 @@ consistency, canonical action readiness, explicit parameter bindings, duplicate
 Play keys, partial-source discovery, and the existing Marketplace installation
 and certification tests. This change does not modify customer-facing chart code.
 
-Validation on this change: all 665 Marketplace tests pass; the focused
-Marketplace/Play readiness regression run also passes (58 tests).
+Validation on this change: 688 Marketplace, route, signature Play, and Play
+readiness tests pass. The installer tests exercise workflow binding validation
+and runtime declaration persistence without replacing the workflow installer.

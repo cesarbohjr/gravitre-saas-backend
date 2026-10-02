@@ -662,6 +662,7 @@ def _install_workflow_entity(
     agent_ids: dict[str, str] | None = None,
     connector_ids: dict[str, str | None] | None = None,
     workflow_label: str = "workflow",
+    runtime_inputs: list[str] | None = None,
 ) -> dict[str, Any]:
     workflow_id = marketplace_entity_id(org_id, str(asset["id"]), workflow_label)
     resolved_agent_ids = dict(agent_ids or {})
@@ -697,8 +698,11 @@ def _install_workflow_entity(
         for row in install_vars
         if isinstance(row, dict) and row.get("key")
     }
+    declared.update(runtime_inputs or [])
     assert_bindings_valid(definition, declared_parameters=declared)
     workflow_config = {"marketplaceAssetId": asset["id"]}
+    if runtime_inputs:
+        workflow_config["runtimeInputs"] = list(runtime_inputs)
     from app.marketplace.workflow_contract import steps_to_rich_contract
 
     contract_nodes, contract_edges = steps_to_rich_contract(steps)
@@ -821,6 +825,7 @@ def _install_play_asset(
         agent_ids=agent_ids,
         connector_ids=connector_ids,
         workflow_label=f"play:{config.key}",
+        runtime_inputs=config.runtime_inputs,
     )
     workflow_id = str(workflow_result["workflowId"])
     binding = bind_play_to_workflow(
@@ -843,6 +848,7 @@ def _install_play_asset(
             "marketplaceAssetId": str(asset["id"]),
             "marketplaceSlug": asset.get("slug"),
             "trigger": config.trigger,
+            "runtimeInputs": config.runtime_inputs,
             "outcomeEvents": config.outcome_events,
             "kpiKeys": config.kpi_keys,
             "approvals": config.approvals,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import MagicMock, patch
 
 from app.connectors.action_catalog.action_parameters import resolve_action_schema
 from app.connectors.action_catalog.registry import get_action_spec
@@ -12,10 +13,12 @@ from app.marketplace.marketplace3.department_portfolio import (
 from app.marketplace.marketplace3.certification import certify_outcome_pack
 from app.marketplace.marketplace3.certification_runner import fixture_checks
 from app.marketplace.marketplace3.discovery import outcome_pack_discovery_metadata
-from app.marketplace.schemas import OutcomePackAssetConfig
+from app.marketplace.schemas import OutcomePackAssetConfig, WorkflowAssetConfig
+from app.marketplace.service import _install_play_asset, _install_workflow_entity
 from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
 from app.workflows.binding_validation import assert_bindings_valid
 from app.workflows.constants import SCHEMA_VERSION
+from app.workflows.schema import WorkflowValidationError
 
 
 @pytest.mark.parametrize("slug", sorted(DEPARTMENT_ENTITIES))
@@ -114,3 +117,43 @@ def test_signature_play_cannot_shadow_department_evidence_requirements() -> None
     play = get_platform_play("revenue-leak-hunter")
     assert play.required_connector_groups == (("quickbooks",), ("stripe",))
     assert len(play.required_read_action_groups) == 3
+
+
+def test_record_id_declaration_survives_real_play_workflow_installation() -> None:
+    config = OutcomePackAssetConfig.model_validate(
+        build_department_outcome_pack_config("revenue-operations-3")
+    )
+    play = next(play for play in config.plays if play.key == "meeting-prep-brief")
+    client = MagicMock()
+    seed = play.workflow_steps[-1]["metadata"]["agent_seed"]
+    with patch("app.marketplace.pack_prewiring.materialize_pack_canvas_graph"), patch(
+        "app.marketplace.service.ensure_active_workflow_version"
+    ), patch("app.plays.workflow_bindings.bind_play_to_workflow", return_value={"id": "binding-1"}):
+        result = _install_play_asset(
+            client, "org-1", {"id": "11111111-1111-1111-1111-111111111111", "slug": "meeting-prep"},
+            play, actor_id="user-1", environment_name="production",
+            connector_ids={"hubspot": "connector-1"}, agent_ids={seed: "agent-1"},
+        )
+    assert result["operatingMode"] == "OBSERVE"
+    calls = client.table.call_args_list
+    assert any(call.args[0] == "workflow_defs" for call in calls)
+    payloads = [call.args[0] for call in client.table.return_value.upsert.call_args_list]
+    workflows = [payload for payload in payloads if isinstance(payload, dict) and "definition" in payload]
+    assert workflows[0]["config"]["runtimeInputs"] == ["deal_id"]
+    installed = next(payload for payload in payloads if isinstance(payload, dict) and "play_key" in payload)
+    assert installed["configuration"]["runtimeInputs"] == ["deal_id"]
+
+
+def test_undeclared_runtime_alias_cannot_install_a_workflow() -> None:
+    raw = build_department_outcome_pack_config("revenue-operations-3")
+    play = next(play for play in raw["plays"] if play["key"] == "meeting-prep-brief")
+    seed = play["workflow_steps"][-1]["metadata"]["agent_seed"]
+    client = MagicMock()
+    with pytest.raises(WorkflowValidationError):
+        _install_workflow_entity(
+            client, "org-1", {"id": "11111111-1111-1111-1111-111111111111"},
+            WorkflowAssetConfig(name=play["name"], steps=play["workflow_steps"]),
+            actor_id="user-1", environment_name="production",
+            connector_ids={"hubspot": "connector-1"}, agent_ids={seed: "agent-1"},
+        )
+    client.table.assert_not_called()
