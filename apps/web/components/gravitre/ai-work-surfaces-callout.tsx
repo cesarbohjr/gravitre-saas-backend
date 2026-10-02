@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { ArrowRight, ChatCircle, MagnifyingGlass, Sparkle } from "@phosphor-icons/react"
 import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 import {
   AI_WORK_SURFACES,

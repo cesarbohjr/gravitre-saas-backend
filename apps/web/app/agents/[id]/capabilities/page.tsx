@@ -6,7 +6,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-card"
 import { Button } from "@/components/ui/button"
-import { agentsApi, agentKnowledgeApi } from "@/lib/api"
+import { agentKnowledgeApi } from "@/lib/api"
 import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 import { Loader2 } from "lucide-react"
 
@@ -16,7 +16,6 @@ export default function AgentCapabilitiesPage({ params }: { params: Promise<{ id
     id ? `agent-capabilities-${id}` : null,
     () => agentKnowledgeApi.getCapabilities(id),
   )
-  const { data: agent } = useSWR(id ? `agent-${id}` : null, () => agentsApi.get(id))
 
   return (
     <AppShell title="Agent capabilities">
