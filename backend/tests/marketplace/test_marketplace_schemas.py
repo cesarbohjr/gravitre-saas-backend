@@ -495,3 +495,25 @@ def test_marketplace3_play_requires_outcome_events_and_kpis() -> None:
     play["outcome_events"] = []
     with pytest.raises(MarketplaceValidationError):
         parse_asset_config("play", play, publish=True)
+
+
+def test_marketplace3_outcome_pack_rejects_duplicate_play_keys() -> None:
+    config = _valid_outcome_pack_config()
+    config["plays"][1]["key"] = config["plays"][0]["key"]
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("outcome_pack", config, publish=True)
+
+
+def test_marketplace3_outcome_pack_requires_every_declared_kpi_on_dashboard() -> None:
+    config = _valid_outcome_pack_config()
+    config["outcome_contract"]["kpis"].append(
+        {
+            "key": "hours_saved",
+            "label": "Hours saved",
+            "unit": "hours",
+            "direction": "increase",
+            "source": "outcome_events",
+        }
+    )
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("outcome_pack", config, publish=True)
