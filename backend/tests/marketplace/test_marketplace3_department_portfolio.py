@@ -24,7 +24,7 @@ def test_department_pack_is_governed_but_not_production_verified_without_live_ev
     config = OutcomePackAssetConfig.model_validate(raw)
 
     assert config.marketplace_version == "3.0"
-    assert len(config.plays) >= 7
+    assert len(config.plays) >= 8
     assert len(config.agents) >= 2
     assert config.skill_requirements
     assert config.runtime_profiles
@@ -100,8 +100,37 @@ def test_department_skill_package_matches_git_pinned_snapshot(slug: str) -> None
     ) == asset.config["snapshot_digest"]
 
 
-def test_portfolio_contains_at_least_49_new_plays() -> None:
+def test_portfolio_contains_at_least_57_new_plays() -> None:
     assets = department_portfolio_marketplace3_assets()
     plays = [asset for asset in assets if asset.asset_type == "play"]
-    assert len(plays) >= 49
+    assert len(plays) >= 57
     assert len({asset.slug for asset in plays}) == len(plays)
+
+
+def test_each_department_pack_includes_high_value_eighth_play_or_better() -> None:
+    expected = {
+        "security-operations-3": "security-posture-watch",
+        "revenue-operations-3": "post-meeting-follow-up-review",
+        "customer-success-support-3": "voice-of-customer-watch",
+        "finance-operations-3": "revenue-leak-hunter",
+        "marketing-operations-3": "lifecycle-conversion-review",
+        "people-it-operations-3": "service-request-bottleneck-review",
+        "executive-command-center-3": "operational-anomaly-watch",
+    }
+    for slug, play_key in expected.items():
+        config = OutcomePackAssetConfig.model_validate(
+            build_department_outcome_pack_config(slug)
+        )
+        assert len(config.plays) >= 8
+        assert play_key in {play.key for play in config.plays}
+        play = next(play for play in config.plays if play.key == play_key)
+        assert play.outcome_events
+        assert play.kpi_keys
+        assert get_platform_play(play_key) is not None
+
+
+def test_security_flagship_keeps_nine_play_value_floor() -> None:
+    config = OutcomePackAssetConfig.model_validate(
+        build_department_outcome_pack_config("security-operations-3")
+    )
+    assert len(config.plays) == 9
