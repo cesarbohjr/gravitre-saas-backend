@@ -86,6 +86,7 @@ def certify_outcome_pack(
     config: OutcomePackAssetConfig,
     *,
     resolved_skill_ids: set[str] | None = None,
+    runtime_evidence: dict[str, Any] | None = None,
     outcome_evidence: dict[str, Any] | None = None,
 ) -> OutcomePackCertification:
     """Return the strongest certification level supported by current evidence.
@@ -199,6 +200,40 @@ def certify_outcome_pack(
             )
         )
 
+    evidence = runtime_evidence if isinstance(runtime_evidence, dict) else {}
+    verified_profiles: set[str] = set()
+    for profile in config.runtime_profiles:
+        row = evidence.get(profile.provider)
+        if not isinstance(row, dict):
+            continue
+        environment = str(row.get("environment") or "").strip().lower()
+        evidence_ref = str(row.get("evidence_ref") or "").strip()
+        verified_actions = {
+            str(value).strip()
+            for value in (row.get("verified_actions") or [])
+            if str(value).strip()
+        }
+        if (
+            environment == "production"
+            and evidence_ref
+            and set(profile.actions).issubset(verified_actions)
+        ):
+            verified_profiles.add(profile.provider)
+
+    missing_live_profiles = sorted(
+        profile.provider
+        for profile in config.runtime_profiles
+        if profile.provider not in verified_profiles
+    )
+    if any(profile.status == "production_verified" for profile in config.runtime_profiles) and missing_live_profiles:
+        findings.append(
+            CertificationFinding(
+                "PRODUCTION_EVIDENCE_MISSING",
+                "Production Verified requires evidence-linked live production proof for every advertised runtime action.",
+                metadata={"providers": missing_live_profiles},
+            )
+        )
+
     schema_runtime_ok = not any(
         finding.code in {
             "MINIMUM_PLAYS",
@@ -226,15 +261,16 @@ def certify_outcome_pack(
         governed_ok
         and bool(config.runtime_profiles)
         and all(profile.status == "production_verified" for profile in config.runtime_profiles)
+        and len(verified_profiles) == len(config.runtime_profiles)
         and not unresolved_skills
     )
     if production_ok:
         level = "production_verified"
 
-    evidence = outcome_evidence if isinstance(outcome_evidence, dict) else {}
+    outcome_evidence_payload = outcome_evidence if isinstance(outcome_evidence, dict) else {}
     observed_events = {
         str(value)
-        for value in (evidence.get("verified_outcome_events") or [])
+        for value in (outcome_evidence_payload.get("verified_outcome_events") or [])
         if str(value).strip()
     }
     declared_events = set(config.outcome_contract.outcome_events)
