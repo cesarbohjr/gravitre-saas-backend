@@ -436,7 +436,16 @@ def test_install_outcome_pack_materializes_all_required_components(mock_plan):
                 ],
                 "refresh_mode": "event",
             },
-            "skills": ["ticket-triage"],
+            "skills": [],
+            "skill_requirements": [],
+            "skill_bindings": {},
+            "runtime_profiles": [
+                {
+                    "provider": "freshservice",
+                    "status": "production_verified",
+                    "actions": ["freshservice.tickets.get"],
+                }
+            ],
         },
     }
     assets = _table([asset])
