@@ -1141,8 +1141,8 @@ def catalog_assets_by_slug() -> dict[str, CatalogAsset]:
 
 
 LEGACY_PACK_SLUG_MAP: dict[str, str] = {
-    "sales-ops": "revenue-operations-pack",
-    "marketing-ops": "marketing-operations-pack",
-    "support-ops": "support-operations-pack",
-    "finance-ops": "revenue-operations-pack",
+    "sales-ops": "revenue-operations-3",
+    "marketing-ops": "marketing-operations-3",
+    "support-ops": "customer-success-support-3",
+    "finance-ops": "finance-operations-3",
 }
