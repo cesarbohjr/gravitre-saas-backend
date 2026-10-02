@@ -94,6 +94,26 @@ consistency, canonical action readiness, explicit parameter bindings, duplicate
 Play keys, partial-source discovery, and the existing Marketplace installation
 and certification tests. This change does not modify customer-facing chart code.
 
-Validation on this change: 688 Marketplace, route, signature Play, and Play
+Validation on this change: 702 Marketplace, route, signature Play, and Play
 readiness tests pass. The installer tests exercise workflow binding validation
 and runtime declaration persistence without replacing the workflow installer.
+
+## Persisted evidence gate
+
+Certification requests now identify stored evidence rather than asserting success.
+For each runtime provider, submit `orgId` and `runIds` (UUIDs). Every advertised
+action must have a successful stored step in a completed production `execute`
+run in that organization. Writes additionally require a stored verified
+source-check result. Dry runs, digital twins, failed runs, fabricated references,
+and request-supplied action lists cannot certify a provider.
+
+For outcome evidence, submit `orgId` and `eventIds` (UUIDs from
+`intelligence_outcome_events`). The resolver requires the canonical
+`play_business_result/v1` contract, VERIFIED SUCCESS, an actual completed
+production execution, a matching pack Play/event/KPI, finite measured baseline
+and result, source records, measurement time, and verification method. An event
+name alone cannot grant Outcome Verified. Promotion repeats database resolution
+so stale or removed proof cannot bypass the gate. Runner diagnostics continue
+to report fixture checks separately from live proof.
+
+The source catalog remains governed/internal/draft until those live gates pass.

@@ -269,8 +269,8 @@ def run_outcome_pack_certification_runner(
 
     live = certify_outcome_pack(
         config,
-        runtime_evidence=evidence_runtime,
-        outcome_evidence=outcome_evidence or {},
+        runtime_evidence=persisted["asset"]["certification_evidence"]["runtime"],
+        outcome_evidence=persisted["asset"]["certification_evidence"]["outcome"],
     )
     runner_passed = not failed
     return {

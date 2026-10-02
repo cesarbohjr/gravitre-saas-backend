@@ -74,7 +74,14 @@ def test_outcome_verified_requires_production_and_measured_outcome_evidence() ->
     with_outcome = certify_outcome_pack(
         config,
         runtime_evidence=runtime_evidence,
-        outcome_evidence={"verified_outcome_events": ["ticket_sla_saved"]},
+        outcome_evidence={"measurements": [{
+            "evidenceId": "event-1", "orgId": "org-1", "runId": "run-1",
+            "measuredAt": "2026-10-02T12:00:00Z", "verificationMethod": "source_read",
+            "playKey": next(p.key for p in config.plays if "ticket_sla_saved" in p.outcome_events),
+            "metricKey": next(p.kpi_keys[0] for p in config.plays if "ticket_sla_saved" in p.outcome_events),
+            "outcomeEvent": "ticket_sla_saved", "baselineValue": 2, "resultValue": 1,
+            "sourceRecords": [{"system": "freshservice", "record_type": "ticket", "record_id": "42"}],
+        }]},
     )
 
     assert without_outcome.level == "production_verified"
