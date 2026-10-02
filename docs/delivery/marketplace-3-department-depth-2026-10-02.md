@@ -94,7 +94,7 @@ consistency, canonical action readiness, explicit parameter bindings, duplicate
 Play keys, partial-source discovery, and the existing Marketplace installation
 and certification tests. This change does not modify customer-facing chart code.
 
-Validation on this change: 702 Marketplace, route, signature Play, and Play
+Validation on this change: 703 Marketplace, route, signature Play, and Play
 readiness tests pass. The installer tests exercise workflow binding validation
 and runtime declaration persistence without replacing the workflow installer.
 
@@ -104,7 +104,7 @@ Certification requests now identify stored evidence rather than asserting succes
 For each runtime provider, submit `orgId` and `runIds` (UUIDs). Every advertised
 action must have a successful stored step in a completed production `execute`
 run in that organization. Writes additionally require a stored verified
-source-check result. Dry runs, digital twins, failed runs, fabricated references,
+source-check result. Dry runs, digital twins, simulated steps, failed runs, fabricated references,
 and request-supplied action lists cannot certify a provider.
 
 For outcome evidence, submit `orgId` and `eventIds` (UUIDs from

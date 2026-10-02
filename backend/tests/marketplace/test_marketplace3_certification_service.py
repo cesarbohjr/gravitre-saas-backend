@@ -194,7 +194,7 @@ def test_outcome_evidence_promotes_highest_certification_level() -> None:
     assert result["certification"]["publishReady"] is True
 
 
-@pytest.mark.parametrize("change", ["dry_run", "digital_twin", "wrong_org", "failed", "missing_write_proof", "forged_actions"])
+@pytest.mark.parametrize("change", ["dry_run", "digital_twin", "wrong_org", "failed", "missing_write_proof", "forged_actions", "simulated"])
 def test_live_certification_rejects_unverified_runtime_claims(change):
     row = _asset(production_profile=True)
     client = _Client(row)
@@ -206,6 +206,9 @@ def test_live_certification_rejects_unverified_runtime_claims(change):
         run["org_id"] = "different-org"
     elif change == "failed":
         run["status"] = "failed"
+    elif change == "simulated":
+        for step in client.evidence["workflow_steps"]:
+            step["output_snapshot"]["simulated"] = True
     elif change == "missing_write_proof":
         for step in client.evidence["workflow_steps"]:
             step["output_snapshot"].pop("verification")

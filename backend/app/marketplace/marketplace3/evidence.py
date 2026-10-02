@@ -55,13 +55,21 @@ def resolve_runtime_evidence(client: Any, config: OutcomePackAssetConfig, eviden
                 snap = step.get("output_snapshot") or {}
                 if not isinstance(snap, dict) or step.get("status") != "completed" or snap.get("success") is not True:
                     continue
+                structured = snap.get("structured") or {}
+                if snap.get("simulated") is True or snap.get("predicted") is True or (isinstance(structured, dict) and structured.get("simulated") is True):
+                    continue
                 action = str(snap.get("invoke_action") or snap.get("action") or "")
                 spec = get_action_spec(action)
                 if action not in profile.actions or not spec:
                     continue
                 if spec.kind != "read":
                     proof = snap.get("verification") or {}
-                    if not isinstance(proof, dict) or proof.get("verified") is not True or proof.get("status") != "verified":
+                    verified_write = isinstance(proof, dict) and proof.get("verified") is True and proof.get("status") == "verified"
+                    # Canonical synchronous source-of-record verifier snapshots.
+                    for key in ("population_verify", "field_assert_verify", "entity_get_verify"):
+                        proof = snap.get(key) or {}
+                        verified_write = verified_write or (isinstance(proof, dict) and proof.get("verified") is True)
+                    if not verified_write:
                         continue
                 verified.add(action)
                 accepted_runs.append(str(run["id"]))
