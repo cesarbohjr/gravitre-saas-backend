@@ -84,6 +84,11 @@ def set_asset_verified(
             "Only published assets can be verified",
             code="VALIDATION_ERROR",
         )
+    if asset.get("asset_type") == "outcome_pack":
+        raise MarketplaceFlagsError(
+            "Marketplace 3.0 Outcome Packs must earn verification through the certification lifecycle",
+            code="VALIDATION_ERROR",
+        )
 
     client.table("marketplace_assets").update(
         {"verified": verified, "updated_at": _now()}
