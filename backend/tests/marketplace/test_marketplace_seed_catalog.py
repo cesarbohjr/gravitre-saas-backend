@@ -4,7 +4,12 @@ from __future__ import annotations
 import pytest
 
 from app.marketplace.schemas import validate_asset_payload
-from app.marketplace.seed_catalog import LEGACY_PACK_SLUG_MAP, catalog_assets_by_slug, list_catalog_assets
+from app.marketplace.seed_catalog import (
+    LEGACY_PACK_SLUG_MAP,
+    MARKETPLACE3_UPGRADE_SLUG_MAP,
+    catalog_assets_by_slug,
+    list_catalog_assets,
+)
 
 
 def test_catalog_asset_counts():
@@ -100,10 +105,10 @@ def test_legacy_pack_slug_map_targets_catalog():
     by_slug = catalog_assets_by_slug()
     for legacy_id, mapped_slug in LEGACY_PACK_SLUG_MAP.items():
         assert mapped_slug in by_slug, f"legacy {legacy_id} maps to missing slug {mapped_slug}"
-    assert LEGACY_PACK_SLUG_MAP["sales-ops"] == "revenue-operations-3"
-    assert LEGACY_PACK_SLUG_MAP["marketing-ops"] == "marketing-operations-3"
-    assert LEGACY_PACK_SLUG_MAP["support-ops"] == "customer-success-support-3"
-    assert LEGACY_PACK_SLUG_MAP["finance-ops"] == "finance-operations-3"
+    assert LEGACY_PACK_SLUG_MAP["support-ops"] == "support-operations-pack"
+    assert MARKETPLACE3_UPGRADE_SLUG_MAP["revenue-operations-pack"] == "revenue-operations-3"
+    assert MARKETPLACE3_UPGRADE_SLUG_MAP["marketing-operations-pack"] == "marketing-operations-3"
+    assert MARKETPLACE3_UPGRADE_SLUG_MAP["support-operations-pack"] == "customer-success-support-3"
 
 
 def test_marketing_operations_pack_four_agent_handoff_chain():
@@ -148,4 +153,4 @@ def test_support_operations_pack_tier1_zendesk_triage():
         if (step.get("config") or {}).get("action") == "zendesk.tickets.get"
     )
     assert lookup["requires_connector"] == "zendesk"
-    assert LEGACY_PACK_SLUG_MAP["support-ops"] == "customer-success-support-3"
+    assert LEGACY_PACK_SLUG_MAP["support-ops"] == pack.slug
