@@ -303,12 +303,13 @@ SECURITY_POSTURE_WATCH = PlayDefinition(
 
 def _department_portfolio_plays() -> tuple[PlayDefinition, ...]:
     plays: list[PlayDefinition] = []
-    for slug, spec in PACK_SPECS.items():
-        if slug == "security-operations-3":
-            continue
+    specialized_keys = {"security-alert-triage", "post-incident-review"}
+    for _slug, spec in PACK_SPECS.items():
         required_connector_groups = tuple((connector,) for connector in spec["connectors"])
         optional_connectors = tuple(spec["optional"])
         for key, name, description, action, kpi_key in spec["plays"]:
+            if key in specialized_keys:
+                continue
             plays.append(
                 PlayDefinition(
                     key=key,
