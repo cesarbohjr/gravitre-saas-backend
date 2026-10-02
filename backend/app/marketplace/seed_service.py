@@ -144,7 +144,11 @@ def validate_catalog_assets(assets: list[CatalogAsset] | None = None) -> dict[st
             required_connectors=asset.required_connectors,
             publish=True,
         )
-    pack_item_count = sum(len(asset.pack_children) for asset in catalog if asset.asset_type == "department_pack")
+    pack_item_count = sum(
+        len(asset.pack_children)
+        for asset in catalog
+        if asset.asset_type in {"department_pack", "outcome_pack"}
+    )
     return {
         "asset_count": len(catalog),
         "pack_item_count": pack_item_count,
@@ -170,7 +174,7 @@ def seed_marketplace_catalog(
 
     pack_items = 0
     for asset in assets:
-        if asset.asset_type == "department_pack":
+        if asset.asset_type in {"department_pack", "outcome_pack"}:
             pack_items += sync_pack_items(client, asset, slug_to_id)
 
     return {
