@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 
 from app.marketplace.schemas import validate_asset_payload
+from app.marketplace.seed_service import validate_catalog_assets
 from app.marketplace.seed_catalog import (
     LEGACY_PACK_SLUG_MAP,
     MARKETPLACE3_UPGRADE_SLUG_MAP,
@@ -156,3 +157,9 @@ def test_support_operations_pack_tier1_zendesk_triage():
     )
     assert lookup["requires_connector"] == "zendesk"
     assert LEGACY_PACK_SLUG_MAP["support-ops"] == pack.slug
+
+
+def test_marketplace3_seed_catalog_requires_all_outcome_packs_certified() -> None:
+    summary = validate_catalog_assets()
+    assert summary["outcome_pack_count"] == 8
+    assert summary["certified_outcome_pack_count"] == 8
