@@ -281,7 +281,9 @@ export function InstallStepperSheet({
           <SheetDescription>
             {asset?.assetType === "capability_package"
               ? "Gravitre will install the reviewed capability snapshot in quarantine for your organization to approve. MCP activation stays separate."
-              : "We’ll provision agents, workflows, and knowledge — then notify you when it’s ready."}
+              : asset?.assetType === "outcome_pack"
+                ? "Gravitre will install the complete operating capability — Plays, agents, workflows, knowledge, dataset, dashboard, and governed skills — on the canonical runtime."
+                : "We’ll provision agents, workflows, and knowledge — then notify you when it’s ready."}
           </SheetDescription>
         </SheetHeader>
 
@@ -339,7 +341,9 @@ export function InstallStepperSheet({
               <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
                 {asset?.assetType === "capability_package"
                   ? "Confirm to add this reviewed capability snapshot in quarantine. An org admin must approve it before the skill can be used; imported scripts remain inert and MCP dependencies are not activated automatically."
-                  : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
+                  : asset?.assetType === "outcome_pack"
+                    ? "Required systems are connected. Confirm to install the full Outcome Pack. Included Plays start in OBSERVE mode; consequential writes stay approval-gated and are not complete until source-of-record verification succeeds."
+                    : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
               </div>
               <ConnectorChecklist items={checklist} />
             </>
