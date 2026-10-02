@@ -2194,9 +2194,12 @@ export interface MarketplaceRoiAssetRow {
   installId: string
   slug?: string | null
   title?: string | null
+  assetType?: string | null
   estimatedHoursSaved: number
   realizedHoursSaved: number
   usageEvents: number
+  verifiedOutcomeEvents: number
+  outcomeVerified: boolean
   installedAt?: string | null
   businessOutcome?: string | null
   useCase?: string | null
@@ -2206,7 +2209,9 @@ export interface MarketplaceRoiSummary {
   orgId: string
   activeInstalls: number
   assetsWithUsage: number
+  assetsWithVerifiedOutcomes: number
   totalUsageEvents: number
+  totalVerifiedOutcomeEvents: number
   totalEstimatedHoursSaved: number
   totalRealizedHoursSaved: number
   realizationRate: number
