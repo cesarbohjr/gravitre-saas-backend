@@ -208,3 +208,30 @@ def test_marketplace3_marketing_flags_cannot_elevate_certification():
 
     assert model["certificationLevel"] == "governed"
     assert model["certificationPublishReady"] is False
+
+
+def test_marketplace3_browse_prefers_persisted_evidence_certification():
+    from app.marketplace.marketplace3.msp_service_desk import (
+        build_msp_service_desk_outcome_pack_config,
+    )
+
+    model = _outcome_pack_read_model(
+        {
+            "asset_type": "outcome_pack",
+            "business_outcome": "Improve service desk performance.",
+            "config": build_msp_service_desk_outcome_pack_config(),
+            "certification_level": "production_verified",
+            "certification_report": {
+                "level": "production_verified",
+                "publishReady": True,
+                "findings": [],
+            },
+            "certification_updated_at": "2026-10-02T12:00:00+00:00",
+            "certified_by": "11111111-1111-1111-1111-111111111111",
+        }
+    )
+
+    assert model["certificationLevel"] == "production_verified"
+    assert model["certificationPublishReady"] is True
+    assert model["certificationUpdatedAt"] == "2026-10-02T12:00:00+00:00"
+    assert model["certificationFindings"] == []
