@@ -215,6 +215,91 @@ SERVICE_DESK_OPTIMIZATION_REVIEW = PlayDefinition(
 
 
 
+SECURITY_ALERT_TRIAGE = PlayDefinition(
+    key="security-alert-triage",
+    name="Security Alert Triage",
+    version="1",
+    objective="Prioritize security alerts using identity, endpoint, severity, business-impact, and recent activity evidence.",
+    required_connector_groups=(("okta",),),
+    optional_connectors=("huntress", "sentinelone", "crowdstrike", "connectsecure", "microsoft_intune"),
+    outcome_metrics=("mttd", "triage_time", "false_positive_rate"),
+)
+
+
+VULNERABILITY_PRIORITIZER = PlayDefinition(
+    key="vulnerability-prioritizer",
+    name="Vulnerability Prioritizer",
+    version="1",
+    objective="Rank vulnerabilities by exploitability, asset criticality, identity exposure, recurrence, and business impact.",
+    optional_connectors=("connectsecure", "microsoft_intune", "huntress", "sentinelone", "crowdstrike"),
+    outcome_metrics=("critical_vulnerability_backlog", "remediation_sla", "risk_reduction"),
+)
+
+
+IDENTITY_COMPROMISE_INVESTIGATOR = PlayDefinition(
+    key="identity-compromise-investigator",
+    name="Identity Compromise Investigator",
+    version="1",
+    objective="Correlate identity events and user context to investigate suspicious sign-ins, risk changes, and account compromise indicators.",
+    required_connector_groups=(("okta",),),
+    optional_connectors=("duo", "microsoft_365", "microsoft_intune", "crowdstrike", "sentinelone"),
+    outcome_metrics=("investigation_time", "identity_risk_cases", "mttd"),
+)
+
+
+CONTAINMENT_COORDINATOR = PlayDefinition(
+    key="containment-coordinator",
+    name="Containment Coordinator",
+    version="1",
+    objective="Assemble containment options, affected identities/assets, approval requirements, and a verified execution plan without bypassing human authority.",
+    required_connector_groups=(("okta",),),
+    optional_connectors=("sentinelone", "crowdstrike", "microsoft_intune", "huntress"),
+    outcome_metrics=("containment_time", "approval_latency", "mttr"),
+)
+
+
+SECURITY_REMEDIATION_TRACKER = PlayDefinition(
+    key="security-remediation-tracker",
+    name="Security Remediation Tracker",
+    version="1",
+    objective="Track open remediation work to source-of-record confirmation and escalate overdue or unverifiable remediation.",
+    optional_connectors=("connectsecure", "microsoft_intune", "huntress", "sentinelone", "crowdstrike", "jira"),
+    outcome_metrics=("remediation_sla", "open_security_actions", "verification_inconclusive_rate"),
+)
+
+
+SECURITY_INCIDENT_BRIEF = PlayDefinition(
+    key="security-incident-brief",
+    name="Security Incident Brief",
+    version="1",
+    objective="Maintain an evidence-backed incident timeline, impact summary, current containment state, decisions, and required approvals.",
+    required_connector_groups=(("okta",),),
+    optional_connectors=("huntress", "sentinelone", "crowdstrike", "slack", "microsoft_teams"),
+    outcome_metrics=("incident_update_latency", "mttr", "stakeholder_update_rate"),
+)
+
+
+POST_INCIDENT_REVIEW = PlayDefinition(
+    key="post-incident-review",
+    name="Post-Incident Review",
+    version="1",
+    objective="Produce a source-backed post-incident review with root cause, control gaps, remediation owners, and measurable prevention actions.",
+    optional_connectors=("okta", "huntress", "sentinelone", "crowdstrike", "jira"),
+    outcome_metrics=("repeat_incident_rate", "remediation_completion_rate", "control_gap_count"),
+)
+
+
+SECURITY_POSTURE_WATCH = PlayDefinition(
+    key="security-posture-watch",
+    name="Security Posture Watch",
+    version="1",
+    objective="Continuously monitor security posture trends and surface material deterioration, recurring identity risk, overdue remediation, and emerging control gaps.",
+    required_connector_groups=(("okta",),),
+    optional_connectors=("connectsecure", "microsoft_intune", "huntress", "sentinelone", "crowdstrike"),
+    outcome_metrics=("risk_score", "critical_vulnerability_backlog", "identity_risk_cases", "remediation_sla"),
+)
+
+
 def _department_portfolio_plays() -> tuple[PlayDefinition, ...]:
     plays: list[PlayDefinition] = []
     for spec in PACK_SPECS.values():
@@ -256,6 +341,14 @@ PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     RECURRING_PROBLEM_HUNTER,
     CLIENT_COMMUNICATION_MANAGER,
     SERVICE_DESK_OPTIMIZATION_REVIEW,
+    SECURITY_ALERT_TRIAGE,
+    VULNERABILITY_PRIORITIZER,
+    IDENTITY_COMPROMISE_INVESTIGATOR,
+    CONTAINMENT_COORDINATOR,
+    SECURITY_REMEDIATION_TRACKER,
+    SECURITY_INCIDENT_BRIEF,
+    POST_INCIDENT_REVIEW,
+    SECURITY_POSTURE_WATCH,
     *DEPARTMENT_PORTFOLIO_PLAYS,
 )
 

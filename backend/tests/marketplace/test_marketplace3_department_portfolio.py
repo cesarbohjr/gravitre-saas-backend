@@ -19,7 +19,7 @@ from app.plays.catalog import get_platform_play
 
 
 @pytest.mark.parametrize("slug", sorted(PACK_SPECS))
-def test_department_pack_is_publishable_and_production_verified(slug: str) -> None:
+def test_department_pack_is_governed_but_not_self_certified(slug: str) -> None:
     raw = build_department_outcome_pack_config(slug)
     config = OutcomePackAssetConfig.model_validate(raw)
 
@@ -33,10 +33,10 @@ def test_department_pack_is_publishable_and_production_verified(slug: str) -> No
     } == {kpi.key for kpi in config.outcome_contract.kpis}
 
     report = certify_outcome_pack(config)
-    assert report.publish_ready is True, [finding.as_dict() for finding in report.findings]
-    assert report.level == "production_verified"
+    assert report.publish_ready is False
+    assert report.level in {"tested", "governed"}
     assert report.unresolved_skill_requirements == []
-    parse_asset_config("outcome_pack", raw, publish=True)
+    parse_asset_config("outcome_pack", raw, publish=False)
 
 
 @pytest.mark.parametrize("slug", sorted(PACK_SPECS))
@@ -65,6 +65,9 @@ def test_department_portfolio_catalog_has_complete_components() -> None:
         outcome = by_slug[slug]
         assert outcome.asset_type == "outcome_pack"
         assert outcome.pack_tier == 3
+        assert outcome.status == "draft"
+        assert outcome.visibility == "internal"
+        assert "production-verified" not in outcome.tags
         assert len(outcome.pack_children) == 13
         assert set(outcome.pack_children) <= set(by_slug)
         assert spec["skill_package"] in outcome.pack_children

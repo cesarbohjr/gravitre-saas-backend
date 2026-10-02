@@ -119,6 +119,25 @@ const CAPABILITY_NOUN: Record<string, [string, string]> = {
 }
 
 /** What installing the asset adds to the workspace, from its catalogued contents only. */
+function outcomePackHighlights(asset: MarketplaceAssetSummary): {
+  playCount: number
+  hasDataset: boolean
+  hasDashboard: boolean
+  productionVerified: boolean
+} | null {
+  if (asset.assetType !== "outcome_pack") return null
+  const items = asset.packItems ?? []
+  const playCount = items.filter((item) => item.child.assetType === "play").length
+  return {
+    playCount,
+    hasDataset: items.some((item) => item.child.assetType === "dataset_pack"),
+    hasDashboard: items.some((item) => item.child.assetType === "dashboard_pack"),
+    productionVerified:
+      Boolean(asset.verified) ||
+      (asset.tags ?? []).some((tag) => tag.toLowerCase() === "production-verified"),
+  }
+}
+
 function capabilitySummary(asset: MarketplaceAssetSummary): string {
   const counts = new Map<string, number>()
   const items = asset.packItems ?? []
@@ -191,6 +210,7 @@ function AssetCard({
 
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
+  const outcomeHighlights = outcomePackHighlights(asset)
 
   return (
     <article
@@ -213,8 +233,28 @@ function AssetCard({
             <span className="text-muted-foreground"> · </span>
             <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
           </p>
-          {asset.description ? (
+          {asset.businessOutcome ? (
+            <p className="mt-1 max-w-2xl text-[12.5px] font-medium leading-relaxed text-foreground">
+              {asset.businessOutcome}
+            </p>
+          ) : asset.description ? (
             <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
+          ) : null}
+          {outcomeHighlights ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <Badge variant="secondary" className="text-[10px]">Marketplace 3.0</Badge>
+              {outcomeHighlights.playCount > 0 ? (
+                <Badge variant="outline" className="text-[10px]">{outcomeHighlights.playCount} Plays</Badge>
+              ) : null}
+              {outcomeHighlights.hasDataset ? <Badge variant="outline" className="text-[10px]">Dataset included</Badge> : null}
+              {outcomeHighlights.hasDashboard ? <Badge variant="outline" className="text-[10px]">KPI dashboard</Badge> : null}
+              {outcomeHighlights.productionVerified ? (
+                <Badge variant="outline" className="text-[10px]">Production verified</Badge>
+              ) : null}
+              {asset.estimatedHoursSaved != null ? (
+                <span className="text-[11px] text-muted-foreground">~{asset.estimatedHoursSaved}h/mo estimated capacity</span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -300,6 +340,9 @@ function AssetCard({
                 </Badge>
               ))}
             </div>
+          ) : null}
+          {asset.assetType === "outcome_pack" && asset.description ? (
+            <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">{asset.description}</p>
           ) : null}
           <PackContentsPreview items={asset.packItems} compact />
           {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
