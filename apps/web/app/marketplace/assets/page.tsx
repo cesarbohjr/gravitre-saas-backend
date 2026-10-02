@@ -169,6 +169,20 @@ function AssetCardSkeleton() {
   )
 }
 
+function outcomePackSummary(asset: MarketplaceAssetSummary): { playCount: number; certification: string | null } | null {
+  if (asset.assetType !== "outcome_pack") return null
+  const playCount = (asset.packItems ?? []).filter((item) => item.child.assetType === "play").length
+  const tags = new Set((asset.tags ?? []).map((tag) => tag.toLowerCase()))
+  const certification = tags.has("outcome-verified")
+    ? "Outcome verified"
+    : tags.has("production-verified")
+      ? "Production verified"
+      : tags.has("governed")
+        ? "Governed"
+        : null
+  return { playCount, certification }
+}
+
 function AssetCard({
   asset,
   isAdmin,
@@ -191,6 +205,7 @@ function AssetCard({
 
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
+  const outcomeMeta = outcomePackSummary(asset)
 
   return (
     <article
@@ -213,6 +228,21 @@ function AssetCard({
             <span className="text-muted-foreground"> · </span>
             <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
           </p>
+          {outcomeMeta ? (
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-muted-foreground">
+              {outcomeMeta.playCount > 0 ? <span>{outcomeMeta.playCount} measurable Plays</span> : null}
+              {outcomeMeta.playCount > 0 && outcomeMeta.certification ? <span aria-hidden>·</span> : null}
+              {outcomeMeta.certification ? (
+                <span className="font-medium text-foreground">{outcomeMeta.certification}</span>
+              ) : null}
+            </div>
+          ) : null}
+          {asset.assetType === "outcome_pack" && asset.businessOutcome ? (
+            <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-foreground">
+              <span className="font-medium">Outcome: </span>
+              {asset.businessOutcome}
+            </p>
+          ) : null}
           {asset.description ? (
             <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
           ) : null}
