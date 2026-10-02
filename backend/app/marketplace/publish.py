@@ -167,6 +167,131 @@ def _assert_capability_provenance_current(
         )
 
 
+def _assert_outcome_skill_bindings_current(
+    client: Any,
+    asset: dict[str, Any],
+) -> None:
+    """Require every Outcome Pack skill requirement to bind to a real reviewed
+    Marketplace capability asset.
+
+    The binding value is a Marketplace asset id or slug, not a tenant capability
+    package id. Destination-org installation remains a separate review/install
+    decision.
+    """
+    if str(asset.get("asset_type") or "") != "outcome_pack":
+        return
+
+    config = asset.get("config") if isinstance(asset.get("config"), dict) else {}
+    requirements = {
+        str(value).strip()
+        for value in (config.get("skill_requirements") or [])
+        if str(value).strip()
+    }
+    bindings = config.get("skill_bindings") if isinstance(config.get("skill_bindings"), dict) else {}
+    normalized = {
+        str(requirement).strip(): str(asset_ref).strip()
+        for requirement, asset_ref in bindings.items()
+        if str(requirement).strip() and str(asset_ref).strip()
+    }
+    missing = sorted(requirements - set(normalized))
+    if missing:
+        raise MarketplacePublishError(
+            "Outcome Pack has unresolved skill requirements: " + ", ".join(missing),
+            code="VALIDATION_ERROR",
+        )
+
+    outcome_visibility = str(asset.get("visibility") or "private")
+    outcome_org_id = str(asset.get("org_id") or "")
+    resolved_refs: list[str] = []
+
+    for requirement in sorted(requirements):
+        asset_ref = normalized[requirement]
+        try:
+            dependency = _fetch_asset(client, asset_ref)
+        except MarketplaceCrudError as exc:
+            raise MarketplacePublishError(
+                f"Skill requirement {requirement!r} references a Marketplace asset that does not exist",
+                code="VALIDATION_ERROR",
+            ) from exc
+
+        if str(dependency.get("asset_type") or "") != "capability_package":
+            raise MarketplacePublishError(
+                f"Skill requirement {requirement!r} must bind to a capability_package asset",
+                code="VALIDATION_ERROR",
+            )
+        if str(dependency.get("status") or "") != "published":
+            raise MarketplacePublishError(
+                f"Skill requirement {requirement!r} is not bound to a published capability",
+                code="VALIDATION_ERROR",
+            )
+
+        dependency_visibility = str(dependency.get("visibility") or "")
+        dependency_org_id = str(dependency.get("org_id") or "")
+        if outcome_visibility == "public" or str(asset.get("review_scope") or "") == "public":
+            if dependency_visibility != "public":
+                raise MarketplacePublishError(
+                    f"Public Outcome Pack skill {requirement!r} must use a public capability asset",
+                    code="VALIDATION_ERROR",
+                )
+        elif dependency_visibility != "public" and dependency_org_id != outcome_org_id:
+            raise MarketplacePublishError(
+                f"Skill requirement {requirement!r} is not visible to this organization",
+                code="VALIDATION_ERROR",
+            )
+
+        dep_config = dependency.get("config") if isinstance(dependency.get("config"), dict) else {}
+        package_format = str(dep_config.get("package_format") or "").strip()
+        manifest = dep_config.get("manifest") if isinstance(dep_config.get("manifest"), dict) else {}
+        manifest_skills = manifest.get("skills")
+        has_skill_component = package_format == "agent_skill" or bool(manifest_skills)
+        if not has_skill_component:
+            raise MarketplacePublishError(
+                f"Capability bound to {requirement!r} does not declare a skill component",
+                code="VALIDATION_ERROR",
+            )
+
+        security_scan = dep_config.get("security_scan") if isinstance(dep_config.get("security_scan"), dict) else {}
+        if (
+            str(dep_config.get("license_policy") or "") == "block"
+            or str(dep_config.get("risk_level") or "") == "blocked"
+            or bool(security_scan.get("blocked"))
+        ):
+            raise MarketplacePublishError(
+                f"Skill requirement {requirement!r} is bound to a blocked capability",
+                code="VALIDATION_ERROR",
+            )
+
+        publisher_id = str(dependency.get("publisher_id") or "")
+        if dependency_visibility == "public" and publisher_id:
+            publisher_rows = (
+                client.table("marketplace_publishers")
+                .select("id,verified,status")
+                .eq("id", publisher_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if not publisher_rows or not bool(publisher_rows[0].get("verified")) or str(
+                publisher_rows[0].get("status") or "active"
+            ) != "active":
+                raise MarketplacePublishError(
+                    f"Public skill dependency for {requirement!r} must come from an active verified publisher",
+                    code="VALIDATION_ERROR",
+                )
+
+        resolved_refs.append(str(dependency.get("id") or asset_ref))
+
+    # Normalize the reviewed dependency ids into the stored config at publish
+    # time. This is evidence of what was reviewed, not a tenant install id.
+    config["skills"] = resolved_refs
+    config["skill_bindings"] = {
+        requirement: resolved_refs[index]
+        for index, requirement in enumerate(sorted(requirements))
+    }
+    asset["config"] = config
+
+
 def _snapshot_version(
     client: Any,
     asset: dict[str, Any],
@@ -212,6 +337,7 @@ def submit_asset_for_review(
         )
 
     _assert_capability_provenance_current(client, asset)
+    _assert_outcome_skill_bindings_current(client, asset)
 
     try:
         validated = validate_asset_payload(
@@ -274,6 +400,7 @@ def approve_asset_for_internal_publish(
         )
 
     _assert_capability_provenance_current(client, asset)
+    _assert_outcome_skill_bindings_current(client, asset)
 
     try:
         validated = validate_asset_payload(
@@ -397,6 +524,7 @@ def submit_asset_for_public_review(
         )
 
     _assert_capability_provenance_current(client, asset)
+    _assert_outcome_skill_bindings_current(client, asset)
 
     try:
         validated = validate_asset_payload(
@@ -515,6 +643,7 @@ def approve_asset_for_public_publish(
         )
 
     _assert_capability_provenance_current(client, asset)
+    _assert_outcome_skill_bindings_current(client, asset)
 
     try:
         validated = validate_asset_payload(
