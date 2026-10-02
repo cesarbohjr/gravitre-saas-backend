@@ -1,5 +1,6 @@
 from app.marketplace.marketplace3.certification import certify_outcome_pack
 from app.marketplace.marketplace3.certification_runner import fixture_checks
+from app.marketplace.marketplace3.department_portfolio import department_portfolio_marketplace3_assets
 from app.marketplace.marketplace3.revenue_operations import (
     REVENUE_OPERATIONS_PLAY_KEYS,
     build_revenue_operations_outcome_pack_config,
@@ -85,3 +86,17 @@ def test_revenue_operations_outcome_events_match_play_events() -> None:
     assert play_events == declared
     assert "post_meeting_follow_up_prepared" in declared
     assert "forecast_integrity_reviewed" in declared
+
+
+def test_department_portfolio_uses_dedicated_revenue_flagship() -> None:
+    outcome_assets = [
+        asset
+        for asset in department_portfolio_marketplace3_assets()
+        if asset.asset_type == "outcome_pack" and asset.slug == "revenue-operations-3"
+    ]
+    assert len(outcome_assets) == 1
+    config = OutcomePackAssetConfig.model_validate(outcome_assets[0].config)
+    assert tuple(play.key for play in config.plays) == REVENUE_OPERATIONS_PLAY_KEYS
+    assert len(config.agents) == 6
+    assert len(config.outcome_contract.kpis) == 12
+    assert config.dashboard.title == "Revenue Operations Command Center"
