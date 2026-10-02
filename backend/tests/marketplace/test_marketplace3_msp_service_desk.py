@@ -22,6 +22,9 @@ def test_msp_service_desk_blueprint_is_valid_marketplace3_outcome_pack() -> None
     assert config.runtime_profiles[0].provider == "freshservice"
     assert config.runtime_profiles[0].status == "production_verified"
     assert "freshservice.tickets.update_status" in config.runtime_profiles[0].actions
+    inputs_by_play = {play.key: set(play.runtime_inputs) for play in config.plays}
+    assert inputs_by_play["intelligent-ticket-intake"] == {"TICKET_ID"}
+    assert inputs_by_play["sla-rescue"] == {"TICKET_ID", "TARGET_STATUS"}
 
 
 def test_msp_service_desk_skill_package_is_publishable_and_git_pinned() -> None:
