@@ -388,7 +388,13 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
             )
             assets.extend(security_operations_marketplace3_assets())
             continue
-        config = build_department_outcome_pack_config(slug)
+        if slug == "revenue-operations-3":
+            from app.marketplace.marketplace3.revenue_operations import (
+                build_revenue_operations_outcome_pack_config,
+            )
+            config = build_revenue_operations_outcome_pack_config()
+        else:
+            config = build_department_outcome_pack_config(slug)
         connector_defs = [
             {
                 "connectorType": name,

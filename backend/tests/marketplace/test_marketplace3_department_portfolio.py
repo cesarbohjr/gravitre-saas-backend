@@ -70,7 +70,8 @@ def test_department_portfolio_catalog_has_complete_components() -> None:
         assert outcome.status == "draft"
         assert outcome.visibility == "internal"
         assert "production-verified" not in outcome.tags
-        assert len(outcome.pack_children) == len(spec["agents"]) + len(spec["plays"]) + 4
+        config = OutcomePackAssetConfig.model_validate(outcome.config or {})
+        assert len(outcome.pack_children) == len(config.agents) + len(config.plays) + 4
         assert set(outcome.pack_children) <= set(by_slug)
         assert spec["skill_package"] in outcome.pack_children
         related = [asset for asset in assets if asset.slug == slug or asset.slug in outcome.pack_children]
