@@ -416,6 +416,13 @@
       "read_action": "freshdesk.tickets.get",
       "reason": "Sibling GET must return the written entity id/field"
     },
+    "freshservice.tickets.update_status": {
+      "assert_field": "status",
+      "mode": "follow_up_field_assert",
+      "read_action": "freshservice.tickets.get",
+      "request_field": "status",
+      "reason": "Re-read ticket and confirm the stored status matches the requested status"
+    },
     "github.actions.dispatch": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -909,6 +916,26 @@
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
+    "microsoft_teams.meetings.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.members.add": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.messages.send": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.presence.set": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
+    "microsoft_teams.tabs.create": {
+      "mode": "accepted_async",
+      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
+    },
     "microsoft365.batch.mail": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -958,26 +985,6 @@
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
     "microsoft365.teams.tabs.create": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
-    },
-    "microsoft_teams.meetings.create": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
-    },
-    "microsoft_teams.members.add": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
-    },
-    "microsoft_teams.messages.send": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
-    },
-    "microsoft_teams.presence.set": {
-      "mode": "accepted_async",
-      "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
-    },
-    "microsoft_teams.tabs.create": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
     },
@@ -1609,6 +1616,6 @@
     }
   },
   "generated_by": "write_success_verification.generate_success_verification_catalog",
-  "mutating_action_count": 362,
+  "mutating_action_count": 363,
   "version": 1
 }
