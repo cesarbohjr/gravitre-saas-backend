@@ -217,21 +217,6 @@ def certify_outcome_pack(
         for finding in findings
     )
 
-    level = "compatible"
-    if schema_runtime_ok and runtime_statuses and runtime_statuses <= {"tested", "production_verified"}:
-        level = "tested"
-    if governed_ok and level == "tested":
-        level = "governed"
-    production_ok = (
-        governed_ok
-        and bool(config.runtime_profiles)
-        and all(profile.status == "production_verified" for profile in config.runtime_profiles)
-        and not unresolved_skills
-        and not missing_production_evidence
-    )
-    if production_ok:
-        level = "production_verified"
-
     evidence = outcome_evidence if isinstance(outcome_evidence, dict) else {}
 
     production_evidence_checks = {
@@ -256,6 +241,21 @@ def certify_outcome_pack(
                 metadata={"evidenceKey": key},
             )
         )
+
+    level = "compatible"
+    if schema_runtime_ok and runtime_statuses and runtime_statuses <= {"tested", "production_verified"}:
+        level = "tested"
+    if governed_ok and level == "tested":
+        level = "governed"
+    production_ok = (
+        governed_ok
+        and bool(config.runtime_profiles)
+        and all(profile.status == "production_verified" for profile in config.runtime_profiles)
+        and not unresolved_skills
+        and not missing_production_evidence
+    )
+    if production_ok:
+        level = "production_verified"
     observed_events = {
         str(value)
         for value in (evidence.get("verified_outcome_events") or [])
