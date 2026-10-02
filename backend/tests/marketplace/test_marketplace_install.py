@@ -341,6 +341,7 @@ def test_install_marketplace_play_uses_canonical_play_runtime(mock_plan, mock_ve
     assert result["entities"]["playKey"] == "client-risk-radar"
     assert result["entities"]["operatingMode"] == "OBSERVE"
     assert result["entities"]["executionAuthority"] == "canonical_workflow_runtime"
+    assert any(link.get("path") == "/plays?play=client-risk-radar" for link in result["deepLinks"])
     bind.assert_called_once()
     payload = play_installations.upsert.call_args.args[0]
     assert payload["operating_mode"] == "OBSERVE"
