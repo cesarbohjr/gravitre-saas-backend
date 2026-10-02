@@ -296,7 +296,7 @@ function AssetCard({
             ) : null}
             {asset.visibility === "internal" ? <Badge variant="outline">Internal</Badge> : null}
             {isOutcomePack && (asset.tags ?? []).includes("production-verified") ? (
-              <Badge className="bg-success/10 text-success hover:bg-success/10">Production Verified</Badge>
+              <Badge className="bg-success/10 text-success hover:bg-success/10">Production verified</Badge>
             ) : null}
             <AssetTrustBadges asset={asset} />
             {asset.installCount != null && asset.installCount > 0 ? (
