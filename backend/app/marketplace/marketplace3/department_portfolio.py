@@ -102,20 +102,39 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
     "revenue-operations-3": {
         "title": "Revenue Operations 3.0", "department": "Revenue Operations",
         "skill_package": "revenue-operations-skills",
-        "problem": "Revenue teams lose pipeline when qualification, account context, deal risk, forecasting, and renewal signals are fragmented across CRM activity.",
-        "target": "Increase qualified pipeline velocity and forecast integrity while reducing manual research and stale-deal administration.",
+        "problem": "Revenue teams lose pipeline when qualification, account context, follow-up, deal risk, forecasting, renewals, and revenue leakage are fragmented across CRM activity.",
+        "target": "Increase qualified pipeline velocity and forecast integrity while reducing manual research, stale-deal administration, missed follow-up, and recoverable revenue leakage.",
         "connectors": ["hubspot"], "optional": ["salesforce","gong","apollo","clay"],
         "profiles": {"hubspot": ["hubspot.contacts.search","hubspot.companies.search","hubspot.deals.get","hubspot.deals.search","hubspot.deals.list","hubspot.owners.list","hubspot.pipelines.list"]},
-        "agents": [("revenue-intelligence-agent","Revenue Intelligence Agent"),("pipeline-analyst-agent","Pipeline Analyst Agent")],
-        "kpis": [("speed_to_lead","Speed to lead","minutes","decrease"),("qualified_rate","Qualified lead rate","percent","increase"),("pipeline_coverage","Pipeline coverage","ratio","increase"),("stage_aging","Stage aging","days","decrease"),("deal_velocity","Deal velocity","days","decrease"),("forecast_integrity","Forecast integrity","percent","increase"),("renewal_risk","Renewal revenue at risk","currency","decrease")],
+        "agents": [
+            ("revenue-operations-coordinator","Revenue Operations Coordinator"),
+            ("lead-intelligence-analyst","Lead Intelligence Analyst"),
+            ("account-research-analyst","Account Research Analyst"),
+            ("pipeline-risk-analyst","Pipeline Risk Analyst"),
+            ("forecast-renewal-analyst","Forecast & Renewal Analyst"),
+        ],
+        "kpis": [
+            ("speed_to_lead","Speed to lead","minutes","decrease"),
+            ("qualified_rate","Qualified lead rate","percent","increase"),
+            ("pipeline_coverage","Pipeline coverage","ratio","increase"),
+            ("stage_aging","Stage aging","days","decrease"),
+            ("deal_velocity","Deal velocity","days","decrease"),
+            ("forecast_integrity","Forecast integrity","percent","increase"),
+            ("renewal_risk","Renewal revenue at risk","currency","decrease"),
+            ("follow_up_latency","Follow-up latency","hours","decrease"),
+            ("revenue_leak_risk","Revenue leakage risk","currency","decrease"),
+            ("verified_revenue_outcomes","Verified revenue outcomes","count","increase"),
+        ],
         "plays": [
-            ("inbound-lead-qualifier","Inbound Lead Qualifier","Evaluate inbound CRM contacts against ICP and route the next recommended action.","hubspot.contacts.search","qualified_rate"),
-            ("account-research-brief","Account Research Brief","Build a verified CRM-backed account briefing for active opportunities.","hubspot.companies.search","speed_to_lead"),
-            ("meeting-prep-brief","Meeting Prep Brief","Prepare seller context using account and deal evidence before a customer meeting.","hubspot.deals.get","deal_velocity"),
+            ("inbound-lead-qualifier","Inbound Lead Qualifier","Evaluate inbound CRM contacts against ICP and identify the next recommended route.","hubspot.contacts.search","qualified_rate"),
+            ("account-research-brief","Account Research Brief","Build a verified CRM-backed account and stakeholder briefing for active opportunities.","hubspot.companies.search","speed_to_lead"),
+            ("meeting-prep-brief","Meeting Prep Brief","Prepare seller context using verified account, ownership, pipeline, and deal evidence before a customer meeting.","hubspot.deals.get","deal_velocity"),
+            ("post-meeting-follow-up-prep","Post-Meeting Follow-Up Prep","Prepare evidence-backed follow-up actions and CRM update recommendations without sending or mutating customer records automatically.","hubspot.deals.get","follow_up_latency"),
             ("stale-deal-recovery","Stale Deal Recovery","Identify opportunities with weak momentum and explain the evidence behind recovery recommendations.","hubspot.deals.list","stage_aging"),
-            ("pipeline-risk-review","Pipeline Risk Review","Detect pipeline risk using deal state, ownership, and stage evidence.","hubspot.deals.search","pipeline_coverage"),
-            ("forecast-integrity-check","Forecast Integrity Check","Compare pipeline claims with current CRM evidence and stage distribution.","hubspot.pipelines.list","forecast_integrity"),
-            ("renewal-expansion-watch","Renewal and Expansion Watch","Surface accounts that warrant renewal or expansion attention from CRM evidence.","hubspot.companies.search","renewal_risk"),
+            ("pipeline-risk-review","Pipeline Risk Review","Detect pipeline risk using deal state, ownership, stage, and coverage evidence.","hubspot.deals.search","pipeline_coverage"),
+            ("forecast-integrity-check","Forecast Integrity Check","Compare forecast claims with current CRM evidence and pipeline stage distribution.","hubspot.pipelines.list","forecast_integrity"),
+            ("renewal-expansion-watch","Renewal and Expansion Watch","Surface accounts that warrant renewal or expansion attention from verified CRM evidence.","hubspot.companies.search","renewal_risk"),
+            ("revenue-leak-hunter","Revenue Leak Hunter","Find stalled, neglected, or commercially inconsistent CRM opportunities that may represent recoverable revenue leakage.","hubspot.deals.list","revenue_leak_risk"),
         ],
     },
     "customer-success-support-3": {
@@ -381,6 +400,12 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
                 security_operations_marketplace3_assets,
             )
             assets.extend(security_operations_marketplace3_assets())
+            continue
+        if slug == "revenue-operations-3":
+            from app.marketplace.marketplace3.revenue_operations import (
+                revenue_operations_marketplace3_assets,
+            )
+            assets.extend(revenue_operations_marketplace3_assets())
             continue
         config = build_department_outcome_pack_config(slug)
         connector_defs = [
