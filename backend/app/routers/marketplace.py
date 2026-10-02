@@ -5,6 +5,7 @@ import logging
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -16,6 +17,7 @@ from app.auth.dependencies import (
     get_org_context,
     require_admin,
     require_platform_admin,
+    security,
 )
 from app.auth.platform_admin import is_platform_admin
 from app.config import Settings, get_settings
@@ -152,6 +154,9 @@ from app.marketplace.marketplace3.certification_runner import (
     CertificationRunnerError,
     get_current_outcome_pack_certification,
     run_outcome_pack_certification,
+)
+from app.marketplace.marketplace3.permissions_probe import (
+    probe_outcome_pack_permissions,
 )
 from app.marketplace.service import fetch_marketplace_asset
 from app.workflows.audit import write_audit_event
@@ -1253,17 +1258,35 @@ async def run_marketplace_outcome_pack_certification(
     asset_ref: str,
     body: OutcomePackCertificationRunRequest,
     admin: Annotated[tuple, Depends(require_admin)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     try:
+        permission_probe = None
+        if body.mode == "production":
+            # Resolve the exact asset id before the user-scoped probe. The probe
+            # itself uses the caller's JWT, never the service-role token.
+            current = get_current_outcome_pack_certification(
+                client,
+                org_id=org_id,
+                asset_ref=asset_ref,
+            )
+            permission_probe = await probe_outcome_pack_permissions(
+                client,
+                settings,
+                org_id=org_id,
+                asset_id=current["assetId"],
+                access_token=credentials.credentials if credentials else "",
+            )
         result = run_outcome_pack_certification(
             client,
             org_id=org_id,
             asset_ref=asset_ref,
             actor_id=user["user_id"],
             mode=body.mode,
+            permission_probe=permission_probe,
         )
     except CertificationRunnerError as exc:
         status_code = (
