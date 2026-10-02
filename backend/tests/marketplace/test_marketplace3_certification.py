@@ -27,7 +27,18 @@ def test_msp_blueprint_is_not_publish_ready_until_real_dependencies_are_verified
     assert "WRITE_VERIFICATION_INCOMPLETE" not in codes
 
 
-def test_msp_blueprint_can_reach_production_verified_with_real_skill_bindings() -> None:
+def _production_evidence() -> dict:
+    return {
+        "fresh_install_passed": True,
+        "golden_path_passed": True,
+        "failure_path_passed": True,
+        "permissions_passed": True,
+        "kpi_reconciliation_passed": True,
+        "source_of_record_verification_passed": True,
+    }
+
+
+def _production_ready_payload() -> dict:
     payload = deepcopy(build_msp_service_desk_outcome_pack_config())
     skill_ids = []
     bindings = {}
@@ -39,8 +50,26 @@ def test_msp_blueprint_can_reach_production_verified_with_real_skill_bindings() 
     payload["skills"] = skill_ids
     for profile in payload["runtime_profiles"]:
         profile["status"] = "production_verified"
+    return payload
+
+
+def test_runtime_status_and_skill_bindings_alone_do_not_grant_production_verified() -> None:
+    payload = _production_ready_payload()
 
     report = certify_outcome_pack(OutcomePackAssetConfig.model_validate(payload))
+
+    assert report.publish_ready is False
+    assert report.level == "governed"
+    assert any(f.code == "PRODUCTION_EVIDENCE_MISSING" for f in report.findings)
+
+
+def test_msp_blueprint_can_reach_production_verified_with_real_evidence() -> None:
+    payload = _production_ready_payload()
+
+    report = certify_outcome_pack(
+        OutcomePackAssetConfig.model_validate(payload),
+        outcome_evidence=_production_evidence(),
+    )
 
     assert report.publish_ready is True
     assert report.level == "production_verified"
@@ -48,22 +77,20 @@ def test_msp_blueprint_can_reach_production_verified_with_real_skill_bindings() 
 
 
 def test_outcome_verified_requires_measured_verified_outcome_event() -> None:
-    payload = deepcopy(build_msp_service_desk_outcome_pack_config())
-    bindings = {
-        requirement: f"verified-skill-{index}"
-        for index, requirement in enumerate(payload["skill_requirements"])
-    }
-    payload["skill_bindings"] = bindings
-    payload["skills"] = list(bindings.values())
-    for profile in payload["runtime_profiles"]:
-        profile["status"] = "production_verified"
-
+    payload = _production_ready_payload()
     config = OutcomePackAssetConfig.model_validate(payload)
-    without_evidence = certify_outcome_pack(config)
+    production_evidence = _production_evidence()
+    without_outcome = certify_outcome_pack(
+        config,
+        outcome_evidence=production_evidence,
+    )
     with_evidence = certify_outcome_pack(
         config,
-        outcome_evidence={"verified_outcome_events": ["ticket_sla_saved"]},
+        outcome_evidence={
+            **production_evidence,
+            "verified_outcome_events": ["ticket_sla_saved"],
+        },
     )
 
-    assert without_evidence.level == "production_verified"
+    assert without_outcome.level == "production_verified"
     assert with_evidence.level == "outcome_verified"
