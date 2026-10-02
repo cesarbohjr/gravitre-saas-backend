@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -357,6 +358,13 @@ class PublisherOnboardRequest(BaseModel):
 
 class AssetFlagRequest(BaseModel):
     enabled: bool
+
+
+class Marketplace3PilotRequest(BaseModel):
+    org_id: UUID = Field(alias="orgId")
+    install_variables: dict[str, str] = Field(default_factory=dict, alias="installVariables")
+
+    model_config = {"populate_by_name": True, "extra": "forbid"}
 
 
 class Marketplace3CertificationRequest(BaseModel):
@@ -1494,6 +1502,29 @@ async def set_platform_asset_verified(
         )
     except MarketplaceFlagsError as exc:
         raise _flags_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/marketplace3/install-pilot")
+async def install_platform_marketplace3_pilot(
+    asset_ref: str,
+    body: Marketplace3PilotRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+) -> dict:
+    """Install a governed internal draft into an explicit tenant in OBSERVE mode.
+
+    This administrative pilot does not publish the pack or certify its results.
+    """
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return install_asset(
+            client, str(body.org_id), asset_ref, actor_id=user["user_id"],
+            environment_name=environment_name, install_variables=body.install_variables,
+            _draft_pilot=True,
+        )
+    except MarketplaceError as exc:
+        raise _marketplace_http_error(exc) from exc
 
 
 @router.post("/platform/assets/{asset_ref}/marketplace3/certify")
