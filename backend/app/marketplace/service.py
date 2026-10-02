@@ -10,9 +10,13 @@ from app.marketplace.schemas import (
     AgentAssetConfig,
     CapabilityPackageAssetConfig,
     ConnectorConfigAssetConfig,
+    DashboardPackAssetConfig,
+    DatasetPackAssetConfig,
     DepartmentPackAssetConfig,
     KnowledgePackAssetConfig,
+    OutcomePackAssetConfig,
     MarketplaceValidationError,
+    PlayAssetConfig,
     RequiredConnectorRef,
     WorkflowAssetConfig,
     parse_asset_config,
@@ -359,7 +363,7 @@ def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
     from app.billing.entitlement_service import PlanLimitExceededError
 
     plan = get_plan_for_org(client, org_id)
-    if asset_type in {"ai_agent", "department_pack"}:
+    if asset_type in {"ai_agent", "department_pack", "outcome_pack"}:
         limit = plan.get("agents_limit")
         current = len(list_operators(client, org_id))
         if limit is not None and current >= int(limit):
@@ -368,7 +372,7 @@ def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
                 current=current,
                 max_allowed=int(limit),
             )
-    if asset_type in {"workflow", "department_pack"}:
+    if asset_type in {"workflow", "department_pack", "play", "outcome_pack"}:
         limit = plan.get("workflows_limit")
         if limit is not None:
             # Soft-deactivate archives workflow_defs on uninstall (STA-309); archived
@@ -759,6 +763,297 @@ def _install_workflow_entity(
         "entityId": workflow_id,
         "workflowId": workflow_id,
         "agentIds": agent_id_list,
+    }
+
+
+def _install_play_asset(
+    client: Any,
+    org_id: str,
+    asset: dict[str, Any],
+    config: PlayAssetConfig,
+    *,
+    actor_id: str,
+    environment_name: str,
+    connector_ids: dict[str, str | None],
+    agent_ids: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Install a Marketplace Play onto Gravitre's canonical workflow + Play runtime.
+
+    The Marketplace never becomes an execution engine. The Play's steps are
+    materialized as a normal workflow, then bound into the existing Play runtime.
+    Install starts in OBSERVE mode so action authority is earned separately.
+    """
+    from app.plays.catalog import get_platform_play
+    from app.plays.workflow_bindings import bind_play_to_workflow
+
+    platform_play = get_platform_play(config.key)
+    if platform_play is None:
+        raise MarketplaceError(
+            f"Marketplace Play {config.key!r} is not registered in the canonical Play catalog",
+            code="PLAY_NOT_REGISTERED",
+            details={"playKey": config.key, "executionAuthority": "canonical_workflow_runtime"},
+        )
+
+    workflow_result = _install_workflow_entity(
+        client,
+        org_id,
+        asset,
+        WorkflowAssetConfig(
+            schema_version=SCHEMA_VERSION,
+            name=config.name,
+            description=config.description,
+            steps=config.workflow_steps,
+        ),
+        actor_id=actor_id,
+        environment_name=environment_name,
+        agent_ids=agent_ids,
+        connector_ids=connector_ids,
+        workflow_label=f"play:{config.key}",
+    )
+    workflow_id = str(workflow_result["workflowId"])
+    binding = bind_play_to_workflow(
+        client,
+        org_id,
+        play_key=config.key,
+        workflow_id=workflow_id,
+        actor_id=actor_id,
+        environment_name=environment_name,
+    )
+
+    installation_payload = {
+        "org_id": org_id,
+        "play_key": platform_play.key,
+        "play_version": platform_play.version,
+        "environment_name": environment_name,
+        "operating_mode": "OBSERVE",
+        "status": "ready",
+        "configuration": {
+            "marketplaceAssetId": str(asset["id"]),
+            "marketplaceSlug": asset.get("slug"),
+            "trigger": config.trigger,
+            "outcomeEvents": config.outcome_events,
+            "kpiKeys": config.kpi_keys,
+            "approvals": config.approvals,
+            "verification": config.verification,
+            "executionAuthority": "canonical_workflow_runtime",
+        },
+        "created_by": actor_id,
+        "updated_at": _now(),
+    }
+    installation = (
+        client.table("play_installations")
+        .upsert(
+            installation_payload,
+            on_conflict="org_id,environment_name,play_key",
+        )
+        .execute()
+    )
+    rows = installation.data or []
+    installation_id = str(rows[0].get("id")) if rows else ""
+
+    return {
+        "entityType": "play",
+        "entityId": installation_id or workflow_id,
+        "playKey": platform_play.key,
+        "playVersion": platform_play.version,
+        "playInstallationId": installation_id or None,
+        "workflowId": workflow_id,
+        "workflowIds": [workflow_id],
+        "workflowBinding": binding,
+        "operatingMode": "OBSERVE",
+        "executionAuthority": "canonical_workflow_runtime",
+        "agentIds": workflow_result.get("agentIds") or [],
+    }
+
+
+def _install_dataset_pack(
+    client: Any,
+    org_id: str,
+    asset: dict[str, Any],
+    config: DatasetPackAssetConfig,
+    *,
+    actor_id: str,
+    source_outcome_pack_id: str | None = None,
+) -> dict[str, Any]:
+    entity_id = marketplace_entity_id(
+        org_id,
+        str(asset["id"]),
+        "dataset-pack" if source_outcome_pack_id is None else "outcome-dataset-pack",
+    )
+    payload = {
+        "id": entity_id,
+        "org_id": org_id,
+        "asset_id": str(asset["id"]),
+        "source_outcome_pack_id": source_outcome_pack_id,
+        "status": "active",
+        "config": config.model_dump(mode="json"),
+        "created_by": actor_id,
+        "updated_at": _now(),
+    }
+    client.table("marketplace_dataset_pack_installations").upsert(
+        payload,
+        on_conflict="id",
+    ).execute()
+    return {
+        "entityType": "dataset_pack",
+        "entityId": entity_id,
+        "datasetPackId": entity_id,
+        "dataset": payload["config"],
+    }
+
+
+def _install_dashboard_pack(
+    client: Any,
+    org_id: str,
+    asset: dict[str, Any],
+    config: DashboardPackAssetConfig,
+    *,
+    actor_id: str,
+    source_outcome_pack_id: str | None = None,
+) -> dict[str, Any]:
+    entity_id = marketplace_entity_id(
+        org_id,
+        str(asset["id"]),
+        "dashboard-pack" if source_outcome_pack_id is None else "outcome-dashboard-pack",
+    )
+    payload = {
+        "id": entity_id,
+        "org_id": org_id,
+        "asset_id": str(asset["id"]),
+        "source_outcome_pack_id": source_outcome_pack_id,
+        "status": "active",
+        "config": config.model_dump(mode="json"),
+        "created_by": actor_id,
+        "updated_at": _now(),
+    }
+    client.table("marketplace_dashboard_pack_installations").upsert(
+        payload,
+        on_conflict="id",
+    ).execute()
+    return {
+        "entityType": "dashboard_pack",
+        "entityId": entity_id,
+        "dashboardPackId": entity_id,
+        "dashboard": payload["config"],
+    }
+
+
+def _install_outcome_pack(
+    client: Any,
+    org_id: str,
+    asset: dict[str, Any],
+    config: OutcomePackAssetConfig,
+    *,
+    actor_id: str,
+    environment_name: str,
+    connector_ids: dict[str, str | None],
+) -> dict[str, Any]:
+    """Install a Marketplace 3.0 Outcome Pack as canonical Gravitre primitives."""
+    root_id = marketplace_entity_id(org_id, str(asset["id"]), "outcome-pack")
+    agent_ids: dict[str, str] = {}
+    installed_agents: list[str] = []
+    failures: list[dict[str, Any]] = []
+
+    for index, agent_cfg in enumerate(config.agents):
+        seed = agent_cfg.seed_label or f"agent-{index}"
+        try:
+            result = _install_ai_agent(
+                client,
+                org_id,
+                asset,
+                agent_cfg,
+                actor_id=actor_id,
+                environment_name=environment_name,
+            )
+            agent_ids[seed] = str(result["entityId"])
+            installed_agents.append(str(result["entityId"]))
+        except Exception as exc:  # noqa: BLE001
+            failures.append({"component": "agent", "key": seed, "error": str(exc)})
+
+    knowledge_result = _install_knowledge_pack(
+        client,
+        org_id,
+        asset,
+        KnowledgePackAssetConfig(documents=config.knowledge),
+        environment_name=environment_name,
+        primary_agent_id=next(iter(installed_agents), None),
+    ) if config.knowledge else {
+        "entityType": "knowledge_pack",
+        "entityId": root_id,
+        "ragSourceIds": [],
+    }
+
+    dataset_result = _install_dataset_pack(
+        client,
+        org_id,
+        asset,
+        config.dataset,
+        actor_id=actor_id,
+        source_outcome_pack_id=root_id,
+    )
+    dashboard_result = _install_dashboard_pack(
+        client,
+        org_id,
+        asset,
+        config.dashboard,
+        actor_id=actor_id,
+        source_outcome_pack_id=root_id,
+    )
+
+    play_rows: list[dict[str, Any]] = []
+    workflow_ids: list[str] = []
+    play_installation_ids: list[str] = []
+    for play_cfg in config.plays:
+        try:
+            result = _install_play_asset(
+                client,
+                org_id,
+                asset,
+                play_cfg,
+                actor_id=actor_id,
+                environment_name=environment_name,
+                connector_ids=connector_ids,
+                agent_ids=agent_ids,
+            )
+            play_rows.append({
+                "playKey": result.get("playKey"),
+                "playVersion": result.get("playVersion"),
+                "playInstallationId": result.get("playInstallationId"),
+                "workflowId": result.get("workflowId"),
+                "operatingMode": result.get("operatingMode"),
+            })
+            if result.get("workflowId"):
+                workflow_ids.append(str(result["workflowId"]))
+            if result.get("playInstallationId"):
+                play_installation_ids.append(str(result["playInstallationId"]))
+        except Exception as exc:  # noqa: BLE001
+            failures.append({"component": "play", "key": play_cfg.key, "error": str(exc)})
+
+    # Marketplace 3.0 stays fail-closed: a partial bundle is not a
+    # successful Outcome Pack install. Every required Play and agent must
+    # materialize before the Marketplace install record can be written.
+    if failures:
+        raise MarketplaceError(
+            "Outcome Pack installation could not materialize every required component",
+            code="OUTCOME_PACK_COMPONENT_FAILED",
+            details={"failures": failures},
+        )
+
+    return {
+        "entityType": "outcome_pack",
+        "entityId": root_id,
+        "marketplaceVersion": config.marketplace_version,
+        "agentIds": installed_agents,
+        "workflowIds": workflow_ids,
+        "playInstallationIds": play_installation_ids,
+        "plays": play_rows,
+        "ragSourceIds": knowledge_result.get("ragSourceIds") or [],
+        "datasetPackId": dataset_result["datasetPackId"],
+        "dashboardPackId": dashboard_result["dashboardPackId"],
+        "outcomeContract": config.outcome_contract.model_dump(mode="json"),
+        "kpiKeys": [row.key for row in config.outcome_contract.kpis],
+        "skills": list(config.skills),
+        "executionAuthority": "canonical_workflow_runtime",
     }
 
 
@@ -1544,8 +1839,44 @@ def install_asset(
             parsed,  # type: ignore[arg-type]
             environment_name=environment_name,
         )
+    elif asset_type == "play":
+        installed = _install_play_asset(
+            client,
+            org_id,
+            asset,
+            parsed,  # type: ignore[arg-type]
+            actor_id=actor_id,
+            environment_name=environment_name,
+            connector_ids=connector_ids,
+        )
     elif asset_type == "department_pack":
         installed = _install_department_pack(
+            client,
+            org_id,
+            asset,
+            parsed,  # type: ignore[arg-type]
+            actor_id=actor_id,
+            environment_name=environment_name,
+            connector_ids=connector_ids,
+        )
+    elif asset_type == "dataset_pack":
+        installed = _install_dataset_pack(
+            client,
+            org_id,
+            asset,
+            parsed,  # type: ignore[arg-type]
+            actor_id=actor_id,
+        )
+    elif asset_type == "dashboard_pack":
+        installed = _install_dashboard_pack(
+            client,
+            org_id,
+            asset,
+            parsed,  # type: ignore[arg-type]
+            actor_id=actor_id,
+        )
+    elif asset_type == "outcome_pack":
+        installed = _install_outcome_pack(
             client,
             org_id,
             asset,

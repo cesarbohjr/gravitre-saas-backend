@@ -33,6 +33,10 @@ _ASSET_TYPES = frozenset({
     "department_pack",
     "connector_config",
     "capability_package",
+    "play",
+    "dataset_pack",
+    "dashboard_pack",
+    "outcome_pack",
 })
 _PRICING_TYPES = frozenset({"free", "paid", "subscription"})
 
@@ -335,7 +339,11 @@ def list_marketplace_assets(
     asset_ids = [str(row["id"]) for row in rows]
     installs = _active_installs_by_asset(client, org_id, asset_ids)
     entitlements = _active_entitlements_by_asset(client, org_id, asset_ids)
-    pack_asset_ids = [str(row["id"]) for row in rows if row.get("asset_type") == "department_pack"]
+    pack_asset_ids = [
+        str(row["id"])
+        for row in rows
+        if row.get("asset_type") in {"department_pack", "outcome_pack"}
+    ]
     pack_items_by_asset = _pack_items_by_asset(client, pack_asset_ids)
 
     assets: list[dict[str, Any]] = []
@@ -355,7 +363,7 @@ def list_marketplace_assets(
         )
         summary["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
         summary["hasEntitlement"] = asset_id in entitlements
-        if row.get("asset_type") == "department_pack":
+        if row.get("asset_type") in {"department_pack", "outcome_pack"}:
             summary["packItems"] = pack_items_by_asset.get(asset_id, [])
         assets.append(summary)
 
@@ -425,7 +433,7 @@ def get_marketplace_asset(
     connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
     installs = _active_installs_by_asset(client, org_id, [str(row["id"])])
     pack_items: list[dict[str, Any]] | None = None
-    if row.get("asset_type") == "department_pack":
+    if row.get("asset_type") in {"department_pack", "outcome_pack"}:
         pack_items = _fetch_pack_items(client, str(row["id"]))
 
     asset_id = str(row["id"])

@@ -59,6 +59,10 @@ const TYPE_FILTERS = [
   { id: "knowledge_pack", label: "Knowledge", icon: BookOpen },
   { id: "department_pack", label: "Department packs", icon: Package },
   { id: "connector_config", label: "Partner connectors", icon: Plug },
+  { id: "play", label: "Plays", icon: Workflow },
+  { id: "outcome_pack", label: "Outcome packs", icon: Package },
+  { id: "dataset_pack", label: "Datasets", icon: Package },
+  { id: "dashboard_pack", label: "Dashboards", icon: Package },
   { id: "capability_package", label: "Skills & plugins", icon: Package },
 ] as const
 
@@ -108,6 +112,10 @@ const CAPABILITY_NOUN: Record<string, [string, string]> = {
   connector_config: ["connector setup", "connector setups"],
   department_pack: ["department pack", "department packs"],
   capability_package: ["skill/plugin", "skills/plugins"],
+  play: ["play", "plays"],
+  outcome_pack: ["outcome pack", "outcome packs"],
+  dataset_pack: ["dataset pack", "dataset packs"],
+  dashboard_pack: ["dashboard pack", "dashboard packs"],
 }
 
 /** What installing the asset adds to the workspace, from its catalogued contents only. */
@@ -512,7 +520,7 @@ function MarketplaceAssetsContent() {
                   Install packs into your workspace
                 </h1>
                 <p className={cn(TYPE.pageLead, "mt-2")}>
-                  One click provisions agents, workflows, and knowledge — then we notify you with deep links to open them.
+                  Install measurable operating capabilities: outcome packs, plays, agents, workflows, knowledge, datasets, dashboards, and governed skills.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -539,7 +547,7 @@ function MarketplaceAssetsContent() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search agents, workflows, skills, plugins, knowledge and packs…"
+                placeholder="Search outcomes, plays, agents, workflows, datasets, dashboards, skills and packs…"
                 aria-label="Search marketplace"
                 className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
               />
@@ -550,6 +558,8 @@ function MarketplaceAssetsContent() {
                 if (!isAdmin && filter.id === "capability_package") return null
                 const count =
                   filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
+                const isMarketplace3Type = ["play", "outcome_pack", "dataset_pack", "dashboard_pack"].includes(filter.id)
+                if (isMarketplace3Type && !count && typeFilter !== filter.id) return null
                 return (
                   <button
                     key={filter.id}

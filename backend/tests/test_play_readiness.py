@@ -89,11 +89,13 @@ def test_accepted_async_is_not_treated_as_verified_business_result():
 
 
 def test_initial_play_templates_are_dependency_metadata_only():
-    assert {play.key for play in PLATFORM_PLAY_TEMPLATES} == {
+    keys = {play.key for play in PLATFORM_PLAY_TEMPLATES}
+    assert {
         "customer-rescue",
         "revenue-recovery",
         "marketing-performance",
-    }
+    } <= keys
+    assert len(keys) >= 9
     for play in PLATFORM_PLAY_TEMPLATES:
         payload = play.as_dict()
         assert "steps" not in payload

@@ -16,6 +16,10 @@ AssetType = Literal[
     "department_pack",
     "connector_config",
     "capability_package",
+    "play",
+    "dataset_pack",
+    "dashboard_pack",
+    "outcome_pack",
 ]
 
 FORBIDDEN_SECRET_KEYS = frozenset({
@@ -131,6 +135,115 @@ class DepartmentPackAssetConfig(BaseModel):
             })
         except WorkflowValidationError as exc:
             raise ValueError(exc.message) from exc
+        return self
+
+
+class OutcomeKpiConfig(BaseModel):
+    key: str = Field(min_length=1, max_length=80)
+    label: str = Field(min_length=1, max_length=160)
+    unit: str = Field(default="count", max_length=40)
+    direction: Literal["increase", "decrease", "maintain"] = "increase"
+    target: float | int | str | None = None
+    source: str = Field(default="", max_length=160)
+
+
+class OutcomeContractConfig(BaseModel):
+    problem: str = Field(min_length=1, max_length=800)
+    target_outcome: str = Field(min_length=1, max_length=800)
+    baseline_metric: str | None = Field(default=None, max_length=160)
+    success_criteria: list[str] = Field(min_length=1)
+    outcome_events: list[str] = Field(min_length=1)
+    kpis: list[OutcomeKpiConfig] = Field(min_length=1)
+    verification_required: bool = True
+
+
+class PlayAssetConfig(BaseModel):
+    key: str = Field(min_length=1, max_length=120)
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=1200)
+    trigger: dict[str, Any] = Field(default_factory=dict)
+    workflow_steps: list[dict[str, Any]] = Field(min_length=1)
+    outcome_events: list[str] = Field(min_length=1)
+    kpi_keys: list[str] = Field(min_length=1)
+    approvals: list[dict[str, Any]] = Field(default_factory=list)
+    verification: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_play_workflow(self) -> "PlayAssetConfig":
+        try:
+            validate_definition({
+                "schema_version": SCHEMA_VERSION,
+                "steps": self.workflow_steps,
+            })
+        except WorkflowValidationError as exc:
+            raise ValueError(exc.message) from exc
+        return self
+
+
+class DatasetEntityConfig(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    source: str = Field(min_length=1, max_length=160)
+    primary_key: str = Field(default="id", max_length=120)
+    fields: list[str] = Field(default_factory=list)
+
+
+class DatasetMetricConfig(BaseModel):
+    key: str = Field(min_length=1, max_length=80)
+    label: str = Field(min_length=1, max_length=160)
+    formula: str = Field(min_length=1, max_length=1000)
+    unit: str = Field(default="count", max_length=40)
+
+
+class DatasetPackAssetConfig(BaseModel):
+    entities: list[DatasetEntityConfig] = Field(min_length=1)
+    metrics: list[DatasetMetricConfig] = Field(default_factory=list)
+
+
+class DashboardMetricConfig(BaseModel):
+    kpi_key: str = Field(min_length=1, max_length=80)
+    label: str = Field(min_length=1, max_length=160)
+    visualization: Literal["metric", "trend", "bar", "table", "progress"] = "metric"
+    description: str = Field(default="", max_length=500)
+
+
+class DashboardPackAssetConfig(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    metrics: list[DashboardMetricConfig] = Field(min_length=1)
+    refresh_mode: Literal["event", "scheduled", "manual"] = "event"
+
+
+class OutcomePackAssetConfig(BaseModel):
+    marketplace_version: Literal["3.0"] = "3.0"
+    outcome_contract: OutcomeContractConfig
+    agents: list[AgentAssetConfig] = Field(min_length=1)
+    plays: list[PlayAssetConfig] = Field(min_length=6)
+    knowledge: list[KnowledgePackDocument] = Field(default_factory=list)
+    dataset: DatasetPackAssetConfig
+    dashboard: DashboardPackAssetConfig
+    skills: list[str] = Field(default_factory=list)
+    connector_alternatives: list[list[str]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_outcome_pack(self) -> "OutcomePackAssetConfig":
+        declared_kpis = {item.key for item in self.outcome_contract.kpis}
+        dashboard_kpis = {item.kpi_key for item in self.dashboard.metrics}
+        if not dashboard_kpis.issubset(declared_kpis):
+            missing = sorted(dashboard_kpis - declared_kpis)
+            raise ValueError(f"dashboard references undeclared KPI keys: {', '.join(missing)}")
+        missing_dashboard_kpis = sorted(declared_kpis - dashboard_kpis)
+        if missing_dashboard_kpis:
+            raise ValueError(
+                f"every outcome KPI must be represented on the dashboard: {', '.join(missing_dashboard_kpis)}"
+            )
+        play_keys = [play.key for play in self.plays]
+        if len(play_keys) != len(set(play_keys)):
+            raise ValueError("outcome packs must not contain duplicate Play keys")
+        for play in self.plays:
+            missing = sorted(set(play.kpi_keys) - declared_kpis)
+            if missing:
+                raise ValueError(
+                    f"play {play.key} references undeclared KPI keys: {', '.join(missing)}"
+                )
         return self
 
 
@@ -279,6 +392,10 @@ ASSET_CONFIG_MODELS: dict[str, type[BaseModel]] = {
     "connector_config": ConnectorConfigAssetConfig,
     "capability_package": CapabilityPackageAssetConfig,
     "intelligence_pack": IntelligencePackAssetConfig,
+    "play": PlayAssetConfig,
+    "dataset_pack": DatasetPackAssetConfig,
+    "dashboard_pack": DashboardPackAssetConfig,
+    "outcome_pack": OutcomePackAssetConfig,
 }
 
 
@@ -433,6 +550,34 @@ def _assert_publish_ready(asset_type: str, parsed: BaseModel) -> None:
                 "department_pack requires workflow_steps for publish",
                 errors=["workflow_steps_required"],
             )
+    elif asset_type == "play":
+        play = parsed  # type: ignore[assignment]
+        if not play.outcome_events:  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "play requires at least one outcome event for publish",
+                errors=["outcome_events_required"],
+            )
+    elif asset_type == "dataset_pack":
+        dataset = parsed  # type: ignore[assignment]
+        if not dataset.entities:  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "dataset_pack requires at least one entity for publish",
+                errors=["entities_required"],
+            )
+    elif asset_type == "dashboard_pack":
+        dashboard = parsed  # type: ignore[assignment]
+        if not dashboard.metrics:  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "dashboard_pack requires at least one metric for publish",
+                errors=["metrics_required"],
+            )
+    elif asset_type == "outcome_pack":
+        pack = parsed  # type: ignore[assignment]
+        if len(pack.plays) < 6:  # type: ignore[attr-defined]
+            raise MarketplaceValidationError(
+                "Marketplace 3.0 outcome packs require at least six meaningful plays",
+                errors=["minimum_six_plays_required"],
+            )
 
 
 def validate_asset_payload(
@@ -467,6 +612,8 @@ def validate_asset_payload(
         steps = dumped["steps"]
         schema_version = str(dumped.get("schema_version") or WF_SCHEMA_VERSION)
     elif asset_type == "department_pack" and isinstance(dumped.get("workflow_steps"), list):
+        steps = dumped["workflow_steps"]
+    elif asset_type == "play" and isinstance(dumped.get("workflow_steps"), list):
         steps = dumped["workflow_steps"]
     should_enforce = publish if enforce_bindings is None else enforce_bindings
     if steps and should_enforce:

@@ -47,6 +47,13 @@ def _entity_deep_link(entity_type: str, entity_id: str, metadata: dict[str, Any]
         return "/connectors"
     if entity_type == "capability_package":
         return "/marketplace/capabilities"
+    if entity_type == "play":
+        play_key = metadata.get("playKey") or metadata.get("play_key")
+        if play_key:
+            return f"/plays?play={play_key}"
+        return "/plays"
+    if entity_type in {"outcome_pack", "dataset_pack", "dashboard_pack"}:
+        return "/marketplace/installed"
     return None
 
 
@@ -256,6 +263,9 @@ def _deactivate_install_entities(
         "capabilityPackages": [],
         "mcpServers": [],
         "nativeBindings": [],
+        "plays": [],
+        "datasetPacks": [],
+        "dashboardPacks": [],
     }
 
     agent_ids: list[str] = []
@@ -272,6 +282,60 @@ def _deactivate_install_entities(
             deactivated["agents"].append(agent_id)
         except Exception:  # noqa: BLE001
             continue
+
+    if entity_type == "play":
+        play_key = str(metadata.get("playKey") or metadata.get("play_key") or "").strip()
+        if play_key:
+            try:
+                client.table("play_installations").update(
+                    {"status": "archived", "updated_at": now}
+                ).eq("org_id", org_id).eq("play_key", play_key).execute()
+                deactivated["plays"].append(play_key)
+            except Exception:  # noqa: BLE001
+                pass
+
+    dataset_pack_ids = [str(v) for v in (metadata.get("datasetPackIds") or []) if v]
+    if metadata.get("datasetPackId"):
+        dataset_pack_ids.append(str(metadata["datasetPackId"]))
+    if entity_type == "dataset_pack" and entity_id:
+        dataset_pack_ids.append(str(entity_id))
+    for pack_id in dict.fromkeys(dataset_pack_ids):
+        try:
+            client.table("marketplace_dataset_pack_installations").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", pack_id).eq("org_id", org_id).execute()
+            deactivated["datasetPacks"].append(pack_id)
+        except Exception:  # noqa: BLE001
+            continue
+
+    dashboard_pack_ids = [str(v) for v in (metadata.get("dashboardPackIds") or []) if v]
+    if metadata.get("dashboardPackId"):
+        dashboard_pack_ids.append(str(metadata["dashboardPackId"]))
+    if entity_type == "dashboard_pack" and entity_id:
+        dashboard_pack_ids.append(str(entity_id))
+    for pack_id in dict.fromkeys(dashboard_pack_ids):
+        try:
+            client.table("marketplace_dashboard_pack_installations").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", pack_id).eq("org_id", org_id).execute()
+            deactivated["dashboardPacks"].append(pack_id)
+        except Exception:  # noqa: BLE001
+            continue
+
+    outcome_play_keys = [
+        str(row.get("playKey") or "")
+        for row in (metadata.get("plays") or [])
+        if isinstance(row, dict) and row.get("playKey")
+    ]
+    if entity_type == "outcome_pack":
+        for play_key in dict.fromkeys(outcome_play_keys):
+            try:
+                client.table("play_installations").update(
+                    {"status": "archived", "updated_at": now}
+                ).eq("org_id", org_id).eq("play_key", play_key).execute()
+                deactivated["plays"].append(play_key)
+            except Exception:  # noqa: BLE001
+                continue
 
     workflow_ids: list[str] = []
     for raw in metadata.get("workflowIds") or []:
