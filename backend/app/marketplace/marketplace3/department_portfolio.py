@@ -77,6 +77,7 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
             ("containment-readiness-review","Containment Readiness Review","Prepare evidence and approval requirements before a containment action is attempted.","freshservice.tickets.get","escalation_rate"),
             ("incident-communications-brief","Incident Communications Brief","Prepare a verified internal incident status brief from source records.","freshservice.tickets.get","communication_latency"),
             ("post-incident-review","Post-Incident Review","Produce a structured review of incident evidence, recurrence patterns, and follow-up actions.","freshservice.tickets.activities","post_incident_completion"),
+            ("security-posture-watch","Security Posture Watch","Continuously review verified security-related service evidence for deteriorating posture, unresolved critical workload, and remediation pressure.","freshservice.tickets.list","critical_workload"),
         ],
     },
     "revenue-operations-3": {
@@ -96,6 +97,7 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
             ("pipeline-risk-review","Pipeline Risk Review","Detect pipeline risk using deal state, ownership, and stage evidence.","hubspot.deals.search","pipeline_coverage"),
             ("forecast-integrity-check","Forecast Integrity Check","Compare pipeline claims with current CRM evidence and stage distribution.","hubspot.pipelines.list","forecast_integrity"),
             ("renewal-expansion-watch","Renewal and Expansion Watch","Surface accounts that warrant renewal or expansion attention from CRM evidence.","hubspot.companies.search","renewal_risk"),
+            ("post-meeting-follow-up-review","Post-Meeting Follow-Up Review","Review current deal evidence after customer meetings and prepare the highest-value next-step follow-up without sending it automatically.","hubspot.deals.get","deal_velocity"),
         ],
     },
     "customer-success-support-3": {
@@ -115,6 +117,7 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
             ("renewal-readiness-review","Renewal Readiness Review","Assess renewal readiness from account and deal evidence.","hubspot.deals.list","renewal_readiness"),
             ("expansion-signal-watch","Expansion Signal Watch","Find evidence-backed expansion signals without inventing intent.","hubspot.companies.search","expansion_signal_rate"),
             ("service-gap-detector","Service Gap Detector","Detect recurring customer-support gaps that should become process or knowledge improvements.","zendesk.tickets.list","service_gap_rate"),
+            ("voice-of-customer-watch","Voice of Customer Watch","Aggregate verified support evidence into recurring customer themes, friction signals, and retention-relevant patterns.","zendesk.tickets.list","account_health"),
         ],
     },
     "finance-operations-3": {
@@ -134,6 +137,7 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
             ("vendor-exception-review","Vendor Exception Review","Review vendor and account evidence for unusual or incomplete finance records.","quickbooks.vendors.list","vendor_exception_rate"),
             ("renewal-exposure-watch","Renewal Exposure Watch","Review subscription evidence for upcoming commercial exposure.","stripe.subscriptions.get","renewal_exposure"),
             ("month-end-readiness","Month-End Readiness","Assess close readiness from account, payment, and invoice evidence.","quickbooks.accounts.list","close_readiness"),
+            ("revenue-leak-hunter","Revenue Leak Hunter","Identify recoverable revenue hidden in overdue invoices, billing exceptions, stalled collections, and subscription exposure using verified finance evidence.","quickbooks.invoices.list","overdue_ar"),
         ],
     },
     "marketing-operations-3": {
@@ -153,6 +157,7 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
             ("audience-opportunity-review","Audience Opportunity Review","Analyze recent contact evidence for audience and segmentation opportunities.","hubspot.contacts.list","lead_flow_health"),
             ("content-performance-review","Content Performance Review","Use campaign evidence to identify content or messaging programs that are accelerating or decaying.","hubspot.campaigns.list","content_velocity"),
             ("pipeline-contribution-review","Pipeline Contribution Review","Connect current campaign and CRM evidence to downstream pipeline contribution.","hubspot.deals.list","pipeline_contribution"),
+            ("lifecycle-conversion-review","Lifecycle Conversion Review","Analyze pipeline-stage and contact evidence to find conversion leakage between marketing qualification and sales progression.","hubspot.pipelines.list","mql_to_sql"),
         ],
     },
     "people-it-operations-3": {
@@ -172,6 +177,7 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
             ("access-review-watch","Access Review Watch","Surface workforce records and service requests that indicate access-review gaps.","bamboohr.employees.get","access_review_gap"),
             ("device-service-risk-review","Device & Service Risk Review","Identify service records that may block employee productivity or device readiness.","freshservice.tickets.list","device_service_risk"),
             ("license-utilization-review","License Utilization Review","Prepare a workforce-based review of likely license allocation and deprovisioning needs.","bamboohr.employees.list","license_review_gap"),
+            ("service-request-bottleneck-review","Service Request Bottleneck Review","Identify recurring employee-service bottlenecks, aging requests, and coordination delays using verified service records.","freshservice.tickets.list","employee_request_age"),
         ],
     },
     "executive-command-center-3": {
@@ -191,6 +197,7 @@ PACK_SPECS: dict[str, dict[str, Any]] = {
             ("service-risk-watch","Service Risk Watch","Identify service workload signals that warrant leadership attention.","zendesk.tickets.list","service_risk"),
             ("marketing-signal-watch","Marketing Signal Watch","Summarize material demand and engagement changes from governed campaign evidence.","hubspot.campaigns.list","marketing_signal"),
             ("cross-functional-priority-review","Cross-Functional Priority Review","Rank the most material cross-functional issues and assign decision urgency.","quickbooks.payments.list","priority_resolution"),
+            ("operational-anomaly-watch","Operational Anomaly Watch","Surface unusual cross-functional operating signals that deserve executive attention before they become larger business problems.","zendesk.tickets.list","operational_anomalies"),
         ],
     },
 }
