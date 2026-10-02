@@ -170,10 +170,19 @@ def certify_outcome_pack(
                         )
                     )
 
-    resolved = set(resolved_skill_ids or set()) | set(config.skills)
+    resolved_package_ids = set(resolved_skill_ids or set()) | set(config.skills)
+    bound_requirements = {
+        requirement
+        for requirement, package_id in config.skill_bindings.items()
+        if str(package_id).strip()
+        and (
+            not resolved_package_ids
+            or str(package_id).strip() in resolved_package_ids
+        )
+    }
     unresolved_skills = sorted(
         requirement for requirement in config.skill_requirements
-        if requirement not in resolved
+        if requirement not in bound_requirements
     )
     if unresolved_skills:
         findings.append(
@@ -242,7 +251,11 @@ def certify_outcome_pack(
         findings=findings,
         play_count=len(config.plays),
         runtime_actions=runtime_actions,
-        verified_skills=sorted(resolved),
+        verified_skills=sorted(
+            str(package_id).strip()
+            for package_id in config.skill_bindings.values()
+            if str(package_id).strip()
+        ),
         unresolved_skill_requirements=unresolved_skills,
     )
 
