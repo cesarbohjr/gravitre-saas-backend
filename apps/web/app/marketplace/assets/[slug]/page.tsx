@@ -314,14 +314,29 @@ function MarketplaceAssetDetailContent() {
                 <section className="rounded-xl border bg-muted/20 p-4">
                   <h2 className="text-sm font-semibold">How value is measured</h2>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {outcomePack.kpis.map((kpi) => (
-                      <div key={kpi.key} className="rounded-lg border bg-background/70 p-3">
-                        <p className="text-xs font-medium text-foreground">{kpi.label}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          {kpi.unit ?? "metric"}{kpi.direction ? ` · target: ${kpi.direction}` : ""}
-                        </p>
-                      </div>
-                    ))}
+                    {outcomePack.kpis.map((kpi) => {
+                      const measured = asset.marketplace3OutcomeMetrics?.find((row) => row.key === kpi.key)
+                      return (
+                        <div key={kpi.key} className="rounded-lg border bg-background/70 p-3">
+                          <p className="text-xs font-medium text-foreground">{kpi.label}</p>
+                          {measured?.resultValue != null ? (
+                            <>
+                              <p className="mt-1 text-lg font-semibold text-foreground">
+                                {measured.resultValue} {measured.unit ?? kpi.unit ?? ""}
+                              </p>
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                Verified from {measured.sourceRecordCount} source record{measured.sourceRecordCount === 1 ? "" : "s"}
+                                {measured.deltaValue != null ? ` · Δ ${measured.deltaValue}` : ""}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {kpi.unit ?? "metric"}{kpi.direction ? ` · target: ${kpi.direction}` : ""} · awaiting verified measurement
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                   {outcomePack.successCriteria.length ? (
                     <div className="mt-4">
