@@ -71,6 +71,7 @@ def _play(
     task: str,
     approvals: list[dict[str, Any]] | None = None,
     evidence_steps: list[dict[str, Any]] | None = None,
+    action_steps_after: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     workflow_steps = list(evidence_steps or [])
     workflow_steps.append(
@@ -81,6 +82,7 @@ def _play(
             task,
         )
     )
+    workflow_steps.extend(action_steps_after or [])
     return {
         "key": key,
         "name": name,
@@ -281,7 +283,24 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 "Investigate why the ticket is stalled, identify the correct owner/escalation, and "
                 "prepare a rescue action. Any consequential write requires approval and source-of-record verification."
             ),
-            approvals=[{"when": "external_write", "required": True}],
+            approvals=[
+                {
+                    "when": "freshservice.tickets.update_status",
+                    "required": True,
+                    "verification": "source_of_record_field_assert",
+                }
+            ],
+            action_steps_after=[
+                _tool_step(
+                    "sla-approved-status-update",
+                    "Apply approved Freshservice ticket status",
+                    "freshservice.tickets.update_status",
+                    param_sources={
+                        "ticket_id": "$TICKET_ID",
+                        "status": "$TARGET_STATUS",
+                    },
+                )
+            ],
         ),
         _play(
             "stale-ticket-recovery",
@@ -529,7 +548,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
         },
         # Do not claim unresolved skill packages as installed ingredients.
         # Certification resolves these capability requirements to reviewed package IDs.
-        "skills": [],
+        "skills": ["msp-service-desk-skills-v1"],
         "skill_requirements": [
             "ticket-triage",
             "incident-diagnosis",
@@ -539,10 +558,19 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             "knowledge-gap-analysis",
             "service-operations-analysis",
         ],
+        "skill_bindings": {
+            "ticket-triage": "msp-service-desk-skills-v1",
+            "incident-diagnosis": "msp-service-desk-skills-v1",
+            "sla-analysis": "msp-service-desk-skills-v1",
+            "client-communication": "msp-service-desk-skills-v1",
+            "problem-management": "msp-service-desk-skills-v1",
+            "knowledge-gap-analysis": "msp-service-desk-skills-v1",
+            "service-operations-analysis": "msp-service-desk-skills-v1",
+        },
         "runtime_profiles": [
             {
                 "provider": "freshservice",
-                "status": "implementation",
+                "status": "production_verified",
                 "actions": [
                     "freshservice.tickets.list",
                     "freshservice.tickets.get",
@@ -558,3 +586,202 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             ["microsoft_365", "slack", "microsoft_teams"],
         ],
     }
+
+
+_MSP_SKILL_MD = """---
+name: MSP Service Desk Skills
+description: First-party Gravitre service-desk reasoning skills for Marketplace 3.0.
+license: MIT
+---
+
+# MSP Service Desk Skills
+
+This reviewed first-party capability bundle provides guidance-only skills for:
+- ticket triage
+- incident diagnosis
+- SLA analysis
+- client communication
+- problem management
+- knowledge-gap analysis
+- service-operations analysis
+
+These skills never own execution authority. Connector reads/writes, approvals, source-of-record verification, Runs, and outcome truth remain owned by Gravitre's canonical runtime.
+"""
+
+_MSP_SKILL_MANIFEST = {
+    "schema": "gravitre.capability.v1",
+    "format": "gravitre",
+    "name": "MSP Service Desk Skills",
+    "version": "1.0.0",
+    "description": "First-party guidance skills for the Gravitre Marketplace 3.0 MSP Service Desk pack.",
+    "license": "MIT",
+    "skills": [
+        {"name": "ticket-triage"},
+        {"name": "incident-diagnosis"},
+        {"name": "sla-analysis"},
+        {"name": "client-communication"},
+        {"name": "problem-management"},
+        {"name": "knowledge-gap-analysis"},
+        {"name": "service-operations-analysis"},
+    ],
+    "permissions": [],
+}
+
+
+def build_msp_service_desk_skill_package_config() -> dict[str, Any]:
+    return {
+        "provenance_mode": "git_pinned",
+        "repository_url": "https://github.com/cesarbohjr/gravitre-saas-backend",
+        "commit_sha": "e35e61a5b6fd499895cf526930187383aed36027",
+        "package_path": "capability_packages/msp-service-desk-skills",
+        "content_digest": "sha256:b11dae59a9cfaaf651c94354d3a95ce8b6138b53557b2cd5c32c6ad7a253cdb3",
+        "snapshot_digest": "sha256:6a20e422fb2abcf45a72282e62d6b146694e23f6fb04b9b70591906a9bdc3fe7",
+        "manifest": _MSP_SKILL_MANIFEST,
+        "resources": [
+            {
+                "path": "SKILL.md",
+                "kind": "reference",
+                "content": _MSP_SKILL_MD,
+                "executable": False,
+            }
+        ],
+        "package_format": "gravitre",
+        "license": "MIT",
+        "license_policy": "allow",
+        "risk_level": "low",
+        "signature_status": "unsigned",
+        "publisher_name": "Gravitre",
+        "publisher_trust_scope": "none",
+        "security_scan": {
+            "risk": "low",
+            "blocked": False,
+            "findings": [],
+            "executionPerformed": False,
+        },
+    }
+
+
+def msp_service_desk_marketplace3_assets() -> list[Any]:
+    # Lazy import avoids a seed_catalog import cycle.
+    from app.marketplace.seed_catalog import CatalogAsset
+
+    outcome_config = build_msp_service_desk_outcome_pack_config()
+    freshservice = {
+        "connectorType": "freshservice",
+        "label": "Freshservice",
+        "required": True,
+        "connectPath": "/connectors?type=freshservice",
+        "requirementNote": (
+            "Production Verified Marketplace 3.0 runtime for v1. "
+            "Writes require approval and source-of-record verification."
+        ),
+    }
+
+    agents = [
+        CatalogAsset(
+            slug=f"msp3-{str(agent['seed_label']).split(':')[-1]}",
+            title=str(agent["name"]),
+            description=str(agent["purpose"]),
+            asset_type="ai_agent",
+            category="ai_agent",
+            department="MSP Service Desk",
+            tags=["msp", "service-desk", "agent", "marketplace-3"],
+            config=agent,
+            required_connectors=[freshservice],
+        )
+        for agent in outcome_config["agents"]
+    ]
+
+    plays = [
+        CatalogAsset(
+            slug=f"msp3-play-{play['key']}",
+            title=str(play["name"]),
+            description=str(play["description"]),
+            asset_type="play",
+            category="play",
+            department="MSP Service Desk",
+            tags=["msp", "service-desk", "play", "marketplace-3"],
+            config=play,
+            required_connectors=[freshservice],
+            business_outcome=str(play["outcome_events"][0]),
+            use_case=str(play["description"]),
+        )
+        for play in outcome_config["plays"]
+    ]
+
+    skill_package = CatalogAsset(
+        slug="msp-service-desk-skills-v1",
+        title="MSP Service Desk Skills",
+        description="Seven reviewed first-party guidance skills for the Marketplace 3.0 service-desk pack.",
+        asset_type="capability_package",
+        category="capability_package",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "skills", "marketplace-3", "gravitre"],
+        config=build_msp_service_desk_skill_package_config(),
+    )
+
+    knowledge = CatalogAsset(
+        slug="msp-service-desk-3-knowledge",
+        title="MSP Service Desk 3.0 Knowledge",
+        description="Runbooks, SLA policy, client communication standards, and known-issue context.",
+        asset_type="knowledge_pack",
+        category="knowledge_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "knowledge", "marketplace-3"],
+        config={"documents": outcome_config["knowledge"]},
+    )
+
+    dataset = CatalogAsset(
+        slug="msp-service-desk-3-dataset",
+        title="MSP Service Desk 3.0 Dataset",
+        description="Normalized service-ticket, verified-outcome, and KPI definitions for measurable service operations.",
+        asset_type="dataset_pack",
+        category="dataset_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "dataset", "marketplace-3"],
+        config=outcome_config["dataset"],
+        required_connectors=[freshservice],
+    )
+
+    dashboard = CatalogAsset(
+        slug="msp-service-desk-3-dashboard",
+        title="MSP Service Desk Command Center",
+        description="KPI dashboard for service speed, SLA, backlog, quality, automation, and recurring operational risk.",
+        asset_type="dashboard_pack",
+        category="dashboard_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "dashboard", "kpi", "marketplace-3"],
+        config=outcome_config["dashboard"],
+    )
+
+    child_slugs = (
+        [agent.slug for agent in agents]
+        + [play.slug for play in plays]
+        + [skill_package.slug, knowledge.slug, dataset.slug, dashboard.slug]
+    )
+    outcome = CatalogAsset(
+        slug="msp-service-desk-3",
+        title="MSP Service Desk 3.0",
+        description=(
+            "Operate a measurable MSP service desk with eight outcome-driven Plays, "
+            "three specialized agents, reviewed skills, governed Freshservice execution, "
+            "service knowledge, normalized KPIs, and an installed command dashboard."
+        ),
+        asset_type="outcome_pack",
+        category="outcome_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "outcome-pack", "marketplace-3", "production-verified"],
+        pricing_type="paid",
+        price_cents=19900,
+        pack_tier=3,
+        config=outcome_config,
+        required_connectors=[freshservice],
+        pack_children=child_slugs,
+        business_outcome=(
+            "Reduce service response and resolution time while improving SLA compliance "
+            "and verified automation."
+        ),
+        use_case="MSP service desk operations",
+        estimated_hours_saved=40.0,
+    )
+    return agents + plays + [skill_package, knowledge, dataset, dashboard, outcome]
