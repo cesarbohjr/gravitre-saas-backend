@@ -98,7 +98,7 @@ function OutcomePackContract({ asset }: { asset: MarketplaceAssetDetail }) {
     <section className="space-y-4 rounded-xl border bg-muted/10 p-4" data-testid="marketplace3-outcome-contract">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Marketplace 3.0 operating capability</p>
+          <p className="text-xs font-medium text-muted-foreground">Marketplace 3.0 operating capability</p>
           <h2 className="mt-1 text-lg font-semibold text-foreground">Measurable outcome contract</h2>
         </div>
         <Badge variant="outline" className="gap-1.5">
@@ -143,7 +143,7 @@ function OutcomePackContract({ asset }: { asset: MarketplaceAssetDetail }) {
 
       {plays.length ? (
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Included Plays</p>
+          <p className="text-xs font-medium text-muted-foreground">Included plays</p>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {plays.map((play, index) => (
               <div key={String(play.key ?? index)} className="min-w-0 rounded-lg border bg-background/60 p-3">
