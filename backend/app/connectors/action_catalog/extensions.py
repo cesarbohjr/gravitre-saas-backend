@@ -65,7 +65,7 @@ _FRESHSERVICE = build_vendor(
             "tickets.activities",
             "Get ticket activities",
             tier="v3",
-            kind="advanced",
+            kind="read",
             scope_suffix="tickets:read",
             api_reference="GET /api/v2/tickets/{ticket_id}/activities",
             idempotent=True,
