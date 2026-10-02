@@ -47,8 +47,16 @@ def _outcome_config(asset: dict[str, Any]) -> OutcomePackAssetConfig:
         ) from exc
 
 
-def _asset_version(asset: dict[str, Any]) -> int:
-    return max(1, int(asset.get("current_version") or 1))
+def certification_target_version(asset: dict[str, Any]) -> int:
+    """Version the evidence certifies.
+
+    Draft/pending-review config is the next immutable Marketplace version.
+    Once published, current_version already names the live immutable version.
+    """
+    current = max(1, int(asset.get("current_version") or 1))
+    if str(asset.get("status") or "") in {"draft", "pending_review"}:
+        return current + 1
+    return current
 
 
 def list_runtime_evidence(
@@ -173,7 +181,7 @@ def certification_report_for_asset(
     runtime_evidence = list_runtime_evidence(
         client,
         str(asset["id"]),
-        asset_version=_asset_version(asset),
+        asset_version=certification_target_version(asset),
     )
     evidenced_config = _config_with_evidence_status(config, runtime_evidence)
     outcomes = verified_outcome_evidence(client, asset)
@@ -242,7 +250,7 @@ def record_runtime_evidence(
 
     row = {
         "asset_id": str(asset["id"]),
-        "asset_version": _asset_version(asset),
+        "asset_version": certification_target_version(asset),
         "org_id": asset.get("org_id"),
         "evidence_kind": "runtime",
         "provider": provider_name,
