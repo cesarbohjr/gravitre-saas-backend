@@ -60,23 +60,50 @@ SKILL_PACKS: dict[str, dict[str, Any]] = {
 
 PACK_SPECS: dict[str, dict[str, Any]] = {
     "security-operations-3": {
-        "title": "Security Operations 3.0", "department": "Security Operations",
+        "title": "Security Operations 3.0",
+        "department": "Security Operations",
         "skill_package": "security-operations-skills",
-        "problem": "Security teams lose response time when alerts, service incidents, vulnerability work, communications, and post-incident learning are fragmented.",
-        "target": "Reduce investigation and coordination time while improving prioritized remediation, incident readiness, and measurable security operations.",
+        "problem": "Security operations lose response time when alerts, incident context, vulnerability work, containment planning, communications, and remediation proof are fragmented.",
+        "target": "Reduce security investigation and coordination time while improving remediation prioritization, verification discipline, and measurable incident readiness.",
         "connectors": ["freshservice"],
-        "optional": ["huntress","sentinelone","crowdstrike","connectsecure","okta","microsoft_intune"],
-        "profiles": {"freshservice": ["freshservice.tickets.list","freshservice.tickets.get","freshservice.tickets.activities"]},
-        "agents": [("security-operations-coordinator","Security Operations Coordinator"),("security-investigation-analyst","Security Investigation Analyst")],
-        "kpis": [("security_queue_age","Security queue age","minutes","decrease"),("incident_context_time","Incident context time","minutes","decrease"),("critical_workload","Critical security workload","count","decrease"),("remediation_sla","Remediation SLA compliance","percent","increase"),("escalation_rate","Security escalation rate","percent","decrease"),("communication_latency","Incident communication latency","minutes","decrease"),("post_incident_completion","Post-incident review completion","percent","increase")],
+        "optional": ["huntress", "sentinelone", "crowdstrike", "connectsecure", "okta", "jumpcloud", "microsoft_intune", "jamf_pro"],
+        "profiles": {
+            "freshservice": [
+                "freshservice.tickets.list",
+                "freshservice.tickets.get",
+                "freshservice.tickets.activities",
+            ]
+        },
+        "agents": [
+            ("security-operations-coordinator", "Security Operations Coordinator"),
+            ("security-incident-investigator", "Security Incident Investigator"),
+            ("security-identity-analyst", "Identity Risk Analyst"),
+            ("security-risk-analyst", "Security Risk Analyst"),
+            ("security-response-coordinator", "Containment Coordinator"),
+            ("security-learning-analyst", "Security Learning Analyst"),
+        ],
+        "kpis": [
+            ("security_queue_age", "Security queue age", "minutes", "decrease"),
+            ("incident_context_time", "Incident context assembly time", "minutes", "decrease"),
+            ("critical_workload", "Critical security workload", "count", "decrease"),
+            ("vulnerability_priority_age", "Critical vulnerability priority age", "hours", "decrease"),
+            ("containment_readiness_time", "Containment readiness time", "minutes", "decrease"),
+            ("remediation_sla", "Remediation SLA compliance", "percent", "increase"),
+            ("verification_gap_rate", "Remediation verification gap rate", "percent", "decrease"),
+            ("communication_latency", "Incident communication latency", "minutes", "decrease"),
+            ("post_incident_completion", "Post-incident review completion", "percent", "increase"),
+            ("security_automation_rate", "Security operations automation rate", "percent", "increase"),
+            ("hours_saved", "Security analyst hours saved", "hours", "increase"),
+        ],
         "plays": [
-            ("security-alert-triage","Security Alert Triage","Prioritize security-related service records by urgency and business exposure.","freshservice.tickets.list","security_queue_age"),
-            ("incident-context-builder","Incident Context Builder","Assemble verified service activity and incident history before investigation decisions.","freshservice.tickets.activities","incident_context_time"),
-            ("identity-risk-review","Identity Risk Review","Surface identity-related service incidents requiring deeper security review.","freshservice.tickets.list","critical_workload"),
-            ("vulnerability-work-queue","Vulnerability Work Queue","Prioritize vulnerability/remediation work represented in the service queue.","freshservice.tickets.list","remediation_sla"),
-            ("containment-readiness-review","Containment Readiness Review","Prepare evidence and approval requirements before a containment action is attempted.","freshservice.tickets.get","escalation_rate"),
-            ("incident-communications-brief","Incident Communications Brief","Prepare a verified internal incident status brief from source records.","freshservice.tickets.get","communication_latency"),
-            ("post-incident-review","Post-Incident Review","Produce a structured review of incident evidence, recurrence patterns, and follow-up actions.","freshservice.tickets.activities","post_incident_completion"),
+            ("security-alert-triage", "Security Alert Triage", "Prioritize security-related records by severity, business exposure, recurrence, and evidence quality.", "freshservice.tickets.get", "security_queue_age"),
+            ("incident-context-builder", "Incident Context Builder", "Assemble a verified incident timeline, owners, affected services, prior activity, and missing evidence before response decisions.", "freshservice.tickets.activities", "incident_context_time"),
+            ("identity-risk-review", "Identity Risk Review", "Surface identity-related incidents that warrant deeper review without inventing unavailable provider evidence.", "freshservice.tickets.list", "critical_workload"),
+            ("vulnerability-prioritizer", "Vulnerability Prioritizer", "Prioritize vulnerability and remediation work using severity, affected service, age, and business impact.", "freshservice.tickets.list", "vulnerability_priority_age"),
+            ("containment-coordinator", "Containment Coordinator", "Prepare evidence-backed containment options, approvals, rollback considerations, and verification requirements.", "freshservice.tickets.get", "containment_readiness_time"),
+            ("remediation-verification-review", "Remediation Verification Review", "Find remediation work marked complete but lacking sufficient source evidence.", "freshservice.tickets.list", "verification_gap_rate"),
+            ("security-incident-brief", "Security Incident Brief", "Maintain a concise internal incident brief covering timeline, impact, owners, evidence gaps, and next actions.", "freshservice.tickets.get", "communication_latency"),
+            ("post-incident-review", "Post-Incident Review", "Produce a blameless review of root causes, control gaps, recurrence patterns, remediation evidence, and measurable follow-up actions.", "freshservice.tickets.activities", "post_incident_completion"),
         ],
     },
     "revenue-operations-3": {
@@ -222,6 +249,12 @@ def _connector_for_action(action: str) -> str:
 
 
 def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
+    if slug == "security-operations-3":
+        from app.marketplace.marketplace3.security_operations import (
+            build_security_operations_outcome_pack_config,
+        )
+
+        return build_security_operations_outcome_pack_config()
     spec = PACK_SPECS[slug]
     skill_slug = spec["skill_package"]
     skill_requirements = list(SKILL_PACKS[skill_slug]["skills"])
