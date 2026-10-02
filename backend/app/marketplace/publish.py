@@ -7,7 +7,8 @@ from typing import Any
 
 from app.marketplace.crud import MarketplaceCrudError, _fetch_asset, _serialize_asset, _assert_org_owns_asset
 from app.marketplace.publishers import assert_org_can_publish_publicly
-from app.marketplace.schemas import MarketplaceValidationError, validate_asset_payload
+from app.marketplace.schemas import MarketplaceValidationError, OutcomePackAssetConfig, validate_asset_payload
+from app.marketplace.marketplace3.certification import certify_outcome_pack
 from app.capabilities.provenance import inert_snapshot_digest, normalize_github_repository_url
 from app.capabilities.repository import list_package_resources
 from app.workflows.audit import write_audit_event
@@ -35,6 +36,31 @@ def _now() -> str:
 
 def _crud_to_publish(exc: MarketplaceCrudError) -> MarketplacePublishError:
     return MarketplacePublishError(str(exc), code=exc.code)
+
+
+def _assert_outcome_pack_certified(asset_type: str, config: dict[str, Any]) -> None:
+    """Marketplace 3.0 publish gate: schema validity is not certification."""
+    if asset_type != "outcome_pack":
+        return
+    try:
+        parsed = OutcomePackAssetConfig.model_validate(config)
+    except Exception as exc:  # noqa: BLE001
+        raise MarketplacePublishError(
+            "Outcome Pack failed Marketplace 3.0 contract validation",
+            code="VALIDATION_ERROR",
+        ) from exc
+    report = certify_outcome_pack(parsed)
+    if not report.publish_ready:
+        blockers = [
+            finding.code
+            for finding in report.findings
+            if finding.blocking
+        ]
+        suffix = f" Blocking findings: {', '.join(blockers)}." if blockers else ""
+        raise MarketplacePublishError(
+            f"Outcome Pack is not Marketplace 3.0 production verified.{suffix}",
+            code="VALIDATION_ERROR",
+        )
 
 
 def _assert_capability_provenance_current(
@@ -224,6 +250,11 @@ def submit_asset_for_review(
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
 
+    _assert_outcome_pack_certified(
+        str(asset["asset_type"]),
+        validated["config"],
+    )
+
     client.table("marketplace_assets").update(
         {
             "status": "pending_review",
@@ -285,6 +316,11 @@ def approve_asset_for_internal_publish(
         )
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
+
+    _assert_outcome_pack_certified(
+        str(asset["asset_type"]),
+        validated["config"],
+    )
 
     version_number = _snapshot_version(
         client,
@@ -409,6 +445,11 @@ def submit_asset_for_public_review(
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
 
+    _assert_outcome_pack_certified(
+        str(asset["asset_type"]),
+        validated["config"],
+    )
+
     client.table("marketplace_assets").update(
         {
             "status": "pending_review",
@@ -526,6 +567,11 @@ def approve_asset_for_public_publish(
         )
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
+
+    _assert_outcome_pack_certified(
+        str(asset["asset_type"]),
+        validated["config"],
+    )
 
     version_number = _snapshot_version(
         client,
