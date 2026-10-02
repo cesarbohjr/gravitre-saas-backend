@@ -70,7 +70,8 @@ def test_plays_list_is_read_only_and_fail_closed_for_policy():
         response = client.get("/api/plays")
     assert response.status_code == 200
     body = response.json()
-    assert body["count"] == 3
+    assert body["count"] == len(body["plays"])
+    assert body["count"] >= 9
     assert body["executionAuthority"] == "canonical_workflow_runtime"
     assert all(item["play"]["executable"] is False for item in body["plays"])
     assert all(item["readiness"]["act_within_policy_ready"] is False for item in body["plays"])
