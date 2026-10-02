@@ -156,10 +156,10 @@ def test_msp_service_desk_3_is_complete_marketplace3_outcome_pack():
     assert pack.config["marketplace_version"] == "3.0"
 
     assert len(pack.config["agents"]) == 3
-    assert {agent["config"]["marketplaceSlug"] for agent in pack.config["agents"]} == {
-        "msp-service-desk-coordinator",
-        "msp-resolution-specialist",
-        "msp-service-optimizer",
+    assert {agent["seed_label"] for agent in pack.config["agents"]} == {
+        "agent:msp-service-coordinator",
+        "agent:msp-resolution-engineer",
+        "agent:msp-service-analyst",
     }
 
     plays = pack.config["plays"]
@@ -182,26 +182,24 @@ def test_msp_service_desk_3_is_complete_marketplace3_outcome_pack():
     outcome = pack.config["outcome_contract"]
     assert outcome["verification_required"] is True
     assert len(outcome["outcome_events"]) == 8
-    assert len(outcome["kpis"]) == 10
+    assert len(outcome["kpis"]) == 14
 
     dataset = pack.config["dataset"]
-    assert {entity["name"] for entity in dataset["entities"]} >= {
-        "tickets",
-        "clients",
-        "assets",
-        "ticket_events",
-        "play_runs",
+    assert {entity["name"] for entity in dataset["entities"]} == {
+        "service_tickets",
+        "play_outcomes",
     }
-    assert len(dataset["metrics"]) == 10
+    assert len(dataset["metrics"]) == 14
 
     dashboard = pack.config["dashboard"]
-    assert dashboard["title"] == "MSP Service Desk Outcomes"
-    assert len(dashboard["metrics"]) == 8
+    assert dashboard["title"] == "MSP Service Desk Command Center"
+    assert len(dashboard["metrics"]) == 14
 
     alternatives = pack.config["connector_alternatives"]
     assert {"halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"} == set(alternatives[0])
     assert {"intune", "jumpcloud", "jamf_pro"} == set(alternatives[1])
     assert {"huntress", "sentinelone", "crowdstrike", "connectsecure"} == set(alternatives[2])
+    assert {"microsoft_365", "slack", "microsoft_teams"} == set(alternatives[3])
 
 
 def test_msp_service_desk_3_children_are_first_class_marketplace_assets():
