@@ -14,7 +14,7 @@ from app.marketplace.marketplace3.department_portfolio import (
     build_department_outcome_pack_config,
     department_portfolio_marketplace3_assets,
 )
-from app.marketplace.schemas import OutcomePackAssetConfig, parse_asset_config
+from app.marketplace.schemas import MarketplaceValidationError, OutcomePackAssetConfig, parse_asset_config
 from app.plays.catalog import get_platform_play
 
 
@@ -36,7 +36,9 @@ def test_department_pack_is_governed_but_not_production_verified_without_live_ev
     assert report.publish_ready is False, [finding.as_dict() for finding in report.findings]
     assert report.level == "governed"
     assert report.unresolved_skill_requirements == []
-    parse_asset_config("outcome_pack", raw, publish=True)
+    with pytest.raises(MarketplaceValidationError) as exc:
+        parse_asset_config("outcome_pack", raw, publish=True)
+    assert any("certification" in error for error in exc.value.errors)
 
 
 @pytest.mark.parametrize("slug", sorted(PACK_SPECS))
