@@ -17,6 +17,7 @@ F1_WRITE_CATALOG_ACTIONS: frozenset[str] = frozenset(
         "slack.post_message",
         "hubspot.contacts.create",
         "browser_agent.interact",
+        "freshservice.tickets.update_status",
     }
 )
 
@@ -195,6 +196,37 @@ _OVERLAYS: dict[str, dict[str, Any]] = {
         "risk_class": "crm_create",
         "execution_adapter": "hubspot.contacts.create",
         "observation_adapter": "hubspot_contacts_create_observation",
+    },
+    "freshservice.tickets.update_status": {
+        "capabilities": ("service_desk.ticket.status.update",),
+        "required_parameters": ("ticket_id", "status"),
+        "optional_parameters": ("connector_id",),
+        "parameter_source_rules": (
+            _rule(
+                "ticket_id",
+                "USER_EXPLICIT",
+                "REFERENCE_STATE",
+                "TASK_CONTEXT",
+                "MODEL_INFERENCE",
+                required_by_api=True,
+                aliases=("ticketId", "id"),
+            ),
+            _rule(
+                "status",
+                "USER_EXPLICIT",
+                "TASK_CONTEXT",
+                "MODEL_INFERENCE",
+                required_by_api=True,
+                required_from_user=True,
+            ),
+        ),
+        "resource_requirements": (),
+        "auth_scope_requirements": ("freshservice:tickets:write", "freshservice:*"),
+        "availability_requirements": ("connector_connected", "auth_valid"),
+        "governance_classification": "write",
+        "risk_class": "service_desk_state_change",
+        "execution_adapter": "freshservice.tickets.update_status",
+        "observation_adapter": "freshservice_ticket_status_observation",
     },
     "browser_agent.interact": {
         "capabilities": ("computer.browser.interact",),
