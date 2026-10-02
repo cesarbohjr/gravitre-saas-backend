@@ -3,10 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.marketplace.marketplace3.certification_runner import (
-    CertificationRunnerError,
     _fixture_checks,
     run_outcome_pack_certification,
 )
