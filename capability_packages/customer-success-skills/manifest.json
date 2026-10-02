@@ -1,0 +1,32 @@
+{
+  "schema": "gravitre.capability.v1",
+  "format": "gravitre",
+  "name": "Customer Success Skills",
+  "version": "1.0.0",
+  "description": "First-party guidance skills for the Gravitre Marketplace 3.0 Customer Success pack.",
+  "license": "MIT",
+  "skills": [
+    {
+      "name": "customer-health-analysis"
+    },
+    {
+      "name": "churn-risk-analysis"
+    },
+    {
+      "name": "escalation-recovery"
+    },
+    {
+      "name": "qbr-preparation"
+    },
+    {
+      "name": "renewal-readiness"
+    },
+    {
+      "name": "expansion-signal-analysis"
+    },
+    {
+      "name": "service-gap-analysis"
+    }
+  ],
+  "permissions": []
+}
