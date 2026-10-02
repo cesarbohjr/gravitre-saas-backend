@@ -64,3 +64,26 @@ pilot installation produces a baseline or proves a business improvement.
 
 Regression validation: 725 Marketplace, route, signature, readiness, seed,
 installation, pilot authorization, and certification tests pass.
+
+## Live readiness follow-up
+
+The platform-admin portfolio-readiness endpoint now reads the deployed catalog
+rather than reporting the source definitions as if they were live assets. It
+reports deployed asset IDs, actual component-link counts, historical
+certification labels, and freshly resolved certification levels. Missing
+packs require seeding; malformed deployed contracts require repair. Referenced
+runtime executions and measured outcomes are resolved again from storage on
+each request, so removed or invalidated proof cannot keep a stale verified
+label in the live readiness counts. This read-only operation never changes
+certification or publication. Offline callers retain the source fixture report
+with an explicit source_catalog marker.
+
+The follow-up audit still found zero Marketplace 3.0 installations and zero
+canonical measured business results. All eight packs remained governed drafts.
+The provider authentication blockers above remained unchanged.
+
+The API OpenAPI document also failed because the capability candidate-review
+route referenced an undefined CandidateReviewRequest. Its approve/reject model
+and bounded review notes are now defined; regression checks cover complete
+OpenAPI generation, inclusion of the Marketplace 3.0 pilot route, and rejection
+of invalid review decisions before database access.

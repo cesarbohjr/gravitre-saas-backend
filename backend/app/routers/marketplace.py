@@ -1613,10 +1613,12 @@ async def platform_marketplace3_pack_audit(
 @router.get("/platform/marketplace3/portfolio-readiness")
 async def platform_marketplace3_portfolio_readiness(
     user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Quantified readiness for every first-party Marketplace 3.0 Outcome Pack."""
     del user
-    return portfolio_readiness_report()
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return portfolio_readiness_report(client)
 
 
 @router.post("/platform/assets/{asset_ref}/marketplace3/promote")
