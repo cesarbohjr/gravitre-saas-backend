@@ -165,7 +165,6 @@ class CatalogAsset:
     pack_tier: int | None = None
     visibility: str = "public"
     status: str = "published"
-    visibility: str = "public"
 
 
 def _agent_seed(slug: str) -> str:
