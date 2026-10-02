@@ -120,7 +120,7 @@ export function AgentAutonomyPanel({ agentId, className }: { agentId: string; cl
     <section
       aria-labelledby="agent-autonomy-heading"
       data-review-surface="agent-autonomy"
-      className={cn("border-y border-[color:var(--g-border-default)]", className)}
+      className={cn("border-y border-[color:var(--g-border-default)] py-1", className)}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-2 py-3">
         <div>
@@ -134,7 +134,7 @@ export function AgentAutonomyPanel({ agentId, className }: { agentId: string; cl
         ) : null}
       </header>
 
-      <div role="img" aria-label={level ? `Autonomy: ${level.label}` : "Autonomy: governed by organization policy"} className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-[color:var(--g-border-default)] bg-[color:var(--g-border-subtle)] dark:border-[color:var(--graphite-700)]">
+      <div role="img" aria-label={level ? `Autonomy: ${level.label}` : "Autonomy: governed by organization policy"} className="relative grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-border-subtle)] dark:border-[color:var(--graphite-700)]">
         {AUTONOMY_LEVELS.map((option) => {
           const active = option.id === level?.id
           const Icon = option.icon
@@ -146,14 +146,14 @@ export function AgentAutonomyPanel({ agentId, className }: { agentId: string; cl
               className={cn(
                 "relative px-3 py-2.5",
                 active
-                  ? "bg-[color:var(--g-surface-active)] before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-[color:var(--signal-500)] dark:bg-[color:var(--graphite-800)]"
+                  ? "bg-[color:var(--g-emerald-pale)] before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-[color:var(--g-emerald)] dark:bg-[color:var(--graphite-800)]"
                   : "bg-[color:var(--g-canvas)]",
               )}
             >
               <span className={cn("flex items-center gap-1.5 text-[12.5px] font-semibold", active ? "text-foreground" : "text-muted-foreground")}>
                 <Icon className="h-3.5 w-3.5" aria-hidden />
                 {option.label}
-                {active ? <Check className="ml-auto h-3.5 w-3.5 text-[color:var(--signal-600)] dark:text-[color:var(--signal-300)]" aria-hidden /> : null}
+                {active ? <Check className="ml-auto h-3.5 w-3.5 text-[color:var(--g-emerald-deep)]" aria-hidden /> : null}
               </span>
               <span className={cn("mt-1 hidden text-[11.5px] leading-snug sm:block", active ? "text-foreground/80" : "text-muted-foreground")}>
                 {option.summary}
