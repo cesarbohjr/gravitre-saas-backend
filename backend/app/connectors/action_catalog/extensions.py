@@ -73,8 +73,65 @@ _FRESHSERVICE = build_vendor(
     ),
 )
 
+
+
+_OKTA = build_vendor(
+    "okta",
+    "Okta",
+    "Security / Identity",
+    "https://developer.okta.com/",
+    shipped=True,
+    department="security",
+    v1=(
+        action(
+            "okta",
+            "system_logs.list",
+            "List Okta system log events",
+            tier="v1",
+            kind="read",
+            scope_suffix="logs:read",
+            api_reference="GET /api/v1/logs",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "since": {"type": "string"},
+                    "until": {"type": "string"},
+                    "filter": {"type": "string"},
+                    "q": {"type": "string"},
+                    "limit": {"type": "integer"},
+                    "sortOrder": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+        ),
+        action(
+            "okta",
+            "users.get",
+            "Get Okta user",
+            tier="v1",
+            kind="read",
+            scope_suffix="users:read",
+            api_reference="GET /api/v1/users/{user_id}",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "required": ["user_id"],
+                "additionalProperties": False,
+            },
+        ),
+    ),
+    v2=(),
+    v3=(),
+)
+
 # Append org-specific or partner vendors here, or load from DB/MCP in a future release.
-VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (_FRESHSERVICE,)
+VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (_FRESHSERVICE, _OKTA)
 
 # Runtime per-action schema overrides (partner SDK, MCP, admin API).
 ACTION_SCHEMA_EXTENSIONS: dict[str, dict[str, Any]] = {}
