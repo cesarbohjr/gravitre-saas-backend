@@ -479,14 +479,14 @@ def _valid_outcome_pack_config(play_count: int = 6) -> dict:
 
 
 def test_marketplace3_outcome_pack_requires_six_plays() -> None:
-    parsed = parse_asset_config("outcome_pack", _valid_outcome_pack_config(), publish=True)
+    parsed = parse_asset_config("outcome_pack", _valid_outcome_pack_config(), publish=False)
     assert len(parsed.plays) == 6
     assert parsed.marketplace_version == "3.0"
 
 
 def test_marketplace3_outcome_pack_rejects_fewer_than_six_plays() -> None:
     with pytest.raises(MarketplaceValidationError) as exc:
-        parse_asset_config("outcome_pack", _valid_outcome_pack_config(play_count=5), publish=True)
+        parse_asset_config("outcome_pack", _valid_outcome_pack_config(play_count=5), publish=False)
     assert any("plays" in err.lower() or "6" in err for err in exc.value.errors)
 
 
@@ -494,7 +494,7 @@ def test_marketplace3_outcome_pack_rejects_unknown_dashboard_kpi() -> None:
     config = _valid_outcome_pack_config()
     config["dashboard"]["metrics"][0]["kpi_key"] = "not_declared"
     with pytest.raises(MarketplaceValidationError):
-        parse_asset_config("outcome_pack", config, publish=True)
+        parse_asset_config("outcome_pack", config, publish=False)
 
 
 def test_marketplace3_play_requires_outcome_events_and_kpis() -> None:
@@ -508,7 +508,7 @@ def test_marketplace3_outcome_pack_rejects_duplicate_play_keys() -> None:
     config = _valid_outcome_pack_config()
     config["plays"][1]["key"] = config["plays"][0]["key"]
     with pytest.raises(MarketplaceValidationError):
-        parse_asset_config("outcome_pack", config, publish=True)
+        parse_asset_config("outcome_pack", config, publish=False)
 
 
 def test_marketplace3_outcome_pack_requires_every_declared_kpi_on_dashboard() -> None:
@@ -523,4 +523,4 @@ def test_marketplace3_outcome_pack_requires_every_declared_kpi_on_dashboard() ->
         }
     )
     with pytest.raises(MarketplaceValidationError):
-        parse_asset_config("outcome_pack", config, publish=True)
+        parse_asset_config("outcome_pack", config, publish=False)
