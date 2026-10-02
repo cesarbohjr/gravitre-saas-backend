@@ -1733,3 +1733,27 @@ details[open] > .g-disclosure > :first-child::after {
   .g-motion-route { stroke-dasharray: 8 8; animation: g-route .8s linear infinite; }
   .g-motion-verify { transform-origin: center; animation: g-verify .18s ease-out both; }
 }
+
+
+/* Emerald Intelligence responsive composition contracts. */
+[data-composition] { container-type: inline-size; }
+@media (max-width: 767px) {
+  [data-composition="discover"] .g-desktop-context,
+  [data-composition="understand"] .g-desktop-context,
+  [data-composition="manage"] .g-desktop-context,
+  [data-composition="operate"] .g-desktop-context,
+  [data-composition="create"] .g-desktop-context { display: none; }
+  [data-composition] .g-primary-action { min-height: 44px; }
+}
+@media (pointer: coarse) {
+  [data-composition] button:not([data-compact-control]),
+  [data-composition] a[role="button"] { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-composition] *, [data-composition] *::before, [data-composition] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
