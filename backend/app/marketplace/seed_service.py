@@ -46,8 +46,8 @@ def _asset_row(publisher_id: str, asset: CatalogAsset, *, validated: dict[str, A
         "category": asset.category,
         "department": asset.department,
         "tags": asset.tags,
-        "visibility": "public",
-        "status": "published",
+        "visibility": asset.visibility,
+        "status": asset.status,
         "pricing_type": asset.pricing_type,
         "price_cents": asset.price_cents,
         "pack_tier": asset.pack_tier,
@@ -57,7 +57,7 @@ def _asset_row(publisher_id: str, asset: CatalogAsset, *, validated: dict[str, A
         "required_permissions": [],
         "install_variables": validated["install_variables"],
         "current_version": 1,
-        "published_at": now,
+        "published_at": now if asset.status == "published" else None,
         "updated_at": now,
         "business_outcome": asset.business_outcome,
         "use_case": asset.use_case,
@@ -75,7 +75,7 @@ def upsert_catalog_asset(
         config=asset.config,
         install_variables=asset.install_variables,
         required_connectors=asset.required_connectors,
-        publish=True,
+        publish=asset.status == "published",
     )
     row = _asset_row(publisher_id, asset, validated=validated)
     existing = (
@@ -142,7 +142,7 @@ def validate_catalog_assets(assets: list[CatalogAsset] | None = None) -> dict[st
             config=asset.config,
             install_variables=asset.install_variables,
             required_connectors=asset.required_connectors,
-            publish=True,
+            publish=asset.status == "published",
         )
     pack_item_count = sum(
         len(asset.pack_children)

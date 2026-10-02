@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.marketplace.service import MarketplaceError, install_asset, preview_install, validate_connectors_for_asset
+from app.marketplace.service import MarketplaceError, _install_outcome_pack, install_asset, preview_install, validate_connectors_for_asset
+from app.marketplace.schemas import OutcomePackAssetConfig
 from app.workflows.constants import SCHEMA_VERSION
 from tests.marketplace.conftest import marketplace_table_mock as _table
 
@@ -348,8 +349,7 @@ def test_install_marketplace_play_uses_canonical_play_runtime(mock_plan, mock_ve
     assert payload["configuration"]["outcomeEvents"] == ["client_risk_detected"]
 
 
-@patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})
-def test_install_outcome_pack_materializes_all_required_components(mock_plan):
+def test_outcome_pack_materializer_materializes_all_required_components():
     play_keys = [
         "intelligent-ticket-intake",
         "resolution-copilot",
@@ -448,17 +448,11 @@ def test_install_outcome_pack_materializes_all_required_components(mock_plan):
             ],
         },
     }
-    assets = _table([asset])
-    installs = _table([])
     dataset_installs = _table()
     dashboard_installs = _table()
     client = MagicMock()
 
     def table(name):
-        if name == "marketplace_assets":
-            return assets
-        if name == "marketplace_installs":
-            return installs
         if name == "marketplace_dataset_pack_installations":
             return dataset_installs
         if name == "marketplace_dashboard_pack_installations":
@@ -491,16 +485,23 @@ def test_install_outcome_pack_materializes_all_required_components(mock_plan):
         "app.marketplace.service._install_play_asset",
         side_effect=play_results,
     ) as install_play:
-        result = install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
+        result = _install_outcome_pack(
+            client,
+            "org-1",
+            asset,
+            OutcomePackAssetConfig.model_validate(asset["config"]),
+            actor_id="user-1",
+            environment_name="production",
+            connector_ids={},
+        )
 
-    assert result["installed"] is True
-    assert result["entities"]["entityType"] == "outcome_pack"
-    assert result["entities"]["marketplaceVersion"] == "3.0"
-    assert len(result["entities"]["plays"]) == 6
-    assert len(result["entities"]["workflowIds"]) == 6
-    assert result["entities"]["datasetPackId"]
-    assert result["entities"]["dashboardPackId"]
-    assert result["entities"]["executionAuthority"] == "canonical_workflow_runtime"
+    assert result["entityType"] == "outcome_pack"
+    assert result["marketplaceVersion"] == "3.0"
+    assert len(result["plays"]) == 6
+    assert len(result["workflowIds"]) == 6
+    assert result["datasetPackId"]
+    assert result["dashboardPackId"]
+    assert result["executionAuthority"] == "canonical_workflow_runtime"
     assert install_play.call_count == 6
     dataset_installs.upsert.assert_called_once()
     dashboard_installs.upsert.assert_called_once()

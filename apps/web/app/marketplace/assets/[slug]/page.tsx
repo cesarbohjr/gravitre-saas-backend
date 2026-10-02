@@ -42,6 +42,20 @@ import type {
   MarketplaceInstallBlocker,
 } from "@/types/api"
 
+function packTypeCount(asset: MarketplaceAssetDetail, type: string): number {
+  return (asset.packItems ?? []).filter((item) => item.child.assetType === type).length
+}
+
+function certificationLabel(asset: MarketplaceAssetDetail): string {
+  const level = asset.certificationLevel
+  if (level === "outcome_verified") return "Outcome verified"
+  if (level === "production_verified") return "Production verified"
+  if (level === "governed") return "Governed"
+  if (level === "tested") return "Tested"
+  if (level === "compatible") return "Compatible"
+  return "Compatible"
+}
+
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   if (!blockers.length) return null
   return (
@@ -174,7 +188,7 @@ function MarketplaceAssetDetailContent() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
                   {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
-                  <AssetTrustBadges asset={asset} />
+                  <AssetTrustBadges asset={asset.assetType === "outcome_pack" ? { ...asset, verified: false } : asset} />
                 </div>
                 <h1 className="mt-3 text-2xl font-semibold text-foreground">{asset.title}</h1>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -204,11 +218,17 @@ function MarketplaceAssetDetailContent() {
                   {asset.businessOutcome ? (
                     <p className="text-foreground">{asset.businessOutcome}</p>
                   ) : null}
-                  <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {asset.useCase ? (
                       <div>
                         <dt className="text-xs text-muted-foreground">Use case</dt>
                         <dd>{asset.useCase}</dd>
+                      </div>
+                    ) : null}
+                    {asset.assetType === "outcome_pack" ? (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Plays</dt>
+                        <dd className="font-medium">{asset.playCount ?? packTypeCount(asset, "play")}</dd>
                       </div>
                     ) : null}
                     {asset.estimatedHoursSaved != null ? (
@@ -217,7 +237,41 @@ function MarketplaceAssetDetailContent() {
                         <dd>{asset.estimatedHoursSaved}h</dd>
                       </div>
                     ) : null}
+                    {asset.assetType === "outcome_pack" ? (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Certification</dt>
+                        <dd className="font-medium">{certificationLabel(asset)}</dd>
+                      </div>
+                    ) : null}
                   </dl>
+                  {asset.assetType === "outcome_pack" ? (
+                    <div className="mt-4 grid gap-3 rounded-lg border border-border/70 bg-background/60 p-3 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Measured KPIs</p>
+                        <p className="mt-1 text-xs text-foreground">
+                          {asset.kpiKeys?.length ? asset.kpiKeys.join(", ").replace(/_/g, " ") : "No KPI contract declared"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Runtime providers</p>
+                        <p className="mt-1 text-xs text-foreground">
+                          {asset.runtimeProviders?.length ? asset.runtimeProviders.join(", ").replace(/_/g, " ") : "No runtime profile declared"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Outcome events</p>
+                        <p className="mt-1 text-xs text-foreground">
+                          {asset.outcomeEvents?.length ? asset.outcomeEvents.join(", ").replace(/_/g, " ") : "No outcome event declared"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Evidence standard</p>
+                        <p className="mt-1 text-xs text-foreground">
+                          {asset.verificationRequired ? "Source-of-record verification required" : "Verification optional"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </header>

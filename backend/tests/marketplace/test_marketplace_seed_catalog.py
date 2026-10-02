@@ -56,7 +56,7 @@ def test_catalog_asset_validates(asset_slug: str):
         config=asset.config,
         install_variables=asset.install_variables,
         required_connectors=asset.required_connectors,
-        publish=True,
+        publish=asset.status == "published",
         enforce_bindings=True,
     )
     assert validated["config"]

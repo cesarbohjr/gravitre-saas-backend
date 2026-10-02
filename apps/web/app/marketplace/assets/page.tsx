@@ -118,6 +118,20 @@ const CAPABILITY_NOUN: Record<string, [string, string]> = {
   dashboard_pack: ["dashboard pack", "dashboard packs"],
 }
 
+function packTypeCount(asset: MarketplaceAssetSummary, type: string): number {
+  return (asset.packItems ?? []).filter((item) => item.child.assetType === type).length
+}
+
+function certificationLabel(asset: MarketplaceAssetSummary): string {
+  const level = asset.certificationLevel
+  if (level === "outcome_verified") return "Outcome verified"
+  if (level === "production_verified") return "Production verified"
+  if (level === "governed") return "Governed"
+  if (level === "tested") return "Tested"
+  if (level === "compatible") return "Compatible"
+  return "Compatible"
+}
+
 /** What installing the asset adds to the workspace, from its catalogued contents only. */
 function capabilitySummary(asset: MarketplaceAssetSummary): string {
   const counts = new Map<string, number>()
@@ -213,8 +227,24 @@ function AssetCard({
             <span className="text-muted-foreground"> · </span>
             <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
           </p>
-          {asset.description ? (
+          {asset.assetType === "outcome_pack" && (asset.outcomeTarget || asset.businessOutcome) ? (
+            <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] font-medium leading-relaxed text-foreground">
+              {asset.outcomeTarget || asset.businessOutcome}
+            </p>
+          ) : asset.description ? (
             <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
+          ) : null}
+          {asset.assetType === "outcome_pack" ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+              <span>{asset.playCount ?? packTypeCount(asset, "play")} Plays</span>
+              <span>{packTypeCount(asset, "ai_agent")} agents</span>
+              <span>{packTypeCount(asset, "dataset_pack")} dataset</span>
+              <span>{packTypeCount(asset, "dashboard_pack")} dashboard</span>
+              {asset.kpiKeys?.length ? <span>{asset.kpiKeys.length} KPIs</span> : null}
+              <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                {certificationLabel(asset)}
+              </Badge>
+            </div>
           ) : null}
         </div>
       </div>
@@ -280,7 +310,7 @@ function AssetCard({
               <Badge variant="outline">Partner registry</Badge>
             ) : null}
             {asset.visibility === "internal" ? <Badge variant="outline">Internal</Badge> : null}
-            <AssetTrustBadges asset={asset} />
+            <AssetTrustBadges asset={asset.assetType === "outcome_pack" ? { ...asset, verified: false } : asset} />
             {asset.installCount != null && asset.installCount > 0 ? (
               <span className="text-[11px] text-muted-foreground">{asset.installCount.toLocaleString()} installs</span>
             ) : null}
@@ -299,6 +329,38 @@ function AssetCard({
                   {tag}
                 </Badge>
               ))}
+            </div>
+          ) : null}
+          {asset.assetType === "outcome_pack" ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Outcome</p>
+                <p className="mt-1 text-xs text-foreground">{asset.outcomeTarget || asset.businessOutcome || asset.description}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Plays</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{asset.playCount ?? packTypeCount(asset, "play")}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Measured value</p>
+                <p className="mt-1 text-xs text-foreground">
+                  {asset.kpiKeys?.length
+                    ? `${asset.kpiKeys.length} KPI${asset.kpiKeys.length === 1 ? "" : "s"} · ${asset.outcomeEvents?.length ?? 0} outcome event${(asset.outcomeEvents?.length ?? 0) === 1 ? "" : "s"}`
+                    : "Outcome telemetry included"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Runtime providers</p>
+                <p className="mt-1 text-xs text-foreground">
+                  {asset.runtimeProviders?.length
+                    ? asset.runtimeProviders.join(", ").replace(/_/g, " ")
+                    : "No runtime profile declared"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Verification</p>
+                <p className="mt-1 text-xs font-medium text-foreground">{certificationLabel(asset)}</p>
+              </div>
             </div>
           ) : null}
           <PackContentsPreview items={asset.packItems} compact />

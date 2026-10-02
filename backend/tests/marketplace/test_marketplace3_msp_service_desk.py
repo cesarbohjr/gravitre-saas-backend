@@ -21,7 +21,7 @@ def test_msp_service_desk_blueprint_is_valid_marketplace3_outcome_pack() -> None
         metric.kpi_key for metric in config.dashboard.metrics
     } == {kpi.key for kpi in config.outcome_contract.kpis}
     assert config.runtime_profiles[0].provider == "freshservice"
-    assert config.runtime_profiles[0].status == "production_verified"
+    assert config.runtime_profiles[0].status == "tested"
     assert "freshservice.tickets.update_status" in config.runtime_profiles[0].actions
     inputs_by_play = {play.key: set(play.runtime_inputs) for play in config.plays}
     assert inputs_by_play["intelligent-ticket-intake"] == {"TICKET_ID"}
@@ -55,6 +55,11 @@ def test_msp_service_desk_catalog_contains_complete_marketplace3_bundle() -> Non
     assert types.count("dashboard_pack") == 1
     assert types.count("outcome_pack") == 1
     assert "msp-service-desk-skills-v1" in slugs
+    assert outcome.status == "draft"
+    assert outcome.visibility == "internal"
+    assert "production-verified" not in outcome.tags
+    assert all(asset.status == "draft" for asset in assets)
+    assert all(asset.visibility == "internal" for asset in assets)
     assert len(outcome.pack_children) == 15
     assert set(outcome.pack_children) <= slugs
-    parse_asset_config("outcome_pack", outcome.config, publish=True)
+    parse_asset_config("outcome_pack", outcome.config, publish=False)
