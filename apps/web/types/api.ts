@@ -2183,6 +2183,8 @@ export interface MarketplaceRoiAssetRow {
   estimatedHoursSaved: number
   realizedHoursSaved: number
   usageEvents: number
+  verifiedOutcomeEvents?: number
+  measurementBasis?: "verified_play_outcomes" | "adoption_event"
   installedAt?: string | null
   businessOutcome?: string | null
   useCase?: string | null
@@ -2193,6 +2195,7 @@ export interface MarketplaceRoiSummary {
   activeInstalls: number
   assetsWithUsage: number
   totalUsageEvents: number
+  totalVerifiedOutcomeEvents?: number
   totalEstimatedHoursSaved: number
   totalRealizedHoursSaved: number
   realizationRate: number

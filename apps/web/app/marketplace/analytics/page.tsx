@@ -201,11 +201,17 @@ export default function MarketplaceAnalyticsPage() {
                         value={roi.realizationRate.toLocaleString()}
                         icon={<BarChart3 className="h-4 w-4" />}
                       />
+                      <GravitreMetric
+                        label="Verified Play outcomes"
+                        value={(roi.totalVerifiedOutcomeEvents ?? 0).toLocaleString()}
+                        hint="Source-of-record measured results"
+                        icon={<TrendingUp className="h-4 w-4" />}
+                      />
                     </div>
                     {roi.byAsset.length ? (
                       <p className="text-sm text-muted-foreground">
                         {roi.byAsset.length} installed asset{roi.byAsset.length === 1 ? "" : "s"} with ROI metadata ·{" "}
-                        {roi.assetsWithUsage} with usage events
+                        {roi.assetsWithUsage} with usage events · {(roi.totalVerifiedOutcomeEvents ?? 0).toLocaleString()} verified Play outcome{(roi.totalVerifiedOutcomeEvents ?? 0) === 1 ? "" : "s"}
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">No active installs with ROI metadata yet.</p>

@@ -8,6 +8,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
+import { OutcomePackOverview } from "@/components/marketplace/outcome-pack-overview"
 import {
   ConnectorChecklist,
   EntitlementBadge,
@@ -223,6 +224,10 @@ function MarketplaceAssetDetailContent() {
             </header>
 
             {asset.blockers?.length ? <BlockerList blockers={asset.blockers} /> : null}
+
+            {asset.assetType === "outcome_pack" ? (
+              <OutcomePackOverview config={asset.config} />
+            ) : null}
 
             {asset.connectorChecklist?.length ? (
               <div className="rounded-lg border bg-muted/20 p-4">
