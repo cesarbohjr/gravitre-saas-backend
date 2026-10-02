@@ -163,6 +163,7 @@ class CatalogAsset:
     pricing_type: str = "free"
     price_cents: int = 0
     pack_tier: int | None = None
+    visibility: str = "public"
 
 
 def _agent_seed(slug: str) -> str:
