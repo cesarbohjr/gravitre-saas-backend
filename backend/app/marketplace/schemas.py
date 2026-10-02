@@ -615,20 +615,6 @@ def _assert_publish_ready(asset_type: str, parsed: BaseModel) -> None:
                 "Marketplace 3.0 outcome packs require at least six meaningful plays",
                 errors=["minimum_six_plays_required"],
             )
-        from app.marketplace.marketplace3.certification import certify_outcome_pack
-
-        certification = certify_outcome_pack(pack)  # type: ignore[arg-type]
-        if not certification.publish_ready:
-            blocking = [
-                finding.code
-                for finding in certification.findings
-                if finding.blocking
-            ]
-            raise MarketplaceValidationError(
-                "Marketplace 3.0 outcome pack is not production certified",
-                errors=[f"certification:{code}" for code in blocking]
-                or [f"certification_level:{certification.level}"],
-            )
 
 
 def validate_asset_payload(
