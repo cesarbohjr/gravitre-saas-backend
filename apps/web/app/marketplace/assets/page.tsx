@@ -558,6 +558,8 @@ function MarketplaceAssetsContent() {
                 if (!isAdmin && filter.id === "capability_package") return null
                 const count =
                   filter.id === "all" ? categories?.totalAssets : typeCounts.get(filter.id)
+                const isMarketplace3Type = ["play", "outcome_pack", "dataset_pack", "dashboard_pack"].includes(filter.id)
+                if (isMarketplace3Type && !count && typeFilter !== filter.id) return null
                 return (
                   <button
                     key={filter.id}
