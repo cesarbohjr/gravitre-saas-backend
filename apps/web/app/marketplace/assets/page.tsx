@@ -129,7 +129,7 @@ function certificationLabel(asset: MarketplaceAssetSummary): string {
   if (level === "governed") return "Governed"
   if (level === "tested") return "Tested"
   if (level === "compatible") return "Compatible"
-  return asset.verified ? "Verified" : "Compatible"
+  return "Compatible"
 }
 
 /** What installing the asset adds to the workspace, from its catalogued contents only. */
@@ -310,7 +310,7 @@ function AssetCard({
               <Badge variant="outline">Partner registry</Badge>
             ) : null}
             {asset.visibility === "internal" ? <Badge variant="outline">Internal</Badge> : null}
-            <AssetTrustBadges asset={asset} />
+            <AssetTrustBadges asset={asset.assetType === "outcome_pack" ? { ...asset, verified: false } : asset} />
             {asset.installCount != null && asset.installCount > 0 ? (
               <span className="text-[11px] text-muted-foreground">{asset.installCount.toLocaleString()} installs</span>
             ) : null}
