@@ -185,7 +185,7 @@ function AssetCard({
   onInstall: (asset: MarketplaceAssetSummary) => void
   onClone: (asset: MarketplaceAssetSummary) => void
 }) {
-  const ready = asset.connectorsReady || asset.requiredConnectorsTotal === 0
+  const ready = asset.installReady ?? (asset.connectorsReady || asset.requiredConnectorsTotal === 0)
   const blocked = !ready && !asset.installed
   const needsPurchase = assetRequiresPurchase(asset)
   const showPrimaryAction = isAdmin && !asset.installed
@@ -220,7 +220,12 @@ function AssetCard({
         </div>
       </div>
       <div className="min-w-0 pl-7 md:pl-0">
-        <p className="text-xs font-medium text-muted-foreground">Requires</p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Readiness</p>
+          <Badge variant={ready ? "secondary" : "outline"} className="text-[10px]">
+            {asset.installed ? "Installed" : ready ? "Ready" : "Setup required"}
+          </Badge>
+        </div>
         {systems.length === 0 ? (
           <p className="mt-1 text-[12.5px] text-foreground">No setup required</p>
         ) : (
@@ -244,7 +249,11 @@ function AssetCard({
             {systems.length > 3 ? <li className="text-muted-foreground">+{systems.length - 3} more</li> : null}
           </ul>
         )}
-        {!ready ? <p className="mt-1 text-[11.5px] text-amber-800 dark:text-warning">Connect required apps to install</p> : null}
+        {!ready ? (
+          <p className="mt-1 text-[11.5px] text-amber-800 dark:text-warning">
+            {asset.installReadyErrors?.[0] ?? "Complete required setup to install"}
+          </p>
+        ) : null}
       </div>
       <div className="flex flex-wrap items-start gap-2 pl-7 md:justify-end md:pl-0">
         <PriceBadge asset={asset} />
