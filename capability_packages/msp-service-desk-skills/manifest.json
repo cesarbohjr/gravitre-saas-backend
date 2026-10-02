@@ -1,0 +1,18 @@
+{
+  "schema": "gravitre.capability.v1",
+  "format": "gravitre",
+  "name": "MSP Service Desk Skills",
+  "version": "1.0.0",
+  "description": "First-party guidance skills for the Gravitre Marketplace 3.0 MSP Service Desk pack.",
+  "license": "MIT",
+  "skills": [
+    {"name":"ticket-triage"},
+    {"name":"incident-diagnosis"},
+    {"name":"sla-analysis"},
+    {"name":"client-communication"},
+    {"name":"problem-management"},
+    {"name":"knowledge-gap-analysis"},
+    {"name":"service-operations-analysis"}
+  ],
+  "permissions": []
+}
