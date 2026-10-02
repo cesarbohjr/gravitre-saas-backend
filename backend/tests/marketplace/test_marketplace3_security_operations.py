@@ -39,3 +39,12 @@ def test_security_operations_blueprint_is_not_seeded_as_published_asset() -> Non
     payload = build_security_operations_outcome_pack_config()
     assert "status" not in payload
     assert "visibility" not in payload
+
+
+def test_existing_published_security_pack_play_keys_remain_installable() -> None:
+    from app.marketplace.marketplace3.department_portfolio import PACK_SPECS
+    from app.plays.catalog import get_platform_play
+
+    legacy_keys = {row[0] for row in PACK_SPECS["security-operations-3"]["plays"]}
+    missing = sorted(key for key in legacy_keys if get_platform_play(key) is None)
+    assert missing == []
