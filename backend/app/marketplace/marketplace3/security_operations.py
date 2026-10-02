@@ -283,17 +283,25 @@ def build_security_operations_outcome_pack_config() -> dict[str, Any]:
                 for row in kpis
             ],
         },
-        "skills": [],
+        "skills": ["security-operations-skills"],
         "skill_requirements": [
             "security-alert-triage",
-            "identity-investigation",
+            "incident-assessment",
+            "identity-risk-analysis",
             "vulnerability-prioritization",
-            "incident-command",
             "containment-planning",
+            "incident-communications",
             "post-incident-review",
-            "security-posture-analysis",
         ],
-        "skill_bindings": {},
+        "skill_bindings": {
+            "security-alert-triage": "security-operations-skills",
+            "incident-assessment": "security-operations-skills",
+            "identity-risk-analysis": "security-operations-skills",
+            "vulnerability-prioritization": "security-operations-skills",
+            "containment-planning": "security-operations-skills",
+            "incident-communications": "security-operations-skills",
+            "post-incident-review": "security-operations-skills",
+        },
         "runtime_profiles": [
             {
                 "provider": "okta",
