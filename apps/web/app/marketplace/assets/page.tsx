@@ -191,6 +191,8 @@ function AssetCard({
 
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
+  const playCount = (asset.packItems ?? []).filter((item) => item.child.assetType === "play").length
+  const isOutcomePack = asset.assetType === "outcome_pack"
 
   return (
     <article
@@ -208,12 +210,25 @@ function AssetCard({
             <h3 className="text-[14px] font-semibold leading-snug text-foreground">{asset.title}</h3>
           </button>
           <p className="mt-0.5 text-[12.5px] text-foreground">
-            <span className="text-muted-foreground">Adds </span>
-            {adds}
-            <span className="text-muted-foreground"> · </span>
+            {isOutcomePack && playCount > 0 ? (
+              <>
+                <span className="font-medium">{playCount} Plays</span>
+                <span className="text-muted-foreground"> · KPI dashboard · verified execution · </span>
+              </>
+            ) : (
+              <>
+                <span className="text-muted-foreground">Adds </span>
+                {adds}
+                <span className="text-muted-foreground"> · </span>
+              </>
+            )}
             <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
           </p>
-          {asset.description ? (
+          {isOutcomePack && asset.businessOutcome ? (
+            <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] font-medium leading-relaxed text-foreground">
+              {asset.businessOutcome}
+            </p>
+          ) : asset.description ? (
             <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
           ) : null}
         </div>
@@ -280,6 +295,9 @@ function AssetCard({
               <Badge variant="outline">Partner registry</Badge>
             ) : null}
             {asset.visibility === "internal" ? <Badge variant="outline">Internal</Badge> : null}
+            {isOutcomePack && (asset.tags ?? []).includes("production-verified") ? (
+              <Badge className="bg-success/10 text-success hover:bg-success/10">Production Verified</Badge>
+            ) : null}
             <AssetTrustBadges asset={asset} />
             {asset.installCount != null && asset.installCount > 0 ? (
               <span className="text-[11px] text-muted-foreground">{asset.installCount.toLocaleString()} installs</span>
