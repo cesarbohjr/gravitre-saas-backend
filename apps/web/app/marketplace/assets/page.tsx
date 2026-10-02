@@ -192,21 +192,29 @@ function AssetCard({
 
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
+  const isOutcome = asset.assetType === "play" || asset.assetType === "outcome_pack"
 
   return (
     <article
-      className="group grid gap-x-6 gap-y-3 py-4 md:grid-cols-[minmax(0,1fr)_220px_auto]"
+      className={cn(
+        "group relative grid gap-x-6 gap-y-3 py-4 md:grid-cols-[minmax(0,1fr)_220px_auto]",
+        isOutcome && "my-2 overflow-hidden rounded-[12px] border border-[color:var(--g-border-default)] bg-background px-4 shadow-[0_14px_38px_-34px_rgba(16,24,22,.55)] transition-[border-color,box-shadow,transform] duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[color:var(--g-emerald)] hover:shadow-[0_18px_42px_-32px_rgba(0,127,95,.38)] md:px-5",
+      )}
       data-testid="marketplace-pack-row"
     >
       <div className="flex min-w-0 gap-3">
-        <AssetMark asset={asset} />
+        {isOutcome ? (
+          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[9px] border border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)]">
+            <AssetMark asset={asset} />
+          </div>
+        ) : <AssetMark asset={asset} />}
         <div className="min-w-0">
           <button
             type="button"
             onClick={() => onOpenDetail(asset)}
             className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <h3 className="text-[14px] font-semibold leading-snug text-foreground">{asset.title}</h3>
+            <h3 className={cn("text-[14px] font-semibold leading-snug text-foreground", isOutcome && "text-[15px] tracking-[-0.01em]")}>{asset.title}</h3>
           </button>
           <p className="mt-0.5 text-[12.5px] text-foreground">
             <span className="text-muted-foreground">Adds </span>
@@ -273,7 +281,7 @@ function AssetCard({
           ) : null}
       </div>
       <details className="pl-7 md:col-span-3">
-        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">More about this pack</summary>
+        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{isOutcome ? "Under the hood" : "More about this pack"}</summary>
         <div className="mt-2 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <EntitlementBadge asset={asset} />
