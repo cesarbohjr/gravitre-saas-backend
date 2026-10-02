@@ -1114,6 +1114,9 @@ def list_catalog_assets() -> list[CatalogAsset]:
     from app.marketplace.marketplace3.msp_service_desk import (
         msp_service_desk_marketplace3_assets,
     )
+    from app.marketplace.marketplace3.department_portfolio import (
+        department_portfolio_marketplace3_assets,
+    )
     from app.marketplace.seed_catalog_expansion import expansion_catalog_assets
 
     assets = (
@@ -1123,6 +1126,7 @@ def list_catalog_assets() -> list[CatalogAsset]:
         + _intelligence_packs()
         + expansion_catalog_assets()
         + msp_service_desk_marketplace3_assets()
+        + department_portfolio_marketplace3_assets()
         + _department_packs()
     )
     slugs = [asset.slug for asset in assets]
