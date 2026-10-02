@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
+import { Marketplace3Rollout } from "@/components/marketplace/marketplace3-rollout"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { AssetPricingEditor, formatAssetPriceLabel } from "@/components/marketplace/asset-pricing-editor"
@@ -345,6 +346,7 @@ export default function MarketplacePlatformAdminPage() {
         />
 
         <div className="mx-auto max-w-4xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
+        <Marketplace3Rollout />
         {isLoading && !data ? (
           <div className="h-32 animate-pulse rounded-xl border bg-muted/40" />
         ) : error ? (
