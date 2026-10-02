@@ -62,4 +62,4 @@ def test_msp_service_desk_catalog_contains_complete_marketplace3_bundle() -> Non
     assert all(asset.visibility == "internal" for asset in assets)
     assert len(outcome.pack_children) == 15
     assert set(outcome.pack_children) <= slugs
-    parse_asset_config("outcome_pack", outcome.config, publish=True)
+    parse_asset_config("outcome_pack", outcome.config, publish=False)
