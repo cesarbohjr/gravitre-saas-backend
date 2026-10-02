@@ -25,6 +25,7 @@ from app.connectors.platform import (
     raise_connector_type_schema_error,
 )
 from app.core.errors import error_detail
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.audit import write_audit_event
 
 
@@ -246,7 +247,7 @@ async def handle_nango_auth_webhook(
         )
 
     row = dict(existing.data[0])
-    config = dict(row.get("config") or {})
+    config = safe_normalize_stored_dict(row, key="config")
     integration_id = str(
         payload.get("providerConfigKey")
         or payload.get("provider_config_key")
