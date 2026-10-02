@@ -274,3 +274,74 @@ def test_preview_install_blocks_without_entitlement(mock_entitlement):
     assert preview["canInstall"] is False
     assert preview["requiresPayment"] is True
     assert any(blocker.get("connector") == "payment" for blocker in preview["blockers"])
+
+
+@patch("app.marketplace.service.ensure_active_workflow_version", return_value="version-1")
+@patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})
+def test_install_marketplace_play_uses_canonical_play_runtime(mock_plan, mock_version):
+    asset = {
+        "id": ASSET_ID,
+        "slug": "client-risk-radar-play",
+        "title": "Client Risk Radar",
+        "asset_type": "play",
+        "status": "published",
+        "visibility": "public",
+        "current_version": 1,
+        "install_count": 0,
+        "required_connectors": [],
+        "install_variables": [],
+        "config": {
+            "key": "client-risk-radar",
+            "name": "Client Risk Radar",
+            "description": "Identify accounts that need intervention.",
+            "trigger": {"type": "scheduled"},
+            "workflow_steps": [
+                {
+                    "id": "analyze",
+                    "name": "Analyze account risk",
+                    "type": "agent",
+                    "metadata": {"task": "Review current risk signals."},
+                }
+            ],
+            "outcome_events": ["client_risk_detected"],
+            "kpi_keys": ["customer_health"],
+            "approvals": [],
+            "verification": {"mode": "source_of_record"},
+        },
+    }
+    assets = _table([asset])
+    installs = _table([])
+    play_installations = _table()
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_assets":
+            return assets
+        if name == "marketplace_installs":
+            return installs
+        if name == "play_installations":
+            return play_installations
+        return _table()
+
+    client.table.side_effect = table
+
+    with patch("app.marketplace.service.write_audit_event"), patch(
+        "app.marketplace.service._notify_asset_installed"
+    ), patch(
+        "app.plays.workflow_bindings.bind_play_to_workflow",
+        return_value={
+            "workflowId": "wf-1",
+            "play": {"key": "client-risk-radar", "version": "1"},
+            "executionAuthority": "canonical_workflow_runtime",
+        },
+    ) as bind:
+        result = install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
+
+    assert result["entities"]["entityType"] == "play"
+    assert result["entities"]["playKey"] == "client-risk-radar"
+    assert result["entities"]["operatingMode"] == "OBSERVE"
+    assert result["entities"]["executionAuthority"] == "canonical_workflow_runtime"
+    bind.assert_called_once()
+    payload = play_installations.upsert.call_args.args[0]
+    assert payload["operating_mode"] == "OBSERVE"
+    assert payload["configuration"]["outcomeEvents"] == ["client_risk_detected"]
