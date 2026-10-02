@@ -357,11 +357,11 @@ function ActivityPageInner() {
       {/* lg+: fill the viewport and delegate scrolling to the panes. Below lg
           there is no vertical budget for split panes, so the page scrolls
           normally and the panes stack. */}
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden" data-composition="operate">
         <GravitrePageHeader
           className="shrink-0"
           title="Activity"
-          description="Every outcome, work object and failure your agents and workflows produced, with its evidence."
+          description="Work in motion. Outcomes, exceptions and evidence—without the noise."
           icon={<NucleoActivity className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
