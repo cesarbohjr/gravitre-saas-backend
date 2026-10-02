@@ -87,13 +87,15 @@ def certify_outcome_pack(
     *,
     resolved_skill_ids: set[str] | None = None,
     runtime_evidence: dict[str, Any] | None = None,
+    production_evidence: dict[str, Any] | None = None,
     outcome_evidence: dict[str, Any] | None = None,
 ) -> OutcomePackCertification:
     """Return the strongest certification level supported by current evidence.
 
-    This function never turns test intent into evidence. production_verified
-    requires the runtime profile itself to carry production verification state,
-    and outcome_verified requires explicit measured outcome evidence.
+    This function never turns configuration intent into evidence. Runtime
+    profiles describe supported/tested capability; production_verified is earned
+    only from live, evidence-linked runtime, install, permission, KPI, failure
+    path, and source-of-record proof.
     """
     findings: list[CertificationFinding] = []
     registered = set(list_registered_actions())
@@ -220,20 +222,6 @@ def certify_outcome_pack(
         ):
             verified_profiles.add(profile.provider)
 
-    missing_live_profiles = sorted(
-        profile.provider
-        for profile in config.runtime_profiles
-        if profile.provider not in verified_profiles
-    )
-    if any(profile.status == "production_verified" for profile in config.runtime_profiles) and missing_live_profiles:
-        findings.append(
-            CertificationFinding(
-                "PRODUCTION_EVIDENCE_MISSING",
-                "Production Verified requires evidence-linked live production proof for every advertised runtime action.",
-                metadata={"providers": missing_live_profiles},
-            )
-        )
-
     schema_runtime_ok = not any(
         finding.code in {
             "MINIMUM_PLAYS",
@@ -253,16 +241,74 @@ def certify_outcome_pack(
     )
 
     level = "compatible"
-    if schema_runtime_ok and runtime_statuses and runtime_statuses <= {"tested", "production_verified"}:
+    tested_runtime = (
+        bool(runtime_statuses)
+        and "implementation" not in runtime_statuses
+        and runtime_statuses <= {"tested", "production_verified"}
+    )
+    if schema_runtime_ok and tested_runtime:
         level = "tested"
     if governed_ok and level == "tested":
         level = "governed"
+
+    production_payload = (
+        production_evidence if isinstance(production_evidence, dict) else {}
+    )
+    production_attempted = bool(production_payload) or bool(evidence) or any(
+        profile.status == "production_verified" for profile in config.runtime_profiles
+    )
+
+    missing_live_profiles = sorted(
+        profile.provider
+        for profile in config.runtime_profiles
+        if profile.provider not in verified_profiles
+    )
+    if production_attempted and missing_live_profiles:
+        findings.append(
+            CertificationFinding(
+                "PRODUCTION_EVIDENCE_MISSING",
+                "Production Verified requires evidence-linked live proof for every runtime profile and advertised action.",
+                metadata={"providers": missing_live_profiles},
+            )
+        )
+
+    required_production_checks = {
+        "fixture_checks_passed": "Fixture certification checks did not all pass.",
+        "fresh_install_passed": "A fresh composite Outcome Pack installation has not been proven.",
+        "golden_path_passed": "Every Play has not completed its certified golden path.",
+        "failure_path_passed": "Every Play has not demonstrated a safe failure path.",
+        "permissions_passed": "Tenant permission/RLS isolation has not been proven with a user-scoped token.",
+        "kpi_reconciliation_passed": "Dashboard KPIs have not reconciled to verified measured outcomes.",
+        "source_of_record_verification_passed": "Consequential writes have not been independently verified against source of record.",
+    }
+    missing_production_checks = [
+        key
+        for key in required_production_checks
+        if production_payload.get(key) is not True
+    ]
+    if production_attempted and missing_production_checks:
+        findings.append(
+            CertificationFinding(
+                "PRODUCTION_EVIDENCE_INCOMPLETE",
+                "Marketplace 3.0 production certification evidence is incomplete.",
+                metadata={
+                    "missingChecks": missing_production_checks,
+                    "requirements": {
+                        key: required_production_checks[key]
+                        for key in missing_production_checks
+                    },
+                },
+            )
+        )
+
     production_ok = (
         governed_ok
+        and tested_runtime
         and bool(config.runtime_profiles)
-        and all(profile.status == "production_verified" for profile in config.runtime_profiles)
         and len(verified_profiles) == len(config.runtime_profiles)
         and not unresolved_skills
+        and bool(production_payload)
+        and not missing_production_checks
     )
     if production_ok:
         level = "production_verified"
