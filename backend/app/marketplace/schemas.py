@@ -230,6 +230,14 @@ class OutcomePackAssetConfig(BaseModel):
         if not dashboard_kpis.issubset(declared_kpis):
             missing = sorted(dashboard_kpis - declared_kpis)
             raise ValueError(f"dashboard references undeclared KPI keys: {', '.join(missing)}")
+        missing_dashboard_kpis = sorted(declared_kpis - dashboard_kpis)
+        if missing_dashboard_kpis:
+            raise ValueError(
+                f"every outcome KPI must be represented on the dashboard: {', '.join(missing_dashboard_kpis)}"
+            )
+        play_keys = [play.key for play in self.plays]
+        if len(play_keys) != len(set(play_keys)):
+            raise ValueError("outcome packs must not contain duplicate Play keys")
         for play in self.plays:
             missing = sorted(set(play.kpi_keys) - declared_kpis)
             if missing:
