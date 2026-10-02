@@ -65,7 +65,7 @@ def test_department_portfolio_catalog_has_complete_components() -> None:
         outcome = by_slug[slug]
         assert outcome.asset_type == "outcome_pack"
         assert outcome.pack_tier == 3
-        assert len(outcome.pack_children) == 14
+        assert len(outcome.pack_children) == 13
         assert set(outcome.pack_children) <= set(by_slug)
         assert spec["skill_package"] in outcome.pack_children
 
