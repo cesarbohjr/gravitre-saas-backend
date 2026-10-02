@@ -41,7 +41,7 @@ def test_security_operations_plays_are_canonical_and_measurable() -> None:
         assert canonical.outcome_metrics
         assert play.outcome_events
         assert play.kpi_keys
-        assert play.verification.provider_acceptance_is_terminal is False
+        assert play.verification["provider_acceptance_is_terminal"] is False
 
 
 def test_security_operations_catalog_contains_complete_internal_bundle() -> None:
