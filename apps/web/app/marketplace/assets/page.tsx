@@ -309,6 +309,13 @@ function AssetCard({
   )
 }
 
+const OUTCOME_PATHS = [
+  { label: "Run IT", department: "IT", detail: "Service, security and operations" },
+  { label: "Grow Revenue", department: "Sales", detail: "Pipeline, enrichment and follow-up" },
+  { label: "Market Smarter", department: "Marketing", detail: "Campaigns, signals and content" },
+  { label: "Serve Customers", department: "Customer Success", detail: "Risk, support and retention" },
+] as const
+
 function MarketplaceAssetsContent() {
   const { user } = useAuth()
   const router = useRouter()
@@ -509,18 +516,16 @@ function MarketplaceAssetsContent() {
     <AppShell title="Marketplace">
       {/* shrink-0 keeps AppShell's flex-col <main> from compressing the catalog
          so the grid can scroll with the page instead of clipping. */}
-      <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-testid="marketplace-catalog-b">
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-testid="marketplace-catalog-b" data-composition="discover">
         {/* Discovery hero: identity, search, and asset type as the primary axis */}
         <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
           <div className="mx-auto max-w-[1240px]">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
-                <p className={TYPE.eyebrow}>Gravitre Marketplace</p>
-                <h1 className="mt-1 text-balance text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] text-[color:var(--g-text-primary)] sm:text-[32px]">
-                  Install packs into your workspace
-                </h1>
+                <p className={TYPE.eyebrow}>Marketplace / Outcomes first</p>
+                <h1 className={cn(TYPE.pageTitle, "mt-1 text-balance")}>Put Gravitre to work.</h1>
                 <p className={cn(TYPE.pageLead, "mt-2")}>
-                  Install measurable operating capabilities: outcome packs, plays, agents, workflows, knowledge, datasets, dashboards, and governed skills.
+                  Start with the outcome. Gravitre assembles the intelligence underneath.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -542,12 +547,35 @@ function MarketplaceAssetsContent() {
               </div>
             </div>
 
+            <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Browse by outcome">
+              {OUTCOME_PATHS.map((path) => {
+                const active = departmentFilter?.toLowerCase() === path.department.toLowerCase()
+                return (
+                  <button
+                    key={path.label}
+                    type="button"
+                    onClick={() => setDepartmentFilter(active ? null : path.department)}
+                    className={cn(
+                      "group relative min-h-24 overflow-hidden rounded-[10px] border p-4 text-left transition-[transform,box-shadow,border-color,background-color] duration-200 motion-safe:hover:-translate-y-0.5",
+                      active
+                        ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_32px_-24px_rgba(0,127,95,.7)]"
+                        : "border-[color:var(--g-border-default)] bg-background hover:border-[color:var(--g-emerald)] hover:shadow-[0_14px_32px_-26px_rgba(16,24,22,.55)]",
+                    )}
+                  >
+                    <span className="absolute right-3 top-3 size-2 rounded-full bg-[color:var(--g-emerald)] transition-transform duration-200 motion-safe:group-hover:scale-125" aria-hidden />
+                    <span className="block text-[14px] font-semibold text-[color:var(--g-text-primary)]">{path.label}</span>
+                    <span className="mt-1 block max-w-[18rem] text-xs leading-5 text-[color:var(--g-text-muted)]">{path.detail}</span>
+                  </button>
+                )
+              })}
+            </div>
+
             <div className="relative mt-5 max-w-2xl">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search outcomes, plays, agents, workflows, datasets, dashboards, skills and packs…"
+                placeholder="Search outcomes, plays and capabilities…"
                 aria-label="Search marketplace"
                 className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
               />
@@ -703,12 +731,8 @@ function MarketplaceAssetsContent() {
           ) : (
             <div className="space-y-8">
               <section data-review-surface="marketplace-discovery" aria-labelledby="marketplace-discovery-heading">
-                <h2 id="marketplace-discovery-heading" className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-                  Available to install
-                </h2>
-                <p className={cn(TYPE.meta, "mt-0.5")}>
-                  Packs not yet installed in this workspace.
-                </p>
+                <h2 id="marketplace-discovery-heading" className={TYPE.sectionTitle}>Plays and outcome packs</h2>
+                <p className={cn(TYPE.meta, "mt-1")}>Choose the result. Reveal the machinery when you need it.</p>
                 {discoveryAssets.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">
                     No uninstalled packs match these filters. Installed packs are listed under ops below.
