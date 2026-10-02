@@ -126,8 +126,72 @@ _OKTA = build_vendor(
             },
         ),
     ),
-    v2=(),
-    v3=(),
+    v2=(
+        action(
+            "okta",
+            "groups.list",
+            "List Okta groups for identity and access investigation",
+            tier="v2",
+            kind="read",
+            scope_suffix="groups:read",
+            api_reference="GET /api/v1/groups",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "filter": {"type": "string"},
+                    "search": {"type": "string"},
+                    "limit": {"type": "integer"},
+                    "after": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+        ),
+        action(
+            "okta",
+            "apps.list",
+            "List Okta applications for access and exposure review",
+            tier="v2",
+            kind="read",
+            scope_suffix="apps:read",
+            api_reference="GET /api/v1/apps",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "filter": {"type": "string"},
+                    "limit": {"type": "integer"},
+                    "after": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+        ),
+    ),
+    v3=(
+        action(
+            "okta",
+            "users.factors.list",
+            "List enrolled Okta factors when investigating account security posture",
+            tier="v3",
+            kind="read",
+            scope_suffix="users:read",
+            api_reference="GET /api/v1/users/{user_id}/factors",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "required": ["user_id"],
+                "additionalProperties": False,
+            },
+        ),
+    ),
 )
 
 # Append org-specific or partner vendors here, or load from DB/MCP in a future release.
