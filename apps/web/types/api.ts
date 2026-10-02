@@ -2222,11 +2222,46 @@ export interface MarketplacePackItem {
   child: MarketplacePackItemChild
 }
 
+export interface Marketplace3CertificationFinding {
+  code: string
+  message: string
+  blocking: boolean
+  metadata?: Record<string, unknown>
+}
+
+export interface Marketplace3Certification {
+  level: "compatible" | "tested" | "governed" | "production_verified" | "outcome_verified"
+  publishReady: boolean
+  playCount: number
+  runtimeActions: string[]
+  verifiedSkills: string[]
+  unresolvedSkillRequirements: string[]
+  findings: Marketplace3CertificationFinding[]
+}
+
+export interface Marketplace3OutcomeMetric {
+  key: string
+  label: string
+  unit?: string | null
+  direction?: string | null
+  baselineValue?: number | null
+  resultValue?: number | null
+  deltaValue?: number | null
+  measuredAt?: string | null
+  playKey: string
+  outcomeType?: string | null
+  verificationMethod?: string | null
+  sourceRecordCount: number
+  status?: string | null
+}
+
 export interface MarketplaceAssetDetail extends MarketplaceAssetSummary {
   config?: Record<string, unknown>
   blockers?: MarketplaceInstallBlocker[]
   packItems?: MarketplacePackItem[]
   installVariables?: unknown[]
+  marketplace3Certification?: Marketplace3Certification
+  marketplace3OutcomeMetrics?: Marketplace3OutcomeMetric[]
 }
 
 export interface MarketplaceFacetCount {
