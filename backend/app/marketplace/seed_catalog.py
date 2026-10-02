@@ -597,6 +597,382 @@ def _knowledge_packs() -> list[CatalogAsset]:
     ]
 
 
+
+def _msp_service_desk_3_assets() -> list[CatalogAsset]:
+    """Marketplace 3.0 flagship MSP Service Desk operating capability."""
+    coordinator = _agent(
+        "msp-service-desk-coordinator",
+        name="MSP Service Desk Coordinator",
+        purpose="Coordinates triage, SLA risk, ownership, escalation, and customer communication across the service desk.",
+        role="Service Desk Operations",
+        department="MSP Service Desk",
+        persona_key="SUPPORT",
+        systems=["halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"],
+        capabilities=["ticket-triage", "sla-management", "service-coordination"],
+    )
+    resolution = _agent(
+        "msp-resolution-specialist",
+        name="MSP Resolution Specialist",
+        purpose="Builds evidence-backed remediation plans from ticket history, device context, runbooks, and prior resolutions.",
+        role="Technical Resolution",
+        department="MSP Service Desk",
+        persona_key="DEVOPS",
+        systems=["intune", "jumpcloud", "jamf_pro", "huntress", "sentinelone", "crowdstrike"],
+        capabilities=["root-cause-analysis", "remediation-planning", "incident-analysis"],
+    )
+    optimizer = _agent(
+        "msp-service-optimizer",
+        name="MSP Service Optimizer",
+        purpose="Finds recurring problems, knowledge gaps, backlog patterns, and automation opportunities across service operations.",
+        role="Service Improvement",
+        department="MSP Service Desk",
+        persona_key="SUPPORT",
+        systems=["halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"],
+        capabilities=["problem-management", "knowledge-gap-analysis", "service-optimization"],
+    )
+
+    knowledge_docs = [
+        _rag_doc("rag:msp-sla-policy", "SLA & Priority Matrix", pack="msp-service-desk-3"),
+        _rag_doc("rag:msp-triage-policy", "Ticket Triage & Routing Policy", pack="msp-service-desk-3"),
+        _rag_doc("rag:msp-escalation", "Escalation & Major Incident Matrix", pack="msp-service-desk-3"),
+        _rag_doc("rag:msp-runbooks", "Service Remediation Runbooks", pack="msp-service-desk-3"),
+        _rag_doc("rag:msp-client-comms", "Client Communication Standards", pack="msp-service-desk-3"),
+        _rag_doc("rag:msp-kb", "Service Desk Knowledge Base", pack="msp-service-desk-3"),
+    ]
+
+    kpis = [
+        {"key": "mtta", "label": "Mean time to acknowledge", "unit": "minutes", "direction": "decrease", "source": "tickets"},
+        {"key": "mttr", "label": "Mean time to resolve", "unit": "minutes", "direction": "decrease", "source": "tickets"},
+        {"key": "sla_compliance", "label": "SLA compliance", "unit": "percent", "direction": "increase", "source": "tickets"},
+        {"key": "automation_rate", "label": "Automation rate", "unit": "percent", "direction": "increase", "source": "play_runs"},
+        {"key": "backlog", "label": "Open ticket backlog", "unit": "count", "direction": "decrease", "source": "tickets"},
+        {"key": "reopen_rate", "label": "Ticket reopen rate", "unit": "percent", "direction": "decrease", "source": "tickets"},
+        {"key": "first_contact_resolution", "label": "First-contact resolution", "unit": "percent", "direction": "increase", "source": "tickets"},
+        {"key": "tickets_rescued", "label": "SLA-risk tickets rescued", "unit": "count", "direction": "increase", "source": "play_runs"},
+        {"key": "knowledge_gap_rate", "label": "Knowledge gap rate", "unit": "percent", "direction": "decrease", "source": "knowledge_events"},
+        {"key": "customer_update_latency", "label": "Customer update latency", "unit": "minutes", "direction": "decrease", "source": "ticket_events"},
+    ]
+
+    def play(
+        key: str,
+        name: str,
+        description: str,
+        *,
+        agent_slug: str,
+        task: str,
+        outcome_event: str,
+        kpi_keys: list[str],
+        trigger: dict[str, Any],
+        approvals: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "key": key,
+            "name": name,
+            "description": description,
+            "trigger": trigger,
+            "workflow_steps": [
+                _agent_step(
+                    f"{key}-analyze",
+                    name,
+                    agent_slug,
+                    task,
+                    briefing_from_steps=True,
+                )
+            ],
+            "outcome_events": [outcome_event],
+            "kpi_keys": kpi_keys,
+            "approvals": approvals or [],
+            "verification": {
+                "mode": "source_of_record",
+                "required": True,
+                "executionLifecycle": [
+                    "requested",
+                    "executing",
+                    "accepted",
+                    "verifying",
+                    "completed|failed|verification_inconclusive",
+                ],
+            },
+        }
+
+    plays = [
+        play(
+            "intelligent-ticket-intake",
+            "Intelligent Ticket Intake",
+            "Classify, prioritize, enrich, and route incoming service work using client, asset, SLA, urgency, and sentiment context.",
+            agent_slug="msp-service-desk-coordinator",
+            task="Review the incoming service item, apply the SLA and triage policies, identify missing context, recommend priority and ownership, and record evidence for every decision.",
+            outcome_event="ticket_triaged",
+            kpi_keys=["mtta", "automation_rate", "sla_compliance"],
+            trigger={"type": "event", "event": "ticket.created"},
+        ),
+        play(
+            "resolution-copilot",
+            "Resolution Copilot",
+            "Assemble ticket history, endpoint context, prior resolutions, and runbooks into an evidence-backed remediation plan.",
+            agent_slug="msp-resolution-specialist",
+            task="Build a remediation plan from available service history, endpoint/security context, and runbooks. Separate verified facts from hypotheses and require approval before consequential remediation.",
+            outcome_event="resolution_plan_prepared",
+            kpi_keys=["mttr", "first_contact_resolution"],
+            trigger={"type": "event", "event": "ticket.investigation_requested"},
+            approvals=[{"when": "consequential_write", "role": "service_manager"}],
+        ),
+        play(
+            "sla-rescue",
+            "SLA Rescue",
+            "Detect tickets approaching breach, diagnose why they are stalled, and coordinate intervention before the SLA is missed.",
+            agent_slug="msp-service-desk-coordinator",
+            task="Identify the blocking condition for an SLA-risk ticket, determine the safest next action and owner, and escalate according to the SLA matrix before the breach threshold.",
+            outcome_event="ticket_sla_saved",
+            kpi_keys=["sla_compliance", "tickets_rescued", "mttr"],
+            trigger={"type": "threshold", "metric": "sla_remaining_minutes", "operator": "lte", "value": 60},
+        ),
+        play(
+            "stale-ticket-recovery",
+            "Stale Ticket Recovery",
+            "Find tickets stalled on technicians, customers, vendors, approvals, or missing information and restart the correct next step.",
+            agent_slug="msp-service-desk-coordinator",
+            task="Classify why the ticket is stale, identify the party or evidence required to move it forward, and propose or execute the policy-safe recovery action.",
+            outcome_event="stale_ticket_recovered",
+            kpi_keys=["backlog", "mttr", "automation_rate"],
+            trigger={"type": "threshold", "metric": "hours_without_progress", "operator": "gte", "value": 24},
+        ),
+        play(
+            "recurring-problem-hunter",
+            "Recurring Problem Hunter",
+            "Cluster repeated service issues across clients, users, and assets to expose root problems and preventive automation opportunities.",
+            agent_slug="msp-service-optimizer",
+            task="Analyze recurring service patterns, distinguish symptoms from likely common causes, and recommend a problem record, runbook change, automation, or preventive maintenance action.",
+            outcome_event="recurring_problem_detected",
+            kpi_keys=["reopen_rate", "backlog", "mttr"],
+            trigger={"type": "scheduled", "cadence": "daily"},
+        ),
+        play(
+            "client-communication-manager",
+            "Client Communication Manager",
+            "Prepare timely customer updates from verified service status, SLA posture, sentiment, and business impact.",
+            agent_slug="msp-service-desk-coordinator",
+            task="Prepare a client-safe update using only verified service facts, current SLA posture, next action, and expected follow-up. Never invent resolution timing.",
+            outcome_event="client_update_prepared",
+            kpi_keys=["customer_update_latency", "sla_compliance"],
+            trigger={"type": "event", "event": "ticket.material_status_changed"},
+            approvals=[{"when": "external_message", "role": "service_owner"}],
+        ),
+        play(
+            "knowledge-gap-miner",
+            "Knowledge Gap Miner",
+            "Turn repeated unresolved questions, failed retrievals, escalations, and manual fixes into prioritized knowledge improvements.",
+            agent_slug="msp-service-optimizer",
+            task="Identify missing or weak knowledge that caused repeated manual investigation or escalation, then propose a KB article, SOP change, decision rule, or new reusable skill with supporting evidence.",
+            outcome_event="knowledge_gap_identified",
+            kpi_keys=["knowledge_gap_rate", "mttr", "automation_rate"],
+            trigger={"type": "scheduled", "cadence": "weekly"},
+        ),
+        play(
+            "service-desk-optimization-review",
+            "Service Desk Optimization Review",
+            "Review MTTA, MTTR, SLA, backlog, reopen rate, automation coverage, and recurring problems to recommend measurable operating improvements.",
+            agent_slug="msp-service-optimizer",
+            task="Review the service KPI dataset and Play outcomes, rank the highest-impact operational bottlenecks, and recommend concrete changes with an owner and measurable target.",
+            outcome_event="service_optimization_recommended",
+            kpi_keys=["mtta", "mttr", "sla_compliance", "automation_rate", "backlog", "reopen_rate"],
+            trigger={"type": "scheduled", "cadence": "weekly"},
+        ),
+    ]
+
+    dataset = {
+        "entities": [
+            {"name": "tickets", "source": "psa", "primary_key": "id", "fields": ["id", "client_id", "status", "priority", "created_at", "acknowledged_at", "resolved_at", "sla_due_at", "owner_id", "reopen_count"]},
+            {"name": "clients", "source": "psa", "primary_key": "id", "fields": ["id", "name", "service_tier", "account_owner"]},
+            {"name": "assets", "source": "endpoint_management", "primary_key": "id", "fields": ["id", "client_id", "user_id", "device_type", "health_status"]},
+            {"name": "ticket_events", "source": "psa", "primary_key": "id", "fields": ["id", "ticket_id", "event_type", "actor_type", "created_at"]},
+            {"name": "play_runs", "source": "gravitre", "primary_key": "id", "fields": ["id", "play_key", "status", "started_at", "completed_at", "outcome_events"]},
+        ],
+        "metrics": [
+            {"key": "mtta", "label": "MTTA", "formula": "avg(acknowledged_at - created_at)", "unit": "minutes"},
+            {"key": "mttr", "label": "MTTR", "formula": "avg(resolved_at - created_at)", "unit": "minutes"},
+            {"key": "sla_compliance", "label": "SLA compliance", "formula": "resolved_within_sla / resolved_tickets", "unit": "percent"},
+            {"key": "automation_rate", "label": "Automation rate", "formula": "verified_automated_outcomes / eligible_outcomes", "unit": "percent"},
+            {"key": "backlog", "label": "Backlog", "formula": "count(open_tickets)", "unit": "count"},
+            {"key": "reopen_rate", "label": "Reopen rate", "formula": "reopened_tickets / resolved_tickets", "unit": "percent"},
+            {"key": "first_contact_resolution", "label": "First-contact resolution", "formula": "first_contact_resolved / resolved_tickets", "unit": "percent"},
+            {"key": "tickets_rescued", "label": "Tickets rescued", "formula": "count(ticket_sla_saved)", "unit": "count"},
+            {"key": "knowledge_gap_rate", "label": "Knowledge gap rate", "formula": "knowledge_gap_events / investigated_tickets", "unit": "percent"},
+            {"key": "customer_update_latency", "label": "Customer update latency", "formula": "avg(customer_update_at - material_status_change_at)", "unit": "minutes"},
+        ],
+    }
+
+    dashboard = {
+        "title": "MSP Service Desk Outcomes",
+        "refresh_mode": "event",
+        "metrics": [
+            {"kpi_key": "mtta", "label": "MTTA", "visualization": "trend", "description": "Average time from ticket creation to acknowledgement."},
+            {"kpi_key": "mttr", "label": "MTTR", "visualization": "trend", "description": "Average time from ticket creation to verified resolution."},
+            {"kpi_key": "sla_compliance", "label": "SLA compliance", "visualization": "progress", "description": "Share of resolved tickets completed inside SLA."},
+            {"kpi_key": "automation_rate", "label": "Automation rate", "visualization": "trend", "description": "Verified eligible service outcomes completed automatically."},
+            {"kpi_key": "backlog", "label": "Open backlog", "visualization": "metric", "description": "Open service items requiring action."},
+            {"kpi_key": "reopen_rate", "label": "Reopen rate", "visualization": "trend", "description": "Resolved tickets subsequently reopened."},
+            {"kpi_key": "first_contact_resolution", "label": "First-contact resolution", "visualization": "progress", "description": "Tickets resolved without repeat handling."},
+            {"kpi_key": "tickets_rescued", "label": "SLA tickets rescued", "visualization": "metric", "description": "At-risk tickets moved back inside policy before breach."},
+        ],
+    }
+
+    agent_assets = [
+        CatalogAsset(
+            slug=slug,
+            title=cfg["name"],
+            description=cfg["purpose"],
+            asset_type="ai_agent",
+            category="ai_agent",
+            department="MSP Service Desk",
+            tags=["msp", "service-desk", "marketplace-3", "agent"],
+            config=cfg,
+        )
+        for slug, cfg in [
+            ("msp-service-desk-coordinator", coordinator),
+            ("msp-resolution-specialist", resolution),
+            ("msp-service-optimizer", optimizer),
+        ]
+    ]
+
+    play_assets = [
+        CatalogAsset(
+            slug=f"msp-{cfg['key']}",
+            title=cfg["name"],
+            description=cfg["description"],
+            asset_type="play",
+            category="play",
+            department="MSP Service Desk",
+            tags=["msp", "service-desk", "marketplace-3", "play", cfg["key"]],
+            config=cfg,
+        )
+        for cfg in plays
+    ]
+
+    knowledge_asset = CatalogAsset(
+        slug="msp-service-desk-3-knowledge",
+        title="MSP Service Desk 3.0 Knowledge Pack",
+        description="SLA policy, triage rules, escalation matrix, remediation runbooks, customer communication standards, and service desk knowledge.",
+        asset_type="knowledge_pack",
+        category="knowledge_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "marketplace-3", "knowledge"],
+        config=_knowledge_pack(knowledge_docs),
+    )
+
+    dataset_asset = CatalogAsset(
+        slug="msp-service-desk-3-dataset",
+        title="MSP Service Desk 3.0 Dataset Pack",
+        description="Normalized service desk entities and KPI definitions for verified service outcomes.",
+        asset_type="dataset_pack",
+        category="dataset_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "marketplace-3", "dataset", "kpi"],
+        config=dataset,
+    )
+
+    dashboard_asset = CatalogAsset(
+        slug="msp-service-desk-3-dashboard",
+        title="MSP Service Desk 3.0 Dashboard Pack",
+        description="Outcome dashboard for MTTA, MTTR, SLA, automation, backlog, reopen rate, first-contact resolution, and SLA rescue.",
+        asset_type="dashboard_pack",
+        category="dashboard_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "marketplace-3", "dashboard", "outcomes"],
+        config=dashboard,
+    )
+
+    connector_alternatives = [
+        ["halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"],
+        ["intune", "jumpcloud", "jamf_pro"],
+        ["huntress", "sentinelone", "crowdstrike", "connectsecure"],
+    ]
+    optional_connectors = [
+        {
+            "connectorType": connector_type,
+            "label": connector_type.replace("_", " ").title(),
+            "required": False,
+            "connectPath": f"/connectors?type={connector_type}",
+        }
+        for connector_type in sorted({item for group in connector_alternatives for item in group})
+    ]
+
+    pack = CatalogAsset(
+        slug="msp-service-desk-3",
+        title="MSP Service Desk 3.0",
+        description="Operate the service desk with eight governed Plays spanning intake, resolution, SLA rescue, stale-ticket recovery, recurring-problem detection, client communication, knowledge improvement, and service optimization.",
+        asset_type="outcome_pack",
+        category="outcome_pack",
+        department="MSP Service Desk",
+        tags=["msp", "service-desk", "marketplace-3", "outcome-pack", "flagship"],
+        business_outcome="Reduce manual service work while improving response time, resolution time, SLA performance, and service quality.",
+        use_case="MSP service desk operations",
+        estimated_hours_saved=40.0,
+        pricing_type="paid",
+        price_cents=24900,
+        pack_tier=3,
+        required_connectors=optional_connectors,
+        config={
+            "marketplace_version": "3.0",
+            "outcome_contract": {
+                "problem": "MSP service desks lose technician capacity to manual triage, stalled tickets, repetitive investigation, inconsistent client communication, and reactive SLA management.",
+                "target_outcome": "Reduce MTTA and MTTR, improve SLA compliance and first-contact resolution, shrink backlog, and increase verified automation without weakening governance.",
+                "baseline_metric": "mttr",
+                "success_criteria": [
+                    "All eight required Plays install and bind to the canonical workflow runtime.",
+                    "Every consequential action follows approval policy and source-of-record verification.",
+                    "The dashboard can calculate the declared service KPIs from normalized service data.",
+                    "Outcome events reconcile to Play Runs and Activity evidence.",
+                ],
+                "outcome_events": [
+                    "ticket_triaged",
+                    "resolution_plan_prepared",
+                    "ticket_sla_saved",
+                    "stale_ticket_recovered",
+                    "recurring_problem_detected",
+                    "client_update_prepared",
+                    "knowledge_gap_identified",
+                    "service_optimization_recommended",
+                ],
+                "kpis": kpis,
+                "verification_required": True,
+            },
+            "agents": [coordinator, resolution, optimizer],
+            "plays": plays,
+            "knowledge": knowledge_docs,
+            "dataset": dataset,
+            "dashboard": dashboard,
+            "skills": [
+                "ticket-triage",
+                "root-cause-analysis",
+                "sla-risk-analysis",
+                "customer-communication",
+                "knowledge-gap-analysis",
+                "service-optimization",
+            ],
+            "connector_alternatives": connector_alternatives,
+        },
+        pack_children=[
+            "msp-service-desk-coordinator",
+            "msp-resolution-specialist",
+            "msp-service-optimizer",
+            *[asset.slug for asset in play_assets],
+            "msp-service-desk-3-knowledge",
+            "msp-service-desk-3-dataset",
+            "msp-service-desk-3-dashboard",
+        ],
+    )
+
+    return [
+        *agent_assets,
+        *play_assets,
+        knowledge_asset,
+        dataset_asset,
+        dashboard_asset,
+        pack,
+    ]
+
+
 def _department_packs() -> list[CatalogAsset]:
     marketing_agents = [
         _agent(
@@ -1119,6 +1495,7 @@ def list_catalog_assets() -> list[CatalogAsset]:
         + _knowledge_packs()
         + _intelligence_packs()
         + expansion_catalog_assets()
+        + _msp_service_desk_3_assets()
         + _department_packs()
     )
     slugs = [asset.slug for asset in assets]
