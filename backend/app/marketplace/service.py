@@ -13,6 +13,7 @@ from app.marketplace.schemas import (
     DepartmentPackAssetConfig,
     KnowledgePackAssetConfig,
     MarketplaceValidationError,
+    PlayAssetConfig,
     RequiredConnectorRef,
     WorkflowAssetConfig,
     parse_asset_config,
@@ -359,7 +360,7 @@ def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
     from app.billing.entitlement_service import PlanLimitExceededError
 
     plan = get_plan_for_org(client, org_id)
-    if asset_type in {"ai_agent", "department_pack"}:
+    if asset_type in {"ai_agent", "department_pack", "outcome_pack"}:
         limit = plan.get("agents_limit")
         current = len(list_operators(client, org_id))
         if limit is not None and current >= int(limit):
@@ -368,7 +369,7 @@ def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
                 current=current,
                 max_allowed=int(limit),
             )
-    if asset_type in {"workflow", "department_pack"}:
+    if asset_type in {"workflow", "department_pack", "play", "outcome_pack"}:
         limit = plan.get("workflows_limit")
         if limit is not None:
             # Soft-deactivate archives workflow_defs on uninstall (STA-309); archived
@@ -759,6 +760,104 @@ def _install_workflow_entity(
         "entityId": workflow_id,
         "workflowId": workflow_id,
         "agentIds": agent_id_list,
+    }
+
+
+def _install_play_asset(
+    client: Any,
+    org_id: str,
+    asset: dict[str, Any],
+    config: PlayAssetConfig,
+    *,
+    actor_id: str,
+    environment_name: str,
+    connector_ids: dict[str, str | None],
+) -> dict[str, Any]:
+    """Install a Marketplace Play onto Gravitre's canonical workflow + Play runtime.
+
+    The Marketplace never becomes an execution engine. The Play's steps are
+    materialized as a normal workflow, then bound into the existing Play runtime.
+    Install starts in OBSERVE mode so action authority is earned separately.
+    """
+    from app.plays.catalog import get_platform_play
+    from app.plays.workflow_bindings import bind_play_to_workflow
+
+    platform_play = get_platform_play(config.key)
+    if platform_play is None:
+        raise MarketplaceError(
+            f"Marketplace Play {config.key!r} is not registered in the canonical Play catalog",
+            code="PLAY_NOT_REGISTERED",
+            details={"playKey": config.key, "executionAuthority": "canonical_workflow_runtime"},
+        )
+
+    workflow_result = _install_workflow_entity(
+        client,
+        org_id,
+        asset,
+        WorkflowAssetConfig(
+            schema_version=SCHEMA_VERSION,
+            name=config.name,
+            description=config.description,
+            steps=config.workflow_steps,
+        ),
+        actor_id=actor_id,
+        environment_name=environment_name,
+        connector_ids=connector_ids,
+        workflow_label=f"play:{config.key}",
+    )
+    workflow_id = str(workflow_result["workflowId"])
+    binding = bind_play_to_workflow(
+        client,
+        org_id,
+        play_key=config.key,
+        workflow_id=workflow_id,
+        actor_id=actor_id,
+        environment_name=environment_name,
+    )
+
+    installation_payload = {
+        "org_id": org_id,
+        "play_key": platform_play.key,
+        "play_version": platform_play.version,
+        "environment_name": environment_name,
+        "operating_mode": "OBSERVE",
+        "status": "ready",
+        "configuration": {
+            "marketplaceAssetId": str(asset["id"]),
+            "marketplaceSlug": asset.get("slug"),
+            "trigger": config.trigger,
+            "outcomeEvents": config.outcome_events,
+            "kpiKeys": config.kpi_keys,
+            "approvals": config.approvals,
+            "verification": config.verification,
+            "executionAuthority": "canonical_workflow_runtime",
+        },
+        "created_by": actor_id,
+        "updated_at": _now(),
+    }
+    installation = (
+        client.table("play_installations")
+        .upsert(
+            installation_payload,
+            on_conflict="org_id,environment_name,play_key",
+        )
+        .execute()
+    )
+    rows = installation.data or []
+    installation_id = str(rows[0].get("id")) if rows else ""
+
+    return {
+        "entityType": "play",
+        "entityId": installation_id or workflow_id,
+        "playKey": platform_play.key,
+        "playVersion": platform_play.version,
+        "playInstallationId": installation_id or None,
+        "workflowId": workflow_id,
+        "workflowIds": [workflow_id],
+        "workflowBinding": binding,
+        "operatingMode": "OBSERVE",
+        "executionAuthority": "canonical_workflow_runtime",
+        "agentIds": workflow_result.get("agentIds") or [],
     }
 
 
@@ -1543,6 +1642,16 @@ def install_asset(
             asset,
             parsed,  # type: ignore[arg-type]
             environment_name=environment_name,
+        )
+    elif asset_type == "play":
+        installed = _install_play_asset(
+            client,
+            org_id,
+            asset,
+            parsed,  # type: ignore[arg-type]
+            actor_id=actor_id,
+            environment_name=environment_name,
+            connector_ids=connector_ids,
         )
     elif asset_type == "department_pack":
         installed = _install_department_pack(
