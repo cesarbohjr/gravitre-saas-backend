@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.marketplace.marketplace3.certification import certify_outcome_pack
+from app.marketplace.marketplace3.certification_runner import fixture_checks
+from app.marketplace.schemas import OutcomePackAssetConfig
 from app.marketplace.seed_catalog import CatalogAsset, list_catalog_assets
 
 
@@ -43,8 +46,25 @@ def audit_catalog_packs() -> dict[str, Any]:
         if asset.asset_type not in {"department_pack", "outcome_pack", "knowledge_pack", "capability_package", "intelligence_pack"}:
             continue
         if asset.asset_type == "outcome_pack":
-            play_count = len((asset.config or {}).get("plays") or [])
-            gaps = [] if play_count >= 6 else ["fewer than six Plays"]
+            config = OutcomePackAssetConfig.model_validate(asset.config or {})
+            checks = fixture_checks(config)
+            failed_checks = [check for check in checks if not check.passed]
+            certification = certify_outcome_pack(config)
+            gaps = [
+                f"fixture check failed: {check.key}"
+                for check in failed_checks
+            ]
+            gaps.extend(
+                finding.message
+                for finding in certification.findings
+                if finding.blocking
+            )
+            if (
+                not failed_checks
+                and certification.level == "governed"
+                and not certification.publish_ready
+            ):
+                gaps.append("live production runtime evidence required")
             rows.append(
                 {
                     "slug": asset.slug,
@@ -52,7 +72,14 @@ def audit_catalog_packs() -> dict[str, Any]:
                     "assetType": asset.asset_type,
                     "status": asset.status,
                     "visibility": asset.visibility,
-                    "playCount": play_count,
+                    "playCount": len(config.plays),
+                    "agentCount": len(config.agents),
+                    "kpiCount": len(config.outcome_contract.kpis),
+                    "knowledgeCount": len(config.knowledge),
+                    "runtimeProfileCount": len(config.runtime_profiles),
+                    "fixturePassed": not failed_checks,
+                    "certificationLevel": certification.level,
+                    "publishReady": certification.publish_ready,
                     "marketplace3": True,
                     "gaps": gaps,
                     "replacement": None,
