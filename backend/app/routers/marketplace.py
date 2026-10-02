@@ -135,6 +135,7 @@ from app.marketplace.marketplace3.certification_runner import (
     run_outcome_pack_certification_runner,
 )
 from app.marketplace.marketplace3.pack_audit import audit_catalog_packs
+from app.marketplace.marketplace3.portfolio_readiness import portfolio_readiness_report
 from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
 from app.marketplace.entitlements import (
     AUDIT_CHECKOUT_CREATED,
@@ -1576,6 +1577,15 @@ async def platform_marketplace3_pack_audit(
     """Read-only audit of seeded Marketplace packs against the 3.0 Outcome Pack bar."""
     del user
     return audit_catalog_packs()
+
+
+@router.get("/platform/marketplace3/portfolio-readiness")
+async def platform_marketplace3_portfolio_readiness(
+    user: Annotated[dict, Depends(require_platform_admin)],
+) -> dict:
+    """Quantified readiness for every first-party Marketplace 3.0 Outcome Pack."""
+    del user
+    return portfolio_readiness_report()
 
 
 @router.post("/platform/assets/{asset_ref}/marketplace3/promote")
