@@ -94,7 +94,7 @@ consistency, canonical action readiness, explicit parameter bindings, duplicate
 Play keys, partial-source discovery, and the existing Marketplace installation
 and certification tests. This change does not modify customer-facing chart code.
 
-Validation on this change: 703 Marketplace, route, signature Play, and Play
+Validation on this change: 704 Marketplace, route, signature Play, and Play
 readiness tests pass. The installer tests exercise workflow binding validation
 and runtime declaration persistence without replacing the workflow installer.
 
@@ -117,3 +117,7 @@ so stale or removed proof cannot bypass the gate. Runner diagnostics continue
 to report fixture checks separately from live proof.
 
 The source catalog remains governed/internal/draft until those live gates pass.
+
+Draft seed versions now receive the timestamp required by the production schema,
+while parent draft assets retain a null publication timestamp. This closes the
+normal catalog refresh failure observed during rollout.
