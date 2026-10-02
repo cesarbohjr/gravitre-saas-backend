@@ -27,6 +27,34 @@ _DATA_PATH = Path(__file__).resolve().parent / "data" / "action_retrieval_enrich
 
 # Historical 18-action pilot (G.5 Phase 4.2) — fallback / seed only.
 ACTION_RETRIEVAL_ENRICHMENT: dict[str, dict[str, Any]] = {
+    "freshservice.tickets.list": {
+        "examples": [
+            "List open Freshservice tickets for the service desk",
+            "Show recent Freshservice tickets that need technician attention",
+        ],
+        "tags": ["freshservice", "tickets", "service-desk", "itsm", "list", "support"],
+    },
+    "freshservice.tickets.get": {
+        "examples": [
+            "Get Freshservice ticket 42",
+            "Show the current details and status for this Freshservice ticket",
+        ],
+        "tags": ["freshservice", "tickets", "service-desk", "itsm", "get", "support"],
+    },
+    "freshservice.tickets.activities": {
+        "examples": [
+            "Show the activity history for this Freshservice ticket",
+            "Get recent Freshservice ticket events and updates",
+        ],
+        "tags": ["freshservice", "tickets", "activities", "history", "service-desk", "itsm"],
+    },
+    "freshservice.tickets.update_status": {
+        "examples": [
+            "Update this Freshservice ticket status after I approve it",
+            "Move Freshservice ticket 42 to the requested status",
+        ],
+        "tags": ["freshservice", "tickets", "status", "update", "service-desk", "itsm"],
+    },
     "github.issues.list": {
         "examples": [
             "search GitHub issues mentioning billing",
