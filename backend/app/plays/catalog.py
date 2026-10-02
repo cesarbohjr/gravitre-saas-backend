@@ -61,10 +61,91 @@ MARKETING_PERFORMANCE = PlayDefinition(
 )
 
 
+CLIENT_RISK_RADAR = PlayDefinition(
+    key="client-risk-radar",
+    name="Client Risk Radar",
+    version="1",
+    objective="Combine service, commercial, finance, and security signals to identify accounts that need intervention before churn or escalation.",
+    required_signals=("prediction_generated",),
+    required_connector_groups=(
+        ("hubspot", "salesforce"),
+        ("zendesk", "intercom", "freshdesk", "front", "freshservice"),
+    ),
+    optional_connectors=("quickbooks", "stripe", "huntress", "sentinelone", "crowdstrike"),
+    outcome_metrics=("customer_health", "revenue_at_risk", "sla_compliance"),
+)
+
+
+REVENUE_LEAK_HUNTER = PlayDefinition(
+    key="revenue-leak-hunter",
+    name="Revenue Leak Hunter",
+    version="1",
+    objective="Find recoverable revenue hidden in overdue invoices, stalled opportunities, renewals, billing exceptions, and operational gaps.",
+    required_connector_groups=(
+        ("stripe", "quickbooks", "xero", "sage_intacct"),
+        ("hubspot", "salesforce"),
+    ),
+    optional_connectors=("chargebee", "recurly", "pax8"),
+    outcome_metrics=("revenue_recovered", "revenue_at_risk", "dso"),
+)
+
+
+PROCESS_DRIFT_DETECTOR = PlayDefinition(
+    key="process-drift-detector",
+    name="Process Drift Detector",
+    version="1",
+    objective="Detect repeated departures from SOPs, SLAs, approval policy, and expected workflow behavior before they become systemic failures.",
+    required_signals=("workflow_completed",),
+    optional_connectors=("slack", "microsoft_teams", "jira", "servicenow", "freshservice"),
+    outcome_metrics=("policy_compliance", "exception_rate", "sla_compliance"),
+)
+
+
+KNOWLEDGE_GAP_MINER = PlayDefinition(
+    key="knowledge-gap-miner",
+    name="Knowledge Gap Miner",
+    version="1",
+    objective="Turn repeated questions, failed retrievals, escalations, and unresolved cases into prioritized knowledge and SOP improvement opportunities.",
+    required_signals=("workflow_failed",),
+    optional_connectors=("zendesk", "intercom", "freshdesk", "front", "slack", "microsoft_teams"),
+    outcome_metrics=("knowledge_gap_rate", "escalation_rate", "repeat_issue_rate"),
+)
+
+
+EXECUTIVE_MORNING_COMMAND_BRIEF = PlayDefinition(
+    key="executive-morning-command-brief",
+    name="Executive Morning Command Brief",
+    version="1",
+    objective="Produce a concise cross-department operating brief covering material changes, risks, actions already completed, approvals required, and emerging opportunities.",
+    optional_connectors=(
+        "hubspot", "salesforce", "quickbooks", "xero", "zendesk", "freshservice",
+        "slack", "microsoft_teams", "google_analytics", "google_ads",
+    ),
+    outcome_metrics=("revenue_at_risk", "cash_risk", "sla_compliance", "automation_rate"),
+)
+
+
+AUTONOMOUS_EXCEPTION_MANAGER = PlayDefinition(
+    key="autonomous-exception-manager",
+    name="Autonomous Exception Manager",
+    version="1",
+    objective="Detect failed or ambiguous workflow states, investigate the exception, attempt policy-safe recovery, verify the result, and escalate only when required.",
+    required_signals=("workflow_failed",),
+    optional_connectors=("slack", "microsoft_teams", "jira", "servicenow"),
+    outcome_metrics=("exception_resolution_time", "auto_recovery_rate", "human_escalation_rate"),
+)
+
+
 PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     CUSTOMER_RESCUE,
     REVENUE_RECOVERY,
     MARKETING_PERFORMANCE,
+    CLIENT_RISK_RADAR,
+    REVENUE_LEAK_HUNTER,
+    PROCESS_DRIFT_DETECTOR,
+    KNOWLEDGE_GAP_MINER,
+    EXECUTIVE_MORNING_COMMAND_BRIEF,
+    AUTONOMOUS_EXCEPTION_MANAGER,
 )
 
 
