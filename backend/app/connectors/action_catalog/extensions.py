@@ -36,16 +36,6 @@ _FRESHSERVICE = build_vendor(
             api_reference="GET /api/v2/tickets/{ticket_id}",
             idempotent=True,
         ),
-        action(
-            "freshservice",
-            "tickets.activities",
-            "Get ticket activities",
-            tier="v1",
-            kind="read",
-            scope_suffix="tickets:read",
-            api_reference="GET /api/v2/tickets/{ticket_id}/activities",
-            idempotent=True,
-        ),
     ),
     v2=(
         action(
@@ -69,7 +59,18 @@ _FRESHSERVICE = build_vendor(
             },
         ),
     ),
-    v3=(),
+    v3=(
+        action(
+            "freshservice",
+            "tickets.activities",
+            "Get ticket activities",
+            tier="v3",
+            kind="advanced",
+            scope_suffix="tickets:read",
+            api_reference="GET /api/v2/tickets/{ticket_id}/activities",
+            idempotent=True,
+        ),
+    ),
 )
 
 # Append org-specific or partner vendors here, or load from DB/MCP in a future release.
