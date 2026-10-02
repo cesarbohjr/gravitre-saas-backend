@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -130,3 +131,15 @@ def test_record_runtime_evidence_is_immutable_and_returns_certification(mock_rep
     assert payload["evidence_kind"] == "runtime"
     assert payload["verified_actions"] == sorted(profile.actions)
     assert result["certification"]["level"] == "production_verified"
+
+
+
+def test_certification_evidence_migration_keeps_raw_evidence_backend_only() -> None:
+    migration = (
+        Path(__file__).resolve().parents[3]
+        / "supabase/migrations/20261002160000_marketplace3_certification_evidence.sql"
+    )
+    sql = migration.read_text(encoding="utf-8")
+    assert "alter table public.marketplace_certification_evidence enable row level security" in sql.lower()
+    assert "create policy" not in sql.lower()
+    assert "unique (asset_id, asset_version, evidence_ref)" in sql.lower()
