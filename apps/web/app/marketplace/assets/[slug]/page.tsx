@@ -7,6 +7,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
+import { MarketplaceOutcomeSummary } from "@/components/marketplace/marketplace-outcome-summary"
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import {
   ConnectorChecklist,
@@ -193,34 +194,55 @@ function MarketplaceAssetDetailContent() {
                   </p>
                 ) : null}
               </div>
-              {asset.description ? (
-                <p className="text-sm text-muted-foreground text-pretty">{asset.description}</p>
-              ) : null}
-              {asset.businessOutcome || asset.useCase || asset.estimatedHoursSaved != null ? (
-                <div className="rounded-lg border bg-muted/20 p-4 text-sm">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">
-                    Outcome
-                  </p>
-                  {asset.businessOutcome ? (
-                    <p className="text-foreground">{asset.businessOutcome}</p>
-                  ) : null}
-                  <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+
+              <div className="rounded-xl border bg-muted/20 p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Business impact
+                </p>
+                <MarketplaceOutcomeSummary asset={asset} />
+                {asset.useCase || asset.estimatedHoursSaved != null ? (
+                  <dl className="mt-4 grid gap-3 border-t pt-3 sm:grid-cols-2">
                     {asset.useCase ? (
                       <div>
                         <dt className="text-xs text-muted-foreground">Use case</dt>
-                        <dd>{asset.useCase}</dd>
+                        <dd className="mt-0.5 text-sm text-foreground">{asset.useCase}</dd>
                       </div>
                     ) : null}
                     {asset.estimatedHoursSaved != null ? (
                       <div>
                         <dt className="text-xs text-muted-foreground">{ESTIMATED_HOURS_SAVED_MONTHLY}</dt>
-                        <dd>{asset.estimatedHoursSaved}h</dd>
+                        <dd className="mt-0.5 text-sm font-medium text-foreground">{asset.estimatedHoursSaved}h</dd>
                       </div>
                     ) : null}
                   </dl>
+                ) : null}
+              </div>
+
+              {asset.description ? (
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">What it does</p>
+                  <p className="text-sm text-muted-foreground text-pretty">{asset.description}</p>
                 </div>
               ) : null}
             </header>
+
+            <div className="rounded-xl border bg-muted/10 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Install readiness</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {asset.installed
+                      ? "Installed in this workspace"
+                      : asset.installReady ?? asset.canInstall
+                        ? "Ready to install"
+                        : "Setup required before install"}
+                  </p>
+                </div>
+                <Badge variant={asset.installReady ?? asset.canInstall ? "secondary" : "outline"}>
+                  {asset.requiredConnectorsConnected}/{asset.requiredConnectorsTotal} required apps connected
+                </Badge>
+              </div>
+            </div>
 
             {asset.blockers?.length ? <BlockerList blockers={asset.blockers} /> : null}
 
