@@ -238,6 +238,7 @@ def run_outcome_pack_certification(
     asset_ref: str,
     actor_id: str,
     mode: CertificationRunMode = "fixture",
+    permission_probe: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run system-owned certification checks and persist their evidence.
 
@@ -259,6 +260,9 @@ def run_outcome_pack_certification(
         )
         evidence["fixture_checks_passed"] = fixture_passed
         evidence["fixture_checks"] = [check.as_dict() for check in checks]
+        if permission_probe is not None:
+            evidence["permission_probe"] = permission_probe
+            evidence["permissions_passed"] = permission_probe.get("passed") is True
     else:
         evidence = {
             "runner_mode": "fixture",
