@@ -2101,6 +2101,20 @@ export interface MarketplaceAssetSummary {
   federated?: boolean
   registryId?: string
   vendor?: string
+  certificationLevel?: "compatible" | "tested" | "governed" | "production_verified" | "outcome_verified" | string
+  certificationPublishReady?: boolean
+  certificationFindings?: Array<{
+    code: string
+    message: string
+    blocking: boolean
+    metadata?: Record<string, unknown>
+  }>
+  playCount?: number
+  kpiKeys?: string[]
+  outcomeEvents?: string[]
+  runtimeProviders?: string[]
+  verificationRequired?: boolean
+  outcomeTarget?: string | null
 }
 
 export interface MarketplaceAssetsListResponse {
