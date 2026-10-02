@@ -1,7 +1,8 @@
-"""Marketplace 3.0 flagship blueprint: MSP Service Desk.
+"""Marketplace 3.0 flagship: MSP Service Desk.
 
-This blueprint is intentionally not seeded into the public Marketplace yet.
-It must pass Marketplace 3.0 certification before publication.
+The public v1 bundle is certified against the Freshservice runtime profile.
+Additional MSP providers must earn the same action, governance, and verification
+coverage before they are represented as runtime-equivalent.
 """
 from __future__ import annotations
 
@@ -561,8 +562,8 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 for row in kpis
             ],
         },
-        # Do not claim unresolved skill packages as installed ingredients.
-        # Certification resolves these capability requirements to reviewed package IDs.
+        # First-party guidance skills are distributed as one reviewed, Git-pinned
+        # capability package. Execution authority remains in Gravitre's runtime.
         "skills": ["msp-service-desk-skills-v1"],
         "skill_requirements": [
             "ticket-triage",
