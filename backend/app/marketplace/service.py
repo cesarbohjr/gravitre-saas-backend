@@ -1029,8 +1029,9 @@ def _install_outcome_pack(
         except Exception as exc:  # noqa: BLE001
             failures.append({"component": "play", "key": play_cfg.key, "error": str(exc)})
 
-    # A Marketplace 3.0 Outcome Pack is not considered successfully installed
-    # if any required Play or agent failed to materialize.
+    # Marketplace 3.0 stays fail-closed: a partial bundle is not a
+    # successful Outcome Pack install. Every required Play and agent must
+    # materialize before the Marketplace install record can be written.
     if failures:
         raise MarketplaceError(
             "Outcome Pack installation could not materialize every required component",
