@@ -217,6 +217,31 @@ def certify_outcome_pack(
         for finding in findings
     )
 
+    evidence = outcome_evidence if isinstance(outcome_evidence, dict) else {}
+
+    production_evidence_checks = {
+        "fresh_install_passed": "Fresh-org installation has not been proven.",
+        "golden_path_passed": "Golden-path execution has not been proven.",
+        "failure_path_passed": "Failure-path handling has not been proven.",
+        "permissions_passed": "Permission and tenant-isolation behavior has not been proven.",
+        "kpi_reconciliation_passed": "Dashboard KPI reconciliation has not been proven.",
+        "source_of_record_verification_passed": (
+            "Source-of-record verification for consequential writes has not been proven."
+        ),
+    }
+    missing_production_evidence = [
+        key for key in production_evidence_checks
+        if evidence.get(key) is not True
+    ]
+    for key in missing_production_evidence:
+        findings.append(
+            CertificationFinding(
+                "PRODUCTION_EVIDENCE_MISSING",
+                production_evidence_checks[key],
+                metadata={"evidenceKey": key},
+            )
+        )
+
     level = "compatible"
     if schema_runtime_ok and runtime_statuses and runtime_statuses <= {"tested", "production_verified"}:
         level = "tested"
@@ -227,11 +252,10 @@ def certify_outcome_pack(
         and bool(config.runtime_profiles)
         and all(profile.status == "production_verified" for profile in config.runtime_profiles)
         and not unresolved_skills
+        and not missing_production_evidence
     )
     if production_ok:
         level = "production_verified"
-
-    evidence = outcome_evidence if isinstance(outcome_evidence, dict) else {}
     observed_events = {
         str(value)
         for value in (evidence.get("verified_outcome_events") or [])
