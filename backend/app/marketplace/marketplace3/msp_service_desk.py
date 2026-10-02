@@ -552,7 +552,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             }
         ],
         "connector_alternatives": [
-            ["freshservice"],
+            ["freshservice", "zendesk", "halo_psa", "autotask", "syncro", "servicenow"],
             ["microsoft_intune", "jumpcloud", "jamf_pro"],
             ["huntress", "sentinelone", "crowdstrike", "connectsecure"],
             ["microsoft_365", "slack", "microsoft_teams"],
