@@ -346,3 +346,152 @@ def test_install_marketplace_play_uses_canonical_play_runtime(mock_plan, mock_ve
     payload = play_installations.upsert.call_args.args[0]
     assert payload["operating_mode"] == "OBSERVE"
     assert payload["configuration"]["outcomeEvents"] == ["client_risk_detected"]
+
+
+@patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})
+def test_install_outcome_pack_materializes_all_required_components(mock_plan):
+    play_keys = [
+        "intelligent-ticket-intake",
+        "resolution-copilot",
+        "sla-rescue",
+        "stale-ticket-recovery",
+        "recurring-problem-hunter",
+        "client-communication-manager",
+    ]
+    asset = {
+        "id": ASSET_ID,
+        "slug": "msp-service-desk-3",
+        "title": "MSP Service Desk 3.0",
+        "asset_type": "outcome_pack",
+        "status": "published",
+        "visibility": "public",
+        "current_version": 1,
+        "install_count": 0,
+        "required_connectors": [],
+        "install_variables": [],
+        "config": {
+            "marketplace_version": "3.0",
+            "outcome_contract": {
+                "problem": "Service desks lose time to manual triage and stalled work.",
+                "target_outcome": "Reduce response and resolution time while improving SLA performance.",
+                "success_criteria": ["All required Plays install and emit measurable outcomes."],
+                "outcome_events": ["service_desk_outcome_verified"],
+                "kpis": [
+                    {"key": "mtta", "label": "MTTA", "unit": "minutes", "direction": "decrease"},
+                    {"key": "mttr", "label": "MTTR", "unit": "minutes", "direction": "decrease"},
+                    {"key": "sla_compliance", "label": "SLA compliance", "unit": "percent", "direction": "increase"},
+                ],
+                "verification_required": True,
+            },
+            "agents": [
+                {
+                    "name": "Service Desk Coordinator",
+                    "purpose": "Coordinates service desk operating work.",
+                    "seed_label": "agent:service-desk-coordinator",
+                }
+            ],
+            "plays": [
+                {
+                    "key": key,
+                    "name": key.replace("-", " ").title(),
+                    "description": "Execute a measurable service desk operating outcome.",
+                    "trigger": {"type": "manual"},
+                    "workflow_steps": [
+                        {
+                            "id": f"{key}-step",
+                            "name": "Analyze",
+                            "type": "agent",
+                            "metadata": {
+                                "agent_seed": "agent:service-desk-coordinator",
+                                "task": "Analyze the service desk signal.",
+                            },
+                        }
+                    ],
+                    "outcome_events": [f"{key}_completed"],
+                    "kpi_keys": ["mtta"],
+                    "verification": {"mode": "source_of_record"},
+                }
+                for key in play_keys
+            ],
+            "knowledge": [],
+            "dataset": {
+                "entities": [
+                    {
+                        "name": "tickets",
+                        "source": "psa",
+                        "primary_key": "id",
+                        "fields": ["id", "status", "priority"],
+                    }
+                ],
+                "metrics": [
+                    {"key": "mtta", "label": "MTTA", "formula": "avg(first_response_at-created_at)", "unit": "minutes"}
+                ],
+            },
+            "dashboard": {
+                "title": "Service Desk Outcomes",
+                "metrics": [
+                    {"kpi_key": "mtta", "label": "MTTA", "visualization": "trend"},
+                    {"kpi_key": "mttr", "label": "MTTR", "visualization": "trend"},
+                    {"kpi_key": "sla_compliance", "label": "SLA compliance", "visualization": "progress"},
+                ],
+                "refresh_mode": "event",
+            },
+            "skills": ["ticket-triage"],
+        },
+    }
+    assets = _table([asset])
+    installs = _table([])
+    dataset_installs = _table()
+    dashboard_installs = _table()
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_assets":
+            return assets
+        if name == "marketplace_installs":
+            return installs
+        if name == "marketplace_dataset_pack_installations":
+            return dataset_installs
+        if name == "marketplace_dashboard_pack_installations":
+            return dashboard_installs
+        return _table()
+
+    client.table.side_effect = table
+
+    play_results = [
+        {
+            "entityType": "play",
+            "entityId": f"play-inst-{idx}",
+            "playKey": key,
+            "playVersion": "1",
+            "playInstallationId": f"play-inst-{idx}",
+            "workflowId": f"wf-{idx}",
+            "workflowIds": [f"wf-{idx}"],
+            "operatingMode": "OBSERVE",
+            "executionAuthority": "canonical_workflow_runtime",
+        }
+        for idx, key in enumerate(play_keys)
+    ]
+
+    with patch("app.marketplace.service.write_audit_event"), patch(
+        "app.marketplace.service._notify_asset_installed"
+    ), patch(
+        "app.marketplace.service._install_ai_agent",
+        return_value={"entityType": "operator", "entityId": "agent-1", "operatorId": "agent-1"},
+    ), patch(
+        "app.marketplace.service._install_play_asset",
+        side_effect=play_results,
+    ) as install_play:
+        result = install_asset(client, "org-1", ASSET_ID, actor_id="user-1")
+
+    assert result["installed"] is True
+    assert result["entities"]["entityType"] == "outcome_pack"
+    assert result["entities"]["marketplaceVersion"] == "3.0"
+    assert len(result["entities"]["plays"]) == 6
+    assert len(result["entities"]["workflowIds"]) == 6
+    assert result["entities"]["datasetPackId"]
+    assert result["entities"]["dashboardPackId"]
+    assert result["entities"]["executionAuthority"] == "canonical_workflow_runtime"
+    assert install_play.call_count == 6
+    dataset_installs.upsert.assert_called_once()
+    dashboard_installs.upsert.assert_called_once()
