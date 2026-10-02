@@ -318,7 +318,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 "role": "Service Desk Coordinator",
                 "department": "MSP Service Desk",
                 "capabilities": ["triage", "routing", "sla-management", "client-communication"],
-                "systems": ["zendesk", "freshservice", "servicenow", "halopsa", "autotask", "connectwise", "syncro"],
+                "systems": ["zendesk", "freshservice", "servicenow", "halo_psa", "autotask", "connectwise", "syncro"],
             },
             {
                 "seed_label": "agent:msp-resolution-engineer",
@@ -327,7 +327,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 "role": "Technical Resolution",
                 "department": "MSP Service Desk",
                 "capabilities": ["diagnosis", "remediation-planning", "runbook-retrieval"],
-                "systems": ["intune", "jumpcloud", "jamf_pro", "huntress", "sentinelone", "crowdstrike"],
+                "systems": ["microsoft_intune", "jumpcloud", "jamf_pro", "huntress", "sentinelone", "crowdstrike"],
             },
             {
                 "seed_label": "agent:msp-service-analyst",
@@ -336,7 +336,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 "role": "Service Operations Analyst",
                 "department": "MSP Service Desk",
                 "capabilities": ["trend-analysis", "problem-management", "knowledge-gap-analysis", "kpi-review"],
-                "systems": ["zendesk", "freshservice", "servicenow", "halopsa", "autotask", "connectwise", "syncro"],
+                "systems": ["zendesk", "freshservice", "servicenow", "halo_psa", "autotask", "connectwise", "syncro"],
             },
         ],
         "plays": plays,
@@ -425,8 +425,8 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             "service-operations-analysis",
         ],
         "connector_alternatives": [
-            ["halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"],
-            ["intune", "jumpcloud", "jamf_pro"],
+            ["halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"],
+            ["microsoft_intune", "jumpcloud", "jamf_pro"],
             ["huntress", "sentinelone", "crowdstrike", "connectsecure"],
             ["microsoft_365", "slack", "microsoft_teams"],
         ],
