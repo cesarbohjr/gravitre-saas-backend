@@ -333,7 +333,7 @@ def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
     }
 
 
-def _skill_package_config(slug: str) -> dict[str, Any]:
+def build_department_skill_package_config(slug: str) -> dict[str, Any]:
     spec = SKILL_PACKS[slug]
     manifest = {
         "schema": "gravitre.capability.v1",
@@ -376,6 +376,12 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
 
     assets: list[Any] = []
     for slug, spec in PACK_SPECS.items():
+        if slug == "security-operations-3":
+            from app.marketplace.marketplace3.security_operations import (
+                security_operations_marketplace3_assets,
+            )
+            assets.extend(security_operations_marketplace3_assets())
+            continue
         config = build_department_outcome_pack_config(slug)
         connector_defs = [
             {
@@ -435,7 +441,7 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
             visibility="internal",
             status="draft",
             tags=["marketplace-3","skills",slug],
-            config=_skill_package_config(skill_slug),
+            config=build_department_skill_package_config(skill_slug),
         )
         knowledge = CatalogAsset(
             slug=f"{slug}-knowledge", title=f"{spec['title']} Knowledge",
