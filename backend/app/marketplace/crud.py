@@ -27,6 +27,10 @@ _ASSET_TYPES = frozenset({
     "department_pack",
     "connector_config",
     "capability_package",
+    "play",
+    "dataset_pack",
+    "dashboard_pack",
+    "outcome_pack",
 })
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
