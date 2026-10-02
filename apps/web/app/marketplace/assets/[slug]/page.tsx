@@ -220,6 +220,17 @@ function MarketplaceAssetDetailContent() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
                   {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
+                  {asset.marketplace3Certification ? (
+                    <Badge
+                      variant={asset.marketplace3Certification.level === "outcome_verified" ? "secondary" : "outline"}
+                    >
+                      {asset.marketplace3Certification.level === "outcome_verified"
+                        ? "Outcome Verified"
+                        : asset.marketplace3Certification.level === "production_verified"
+                          ? "Production Verified"
+                          : asset.marketplace3Certification.level.replace(/_/g, " ")}
+                    </Badge>
+                  ) : null}
                   <AssetTrustBadges asset={asset} />
                 </div>
                 <h1 className="mt-3 text-2xl font-semibold text-foreground">{asset.title}</h1>
@@ -323,6 +334,21 @@ function MarketplaceAssetDetailContent() {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  ) : null}
+                  {asset.marketplace3Certification ? (
+                    <div className="mt-4 rounded-lg border bg-background/70 p-3">
+                      <p className="text-xs font-medium text-foreground">Certification evidence</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {asset.marketplace3Certification.level === "outcome_verified"
+                          ? "Measured, source-backed Play outcomes exist for this organization."
+                          : asset.marketplace3Certification.level === "production_verified"
+                            ? "Runtime, governance, verification, and skill dependencies pass. Outcome Verified is earned only after a measured verified result."
+                            : "This pack has not yet reached Production Verified."}
+                      </p>
+                      <p className="mt-2 text-[11px] text-muted-foreground">
+                        {asset.marketplace3Certification.playCount} Plays · {asset.marketplace3Certification.runtimeActions.length} runtime actions · {asset.marketplace3Certification.verifiedSkills.length} reviewed skill bindings
+                      </p>
                     </div>
                   ) : null}
                   {outcomePack.runtimeProviders.length ? (
