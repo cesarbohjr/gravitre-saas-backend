@@ -250,7 +250,7 @@ def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
         })
 
     profiles = [
-        {"provider": provider, "status": "production_verified", "actions": actions}
+        {"provider": provider, "status": "tested", "actions": actions}
         for provider, actions in spec["profiles"].items()
     ]
     agents = [
@@ -292,7 +292,7 @@ def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
             "baseline_metric": spec["kpis"][0][0],
             "success_criteria": [
                 "All included Plays install into Gravitre's canonical Play/workflow runtime.",
-                "Every Play reads only registered source-of-record actions in the production-verified v1 profile.",
+                "Every Play reads only registered source-of-record actions in its declared tested runtime profile; Production Verified is earned only from evidence-linked live production proof.",
                 "Every declared KPI is represented in the installed dashboard and normalized dataset.",
                 "At least one declared outcome event must be measured before Outcome Verified status is earned.",
             ],
@@ -424,10 +424,11 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
         outcome = CatalogAsset(
             slug=slug, title=spec["title"], description=spec["target"],
             asset_type="outcome_pack", category="outcome_pack", department=spec["department"],
-            tags=["marketplace-3","outcome-pack",slug,"production-verified"],
+            tags=["marketplace-3","outcome-pack",slug,"governed","tested"],
             config=config, required_connectors=connector_defs, pack_children=child_slugs,
             business_outcome=spec["target"], use_case=spec["department"], pricing_type="paid",
             price_cents=14900, pack_tier=3, estimated_hours_saved=24.0,
+            visibility="internal", status="draft",
         )
         assets.extend(agent_assets + play_assets + [skill_asset, knowledge, dataset, dashboard, outcome])
     return assets
