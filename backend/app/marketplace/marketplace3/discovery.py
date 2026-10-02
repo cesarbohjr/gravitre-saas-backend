@@ -51,7 +51,7 @@ def outcome_pack_discovery_metadata(
             }
             - {""}
         )
-        supported_by_connection = (not vendors) or any(vendor in connected for vendor in vendors)
+        supported_by_connection = all(vendor in connected for vendor in vendors)
         if supported_by_connection:
             play_ready += 1
         play_rows.append(
@@ -61,6 +61,8 @@ def outcome_pack_discovery_metadata(
                 "outcomeEvents": list(play.outcome_events),
                 "kpiKeys": list(play.kpi_keys),
                 "systems": vendors,
+                "missingSystems": sorted(set(vendors) - connected),
+                "runtimeInputs": list(play.runtime_inputs),
                 "supportedByConnectedSystems": supported_by_connection,
             }
         )
