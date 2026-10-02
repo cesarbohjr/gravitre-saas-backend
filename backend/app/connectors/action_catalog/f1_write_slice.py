@@ -31,6 +31,7 @@ NON_AUTO_APPROVE_RISK_CLASSES: frozenset[str] = frozenset(
         "security",
         "crm_create",
         "browser_interact",
+        "service_desk_state_change",
     }
 )
 
