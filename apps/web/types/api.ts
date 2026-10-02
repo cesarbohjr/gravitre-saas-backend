@@ -2222,11 +2222,29 @@ export interface MarketplacePackItem {
   child: MarketplacePackItemChild
 }
 
+export interface Marketplace3CertificationFinding {
+  code: string
+  message: string
+  blocking: boolean
+  metadata?: Record<string, unknown>
+}
+
+export interface Marketplace3Certification {
+  level: "compatible" | "tested" | "governed" | "production_verified" | "outcome_verified"
+  publishReady: boolean
+  playCount: number
+  runtimeActions: string[]
+  verifiedSkills: string[]
+  unresolvedSkillRequirements: string[]
+  findings: Marketplace3CertificationFinding[]
+}
+
 export interface MarketplaceAssetDetail extends MarketplaceAssetSummary {
   config?: Record<string, unknown>
   blockers?: MarketplaceInstallBlocker[]
   packItems?: MarketplacePackItem[]
   installVariables?: unknown[]
+  marketplace3Certification?: Marketplace3Certification
 }
 
 export interface MarketplaceFacetCount {
