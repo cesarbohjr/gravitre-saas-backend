@@ -53,7 +53,7 @@ function certificationLabel(asset: MarketplaceAssetDetail): string {
   if (level === "governed") return "Governed"
   if (level === "tested") return "Tested"
   if (level === "compatible") return "Compatible"
-  return asset.verified ? "Verified" : "Compatible"
+  return "Compatible"
 }
 
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
@@ -188,7 +188,7 @@ function MarketplaceAssetDetailContent() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
                   {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
-                  <AssetTrustBadges asset={asset} />
+                  <AssetTrustBadges asset={asset.assetType === "outcome_pack" ? { ...asset, verified: false } : asset} />
                 </div>
                 <h1 className="mt-3 text-2xl font-semibold text-foreground">{asset.title}</h1>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
