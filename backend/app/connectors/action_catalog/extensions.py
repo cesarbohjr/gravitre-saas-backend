@@ -125,6 +125,8 @@ _OKTA = build_vendor(
             },
         ),
     ),
+    v2=(),
+    v3=(),
 )
 
 # Append org-specific or partner vendors here, or load from DB/MCP in a future release.
