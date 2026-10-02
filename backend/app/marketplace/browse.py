@@ -447,6 +447,60 @@ def _marketplace3_certification_for_org(
         return None
 
 
+def _marketplace3_outcome_metrics_for_org(
+    client: Any,
+    org_id: str,
+    row: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if row.get("asset_type") != "outcome_pack":
+        return []
+    try:
+        from app.marketplace.schemas import OutcomePackAssetConfig
+        from app.plays.outcomes import list_play_business_results
+
+        config = OutcomePackAssetConfig.model_validate(row.get("config") or {})
+        play_keys = {play.key for play in config.plays}
+        declared = {kpi.key: kpi for kpi in config.outcome_contract.kpis}
+        latest_by_metric: dict[str, dict[str, Any]] = {}
+        for result in list_play_business_results(client, org_id, limit=200):
+            metadata = result.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                continue
+            play_key = str(metadata.get("play_key") or "")
+            metric_key = str(metadata.get("metric_key") or "")
+            if play_key not in play_keys or metric_key not in declared or metric_key in latest_by_metric:
+                continue
+            if not bool(metadata.get("verified")):
+                continue
+            source_records = metadata.get("source_records") or []
+            kpi = declared[metric_key]
+            before = result.get("before_value")
+            after = result.get("after_value")
+            delta = metadata.get("delta_value")
+            latest_by_metric[metric_key] = {
+                "key": metric_key,
+                "label": kpi.label,
+                "unit": metadata.get("unit") or kpi.unit,
+                "direction": kpi.direction,
+                "baselineValue": before,
+                "resultValue": after,
+                "deltaValue": delta,
+                "measuredAt": result.get("measured_at") or metadata.get("occurred_at"),
+                "playKey": play_key,
+                "outcomeType": metadata.get("outcome_type"),
+                "verificationMethod": metadata.get("verification_method"),
+                "sourceRecordCount": len(source_records) if isinstance(source_records, list) else 0,
+                "status": metadata.get("verification_state"),
+            }
+        return [
+            latest_by_metric[key]
+            for key in declared
+            if key in latest_by_metric
+        ]
+    except Exception:
+        return []
+
+
 def get_marketplace_asset(
     client: Any,
     org_id: str,
@@ -485,6 +539,7 @@ def get_marketplace_asset(
     certification = _marketplace3_certification_for_org(client, org_id, row)
     if certification is not None:
         detail["marketplace3Certification"] = certification
+        detail["marketplace3OutcomeMetrics"] = _marketplace3_outcome_metrics_for_org(client, org_id, row)
     return {"asset": detail}
 
 
