@@ -52,6 +52,7 @@ import {
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { getCategoryIcon } from "@/lib/marketplace-category-icons"
+import { OrganizedIntelligenceField } from "@/components/marketplace/organized-intelligence-field"
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
   { id: "ai_agent", label: "Agents", icon: Bot },
@@ -520,7 +521,7 @@ function MarketplaceAssetsContent() {
         {/* Discovery hero: identity, search, and asset type as the primary axis */}
         <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
           <div className="mx-auto max-w-[1240px]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
               <div className="max-w-2xl">
                 <p className={TYPE.eyebrow}>Marketplace / Outcomes first</p>
                 <h1 className={cn(TYPE.pageTitle, "mt-1 text-balance")}>Put Gravitre to work.</h1>
@@ -528,7 +529,9 @@ function MarketplaceAssetsContent() {
                   Start with the outcome. Gravitre assembles the intelligence underneath.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="space-y-3">
+                <OrganizedIntelligenceField className="hidden h-[190px] lg:block" />
+                <div className="flex flex-wrap items-center justify-end gap-3">
                 <AskGravitreSummonButton />
                 {isAdmin ? (
                   <Button asChild size="sm" variant="outline">
@@ -544,6 +547,7 @@ function MarketplaceAssetsContent() {
                     <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
                   </Link>
                 </Button>
+                </div>
               </div>
             </div>
 
