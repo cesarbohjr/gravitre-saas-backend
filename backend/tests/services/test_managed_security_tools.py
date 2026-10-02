@@ -7,7 +7,10 @@ import httpx
 import pytest
 
 from app.services.managed_security_tools import (
+    _okta_apps_list,
+    _okta_groups_list,
     _okta_system_logs_list,
+    _okta_user_factors_list,
     _okta_users_get,
 )
 from app.services.tool_types import ToolAuthExpiredError
@@ -90,3 +93,35 @@ def test_okta_managed_connection_requires_connection_identity(get_by_type) -> No
 
     with pytest.raises(ToolAuthExpiredError):
         _okta_users_get(_ctx(), {"user_id": "00u123"})
+
+
+@pytest.mark.parametrize(
+    ("executor", "params", "payload", "endpoint", "collection"),
+    [
+        (_okta_groups_list, {"limit": 25}, [{"id": "grp-1"}], "/api/v1/groups", "groups"),
+        (_okta_apps_list, {"limit": 25}, [{"id": "app-1"}], "/api/v1/apps", "apps"),
+        (
+            _okta_user_factors_list,
+            {"user_id": "00u123"},
+            [{"id": "factor-1", "factorType": "push"}],
+            "/api/v1/users/00u123/factors",
+            "factors",
+        ),
+    ],
+)
+@patch("app.services.managed_security_tools.enforce_rate_limit")
+@patch("app.services.managed_security_tools.proxy_request")
+@patch("app.services.managed_security_tools.get_connector_by_type")
+def test_okta_extended_security_reads_use_managed_proxy(
+    get_by_type, proxy, _rate, executor, params, payload, endpoint, collection
+) -> None:
+    get_by_type.return_value = _connector()
+    proxy.return_value = _response(payload)
+
+    result = executor(_ctx(), params)
+
+    assert result.success is True
+    assert result.data["count"] == 1
+    assert result.data[collection][0]["id"] == payload[0]["id"]
+    assert proxy.call_args.kwargs["method"] == "GET"
+    assert proxy.call_args.kwargs["endpoint"] == endpoint
