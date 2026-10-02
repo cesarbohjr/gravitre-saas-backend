@@ -189,3 +189,22 @@ def test_marketplace3_outcome_read_model_is_evidence_conservative():
         finding["code"] != "PRODUCTION_EVIDENCE_MISSING"
         for finding in model["certificationFindings"]
     )
+
+
+def test_marketplace3_marketing_flags_cannot_elevate_certification():
+    from app.marketplace.marketplace3.msp_service_desk import (
+        build_msp_service_desk_outcome_pack_config,
+    )
+
+    model = _outcome_pack_read_model(
+        {
+            "asset_type": "outcome_pack",
+            "business_outcome": "Improve service desk performance.",
+            "verified": True,
+            "tags": ["production-verified", "outcome-verified"],
+            "config": build_msp_service_desk_outcome_pack_config(),
+        }
+    )
+
+    assert model["certificationLevel"] == "governed"
+    assert model["certificationPublishReady"] is False
