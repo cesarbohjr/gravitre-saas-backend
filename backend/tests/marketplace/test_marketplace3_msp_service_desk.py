@@ -1,3 +1,4 @@
+from app.capabilities.provenance import inert_snapshot_digest
 from app.marketplace.marketplace3.msp_service_desk import (
     MSP_SERVICE_DESK_PLAY_KEYS,
     build_msp_service_desk_outcome_pack_config,
@@ -34,6 +35,10 @@ def test_msp_service_desk_skill_package_is_publishable_and_git_pinned() -> None:
     assert parsed.commit_sha == "e35e61a5b6fd499895cf526930187383aed36027"
     assert parsed.package_format == "gravitre"
     assert parsed.risk_level == "low"
+    assert inert_snapshot_digest(
+        manifest=config["manifest"],
+        resources=config["resources"],
+    ) == config["snapshot_digest"]
 
 
 def test_msp_service_desk_catalog_contains_complete_marketplace3_bundle() -> None:
