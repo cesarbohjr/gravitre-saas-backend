@@ -387,3 +387,111 @@ def test_capability_package_legacy_git_asset_remains_readable() -> None:
     parsed = parse_asset_config("capability_package", config, publish=False)
     assert parsed.repository_url == "https://github.com/acme/capabilities"
     assert parsed.commit_sha == "a" * 40
+
+
+def _marketplace3_play(index: int) -> dict:
+    return {
+        "key": f"play-{index}",
+        "name": f"Play {index}",
+        "description": "Execute a measurable operating outcome.",
+        "trigger": {"type": "manual"},
+        "workflow_steps": [
+            {
+                "id": f"step-{index}",
+                "name": "Review signal",
+                "type": "agent",
+                "metadata": {"task": "Review the operating signal and recommend the next step."},
+            }
+        ],
+        "outcome_events": [f"play_{index}_completed"],
+        "kpi_keys": ["automation_rate"],
+        "verification": {"mode": "source_of_record"},
+    }
+
+
+def _valid_outcome_pack_config(play_count: int = 6) -> dict:
+    return {
+        "marketplace_version": "3.0",
+        "outcome_contract": {
+            "problem": "Manual operational work is slow and difficult to measure.",
+            "target_outcome": "Automate repeatable work and prove the resulting business impact.",
+            "baseline_metric": "automation_rate",
+            "success_criteria": ["At least one verified outcome event is produced."],
+            "outcome_events": ["outcome_verified"],
+            "kpis": [
+                {
+                    "key": "automation_rate",
+                    "label": "Automation rate",
+                    "unit": "percent",
+                    "direction": "increase",
+                    "target": 60,
+                    "source": "play_runs",
+                }
+            ],
+            "verification_required": True,
+        },
+        "agents": [
+            {
+                "name": "Operations Agent",
+                "purpose": "Coordinates measurable operating work.",
+            }
+        ],
+        "plays": [_marketplace3_play(index) for index in range(play_count)],
+        "knowledge": [{"title": "Operating SOP"}],
+        "dataset": {
+            "entities": [
+                {
+                    "name": "work_items",
+                    "source": "canonical_workflow_runtime",
+                    "primary_key": "id",
+                    "fields": ["id", "status", "created_at"],
+                }
+            ],
+            "metrics": [
+                {
+                    "key": "automation_rate",
+                    "label": "Automation rate",
+                    "formula": "automated_completed / total_completed",
+                    "unit": "percent",
+                }
+            ],
+        },
+        "dashboard": {
+            "title": "Outcome dashboard",
+            "metrics": [
+                {
+                    "kpi_key": "automation_rate",
+                    "label": "Automation rate",
+                    "visualization": "trend",
+                }
+            ],
+            "refresh_mode": "event",
+        },
+        "skills": ["operational-analysis"],
+    }
+
+
+def test_marketplace3_outcome_pack_requires_six_plays() -> None:
+    parsed = parse_asset_config("outcome_pack", _valid_outcome_pack_config(), publish=True)
+    assert len(parsed.plays) == 6
+    assert parsed.marketplace_version == "3.0"
+
+
+def test_marketplace3_outcome_pack_rejects_fewer_than_six_plays() -> None:
+    with pytest.raises(MarketplaceValidationError) as exc:
+        parse_asset_config("outcome_pack", _valid_outcome_pack_config(play_count=5), publish=True)
+    assert any("plays" in err.lower() or "6" in err for err in exc.value.errors)
+
+
+def test_marketplace3_outcome_pack_rejects_unknown_dashboard_kpi() -> None:
+    config = _valid_outcome_pack_config()
+    config["dashboard"]["metrics"][0]["kpi_key"] = "not_declared"
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("outcome_pack", config, publish=True)
+
+
+def test_marketplace3_play_requires_outcome_events_and_kpis() -> None:
+    play = _marketplace3_play(1)
+    play["outcome_events"] = []
+    with pytest.raises(MarketplaceValidationError):
+        parse_asset_config("play", play, publish=True)
