@@ -83,6 +83,20 @@ def _play(
         )
     )
     workflow_steps.extend(action_steps_after or [])
+    runtime_inputs = sorted(
+        {
+            str(value)[1:]
+            for step in workflow_steps
+            if isinstance(step, dict)
+            for value in (
+                ((step.get("config") or {}).get("param_sources") or {}).values()
+                if isinstance(step.get("config"), dict)
+                and isinstance((step.get("config") or {}).get("param_sources"), dict)
+                else []
+            )
+            if isinstance(value, str) and value.startswith("$") and len(value) > 1
+        }
+    )
     return {
         "key": key,
         "name": name,
@@ -96,6 +110,7 @@ def _play(
             "mode": "source_of_record",
             "provider_acceptance_is_terminal": False,
         },
+        "runtime_inputs": runtime_inputs,
     }
 
 
