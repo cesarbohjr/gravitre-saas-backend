@@ -34,6 +34,7 @@ def create_connect_session(
     organization_id: str,
     organization_name: str | None,
     integration_ids: list[str],
+    connector_id: str | None = None,
 ) -> dict[str, Any]:
     """Create a short-lived Connect UI session. Provider credentials never enter Gravitre."""
     tags: dict[str, str] = {
@@ -42,6 +43,8 @@ def create_connect_session(
     }
     if end_user_email:
         tags["end_user_email"] = str(end_user_email)
+    if connector_id:
+        tags["connector_id"] = str(connector_id)
 
     payload: dict[str, Any] = {
         "tags": tags,
