@@ -8,6 +8,7 @@ from typing import Any
 from app.marketplace.crud import MarketplaceCrudError, _fetch_asset, _serialize_asset, _assert_org_owns_asset
 from app.marketplace.publishers import assert_org_can_publish_publicly
 from app.marketplace.schemas import MarketplaceValidationError, validate_asset_payload
+from app.marketplace.marketplace3.evidence import certification_report_for_asset
 from app.capabilities.provenance import inert_snapshot_digest, normalize_github_repository_url
 from app.capabilities.repository import list_package_resources
 from app.workflows.audit import write_audit_event
@@ -167,6 +168,23 @@ def _assert_capability_provenance_current(
         )
 
 
+def _assert_outcome_pack_certified(client: Any, asset: dict[str, Any]) -> None:
+    if str(asset.get("asset_type") or "") != "outcome_pack":
+        return
+    report = certification_report_for_asset(client, asset)
+    if report.publish_ready:
+        return
+    blocking = [
+        finding.code
+        for finding in report.findings
+        if finding.blocking
+    ]
+    raise MarketplacePublishError(
+        "Marketplace 3.0 Outcome Pack requires production evidence before publish",
+        code="CERTIFICATION_REQUIRED",
+    )
+
+
 def _snapshot_version(
     client: Any,
     asset: dict[str, Any],
@@ -285,6 +303,8 @@ def approve_asset_for_internal_publish(
         )
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
+
+    _assert_outcome_pack_certified(client, asset)
 
     version_number = _snapshot_version(
         client,
@@ -526,6 +546,8 @@ def approve_asset_for_public_publish(
         )
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
+
+    _assert_outcome_pack_certified(client, asset)
 
     version_number = _snapshot_version(
         client,
