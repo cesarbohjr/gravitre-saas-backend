@@ -410,6 +410,97 @@ def _assert_asset_browsable(row: dict[str, Any], org_id: str) -> None:
     raise MarketplaceBrowseError("Marketplace asset not found", code="NOT_FOUND")
 
 
+def _marketplace3_certification_for_org(
+    client: Any,
+    org_id: str,
+    row: dict[str, Any],
+) -> dict[str, Any] | None:
+    if row.get("asset_type") != "outcome_pack":
+        return None
+    try:
+        from app.marketplace.marketplace3.certification import certify_outcome_pack
+        from app.marketplace.schemas import OutcomePackAssetConfig
+        from app.plays.outcomes import list_play_business_results
+
+        config = OutcomePackAssetConfig.model_validate(row.get("config") or {})
+        play_keys = {play.key for play in config.plays}
+        verified_events: set[str] = set()
+        for result in list_play_business_results(client, org_id, limit=200):
+            metadata = result.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                continue
+            if str(metadata.get("play_key") or "") not in play_keys:
+                continue
+            if not bool(metadata.get("verified")):
+                continue
+            outcome_type = str(metadata.get("outcome_type") or "").strip()
+            if outcome_type:
+                verified_events.add(outcome_type)
+        report = certify_outcome_pack(
+            config,
+            outcome_evidence={"verified_outcome_events": sorted(verified_events)},
+        )
+        return report.as_dict()
+    except Exception:
+        # Browse/detail must remain available if historical or third-party
+        # packages cannot be certified under the latest Marketplace 3.0 rules.
+        return None
+
+
+def _marketplace3_outcome_metrics_for_org(
+    client: Any,
+    org_id: str,
+    row: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if row.get("asset_type") != "outcome_pack":
+        return []
+    try:
+        from app.marketplace.schemas import OutcomePackAssetConfig
+        from app.plays.outcomes import list_play_business_results
+
+        config = OutcomePackAssetConfig.model_validate(row.get("config") or {})
+        play_keys = {play.key for play in config.plays}
+        declared = {kpi.key: kpi for kpi in config.outcome_contract.kpis}
+        latest_by_metric: dict[str, dict[str, Any]] = {}
+        for result in list_play_business_results(client, org_id, limit=200):
+            metadata = result.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                continue
+            play_key = str(metadata.get("play_key") or "")
+            metric_key = str(metadata.get("metric_key") or "")
+            if play_key not in play_keys or metric_key not in declared or metric_key in latest_by_metric:
+                continue
+            if not bool(metadata.get("verified")):
+                continue
+            source_records = metadata.get("source_records") or []
+            kpi = declared[metric_key]
+            before = result.get("before_value")
+            after = result.get("after_value")
+            delta = metadata.get("delta_value")
+            latest_by_metric[metric_key] = {
+                "key": metric_key,
+                "label": kpi.label,
+                "unit": metadata.get("unit") or kpi.unit,
+                "direction": kpi.direction,
+                "baselineValue": before,
+                "resultValue": after,
+                "deltaValue": delta,
+                "measuredAt": result.get("measured_at") or metadata.get("occurred_at"),
+                "playKey": play_key,
+                "outcomeType": metadata.get("outcome_type"),
+                "verificationMethod": metadata.get("verification_method"),
+                "sourceRecordCount": len(source_records) if isinstance(source_records, list) else 0,
+                "status": metadata.get("verification_state"),
+            }
+        return [
+            latest_by_metric[key]
+            for key in declared
+            if key in latest_by_metric
+        ]
+    except Exception:
+        return []
+
+
 def get_marketplace_asset(
     client: Any,
     org_id: str,
@@ -445,6 +536,10 @@ def get_marketplace_asset(
     )
     detail["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
     detail["hasEntitlement"] = asset_id in _active_entitlements_by_asset(client, org_id, [asset_id])
+    certification = _marketplace3_certification_for_org(client, org_id, row)
+    if certification is not None:
+        detail["marketplace3Certification"] = certification
+        detail["marketplace3OutcomeMetrics"] = _marketplace3_outcome_metrics_for_org(client, org_id, row)
     return {"asset": detail}
 
 
