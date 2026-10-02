@@ -2057,6 +2057,14 @@ export interface MarketplaceInstallBlocker {
   action_url: string
 }
 
+export interface MarketplaceKpiImpact {
+  key: string
+  label: string
+  unit: string
+  direction: "increase" | "decrease" | "maintain" | string
+  target?: number | string | null
+}
+
 export interface MarketplaceAssetSummary {
   id: string
   slug: string
@@ -2095,6 +2103,16 @@ export interface MarketplaceAssetSummary {
   businessOutcome?: string | null
   useCase?: string | null
   estimatedHoursSaved?: number | null
+  marketplaceVersion?: string | null
+  outcomeTarget?: string | null
+  baselineMetric?: string | null
+  kpiImpact?: MarketplaceKpiImpact[]
+  verificationLevel?: string | null
+  certificationPublishReady?: boolean
+  playCount?: number
+  installReady?: boolean
+  installReadyErrors?: string[]
+  manualSetupRequired?: boolean
   currentVersion?: number | null
   partnerRegistryId?: string | null
   source?: string | null
