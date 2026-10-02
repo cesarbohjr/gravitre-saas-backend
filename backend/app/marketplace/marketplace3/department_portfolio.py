@@ -250,7 +250,7 @@ def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
         })
 
     profiles = [
-        {"provider": provider, "status": "production_verified", "actions": actions}
+        {"provider": provider, "status": "tested", "actions": actions}
         for provider, actions in spec["profiles"].items()
     ]
     agents = [
@@ -292,7 +292,7 @@ def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
             "baseline_metric": spec["kpis"][0][0],
             "success_criteria": [
                 "All included Plays install into Gravitre's canonical Play/workflow runtime.",
-                "Every Play reads only registered source-of-record actions in the production-verified v1 profile.",
+                "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
                 "Every declared KPI is represented in the installed dashboard and normalized dataset.",
                 "At least one declared outcome event must be measured before Outcome Verified status is earned.",
             ],
@@ -358,7 +358,16 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
     for slug, spec in PACK_SPECS.items():
         config = build_department_outcome_pack_config(slug)
         connector_defs = [
-            {"connectorType": name, "label": name.replace("_", " ").title(), "required": True, "connectPath": f"/connectors?type={name}"}
+            {
+                "connectorType": name,
+                "label": name.replace("_", " ").title(),
+                "required": True,
+                "connectPath": f"/connectors?type={name}",
+                "requirementNote": (
+                    "Tested/governed Marketplace 3.0 runtime. Production verification "
+                    "requires evidence-linked live source-of-record proof."
+                ),
+            }
             for name in spec["connectors"]
         ]
         agent_assets = [
@@ -369,6 +378,8 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
                 asset_type="ai_agent",
                 category="ai_agent",
                 department=spec["department"],
+                visibility="internal",
+                status="draft",
                 tags=["marketplace-3","agent",slug],
                 config=agent,
                 required_connectors=connector_defs,
@@ -383,6 +394,8 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
                 asset_type="play",
                 category="play",
                 department=spec["department"],
+                visibility="internal",
+                status="draft",
                 tags=["marketplace-3","play",slug],
                 config=play,
                 required_connectors=connector_defs,
@@ -399,6 +412,8 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
             asset_type="capability_package",
             category="capability_package",
             department=spec["department"],
+            visibility="internal",
+            status="draft",
             tags=["marketplace-3","skills",slug],
             config=_skill_package_config(skill_slug),
         )
@@ -406,25 +421,29 @@ def department_portfolio_marketplace3_assets() -> list[Any]:
             slug=f"{slug}-knowledge", title=f"{spec['title']} Knowledge",
             description=f"Policy, SOP, and operating knowledge for {spec['title']}.",
             asset_type="knowledge_pack", category="knowledge_pack", department=spec["department"],
+            visibility="internal", status="draft",
             tags=["marketplace-3","knowledge",slug], config={"documents": config["knowledge"]},
         )
         dataset = CatalogAsset(
             slug=f"{slug}-dataset", title=f"{spec['title']} Dataset",
             description=f"Normalized records and KPI definitions for {spec['title']}.",
             asset_type="dataset_pack", category="dataset_pack", department=spec["department"],
+            visibility="internal", status="draft",
             tags=["marketplace-3","dataset",slug], config=config["dataset"], required_connectors=connector_defs,
         )
         dashboard = CatalogAsset(
             slug=f"{slug}-dashboard", title=f"{spec['title']} Command Center",
             description=f"Outcome dashboard for {spec['title']}.",
             asset_type="dashboard_pack", category="dashboard_pack", department=spec["department"],
+            visibility="internal", status="draft",
             tags=["marketplace-3","dashboard",slug], config=config["dashboard"],
         )
         child_slugs = [a.slug for a in agent_assets] + [p.slug for p in play_assets] + [skill_asset.slug, knowledge.slug, dataset.slug, dashboard.slug]
         outcome = CatalogAsset(
             slug=slug, title=spec["title"], description=spec["target"],
             asset_type="outcome_pack", category="outcome_pack", department=spec["department"],
-            tags=["marketplace-3","outcome-pack",slug,"production-verified"],
+            visibility="internal", status="draft",
+            tags=["marketplace-3","outcome-pack",slug],
             config=config, required_connectors=connector_defs, pack_children=child_slugs,
             business_outcome=spec["target"], use_case=spec["department"], pricing_type="paid",
             price_cents=14900, pack_tier=3, estimated_hours_saved=24.0,
