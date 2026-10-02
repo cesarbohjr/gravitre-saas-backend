@@ -20,6 +20,10 @@ for (const width of [1440, 390]) {
           await page.getByRole("searchbox").fill("")
         }
         if (name === "Evidence") await expect(page.getByText("No verified business measurements are available for this pack.")).toBeVisible()
+        if (name === "Data & standards") {
+          await expect(page.getByRole("heading", { name: "Metric definitions", exact: true })).toBeVisible()
+          for (const metric of workspace.contract.dataset.metrics) await expect(page.getByText(metric.formula, { exact: true }).first()).toBeVisible()
+        }
       }
       expect(errors).toEqual([])
       await page.screenshot({ path: test.info().outputPath(`${slug}-${width}.png`), fullPage: true })
@@ -39,3 +43,14 @@ for (const width of [1440, 390]) {
     }
   })
 }
+
+test("sample measurements render a trend and inspectable source evidence", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" })
+  await page.goto("/e2e/shots/marketplace3/measured", { waitUntil: "networkidle" })
+  await expect(page.getByText("Screenshot fixture · sample measurements only · no production proof")).toBeVisible()
+  await expect(page.locator(".recharts-line").first()).toBeVisible()
+  await page.getByRole("tab", { name: "Evidence", exact: true }).click()
+  await expect(page.locator("tbody tr")).toHaveCount(3)
+  await page.locator("summary").first().click()
+  await expect(page.getByText("Screenshot fixture only").first()).toBeVisible()
+})
