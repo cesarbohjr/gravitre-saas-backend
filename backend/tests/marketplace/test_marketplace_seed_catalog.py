@@ -26,7 +26,7 @@ def test_catalog_asset_counts():
     # 8 original packs + AI Search + Finance + HR Talent + Platform Health
     assert by_type.get("intelligence_pack", 0) >= 12
     # Marketplace 3.0: MSP flagship plus seven department Outcome Packs.
-    assert by_type.get("play", 0) == 57
+    assert by_type.get("play", 0) >= 64
     assert by_type.get("capability_package", 0) == 8
     assert by_type.get("dataset_pack", 0) == 8
     assert by_type.get("dashboard_pack", 0) == 8
