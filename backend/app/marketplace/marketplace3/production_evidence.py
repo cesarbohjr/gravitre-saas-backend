@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.marketplace.schemas import OutcomePackAssetConfig
+from app.connectors.action_catalog.registry import get_action_spec
 from app.plays.outcomes import PLAY_BUSINESS_RESULT_EVENT
 
 
@@ -143,11 +144,22 @@ def collect_production_evidence(
         )
         workflow_rows = [dict(row) for row in rows]
 
+    declared_runtime_actions = {
+        action
+        for profile in config.runtime_profiles
+        for action in profile.actions
+    }
     verified_write_rows: list[dict[str, Any]] = []
     for row in workflow_rows:
         params = row.get("parameters") if isinstance(row.get("parameters"), dict) else {}
         action = str(params.get("invoke_action") or "").strip()
-        if not action:
+        spec = get_action_spec(action) if action else None
+        if (
+            not action
+            or action not in declared_runtime_actions
+            or spec is None
+            or spec.kind == "read"
+        ):
             continue
         verification = params.get("verification") if isinstance(params.get("verification"), dict) else {}
         if (
