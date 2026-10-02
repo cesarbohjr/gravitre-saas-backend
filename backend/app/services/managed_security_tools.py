@@ -135,7 +135,67 @@ def _okta_users_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResul
     )
 
 
+def _okta_groups_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    allowed = ("q", "filter", "search", "limit", "after")
+    query = {k: params[k] for k in allowed if params.get(k) is not None}
+    cid, data = _request(
+        ctx,
+        params,
+        vendor="okta",
+        endpoint="/api/v1/groups",
+        query=query or None,
+    )
+    groups = data if isinstance(data, list) else data.get("groups", []) if isinstance(data, dict) else []
+    return NormalizedResult(
+        success=True,
+        action="okta.groups.list",
+        connector_id=cid,
+        data={"groups": groups, "count": len(groups)},
+    )
+
+
+def _okta_apps_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    allowed = ("q", "filter", "limit", "after")
+    query = {k: params[k] for k in allowed if params.get(k) is not None}
+    cid, data = _request(
+        ctx,
+        params,
+        vendor="okta",
+        endpoint="/api/v1/apps",
+        query=query or None,
+    )
+    apps = data if isinstance(data, list) else data.get("apps", []) if isinstance(data, dict) else []
+    return NormalizedResult(
+        success=True,
+        action="okta.apps.list",
+        connector_id=cid,
+        data={"apps": apps, "count": len(apps)},
+    )
+
+
+def _okta_user_factors_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    user_id = params.get("user_id") or params.get("userId") or params.get("id")
+    if not user_id:
+        raise ToolValidationError("okta.users.factors.list requires user_id")
+    cid, data = _request(
+        ctx,
+        params,
+        vendor="okta",
+        endpoint=f"/api/v1/users/{user_id}/factors",
+    )
+    factors = data if isinstance(data, list) else data.get("factors", []) if isinstance(data, dict) else []
+    return NormalizedResult(
+        success=True,
+        action="okta.users.factors.list",
+        connector_id=cid,
+        data={"factors": factors, "count": len(factors), "user_id": str(user_id)},
+    )
+
+
 MANAGED_SECURITY_TOOL_EXECUTORS = {
     "okta.system_logs.list": _okta_system_logs_list,
     "okta.users.get": _okta_users_get,
+    "okta.groups.list": _okta_groups_list,
+    "okta.apps.list": _okta_apps_list,
+    "okta.users.factors.list": _okta_user_factors_list,
 }
