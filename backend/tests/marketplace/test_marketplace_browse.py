@@ -7,6 +7,7 @@ import pytest
 
 from app.marketplace.browse import (
     MarketplaceBrowseError,
+    _marketplace3_insights,
     get_marketplace_asset,
     is_uuid,
     list_marketplace_assets,
@@ -161,3 +162,24 @@ def test_list_invalid_asset_type():
     with pytest.raises(MarketplaceBrowseError) as exc:
         list_marketplace_assets(client, "org-1", asset_type="invalid")
     assert exc.value.code == "VALIDATION_ERROR"
+
+
+def test_marketplace3_insights_exposes_outcome_kpis_and_certification() -> None:
+    from app.marketplace.marketplace3.msp_service_desk import (
+        build_msp_service_desk_outcome_pack_config,
+    )
+
+    insights = _marketplace3_insights(build_msp_service_desk_outcome_pack_config())
+
+    assert insights["marketplaceVersion"] == "3.0"
+    assert insights["outcomeTarget"]
+    assert insights["playCount"] == 8
+    assert len(insights["kpiImpact"]) >= 6
+    assert insights["baselineMetric"] == "mttr"
+    assert insights["verificationLevel"] in {
+        "compatible",
+        "tested",
+        "governed",
+        "production_verified",
+        "outcome_verified",
+    }
