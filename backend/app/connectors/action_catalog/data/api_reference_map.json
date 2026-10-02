@@ -1716,6 +1716,38 @@
       "vendor_validated": false,
       "note": "Route computed from the action suffix by _infer_route() at import time. This is genuinely what the process sends, but it has never been checked against the vendor's published API."
     },
+    "freshservice.tickets.activities": {
+      "api_reference": "GET /api/v2/tickets/{ticket_id}/activities",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
+    "freshservice.tickets.get": {
+      "api_reference": "GET /api/v2/tickets/{ticket_id}",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
+    "freshservice.tickets.list": {
+      "api_reference": "GET /api/v2/tickets",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
+    "freshservice.tickets.update_status": {
+      "api_reference": "PUT /api/v2/tickets/{ticket_id}",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
     "github.actions.dispatch": {
       "api_reference": "POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
       "provenance": "dedicated",
@@ -3637,6 +3669,70 @@
       "style": "rest",
       "vendor_validated": false
     },
+    "microsoft_teams.channels.list": {
+      "api_reference": "GET /teams/{team_id}/channels",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:253",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
+    "microsoft_teams.meetings.create": {
+      "api_reference": "POST /me/onlineMeetings",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:288",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
+    "microsoft_teams.members.add": {
+      "api_reference": "POST /teams/{team_id}/members",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:328",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
+    "microsoft_teams.messages.list": {
+      "api_reference": "GET /teams/{team_id}/channels/{channel_id}/messages",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:266",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
+    "microsoft_teams.messages.send": {
+      "api_reference": "POST /teams/{team_id}/channels/{channel_id}/messages",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:216",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
+    "microsoft_teams.presence.set": {
+      "api_reference": "POST /me/presence/setUserPreferredPresence",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:343",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
+    "microsoft_teams.tabs.create": {
+      "api_reference": "POST /teams/{team_id}/channels/{channel_id}/tabs",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:306",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
+    "microsoft_teams.teams.list": {
+      "api_reference": "GET /me/joinedTeams",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/microsoft365.py:247",
+      "style": "rest",
+      "base_url": "https://graph.microsoft.com/v1.0",
+      "vendor_validated": false
+    },
     "microsoft365.batch.mail": {
       "api_reference": "POST /$batch",
       "provenance": "dedicated",
@@ -3898,70 +3994,6 @@
       "vendor_contract_type": "openapi",
       "vendor_validated": false,
       "note": "Path is built by _graph_user_root(): '/me' for the signed-in user, '/users/{user_id}' for a directory id — so it is not a literal."
-    },
-    "microsoft_teams.channels.list": {
-      "api_reference": "GET /teams/{team_id}/channels",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:253",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
-    },
-    "microsoft_teams.meetings.create": {
-      "api_reference": "POST /me/onlineMeetings",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:288",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
-    },
-    "microsoft_teams.members.add": {
-      "api_reference": "POST /teams/{team_id}/members",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:328",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
-    },
-    "microsoft_teams.messages.list": {
-      "api_reference": "GET /teams/{team_id}/channels/{channel_id}/messages",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:266",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
-    },
-    "microsoft_teams.messages.send": {
-      "api_reference": "POST /teams/{team_id}/channels/{channel_id}/messages",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:216",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
-    },
-    "microsoft_teams.presence.set": {
-      "api_reference": "POST /me/presence/setUserPreferredPresence",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:343",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
-    },
-    "microsoft_teams.tabs.create": {
-      "api_reference": "POST /teams/{team_id}/channels/{channel_id}/tabs",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:306",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
-    },
-    "microsoft_teams.teams.list": {
-      "api_reference": "GET /me/joinedTeams",
-      "provenance": "dedicated",
-      "source": "backend/app/connectors/microsoft365.py:247",
-      "style": "rest",
-      "base_url": "https://graph.microsoft.com/v1.0",
-      "vendor_validated": false
     },
     "mixpanel.annotations.create": {
       "api_reference": "POST /annotations",
@@ -4612,6 +4644,46 @@
       "source": "backend/app/connectors/odoo.py:119",
       "style": "rest",
       "vendor_validated": false
+    },
+    "okta.apps.list": {
+      "api_reference": "GET /api/v1/apps",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": "https://developer.okta.com",
+      "vendor_validated": false,
+      "note": "Okta Applications REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed security executor."
+    },
+    "okta.groups.list": {
+      "api_reference": "GET /api/v1/groups",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": "https://developer.okta.com",
+      "vendor_validated": false,
+      "note": "Okta Groups REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed security executor."
+    },
+    "okta.system_logs.list": {
+      "api_reference": "GET /api/v1/logs",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": "https://developer.okta.com",
+      "vendor_validated": false,
+      "note": "Okta System Log REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed security executor."
+    },
+    "okta.users.factors.list": {
+      "api_reference": "GET /api/v1/users/{user_id}/factors",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": "https://developer.okta.com",
+      "vendor_validated": false,
+      "note": "Okta Factors REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed security executor."
+    },
+    "okta.users.get": {
+      "api_reference": "GET /api/v1/users/{user_id}",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": "https://developer.okta.com",
+      "vendor_validated": false,
+      "note": "Okta Users REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed security executor."
     },
     "outlook.batch.send": {
       "api_reference": "POST /$batch",
@@ -6333,38 +6405,6 @@
       "vendor_contract": "https://developer.zendesk.com/zendesk/oas.yaml",
       "vendor_contract_type": "openapi",
       "vendor_validated": false
-    },
-    "freshservice.tickets.list": {
-      "api_reference": "GET /api/v2/tickets",
-      "provenance": "manual_verified",
-      "source": "backend/app/services/managed_service_desk_tools.py",
-      "base_url": "https://api.freshservice.com",
-      "vendor_validated": false,
-      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
-    },
-    "freshservice.tickets.get": {
-      "api_reference": "GET /api/v2/tickets/{ticket_id}",
-      "provenance": "manual_verified",
-      "source": "backend/app/services/managed_service_desk_tools.py",
-      "base_url": "https://api.freshservice.com",
-      "vendor_validated": false,
-      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
-    },
-    "freshservice.tickets.activities": {
-      "api_reference": "GET /api/v2/tickets/{ticket_id}/activities",
-      "provenance": "manual_verified",
-      "source": "backend/app/services/managed_service_desk_tools.py",
-      "base_url": "https://api.freshservice.com",
-      "vendor_validated": false,
-      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
-    },
-    "freshservice.tickets.update_status": {
-      "api_reference": "PUT /api/v2/tickets/{ticket_id}",
-      "provenance": "manual_verified",
-      "source": "backend/app/services/managed_service_desk_tools.py",
-      "base_url": "https://api.freshservice.com",
-      "vendor_validated": false,
-      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
     }
   }
 }

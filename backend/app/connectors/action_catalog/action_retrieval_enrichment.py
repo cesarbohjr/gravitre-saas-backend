@@ -27,6 +27,46 @@ _DATA_PATH = Path(__file__).resolve().parent / "data" / "action_retrieval_enrich
 
 # Historical 18-action pilot (G.5 Phase 4.2) — fallback / seed only.
 ACTION_RETRIEVAL_ENRICHMENT: dict[str, dict[str, Any]] = {
+    "okta.system_logs.list": {
+        "examples": [
+            "Show recent Okta system log events for this security investigation",
+            "List suspicious Okta sign-in and policy events",
+            "Review Okta audit events since the incident started",
+        ],
+        "tags": ["okta", "security", "identity", "system-log", "audit", "events"],
+    },
+    "okta.users.get": {
+        "examples": [
+            "Get the Okta user involved in this identity alert",
+            "Show the Okta profile and status for this user",
+            "Look up the Okta account before investigating suspicious activity",
+        ],
+        "tags": ["okta", "security", "identity", "users", "account", "investigation"],
+    },
+    "okta.groups.list": {
+        "examples": [
+            "List Okta groups while reviewing this user's access",
+            "Show Okta groups related to privileged access",
+            "Search Okta groups for administrative or sensitive access",
+        ],
+        "tags": ["okta", "security", "identity", "groups", "access", "privilege"],
+    },
+    "okta.apps.list": {
+        "examples": [
+            "List Okta applications while reviewing account exposure",
+            "Show applications configured in Okta for this access investigation",
+            "Find Okta apps relevant to the compromised account",
+        ],
+        "tags": ["okta", "security", "identity", "applications", "access", "exposure"],
+    },
+    "okta.users.factors.list": {
+        "examples": [
+            "List enrolled Okta factors for the suspicious user",
+            "Show MFA factors configured on this Okta account",
+            "Review the user's Okta authentication factors during compromise investigation",
+        ],
+        "tags": ["okta", "security", "identity", "mfa", "factors", "authentication"],
+    },
     "freshservice.tickets.list": {
         "examples": [
             "List open Freshservice tickets for the service desk",
