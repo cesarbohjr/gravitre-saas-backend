@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from app.plays.contracts import PlayDefinition
 from app.marketplace.marketplace3.department_portfolio import PACK_SPECS
+from app.marketplace.marketplace3.department_depth import PLAY_EVIDENCE
 
 
 CUSTOMER_RESCUE = PlayDefinition(
@@ -82,11 +83,11 @@ REVENUE_LEAK_HUNTER = PlayDefinition(
     name="Revenue Leak Hunter",
     version="1",
     objective="Find recoverable revenue hidden in overdue invoices, stalled opportunities, renewals, billing exceptions, and operational gaps.",
-    required_connector_groups=(
-        ("stripe", "quickbooks", "xero", "sage_intacct"),
-        ("hubspot", "salesforce"),
+    required_connector_groups=(("quickbooks",), ("stripe",)),
+    required_read_action_groups=tuple(
+        (action,) for action in PLAY_EVIDENCE["revenue-leak-hunter"]
     ),
-    optional_connectors=("chargebee", "recurly", "pax8"),
+    optional_connectors=("hubspot", "salesforce", "xero", "sage_intacct", "chargebee", "recurly", "pax8"),
     outcome_metrics=("revenue_recovered", "revenue_at_risk", "dso"),
 )
 
@@ -229,7 +230,10 @@ def _department_portfolio_plays() -> tuple[PlayDefinition, ...]:
                     objective=description,
                     required_connector_groups=required_connector_groups,
                     optional_connectors=optional_connectors,
-                    required_read_action_groups=((action,),),
+                    required_read_action_groups=tuple(
+                        (evidence_action,)
+                        for evidence_action in PLAY_EVIDENCE.get(key, (action,))
+                    ),
                     outcome_metrics=(kpi_key,),
                 )
             )
@@ -256,7 +260,9 @@ PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     RECURRING_PROBLEM_HUNTER,
     CLIENT_COMMUNICATION_MANAGER,
     SERVICE_DESK_OPTIMIZATION_REVIEW,
-    *DEPARTMENT_PORTFOLIO_PLAYS,
+    # The signature version carries the same tested Finance evidence contract.
+    # Keep one canonical template per key so lookup order cannot hide readiness.
+    *(play for play in DEPARTMENT_PORTFOLIO_PLAYS if play.key != REVENUE_LEAK_HUNTER.key),
 )
 
 

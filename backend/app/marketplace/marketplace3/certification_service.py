@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.marketplace.marketplace3.certification import certify_outcome_pack
+from app.marketplace.marketplace3.evidence import resolve_runtime_evidence, resolve_outcome_evidence
 from app.marketplace.schemas import (
     OutcomePackAssetConfig,
     parse_asset_config,
@@ -97,8 +98,8 @@ def certify_asset(
             code="INVALID_CONFIG",
         )
 
-    runtime = _sanitize_evidence(runtime_evidence or {})
-    outcome = _sanitize_evidence(outcome_evidence or {})
+    runtime = resolve_runtime_evidence(client, parsed, _sanitize_evidence(runtime_evidence or {}))
+    outcome = resolve_outcome_evidence(client, parsed, _sanitize_evidence(outcome_evidence or {}))
     report = certify_outcome_pack(
         parsed,
         runtime_evidence=runtime,
@@ -165,16 +166,16 @@ def promote_certified_asset(
 
     fresh_report = certify_outcome_pack(
         parsed,
-        runtime_evidence=(
+        runtime_evidence=resolve_runtime_evidence(client, parsed, (
             persisted_evidence.get("runtime")
             if isinstance(persisted_evidence.get("runtime"), dict)
             else {}
-        ),
-        outcome_evidence=(
+        )),
+        outcome_evidence=resolve_outcome_evidence(client, parsed, (
             persisted_evidence.get("outcome")
             if isinstance(persisted_evidence.get("outcome"), dict)
             else {}
-        ),
+        )),
     )
     level = fresh_report.level
     report = fresh_report.as_dict()

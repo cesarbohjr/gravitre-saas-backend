@@ -100,7 +100,9 @@ def upsert_catalog_asset(
         "required_permissions": [],
         "install_variables": validated["install_variables"],
         "change_summary": "Starter catalog seed",
-        "published_at": row["published_at"],
+        # Version records require a timestamp even for internal draft assets;
+        # the parent asset remains unpublished until certification promotion.
+        "published_at": row["published_at"] or _now(),
     }
     client.table("marketplace_asset_versions").upsert(
         version_row,

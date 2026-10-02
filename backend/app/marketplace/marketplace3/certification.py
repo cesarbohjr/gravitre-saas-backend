@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.connectors.action_catalog.registry import get_action_spec
+from app.marketplace.marketplace3.evidence import measured_outcome_valid
 from app.marketplace.schemas import OutcomePackAssetConfig
 from app.services.tool_service import list_registered_actions
 from app.services.write_success_verification import resolve_success_verification
@@ -268,10 +269,14 @@ def certify_outcome_pack(
         level = "production_verified"
 
     outcome_evidence_payload = outcome_evidence if isinstance(outcome_evidence, dict) else {}
+    plays = {play.key: play for play in config.plays}
     observed_events = {
-        str(value)
-        for value in (outcome_evidence_payload.get("verified_outcome_events") or [])
-        if str(value).strip()
+        value["outcomeEvent"]
+        for value in (outcome_evidence_payload.get("measurements") or [])
+        if isinstance(value, dict) and measured_outcome_valid(value)
+        and value["playKey"] in plays
+        and value["outcomeEvent"] in plays[value["playKey"]].outcome_events
+        and value["metricKey"] in plays[value["playKey"]].kpi_keys
     }
     declared_events = set(config.outcome_contract.outcome_events)
     if production_ok and declared_events.intersection(observed_events):

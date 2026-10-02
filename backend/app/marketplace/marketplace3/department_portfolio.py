@@ -310,7 +310,7 @@ def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
             for key, label, unit, _ in spec["kpis"]
         ],
     }
-    return {
+    config = {
         "marketplace_version": "3.0",
         "outcome_contract": {
             "problem": spec["problem"],
@@ -337,6 +337,9 @@ def build_department_outcome_pack_config(slug: str) -> dict[str, Any]:
         "runtime_profiles": profiles,
         "connector_alternatives": [[name] for name in spec["connectors"]] + [[name for name in spec["optional"]]],
     }
+    from app.marketplace.marketplace3.department_depth import deepen_department_config
+
+    return deepen_department_config(slug, config)
 
 
 def build_department_skill_package_config(slug: str) -> dict[str, Any]:
