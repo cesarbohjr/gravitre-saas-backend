@@ -42,6 +42,50 @@ import type {
   MarketplaceInstallBlocker,
 } from "@/types/api"
 
+type OutcomePackPresentation = {
+  plays: Array<{ key: string; name: string; description?: string; outcomeEvents: string[] }>
+  kpis: Array<{ key: string; label: string; unit?: string; direction?: string }>
+  successCriteria: string[]
+  runtimeProviders: Array<{ provider: string; status: string }>
+}
+
+function outcomePackPresentation(asset: MarketplaceAssetDetail): OutcomePackPresentation | null {
+  if (asset.assetType !== "outcome_pack" || !asset.config) return null
+  const config = asset.config
+  const contract = config.outcome_contract
+  const rawPlays = config.plays
+  const rawProfiles = config.runtime_profiles
+  if (!contract || typeof contract !== "object" || !Array.isArray(rawPlays)) return null
+  const contractRecord = contract as Record<string, unknown>
+  const rawKpis = Array.isArray(contractRecord.kpis) ? contractRecord.kpis : []
+  return {
+    plays: rawPlays
+      .filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object"))
+      .map((row) => ({
+        key: String(row.key ?? ""),
+        name: String(row.name ?? row.key ?? "Play"),
+        description: typeof row.description === "string" ? row.description : undefined,
+        outcomeEvents: Array.isArray(row.outcome_events) ? row.outcome_events.map(String) : [],
+      })),
+    kpis: rawKpis
+      .filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object"))
+      .map((row) => ({
+        key: String(row.key ?? ""),
+        label: String(row.label ?? row.key ?? "KPI"),
+        unit: typeof row.unit === "string" ? row.unit : undefined,
+        direction: typeof row.direction === "string" ? row.direction : undefined,
+      })),
+    successCriteria: Array.isArray(contractRecord.success_criteria)
+      ? contractRecord.success_criteria.map(String)
+      : [],
+    runtimeProviders: Array.isArray(rawProfiles)
+      ? rawProfiles
+          .filter((row): row is Record<string, unknown> => Boolean(row && typeof row === "object"))
+          .map((row) => ({ provider: String(row.provider ?? ""), status: String(row.status ?? "") }))
+      : [],
+  }
+}
+
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   if (!blockers.length) return null
   return (
@@ -102,6 +146,8 @@ function MarketplaceAssetDetailContent() {
   const needsPurchase = Boolean(
     asset && assetRequiresPurchase({ ...asset, hasEntitlement: entitlement?.hasEntitlement ?? asset.hasEntitlement }),
   )
+
+  const outcomePack = asset ? outcomePackPresentation(asset) : null
 
   const handleClone = async () => {
     if (!asset) return
@@ -227,6 +273,68 @@ function MarketplaceAssetDetailContent() {
             {asset.connectorChecklist?.length ? (
               <div className="rounded-lg border bg-muted/20 p-4">
                 <ConnectorChecklist items={asset.connectorChecklist} />
+              </div>
+            ) : null}
+
+            {outcomePack ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section className="rounded-xl border bg-muted/20 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold">What Gravitre operates</h2>
+                    <Badge variant="secondary">Marketplace 3.0 · {outcomePack.plays.length} Plays</Badge>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {outcomePack.plays.map((play) => (
+                      <div key={play.key} className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">{play.name}</p>
+                        {play.description ? (
+                          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{play.description}</p>
+                        ) : null}
+                        {play.outcomeEvents.length ? (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Outcome · {play.outcomeEvents.join(", ")}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-xl border bg-muted/20 p-4">
+                  <h2 className="text-sm font-semibold">How value is measured</h2>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {outcomePack.kpis.map((kpi) => (
+                      <div key={kpi.key} className="rounded-lg border bg-background/70 p-3">
+                        <p className="text-xs font-medium text-foreground">{kpi.label}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {kpi.unit ?? "metric"}{kpi.direction ? ` · target: ${kpi.direction}` : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {outcomePack.successCriteria.length ? (
+                    <div className="mt-4">
+                      <p className="text-xs font-medium text-muted-foreground">Verification contract</p>
+                      <ul className="mt-2 space-y-1.5 text-xs text-foreground">
+                        {outcomePack.successCriteria.map((criterion) => (
+                          <li key={criterion} className="flex gap-2">
+                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                            <span>{criterion}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {outcomePack.runtimeProviders.length ? (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {outcomePack.runtimeProviders.map((profile) => (
+                        <Badge key={`${profile.provider}:${profile.status}`} variant="outline">
+                          {profile.provider.replace(/_/g, " ")} · {profile.status.replace(/_/g, " ")}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
               </div>
             ) : null}
 
