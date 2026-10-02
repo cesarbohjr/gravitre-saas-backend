@@ -15,7 +15,7 @@ def test_msp_service_desk_blueprint_is_valid_marketplace3_outcome_pack() -> None
     assert config.marketplace_version == "3.0"
     assert len(config.plays) == 8
     assert {play.key for play in config.plays} == set(MSP_SERVICE_DESK_PLAY_KEYS)
-    assert len(config.agents) == 3
+    assert len(config.agents) == 7
     assert len(config.outcome_contract.kpis) >= 10
     assert {
         metric.kpi_key for metric in config.dashboard.metrics
@@ -47,7 +47,7 @@ def test_msp_service_desk_catalog_contains_complete_marketplace3_bundle() -> Non
     slugs = {asset.slug for asset in assets}
     outcome = next(asset for asset in assets if asset.asset_type == "outcome_pack")
 
-    assert types.count("ai_agent") == 3
+    assert types.count("ai_agent") == 7
     assert types.count("play") == 8
     assert types.count("capability_package") == 1
     assert types.count("knowledge_pack") == 1
@@ -60,6 +60,6 @@ def test_msp_service_desk_catalog_contains_complete_marketplace3_bundle() -> Non
     assert "production-verified" not in outcome.tags
     assert all(asset.status == "draft" for asset in assets)
     assert all(asset.visibility == "internal" for asset in assets)
-    assert len(outcome.pack_children) == 15
+    assert len(outcome.pack_children) == 19
     assert set(outcome.pack_children) <= slugs
     parse_asset_config("outcome_pack", outcome.config, publish=False)

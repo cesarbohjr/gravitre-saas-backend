@@ -9,6 +9,7 @@ from app.marketplace.entitlements import asset_requires_payment
 from app.marketplace.service import MarketplaceError, validate_connectors_for_asset
 from app.marketplace.schemas import OutcomePackAssetConfig
 from app.marketplace.marketplace3.certification import certify_outcome_pack
+from app.marketplace.marketplace3.discovery import outcome_pack_discovery_metadata
 
 BROWSE_LIST_COLUMNS = (
     "id, slug, title, description, asset_type, category, department, tags, "
@@ -16,7 +17,7 @@ BROWSE_LIST_COLUMNS = (
     "install_count, clone_count, average_rating, review_count, current_version, "
     "published_at, publisher_id, org_id, business_outcome, use_case, estimated_hours_saved, "
     "featured, verified, review_scope, partner_registry_id, config, "
-    "certification_level, certification_report, certification_updated_at, certified_by, "
+    "certification_level, certification_report, certification_evidence, certification_updated_at, certified_by, "
     "created_at, updated_at"
 )
 
@@ -53,6 +54,16 @@ class MarketplaceBrowseError(Exception):
             self.code = code
 
 
+def _asset_alternative_groups(row: dict[str, Any]) -> list[list[str]] | None:
+    config = row.get("config")
+    if not isinstance(config, dict):
+        return None
+    raw = config.get("connector_alternatives") or config.get("connectorAlternatives")
+    if isinstance(raw, list) and raw:
+        return [list(group) for group in raw if isinstance(group, list)]
+    return None
+
+
 def is_uuid(value: str) -> bool:
     try:
         uuid.UUID(value)
@@ -84,13 +95,14 @@ def _checklist_summary(
     return {
         "requiredConnectorsTotal": required_total,
         "requiredConnectorsConnected": required_connected,
-        "connectorsReady": required_connected >= required_total if required_total else True,
+        "connectorsReady": bool(validation.get("can_install", True)),
         "canInstall": ready["installReady"],
         "installReady": ready["installReady"],
         "installReadyErrors": ready["installReadyErrors"],
         "manualSetupRequired": ready["manualSetupRequired"],
         "connectorChecklist": checklist,
         "requiredConnectors": required_connectors or [],
+        "connectorGroups": validation.get("connectorGroups") or [],
     }
 
 
@@ -118,13 +130,27 @@ def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
         }
     try:
         config = OutcomePackAssetConfig.model_validate(raw)
-        persisted_level = str(row.get("certification_level") or "").strip()
-        persisted_report = (
-            row.get("certification_report")
-            if isinstance(row.get("certification_report"), dict)
+        persisted_evidence = (
+            row.get("certification_evidence")
+            if isinstance(row.get("certification_evidence"), dict)
             else {}
         )
-        report = certify_outcome_pack(config)
+        runtime_evidence = (
+            persisted_evidence.get("runtime")
+            if isinstance(persisted_evidence.get("runtime"), dict)
+            else {}
+        )
+        outcome_evidence = (
+            persisted_evidence.get("outcome")
+            if isinstance(persisted_evidence.get("outcome"), dict)
+            else {}
+        )
+        report = certify_outcome_pack(
+            config,
+            runtime_evidence=runtime_evidence,
+            outcome_evidence=outcome_evidence,
+        )
+        discovery = outcome_pack_discovery_metadata(config)
     except Exception:
         return {
             "certificationLevel": "compatible",
@@ -137,13 +163,9 @@ def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
             "outcomeTarget": row.get("business_outcome"),
             "certificationFindings": [],
         }
-    persisted_publish_ready = bool(persisted_report.get("publishReady"))
-    persisted_findings = persisted_report.get("findings")
     return {
-        "certificationLevel": persisted_level or report.level,
-        "certificationPublishReady": (
-            persisted_publish_ready if persisted_level else report.publish_ready
-        ),
+        "certificationLevel": report.level,
+        "certificationPublishReady": report.publish_ready,
         "certificationUpdatedAt": row.get("certification_updated_at"),
         "certifiedBy": row.get("certified_by"),
         "playCount": report.play_count,
@@ -152,15 +174,11 @@ def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
         "runtimeProviders": [profile.provider for profile in config.runtime_profiles],
         "verificationRequired": bool(config.outcome_contract.verification_required),
         "outcomeTarget": config.outcome_contract.target_outcome,
-        "certificationFindings": (
-            [
-                item
-                for item in persisted_findings
-                if isinstance(item, dict) and bool(item.get("blocking", True))
-            ]
-            if persisted_level and isinstance(persisted_findings, list)
-            else [finding.as_dict() for finding in report.findings if finding.blocking]
-        ),
+        "certificationFindings": [
+            finding.as_dict() for finding in report.findings if finding.blocking
+        ],
+        "aiDiscovery": discovery,
+        "connectorAlternatives": config.connector_alternatives,
     }
 
 
@@ -428,6 +446,7 @@ def list_marketplace_assets(
             org_id,
             row.get("required_connectors") or [],
             environment_name=environment_name,
+            alternative_groups=_asset_alternative_groups(row),
         )
         connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
         asset_id = str(row["id"])
@@ -504,6 +523,7 @@ def get_marketplace_asset(
         org_id,
         row.get("required_connectors") or [],
         environment_name=environment_name,
+        alternative_groups=_asset_alternative_groups(row),
     )
     connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
     installs = _active_installs_by_asset(client, org_id, [str(row["id"])])

@@ -210,28 +210,42 @@ def test_marketplace3_marketing_flags_cannot_elevate_certification():
     assert model["certificationPublishReady"] is False
 
 
-def test_marketplace3_browse_prefers_persisted_evidence_certification():
+def test_marketplace3_browse_uses_evidence_not_stale_column():
+    from copy import deepcopy
     from app.marketplace.marketplace3.msp_service_desk import (
         build_msp_service_desk_outcome_pack_config,
     )
 
-    model = _outcome_pack_read_model(
+    payload = deepcopy(build_msp_service_desk_outcome_pack_config())
+    payload["runtime_profiles"][0]["status"] = "production_verified"
+    stale_only = _outcome_pack_read_model(
         {
             "asset_type": "outcome_pack",
-            "business_outcome": "Improve service desk performance.",
-            "config": build_msp_service_desk_outcome_pack_config(),
+            "config": payload,
             "certification_level": "production_verified",
-            "certification_report": {
-                "level": "production_verified",
-                "publishReady": True,
-                "findings": [],
+            "certification_report": {"level": "production_verified", "publishReady": True, "findings": []},
+        }
+    )
+    assert stale_only["certificationLevel"] == "governed"
+    assert stale_only["certificationPublishReady"] is False
+
+    evidenced = _outcome_pack_read_model(
+        {
+            "asset_type": "outcome_pack",
+            "config": payload,
+            "certification_evidence": {
+                "runtime": {
+                    "freshservice": {
+                        "environment": "production",
+                        "evidence_ref": "workflow_run:live-smoke-123",
+                        "verified_actions": payload["runtime_profiles"][0]["actions"],
+                    }
+                }
             },
             "certification_updated_at": "2026-10-02T12:00:00+00:00",
             "certified_by": "11111111-1111-1111-1111-111111111111",
         }
     )
-
-    assert model["certificationLevel"] == "production_verified"
-    assert model["certificationPublishReady"] is True
-    assert model["certificationUpdatedAt"] == "2026-10-02T12:00:00+00:00"
-    assert model["certificationFindings"] == []
+    assert evidenced["certificationLevel"] == "production_verified"
+    assert evidenced["certificationPublishReady"] is True
+    assert evidenced["aiDiscovery"]["playCount"] == 8
