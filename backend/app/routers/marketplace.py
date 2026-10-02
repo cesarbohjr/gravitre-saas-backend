@@ -149,6 +149,12 @@ from app.marketplace.payouts import (
 from app.marketplace.publisher_analytics import get_publisher_revenue_analytics
 from app.marketplace.roi import marketplace_roi_summary
 from app.marketplace.service import fetch_marketplace_asset
+from app.marketplace.marketplace3.evidence import (
+    MarketplaceCertificationEvidenceError,
+    certification_report_for_asset,
+    list_runtime_evidence,
+    record_runtime_evidence,
+)
 from app.workflows.audit import write_audit_event
 
 router = APIRouter(prefix="/api/marketplace", tags=["marketplace"])
@@ -312,6 +318,16 @@ class AssetPricingRequest(BaseModel):
     pricing_type: str = Field(alias="pricingType")
     price_cents: int = Field(ge=0, alias="priceCents")
     currency: str = Field(default="usd")
+
+    model_config = {"populate_by_name": True}
+
+
+class MarketplaceRuntimeEvidenceRequest(BaseModel):
+    provider: str = Field(min_length=1, max_length=120)
+    environment: str = Field(default="production", max_length=40)
+    evidence_ref: str = Field(alias="evidenceRef", min_length=1, max_length=500)
+    verified_actions: list[str] = Field(alias="verifiedActions", min_length=1)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"populate_by_name": True}
 
@@ -1211,6 +1227,95 @@ async def archive_marketplace_asset_route(
         )
     except MarketplaceCrudError as exc:
         raise _crud_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_ref}/certification")
+async def get_marketplace3_asset_certification(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    asset = fetch_marketplace_asset(client, asset_ref)
+    if str(asset.get("org_id") or "") != str(org_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Marketplace asset not found")
+    try:
+        report = certification_report_for_asset(client, asset)
+        evidence = list_runtime_evidence(
+            client,
+            str(asset["id"]),
+            asset_version=max(
+                1,
+                int(asset.get("current_version") or 1)
+                + (1 if str(asset.get("status") or "") in {"draft", "pending_review"} else 0),
+            ),
+        )
+    except MarketplaceCertificationEvidenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": str(exc), "code": exc.code},
+        ) from exc
+    return {
+        "assetId": str(asset["id"]),
+        "assetVersion": max(
+            1,
+            int(asset.get("current_version") or 1)
+            + (1 if str(asset.get("status") or "") in {"draft", "pending_review"} else 0),
+        ),
+        "certification": report.as_dict(),
+        "runtimeEvidence": {
+            provider: {
+                "environment": value.get("environment"),
+                "verifiedActions": value.get("verified_actions") or [],
+                "hasEvidence": bool(value.get("evidence_ref")),
+            }
+            for provider, value in evidence.items()
+        },
+    }
+
+
+@router.post("/platform/assets/{asset_ref}/certification/runtime-evidence")
+async def record_marketplace3_runtime_evidence(
+    asset_ref: str,
+    body: MarketplaceRuntimeEvidenceRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    asset = fetch_marketplace_asset(client, asset_ref)
+    try:
+        result = record_runtime_evidence(
+            client,
+            asset=asset,
+            provider=body.provider,
+            environment=body.environment,
+            evidence_ref=body.evidence_ref,
+            verified_actions=body.verified_actions,
+            actor_id=user["user_id"],
+            metadata=body.metadata,
+        )
+    except MarketplaceCertificationEvidenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": str(exc), "code": exc.code},
+        ) from exc
+    write_audit_event(
+        client,
+        org_id=str(asset.get("org_id") or ""),
+        actor_id=user["user_id"],
+        action="marketplace.outcome_pack.runtime_evidence_recorded",
+        resource_type=RESOURCE_TYPE_MARKETPLACE_ASSET,
+        resource_id=str(asset["id"]),
+        metadata={
+            "provider": body.provider,
+            "environment": body.environment,
+            "evidenceRef": body.evidence_ref,
+            "verifiedActions": body.verified_actions,
+            "certificationLevel": result["certification"].get("level"),
+        },
+    )
+    return result
 
 
 @router.post("/assets/{asset_ref}/submit-for-review")
