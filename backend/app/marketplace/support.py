@@ -47,6 +47,11 @@ def _entity_deep_link(entity_type: str, entity_id: str, metadata: dict[str, Any]
         return "/connectors"
     if entity_type == "capability_package":
         return "/marketplace/capabilities"
+    if entity_type == "play":
+        play_key = metadata.get("playKey") or metadata.get("play_key")
+        if play_key:
+            return f"/plays?play={play_key}"
+        return "/plays"
     return None
 
 
@@ -256,6 +261,7 @@ def _deactivate_install_entities(
         "capabilityPackages": [],
         "mcpServers": [],
         "nativeBindings": [],
+        "plays": [],
     }
 
     agent_ids: list[str] = []
@@ -272,6 +278,17 @@ def _deactivate_install_entities(
             deactivated["agents"].append(agent_id)
         except Exception:  # noqa: BLE001
             continue
+
+    if entity_type == "play":
+        play_key = str(metadata.get("playKey") or metadata.get("play_key") or "").strip()
+        if play_key:
+            try:
+                client.table("play_installations").update(
+                    {"status": "archived", "updated_at": now}
+                ).eq("org_id", org_id).eq("play_key", play_key).execute()
+                deactivated["plays"].append(play_key)
+            except Exception:  # noqa: BLE001
+                pass
 
     workflow_ids: list[str] = []
     for raw in metadata.get("workflowIds") or []:
