@@ -174,3 +174,4 @@ def test_outcome_pack_fails_closed_when_required_play_cannot_install() -> None:
 
     assert exc.value.code == "OUTCOME_PACK_COMPONENT_FAILED"
     assert exc.value.details["failures"]
+    assert exc.value.details["rolledBack"] is True

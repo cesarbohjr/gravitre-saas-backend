@@ -130,6 +130,11 @@ from app.marketplace.marketplace3.certification_service import (
     certify_asset as certify_marketplace3_asset,
     promote_certified_asset,
 )
+from app.marketplace.marketplace3.certification_runner import (
+    CertificationRunnerError,
+    run_outcome_pack_certification_runner,
+)
+from app.marketplace.marketplace3.pack_audit import audit_catalog_packs
 from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
 from app.marketplace.entitlements import (
     AUDIT_CHECKOUT_CREATED,
@@ -356,6 +361,14 @@ class AssetFlagRequest(BaseModel):
 class Marketplace3CertificationRequest(BaseModel):
     runtime_evidence: dict[str, Any] = Field(default_factory=dict, alias="runtimeEvidence")
     outcome_evidence: dict[str, Any] = Field(default_factory=dict, alias="outcomeEvidence")
+
+    model_config = {"populate_by_name": True}
+
+
+class Marketplace3RunnerRequest(BaseModel):
+    runtime_evidence: dict[str, Any] = Field(default_factory=dict, alias="runtimeEvidence")
+    outcome_evidence: dict[str, Any] = Field(default_factory=dict, alias="outcomeEvidence")
+    install_harness: dict[str, bool] = Field(default_factory=dict, alias="installHarness")
 
     model_config = {"populate_by_name": True}
 
@@ -1515,6 +1528,54 @@ async def certify_platform_marketplace3_asset(
         return result
     except Marketplace3CertificationError as exc:
         raise _marketplace3_certification_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/marketplace3/certify-run")
+async def run_platform_marketplace3_certification(
+    asset_ref: str,
+    body: Marketplace3RunnerRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Run Marketplace 3.0 fixture certification. Failures stay blocking."""
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = run_outcome_pack_certification_runner(
+            client,
+            slug=asset_ref,
+            actor_id=user["user_id"],
+            runtime_evidence=body.runtime_evidence,
+            outcome_evidence=body.outcome_evidence,
+            install_harness=body.install_harness or None,
+        )
+        write_audit_event(
+            client,
+            org_id="",
+            actor_id=user["user_id"],
+            action="marketplace3.asset.certify_run",
+            resource_type="marketplace_asset",
+            resource_id=asset_ref,
+            metadata={
+                "slug": asset_ref,
+                "fixturePassed": bool(result.get("fixturePassed")),
+                "failedKeys": [row.get("key") for row in (result.get("failedChecks") or [])],
+            },
+        )
+        return result
+    except CertificationRunnerError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": str(exc), "code": exc.code, **(exc.details or {})},
+        ) from exc
+
+
+@router.get("/platform/marketplace3/pack-audit")
+async def platform_marketplace3_pack_audit(
+    user: Annotated[dict, Depends(require_platform_admin)],
+) -> dict:
+    """Read-only audit of seeded Marketplace packs against the 3.0 Outcome Pack bar."""
+    del user
+    return audit_catalog_packs()
 
 
 @router.post("/platform/assets/{asset_ref}/marketplace3/promote")

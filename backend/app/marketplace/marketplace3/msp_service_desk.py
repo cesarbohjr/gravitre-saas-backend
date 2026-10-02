@@ -215,6 +215,20 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             "direction": "increase",
             "source": "play_outcomes",
         },
+        {
+            "key": "sla_breach_rate",
+            "label": "SLA breach rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "source": "service_tickets",
+        },
+        {
+            "key": "hours_saved",
+            "label": "Technician hours saved",
+            "unit": "hours",
+            "direction": "increase",
+            "source": "play_outcomes",
+        },
     ]
 
     plays = [
@@ -225,7 +239,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             kpis=["mtta", "sla_compliance", "automation_rate"],
             outcome_event="ticket_intake_completed",
             trigger={"type": "event", "event": "ticket.created"},
-            agent_seed="agent:msp-service-coordinator",
+            agent_seed="agent:msp-ticket-intelligence",
             evidence_steps=[
                 _tool_step(
                     "ticket-context",
@@ -280,7 +294,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             kpis=["sla_compliance", "tickets_rescued", "mttr"],
             outcome_event="ticket_sla_saved",
             trigger={"type": "threshold", "metric": "sla_minutes_remaining", "lte": 60},
-            agent_seed="agent:msp-service-coordinator",
+            agent_seed="agent:msp-sla-operations",
             evidence_steps=[
                 _tool_step(
                     "sla-ticket-context",
@@ -346,7 +360,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             kpis=["repeat_issue_rate", "reopen_rate", "prevented_incidents"],
             outcome_event="recurring_problem_identified",
             trigger={"type": "scheduled", "cadence": "daily"},
-            agent_seed="agent:msp-service-analyst",
+            agent_seed="agent:msp-problem-management",
             evidence_steps=[
                 _tool_step(
                     "recurring-ticket-list",
@@ -367,7 +381,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             kpis=["customer_update_latency", "csat", "sla_compliance"],
             outcome_event="client_update_prepared",
             trigger={"type": "event", "event": "ticket.status_changed"},
-            agent_seed="agent:msp-service-coordinator",
+            agent_seed="agent:msp-client-communication",
             evidence_steps=[
                 _tool_step(
                     "client-update-context",
@@ -460,16 +474,25 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
         "agents": [
             {
                 "seed_label": "agent:msp-service-coordinator",
-                "name": "MSP Service Coordinator",
-                "purpose": "Coordinate ticket intake, SLA rescue, stale work recovery, and client communication.",
+                "name": "Service Desk Coordinator",
+                "purpose": "Coordinate intake overflow, stale-ticket recovery, and overall service-desk operating flow.",
                 "role": "Service Desk Coordinator",
                 "department": "MSP Service Desk",
-                "capabilities": ["triage", "routing", "sla-management", "client-communication"],
-                "systems": ["zendesk", "freshservice", "servicenow", "halo_psa", "autotask", "connectwise", "syncro"],
+                "capabilities": ["triage", "routing", "queue-management"],
+                "systems": ["freshservice", "halo_psa", "autotask", "connectwise", "syncro", "servicenow", "zendesk"],
+            },
+            {
+                "seed_label": "agent:msp-ticket-intelligence",
+                "name": "Ticket Intelligence Agent",
+                "purpose": "Classify new tickets, infer urgency, sentiment, and routing from source-of-record context.",
+                "role": "Ticket Intelligence",
+                "department": "MSP Service Desk",
+                "capabilities": ["classification", "priority", "sentiment"],
+                "systems": ["freshservice", "halo_psa", "autotask", "connectwise", "syncro"],
             },
             {
                 "seed_label": "agent:msp-resolution-engineer",
-                "name": "MSP Resolution Engineer",
+                "name": "Resolution Agent",
                 "purpose": "Assemble technical evidence and remediation paths from service history, device context, and runbooks.",
                 "role": "Technical Resolution",
                 "department": "MSP Service Desk",
@@ -477,13 +500,40 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 "systems": ["microsoft_intune", "jumpcloud", "jamf_pro", "huntress", "sentinelone", "crowdstrike"],
             },
             {
+                "seed_label": "agent:msp-sla-operations",
+                "name": "SLA Operations Agent",
+                "purpose": "Detect approaching SLA risk and prepare policy-safe rescue actions.",
+                "role": "SLA Operations",
+                "department": "MSP Service Desk",
+                "capabilities": ["sla-management", "escalation"],
+                "systems": ["freshservice", "halo_psa", "autotask", "connectwise", "syncro"],
+            },
+            {
+                "seed_label": "agent:msp-problem-management",
+                "name": "Problem Management Agent",
+                "purpose": "Cluster recurring incidents and propose preventive problem records.",
+                "role": "Problem Management",
+                "department": "MSP Service Desk",
+                "capabilities": ["problem-management", "trend-analysis"],
+                "systems": ["freshservice", "halo_psa", "autotask", "connectwise", "syncro"],
+            },
+            {
+                "seed_label": "agent:msp-client-communication",
+                "name": "Client Communication Agent",
+                "purpose": "Prepare verified client updates without claiming unverified resolution.",
+                "role": "Client Communication",
+                "department": "MSP Service Desk",
+                "capabilities": ["client-communication"],
+                "systems": ["freshservice", "microsoft_365", "slack", "microsoft_teams"],
+            },
+            {
                 "seed_label": "agent:msp-service-analyst",
-                "name": "MSP Service Analyst",
-                "purpose": "Identify recurring problems, knowledge gaps, KPI trends, and service optimization opportunities.",
+                "name": "Service Performance Analyst",
+                "purpose": "Review KPI trends, knowledge gaps, and optimization opportunities from verified outcomes.",
                 "role": "Service Operations Analyst",
                 "department": "MSP Service Desk",
-                "capabilities": ["trend-analysis", "problem-management", "knowledge-gap-analysis", "kpi-review"],
-                "systems": ["zendesk", "freshservice", "servicenow", "halo_psa", "autotask", "connectwise", "syncro"],
+                "capabilities": ["kpi-review", "knowledge-gap-analysis", "optimization"],
+                "systems": ["freshservice", "halo_psa", "autotask", "connectwise", "syncro"],
             },
         ],
         "plays": plays,
@@ -512,6 +562,30 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 "type": "manual",
                 "metadata": {"purpose": "Recurring issue patterns and known remediation history."},
             },
+            {
+                "seed_label": "severity-matrix",
+                "title": "Severity Matrix",
+                "type": "manual",
+                "metadata": {"purpose": "Template severity and business-impact classification rules."},
+            },
+            {
+                "seed_label": "escalation-policy",
+                "title": "Escalation Policy",
+                "type": "manual",
+                "metadata": {"purpose": "When and how tickets must escalate."},
+            },
+            {
+                "seed_label": "change-policy",
+                "title": "Change Policy",
+                "type": "manual",
+                "metadata": {"purpose": "Approved change windows and irreversible-write rules."},
+            },
+            {
+                "seed_label": "security-escalation",
+                "title": "Security Escalation Procedure",
+                "type": "manual",
+                "metadata": {"purpose": "Template security-incident handoff from service desk."},
+            },
         ],
         "dataset": {
             "entities": [
@@ -521,9 +595,58 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                     "primary_key": "ticket_id",
                     "fields": [
                         "ticket_id", "client_id", "requester_id", "asset_id", "category", "priority",
-                        "status", "assigned_to", "created_at", "acknowledged_at", "resolved_at",
-                        "sla_due_at", "reopened", "csat_score", "last_customer_update_at",
+                        "status", "assigned_to", "queue", "created_at", "acknowledged_at", "first_response_at",
+                        "resolved_at", "closed_at", "sla_due_at", "reopen_count", "csat_score",
+                        "last_customer_update_at", "assignment_history",
                     ],
+                },
+                {
+                    "name": "clients",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "client_id",
+                    "fields": ["client_id", "name", "tier", "sla_plan"],
+                },
+                {
+                    "name": "users",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "user_id",
+                    "fields": ["user_id", "client_id", "email", "role"],
+                },
+                {
+                    "name": "assets",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "asset_id",
+                    "fields": ["asset_id", "client_id", "type", "status"],
+                },
+                {
+                    "name": "technicians",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "technician_id",
+                    "fields": ["technician_id", "name", "queue", "load"],
+                },
+                {
+                    "name": "queues",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "queue_id",
+                    "fields": ["queue_id", "name", "sla_plan"],
+                },
+                {
+                    "name": "slas",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "sla_id",
+                    "fields": ["sla_id", "priority", "response_minutes", "resolve_minutes"],
+                },
+                {
+                    "name": "incidents",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "incident_id",
+                    "fields": ["incident_id", "ticket_id", "severity", "status"],
+                },
+                {
+                    "name": "worklogs",
+                    "source": "psa_or_service_desk_connector",
+                    "primary_key": "worklog_id",
+                    "fields": ["worklog_id", "ticket_id", "technician_id", "minutes", "automated"],
                 },
                 {
                     "name": "play_outcomes",
@@ -547,6 +670,8 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 {"key": "csat", "label": "CSAT", "formula": "avg(csat_score)", "unit": "score"},
                 {"key": "stale_ticket_rate", "label": "Stale ticket rate", "formula": "stale_tickets / open_tickets * 100", "unit": "percent"},
                 {"key": "prevented_incidents", "label": "Prevented incidents", "formula": "count(verified_preventive_outcomes)", "unit": "count"},
+                {"key": "sla_breach_rate", "label": "SLA breach rate", "formula": "breached_tickets / resolved_total * 100", "unit": "percent"},
+                {"key": "hours_saved", "label": "Hours saved", "formula": "sum(automated_worklog_minutes) / 60", "unit": "hours"},
             ],
         },
         "dashboard": {
@@ -596,7 +721,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             }
         ],
         "connector_alternatives": [
-            ["freshservice"],
+            ["freshservice", "halo_psa", "autotask", "connectwise", "syncro", "servicenow", "zendesk"],
             ["microsoft_intune", "jumpcloud", "jamf_pro"],
             ["huntress", "sentinelone", "crowdstrike", "connectsecure"],
             ["microsoft_365", "slack", "microsoft_teams"],

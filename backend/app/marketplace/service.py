@@ -173,6 +173,7 @@ def validate_connectors_for_asset(
     environment_name: str = "production",
     settings: Any | None = None,
     probe_apollo_discovery: bool = True,
+    alternative_groups: list[list[str]] | None = None,
 ) -> dict[str, Any]:
     """Return ``{can_install, blockers, checklist}`` (MKT-9.1 shape)."""
     refs: list[RequiredConnectorRef]
@@ -297,10 +298,21 @@ def validate_connectors_for_asset(
                     "needsConnection": needs_connection,
                 }
             )
+    from app.marketplace.marketplace3.connector_groups import evaluate_connector_or_groups
+
+    connected_types = {item["connectorType"] for item in checklist if item.get("connected")}
+    or_eval = evaluate_connector_or_groups(
+        connected=connected_types,
+        required_connectors=refs,
+        alternatives=alternative_groups,
+    )
+    if alternative_groups:
+        blockers = or_eval["blockers"]
     return {
         "can_install": len(blockers) == 0,
         "blockers": blockers,
         "checklist": checklist,
+        "connectorGroups": or_eval["groups"],
     }
 
 
@@ -938,6 +950,81 @@ def _install_dashboard_pack(
     }
 
 
+def _rollback_partial_outcome_pack(
+    client: Any,
+    org_id: str,
+    *,
+    agent_ids: list[str],
+    play_rows: list[dict[str, Any]],
+    workflow_ids: list[str],
+    dataset_pack_id: str | None,
+    dashboard_pack_id: str | None,
+    rag_source_ids: list[str],
+) -> dict[str, list[str]]:
+    """Archive components created by a failed Outcome Pack install."""
+    now = _now()
+    rolled: dict[str, list[str]] = {
+        "agents": [],
+        "plays": [],
+        "workflows": [],
+        "datasetPacks": [],
+        "dashboardPacks": [],
+        "ragSources": [],
+    }
+    for agent_id in dict.fromkeys(agent_ids):
+        try:
+            client.table("operators").update(
+                {"deleted_at": now, "status": "inactive", "updated_at": now}
+            ).eq("id", agent_id).eq("org_id", org_id).execute()
+            rolled["agents"].append(agent_id)
+        except Exception:  # noqa: BLE001
+            continue
+    for row in play_rows:
+        play_key = str(row.get("playKey") or "").strip()
+        if not play_key:
+            continue
+        try:
+            client.table("play_installations").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("org_id", org_id).eq("play_key", play_key).execute()
+            rolled["plays"].append(play_key)
+        except Exception:  # noqa: BLE001
+            continue
+    for workflow_id in dict.fromkeys(workflow_ids):
+        try:
+            client.table("workflows").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", workflow_id).eq("org_id", org_id).execute()
+            rolled["workflows"].append(workflow_id)
+        except Exception:  # noqa: BLE001
+            continue
+    if dataset_pack_id:
+        try:
+            client.table("marketplace_dataset_pack_installations").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", dataset_pack_id).eq("org_id", org_id).execute()
+            rolled["datasetPacks"].append(dataset_pack_id)
+        except Exception:  # noqa: BLE001
+            pass
+    if dashboard_pack_id:
+        try:
+            client.table("marketplace_dashboard_pack_installations").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", dashboard_pack_id).eq("org_id", org_id).execute()
+            rolled["dashboardPacks"].append(dashboard_pack_id)
+        except Exception:  # noqa: BLE001
+            pass
+    for source_id in dict.fromkeys(rag_source_ids):
+        try:
+            client.table("rag_sources").update(
+                {"status": "archived", "updated_at": now}
+            ).eq("id", source_id).eq("org_id", org_id).execute()
+            rolled["ragSources"].append(source_id)
+        except Exception:  # noqa: BLE001
+            continue
+    return rolled
+
+
 def _install_outcome_pack(
     client: Any,
     org_id: str,
@@ -1035,35 +1122,49 @@ def _install_outcome_pack(
                 }
             )
 
-    knowledge_result = _install_knowledge_pack(
-        client,
-        org_id,
-        asset,
-        KnowledgePackAssetConfig(documents=config.knowledge),
-        environment_name=environment_name,
-        primary_agent_id=next(iter(installed_agents), None),
-    ) if config.knowledge else {
+    knowledge_result: dict[str, Any] = {
         "entityType": "knowledge_pack",
         "entityId": root_id,
         "ragSourceIds": [],
     }
+    if config.knowledge:
+        try:
+            knowledge_result = _install_knowledge_pack(
+                client,
+                org_id,
+                asset,
+                KnowledgePackAssetConfig(documents=config.knowledge),
+                environment_name=environment_name,
+                primary_agent_id=next(iter(installed_agents), None),
+            )
+        except Exception as exc:  # noqa: BLE001
+            failures.append({"component": "knowledge", "key": "knowledge", "error": str(exc)})
 
-    dataset_result = _install_dataset_pack(
-        client,
-        org_id,
-        asset,
-        config.dataset,
-        actor_id=actor_id,
-        source_outcome_pack_id=root_id,
-    )
-    dashboard_result = _install_dashboard_pack(
-        client,
-        org_id,
-        asset,
-        config.dashboard,
-        actor_id=actor_id,
-        source_outcome_pack_id=root_id,
-    )
+    dataset_result: dict[str, Any] = {}
+    try:
+        dataset_result = _install_dataset_pack(
+            client,
+            org_id,
+            asset,
+            config.dataset,
+            actor_id=actor_id,
+            source_outcome_pack_id=root_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        failures.append({"component": "dataset_pack", "key": "dataset", "error": str(exc)})
+
+    dashboard_result: dict[str, Any] = {}
+    try:
+        dashboard_result = _install_dashboard_pack(
+            client,
+            org_id,
+            asset,
+            config.dashboard,
+            actor_id=actor_id,
+            source_outcome_pack_id=root_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        failures.append({"component": "dashboard_pack", "key": "dashboard", "error": str(exc)})
 
     play_rows: list[dict[str, Any]] = []
     workflow_ids: list[str] = []
@@ -1098,10 +1199,20 @@ def _install_outcome_pack(
     # successful Outcome Pack install. Every required Play and agent must
     # materialize before the Marketplace install record can be written.
     if failures:
+        rolled_back = _rollback_partial_outcome_pack(
+            client,
+            org_id,
+            agent_ids=installed_agents,
+            play_rows=play_rows,
+            workflow_ids=workflow_ids,
+            dataset_pack_id=str(dataset_result.get("datasetPackId") or "") or None,
+            dashboard_pack_id=str(dashboard_result.get("dashboardPackId") or "") or None,
+            rag_source_ids=list(knowledge_result.get("ragSourceIds") or []),
+        )
         raise MarketplaceError(
             "Outcome Pack installation could not materialize every required component",
             code="OUTCOME_PACK_COMPONENT_FAILED",
-            details={"failures": failures},
+            details={"failures": failures, "rolledBack": True, "componentState": rolled_back},
         )
 
     return {

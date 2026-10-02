@@ -2117,6 +2117,24 @@ export interface MarketplaceAssetSummary {
   runtimeProviders?: string[]
   verificationRequired?: boolean
   outcomeTarget?: string | null
+  aiDiscovery?: {
+    jobToBeDone?: string
+    targetOutcome?: string
+    playCount?: number
+    supportedPlayCount?: number
+    kpiKeys?: string[]
+    requiredSystems?: string[]
+    supportedSystems?: string[]
+    connectorGroups?: Array<Record<string, unknown>>
+    plays?: Array<Record<string, unknown>>
+  }
+  connectorAlternatives?: string[][]
+  connectorGroups?: Array<{
+    connectors: string[]
+    satisfied: boolean
+    connectedMembers: string[]
+    required: boolean
+  }>
 }
 
 export interface MarketplaceAssetsListResponse {
