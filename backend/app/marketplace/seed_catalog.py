@@ -1141,8 +1141,17 @@ def catalog_assets_by_slug() -> dict[str, CatalogAsset]:
 
 
 LEGACY_PACK_SLUG_MAP: dict[str, str] = {
-    "sales-ops": "revenue-operations-3",
-    "marketing-ops": "marketing-operations-3",
-    "support-ops": "customer-success-support-3",
-    "finance-ops": "finance-operations-3",
+    "sales-ops": "revenue-operations-pack",
+    "marketing-ops": "marketing-operations-pack",
+    "support-ops": "support-operations-pack",
+    "finance-ops": "revenue-operations-pack",
+}
+
+# Presentation/discovery migration for new installs. Keep this separate from
+# LEGACY_PACK_SLUG_MAP because that map is authoritative for historical
+# marketplace_install backfills and must never relabel old runtime entities.
+MARKETPLACE3_UPGRADE_SLUG_MAP: dict[str, str] = {
+    "revenue-operations-pack": "revenue-operations-3",
+    "marketing-operations-pack": "marketing-operations-3",
+    "support-operations-pack": "customer-success-support-3",
 }
