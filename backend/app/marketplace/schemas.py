@@ -167,6 +167,7 @@ class PlayAssetConfig(BaseModel):
     kpi_keys: list[str] = Field(min_length=1)
     approvals: list[dict[str, Any]] = Field(default_factory=list)
     verification: dict[str, Any] = Field(default_factory=dict)
+    runtime_inputs: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_play_workflow(self) -> "PlayAssetConfig":
@@ -665,6 +666,11 @@ def validate_asset_payload(
         steps = dumped["workflow_steps"]
     elif asset_type == "play" and isinstance(dumped.get("workflow_steps"), list):
         steps = dumped["workflow_steps"]
+        declared.update(
+            str(value).strip()
+            for value in (dumped.get("runtime_inputs") or [])
+            if str(value).strip()
+        )
     should_enforce = publish if enforce_bindings is None else enforce_bindings
     if steps and should_enforce:
         try:
