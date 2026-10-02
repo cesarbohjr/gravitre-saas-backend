@@ -1610,6 +1610,27 @@ async def platform_marketplace3_pack_audit(
     return audit_catalog_packs()
 
 
+@router.get("/platform/assets/{asset_ref}/marketplace3/blueprint")
+async def platform_marketplace3_blueprint(
+    asset_ref: str,
+    _user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.marketplace.marketplace3.workspace import contract_view
+    from app.marketplace.schemas import OutcomePackAssetConfig
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        asset = fetch_marketplace_asset(client, asset_ref)
+        if asset.get("asset_type") != "outcome_pack":
+            raise MarketplaceError("Department pack required", code="NOT_FOUND")
+        return {"asset": {"id": asset["id"], "slug": asset["slug"], "title": asset["title"],
+                          "department": asset.get("department"), "certificationLevel": asset.get("certification_level")},
+                "contract": contract_view(OutcomePackAssetConfig.model_validate(asset["config"])),
+                "measurements": [], "sources": [], "recentRuns": [], "activityLimit": 100}
+    except MarketplaceError as exc:
+        raise _marketplace_http_error(exc) from exc
+
+
 @router.get("/platform/marketplace3/portfolio-readiness")
 async def platform_marketplace3_portfolio_readiness(
     user: Annotated[dict, Depends(require_platform_admin)],
@@ -1924,6 +1945,23 @@ async def rollback_marketplace_asset_version(
         )
     except MarketplaceVersionError as exc:
         raise _version_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_ref}/workspace")
+async def marketplace_department_workspace(
+    asset_ref: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    from app.marketplace.marketplace3.workspace import department_workspace
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return department_workspace(client, org_id, asset_ref)
+    except MarketplaceError as exc:
+        raise _marketplace_http_error(exc) from exc
 
 
 @router.get("/assets/{asset_ref}/install-check")

@@ -1,0 +1,3985 @@
+{
+  "msp-service-desk-3": {
+    "asset": {
+      "id": "msp-service-desk-3",
+      "slug": "msp-service-desk-3",
+      "title": "MSP Service Desk 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "MSP service desks lose technician capacity to manual triage, stale work, repeated issues, inconsistent client communication, and preventable SLA breaches.",
+        "target_outcome": "Reduce service desk response/resolution time while increasing SLA compliance, first-contact resolution, automation coverage, and measurable technician capacity.",
+        "baseline_metric": "mttr",
+        "success_criteria": [
+          "All eight Plays install into the canonical Gravitre Play/workflow runtime.",
+          "Every consequential external write remains approval-governed and source-of-record verified.",
+          "The installed dashboard resolves every declared KPI from connected service data or verified Play outcomes.",
+          "At least one verified service outcome event is produced before Outcome Verified certification."
+        ],
+        "outcome_events": [
+          "ticket_intake_completed",
+          "resolution_path_prepared",
+          "ticket_sla_saved",
+          "stale_ticket_reactivated",
+          "recurring_problem_identified",
+          "client_update_prepared",
+          "knowledge_gap_identified",
+          "service_desk_optimization_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "mtta",
+            "label": "Mean time to acknowledge",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "mttr",
+            "label": "Mean time to resolve",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "sla_compliance",
+            "label": "SLA compliance",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "first_contact_resolution",
+            "label": "First-contact resolution",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "backlog",
+            "label": "Open ticket backlog",
+            "unit": "count",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "reopen_rate",
+            "label": "Ticket reopen rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "automation_rate",
+            "label": "Service desk automation rate",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "play_runs"
+          },
+          {
+            "key": "tickets_rescued",
+            "label": "Tickets rescued before SLA breach",
+            "unit": "count",
+            "direction": "increase",
+            "target": null,
+            "source": "play_outcomes"
+          },
+          {
+            "key": "repeat_issue_rate",
+            "label": "Repeat issue rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "knowledge_gap_rate",
+            "label": "Knowledge gap rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "play_outcomes"
+          },
+          {
+            "key": "customer_update_latency",
+            "label": "Customer update latency",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "csat",
+            "label": "Customer satisfaction",
+            "unit": "score",
+            "direction": "increase",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "stale_ticket_rate",
+            "label": "Stale ticket rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "prevented_incidents",
+            "label": "Prevented recurring incidents",
+            "unit": "count",
+            "direction": "increase",
+            "target": null,
+            "source": "play_outcomes"
+          },
+          {
+            "key": "sla_breach_rate",
+            "label": "SLA breach rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "service_tickets"
+          },
+          {
+            "key": "hours_saved",
+            "label": "Technician hours saved",
+            "unit": "hours",
+            "direction": "increase",
+            "target": null,
+            "source": "play_outcomes"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "MSP Service Desk Command Center",
+        "metrics": [
+          {
+            "kpi_key": "mtta",
+            "label": "Mean time to acknowledge",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Mean time to acknowledge."
+          },
+          {
+            "kpi_key": "mttr",
+            "label": "Mean time to resolve",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Mean time to resolve."
+          },
+          {
+            "kpi_key": "sla_compliance",
+            "label": "SLA compliance",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: SLA compliance."
+          },
+          {
+            "kpi_key": "first_contact_resolution",
+            "label": "First-contact resolution",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: First-contact resolution."
+          },
+          {
+            "kpi_key": "backlog",
+            "label": "Open ticket backlog",
+            "visualization": "metric",
+            "description": "Marketplace 3.0 service KPI: Open ticket backlog."
+          },
+          {
+            "kpi_key": "reopen_rate",
+            "label": "Ticket reopen rate",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Ticket reopen rate."
+          },
+          {
+            "kpi_key": "automation_rate",
+            "label": "Service desk automation rate",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Service desk automation rate."
+          },
+          {
+            "kpi_key": "tickets_rescued",
+            "label": "Tickets rescued before SLA breach",
+            "visualization": "metric",
+            "description": "Marketplace 3.0 service KPI: Tickets rescued before SLA breach."
+          },
+          {
+            "kpi_key": "repeat_issue_rate",
+            "label": "Repeat issue rate",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Repeat issue rate."
+          },
+          {
+            "kpi_key": "knowledge_gap_rate",
+            "label": "Knowledge gap rate",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Knowledge gap rate."
+          },
+          {
+            "kpi_key": "customer_update_latency",
+            "label": "Customer update latency",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Customer update latency."
+          },
+          {
+            "kpi_key": "csat",
+            "label": "Customer satisfaction",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Customer satisfaction."
+          },
+          {
+            "kpi_key": "stale_ticket_rate",
+            "label": "Stale ticket rate",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: Stale ticket rate."
+          },
+          {
+            "kpi_key": "prevented_incidents",
+            "label": "Prevented recurring incidents",
+            "visualization": "metric",
+            "description": "Marketplace 3.0 service KPI: Prevented recurring incidents."
+          },
+          {
+            "kpi_key": "sla_breach_rate",
+            "label": "SLA breach rate",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 service KPI: SLA breach rate."
+          },
+          {
+            "kpi_key": "hours_saved",
+            "label": "Technician hours saved",
+            "visualization": "metric",
+            "description": "Marketplace 3.0 service KPI: Technician hours saved."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "service_tickets",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "ticket_id",
+            "fields": [
+              "ticket_id",
+              "client_id",
+              "requester_id",
+              "asset_id",
+              "category",
+              "priority",
+              "status",
+              "assigned_to",
+              "queue",
+              "created_at",
+              "acknowledged_at",
+              "first_response_at",
+              "resolved_at",
+              "closed_at",
+              "sla_due_at",
+              "reopen_count",
+              "csat_score",
+              "last_customer_update_at",
+              "assignment_history"
+            ]
+          },
+          {
+            "name": "clients",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "client_id",
+            "fields": [
+              "client_id",
+              "name",
+              "tier",
+              "sla_plan"
+            ]
+          },
+          {
+            "name": "users",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "user_id",
+            "fields": [
+              "user_id",
+              "client_id",
+              "email",
+              "role"
+            ]
+          },
+          {
+            "name": "assets",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "asset_id",
+            "fields": [
+              "asset_id",
+              "client_id",
+              "type",
+              "status"
+            ]
+          },
+          {
+            "name": "technicians",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "technician_id",
+            "fields": [
+              "technician_id",
+              "name",
+              "queue",
+              "load"
+            ]
+          },
+          {
+            "name": "queues",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "queue_id",
+            "fields": [
+              "queue_id",
+              "name",
+              "sla_plan"
+            ]
+          },
+          {
+            "name": "slas",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "sla_id",
+            "fields": [
+              "sla_id",
+              "priority",
+              "response_minutes",
+              "resolve_minutes"
+            ]
+          },
+          {
+            "name": "incidents",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "incident_id",
+            "fields": [
+              "incident_id",
+              "ticket_id",
+              "severity",
+              "status"
+            ]
+          },
+          {
+            "name": "worklogs",
+            "source": "psa_or_service_desk_connector",
+            "primary_key": "worklog_id",
+            "fields": [
+              "worklog_id",
+              "ticket_id",
+              "technician_id",
+              "minutes",
+              "automated"
+            ]
+          },
+          {
+            "name": "play_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "ticket_id",
+              "status",
+              "verified_at",
+              "metric_delta"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "mtta",
+            "label": "MTTA",
+            "formula": "avg(acknowledged_at - created_at)",
+            "unit": "minutes"
+          },
+          {
+            "key": "mttr",
+            "label": "MTTR",
+            "formula": "avg(resolved_at - created_at)",
+            "unit": "minutes"
+          },
+          {
+            "key": "sla_compliance",
+            "label": "SLA compliance",
+            "formula": "resolved_within_sla / resolved_total * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "first_contact_resolution",
+            "label": "First-contact resolution",
+            "formula": "first_contact_resolved / resolved_total * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "backlog",
+            "label": "Backlog",
+            "formula": "count(open_tickets)",
+            "unit": "count"
+          },
+          {
+            "key": "reopen_rate",
+            "label": "Reopen rate",
+            "formula": "reopened_tickets / resolved_total * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "automation_rate",
+            "label": "Automation rate",
+            "formula": "verified_automated_outcomes / eligible_work * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "tickets_rescued",
+            "label": "Tickets rescued",
+            "formula": "count(ticket_sla_saved)",
+            "unit": "count"
+          },
+          {
+            "key": "repeat_issue_rate",
+            "label": "Repeat issue rate",
+            "formula": "repeat_issue_tickets / ticket_total * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "knowledge_gap_rate",
+            "label": "Knowledge gap rate",
+            "formula": "knowledge_gap_outcomes / analyzed_cases * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "customer_update_latency",
+            "label": "Customer update latency",
+            "formula": "avg(last_customer_update_at - status_changed_at)",
+            "unit": "minutes"
+          },
+          {
+            "key": "csat",
+            "label": "CSAT",
+            "formula": "avg(csat_score)",
+            "unit": "score"
+          },
+          {
+            "key": "stale_ticket_rate",
+            "label": "Stale ticket rate",
+            "formula": "stale_tickets / open_tickets * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "prevented_incidents",
+            "label": "Prevented incidents",
+            "formula": "count(verified_preventive_outcomes)",
+            "unit": "count"
+          },
+          {
+            "key": "sla_breach_rate",
+            "label": "SLA breach rate",
+            "formula": "breached_tickets / resolved_total * 100",
+            "unit": "percent"
+          },
+          {
+            "key": "hours_saved",
+            "label": "Hours saved",
+            "formula": "sum(automated_worklog_minutes) / 60",
+            "unit": "hours"
+          }
+        ]
+      },
+      "providers": [
+        "freshservice"
+      ],
+      "plays": [
+        {
+          "key": "intelligent-ticket-intake",
+          "name": "Intelligent Ticket Intake",
+          "description": "Classify, prioritize, enrich, and route new service tickets using client, user, asset, SLA, and sentiment context.",
+          "kpiKeys": [
+            "mtta",
+            "sla_compliance",
+            "automation_rate"
+          ],
+          "runtimeInputs": [
+            "TICKET_ID"
+          ],
+          "trigger": {
+            "type": "event",
+            "event": "ticket.created"
+          }
+        },
+        {
+          "key": "resolution-copilot",
+          "name": "Resolution Copilot",
+          "description": "Assemble ticket history, device context, runbooks, and prior resolutions into an evidence-backed remediation path.",
+          "kpiKeys": [
+            "mttr",
+            "first_contact_resolution",
+            "automation_rate"
+          ],
+          "runtimeInputs": [
+            "TICKET_ID"
+          ],
+          "trigger": {
+            "type": "event",
+            "event": "ticket.assigned"
+          }
+        },
+        {
+          "key": "sla-rescue",
+          "name": "SLA Rescue",
+          "description": "Detect service work approaching breach and coordinate a policy-safe intervention before the SLA is missed.",
+          "kpiKeys": [
+            "sla_compliance",
+            "tickets_rescued",
+            "mttr"
+          ],
+          "runtimeInputs": [
+            "TARGET_STATUS",
+            "TICKET_ID"
+          ],
+          "trigger": {
+            "type": "threshold",
+            "metric": "sla_minutes_remaining",
+            "lte": 60
+          }
+        },
+        {
+          "key": "stale-ticket-recovery",
+          "name": "Stale Ticket Recovery",
+          "description": "Find tickets stalled on technicians, customers, vendors, approvals, or missing information and restart the correct next step.",
+          "kpiKeys": [
+            "backlog",
+            "stale_ticket_rate",
+            "mttr"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "hourly"
+          }
+        },
+        {
+          "key": "recurring-problem-hunter",
+          "name": "Recurring Problem Hunter",
+          "description": "Cluster repeated incidents to identify root recurring problems and preventive automation opportunities.",
+          "kpiKeys": [
+            "repeat_issue_rate",
+            "reopen_rate",
+            "prevented_incidents"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "client-communication-manager",
+          "name": "Client Communication Manager",
+          "description": "Prepare timely, context-aware client updates from verified service status and business impact.",
+          "kpiKeys": [
+            "customer_update_latency",
+            "csat",
+            "sla_compliance"
+          ],
+          "runtimeInputs": [
+            "TICKET_ID"
+          ],
+          "trigger": {
+            "type": "event",
+            "event": "ticket.status_changed"
+          }
+        },
+        {
+          "key": "knowledge-gap-miner",
+          "name": "Knowledge Gap Miner",
+          "description": "Turn repeated escalations, unresolved searches, and failed resolutions into prioritized knowledge improvements.",
+          "kpiKeys": [
+            "knowledge_gap_rate",
+            "repeat_issue_rate",
+            "first_contact_resolution"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "service-desk-optimization-review",
+          "name": "Service Desk Optimization Review",
+          "description": "Review service desk performance, bottlenecks, automation coverage, and workload to recommend measurable improvements.",
+          "kpiKeys": [
+            "mtta",
+            "mttr",
+            "sla_compliance",
+            "automation_rate",
+            "reopen_rate",
+            "backlog"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "weekly"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Service Desk Coordinator",
+          "purpose": "Coordinate intake overflow, stale-ticket recovery, and overall service-desk operating flow.",
+          "capabilities": [
+            "triage",
+            "routing",
+            "queue-management"
+          ]
+        },
+        {
+          "name": "Ticket Intelligence Agent",
+          "purpose": "Classify new tickets, infer urgency, sentiment, and routing from source-of-record context.",
+          "capabilities": [
+            "classification",
+            "priority",
+            "sentiment"
+          ]
+        },
+        {
+          "name": "Resolution Agent",
+          "purpose": "Assemble technical evidence and remediation paths from service history, device context, and runbooks.",
+          "capabilities": [
+            "diagnosis",
+            "remediation-planning",
+            "runbook-retrieval"
+          ]
+        },
+        {
+          "name": "SLA Operations Agent",
+          "purpose": "Detect approaching SLA risk and prepare policy-safe rescue actions.",
+          "capabilities": [
+            "sla-management",
+            "escalation"
+          ]
+        },
+        {
+          "name": "Problem Management Agent",
+          "purpose": "Cluster recurring incidents and propose preventive problem records.",
+          "capabilities": [
+            "problem-management",
+            "trend-analysis"
+          ]
+        },
+        {
+          "name": "Client Communication Agent",
+          "purpose": "Prepare verified client updates without claiming unverified resolution.",
+          "capabilities": [
+            "client-communication"
+          ]
+        },
+        {
+          "name": "Service Performance Analyst",
+          "purpose": "Review KPI trends, knowledge gaps, and optimization opportunities from verified outcomes.",
+          "capabilities": [
+            "kpi-review",
+            "knowledge-gap-analysis",
+            "optimization"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "Service Desk Runbooks",
+          "purpose": "Technical troubleshooting and remediation procedures."
+        },
+        {
+          "title": "SLA and Escalation Policy",
+          "purpose": "Priority, SLA, escalation, and ownership rules."
+        },
+        {
+          "title": "Client Communication Standards",
+          "purpose": "Approved tone, update cadence, and communication templates."
+        },
+        {
+          "title": "Known Issues and Problem Records",
+          "purpose": "Recurring issue patterns and known remediation history."
+        },
+        {
+          "title": "Severity Matrix",
+          "purpose": "Template severity and business-impact classification rules."
+        },
+        {
+          "title": "Escalation Policy",
+          "purpose": "When and how tickets must escalate."
+        },
+        {
+          "title": "Change Policy",
+          "purpose": "Approved change windows and irreversible-write rules."
+        },
+        {
+          "title": "Security Escalation Procedure",
+          "purpose": "Template security-incident handoff from service desk."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  },
+  "security-operations-3": {
+    "asset": {
+      "id": "security-operations-3",
+      "slug": "security-operations-3",
+      "title": "Security Operations 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "Security teams lose response time when alerts, service incidents, identity risk, vulnerability work, remediation, communications, and post-incident learning are fragmented.",
+        "target_outcome": "Reduce detection, investigation, and coordination time while improving prioritized remediation, incident readiness, and measurable security operations.",
+        "baseline_metric": "security_queue_age",
+        "success_criteria": [
+          "All included Plays install into Gravitre's canonical Play/workflow runtime.",
+          "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
+          "Every declared KPI is represented in the installed dashboard and normalized dataset.",
+          "At least one declared outcome event must be measured before Outcome Verified status is earned."
+        ],
+        "outcome_events": [
+          "security_alert_prioritized",
+          "incident_context_prepared",
+          "identity_risk_reviewed",
+          "vulnerability_queue_prioritized",
+          "containment_readiness_reviewed",
+          "remediation_follow_up_completed",
+          "incident_communications_brief_prepared",
+          "post_incident_review_completed",
+          "security_posture_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "security_queue_age",
+            "label": "Security queue age",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "incident_context_time",
+            "label": "Incident context time",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "critical_workload",
+            "label": "Critical security workload",
+            "unit": "count",
+            "direction": "decrease",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "remediation_sla",
+            "label": "Remediation SLA compliance",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "escalation_rate",
+            "label": "Security escalation rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "communication_latency",
+            "label": "Incident communication latency",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "post_incident_completion",
+            "label": "Post-incident review completion",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "remediation_follow_up_rate",
+            "label": "Remediation follow-up completion",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "security_posture_risk",
+            "label": "Security posture risk",
+            "unit": "score",
+            "direction": "decrease",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "security_mttr",
+            "label": "Security mean time to resolution",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "verified_department_dataset"
+          },
+          {
+            "key": "verified_security_outcomes",
+            "label": "Verified security outcomes",
+            "unit": "count",
+            "direction": "increase",
+            "target": null,
+            "source": "verified_department_dataset"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "Security Operations Command Center",
+        "metrics": [
+          {
+            "kpi_key": "security_queue_age",
+            "label": "Security queue age",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Security queue age."
+          },
+          {
+            "kpi_key": "incident_context_time",
+            "label": "Incident context time",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Incident context time."
+          },
+          {
+            "kpi_key": "critical_workload",
+            "label": "Critical security workload",
+            "visualization": "metric",
+            "description": "Marketplace 3.0 verified SecOps KPI: Critical security workload."
+          },
+          {
+            "kpi_key": "remediation_sla",
+            "label": "Remediation SLA compliance",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Remediation SLA compliance."
+          },
+          {
+            "kpi_key": "escalation_rate",
+            "label": "Security escalation rate",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Security escalation rate."
+          },
+          {
+            "kpi_key": "communication_latency",
+            "label": "Incident communication latency",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Incident communication latency."
+          },
+          {
+            "kpi_key": "post_incident_completion",
+            "label": "Post-incident review completion",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Post-incident review completion."
+          },
+          {
+            "kpi_key": "remediation_follow_up_rate",
+            "label": "Remediation follow-up completion",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Remediation follow-up completion."
+          },
+          {
+            "kpi_key": "security_posture_risk",
+            "label": "Security posture risk",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Security posture risk."
+          },
+          {
+            "kpi_key": "security_mttr",
+            "label": "Security mean time to resolution",
+            "visualization": "trend",
+            "description": "Marketplace 3.0 verified SecOps KPI: Security mean time to resolution."
+          },
+          {
+            "kpi_key": "verified_security_outcomes",
+            "label": "Verified security outcomes",
+            "visualization": "metric",
+            "description": "Marketplace 3.0 verified SecOps KPI: Verified security outcomes."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "security_cases",
+            "source": "service_and_security_sources",
+            "primary_key": "case_id",
+            "fields": [
+              "case_id",
+              "severity",
+              "status",
+              "owner",
+              "account_id",
+              "created_at",
+              "acknowledged_at",
+              "resolved_at",
+              "updated_at"
+            ]
+          },
+          {
+            "name": "security_assets",
+            "source": "connected_security_sources",
+            "primary_key": "asset_id",
+            "fields": [
+              "asset_id",
+              "account_id",
+              "asset_type",
+              "criticality",
+              "exposure",
+              "last_seen_at"
+            ]
+          },
+          {
+            "name": "identity_risk",
+            "source": "connected_identity_sources",
+            "primary_key": "identity_id",
+            "fields": [
+              "identity_id",
+              "account_id",
+              "risk_state",
+              "signal_count",
+              "last_signal_at"
+            ]
+          },
+          {
+            "name": "vulnerabilities",
+            "source": "connected_security_sources",
+            "primary_key": "finding_id",
+            "fields": [
+              "finding_id",
+              "asset_id",
+              "severity",
+              "exploitability",
+              "remediation_status",
+              "due_at",
+              "verified_at"
+            ]
+          },
+          {
+            "name": "remediation_items",
+            "source": "security_work_queue",
+            "primary_key": "remediation_id",
+            "fields": [
+              "remediation_id",
+              "case_id",
+              "owner",
+              "status",
+              "due_at",
+              "completed_at",
+              "verified_at"
+            ]
+          },
+          {
+            "name": "incident_timeline",
+            "source": "verified_incident_activity",
+            "primary_key": "event_id",
+            "fields": [
+              "event_id",
+              "case_id",
+              "event_type",
+              "source",
+              "occurred_at",
+              "verified_at"
+            ]
+          },
+          {
+            "name": "verified_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "status",
+              "verified_at",
+              "metric_delta",
+              "source_record"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "security_queue_age",
+            "label": "Security queue age",
+            "formula": "verified_metric('security_queue_age')",
+            "unit": "minutes"
+          },
+          {
+            "key": "incident_context_time",
+            "label": "Incident context time",
+            "formula": "verified_metric('incident_context_time')",
+            "unit": "minutes"
+          },
+          {
+            "key": "critical_workload",
+            "label": "Critical security workload",
+            "formula": "verified_metric('critical_workload')",
+            "unit": "count"
+          },
+          {
+            "key": "remediation_sla",
+            "label": "Remediation SLA compliance",
+            "formula": "verified_metric('remediation_sla')",
+            "unit": "percent"
+          },
+          {
+            "key": "escalation_rate",
+            "label": "Security escalation rate",
+            "formula": "verified_metric('escalation_rate')",
+            "unit": "percent"
+          },
+          {
+            "key": "communication_latency",
+            "label": "Incident communication latency",
+            "formula": "verified_metric('communication_latency')",
+            "unit": "minutes"
+          },
+          {
+            "key": "post_incident_completion",
+            "label": "Post-incident review completion",
+            "formula": "verified_metric('post_incident_completion')",
+            "unit": "percent"
+          },
+          {
+            "key": "remediation_follow_up_rate",
+            "label": "Remediation follow-up completion",
+            "formula": "verified_metric('remediation_follow_up_rate')",
+            "unit": "percent"
+          },
+          {
+            "key": "security_posture_risk",
+            "label": "Security posture risk",
+            "formula": "verified_metric('security_posture_risk')",
+            "unit": "score"
+          },
+          {
+            "key": "security_mttr",
+            "label": "Security mean time to resolution",
+            "formula": "verified_metric('security_mttr')",
+            "unit": "minutes"
+          },
+          {
+            "key": "verified_security_outcomes",
+            "label": "Verified security outcomes",
+            "formula": "verified_metric('verified_security_outcomes')",
+            "unit": "count"
+          }
+        ]
+      },
+      "providers": [
+        "freshservice"
+      ],
+      "plays": [
+        {
+          "key": "security-alert-triage",
+          "name": "Security Alert Triage",
+          "description": "Prioritize security-related service records by urgency, evidence quality, and business exposure.",
+          "kpiKeys": [
+            "security_queue_age"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "hourly"
+          }
+        },
+        {
+          "key": "incident-context-builder",
+          "name": "Incident Context Builder",
+          "description": "Assemble verified service activity, affected assets, and incident history before investigation decisions.",
+          "kpiKeys": [
+            "incident_context_time"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "event",
+            "event": "security.incident_opened"
+          }
+        },
+        {
+          "key": "identity-risk-review",
+          "name": "Identity Risk Review",
+          "description": "Surface identity-related service incidents requiring deeper security review and evidence collection.",
+          "kpiKeys": [
+            "critical_workload"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "hourly"
+          }
+        },
+        {
+          "key": "vulnerability-work-queue",
+          "name": "Vulnerability Work Queue",
+          "description": "Prioritize vulnerability and remediation work represented in the governed service queue.",
+          "kpiKeys": [
+            "remediation_sla"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "containment-readiness-review",
+          "name": "Containment Readiness Review",
+          "description": "Prepare evidence, approvals, rollback considerations, and verification requirements before containment is attempted.",
+          "kpiKeys": [
+            "escalation_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "manual"
+          }
+        },
+        {
+          "key": "remediation-follow-up",
+          "name": "Remediation Follow-Up",
+          "description": "Track open remediation commitments and identify items that require escalation or source-of-record re-verification.",
+          "kpiKeys": [
+            "remediation_follow_up_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "hourly"
+          }
+        },
+        {
+          "key": "incident-communications-brief",
+          "name": "Incident Communications Brief",
+          "description": "Prepare a verified internal incident status brief from current source records and known impact.",
+          "kpiKeys": [
+            "communication_latency"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "event",
+            "event": "security.incident_status_changed"
+          }
+        },
+        {
+          "key": "post-incident-review",
+          "name": "Post-Incident Review",
+          "description": "Produce a structured review of incident evidence, recurrence patterns, control gaps, and follow-up actions.",
+          "kpiKeys": [
+            "post_incident_completion"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "event",
+            "event": "security.incident_closed"
+          }
+        },
+        {
+          "key": "security-posture-watch",
+          "name": "Security Posture Watch",
+          "description": "Review current security service workload and verified outcomes for deteriorating posture, recurring control gaps, and emerging operational risk.",
+          "kpiKeys": [
+            "security_posture_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Security Operations Coordinator",
+          "purpose": "Coordinate security workload, escalation, remediation follow-up, and the overall governed SecOps operating loop.",
+          "capabilities": [
+            "security-alert-triage",
+            "incident-assessment",
+            "identity-risk-analysis",
+            "vulnerability-prioritization",
+            "containment-planning",
+            "incident-communications",
+            "post-incident-review"
+          ]
+        },
+        {
+          "name": "Security Investigation Analyst",
+          "purpose": "Assemble and analyze source evidence for incidents without overstating confidence or treating provider acceptance as terminal truth.",
+          "capabilities": [
+            "security-alert-triage",
+            "incident-assessment",
+            "identity-risk-analysis",
+            "vulnerability-prioritization",
+            "containment-planning",
+            "incident-communications",
+            "post-incident-review"
+          ]
+        },
+        {
+          "name": "Identity Risk Analyst",
+          "purpose": "Review identity-related risk signals and service evidence while keeping containment and access changes approval-governed.",
+          "capabilities": [
+            "security-alert-triage",
+            "incident-assessment",
+            "identity-risk-analysis",
+            "vulnerability-prioritization",
+            "containment-planning",
+            "incident-communications",
+            "post-incident-review"
+          ]
+        },
+        {
+          "name": "Vulnerability Analyst",
+          "purpose": "Prioritize vulnerability and remediation work using verified business and service context.",
+          "capabilities": [
+            "security-alert-triage",
+            "incident-assessment",
+            "identity-risk-analysis",
+            "vulnerability-prioritization",
+            "containment-planning",
+            "incident-communications",
+            "post-incident-review"
+          ]
+        },
+        {
+          "name": "Incident Commander",
+          "purpose": "Coordinate incident readiness, communications, post-incident review, and cross-functional escalation from verified source records.",
+          "capabilities": [
+            "security-alert-triage",
+            "incident-assessment",
+            "identity-risk-analysis",
+            "vulnerability-prioritization",
+            "containment-planning",
+            "incident-communications",
+            "post-incident-review"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "Security Incident Response Policy",
+          "purpose": "Severity, escalation, evidence handling, approvals, and incident command policy."
+        },
+        {
+          "title": "Containment & Recovery Runbook",
+          "purpose": "Approved containment patterns, rollback requirements, recovery checks, and verification rules."
+        },
+        {
+          "title": "Vulnerability Prioritization Standard",
+          "purpose": "Exploitability, asset criticality, exposure, compensating controls, and remediation SLA guidance."
+        },
+        {
+          "title": "Incident Communications Standard",
+          "purpose": "Internal/external update standards, audience rules, approved language, and escalation thresholds."
+        },
+        {
+          "title": "Post-Incident Review Standard",
+          "purpose": "Timeline reconstruction, root cause, control gap, follow-up ownership, and learning requirements."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  },
+  "revenue-operations-3": {
+    "asset": {
+      "id": "revenue-operations-3",
+      "slug": "revenue-operations-3",
+      "title": "Revenue Operations 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "Revenue teams lose pipeline when qualification, account context, deal risk, forecasting, and renewal signals are fragmented across CRM activity.",
+        "target_outcome": "Increase qualified pipeline velocity and forecast integrity while reducing manual research and stale-deal administration.",
+        "baseline_metric": "speed_to_lead",
+        "success_criteria": [
+          "All included Plays install into Gravitre's canonical Play/workflow runtime.",
+          "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
+          "Every declared KPI is represented in the installed dashboard and normalized dataset.",
+          "At least one declared outcome event must be measured before Outcome Verified status is earned.",
+          "Every evidence action resolves through canonical Play readiness and the pack runtime profile.",
+          "Record-specific reviews require explicit runtime IDs before execution.",
+          "Cross-system joins require verified identity mappings and complete measurement coverage.",
+          "Prepared reviews are activity evidence; outcome improvement requires a measured baseline and source-linked result."
+        ],
+        "outcome_events": [
+          "inbound_lead_qualifier_reviewed",
+          "account_research_brief_reviewed",
+          "meeting_prep_brief_reviewed",
+          "stale_deal_recovery_reviewed",
+          "pipeline_risk_review_reviewed",
+          "forecast_integrity_check_reviewed",
+          "renewal_expansion_watch_reviewed",
+          "post_meeting_follow_up_review_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "speed_to_lead",
+            "label": "Speed to lead",
+            "unit": "minutes",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "qualified_rate",
+            "label": "Qualified lead rate",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "pipeline_coverage",
+            "label": "Pipeline coverage",
+            "unit": "ratio",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "stage_aging",
+            "label": "Stage aging",
+            "unit": "days",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "deal_velocity",
+            "label": "Deal velocity",
+            "unit": "days",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "forecast_integrity",
+            "label": "Forecast integrity",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "renewal_risk",
+            "label": "Renewal revenue at risk",
+            "unit": "currency",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "Revenue Operations 3.0 Command Center",
+        "metrics": [
+          {
+            "kpi_key": "speed_to_lead",
+            "label": "Speed to lead",
+            "visualization": "trend",
+            "description": "Speed to lead: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "qualified_rate",
+            "label": "Qualified lead rate",
+            "visualization": "trend",
+            "description": "Qualified lead rate: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "pipeline_coverage",
+            "label": "Pipeline coverage",
+            "visualization": "trend",
+            "description": "Pipeline coverage: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "stage_aging",
+            "label": "Stage aging",
+            "visualization": "trend",
+            "description": "Stage aging: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "deal_velocity",
+            "label": "Deal velocity",
+            "visualization": "trend",
+            "description": "Deal velocity: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "forecast_integrity",
+            "label": "Forecast integrity",
+            "visualization": "trend",
+            "description": "Forecast integrity: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "renewal_risk",
+            "label": "Renewal revenue at risk",
+            "visualization": "metric",
+            "description": "Renewal revenue at risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "contacts",
+            "source": "hubspot",
+            "primary_key": "contact_id",
+            "fields": [
+              "contact_id",
+              "company_id",
+              "owner_id",
+              "lifecycle_stage",
+              "created_at",
+              "first_response_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "accounts",
+            "source": "hubspot",
+            "primary_key": "company_id",
+            "fields": [
+              "company_id",
+              "domain",
+              "owner_id",
+              "renewal_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "opportunities",
+            "source": "hubspot",
+            "primary_key": "deal_id",
+            "fields": [
+              "deal_id",
+              "company_id",
+              "pipeline_id",
+              "stage_id",
+              "owner_id",
+              "amount",
+              "currency",
+              "created_at",
+              "stage_entered_at",
+              "close_at",
+              "last_activity_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "pipeline_stages",
+            "source": "hubspot",
+            "primary_key": "stage_id",
+            "fields": [
+              "stage_id",
+              "pipeline_id",
+              "label",
+              "probability",
+              "is_closed",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "revenue_owners",
+            "source": "hubspot",
+            "primary_key": "owner_id",
+            "fields": [
+              "owner_id",
+              "team_id",
+              "active",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "verified_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "status",
+              "verified_at",
+              "metric_delta",
+              "source_record",
+              "measurement_window",
+              "baseline",
+              "sample_size"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "speed_to_lead",
+            "label": "Speed to lead",
+            "formula": "verified_metric('speed_to_lead')",
+            "unit": "minutes"
+          },
+          {
+            "key": "qualified_rate",
+            "label": "Qualified lead rate",
+            "formula": "verified_metric('qualified_rate')",
+            "unit": "percent"
+          },
+          {
+            "key": "pipeline_coverage",
+            "label": "Pipeline coverage",
+            "formula": "verified_metric('pipeline_coverage')",
+            "unit": "ratio"
+          },
+          {
+            "key": "stage_aging",
+            "label": "Stage aging",
+            "formula": "verified_metric('stage_aging')",
+            "unit": "days"
+          },
+          {
+            "key": "deal_velocity",
+            "label": "Deal velocity",
+            "formula": "verified_metric('deal_velocity')",
+            "unit": "days"
+          },
+          {
+            "key": "forecast_integrity",
+            "label": "Forecast integrity",
+            "formula": "verified_metric('forecast_integrity')",
+            "unit": "percent"
+          },
+          {
+            "key": "renewal_risk",
+            "label": "Renewal revenue at risk",
+            "formula": "verified_metric('renewal_risk')",
+            "unit": "currency"
+          }
+        ]
+      },
+      "providers": [
+        "hubspot"
+      ],
+      "plays": [
+        {
+          "key": "inbound-lead-qualifier",
+          "name": "Inbound Lead Qualifier",
+          "description": "Evaluate inbound CRM contacts against ICP and route the next recommended action.",
+          "kpiKeys": [
+            "qualified_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "hourly"
+          }
+        },
+        {
+          "key": "account-research-brief",
+          "name": "Account Research Brief",
+          "description": "Build a verified CRM-backed account briefing for active opportunities.",
+          "kpiKeys": [
+            "speed_to_lead"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "meeting-prep-brief",
+          "name": "Meeting Prep Brief",
+          "description": "Prepare seller context using account and deal evidence before a customer meeting.",
+          "kpiKeys": [
+            "deal_velocity"
+          ],
+          "runtimeInputs": [
+            "deal_id"
+          ],
+          "trigger": {
+            "type": "manual"
+          }
+        },
+        {
+          "key": "stale-deal-recovery",
+          "name": "Stale Deal Recovery",
+          "description": "Identify opportunities with weak momentum and explain the evidence behind recovery recommendations.",
+          "kpiKeys": [
+            "stage_aging"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "pipeline-risk-review",
+          "name": "Pipeline Risk Review",
+          "description": "Detect pipeline risk using deal state, ownership, and stage evidence.",
+          "kpiKeys": [
+            "pipeline_coverage"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "forecast-integrity-check",
+          "name": "Forecast Integrity Check",
+          "description": "Compare pipeline claims with current CRM evidence and stage distribution.",
+          "kpiKeys": [
+            "forecast_integrity"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "renewal-expansion-watch",
+          "name": "Renewal and Expansion Watch",
+          "description": "Surface accounts that warrant renewal or expansion attention from CRM evidence.",
+          "kpiKeys": [
+            "renewal_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "post-meeting-follow-up-review",
+          "name": "Post-Meeting Follow-Up Review",
+          "description": "Review current deal evidence after customer meetings and prepare the highest-value next-step follow-up without sending it automatically.",
+          "kpiKeys": [
+            "deal_velocity"
+          ],
+          "runtimeInputs": [
+            "deal_id"
+          ],
+          "trigger": {
+            "type": "manual"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Revenue Intelligence Agent",
+          "purpose": "Operate Revenue Operations evidence review and measurable decision support. Require tenant ICP criteria, territory rules, and lifecycle definitions; missing data is unknown, not disqualified. Require stage definitions, probability policy, forecast period, quota, and currency. Do not infer stage entry times or pipeline coverage from an unpaginated current snapshot. Meeting preparation and follow-up require deal_id and tenant-provided meeting evidence; CRM deal reads alone do not prove attendance, transcript content, or a sent follow-up. Require mapped renewal dates, contract value, and account associations. Expansion recommendations are hypotheses until confirmed.",
+          "capabilities": [
+            "lead-qualification",
+            "account-research",
+            "meeting-prep",
+            "pipeline-risk-analysis",
+            "deal-recovery",
+            "forecast-integrity",
+            "renewal-expansion-analysis"
+          ]
+        },
+        {
+          "name": "Pipeline Analyst Agent",
+          "purpose": "Operate Revenue Operations evidence review and measurable decision support. Require tenant ICP criteria, territory rules, and lifecycle definitions; missing data is unknown, not disqualified. Require stage definitions, probability policy, forecast period, quota, and currency. Do not infer stage entry times or pipeline coverage from an unpaginated current snapshot. Meeting preparation and follow-up require deal_id and tenant-provided meeting evidence; CRM deal reads alone do not prove attendance, transcript content, or a sent follow-up. Require mapped renewal dates, contract value, and account associations. Expansion recommendations are hypotheses until confirmed.",
+          "capabilities": [
+            "lead-qualification",
+            "account-research",
+            "meeting-prep",
+            "pipeline-risk-analysis",
+            "deal-recovery",
+            "forecast-integrity",
+            "renewal-expansion-analysis"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "ICP & Qualification Standard",
+          "purpose": "Require tenant ICP criteria, territory rules, and lifecycle definitions; missing data is unknown, not disqualified."
+        },
+        {
+          "title": "Pipeline & Forecast Standard",
+          "purpose": "Require stage definitions, probability policy, forecast period, quota, and currency. Do not infer stage entry times or pipeline coverage from an unpaginated current snapshot."
+        },
+        {
+          "title": "Meeting & Follow-Up Standard",
+          "purpose": "Meeting preparation and follow-up require deal_id and tenant-provided meeting evidence; CRM deal reads alone do not prove attendance, transcript content, or a sent follow-up."
+        },
+        {
+          "title": "Renewal & Expansion Standard",
+          "purpose": "Require mapped renewal dates, contract value, and account associations. Expansion recommendations are hypotheses until confirmed."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  },
+  "customer-success-support-3": {
+    "asset": {
+      "id": "customer-success-support-3",
+      "slug": "customer-success-support-3",
+      "title": "Customer Success & Support 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "Customer teams react too late because CRM health, support friction, escalations, renewals, and expansion signals are reviewed separately.",
+        "target_outcome": "Detect customer risk earlier, improve escalation recovery, and create a measurable renewal and service-health operating loop.",
+        "baseline_metric": "account_health",
+        "success_criteria": [
+          "All included Plays install into Gravitre's canonical Play/workflow runtime.",
+          "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
+          "Every declared KPI is represented in the installed dashboard and normalized dataset.",
+          "At least one declared outcome event must be measured before Outcome Verified status is earned.",
+          "Every evidence action resolves through canonical Play readiness and the pack runtime profile.",
+          "Record-specific reviews require explicit runtime IDs before execution.",
+          "Cross-system joins require verified identity mappings and complete measurement coverage.",
+          "Prepared reviews are activity evidence; outcome improvement requires a measured baseline and source-linked result."
+        ],
+        "outcome_events": [
+          "customer_health_watch_reviewed",
+          "churn_risk_detector_reviewed",
+          "escalation_recovery_review_reviewed",
+          "qbr_preparation_reviewed",
+          "renewal_readiness_review_reviewed",
+          "expansion_signal_watch_reviewed",
+          "service_gap_detector_reviewed",
+          "voice_of_customer_watch_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "account_health",
+            "label": "Account health",
+            "unit": "score",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "churn_risk",
+            "label": "Churn risk",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "escalation_age",
+            "label": "Escalation age",
+            "unit": "hours",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "qbr_readiness",
+            "label": "QBR readiness",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "renewal_readiness",
+            "label": "Renewal readiness",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "expansion_signal_rate",
+            "label": "Expansion signal rate",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "service_gap_rate",
+            "label": "Service gap rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "Customer Success & Support 3.0 Command Center",
+        "metrics": [
+          {
+            "kpi_key": "account_health",
+            "label": "Account health",
+            "visualization": "trend",
+            "description": "Account health: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "churn_risk",
+            "label": "Churn risk",
+            "visualization": "trend",
+            "description": "Churn risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "escalation_age",
+            "label": "Escalation age",
+            "visualization": "trend",
+            "description": "Escalation age: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "qbr_readiness",
+            "label": "QBR readiness",
+            "visualization": "trend",
+            "description": "QBR readiness: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "renewal_readiness",
+            "label": "Renewal readiness",
+            "visualization": "trend",
+            "description": "Renewal readiness: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "expansion_signal_rate",
+            "label": "Expansion signal rate",
+            "visualization": "trend",
+            "description": "Expansion signal rate: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "service_gap_rate",
+            "label": "Service gap rate",
+            "visualization": "trend",
+            "description": "Service gap rate: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "customer_accounts",
+            "source": "hubspot",
+            "primary_key": "company_id",
+            "fields": [
+              "company_id",
+              "domain",
+              "owner_id",
+              "renewal_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "commercial_opportunities",
+            "source": "hubspot",
+            "primary_key": "deal_id",
+            "fields": [
+              "deal_id",
+              "company_id",
+              "amount",
+              "currency",
+              "close_at",
+              "stage_id",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "support_cases",
+            "source": "zendesk",
+            "primary_key": "ticket_id",
+            "fields": [
+              "ticket_id",
+              "organization_id",
+              "requester_id",
+              "status",
+              "priority",
+              "owner_id",
+              "created_at",
+              "updated_at",
+              "resolved_at",
+              "tags",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "account_identity_map",
+            "source": "tenant_verified_mapping",
+            "primary_key": "mapping_id",
+            "fields": [
+              "mapping_id",
+              "company_id",
+              "organization_id",
+              "verified_at",
+              "mapping_method",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "customer_themes",
+            "source": "verified_support_evidence",
+            "primary_key": "theme_id",
+            "fields": [
+              "theme_id",
+              "ticket_ids",
+              "company_id",
+              "theme",
+              "confidence",
+              "reviewed_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "verified_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "status",
+              "verified_at",
+              "metric_delta",
+              "source_record",
+              "measurement_window",
+              "baseline",
+              "sample_size"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "account_health",
+            "label": "Account health",
+            "formula": "verified_metric('account_health')",
+            "unit": "score"
+          },
+          {
+            "key": "churn_risk",
+            "label": "Churn risk",
+            "formula": "verified_metric('churn_risk')",
+            "unit": "percent"
+          },
+          {
+            "key": "escalation_age",
+            "label": "Escalation age",
+            "formula": "verified_metric('escalation_age')",
+            "unit": "hours"
+          },
+          {
+            "key": "qbr_readiness",
+            "label": "QBR readiness",
+            "formula": "verified_metric('qbr_readiness')",
+            "unit": "percent"
+          },
+          {
+            "key": "renewal_readiness",
+            "label": "Renewal readiness",
+            "formula": "verified_metric('renewal_readiness')",
+            "unit": "percent"
+          },
+          {
+            "key": "expansion_signal_rate",
+            "label": "Expansion signal rate",
+            "formula": "verified_metric('expansion_signal_rate')",
+            "unit": "percent"
+          },
+          {
+            "key": "service_gap_rate",
+            "label": "Service gap rate",
+            "formula": "verified_metric('service_gap_rate')",
+            "unit": "percent"
+          }
+        ]
+      },
+      "providers": [
+        "hubspot",
+        "zendesk"
+      ],
+      "plays": [
+        {
+          "key": "customer-health-watch",
+          "name": "Customer Health Watch",
+          "description": "Combine CRM and support evidence into a current customer-health view.",
+          "kpiKeys": [
+            "account_health"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "churn-risk-detector",
+          "name": "Churn Risk Detector",
+          "description": "Identify accounts with credible retention risk using service and CRM evidence.",
+          "kpiKeys": [
+            "churn_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "escalation-recovery-review",
+          "name": "Escalation Recovery Review",
+          "description": "Prioritize active support escalations and identify the next recovery step.",
+          "kpiKeys": [
+            "escalation_age"
+          ],
+          "runtimeInputs": [
+            "ticket_id"
+          ],
+          "trigger": {
+            "type": "manual"
+          }
+        },
+        {
+          "key": "qbr-preparation",
+          "name": "QBR Preparation",
+          "description": "Assemble account, support, and commercial evidence for a customer business review.",
+          "kpiKeys": [
+            "qbr_readiness"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "renewal-readiness-review",
+          "name": "Renewal Readiness Review",
+          "description": "Assess renewal readiness from account and deal evidence.",
+          "kpiKeys": [
+            "renewal_readiness"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "expansion-signal-watch",
+          "name": "Expansion Signal Watch",
+          "description": "Find evidence-backed expansion signals without inventing intent.",
+          "kpiKeys": [
+            "expansion_signal_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "service-gap-detector",
+          "name": "Service Gap Detector",
+          "description": "Detect recurring customer-support gaps that should become process or knowledge improvements.",
+          "kpiKeys": [
+            "service_gap_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "voice-of-customer-watch",
+          "name": "Voice of Customer Watch",
+          "description": "Aggregate verified support evidence into recurring customer themes, friction signals, and retention-relevant patterns.",
+          "kpiKeys": [
+            "account_health"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Customer Health Agent",
+          "purpose": "Operate Customer Success evidence review and measurable decision support. Join CRM and support records only through a verified account map; missing support evidence is unknown health, not healthy. Define severity, escalation SLA, accountable owner, and recovery verification. A drafted recommendation does not close an escalation. Require contract and renewal data plus service evidence; distinguish QBR preparation from a delivered review and renewal readiness from a signed renewal. Use source-linked ticket themes, deduplicate evidence, and label confidence; ticket volume is not customer prevalence without a denominator.",
+          "capabilities": [
+            "customer-health-analysis",
+            "churn-risk-analysis",
+            "escalation-recovery",
+            "qbr-preparation",
+            "renewal-readiness",
+            "expansion-signal-analysis",
+            "service-gap-analysis"
+          ]
+        },
+        {
+          "name": "Support Risk Analyst",
+          "purpose": "Operate Customer Success evidence review and measurable decision support. Join CRM and support records only through a verified account map; missing support evidence is unknown health, not healthy. Define severity, escalation SLA, accountable owner, and recovery verification. A drafted recommendation does not close an escalation. Require contract and renewal data plus service evidence; distinguish QBR preparation from a delivered review and renewal readiness from a signed renewal. Use source-linked ticket themes, deduplicate evidence, and label confidence; ticket volume is not customer prevalence without a denominator.",
+          "capabilities": [
+            "customer-health-analysis",
+            "churn-risk-analysis",
+            "escalation-recovery",
+            "qbr-preparation",
+            "renewal-readiness",
+            "expansion-signal-analysis",
+            "service-gap-analysis"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "Customer Health & Identity Standard",
+          "purpose": "Join CRM and support records only through a verified account map; missing support evidence is unknown health, not healthy."
+        },
+        {
+          "title": "Escalation & Recovery Standard",
+          "purpose": "Define severity, escalation SLA, accountable owner, and recovery verification. A drafted recommendation does not close an escalation."
+        },
+        {
+          "title": "QBR & Renewal Standard",
+          "purpose": "Require contract and renewal data plus service evidence; distinguish QBR preparation from a delivered review and renewal readiness from a signed renewal."
+        },
+        {
+          "title": "Voice of Customer Standard",
+          "purpose": "Use source-linked ticket themes, deduplicate evidence, and label confidence; ticket volume is not customer prevalence without a denominator."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  },
+  "finance-operations-3": {
+    "asset": {
+      "id": "finance-operations-3",
+      "slug": "finance-operations-3",
+      "title": "Finance Operations 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "Finance teams spend excessive time manually reviewing receivables, cash exposure, invoice exceptions, vendor activity, renewals, and close readiness.",
+        "target_outcome": "Improve cash visibility and collections prioritization while reducing manual finance review and month-end surprises.",
+        "baseline_metric": "dso",
+        "success_criteria": [
+          "All included Plays install into Gravitre's canonical Play/workflow runtime.",
+          "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
+          "Every declared KPI is represented in the installed dashboard and normalized dataset.",
+          "At least one declared outcome event must be measured before Outcome Verified status is earned.",
+          "Every evidence action resolves through canonical Play readiness and the pack runtime profile.",
+          "Record-specific reviews require explicit runtime IDs before execution.",
+          "Cross-system joins require verified identity mappings and complete measurement coverage.",
+          "Prepared reviews are activity evidence; outcome improvement requires a measured baseline and source-linked result."
+        ],
+        "outcome_events": [
+          "ar_priority_review_reviewed",
+          "collections_strategy_brief_reviewed",
+          "cash_risk_watch_reviewed",
+          "invoice_exception_review_reviewed",
+          "vendor_exception_review_reviewed",
+          "renewal_exposure_watch_reviewed",
+          "month_end_readiness_reviewed",
+          "revenue_leak_hunter_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "dso",
+            "label": "Days sales outstanding",
+            "unit": "days",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "overdue_ar",
+            "label": "Overdue receivables",
+            "unit": "currency",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "cash_risk",
+            "label": "Cash risk",
+            "unit": "currency",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "invoice_exception_rate",
+            "label": "Invoice exception rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "vendor_exception_rate",
+            "label": "Vendor exception rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "renewal_exposure",
+            "label": "Renewal exposure",
+            "unit": "currency",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "close_readiness",
+            "label": "Month-end close readiness",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "Finance Operations 3.0 Command Center",
+        "metrics": [
+          {
+            "kpi_key": "dso",
+            "label": "Days sales outstanding",
+            "visualization": "trend",
+            "description": "Days sales outstanding: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "overdue_ar",
+            "label": "Overdue receivables",
+            "visualization": "metric",
+            "description": "Overdue receivables: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "cash_risk",
+            "label": "Cash risk",
+            "visualization": "metric",
+            "description": "Cash risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "invoice_exception_rate",
+            "label": "Invoice exception rate",
+            "visualization": "trend",
+            "description": "Invoice exception rate: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "vendor_exception_rate",
+            "label": "Vendor exception rate",
+            "visualization": "trend",
+            "description": "Vendor exception rate: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "renewal_exposure",
+            "label": "Renewal exposure",
+            "visualization": "metric",
+            "description": "Renewal exposure: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "close_readiness",
+            "label": "Month-end close readiness",
+            "visualization": "trend",
+            "description": "Month-end close readiness: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "receivables",
+            "source": "quickbooks",
+            "primary_key": "invoice_id",
+            "fields": [
+              "invoice_id",
+              "customer_id",
+              "currency",
+              "amount",
+              "balance",
+              "issued_at",
+              "due_at",
+              "status",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "payments",
+            "source": "quickbooks",
+            "primary_key": "payment_id",
+            "fields": [
+              "payment_id",
+              "customer_id",
+              "invoice_ids",
+              "amount",
+              "currency",
+              "paid_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "vendors",
+            "source": "quickbooks",
+            "primary_key": "vendor_id",
+            "fields": [
+              "vendor_id",
+              "active",
+              "balance",
+              "currency",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "ledger_accounts",
+            "source": "quickbooks",
+            "primary_key": "account_id",
+            "fields": [
+              "account_id",
+              "account_type",
+              "balance",
+              "currency",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "subscriptions",
+            "source": "stripe",
+            "primary_key": "subscription_id",
+            "fields": [
+              "subscription_id",
+              "customer_id",
+              "status",
+              "currency",
+              "renewal_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "billing_invoices",
+            "source": "stripe",
+            "primary_key": "invoice_id",
+            "fields": [
+              "invoice_id",
+              "customer_id",
+              "subscription_id",
+              "amount_due",
+              "amount_paid",
+              "currency",
+              "due_at",
+              "status",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "verified_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "status",
+              "verified_at",
+              "metric_delta",
+              "source_record",
+              "measurement_window",
+              "baseline",
+              "sample_size"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "dso",
+            "label": "Days sales outstanding",
+            "formula": "verified_metric('dso')",
+            "unit": "days"
+          },
+          {
+            "key": "overdue_ar",
+            "label": "Overdue receivables",
+            "formula": "verified_metric('overdue_ar')",
+            "unit": "currency"
+          },
+          {
+            "key": "cash_risk",
+            "label": "Cash risk",
+            "formula": "verified_metric('cash_risk')",
+            "unit": "currency"
+          },
+          {
+            "key": "invoice_exception_rate",
+            "label": "Invoice exception rate",
+            "formula": "verified_metric('invoice_exception_rate')",
+            "unit": "percent"
+          },
+          {
+            "key": "vendor_exception_rate",
+            "label": "Vendor exception rate",
+            "formula": "verified_metric('vendor_exception_rate')",
+            "unit": "percent"
+          },
+          {
+            "key": "renewal_exposure",
+            "label": "Renewal exposure",
+            "formula": "verified_metric('renewal_exposure')",
+            "unit": "currency"
+          },
+          {
+            "key": "close_readiness",
+            "label": "Month-end close readiness",
+            "formula": "verified_metric('close_readiness')",
+            "unit": "percent"
+          }
+        ]
+      },
+      "providers": [
+        "quickbooks",
+        "stripe"
+      ],
+      "plays": [
+        {
+          "key": "ar-priority-review",
+          "name": "AR Priority Review",
+          "description": "Prioritize receivables using invoice and customer evidence.",
+          "kpiKeys": [
+            "dso"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "collections-strategy-brief",
+          "name": "Collections Strategy Brief",
+          "description": "Prepare evidence-backed collections priorities without sending customer communications automatically.",
+          "kpiKeys": [
+            "overdue_ar"
+          ],
+          "runtimeInputs": [
+            "invoice_id"
+          ],
+          "trigger": {
+            "type": "manual"
+          }
+        },
+        {
+          "key": "cash-risk-watch",
+          "name": "Cash Risk Watch",
+          "description": "Monitor receivables and payments for near-term cash exposure.",
+          "kpiKeys": [
+            "cash_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "invoice-exception-review",
+          "name": "Invoice Exception Review",
+          "description": "Identify invoice records requiring human reconciliation or correction.",
+          "kpiKeys": [
+            "invoice_exception_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "vendor-exception-review",
+          "name": "Vendor Exception Review",
+          "description": "Review vendor and account evidence for unusual or incomplete finance records.",
+          "kpiKeys": [
+            "vendor_exception_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "renewal-exposure-watch",
+          "name": "Renewal Exposure Watch",
+          "description": "Review subscription evidence for upcoming commercial exposure.",
+          "kpiKeys": [
+            "renewal_exposure"
+          ],
+          "runtimeInputs": [
+            "subscription_id"
+          ],
+          "trigger": {
+            "type": "manual"
+          }
+        },
+        {
+          "key": "month-end-readiness",
+          "name": "Month-End Readiness",
+          "description": "Assess close readiness from account, payment, and invoice evidence.",
+          "kpiKeys": [
+            "close_readiness"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "revenue-leak-hunter",
+          "name": "Revenue Leak Hunter",
+          "description": "Identify recoverable revenue hidden in overdue invoices, billing exceptions, stalled collections, and subscription exposure using verified finance evidence.",
+          "kpiKeys": [
+            "overdue_ar"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Finance Operations Agent",
+          "purpose": "Operate Finance evidence review and measurable decision support. Require as-of date, terms, credit notes, payment allocation, reporting period, and currency. Deduplicate invoice/payment records; do not add currencies without approved conversion. Separate realized payments, overdue balances, and projected exposure. DSO requires credit sales for the same period; missing ledger evidence means unavailable, not zero. Use subscription_id for subscription reviews. Reconcile Stripe and accounting invoices through verified mappings before identifying recoverable revenue or double counting. Collections briefs are drafts. Payments, refunds, ledger changes, and external customer communications require separate approved execution and source verification.",
+          "capabilities": [
+            "ar-prioritization",
+            "collections-analysis",
+            "cash-risk-analysis",
+            "invoice-exception-analysis",
+            "expense-anomaly-analysis",
+            "renewal-audit",
+            "month-end-readiness"
+          ]
+        },
+        {
+          "name": "Cash Risk Analyst",
+          "purpose": "Operate Finance evidence review and measurable decision support. Require as-of date, terms, credit notes, payment allocation, reporting period, and currency. Deduplicate invoice/payment records; do not add currencies without approved conversion. Separate realized payments, overdue balances, and projected exposure. DSO requires credit sales for the same period; missing ledger evidence means unavailable, not zero. Use subscription_id for subscription reviews. Reconcile Stripe and accounting invoices through verified mappings before identifying recoverable revenue or double counting. Collections briefs are drafts. Payments, refunds, ledger changes, and external customer communications require separate approved execution and source verification.",
+          "capabilities": [
+            "ar-prioritization",
+            "collections-analysis",
+            "cash-risk-analysis",
+            "invoice-exception-analysis",
+            "expense-anomaly-analysis",
+            "renewal-audit",
+            "month-end-readiness"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "Receivables & Collections Standard",
+          "purpose": "Require as-of date, terms, credit notes, payment allocation, reporting period, and currency. Deduplicate invoice/payment records; do not add currencies without approved conversion."
+        },
+        {
+          "title": "Cash & Close Standard",
+          "purpose": "Separate realized payments, overdue balances, and projected exposure. DSO requires credit sales for the same period; missing ledger evidence means unavailable, not zero."
+        },
+        {
+          "title": "Billing & Renewal Standard",
+          "purpose": "Use subscription_id for subscription reviews. Reconcile Stripe and accounting invoices through verified mappings before identifying recoverable revenue or double counting."
+        },
+        {
+          "title": "Finance Approval Standard",
+          "purpose": "Collections briefs are drafts. Payments, refunds, ledger changes, and external customer communications require separate approved execution and source verification."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  },
+  "marketing-operations-3": {
+    "asset": {
+      "id": "marketing-operations-3",
+      "slug": "marketing-operations-3",
+      "title": "Marketing Operations 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "Marketing teams struggle to connect campaign activity, lead quality, funnel movement, content engagement, and downstream pipeline contribution.",
+        "target_outcome": "Improve campaign and funnel performance using measurable CRM evidence while keeping paid-media and analytics connectors optional until their governed runtime actions are executable.",
+        "baseline_metric": "campaign_engagement_signal",
+        "success_criteria": [
+          "All included Plays install into Gravitre's canonical Play/workflow runtime.",
+          "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
+          "Every declared KPI is represented in the installed dashboard and normalized dataset.",
+          "At least one declared outcome event must be measured before Outcome Verified status is earned.",
+          "Every evidence action resolves through canonical Play readiness and the pack runtime profile.",
+          "Record-specific reviews require explicit runtime IDs before execution.",
+          "Cross-system joins require verified identity mappings and complete measurement coverage.",
+          "Prepared reviews are activity evidence; outcome improvement requires a measured baseline and source-linked result."
+        ],
+        "outcome_events": [
+          "campaign_performance_review_reviewed",
+          "attribution_integrity_check_reviewed",
+          "lead_handoff_qa_reviewed",
+          "campaign_anomaly_watch_reviewed",
+          "audience_opportunity_review_reviewed",
+          "content_performance_review_reviewed",
+          "pipeline_contribution_review_reviewed",
+          "lifecycle_conversion_review_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "campaign_engagement_signal",
+            "label": "Campaign engagement signal",
+            "unit": "score",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "lead_flow_health",
+            "label": "Lead flow health",
+            "unit": "score",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "mql_to_sql",
+            "label": "MQL to SQL conversion",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "attribution_confidence",
+            "label": "Attribution confidence",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "campaign_anomaly_rate",
+            "label": "Campaign anomaly rate",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "content_velocity",
+            "label": "Content performance velocity",
+            "unit": "score",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "pipeline_contribution",
+            "label": "Marketing pipeline contribution",
+            "unit": "currency",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "Marketing Operations 3.0 Command Center",
+        "metrics": [
+          {
+            "kpi_key": "campaign_engagement_signal",
+            "label": "Campaign engagement signal",
+            "visualization": "trend",
+            "description": "Campaign engagement signal: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "lead_flow_health",
+            "label": "Lead flow health",
+            "visualization": "trend",
+            "description": "Lead flow health: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "mql_to_sql",
+            "label": "MQL to SQL conversion",
+            "visualization": "trend",
+            "description": "MQL to SQL conversion: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "attribution_confidence",
+            "label": "Attribution confidence",
+            "visualization": "trend",
+            "description": "Attribution confidence: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "campaign_anomaly_rate",
+            "label": "Campaign anomaly rate",
+            "visualization": "trend",
+            "description": "Campaign anomaly rate: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "content_velocity",
+            "label": "Content performance velocity",
+            "visualization": "trend",
+            "description": "Content performance velocity: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "pipeline_contribution",
+            "label": "Marketing pipeline contribution",
+            "visualization": "metric",
+            "description": "Marketing pipeline contribution: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "campaigns",
+            "source": "hubspot",
+            "primary_key": "campaign_id",
+            "fields": [
+              "campaign_id",
+              "name",
+              "created_at",
+              "updated_at",
+              "engagement_count",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "marketing_contacts",
+            "source": "hubspot",
+            "primary_key": "contact_id",
+            "fields": [
+              "contact_id",
+              "lifecycle_stage",
+              "created_at",
+              "qualified_at",
+              "source",
+              "campaign_ids",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "marketing_opportunities",
+            "source": "hubspot",
+            "primary_key": "deal_id",
+            "fields": [
+              "deal_id",
+              "contact_ids",
+              "campaign_ids",
+              "pipeline_id",
+              "stage_id",
+              "amount",
+              "currency",
+              "created_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "funnel_stages",
+            "source": "hubspot",
+            "primary_key": "stage_id",
+            "fields": [
+              "stage_id",
+              "pipeline_id",
+              "label",
+              "probability",
+              "is_closed",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "attribution_evidence",
+            "source": "verified_crm_associations",
+            "primary_key": "evidence_id",
+            "fields": [
+              "evidence_id",
+              "campaign_id",
+              "contact_id",
+              "deal_id",
+              "model",
+              "confidence",
+              "verified_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "verified_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "status",
+              "verified_at",
+              "metric_delta",
+              "source_record",
+              "measurement_window",
+              "baseline",
+              "sample_size"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "campaign_engagement_signal",
+            "label": "Campaign engagement signal",
+            "formula": "verified_metric('campaign_engagement_signal')",
+            "unit": "score"
+          },
+          {
+            "key": "lead_flow_health",
+            "label": "Lead flow health",
+            "formula": "verified_metric('lead_flow_health')",
+            "unit": "score"
+          },
+          {
+            "key": "mql_to_sql",
+            "label": "MQL to SQL conversion",
+            "formula": "verified_metric('mql_to_sql')",
+            "unit": "percent"
+          },
+          {
+            "key": "attribution_confidence",
+            "label": "Attribution confidence",
+            "formula": "verified_metric('attribution_confidence')",
+            "unit": "percent"
+          },
+          {
+            "key": "campaign_anomaly_rate",
+            "label": "Campaign anomaly rate",
+            "formula": "verified_metric('campaign_anomaly_rate')",
+            "unit": "percent"
+          },
+          {
+            "key": "content_velocity",
+            "label": "Content performance velocity",
+            "formula": "verified_metric('content_velocity')",
+            "unit": "score"
+          },
+          {
+            "key": "pipeline_contribution",
+            "label": "Marketing pipeline contribution",
+            "formula": "verified_metric('pipeline_contribution')",
+            "unit": "currency"
+          }
+        ]
+      },
+      "providers": [
+        "hubspot"
+      ],
+      "plays": [
+        {
+          "key": "campaign-performance-review",
+          "name": "Campaign Performance Review",
+          "description": "Assess current campaign activity and engagement evidence from the connected marketing CRM.",
+          "kpiKeys": [
+            "campaign_engagement_signal"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "attribution-integrity-check",
+          "name": "Attribution Integrity Check",
+          "description": "Compare campaign, contact, and pipeline evidence to identify attribution gaps without inventing unsupported channel data.",
+          "kpiKeys": [
+            "attribution_confidence"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "lead-handoff-qa",
+          "name": "Lead Handoff QA",
+          "description": "Review recent CRM contacts for measurable marketing-to-sales handoff quality.",
+          "kpiKeys": [
+            "mql_to_sql"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "campaign-anomaly-watch",
+          "name": "Campaign Anomaly Watch",
+          "description": "Detect unusual campaign activity or engagement deterioration in the currently governed CRM evidence.",
+          "kpiKeys": [
+            "campaign_anomaly_rate"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "audience-opportunity-review",
+          "name": "Audience Opportunity Review",
+          "description": "Analyze recent contact evidence for audience and segmentation opportunities.",
+          "kpiKeys": [
+            "lead_flow_health"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "content-performance-review",
+          "name": "Content Performance Review",
+          "description": "Use campaign evidence to identify content or messaging programs that are accelerating or decaying.",
+          "kpiKeys": [
+            "content_velocity"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "pipeline-contribution-review",
+          "name": "Pipeline Contribution Review",
+          "description": "Connect current campaign and CRM evidence to downstream pipeline contribution.",
+          "kpiKeys": [
+            "pipeline_contribution"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "lifecycle-conversion-review",
+          "name": "Lifecycle Conversion Review",
+          "description": "Analyze pipeline-stage and contact evidence to find conversion leakage between marketing qualification and sales progression.",
+          "kpiKeys": [
+            "mql_to_sql"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Marketing Performance Agent",
+          "purpose": "Operate Marketing evidence review and measurable decision support. Define MQL/SQL cohorts, lifecycle timestamps, owner SLA, and measurement window. A pipeline-stage definition is not a conversion observation. Require an explicit model, source-linked campaign/contact/deal associations, lookback window, and deduplication. Missing associations mean unknown contribution; CRM context cannot prove ad spend, ROAS, or causal lift. Compare complete, aligned observation windows. Label engagement-based content proxies; missing paid-media or analytics evidence prevents unsupported channel conclusions. Segment recommendations remain drafts; publishing campaigns, enrolling contacts, and changing budgets require approved execution.",
+          "capabilities": [
+            "campaign-performance-analysis",
+            "attribution-analysis",
+            "lead-handoff-qa",
+            "paid-spend-anomaly-analysis",
+            "seo-opportunity-analysis",
+            "content-performance-analysis",
+            "pipeline-contribution-analysis"
+          ]
+        },
+        {
+          "name": "Growth Operations Analyst",
+          "purpose": "Operate Marketing evidence review and measurable decision support. Define MQL/SQL cohorts, lifecycle timestamps, owner SLA, and measurement window. A pipeline-stage definition is not a conversion observation. Require an explicit model, source-linked campaign/contact/deal associations, lookback window, and deduplication. Missing associations mean unknown contribution; CRM context cannot prove ad spend, ROAS, or causal lift. Compare complete, aligned observation windows. Label engagement-based content proxies; missing paid-media or analytics evidence prevents unsupported channel conclusions. Segment recommendations remain drafts; publishing campaigns, enrolling contacts, and changing budgets require approved execution.",
+          "capabilities": [
+            "campaign-performance-analysis",
+            "attribution-analysis",
+            "lead-handoff-qa",
+            "paid-spend-anomaly-analysis",
+            "seo-opportunity-analysis",
+            "content-performance-analysis",
+            "pipeline-contribution-analysis"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "Lifecycle & Handoff Standard",
+          "purpose": "Define MQL/SQL cohorts, lifecycle timestamps, owner SLA, and measurement window. A pipeline-stage definition is not a conversion observation."
+        },
+        {
+          "title": "Attribution Model Standard",
+          "purpose": "Require an explicit model, source-linked campaign/contact/deal associations, lookback window, and deduplication. Missing associations mean unknown contribution; CRM context cannot prove ad spend, ROAS, or causal lift."
+        },
+        {
+          "title": "Campaign & Content Standard",
+          "purpose": "Compare complete, aligned observation windows. Label engagement-based content proxies; missing paid-media or analytics evidence prevents unsupported channel conclusions."
+        },
+        {
+          "title": "Audience & Activation Standard",
+          "purpose": "Segment recommendations remain drafts; publishing campaigns, enrolling contacts, and changing budgets require approved execution."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  },
+  "people-it-operations-3": {
+    "asset": {
+      "id": "people-it-operations-3",
+      "slug": "people-it-operations-3",
+      "title": "People & IT Operations 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "Employee lifecycle and IT service work become fragmented across HR records, onboarding, service requests, access checks, and device/support queues.",
+        "target_outcome": "Improve employee onboarding and service readiness while reducing incomplete requests, access gaps, and manual coordination.",
+        "baseline_metric": "onboarding_readiness",
+        "success_criteria": [
+          "All included Plays install into Gravitre's canonical Play/workflow runtime.",
+          "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
+          "Every declared KPI is represented in the installed dashboard and normalized dataset.",
+          "At least one declared outcome event must be measured before Outcome Verified status is earned.",
+          "Every evidence action resolves through canonical Play readiness and the pack runtime profile.",
+          "Record-specific reviews require explicit runtime IDs before execution.",
+          "Cross-system joins require verified identity mappings and complete measurement coverage.",
+          "Prepared reviews are activity evidence; outcome improvement requires a measured baseline and source-linked result."
+        ],
+        "outcome_events": [
+          "onboarding_readiness_review_reviewed",
+          "offboarding_readiness_review_reviewed",
+          "policy_request_triage_reviewed",
+          "employee_request_triage_reviewed",
+          "access_review_watch_reviewed",
+          "device_service_risk_review_reviewed",
+          "license_utilization_review_reviewed",
+          "service_request_bottleneck_review_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "onboarding_readiness",
+            "label": "Onboarding readiness",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "offboarding_readiness",
+            "label": "Offboarding readiness",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "policy_request_age",
+            "label": "Policy request age",
+            "unit": "hours",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "employee_request_age",
+            "label": "Employee request age",
+            "unit": "hours",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "access_review_gap",
+            "label": "Access review gap",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "device_service_risk",
+            "label": "Device/service risk",
+            "unit": "count",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "license_review_gap",
+            "label": "License review gap",
+            "unit": "percent",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "People & IT Operations 3.0 Command Center",
+        "metrics": [
+          {
+            "kpi_key": "onboarding_readiness",
+            "label": "Onboarding readiness",
+            "visualization": "trend",
+            "description": "Onboarding readiness: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "offboarding_readiness",
+            "label": "Offboarding readiness",
+            "visualization": "trend",
+            "description": "Offboarding readiness: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "policy_request_age",
+            "label": "Policy request age",
+            "visualization": "trend",
+            "description": "Policy request age: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "employee_request_age",
+            "label": "Employee request age",
+            "visualization": "trend",
+            "description": "Employee request age: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "access_review_gap",
+            "label": "Access review gap",
+            "visualization": "trend",
+            "description": "Access review gap: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "device_service_risk",
+            "label": "Device/service risk",
+            "visualization": "metric",
+            "description": "Device/service risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "license_review_gap",
+            "label": "License review gap",
+            "visualization": "trend",
+            "description": "License review gap: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "employees",
+            "source": "bamboohr",
+            "primary_key": "employee_id",
+            "fields": [
+              "employee_id",
+              "department",
+              "employment_status",
+              "start_at",
+              "end_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "employee_service_requests",
+            "source": "freshservice",
+            "primary_key": "ticket_id",
+            "fields": [
+              "ticket_id",
+              "requester_id",
+              "owner_id",
+              "status",
+              "priority",
+              "created_at",
+              "due_at",
+              "resolved_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "employee_identity_map",
+            "source": "tenant_verified_mapping",
+            "primary_key": "mapping_id",
+            "fields": [
+              "mapping_id",
+              "employee_id",
+              "requester_id",
+              "verified_at",
+              "mapping_method",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "lifecycle_checklists",
+            "source": "verified_service_evidence",
+            "primary_key": "checklist_id",
+            "fields": [
+              "checklist_id",
+              "employee_id",
+              "ticket_ids",
+              "lifecycle_event",
+              "blockers",
+              "verified_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "access_review_evidence",
+            "source": "verified_service_evidence",
+            "primary_key": "evidence_id",
+            "fields": [
+              "evidence_id",
+              "employee_id",
+              "ticket_id",
+              "review_status",
+              "reviewed_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "verified_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "status",
+              "verified_at",
+              "metric_delta",
+              "source_record",
+              "measurement_window",
+              "baseline",
+              "sample_size"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "onboarding_readiness",
+            "label": "Onboarding readiness",
+            "formula": "verified_metric('onboarding_readiness')",
+            "unit": "percent"
+          },
+          {
+            "key": "offboarding_readiness",
+            "label": "Offboarding readiness",
+            "formula": "verified_metric('offboarding_readiness')",
+            "unit": "percent"
+          },
+          {
+            "key": "policy_request_age",
+            "label": "Policy request age",
+            "formula": "verified_metric('policy_request_age')",
+            "unit": "hours"
+          },
+          {
+            "key": "employee_request_age",
+            "label": "Employee request age",
+            "formula": "verified_metric('employee_request_age')",
+            "unit": "hours"
+          },
+          {
+            "key": "access_review_gap",
+            "label": "Access review gap",
+            "formula": "verified_metric('access_review_gap')",
+            "unit": "percent"
+          },
+          {
+            "key": "device_service_risk",
+            "label": "Device/service risk",
+            "formula": "verified_metric('device_service_risk')",
+            "unit": "count"
+          },
+          {
+            "key": "license_review_gap",
+            "label": "License review gap",
+            "formula": "verified_metric('license_review_gap')",
+            "unit": "percent"
+          }
+        ]
+      },
+      "providers": [
+        "bamboohr",
+        "freshservice"
+      ],
+      "plays": [
+        {
+          "key": "onboarding-readiness-review",
+          "name": "Onboarding Readiness Review",
+          "description": "Check employee and service evidence for onboarding blockers before start date.",
+          "kpiKeys": [
+            "onboarding_readiness"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "offboarding-readiness-review",
+          "name": "Offboarding Readiness Review",
+          "description": "Identify employee exits that require coordinated access and service follow-up.",
+          "kpiKeys": [
+            "offboarding_readiness"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "policy-request-triage",
+          "name": "Policy Request Triage",
+          "description": "Prioritize people-policy related service requests using verified ticket context.",
+          "kpiKeys": [
+            "policy_request_age"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "employee-request-triage",
+          "name": "Employee Request Triage",
+          "description": "Analyze employee service requests and route attention to the highest-impact blockers.",
+          "kpiKeys": [
+            "employee_request_age"
+          ],
+          "runtimeInputs": [
+            "ticket_id"
+          ],
+          "trigger": {
+            "type": "manual"
+          }
+        },
+        {
+          "key": "access-review-watch",
+          "name": "Access Review Watch",
+          "description": "Surface workforce records and service requests that indicate access-review gaps.",
+          "kpiKeys": [
+            "access_review_gap"
+          ],
+          "runtimeInputs": [
+            "employee_id"
+          ],
+          "trigger": {
+            "type": "manual"
+          }
+        },
+        {
+          "key": "device-service-risk-review",
+          "name": "Device & Service Risk Review",
+          "description": "Identify service records that may block employee productivity or device readiness.",
+          "kpiKeys": [
+            "device_service_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "license-utilization-review",
+          "name": "License Utilization Review",
+          "description": "Prepare a workforce-based review of likely license allocation and deprovisioning needs.",
+          "kpiKeys": [
+            "license_review_gap"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "service-request-bottleneck-review",
+          "name": "Service Request Bottleneck Review",
+          "description": "Identify recurring employee-service bottlenecks, aging requests, and coordination delays using verified service records.",
+          "kpiKeys": [
+            "employee_request_age"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Employee Operations Agent",
+          "purpose": "Operate People & IT Operations evidence review and measurable decision support. Require start/end dates and verified employee/requester mapping; distinguish readiness from completed onboarding or offboarding. Use ticket evidence for review status; employee lists do not prove actual entitlements, device state, or license usage without corresponding authoritative systems. Minimize employee information, respect tenant access scopes, and exclude sensitive HR fields from broad dashboards and briefs. Account provisioning, revocation, license changes, and employee communications require approved execution and source-of-record verification.",
+          "capabilities": [
+            "onboarding-readiness",
+            "offboarding-readiness",
+            "policy-analysis",
+            "employee-request-triage",
+            "access-review",
+            "device-compliance-analysis",
+            "license-utilization-analysis"
+          ]
+        },
+        {
+          "name": "IT Service Readiness Agent",
+          "purpose": "Operate People & IT Operations evidence review and measurable decision support. Require start/end dates and verified employee/requester mapping; distinguish readiness from completed onboarding or offboarding. Use ticket evidence for review status; employee lists do not prove actual entitlements, device state, or license usage without corresponding authoritative systems. Minimize employee information, respect tenant access scopes, and exclude sensitive HR fields from broad dashboards and briefs. Account provisioning, revocation, license changes, and employee communications require approved execution and source-of-record verification.",
+          "capabilities": [
+            "onboarding-readiness",
+            "offboarding-readiness",
+            "policy-analysis",
+            "employee-request-triage",
+            "access-review",
+            "device-compliance-analysis",
+            "license-utilization-analysis"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "Employee Lifecycle Standard",
+          "purpose": "Require start/end dates and verified employee/requester mapping; distinguish readiness from completed onboarding or offboarding."
+        },
+        {
+          "title": "Service & Access Standard",
+          "purpose": "Use ticket evidence for review status; employee lists do not prove actual entitlements, device state, or license usage without corresponding authoritative systems."
+        },
+        {
+          "title": "People Data Standard",
+          "purpose": "Minimize employee information, respect tenant access scopes, and exclude sensitive HR fields from broad dashboards and briefs."
+        },
+        {
+          "title": "Lifecycle Approval Standard",
+          "purpose": "Account provisioning, revocation, license changes, and employee communications require approved execution and source-of-record verification."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  },
+  "executive-command-center-3": {
+    "asset": {
+      "id": "executive-command-center-3",
+      "slug": "executive-command-center-3",
+      "title": "Executive Command Center 3.0",
+      "certificationLevel": "governed"
+    },
+    "contract": {
+      "outcome": {
+        "problem": "Executives receive fragmented dashboards after problems occur rather than one evidence-backed view of cross-functional risk, action, and opportunity.",
+        "target_outcome": "Create a daily operating view of revenue, cash, customers, service, marketing, and cross-functional priorities tied to verified source evidence.",
+        "baseline_metric": "revenue_risk",
+        "success_criteria": [
+          "All included Plays install into Gravitre's canonical Play/workflow runtime.",
+          "Every Play reads only registered source-of-record actions in the tested/governed v1 profile.",
+          "Every declared KPI is represented in the installed dashboard and normalized dataset.",
+          "At least one declared outcome event must be measured before Outcome Verified status is earned.",
+          "Every evidence action resolves through canonical Play readiness and the pack runtime profile.",
+          "Record-specific reviews require explicit runtime IDs before execution.",
+          "Cross-system joins require verified identity mappings and complete measurement coverage.",
+          "Prepared reviews are activity evidence; outcome improvement requires a measured baseline and source-linked result."
+        ],
+        "outcome_events": [
+          "executive_morning_brief_reviewed",
+          "revenue_risk_watch_reviewed",
+          "cash_risk_watch_executive_reviewed",
+          "customer_risk_watch_executive_reviewed",
+          "service_risk_watch_reviewed",
+          "marketing_signal_watch_reviewed",
+          "cross_functional_priority_review_reviewed",
+          "operational_anomaly_watch_reviewed"
+        ],
+        "kpis": [
+          {
+            "key": "revenue_risk",
+            "label": "Revenue at risk",
+            "unit": "currency",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "cash_risk",
+            "label": "Cash risk",
+            "unit": "currency",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "customer_risk",
+            "label": "Customer risk",
+            "unit": "score",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "service_risk",
+            "label": "Service risk",
+            "unit": "score",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "marketing_signal",
+            "label": "Marketing performance signal",
+            "unit": "score",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "operational_anomalies",
+            "label": "Operational anomalies",
+            "unit": "count",
+            "direction": "decrease",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          },
+          {
+            "key": "priority_resolution",
+            "label": "Priority resolution rate",
+            "unit": "percent",
+            "direction": "increase",
+            "target": null,
+            "source": "gravitre_verified_outcomes"
+          }
+        ],
+        "verification_required": true
+      },
+      "dashboard": {
+        "title": "Executive Command Center 3.0 Command Center",
+        "metrics": [
+          {
+            "kpi_key": "revenue_risk",
+            "label": "Revenue at risk",
+            "visualization": "metric",
+            "description": "Revenue at risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "cash_risk",
+            "label": "Cash risk",
+            "visualization": "metric",
+            "description": "Cash risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "customer_risk",
+            "label": "Customer risk",
+            "visualization": "trend",
+            "description": "Customer risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "service_risk",
+            "label": "Service risk",
+            "visualization": "trend",
+            "description": "Service risk: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "marketing_signal",
+            "label": "Marketing performance signal",
+            "visualization": "trend",
+            "description": "Marketing performance signal: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "operational_anomalies",
+            "label": "Operational anomalies",
+            "visualization": "metric",
+            "description": "Operational anomalies: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          },
+          {
+            "kpi_key": "priority_resolution",
+            "label": "Priority resolution rate",
+            "visualization": "trend",
+            "description": "Priority resolution rate: show verified observations and aligned measurement windows; missing baseline or source coverage is unavailable, never zero or inferred improvement."
+          }
+        ],
+        "refresh_mode": "event"
+      },
+      "dataset": {
+        "entities": [
+          {
+            "name": "revenue_exposure",
+            "source": "hubspot",
+            "primary_key": "deal_id",
+            "fields": [
+              "deal_id",
+              "company_id",
+              "amount",
+              "currency",
+              "stage_id",
+              "close_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "cash_exposure",
+            "source": "quickbooks",
+            "primary_key": "invoice_id",
+            "fields": [
+              "invoice_id",
+              "customer_id",
+              "balance",
+              "currency",
+              "due_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "customer_service_exposure",
+            "source": "zendesk",
+            "primary_key": "ticket_id",
+            "fields": [
+              "ticket_id",
+              "organization_id",
+              "status",
+              "priority",
+              "created_at",
+              "updated_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "marketing_signals",
+            "source": "hubspot",
+            "primary_key": "campaign_id",
+            "fields": [
+              "campaign_id",
+              "engagement_count",
+              "updated_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "executive_priorities",
+            "source": "verified_operating_evidence",
+            "primary_key": "priority_id",
+            "fields": [
+              "priority_id",
+              "source_record_ids",
+              "owner",
+              "severity",
+              "due_at",
+              "status",
+              "verified_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "account_identity_map",
+            "source": "tenant_verified_mapping",
+            "primary_key": "mapping_id",
+            "fields": [
+              "mapping_id",
+              "company_id",
+              "customer_id",
+              "organization_id",
+              "verified_at",
+              "source_record",
+              "observed_at"
+            ]
+          },
+          {
+            "name": "verified_outcomes",
+            "source": "gravitre_verified_outcomes",
+            "primary_key": "outcome_id",
+            "fields": [
+              "outcome_id",
+              "play_key",
+              "status",
+              "verified_at",
+              "metric_delta",
+              "source_record",
+              "measurement_window",
+              "baseline",
+              "sample_size"
+            ]
+          }
+        ],
+        "metrics": [
+          {
+            "key": "revenue_risk",
+            "label": "Revenue at risk",
+            "formula": "verified_metric('revenue_risk')",
+            "unit": "currency"
+          },
+          {
+            "key": "cash_risk",
+            "label": "Cash risk",
+            "formula": "verified_metric('cash_risk')",
+            "unit": "currency"
+          },
+          {
+            "key": "customer_risk",
+            "label": "Customer risk",
+            "formula": "verified_metric('customer_risk')",
+            "unit": "score"
+          },
+          {
+            "key": "service_risk",
+            "label": "Service risk",
+            "formula": "verified_metric('service_risk')",
+            "unit": "score"
+          },
+          {
+            "key": "marketing_signal",
+            "label": "Marketing performance signal",
+            "formula": "verified_metric('marketing_signal')",
+            "unit": "score"
+          },
+          {
+            "key": "operational_anomalies",
+            "label": "Operational anomalies",
+            "formula": "verified_metric('operational_anomalies')",
+            "unit": "count"
+          },
+          {
+            "key": "priority_resolution",
+            "label": "Priority resolution rate",
+            "formula": "verified_metric('priority_resolution')",
+            "unit": "percent"
+          }
+        ]
+      },
+      "providers": [
+        "hubspot",
+        "quickbooks",
+        "zendesk"
+      ],
+      "plays": [
+        {
+          "key": "executive-morning-brief",
+          "name": "Executive Morning Brief",
+          "description": "Summarize the material operating changes requiring executive attention.",
+          "kpiKeys": [
+            "revenue_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "revenue-risk-watch",
+          "name": "Revenue Risk Watch",
+          "description": "Surface current pipeline and account evidence that threatens revenue.",
+          "kpiKeys": [
+            "revenue_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "cash-risk-watch-executive",
+          "name": "Cash Risk Watch",
+          "description": "Surface receivables and payment evidence that may affect near-term cash.",
+          "kpiKeys": [
+            "cash_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "customer-risk-watch-executive",
+          "name": "Customer Risk Watch",
+          "description": "Summarize current customer-support risk from service evidence.",
+          "kpiKeys": [
+            "customer_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "service-risk-watch",
+          "name": "Service Risk Watch",
+          "description": "Identify service workload signals that warrant leadership attention.",
+          "kpiKeys": [
+            "service_risk"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "marketing-signal-watch",
+          "name": "Marketing Signal Watch",
+          "description": "Summarize material demand and engagement changes from governed campaign evidence.",
+          "kpiKeys": [
+            "marketing_signal"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "cross-functional-priority-review",
+          "name": "Cross-Functional Priority Review",
+          "description": "Rank the most material cross-functional issues and assign decision urgency.",
+          "kpiKeys": [
+            "priority_resolution"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        },
+        {
+          "key": "operational-anomaly-watch",
+          "name": "Operational Anomaly Watch",
+          "description": "Surface unusual cross-functional operating signals that deserve executive attention before they become larger business problems.",
+          "kpiKeys": [
+            "operational_anomalies"
+          ],
+          "runtimeInputs": [],
+          "trigger": {
+            "type": "scheduled",
+            "cadence": "daily"
+          }
+        }
+      ],
+      "agents": [
+        {
+          "name": "Executive Intelligence Agent",
+          "purpose": "Operate Executive evidence review and measurable decision support. Show source, observation time, reporting window, currency, materiality threshold, and missing coverage for every signal; do not sum unlike risk scores. Join revenue, accounting, and support accounts only through verified mappings; preserve department-level exposure when a join is unavailable. Rank evidence-backed impact and urgency, propose owner and due date, and distinguish recommendation from accepted ownership and verified resolution. Use aligned historical windows for anomaly detection. A current snapshot does not prove trend, causal impact, resolved risk, or financial savings.",
+          "capabilities": [
+            "executive-briefing",
+            "revenue-risk-analysis",
+            "cash-risk-analysis",
+            "customer-risk-analysis",
+            "service-risk-analysis",
+            "operational-anomaly-analysis",
+            "cross-functional-prioritization"
+          ]
+        },
+        {
+          "name": "Cross-Functional Risk Analyst",
+          "purpose": "Operate Executive evidence review and measurable decision support. Show source, observation time, reporting window, currency, materiality threshold, and missing coverage for every signal; do not sum unlike risk scores. Join revenue, accounting, and support accounts only through verified mappings; preserve department-level exposure when a join is unavailable. Rank evidence-backed impact and urgency, propose owner and due date, and distinguish recommendation from accepted ownership and verified resolution. Use aligned historical windows for anomaly detection. A current snapshot does not prove trend, causal impact, resolved risk, or financial savings.",
+          "capabilities": [
+            "executive-briefing",
+            "revenue-risk-analysis",
+            "cash-risk-analysis",
+            "customer-risk-analysis",
+            "service-risk-analysis",
+            "operational-anomaly-analysis",
+            "cross-functional-prioritization"
+          ]
+        }
+      ],
+      "knowledge": [
+        {
+          "title": "Operating Brief Standard",
+          "purpose": "Show source, observation time, reporting window, currency, materiality threshold, and missing coverage for every signal; do not sum unlike risk scores."
+        },
+        {
+          "title": "Cross-Functional Identity Standard",
+          "purpose": "Join revenue, accounting, and support accounts only through verified mappings; preserve department-level exposure when a join is unavailable."
+        },
+        {
+          "title": "Priority & Escalation Standard",
+          "purpose": "Rank evidence-backed impact and urgency, propose owner and due date, and distinguish recommendation from accepted ownership and verified resolution."
+        },
+        {
+          "title": "Executive Measurement Standard",
+          "purpose": "Use aligned historical windows for anomaly detection. A current snapshot does not prove trend, causal impact, resolved risk, or financial savings."
+        }
+      ]
+    },
+    "measurements": [],
+    "sources": [],
+    "recentRuns": [],
+    "activityLimit": 100
+  }
+}
