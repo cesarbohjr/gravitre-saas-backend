@@ -16,6 +16,7 @@ BROWSE_LIST_COLUMNS = (
     "install_count, clone_count, average_rating, review_count, current_version, "
     "published_at, publisher_id, org_id, business_outcome, use_case, estimated_hours_saved, "
     "featured, verified, review_scope, partner_registry_id, config, "
+    "certification_level, certification_report, certification_updated_at, certified_by, "
     "created_at, updated_at"
 )
 
@@ -117,6 +118,12 @@ def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
         }
     try:
         config = OutcomePackAssetConfig.model_validate(raw)
+        persisted_level = str(row.get("certification_level") or "").strip()
+        persisted_report = (
+            row.get("certification_report")
+            if isinstance(row.get("certification_report"), dict)
+            else {}
+        )
         report = certify_outcome_pack(config)
     except Exception:
         return {
@@ -130,18 +137,30 @@ def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
             "outcomeTarget": row.get("business_outcome"),
             "certificationFindings": [],
         }
+    persisted_publish_ready = bool(persisted_report.get("publishReady"))
+    persisted_findings = persisted_report.get("findings")
     return {
-        "certificationLevel": report.level,
-        "certificationPublishReady": report.publish_ready,
+        "certificationLevel": persisted_level or report.level,
+        "certificationPublishReady": (
+            persisted_publish_ready if persisted_level else report.publish_ready
+        ),
+        "certificationUpdatedAt": row.get("certification_updated_at"),
+        "certifiedBy": row.get("certified_by"),
         "playCount": report.play_count,
         "kpiKeys": [kpi.key for kpi in config.outcome_contract.kpis],
         "outcomeEvents": list(config.outcome_contract.outcome_events),
         "runtimeProviders": [profile.provider for profile in config.runtime_profiles],
         "verificationRequired": bool(config.outcome_contract.verification_required),
         "outcomeTarget": config.outcome_contract.target_outcome,
-        "certificationFindings": [
-            finding.as_dict() for finding in report.findings if finding.blocking
-        ],
+        "certificationFindings": (
+            [
+                item
+                for item in persisted_findings
+                if isinstance(item, dict) and bool(item.get("blocking", True))
+            ]
+            if persisted_level and isinstance(persisted_findings, list)
+            else [finding.as_dict() for finding in report.findings if finding.blocking]
+        ),
     }
 
 
