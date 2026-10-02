@@ -118,6 +118,13 @@ def build_security_operations_outcome_pack_config() -> dict[str, Any]:
             "provider_acceptance_is_terminal": False,
         }
 
+    config["outcome_contract"]["outcome_events"] = [
+        str(event)
+        for play in config["plays"]
+        for event in (play.get("outcome_events") or [])
+        if str(event).strip()
+    ]
+
     config["knowledge"] = [
         {
             "seed_label": "security-operations-3:incident-response",
