@@ -8,6 +8,7 @@ import pytest
 from app.marketplace.browse import (
     MarketplaceBrowseError,
     _marketplace3_certification_for_org,
+    _marketplace3_outcome_metrics_for_org,
     get_marketplace_asset,
     is_uuid,
     list_marketplace_assets,
@@ -220,3 +221,72 @@ def test_marketplace3_certification_is_not_added_to_non_outcome_assets():
         "org-1",
         {"asset_type": "ai_agent", "config": {}},
     ) is None
+
+
+
+def test_marketplace3_outcome_metrics_require_verified_results(monkeypatch):
+    kpi = MagicMock(key="mttr", label="MTTR", unit="minutes", direction="decrease")
+    play = MagicMock(key="sla-rescue")
+    contract = MagicMock(kpis=[kpi])
+    config = MagicMock(plays=[play], outcome_contract=contract)
+
+    monkeypatch.setattr(
+        "app.marketplace.schemas.OutcomePackAssetConfig.model_validate",
+        lambda _payload: config,
+    )
+    monkeypatch.setattr(
+        "app.plays.outcomes.list_play_business_results",
+        lambda _client, _org_id, limit=200: [
+            {
+                "before_value": 90.0,
+                "after_value": 55.0,
+                "measured_at": "2026-10-02T08:00:00Z",
+                "metadata": {
+                    "play_key": "sla-rescue",
+                    "metric_key": "mttr",
+                    "verified": True,
+                    "delta_value": -35.0,
+                    "unit": "minutes",
+                    "outcome_type": "sla_rescue_verified",
+                    "verification_method": "source_of_record_readback",
+                    "verification_state": "VERIFIED SUCCESS",
+                    "source_records": [{"system": "freshservice", "record_type": "ticket", "record_id": "123"}],
+                },
+            },
+            {
+                "before_value": 90.0,
+                "after_value": 20.0,
+                "metadata": {
+                    "play_key": "sla-rescue",
+                    "metric_key": "mttr",
+                    "verified": False,
+                    "delta_value": -70.0,
+                    "source_records": [],
+                },
+            },
+        ],
+    )
+
+    metrics = _marketplace3_outcome_metrics_for_org(
+        MagicMock(),
+        "org-1",
+        {"asset_type": "outcome_pack", "config": {}},
+    )
+
+    assert metrics == [
+        {
+            "key": "mttr",
+            "label": "MTTR",
+            "unit": "minutes",
+            "direction": "decrease",
+            "baselineValue": 90.0,
+            "resultValue": 55.0,
+            "deltaValue": -35.0,
+            "measuredAt": "2026-10-02T08:00:00Z",
+            "playKey": "sla-rescue",
+            "outcomeType": "sla_rescue_verified",
+            "verificationMethod": "source_of_record_readback",
+            "sourceRecordCount": 1,
+            "status": "VERIFIED SUCCESS",
+        }
+    ]
