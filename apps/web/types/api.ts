@@ -2103,6 +2103,8 @@ export interface MarketplaceAssetSummary {
   vendor?: string
   certificationLevel?: "compatible" | "tested" | "governed" | "production_verified" | "outcome_verified" | string
   certificationPublishReady?: boolean
+  certificationUpdatedAt?: string | null
+  certifiedBy?: string | null
   certificationFindings?: Array<{
     code: string
     message: string
