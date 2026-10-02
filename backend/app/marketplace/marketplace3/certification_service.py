@@ -119,8 +119,6 @@ def certify_asset(
                 "certification_evidence": evidence_payload,
                 "certification_updated_at": _now(),
                 "certified_by": actor_id,
-                "certification_level": level,
-                "certification_report": report,
             }
         )
         .eq("id", asset["id"])
@@ -236,6 +234,9 @@ def promote_certified_asset(
                 "published_at": asset.get("published_at") or now,
                 "updated_at": now,
                 "certified_by": actor_id,
+                "certification_level": level,
+                "certification_report": report,
+                "certification_updated_at": now,
             }
         )
         .eq("id", asset["id"])
