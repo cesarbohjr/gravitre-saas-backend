@@ -195,28 +195,36 @@ function MarketplaceAssetDetailContent() {
                 ) : null}
               </div>
 
-              <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Business impact
-                </p>
-                <MarketplaceOutcomeSummary asset={asset} />
-                {asset.useCase || asset.estimatedHoursSaved != null ? (
-                  <dl className="mt-4 grid gap-3 border-t pt-3 sm:grid-cols-2">
-                    {asset.useCase ? (
-                      <div>
-                        <dt className="text-xs text-muted-foreground">Use case</dt>
-                        <dd className="mt-0.5 text-sm text-foreground">{asset.useCase}</dd>
-                      </div>
-                    ) : null}
-                    {asset.estimatedHoursSaved != null ? (
-                      <div>
-                        <dt className="text-xs text-muted-foreground">{ESTIMATED_HOURS_SAVED_MONTHLY}</dt>
-                        <dd className="mt-0.5 text-sm font-medium text-foreground">{asset.estimatedHoursSaved}h</dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                ) : null}
-              </div>
+              {asset.outcomeTarget ||
+              asset.businessOutcome ||
+              asset.kpiImpact?.length ||
+              asset.verificationLevel ||
+              asset.playCount ||
+              asset.useCase ||
+              asset.estimatedHoursSaved != null ? (
+                <div className="rounded-xl border bg-muted/20 p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Business impact
+                  </p>
+                  <MarketplaceOutcomeSummary asset={asset} />
+                  {asset.useCase || asset.estimatedHoursSaved != null ? (
+                    <dl className="mt-4 grid gap-3 border-t pt-3 sm:grid-cols-2">
+                      {asset.useCase ? (
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Use case</dt>
+                          <dd className="mt-0.5 text-sm text-foreground">{asset.useCase}</dd>
+                        </div>
+                      ) : null}
+                      {asset.estimatedHoursSaved != null ? (
+                        <div>
+                          <dt className="text-xs text-muted-foreground">{ESTIMATED_HOURS_SAVED_MONTHLY}</dt>
+                          <dd className="mt-0.5 text-sm font-medium text-foreground">{asset.estimatedHoursSaved}h</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  ) : null}
+                </div>
+              ) : null}
 
               {asset.description ? (
                 <div>
@@ -238,7 +246,7 @@ function MarketplaceAssetDetailContent() {
                         : "Setup required before install"}
                   </p>
                 </div>
-                <Badge variant={asset.installReady ?? asset.canInstall ? "secondary" : "outline"}>
+                <Badge variant={(asset.installReady ?? asset.canInstall) ? "secondary" : "outline"}>
                   {asset.requiredConnectorsConnected}/{asset.requiredConnectorsTotal} required apps connected
                 </Badge>
               </div>
