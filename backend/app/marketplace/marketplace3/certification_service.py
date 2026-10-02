@@ -5,7 +5,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.marketplace.marketplace3.certification import certify_outcome_pack
-from app.marketplace.schemas import OutcomePackAssetConfig, parse_asset_config
+from app.marketplace.schemas import (
+    OutcomePackAssetConfig,
+    parse_asset_config,
+    validate_asset_payload,
+)
 
 
 class Marketplace3CertificationError(Exception):
@@ -115,6 +119,8 @@ def certify_asset(
                 "certification_evidence": evidence_payload,
                 "certification_updated_at": _now(),
                 "certified_by": actor_id,
+                "certification_level": level,
+                "certification_report": report,
             }
         )
         .eq("id", asset["id"])
@@ -147,21 +153,69 @@ def promote_certified_asset(
             code="UNSUPPORTED_ASSET_TYPE",
         )
 
-    level = str(asset.get("certification_level") or "").strip()
-    report = asset.get("certification_report") if isinstance(asset.get("certification_report"), dict) else {}
-    if level not in {"production_verified", "outcome_verified"} or not bool(report.get("publishReady")):
+    persisted_evidence = (
+        asset.get("certification_evidence")
+        if isinstance(asset.get("certification_evidence"), dict)
+        else {}
+    )
+    parsed = parse_asset_config("outcome_pack", asset.get("config") or {}, publish=False)
+    if not isinstance(parsed, OutcomePackAssetConfig):
+        raise Marketplace3CertificationError(
+            "Outcome Pack config could not be parsed.",
+            code="INVALID_CONFIG",
+        )
+
+    fresh_report = certify_outcome_pack(
+        parsed,
+        runtime_evidence=(
+            persisted_evidence.get("runtime")
+            if isinstance(persisted_evidence.get("runtime"), dict)
+            else {}
+        ),
+        outcome_evidence=(
+            persisted_evidence.get("outcome")
+            if isinstance(persisted_evidence.get("outcome"), dict)
+            else {}
+        ),
+    )
+    level = fresh_report.level
+    report = fresh_report.as_dict()
+    if level not in {"production_verified", "outcome_verified"} or not fresh_report.publish_ready:
         raise Marketplace3CertificationError(
             "Outcome Pack is not evidence-linked production verified.",
             code="CERTIFICATION_REQUIRED",
             details={
                 "certificationLevel": level or None,
-                "publishReady": bool(report.get("publishReady")),
+                "publishReady": fresh_report.publish_ready,
+                "findings": report.get("findings") or [],
             },
         )
 
-    # Re-run strict publish validation at promotion time so stale persisted
-    # certification can never bypass current schema/governance requirements.
-    parse_asset_config("outcome_pack", asset.get("config") or {}, publish=True)
+    # Re-run component publish validation so evidence can never bypass current
+    # Play bindings, agent requirements, dataset/dashboard structure, or
+    # knowledge/capability contracts.
+    for play in parsed.plays:
+        validate_asset_payload(
+            asset_type="play",
+            config=play.model_dump(mode="json"),
+            publish=True,
+        )
+    for agent in parsed.agents:
+        validate_asset_payload(
+            asset_type="ai_agent",
+            config=agent.model_dump(mode="json"),
+            publish=True,
+        )
+    validate_asset_payload(
+        asset_type="dataset_pack",
+        config=parsed.dataset.model_dump(mode="json"),
+        publish=True,
+    )
+    validate_asset_payload(
+        asset_type="dashboard_pack",
+        config=parsed.dashboard.model_dump(mode="json"),
+        publish=True,
+    )
 
     tags = [str(tag) for tag in (asset.get("tags") or []) if str(tag).strip()]
     tags = [
