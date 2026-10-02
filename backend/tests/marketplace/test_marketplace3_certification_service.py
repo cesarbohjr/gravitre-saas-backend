@@ -250,3 +250,11 @@ def test_promotion_rechecks_persisted_proof():
     client.evidence["workflow_runs"][0]["run_type"] = "dry_run"
     with pytest.raises(Marketplace3CertificationError, match="not evidence-linked"):
         promote_certified_asset(client, slug=row["slug"], actor_id="platform-1")
+
+
+def test_actual_stored_proof_upgrades_tested_profile_without_manual_config_claim():
+    row = _asset()
+    client = _Client(row)
+    result = certify_asset(client, slug=row["slug"], actor_id="platform-1", runtime_evidence=_runtime_evidence(row["config"]))
+    assert result["certification"]["level"] == "production_verified"
+    assert row["config"]["runtime_profiles"][0]["status"] == "tested"

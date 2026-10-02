@@ -93,8 +93,9 @@ def certify_outcome_pack(
     """Return the strongest certification level supported by current evidence.
 
     This function never turns test intent into evidence. production_verified
-    requires the runtime profile itself to carry production verification state,
-    and outcome_verified requires explicit measured outcome evidence.
+    requires resolved live proof for every advertised action in tested profiles,
+    and outcome_verified requires explicit measured outcome evidence. The service
+    resolves these proof payloads from tenant-scoped stored production records.
     """
     findings: list[CertificationFinding] = []
     registered = set(list_registered_actions())
@@ -261,7 +262,7 @@ def certify_outcome_pack(
     production_ok = (
         governed_ok
         and bool(config.runtime_profiles)
-        and all(profile.status == "production_verified" for profile in config.runtime_profiles)
+        and all(profile.status in {"tested", "production_verified"} for profile in config.runtime_profiles)
         and len(verified_profiles) == len(config.runtime_profiles)
         and not unresolved_skills
     )
