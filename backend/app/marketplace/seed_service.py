@@ -75,7 +75,7 @@ def upsert_catalog_asset(
         config=asset.config,
         install_variables=asset.install_variables,
         required_connectors=asset.required_connectors,
-        publish=True,
+        publish=asset.status == "published",
     )
     row = _asset_row(publisher_id, asset, validated=validated)
     existing = (
@@ -142,7 +142,7 @@ def validate_catalog_assets(assets: list[CatalogAsset] | None = None) -> dict[st
             config=asset.config,
             install_variables=asset.install_variables,
             required_connectors=asset.required_connectors,
-            publish=True,
+            publish=asset.status == "published",
         )
     pack_item_count = sum(
         len(asset.pack_children)
