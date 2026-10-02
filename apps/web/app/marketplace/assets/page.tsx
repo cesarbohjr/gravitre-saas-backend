@@ -350,6 +350,14 @@ function AssetCard({
                 </p>
               </div>
               <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Runtime providers</p>
+                <p className="mt-1 text-xs text-foreground">
+                  {asset.runtimeProviders?.length
+                    ? asset.runtimeProviders.join(", ").replace(/_/g, " ")
+                    : "No runtime profile declared"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
                 <p className="text-[11px] font-medium text-muted-foreground">Verification</p>
                 <p className="mt-1 text-xs font-medium text-foreground">{certificationLabel(asset)}</p>
               </div>
