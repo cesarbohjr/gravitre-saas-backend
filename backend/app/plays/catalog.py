@@ -136,6 +136,83 @@ AUTONOMOUS_EXCEPTION_MANAGER = PlayDefinition(
 )
 
 
+INTELLIGENT_TICKET_INTAKE = PlayDefinition(
+    key="intelligent-ticket-intake",
+    name="Intelligent Ticket Intake",
+    version="1",
+    objective="Classify, prioritize, enrich, and route new service tickets using client, user, asset, SLA, and sentiment context.",
+    required_connector_groups=(("halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
+    optional_connectors=("intune", "jumpcloud", "jamf_pro", "microsoft_365"),
+    outcome_metrics=("mtta", "sla_compliance", "automation_rate"),
+)
+
+
+RESOLUTION_COPILOT = PlayDefinition(
+    key="resolution-copilot",
+    name="Resolution Copilot",
+    version="1",
+    objective="Assemble ticket history, device context, runbooks, and prior resolutions into an evidence-backed remediation path.",
+    required_connector_groups=(("halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
+    optional_connectors=("intune", "jumpcloud", "jamf_pro", "huntress", "sentinelone", "crowdstrike"),
+    outcome_metrics=("mttr", "first_contact_resolution", "automation_rate"),
+)
+
+
+SLA_RESCUE = PlayDefinition(
+    key="sla-rescue",
+    name="SLA Rescue",
+    version="1",
+    objective="Detect service work approaching breach, identify why it is stalled, and coordinate a policy-safe intervention before the SLA is missed.",
+    required_connector_groups=(("halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
+    optional_connectors=("slack", "microsoft_teams"),
+    outcome_metrics=("sla_compliance", "tickets_rescued", "mttr"),
+)
+
+
+STALE_TICKET_RECOVERY = PlayDefinition(
+    key="stale-ticket-recovery",
+    name="Stale Ticket Recovery",
+    version="1",
+    objective="Find tickets stalled on technicians, customers, vendors, approvals, or missing information and restart the correct next step.",
+    required_connector_groups=(("halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
+    optional_connectors=("slack", "microsoft_teams", "microsoft_365"),
+    outcome_metrics=("backlog", "stale_ticket_rate", "mttr"),
+)
+
+
+RECURRING_PROBLEM_HUNTER = PlayDefinition(
+    key="recurring-problem-hunter",
+    name="Recurring Problem Hunter",
+    version="1",
+    objective="Cluster repeated incidents across clients, users, and assets to identify root recurring problems and preventive automation opportunities.",
+    required_connector_groups=(("halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
+    optional_connectors=("intune", "huntress", "sentinelone", "connectsecure"),
+    outcome_metrics=("repeat_issue_rate", "reopen_rate", "prevented_incidents"),
+)
+
+
+CLIENT_COMMUNICATION_MANAGER = PlayDefinition(
+    key="client-communication-manager",
+    name="Client Communication Manager",
+    version="1",
+    objective="Prepare timely, context-aware client updates from verified service status, SLA posture, sentiment, and business impact.",
+    required_connector_groups=(("halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
+    optional_connectors=("slack", "microsoft_teams", "microsoft_365"),
+    outcome_metrics=("customer_update_latency", "csat", "sla_compliance"),
+)
+
+
+SERVICE_DESK_OPTIMIZATION_REVIEW = PlayDefinition(
+    key="service-desk-optimization-review",
+    name="Service Desk Optimization Review",
+    version="1",
+    objective="Review service desk performance, recurring bottlenecks, automation coverage, and technician workload to recommend measurable operating improvements.",
+    required_connector_groups=(("halopsa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
+    optional_connectors=("slack", "microsoft_teams"),
+    outcome_metrics=("mtta", "mttr", "sla_compliance", "automation_rate", "reopen_rate", "backlog"),
+)
+
+
 PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     CUSTOMER_RESCUE,
     REVENUE_RECOVERY,
@@ -146,6 +223,13 @@ PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     KNOWLEDGE_GAP_MINER,
     EXECUTIVE_MORNING_COMMAND_BRIEF,
     AUTONOMOUS_EXCEPTION_MANAGER,
+    INTELLIGENT_TICKET_INTAKE,
+    RESOLUTION_COPILOT,
+    SLA_RESCUE,
+    STALE_TICKET_RECOVERY,
+    RECURRING_PROBLEM_HUNTER,
+    CLIENT_COMMUNICATION_MANAGER,
+    SERVICE_DESK_OPTIMIZATION_REVIEW,
 )
 
 
