@@ -56,7 +56,7 @@ def test_catalog_asset_validates(asset_slug: str):
         config=asset.config,
         install_variables=asset.install_variables,
         required_connectors=asset.required_connectors,
-        publish=True,
+        publish=asset.status == "published",
         enforce_bindings=True,
     )
     assert validated["config"]
@@ -156,3 +156,15 @@ def test_support_operations_pack_tier1_zendesk_triage():
     )
     assert lookup["requires_connector"] == "zendesk"
     assert LEGACY_PACK_SLUG_MAP["support-ops"] == pack.slug
+
+
+def test_marketplace3_outcome_packs_do_not_self_certify_production() -> None:
+    outcomes = [
+        asset for asset in list_catalog_assets()
+        if asset.asset_type == "outcome_pack"
+    ]
+    assert len(outcomes) == 8
+    for asset in outcomes:
+        assert "production-verified" not in asset.tags
+        assert asset.status == "draft"
+        assert asset.visibility == "internal"
