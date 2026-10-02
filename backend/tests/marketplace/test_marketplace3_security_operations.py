@@ -1,4 +1,6 @@
 from app.marketplace.marketplace3.certification import certify_outcome_pack
+from app.marketplace.marketplace3.certification_runner import fixture_checks
+from app.marketplace.marketplace3.discovery import outcome_pack_discovery_metadata
 from app.marketplace.marketplace3.security_operations import (
     SECURITY_OPERATIONS_PLAY_KEYS,
     build_security_operations_outcome_pack_config,
@@ -108,3 +110,27 @@ def test_security_operations_dataset_models_operating_evidence() -> None:
         "incident_timeline",
         "verified_outcomes",
     } <= entities
+
+
+def test_security_operations_discovery_and_runner_are_ready_but_not_promoted() -> None:
+    config = OutcomePackAssetConfig.model_validate(
+        build_security_operations_outcome_pack_config()
+    )
+    checks = {row.key: row for row in fixture_checks(config)}
+    assert all(check.passed for check in checks.values()), {
+        key: check.detail for key, check in checks.items() if not check.passed
+    }
+
+    discovery = outcome_pack_discovery_metadata(
+        config,
+        connected_vendors={"freshservice"},
+    )
+    assert discovery["playCount"] == 9
+    assert discovery["supportedPlayCount"] == 9
+    assert "freshservice" in discovery["supportedSystems"]
+    assert "huntress" in discovery["supportedSystems"]
+    assert "sentinelone" in discovery["supportedSystems"]
+
+    report = certify_outcome_pack(config)
+    assert report.level == "governed"
+    assert report.publish_ready is False
