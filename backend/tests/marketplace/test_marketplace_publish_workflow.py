@@ -11,6 +11,13 @@ from app.marketplace.publish import (
     reject_asset_review,
     submit_asset_for_review,
 )
+from app.marketplace.marketplace3.certification import (
+    CertificationFinding,
+    OutcomePackCertification,
+)
+from app.marketplace.marketplace3.msp_service_desk import (
+    build_msp_service_desk_outcome_pack_config,
+)
 from app.workflows.constants import SCHEMA_VERSION
 
 ORG_ID = "org-11111111-1111-1111-1111-111111111111"
@@ -179,3 +186,43 @@ def test_reject_actually_changes_status(mock_fetch, mock_audit):
     assert result["asset"]["status"] == "draft"
     update_payload = client.table.return_value.update.call_args.args[0]
     assert update_payload["status"] == "draft"
+
+
+
+@patch("app.marketplace.publish.certification_report_for_asset")
+@patch("app.marketplace.publish._fetch_asset")
+def test_outcome_pack_publish_fails_closed_without_production_evidence(
+    mock_fetch,
+    mock_certification,
+):
+    asset = _draft_asset(
+        asset_type="outcome_pack",
+        status="pending_review",
+        config=build_msp_service_desk_outcome_pack_config(),
+    )
+    mock_fetch.return_value = asset
+    mock_certification.return_value = OutcomePackCertification(
+        level="governed",
+        publish_ready=False,
+        findings=[
+            CertificationFinding(
+                "PRODUCTION_EVIDENCE_MISSING",
+                "Production evidence is missing.",
+            )
+        ],
+        play_count=8,
+        runtime_actions=["freshservice.tickets.get"],
+        verified_skills=[],
+        unresolved_skill_requirements=[],
+    )
+
+    with pytest.raises(MarketplacePublishError) as exc:
+        approve_asset_for_internal_publish(
+            MagicMock(),
+            ORG_ID,
+            "asset-1",
+            actor_id="admin-1",
+        )
+
+    assert exc.value.code == "CERTIFICATION_REQUIRED"
+    assert "PRODUCTION_EVIDENCE_MISSING" in str(exc.value)
