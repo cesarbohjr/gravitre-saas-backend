@@ -175,10 +175,7 @@ def certify_outcome_pack(
         requirement
         for requirement, package_id in config.skill_bindings.items()
         if str(package_id).strip()
-        and (
-            not resolved_package_ids
-            or str(package_id).strip() in resolved_package_ids
-        )
+        and str(package_id).strip() in resolved_package_ids
     }
     unresolved_skills = sorted(
         requirement for requirement in config.skill_requirements
