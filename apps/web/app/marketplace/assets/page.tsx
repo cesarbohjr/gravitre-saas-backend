@@ -249,7 +249,7 @@ function AssetCard({
               {outcomeHighlights.hasDataset ? <Badge variant="outline" className="text-[10px]">Dataset included</Badge> : null}
               {outcomeHighlights.hasDashboard ? <Badge variant="outline" className="text-[10px]">KPI dashboard</Badge> : null}
               {outcomeHighlights.productionVerified ? (
-                <Badge variant="outline" className="text-[10px]">Production Verified</Badge>
+                <Badge variant="outline" className="text-[10px]">Production verified</Badge>
               ) : null}
               {asset.estimatedHoursSaved != null ? (
                 <span className="text-[11px] text-muted-foreground">~{asset.estimatedHoursSaved}h/mo estimated capacity</span>
