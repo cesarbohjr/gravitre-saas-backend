@@ -7,6 +7,7 @@ instance must bind to canonical workflow ids before execution is possible.
 from __future__ import annotations
 
 from app.plays.contracts import PlayDefinition
+from app.marketplace.marketplace3.department_portfolio import PACK_SPECS
 
 
 CUSTOMER_RESCUE = PlayDefinition(
@@ -213,6 +214,31 @@ SERVICE_DESK_OPTIMIZATION_REVIEW = PlayDefinition(
 )
 
 
+
+def _department_portfolio_plays() -> tuple[PlayDefinition, ...]:
+    plays: list[PlayDefinition] = []
+    for spec in PACK_SPECS.values():
+        required_connector_groups = tuple((connector,) for connector in spec["connectors"])
+        optional_connectors = tuple(spec["optional"])
+        for key, name, description, action, kpi_key in spec["plays"]:
+            plays.append(
+                PlayDefinition(
+                    key=key,
+                    name=name,
+                    version="1",
+                    objective=description,
+                    required_connector_groups=required_connector_groups,
+                    optional_connectors=optional_connectors,
+                    required_read_action_groups=((action,),),
+                    outcome_metrics=(kpi_key,),
+                )
+            )
+    return tuple(plays)
+
+
+DEPARTMENT_PORTFOLIO_PLAYS = _department_portfolio_plays()
+
+
 PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     CUSTOMER_RESCUE,
     REVENUE_RECOVERY,
@@ -230,6 +256,7 @@ PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     RECURRING_PROBLEM_HUNTER,
     CLIENT_COMMUNICATION_MANAGER,
     SERVICE_DESK_OPTIMIZATION_REVIEW,
+    *DEPARTMENT_PORTFOLIO_PLAYS,
 )
 
 
