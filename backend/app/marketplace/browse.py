@@ -410,6 +410,43 @@ def _assert_asset_browsable(row: dict[str, Any], org_id: str) -> None:
     raise MarketplaceBrowseError("Marketplace asset not found", code="NOT_FOUND")
 
 
+def _marketplace3_certification_for_org(
+    client: Any,
+    org_id: str,
+    row: dict[str, Any],
+) -> dict[str, Any] | None:
+    if row.get("asset_type") != "outcome_pack":
+        return None
+    try:
+        from app.marketplace.marketplace3.certification import certify_outcome_pack
+        from app.marketplace.schemas import OutcomePackAssetConfig
+        from app.plays.outcomes import list_play_business_results
+
+        config = OutcomePackAssetConfig.model_validate(row.get("config") or {})
+        play_keys = {play.key for play in config.plays}
+        verified_events: set[str] = set()
+        for result in list_play_business_results(client, org_id, limit=200):
+            metadata = result.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                continue
+            if str(metadata.get("play_key") or "") not in play_keys:
+                continue
+            if not bool(metadata.get("verified")):
+                continue
+            outcome_type = str(metadata.get("outcome_type") or "").strip()
+            if outcome_type:
+                verified_events.add(outcome_type)
+        report = certify_outcome_pack(
+            config,
+            outcome_evidence={"verified_outcome_events": sorted(verified_events)},
+        )
+        return report.as_dict()
+    except Exception:
+        # Browse/detail must remain available if historical or third-party
+        # packages cannot be certified under the latest Marketplace 3.0 rules.
+        return None
+
+
 def get_marketplace_asset(
     client: Any,
     org_id: str,
@@ -445,6 +482,9 @@ def get_marketplace_asset(
     )
     detail["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
     detail["hasEntitlement"] = asset_id in _active_entitlements_by_asset(client, org_id, [asset_id])
+    certification = _marketplace3_certification_for_org(client, org_id, row)
+    if certification is not None:
+        detail["marketplace3Certification"] = certification
     return {"asset": detail}
 
 
