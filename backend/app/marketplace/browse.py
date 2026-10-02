@@ -9,6 +9,7 @@ from app.marketplace.entitlements import asset_requires_payment
 from app.marketplace.service import MarketplaceError, validate_connectors_for_asset
 from app.marketplace.schemas import OutcomePackAssetConfig
 from app.marketplace.marketplace3.certification import certify_outcome_pack
+from app.marketplace.marketplace3.evidence import certification_report_for_asset
 
 BROWSE_LIST_COLUMNS = (
     "id, slug, title, description, asset_type, category, department, tags, "
@@ -93,7 +94,11 @@ def _checklist_summary(
     }
 
 
-def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
+def _outcome_pack_read_model(
+    row: dict[str, Any],
+    *,
+    client: Any | None = None,
+) -> dict[str, Any]:
     """Expose outcome-first Marketplace 3.0 metadata without trusting display tags.
 
     Certification here is evidence-conservative. Runtime/outcome evidence is not
@@ -117,7 +122,11 @@ def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
         }
     try:
         config = OutcomePackAssetConfig.model_validate(raw)
-        report = certify_outcome_pack(config)
+        report = (
+            certification_report_for_asset(client, row)
+            if client is not None
+            else certify_outcome_pack(config)
+        )
     except Exception:
         return {
             "certificationLevel": "compatible",
@@ -150,9 +159,10 @@ def _serialize_asset_summary(
     *,
     install: dict[str, Any] | None = None,
     connector_summary: dict[str, Any] | None = None,
+    client: Any | None = None,
 ) -> dict[str, Any]:
     summary = connector_summary or {}
-    outcome_model = _outcome_pack_read_model(row)
+    outcome_model = _outcome_pack_read_model(row, client=client)
     return {
         "id": row["id"],
         "slug": row["slug"],
@@ -219,11 +229,13 @@ def _serialize_asset_detail(
     install: dict[str, Any] | None,
     connector_summary: dict[str, Any],
     pack_items: list[dict[str, Any]] | None = None,
+    client: Any | None = None,
 ) -> dict[str, Any]:
     payload = _serialize_asset_summary(
         row,
         install=install,
         connector_summary=connector_summary,
+        client=client,
     )
     payload.update(
         {
@@ -416,6 +428,7 @@ def list_marketplace_assets(
             row,
             install=installs.get(asset_id),
             connector_summary=connector_summary,
+            client=client,
         )
         summary["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
         summary["hasEntitlement"] = asset_id in entitlements
@@ -498,6 +511,7 @@ def get_marketplace_asset(
         install=installs.get(asset_id),
         connector_summary=connector_summary,
         pack_items=pack_items,
+        client=client,
     )
     detail["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
     detail["hasEntitlement"] = asset_id in _active_entitlements_by_asset(client, org_id, [asset_id])
