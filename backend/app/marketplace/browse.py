@@ -398,7 +398,10 @@ def list_marketplace_assets(
         term = _sanitize_search(search)
         if term:
             pattern = f'"%{term}%"'
-            query = query.or_(f"title.ilike.{pattern},description.ilike.{pattern},slug.ilike.{pattern}")
+            query = query.or_(
+                f"title.ilike.{pattern},description.ilike.{pattern},slug.ilike.{pattern},"
+                f"business_outcome.ilike.{pattern},use_case.ilike.{pattern}"
+            )
 
     query = query.order("install_count", desc=True).order("published_at", desc=True)
     result = query.range(offset, offset + limit - 1).execute()
