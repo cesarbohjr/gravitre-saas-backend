@@ -26,4 +26,13 @@ describe("Marketplace 3.0 outcome-first UX", () => {
     expect(detail).toContain("Source of record")
     expect(detail).toContain("Provider acceptance is not completion")
   })
+
+  it("shows verified business impact for installed Outcome Packs", () => {
+    const installed = source("app/marketplace/installed/page.tsx")
+    expect(installed).toContain("playsApi.impact()")
+    expect(installed).toContain("Measured impact")
+    expect(installed).toContain("Verified results")
+    expect(installed).toContain("Pending verification")
+    expect(installed).toContain("Execution success alone does not count as business impact")
+  })
 })
