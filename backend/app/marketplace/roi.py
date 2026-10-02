@@ -19,7 +19,7 @@ def marketplace_roi_summary(client: Any, org_id: str, *, limit: int = 15) -> dic
     installs = (
         client.table("marketplace_installs")
         .select(
-            "id, asset_id, installed_at, marketplace_assets("
+            "id, asset_id, installed_at, installed_entity_type, metadata, marketplace_assets("
             "slug, title, estimated_hours_saved, business_outcome, use_case"
             ")"
         )
@@ -41,6 +41,22 @@ def marketplace_roi_summary(client: Any, org_id: str, *, limit: int = 15) -> dic
         if asset_id:
             usage_by_asset[asset_id] += 1
 
+    verified_results = (
+        client.table("intelligence_outcome_events")
+        .select("id, metadata, measurement_status")
+        .eq("org_id", org_id)
+        .eq("outcome_event", "play_business_result")
+        .execute()
+    )
+    verified_play_counts: dict[str, int] = defaultdict(int)
+    for row in verified_results.data or []:
+        metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        play_key = str(metadata.get("play_key") or "").strip()
+        verification_state = str(metadata.get("verification_state") or "").strip().upper()
+        verified = bool(metadata.get("verified")) or verification_state == "VERIFIED SUCCESS"
+        if play_key and verified and str(row.get("measurement_status") or "") == "recorded":
+            verified_play_counts[play_key] += 1
+
     roi_rows: list[dict[str, Any]] = []
     total_estimated = 0.0
     total_realized = 0.0
@@ -51,7 +67,16 @@ def marketplace_roi_summary(client: Any, org_id: str, *, limit: int = 15) -> dic
         asset = install.get("marketplace_assets") or {}
         hours = float(asset.get("estimated_hours_saved") or 0)
         usage = usage_by_asset.get(asset_id, 0)
-        realized = hours if usage > 0 else 0.0
+        install_metadata = install.get("metadata") if isinstance(install.get("metadata"), dict) else {}
+        installed_entity_type = str(install.get("installed_entity_type") or "")
+        play_keys = {
+            str(item.get("playKey") or "").strip()
+            for item in (install_metadata.get("plays") or [])
+            if isinstance(item, dict) and str(item.get("playKey") or "").strip()
+        }
+        verified_outcomes = sum(verified_play_counts.get(key, 0) for key in play_keys)
+        is_outcome_pack = installed_entity_type == "outcome_pack"
+        realized = hours if (verified_outcomes > 0 if is_outcome_pack else usage > 0) else 0.0
         total_estimated += hours
         total_realized += realized
         if usage > 0:
@@ -65,6 +90,8 @@ def marketplace_roi_summary(client: Any, org_id: str, *, limit: int = 15) -> dic
                 "estimatedHoursSaved": hours,
                 "realizedHoursSaved": realized,
                 "usageEvents": usage,
+                "verifiedOutcomeEvents": verified_outcomes,
+                "measurementBasis": "verified_play_outcomes" if is_outcome_pack else "adoption_event",
                 "installedAt": install.get("installed_at"),
                 "businessOutcome": asset.get("business_outcome"),
                 "useCase": asset.get("use_case"),
@@ -78,6 +105,7 @@ def marketplace_roi_summary(client: Any, org_id: str, *, limit: int = 15) -> dic
         "activeInstalls": len(install_rows),
         "assetsWithUsage": assets_with_usage,
         "totalUsageEvents": count_adoption_events(client, org_id),
+        "totalVerifiedOutcomeEvents": sum(verified_play_counts.values()),
         "totalEstimatedHoursSaved": round(total_estimated, 1),
         "totalRealizedHoursSaved": round(total_realized, 1),
         "realizationRate": round((total_realized / total_estimated) * 100, 1) if total_estimated else 0.0,

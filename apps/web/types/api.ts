@@ -2329,6 +2329,20 @@ export interface MarketplaceInstall {
     workflowId?: string
     ragSourceId?: string
     operatorId?: string
+    playKey?: string
+    playInstallationIds?: string[]
+    plays?: Array<{
+      playKey?: string
+      playVersion?: string
+      playInstallationId?: string | null
+      workflowId?: string | null
+      operatingMode?: string
+    }>
+    datasetPackId?: string
+    dashboardPackId?: string
+    kpiKeys?: string[]
+    marketplaceVersion?: string
+    executionAuthority?: string
   }
   deepLinks: MarketplaceInstallDeepLink[]
   asset?: {

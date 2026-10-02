@@ -12,6 +12,7 @@ from app.marketplace.publish import (
     list_public_review_queue,
     reject_asset_public_review,
     submit_asset_for_public_review,
+    _assert_outcome_pack_certified,
 )
 
 ORG_ID = "org-11111111-1111-1111-1111-111111111111"
@@ -181,3 +182,25 @@ def test_get_public_review_asset_detail_requires_public_pending(mock_fetch):
     client = MagicMock()
     with pytest.raises(MarketplacePublishError):
         get_public_review_asset_detail(client, "public-agent")
+
+
+def test_outcome_pack_publish_gate_rejects_non_verified_pack() -> None:
+    with patch("app.marketplace.publish.OutcomePackAssetConfig.model_validate") as validate, patch(
+        "app.marketplace.publish.certify_outcome_pack"
+    ) as certify:
+        validate.return_value = MagicMock()
+        certify.return_value = MagicMock(
+            publish_ready=False,
+            level="governed",
+            findings=[MagicMock(code="RUNTIME_ACTION_NOT_REGISTERED", blocking=True)],
+        )
+        with pytest.raises(MarketplacePublishError) as exc:
+            _assert_outcome_pack_certified("outcome_pack", {"marketplace_version": "3.0"})
+    assert exc.value.code == "VALIDATION_ERROR"
+    assert "production verified" in str(exc.value).lower()
+
+
+def test_non_outcome_assets_skip_marketplace3_certification_gate() -> None:
+    with patch("app.marketplace.publish.certify_outcome_pack") as certify:
+        _assert_outcome_pack_certified("workflow", {})
+    certify.assert_not_called()

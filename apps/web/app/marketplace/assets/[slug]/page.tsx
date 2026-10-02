@@ -25,12 +25,15 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 import {
+  Activity,
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
   ChevronRight,
   Copy,
+  Gauge,
   Loader2,
+  ShieldCheck,
   ShoppingCart,
   Sparkles,
   Trash2,
@@ -60,6 +63,131 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
+function asRecords(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item)) : []
+}
+
+function asStrings(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
+}
+
+function OutcomePackContract({ asset }: { asset: MarketplaceAssetDetail }) {
+  if (asset.assetType !== "outcome_pack") return null
+
+  const config = asRecord(asset.config)
+  const contract = asRecord(config.outcome_contract)
+  const plays = asRecords(config.plays)
+  const kpis = asRecords(contract.kpis)
+  const profiles = asRecords(config.runtime_profiles)
+  const successCriteria = asStrings(contract.success_criteria)
+  const tags = new Set((asset.tags ?? []).map((tag) => tag.toLowerCase()))
+  const productionVerified =
+    tags.has("production-verified") ||
+    (profiles.length > 0 && profiles.every((profile) => profile.status === "production_verified"))
+  const outcomeVerified = tags.has("outcome-verified")
+  const certification = outcomeVerified ? "Outcome verified" : productionVerified ? "Production verified" : "Compatible"
+
+  return (
+    <section className="space-y-4 rounded-xl border bg-muted/10 p-4" data-testid="marketplace3-outcome-contract">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground">Marketplace 3.0 operating capability</p>
+          <h2 className="mt-1 text-lg font-semibold text-foreground">Measurable outcome contract</h2>
+        </div>
+        <Badge variant="outline" className="gap-1.5">
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+          {certification}
+        </Badge>
+      </div>
+
+      {typeof contract.target_outcome === "string" && contract.target_outcome ? (
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">Target outcome</p>
+          <p className="mt-1 text-sm text-foreground">{contract.target_outcome}</p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border bg-background/70 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Activity className="h-3.5 w-3.5" aria-hidden />
+            Plays
+          </div>
+          <p className="mt-1 text-xl font-semibold text-foreground">{plays.length}</p>
+          <p className="text-xs text-muted-foreground">Jobs Gravitre can operate</p>
+        </div>
+        <div className="rounded-lg border bg-background/70 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Gauge className="h-3.5 w-3.5" aria-hidden />
+            KPIs
+          </div>
+          <p className="mt-1 text-xl font-semibold text-foreground">{kpis.length}</p>
+          <p className="text-xs text-muted-foreground">Metrics tied to outcomes</p>
+        </div>
+        <div className="rounded-lg border bg-background/70 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+            Verification
+          </div>
+          <p className="mt-1 text-sm font-semibold text-foreground">Source of record</p>
+          <p className="text-xs text-muted-foreground">Provider acceptance is not completion</p>
+        </div>
+      </div>
+
+      {plays.length ? (
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">Included plays</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {plays.map((play, index) => (
+              <div key={String(play.key ?? index)} className="min-w-0 rounded-lg border bg-background/60 p-3">
+                <p className="truncate text-sm font-medium text-foreground">{String(play.name ?? play.key ?? "Play")}</p>
+                {typeof play.description === "string" ? (
+                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{play.description}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {kpis.length ? (
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">Measured KPIs</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {kpis.map((kpi, index) => {
+              const direction = String(kpi.direction ?? "")
+              const suffix = direction === "increase" ? " ↑" : direction === "decrease" ? " ↓" : ""
+              return (
+                <Badge key={String(kpi.key ?? index)} variant="secondary">
+                  {String(kpi.label ?? kpi.key ?? "KPI")}{suffix}
+                </Badge>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {successCriteria.length ? (
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">Success criteria</p>
+          <ul className="mt-2 space-y-1.5 text-sm text-foreground">
+            {successCriteria.map((criterion) => (
+              <li key={criterion} className="flex gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                <span>{criterion}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -229,6 +357,8 @@ function MarketplaceAssetDetailContent() {
                 <ConnectorChecklist items={asset.connectorChecklist} />
               </div>
             ) : null}
+
+            <OutcomePackContract asset={asset} />
 
             <PackContentsPreview items={asset.packItems} linkChildren />
 

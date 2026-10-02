@@ -11,7 +11,7 @@ import {
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
-import { marketplaceApi } from "@/lib/api"
+import { marketplaceApi, playsApi } from "@/lib/api"
 import { DepartmentPipelineByDepartment } from "@/components/marketplace/department-pipeline-panel"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
@@ -25,7 +25,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
-import type { MarketplaceInstall } from "@/types/api"
+import type { MarketplaceInstall, PlayImpactSummary } from "@/types/api"
 
 function formatInstalledAt(value?: string | null) {
   if (!value) return null
@@ -72,10 +72,12 @@ function InstalledInspector({
   install,
   busy,
   onUninstall,
+  impact,
 }: {
   install: MarketplaceInstall
   busy: string | null
   onUninstall: (install: MarketplaceInstall) => void
+  impact?: PlayImpactSummary
 }) {
   const asset = install.asset
   const department = asset?.department ?? "general"
@@ -91,6 +93,15 @@ function InstalledInspector({
   const deepLinks = (install.deepLinks ?? []).filter(
     (link) => !(link.label === "Primary" && (install.deepLinks?.length ?? 0) > 1),
   )
+  const outcomePlayKeys = new Set(
+    (install.metadata?.plays ?? [])
+      .map((play) => play.playKey)
+      .filter((key): key is string => Boolean(key)),
+  )
+  const packImpact = (impact?.plays ?? []).filter((play) => outcomePlayKeys.has(play.playKey))
+  const verifiedResults = packImpact.reduce((sum, play) => sum + play.verifiedSuccessCount, 0)
+  const pendingVerification = packImpact.reduce((sum, play) => sum + play.pendingVerificationCount, 0)
+  const measuredMetrics = packImpact.flatMap((play) => play.verifiedMetrics ?? []).slice(0, 4)
 
   return (
     <div className="space-y-4 p-4" data-review-surface="marketplace-ops-inspect">
@@ -121,6 +132,47 @@ function InstalledInspector({
           {agentCount} agents · {workflowCount} workflows · {sourceCount} sources
         </p>
       )}
+      {install.installedEntityType === "outcome_pack" ? (
+        <div className="rounded-lg border bg-muted/20 p-3" data-testid="marketplace3-installed-impact">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-muted-foreground">Measured impact</p>
+            <p className="text-xs text-muted-foreground">
+              {outcomePlayKeys.size} Plays · source-of-record outcomes only
+            </p>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div>
+              <p className="text-lg font-semibold text-foreground">{verifiedResults}</p>
+              <p className="text-xs text-muted-foreground">Verified results</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-foreground">{pendingVerification}</p>
+              <p className="text-xs text-muted-foreground">Pending verification</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-foreground">{measuredMetrics.length}</p>
+              <p className="text-xs text-muted-foreground">Measured KPI deltas</p>
+            </div>
+          </div>
+          {measuredMetrics.length ? (
+            <ul className="mt-3 space-y-1 text-xs">
+              {measuredMetrics.map((metric, index) => (
+                <li key={`${metric.metricKey}:${index}`} className="flex items-center justify-between gap-3">
+                  <span className="truncate text-muted-foreground">{metric.metricKey.replace(/_/g, " ")}</span>
+                  <span className="shrink-0 font-medium text-foreground">
+                    {metric.value > 0 ? "+" : ""}{metric.value.toLocaleString()}
+                    {metric.unit ? ` ${metric.unit}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              No verified KPI movement yet. Execution success alone does not count as business impact.
+            </p>
+          )}
+        </div>
+      ) : null}
       <DepartmentPipelineByDepartment department={department} />
       <div className="flex flex-wrap gap-2">
         {slug ? (
@@ -159,6 +211,10 @@ function InstalledContent() {
   const { data, error, isLoading, mutate } = useSWR(
     user ? "marketplace-installs" : null,
     () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
+  )
+  const { data: playImpact } = useSWR(
+    user ? "marketplace-play-impact" : null,
+    () => playsApi.impact(),
   )
 
   const installed = data?.installs ?? []
@@ -260,7 +316,12 @@ function InstalledContent() {
               </ul>
               {selected ? (
                 <div className="flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 lg:border-l">
-                  <InstalledInspector install={selected} busy={busy} onUninstall={handleUninstall} />
+                  <InstalledInspector
+                    install={selected}
+                    busy={busy}
+                    onUninstall={handleUninstall}
+                    impact={playImpact}
+                  />
                 </div>
               ) : (
                 <p className="sr-only">Select an install — inspector stays closed until then.</p>
