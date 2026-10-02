@@ -48,9 +48,9 @@ function GraphNode({
     >
       <div
         className={cn(
-          "max-w-[9rem] rounded-xl border bg-card px-2.5 py-2 text-center shadow-sm",
+          "max-w-[9rem] rounded-[10px] border bg-background px-2.5 py-2 text-center shadow-[0_12px_30px_-26px_rgba(16,24,22,.5)]",
           isInsight && "max-w-[11rem] border-[color:var(--g-brand-border)] bg-[color:var(--g-intelligence-surface)] px-3 py-2.5",
-          node.kind === "signal" && "border-[color:var(--color-brand,#16a374)]/40",
+          node.kind === "signal" && "border-[color:var(--g-emerald)]/40",
           node.kind === "source" && node.status === "missing" && "border-dashed border-amber-500/50 opacity-70",
           isGap && "max-w-none border-dashed border-divide bg-[color:var(--g-surface-2)]/80 px-3 py-1",
           selected && "ring-2 ring-[color:var(--g-brand)]",
@@ -104,7 +104,7 @@ export function EvidenceGraphCanvas({
     <div
       data-testid="evidence-graph-canvas"
       className={cn(
-        "relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-b from-[color:var(--g-surface-2)]/30 to-[color:var(--g-surface-1)]",
+        "relative overflow-hidden rounded-[12px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] [background-image:radial-gradient(var(--g-viz-grid)_1px,transparent_1px)] [background-size:18px_18px]",
         className,
       )}
       style={{ aspectRatio: `${EVIDENCE_GRAPH_VB.w} / ${EVIDENCE_GRAPH_VB.h}` }}
@@ -121,18 +121,21 @@ export function EvidenceGraphCanvas({
           const to = layout.positions.get(edge.toId)
           if (!from || !to) return null
           return (
-            <line
+            <motion.line
               key={edge.id}
               x1={from.x}
               y1={from.y}
               x2={to.x}
               y2={to.y}
               stroke={
-                edge.dashed ? "var(--color-line,#cbd5e1)" : "var(--color-brand,#16a374)"
+                edge.dashed ? "var(--color-line,#cbd5e1)" : "var(--g-emerald)"
               }
               strokeWidth={edge.dashed ? 1 : 1.5}
               strokeDasharray={edge.dashed ? "4 4" : undefined}
-              opacity={edge.dashed ? 0.45 : 0.65}
+              opacity={edge.dashed ? 0.45 : 0.78}
+              initial={reduced ? false : { pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: edge.dashed ? 0.45 : 0.78 }}
+              transition={reduced ? { duration: 0 } : { duration: 0.42, ease: "easeOut" }}
             />
           )
         })}
