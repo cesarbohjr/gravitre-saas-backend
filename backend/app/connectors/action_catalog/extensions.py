@@ -4,9 +4,77 @@ from __future__ import annotations
 from typing import Any
 
 from app.connectors.action_catalog.models import VendorCatalogSpec
+from app.connectors.action_catalog.builder import action, build_vendor
+
+# Static extensions are kept here so newly managed providers can ship without
+# editing the generated core vendor_definitions module.
+_FRESHSERVICE = build_vendor(
+    "freshservice",
+    "Freshservice",
+    "Customer Support / ITSM",
+    "https://api.freshservice.com/",
+    shipped=True,
+    department="support",
+    v1=(
+        action(
+            "freshservice",
+            "tickets.list",
+            "List service tickets",
+            tier="v1",
+            kind="read",
+            scope_suffix="tickets:read",
+            api_reference="GET /api/v2/tickets",
+            idempotent=True,
+        ),
+        action(
+            "freshservice",
+            "tickets.get",
+            "Get service ticket",
+            tier="v1",
+            kind="read",
+            scope_suffix="tickets:read",
+            api_reference="GET /api/v2/tickets/{ticket_id}",
+            idempotent=True,
+        ),
+    ),
+    v2=(
+        action(
+            "freshservice",
+            "tickets.update_status",
+            "Update ticket status",
+            tier="v2",
+            kind="write",
+            scope_suffix="tickets:write",
+            api_reference="PUT /api/v2/tickets/{ticket_id}",
+            requires_approval=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "ticket_id": {"type": ["string", "integer"]},
+                    "status": {"type": ["string", "integer"]},
+                    "connector_id": {"type": "string"},
+                },
+                "required": ["ticket_id", "status"],
+                "additionalProperties": False,
+            },
+        ),
+    ),
+    v3=(
+        action(
+            "freshservice",
+            "tickets.activities",
+            "Get ticket activities",
+            tier="v3",
+            kind="read",
+            scope_suffix="tickets:read",
+            api_reference="GET /api/v2/tickets/{ticket_id}/activities",
+            idempotent=True,
+        ),
+    ),
+)
 
 # Append org-specific or partner vendors here, or load from DB/MCP in a future release.
-VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = ()
+VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (_FRESHSERVICE,)
 
 # Runtime per-action schema overrides (partner SDK, MCP, admin API).
 ACTION_SCHEMA_EXTENSIONS: dict[str, dict[str, Any]] = {}

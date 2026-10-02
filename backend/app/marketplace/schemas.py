@@ -212,6 +212,12 @@ class DashboardPackAssetConfig(BaseModel):
     refresh_mode: Literal["event", "scheduled", "manual"] = "event"
 
 
+class OutcomeRuntimeProfileConfig(BaseModel):
+    provider: str = Field(min_length=1, max_length=120)
+    status: Literal["implementation", "tested", "production_verified"] = "implementation"
+    actions: list[str] = Field(min_length=1)
+
+
 class OutcomePackAssetConfig(BaseModel):
     marketplace_version: Literal["3.0"] = "3.0"
     outcome_contract: OutcomeContractConfig
@@ -221,6 +227,9 @@ class OutcomePackAssetConfig(BaseModel):
     dataset: DatasetPackAssetConfig
     dashboard: DashboardPackAssetConfig
     skills: list[str] = Field(default_factory=list)
+    skill_requirements: list[str] = Field(default_factory=list)
+    skill_bindings: dict[str, str] = Field(default_factory=dict)
+    runtime_profiles: list[OutcomeRuntimeProfileConfig] = Field(default_factory=list)
     connector_alternatives: list[list[str]] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -238,11 +247,38 @@ class OutcomePackAssetConfig(BaseModel):
         play_keys = [play.key for play in self.plays]
         if len(play_keys) != len(set(play_keys)):
             raise ValueError("outcome packs must not contain duplicate Play keys")
+        declared_runtime_actions = {
+            action
+            for profile in self.runtime_profiles
+            for action in profile.actions
+        }
+        undeclared_skill_bindings = sorted(
+            set(self.skill_bindings) - set(self.skill_requirements)
+        )
+        if undeclared_skill_bindings:
+            raise ValueError(
+                "skill bindings reference undeclared requirements: "
+                + ", ".join(undeclared_skill_bindings)
+            )
+        if any(not str(package_id).strip() for package_id in self.skill_bindings.values()):
+            raise ValueError("skill bindings require non-empty package ids")
         for play in self.plays:
             missing = sorted(set(play.kpi_keys) - declared_kpis)
             if missing:
                 raise ValueError(
                     f"play {play.key} references undeclared KPI keys: {', '.join(missing)}"
+                )
+            workflow_actions = {
+                str((step.get("config") or {}).get("action") or "").strip()
+                for step in play.workflow_steps
+                if step.get("type") == "invoke_tool"
+                and isinstance(step.get("config"), dict)
+                and str((step.get("config") or {}).get("action") or "").strip()
+            }
+            undeclared_actions = sorted(workflow_actions - declared_runtime_actions)
+            if undeclared_actions:
+                raise ValueError(
+                    f"play {play.key} uses actions missing from runtime profiles: {', '.join(undeclared_actions)}"
                 )
         return self
 
@@ -577,6 +613,20 @@ def _assert_publish_ready(asset_type: str, parsed: BaseModel) -> None:
             raise MarketplaceValidationError(
                 "Marketplace 3.0 outcome packs require at least six meaningful plays",
                 errors=["minimum_six_plays_required"],
+            )
+        from app.marketplace.marketplace3.certification import certify_outcome_pack
+
+        certification = certify_outcome_pack(pack)  # type: ignore[arg-type]
+        if not certification.publish_ready:
+            blocking = [
+                finding.code
+                for finding in certification.findings
+                if finding.blocking
+            ]
+            raise MarketplaceValidationError(
+                "Marketplace 3.0 outcome pack is not production certified",
+                errors=[f"certification:{code}" for code in blocking]
+                or [f"certification_level:{certification.level}"],
             )
 
 

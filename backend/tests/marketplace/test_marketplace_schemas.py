@@ -467,7 +467,14 @@ def _valid_outcome_pack_config(play_count: int = 6) -> dict:
             ],
             "refresh_mode": "event",
         },
-        "skills": ["operational-analysis"],
+        "skills": [],
+        "runtime_profiles": [
+            {
+                "provider": "slack",
+                "status": "production_verified",
+                "actions": ["slack.conversations.list"],
+            }
+        ],
     }
 
 

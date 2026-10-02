@@ -351,6 +351,13 @@ class Settings(BaseSettings):
         default="https://api.nango.dev",
         validation_alias=AliasChoices("NANGO_API_BASE_URL", "nango_api_base_url"),
     )
+    nango_webhook_signing_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "NANGO_WEBHOOK_SIGNING_KEY",
+            "nango_webhook_signing_key",
+        ),
+    )
 
     # HubSpot OAuth (STA-13 / STA-14) — production app
     hubspot_client_id: str = ""

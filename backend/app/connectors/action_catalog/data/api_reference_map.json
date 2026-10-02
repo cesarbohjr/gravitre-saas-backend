@@ -235,7 +235,7 @@
       "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/ai_visibility_ui_tools.py:_exec_mentions_check",
       "vendor_validated": false,
-      "note": "Drives a browser session against an AI surface. There is no vendor API contract to diff \u2014 the 'endpoint' is a rendered web page."
+      "note": "Drives a browser session against an AI surface. There is no vendor API contract to diff — the 'endpoint' is a rendered web page."
     },
     "ai_visibility_ui.prompts.batch": {
       "provenance": "no_vendor_endpoint",
@@ -3897,7 +3897,7 @@
       "vendor_contract": "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml",
       "vendor_contract_type": "openapi",
       "vendor_validated": false,
-      "note": "Path is built by _graph_user_root(): '/me' for the signed-in user, '/users/{user_id}' for a directory id \u2014 so it is not a literal."
+      "note": "Path is built by _graph_user_root(): '/me' for the signed-in user, '/users/{user_id}' for a directory id — so it is not a literal."
     },
     "microsoft_teams.channels.list": {
       "api_reference": "GET /teams/{team_id}/channels",
@@ -6333,6 +6333,38 @@
       "vendor_contract": "https://developer.zendesk.com/zendesk/oas.yaml",
       "vendor_contract_type": "openapi",
       "vendor_validated": false
+    },
+    "freshservice.tickets.list": {
+      "api_reference": "GET /api/v2/tickets",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
+    "freshservice.tickets.get": {
+      "api_reference": "GET /api/v2/tickets/{ticket_id}",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
+    "freshservice.tickets.activities": {
+      "api_reference": "GET /api/v2/tickets/{ticket_id}/activities",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
+    "freshservice.tickets.update_status": {
+      "api_reference": "PUT /api/v2/tickets/{ticket_id}",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_service_desk_tools.py",
+      "base_url": "https://api.freshservice.com",
+      "vendor_validated": false,
+      "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
     }
   }
 }
