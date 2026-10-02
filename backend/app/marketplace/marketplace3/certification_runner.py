@@ -141,7 +141,13 @@ def _fixture_checks(config: OutcomePackAssetConfig) -> list[RunnerCheck]:
     )
 
     registered = set(list_registered_actions())
-    actions = _workflow_actions(config)
+    workflow_actions = _workflow_actions(config)
+    declared_actions = {
+        action
+        for profile in config.runtime_profiles
+        for action in profile.actions
+    }
+    actions = workflow_actions | declared_actions
     missing_actions = sorted(actions - registered)
     checks.append(
         RunnerCheck(
