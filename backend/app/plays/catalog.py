@@ -213,6 +213,90 @@ SERVICE_DESK_OPTIMIZATION_REVIEW = PlayDefinition(
 )
 
 
+SECURITY_ALERT_TRIAGE = PlayDefinition(
+    key="security-alert-triage",
+    name="Security Alert Triage",
+    version="1",
+    objective="Correlate endpoint, identity, vulnerability, and service context to prioritize security alerts and suppress obvious noise.",
+    required_connector_groups=(("huntress", "sentinelone", "crowdstrike"),),
+    optional_connectors=("connectsecure", "okta", "duo", "jumpcloud", "microsoft_intune"),
+    outcome_metrics=("mttd", "false_positive_rate", "security_automation_rate"),
+)
+
+
+VULNERABILITY_PRIORITIZER = PlayDefinition(
+    key="vulnerability-prioritizer",
+    name="Vulnerability Prioritizer",
+    version="1",
+    objective="Rank vulnerabilities using exploitability, asset importance, exposure, identity context, and business impact.",
+    required_connector_groups=(("connectsecure",),),
+    optional_connectors=("huntress", "sentinelone", "crowdstrike"),
+    outcome_metrics=("critical_exposure_count", "remediation_sla"),
+)
+
+
+IDENTITY_COMPROMISE_INVESTIGATOR = PlayDefinition(
+    key="identity-compromise-investigator",
+    name="Identity Compromise Investigator",
+    version="1",
+    objective="Assemble identity, endpoint, MFA, directory, and recent activity evidence for suspected account compromise.",
+    required_connector_groups=(("okta", "duo", "jumpcloud"),),
+    optional_connectors=("microsoft_intune", "sentinelone", "crowdstrike"),
+    outcome_metrics=("mttd", "identity_risk_open", "containment_time"),
+)
+
+
+CONTAINMENT_COORDINATOR = PlayDefinition(
+    key="containment-coordinator",
+    name="Containment Coordinator",
+    version="1",
+    objective="Prepare the smallest effective security containment plan and keep consequential actions approval-governed and source-of-record verified.",
+    required_connector_groups=(("huntress", "sentinelone", "crowdstrike"),),
+    optional_connectors=("okta", "duo", "jumpcloud", "microsoft_intune"),
+    outcome_metrics=("containment_time", "verified_containments", "mttr_security"),
+)
+
+
+REMEDIATION_TRACKER = PlayDefinition(
+    key="remediation-tracker",
+    name="Remediation Tracker",
+    version="1",
+    objective="Track security remediation through completion and surface stalled, reopened, or SLA-risk findings.",
+    required_connector_groups=(("connectsecure", "huntress", "sentinelone", "crowdstrike"),),
+    outcome_metrics=("remediation_sla", "critical_exposure_count", "mttr_security"),
+)
+
+
+SECURITY_INCIDENT_BRIEF = PlayDefinition(
+    key="security-incident-brief",
+    name="Security Incident Brief",
+    version="1",
+    objective="Maintain a concise verified security incident timeline, impact summary, decisions, owners, and evidence gaps.",
+    required_connector_groups=(("huntress", "sentinelone", "crowdstrike"),),
+    optional_connectors=("okta", "duo", "jumpcloud"),
+    outcome_metrics=("mttd", "containment_time", "mttr_security"),
+)
+
+
+POST_INCIDENT_REVIEW = PlayDefinition(
+    key="post-incident-review",
+    name="Post-Incident Review",
+    version="1",
+    objective="Produce a root-cause and control-improvement review from a verified incident timeline and remediation evidence.",
+    outcome_metrics=("incident_recurrence_rate", "mttr_security"),
+)
+
+
+SECURITY_POSTURE_WATCH = PlayDefinition(
+    key="security-posture-watch",
+    name="Security Posture Watch",
+    version="1",
+    objective="Monitor cross-system security posture for deterioration, concentrated risk, overdue remediation, and emerging patterns.",
+    optional_connectors=("connectsecure", "huntress", "sentinelone", "crowdstrike", "okta", "duo", "jumpcloud", "microsoft_intune"),
+    outcome_metrics=("critical_exposure_count", "identity_risk_open", "remediation_sla", "security_automation_rate"),
+)
+
+
 PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     CUSTOMER_RESCUE,
     REVENUE_RECOVERY,
@@ -230,6 +314,14 @@ PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     RECURRING_PROBLEM_HUNTER,
     CLIENT_COMMUNICATION_MANAGER,
     SERVICE_DESK_OPTIMIZATION_REVIEW,
+    SECURITY_ALERT_TRIAGE,
+    VULNERABILITY_PRIORITIZER,
+    IDENTITY_COMPROMISE_INVESTIGATOR,
+    CONTAINMENT_COORDINATOR,
+    REMEDIATION_TRACKER,
+    SECURITY_INCIDENT_BRIEF,
+    POST_INCIDENT_REVIEW,
+    SECURITY_POSTURE_WATCH,
 )
 
 
