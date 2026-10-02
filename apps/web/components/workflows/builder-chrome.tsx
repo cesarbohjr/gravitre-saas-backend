@@ -69,6 +69,7 @@ export function BuilderNav({ workflowId }: { workflowId: string }) {
     <nav
       aria-label="Workflow builder"
       data-review-surface="builder-nav"
+      data-composition="create"
       className="hidden shrink-0 flex-col gap-4 overflow-y-auto border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] py-3 lg:flex lg:w-12 xl:w-52"
     >
       {groups.map((group) => (
@@ -128,7 +129,7 @@ export function BuilderInspector({
       aria-label="Inspector"
       data-review-surface="builder-inspector"
       data-inspector-mode={mode}
-      className="hidden min-h-0 shrink-0 flex-col border-l border-[color:var(--g-border-subtle)] bg-card dark:border-[color:var(--graphite-700)] md:flex md:w-[300px] xl:w-[340px]"
+      className="hidden min-h-0 shrink-0 flex-col border-l border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] dark:border-[color:var(--graphite-700)] md:flex md:w-[300px] xl:w-[340px]"
     >
       <div role="tablist" aria-label="Inspector mode" className="flex h-10 shrink-0 items-stretch gap-4 border-b border-[color:var(--g-border-subtle)] px-4">
         {INSPECTOR_TABS.map((tab) => {
