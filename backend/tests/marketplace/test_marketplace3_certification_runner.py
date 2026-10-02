@@ -96,7 +96,12 @@ def test_fixture_runner_never_promotes_fixture_proof_to_production(mock_record) 
     assert evidence["source_of_record_verification_passed"] is False
 
 
-def test_production_mode_fails_closed_without_live_provider_runner() -> None:
+@patch("app.marketplace.marketplace3.certification_runner.certify_and_record_outcome_pack")
+@patch("app.marketplace.marketplace3.certification_runner.collect_production_evidence")
+def test_production_mode_uses_real_ledger_evidence_and_stays_fail_closed(
+    mock_collect,
+    mock_record,
+) -> None:
     asset = {
         "id": ASSET_ID,
         "org_id": ORG_ID,
@@ -106,13 +111,33 @@ def test_production_mode_fails_closed_without_live_provider_runner() -> None:
     }
     client = MagicMock()
     client.table.return_value = _asset_table(asset)
+    mock_collect.return_value = {
+        "runner_mode": "production_evidence_inspection",
+        "fresh_install_passed": True,
+        "golden_path_passed": False,
+        "failure_path_passed": False,
+        "permissions_passed": False,
+        "kpi_reconciliation_passed": False,
+        "source_of_record_verification_passed": False,
+        "verified_outcome_events": [],
+        "proof": {},
+    }
+    mock_record.return_value = {
+        "assetId": ASSET_ID,
+        "level": "governed",
+        "publishReady": False,
+    }
 
-    with pytest.raises(CertificationRunnerError) as exc:
-        run_outcome_pack_certification(
-            client,
-            org_id=ORG_ID,
-            asset_ref=ASSET_ID,
-            actor_id="admin-1",
-            mode="production",
-        )
-    assert exc.value.code == "LIVE_PROVIDER_RUNNER_REQUIRED"
+    result = run_outcome_pack_certification(
+        client,
+        org_id=ORG_ID,
+        asset_ref=ASSET_ID,
+        actor_id="admin-1",
+        mode="production",
+    )
+
+    assert result["productionEvidence"]["fresh_install_passed"] is True
+    assert result["productionEvidence"]["permissions_passed"] is False
+    assert result["certification"]["publishReady"] is False
+    evidence = mock_record.call_args.kwargs["evidence"]
+    assert evidence["runner_mode"] == "production_evidence_inspection"
