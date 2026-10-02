@@ -38,7 +38,7 @@ def test_marketplace3_portfolio_readiness_quantifies_all_first_party_packs() -> 
         assert row["publishReady"] is False, slug
         assert row["status"] == "draft", slug
         assert row["visibility"] == "internal", slug
-        assert row["playCount"] >= 7, slug
+        assert row["playCount"] >= 8, slug
         assert row["agentCount"] >= 2, slug
         assert row["kpiCount"] >= 7, slug
         assert row["knowledgeCount"] >= 1, slug
