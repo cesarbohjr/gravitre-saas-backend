@@ -336,21 +336,21 @@ function AssetCard({
           {asset.assetType === "outcome_pack" ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Outcome</p>
+                <p className="text-[11px] font-medium text-muted-foreground">Outcome</p>
                 <p className="mt-1 text-xs text-foreground">{asset.businessOutcome || asset.description}</p>
               </div>
               <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Plays</p>
+                <p className="text-[11px] font-medium text-muted-foreground">Plays</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">{packTypeCount(asset, "play")}</p>
               </div>
               <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Measured value</p>
+                <p className="text-[11px] font-medium text-muted-foreground">Measured value</p>
                 <p className="mt-1 text-xs text-foreground">
                   {asset.estimatedHoursSaved != null ? `${asset.estimatedHoursSaved} estimated hours saved / month` : "Outcome telemetry included"}
                 </p>
               </div>
               <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Verification</p>
+                <p className="text-[11px] font-medium text-muted-foreground">Verification</p>
                 <p className="mt-1 text-xs font-medium text-foreground">{outcomeVerificationLabel(asset) || "Compatible"}</p>
               </div>
             </div>
