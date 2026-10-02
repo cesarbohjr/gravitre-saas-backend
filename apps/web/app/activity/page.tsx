@@ -33,6 +33,7 @@ import { StatusChip } from "@/components/gravitre/visual"
 import { ListSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { FailureAlertsPanel } from "@/components/workflows/failure-alerts-panel"
+import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -616,7 +617,7 @@ function ActivityPageInner() {
                           </Button>
                         ) : (
                           <Button asChild size="sm" className="h-8">
-                            <Link href={APP_ROUTES.gravitreAi}>Start in chat</Link>
+                            <OpenGravitreAIButton>Start in chat</OpenGravitreAIButton>
                           </Button>
                         )
                       }

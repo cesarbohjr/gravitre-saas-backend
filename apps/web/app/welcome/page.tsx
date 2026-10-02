@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { authApi, onboardingApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   clearWelcomeDraft,
@@ -355,11 +356,9 @@ export default function WelcomePage() {
                 </span>
               </div>
               <Button asChild className="mt-4">
-                <Link
-                  href={`${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(selectedRole?.suggestedPrompt ?? "")}`}
-                >
+                <OpenGravitreAIButton prompt={selectedRole?.suggestedPrompt ?? ""}>
                   Open Gravitre AI
-                </Link>
+                </OpenGravitreAIButton>
               </Button>
             </StepShell>
           )}

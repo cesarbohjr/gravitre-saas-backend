@@ -124,7 +124,7 @@ export const WINDOW_CHROME = {
   frame:
     "border border-[color:var(--g-wm-border)] bg-[color:var(--g-wm-surface)] shadow-[var(--g-wm-shadow)]",
   header:
-    "flex h-10 shrink-0 items-center gap-2 border-b border-[color:var(--g-border-subtle)] px-3",
+    "flex min-h-10 shrink-0 flex-wrap items-center gap-2 border-b border-[color:var(--g-border-subtle)] px-3 py-1.5",
   identity:
     "font-mono text-[10px] text-[color:var(--g-text-muted)]",
   dockWidth: "var(--g-wm-dock-width)",

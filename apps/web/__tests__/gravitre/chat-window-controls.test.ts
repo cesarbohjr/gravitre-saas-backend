@@ -107,6 +107,7 @@ describe("surface-specific expectations", () => {
     renderSurface("embedded", handlers)
     const btn = container.querySelector("[data-chat-window-control='openAsFloat']") as HTMLButtonElement
     expect(btn).toBeTruthy()
+    expect(btn.className).toMatch(/h-9|h-11/)
     act(() => btn.click())
     expect(handlers.openAsFloat).toHaveBeenCalledTimes(1)
   })

@@ -21,6 +21,7 @@ import { assistantApi, mesonApi, type MesonSuggestion } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useEntitlements } from "@/lib/entitlements-context"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import {
   resolveMesonPageFromPath,
   routeMesonSuggestion,
@@ -143,13 +144,10 @@ function MesonGibeVoice({
 
 /** The quick-launcher/setup option, folded into the top Meson box. */
 function MesonQuickLauncher() {
-  const router = useRouter()
+  const { summonWorkspace } = useGravitreAIWorkspace()
 
   const openFull = (prompt?: string) => {
-    const href = prompt
-      ? `${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(prompt)}`
-      : APP_ROUTES.gravitreAi
-    router.push(href)
+    summonWorkspace({ composerText: prompt })
   }
 
   return (

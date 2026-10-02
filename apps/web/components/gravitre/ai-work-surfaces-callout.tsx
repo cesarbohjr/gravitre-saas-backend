@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { ArrowRight, ChatCircle, MagnifyingGlass, Sparkle } from "@phosphor-icons/react"
+import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 import {
   AI_WORK_SURFACES,
   type AiWorkSurfaceId,
@@ -70,6 +70,12 @@ export function AiWorkSurfacesCallout({
                 {surface.summary}
               </p>
               {!isCurrent ? (
+                surface.summon ? (
+                  <OpenGravitreAIButton className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    Open {surface.title}
+                    <ArrowRight className="h-3 w-3" aria-hidden />
+                  </OpenGravitreAIButton>
+                ) : (
                 <Link
                   href={surface.href}
                   className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
@@ -77,6 +83,7 @@ export function AiWorkSurfacesCallout({
                   Open {surface.title}
                   <ArrowRight className="h-3 w-3" aria-hidden />
                 </Link>
+                )
               ) : null}
             </div>
           )

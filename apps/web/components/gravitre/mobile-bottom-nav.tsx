@@ -8,21 +8,20 @@ import { isSidebarItemActive } from "@/components/gravitre/sidebar-nav-config"
 import { cn } from "@/lib/utils"
 
 /**
- * Primary mobile destinations — subset of existing sidebar routes only.
- * Full nav remains in the slide drawer (hamburger).
+ * Primary mobile destinations — subset of sidebar routes only.
+ * Chat is not a destination: the persistent Gravitre helper opens the assistant.
  */
 const MOBILE_BOTTOM_NAV: Array<{ name: string; href: string; icon: IconName }> = [
   { name: "Home", href: APP_ROUTES.home, icon: "home" },
-  { name: "Chat", href: APP_ROUTES.gravitreAi, icon: "chat" },
   { name: "Agents", href: APP_ROUTES.agents, icon: "team" },
   { name: "Activity", href: APP_ROUTES.activity, icon: "checkCircle" },
   { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
+  { name: "Marketplace", href: APP_ROUTES.marketplace, icon: "package" },
 ]
 
 export function MobileBottomNav() {
   const pathname = usePathname()
 
-  // Builder owns its own mobile chrome; don't stack a second bottom bar.
   if (pathname.includes("/builder")) {
     return null
   }
@@ -40,7 +39,7 @@ export function MobileBottomNav() {
               <Link
                 href={item.href}
                 className={cn(
-                  "flex h-full flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
+                  "flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
                   active
                     ? "text-[color:var(--g-brand)]"
                     : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
@@ -51,7 +50,7 @@ export function MobileBottomNav() {
                   size="sm"
                   className={cn(active ? "text-[color:var(--g-brand)]" : "text-current")}
                 />
-                <span className="truncate">{item.name}</span>
+                <span className="max-w-full truncate">{item.name}</span>
               </Link>
             </li>
           )

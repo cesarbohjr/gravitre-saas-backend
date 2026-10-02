@@ -26,7 +26,7 @@ interface AppBreadcrumbsProps {
 const LABELS: Record<string, string> = {
   home: "Home",
   welcome: "Getting Started",
-  ai: "Chat",
+  ai: "Gravitre AI",
   "command-center": "Chat",
   operator: "Chat",
   assistant: "Workspace Chat",

@@ -64,7 +64,7 @@ import {
   type GravitreHelperPresence,
 } from "@/lib/gravitre-ai-presence"
 import { useWindowResize, type WindowSize } from "@/hooks/use-window-resize"
-import { MOTION } from "@/lib/design-system"
+import { WINDOW_CHROME, TYPE, MOTION } from "@/lib/design-system"
 import { GRAVITRE_AI_WORKSPACE_LAYOUT_ID } from "@/lib/gravitre-ai-presentation"
 import {
   clampFloatSize,
@@ -131,11 +131,28 @@ export function GravitreFloatingWorkspace({
   const dragY = useMotionValue(0)
   const [geometryHydrated, setGeometryHydrated] = useState(false)
 
+  const [keyboardInset, setKeyboardInset] = useState(0)
+
   useEffect(() => {
     const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
     update()
     window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
+    const vv = window.visualViewport
+    const syncKeyboard = () => {
+      if (!vv) {
+        setKeyboardInset(0)
+        return
+      }
+      setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+    }
+    syncKeyboard()
+    vv?.addEventListener("resize", syncKeyboard)
+    vv?.addEventListener("scroll", syncKeyboard)
+    return () => {
+      window.removeEventListener("resize", update)
+      vv?.removeEventListener("resize", syncKeyboard)
+      vv?.removeEventListener("scroll", syncKeyboard)
+    }
   }, [])
 
   // Phase 5 — restore session geometry once viewport is known; clamp if stale.
@@ -177,11 +194,11 @@ export function GravitreFloatingWorkspace({
 
   const maxSize = useMemo<WindowSize>(() => {
     if (!viewport) return GRAVITRE_FLOAT_MAX_SIZE
-    return {
-      width: Math.max(GRAVITRE_FLOAT_MIN_SIZE.width, Math.min(GRAVITRE_FLOAT_MAX_SIZE.width, viewport.width - 40)),
-      height: Math.max(GRAVITRE_FLOAT_MIN_SIZE.height, Math.min(GRAVITRE_FLOAT_MAX_SIZE.height, viewport.height - 40)),
-    }
-  }, [viewport])
+    return clampFloatSize(GRAVITRE_FLOAT_MAX_SIZE, {
+      width: viewport.width,
+      height: Math.max(320, viewport.height - keyboardInset),
+    })
+  }, [keyboardInset, viewport])
 
   const { onPointerDown: onResizePointerDown, onKeyDown: onResizeKeyDown } = useWindowResize({
     size,
@@ -220,7 +237,13 @@ export function GravitreFloatingWorkspace({
       style={
         docked
           ? { x: 0, y: 0, width: "var(--g-wm-dock-width)", height: "100dvh" }
-          : { x: dragX, y: dragY, width: size.width, height: size.height }
+          : {
+              x: dragX,
+              y: dragY,
+              width: size.width,
+              height: size.height,
+              bottom: 16 + keyboardInset,
+            }
       }
       dragConstraints={{
         left: 8,
@@ -234,10 +257,11 @@ export function GravitreFloatingWorkspace({
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
       transition={{ duration: reduceMotion ? 0 : MOTION.major, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border-divide bg-[color:var(--g-surface-1)]",
+        "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden",
+        WINDOW_CHROME.frame,
         docked
-          ? "inset-y-0 right-0 border-l shadow-[var(--g-wm-shadow)]"
-          : "bottom-5 left-5 rounded-[var(--g-radius-panel)] border shadow-2xl",
+          ? "inset-y-0 right-0 rounded-none border-y-0 border-r-0"
+          : "bottom-4 left-4 max-h-[min(100dvh-2rem,760px)] sm:bottom-5 sm:left-5",
       )}
       data-gravitre-float-workspace=""
       data-gravitre-wm-placement={docked ? "docked" : "window"}
@@ -250,7 +274,8 @@ export function GravitreFloatingWorkspace({
         onPointerDown={onHeaderPointerDown}
         data-window-drag-handle={docked ? undefined : ""}
         className={cn(
-          "flex select-none items-center justify-between border-b border-divide px-3 py-2.5",
+          WINDOW_CHROME.header,
+          "justify-between gap-2",
           !docked && "cursor-grab active:cursor-grabbing",
         )}
       >
@@ -260,7 +285,7 @@ export function GravitreFloatingWorkspace({
             <NucleoChat className="h-3.5 w-3.5" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-[color:var(--g-text-primary)]">Gravitre AI</p>
+            <p className={cn(TYPE.cardTitle, "truncate")}>Gravitre AI</p>
             {titleAccessory}
           </div>
           <span

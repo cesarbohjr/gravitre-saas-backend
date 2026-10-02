@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
@@ -73,6 +74,7 @@ export function CommandPalette({
   const [open, setOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const { summonWorkspace } = useGravitreAIWorkspace()
 
   const openUniversalSearch = useCallback(() => {
     if (pathname === "/search") {
@@ -118,13 +120,13 @@ export function CommandPalette({
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Quick actions">
-          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAi))}>
+          <CommandItem onSelect={() => runCommand(() => summonWorkspace())}>
             <Sparkles className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             <span>Start chat</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAiChat))}>
+          <CommandItem onSelect={() => runCommand(() => summonWorkspace())}>
             <Bot className="mr-2 h-4 w-4 text-teal-700 dark:text-teal-400" />
-            <span>Workspace chat</span>
+            <span>Open Gravitre AI</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/agents/new"))}>
             <Plus className="mr-2 h-4 w-4" />
@@ -314,16 +316,10 @@ export function CommandPalette({
             <span>Getting started</span>
           </CommandItem>
           <CommandItem
-            onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAi))}
+            onSelect={() => runCommand(() => summonWorkspace())}
           >
             <Sparkles className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-            <span>Chat</span>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push(APP_ROUTES.gravitreAiChat))}
-          >
-            <Bot className="mr-2 h-4 w-4 text-teal-700 dark:text-teal-400" />
-            <span>Workspace chat</span>
+            <span>Open Gravitre AI</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.marketplace))}

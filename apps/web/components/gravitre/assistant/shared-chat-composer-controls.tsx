@@ -411,7 +411,7 @@ export function SharedChatComposerControls({
 
       <div
         className={cn(
-          "flex min-h-[44px] items-end gap-1.5 rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] px-2 py-1.5 shadow-[var(--np-shadow)]",
+          "flex min-h-[44px] items-end gap-1.5 rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] px-2 py-1.5 shadow-[var(--np-shadow)] pb-[max(0.375rem,env(safe-area-inset-bottom))]",
           bordered
             ? "border-divide focus-within:border-[color:var(--g-brand-border)]"
             : "border-transparent",

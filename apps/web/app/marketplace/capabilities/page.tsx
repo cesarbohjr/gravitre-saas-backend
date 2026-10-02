@@ -926,10 +926,10 @@ export default function CapabilityMarketplacePage() {
               ) : (
                 <ul className="divide-y divide-divide">
                   {filteredPackageRows.map((item) => (
-                    <li key={item.id ?? `${item.name}:${item.version ?? ""}`} className="flex items-start justify-between gap-4 px-4 py-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-medium text-foreground">{item.name}</p>
+                    <li key={item.id ?? `${item.name}:${item.version ?? ""}`} className="flex min-w-0 flex-col gap-3 px-4 py-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <p className="min-w-0 truncate text-sm font-medium text-foreground" title={item.name}>{item.name}</p>
                           <span className="rounded border border-divide px-1.5 py-0.5 text-[10px] text-muted-foreground">
                             {(item.package_format ?? "package").replace(/_/g, " ")}
                           </span>
@@ -984,11 +984,11 @@ export default function CapabilityMarketplacePage() {
                           </div>
                         ) : null}
                       </div>
-                      <div className="shrink-0 space-y-2 text-right text-[11px] text-muted-foreground">
-                        {item.publisher_name ? <p>{item.publisher_name}</p> : null}
-                        {item.content_digest ? <p className="max-w-[150px] truncate font-mono">{item.content_digest}</p> : null}
+                      <div className="flex min-w-0 flex-col gap-2 lg:max-w-[min(100%,20rem)] lg:shrink-0 lg:items-end">
+                        {item.publisher_name ? <p className="max-w-full truncate text-[11px] text-muted-foreground">{item.publisher_name}</p> : null}
+                        {item.content_digest ? <p className="max-w-full truncate font-mono text-[11px] text-muted-foreground">{item.content_digest}</p> : null}
                         {isAdmin && item.id ? (
-                          <div className="flex justify-end gap-1">
+                          <div className="flex flex-wrap justify-start gap-1 lg:justify-end">
                             {item.status !== "installed" ? (
                               <Button
                                 size="sm"
@@ -1368,7 +1368,7 @@ export default function CapabilityMarketplacePage() {
 
           {historyPackageId ? (
             <GravitreSurface className="p-0">
-              <div className="flex items-start justify-between gap-4 border-b border-divide px-4 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-divide px-4 py-3">
                 <div>
                   <h2 className="text-sm font-medium text-foreground">Capability version history</h2>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -1447,7 +1447,7 @@ export default function CapabilityMarketplacePage() {
                       <li key={server.id} className="space-y-3 px-4 py-3">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground">{server.server_name}</p>
+                            <p className="truncate text-sm font-medium text-foreground" title={server.server_name}>{server.server_name}</p>
                             <p className="mt-1 truncate text-xs text-muted-foreground">{server.server_url}</p>
                             <p className="mt-1 text-[11px] text-muted-foreground">
                               {server.transport} · {server.activation_state ?? "pending review"} · {server.enabled ? "server enabled" : "server disabled"}
@@ -1526,9 +1526,9 @@ export default function CapabilityMarketplacePage() {
                           <div className="rounded border border-divide">
                             <ul className="divide-y divide-divide">
                               {serverTools.map((tool) => (
-                                <li key={tool.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                                <li key={tool.id} className="flex min-w-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                                   <div className="min-w-0">
-                                    <p className="text-xs font-medium text-foreground">{tool.tool_name}</p>
+                                    <p className="truncate text-xs font-medium text-foreground" title={tool.tool_name}>{tool.tool_name}</p>
                                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                                       {tool.capability_tier} · {tool.requires_approval ? "approval required" : "no write approval required"} · {tool.risk_level ?? "unrated"} risk
                                     </p>
@@ -1555,7 +1555,7 @@ export default function CapabilityMarketplacePage() {
           ) : null}
 
           <GravitreSurface className="p-0">
-            <div className="flex items-start justify-between gap-4 border-b border-divide px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-divide px-4 py-3">
               <div>
                 <h2 className="text-sm font-medium text-foreground">Marketplace review queue</h2>
                 <p className="mt-1 text-xs text-muted-foreground">

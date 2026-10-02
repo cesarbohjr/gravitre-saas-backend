@@ -65,7 +65,6 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
         hint: "Finish setup and see progress",
       },
       { name: "Home", href: APP_ROUTES.home, icon: "home" },
-      { name: "Chat", href: APP_ROUTES.gravitreAi, icon: "chat", hint: "Auto-route execute, chat, and find" },
       {
         name: "Agents",
         href: APP_ROUTES.agents,

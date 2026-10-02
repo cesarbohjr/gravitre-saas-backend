@@ -6,10 +6,9 @@ import { useMotionPrefs } from "@/lib/animations"
 import {
   Archive,
   ArchiveRestore,
+  ArrowDownUp,
   Check,
-  CheckCheck,
   Filter,
-  ListChecks,
   MessageCircle,
   MessageSquarePlus,
   MoreHorizontal,
@@ -21,6 +20,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,42 +52,20 @@ import {
 } from "@/components/ui/tooltip"
 import type { Conversation } from "@/types/api"
 import { groupConversationsByRecency } from "@/lib/conversation-history-groups"
-
-type HistoryDateFilter = "all" | "today" | "week" | "archived"
-
-const DATE_FILTER_OPTIONS: { value: HistoryDateFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "today", label: "Today" },
-  { value: "week", label: "This week" },
-  { value: "archived", label: "Archived" },
-]
-
-function isConversationArchived(conversation: Conversation): boolean {
-  return Boolean(conversation.archived_at)
-}
-
-function matchesHistoryDateFilter(conversation: Conversation, filter: HistoryDateFilter): boolean {
-  const archived = isConversationArchived(conversation)
-  if (filter === "archived") return archived
-  if (archived) return false
-
-  const updated = new Date(conversation.updated_at)
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-  if (filter === "today") return updated >= startOfToday
-  if (filter === "week") return updated >= startOfWeek
-  return true
-}
-
-function emptyHistoryMessage(filter: HistoryDateFilter, searchQuery: string): string {
-  if (searchQuery.trim()) return `No matches for "${searchQuery.trim()}"`
-  if (filter === "archived") return "No archived conversations"
-  if (filter === "today") return "No conversations from today"
-  if (filter === "week") return "No conversations this week"
-  return "No conversations yet"
-}
+import {
+  HISTORY_DATE_FILTER_OPTIONS,
+  HISTORY_SORT_OPTIONS,
+  emptyHistoryMessage,
+  isConversationArchived,
+  matchesHistoryDateFilter,
+  readStoredHistoryDateFilter,
+  readStoredHistorySort,
+  sortConversations,
+  writeStoredHistoryDateFilter,
+  writeStoredHistorySort,
+  type HistoryDateFilter,
+  type HistorySort,
+} from "@/lib/conversation-history-controls"
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr)
@@ -161,8 +139,8 @@ export function ConversationSidebar({
 }) {
   const [searchOpen, setSearchOpen] = useState(Boolean(searchQuery.trim()))
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery)
-  const [dateFilter, setDateFilter] = useState<HistoryDateFilter>("all")
-  const [selectionMode, setSelectionMode] = useState(false)
+  const [dateFilter, setDateFilter] = useState<HistoryDateFilter>(readStoredHistoryDateFilter)
+  const [sort, setSort] = useState<HistorySort>(readStoredHistorySort)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -182,7 +160,7 @@ export function ConversationSidebar({
   // Date/archive filters stay client-side; title+content search is server-driven when wired.
   const filtered = useMemo(() => {
     const q = onSearchQueryChange ? "" : activeSearch.trim().toLowerCase()
-    return conversations.filter((conversation) => {
+    const rows = conversations.filter((conversation) => {
       if (!matchesHistoryDateFilter(conversation, dateFilter)) return false
       if (!q) return true
       return (
@@ -190,20 +168,15 @@ export function ConversationSidebar({
         (conversation.preview || "").toLowerCase().includes(q)
       )
     })
-  }, [conversations, activeSearch, dateFilter, onSearchQueryChange])
+    return sortConversations(rows, sort)
+  }, [conversations, activeSearch, dateFilter, onSearchQueryChange, sort])
 
-  // Preserve API order (pinned first, then updated_at DESC); only bucket for display.
   const grouped = useMemo(() => groupConversationsByRecency(filtered), [filtered])
 
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length
+  const bulkOpen = selectedIds.size > 0
 
-  const enterSelection = () => {
-    setSelectionMode(true)
-    setSearchOpen(false)
-  }
-
-  const exitSelection = () => {
-    setSelectionMode(false)
+  const clearSelection = () => {
     setSelectedIds(new Set())
   }
 
@@ -222,10 +195,6 @@ export function ConversationSidebar({
 
   const handleRowClick = (id: string) => {
     if (renamingId) return
-    if (selectionMode) {
-      toggleSelected(id)
-      return
-    }
     onSelect(id)
   }
 
@@ -234,10 +203,17 @@ export function ConversationSidebar({
     setIsDeleting(true)
     try {
       await onDelete(conversationToDelete)
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(conversationToDelete)
+        return next
+      })
+      setDeleteDialogOpen(false)
+      setConversationToDelete(null)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete conversation")
     } finally {
       setIsDeleting(false)
-      setConversationToDelete(null)
-      setDeleteDialogOpen(false)
     }
   }
 
@@ -246,8 +222,10 @@ export function ConversationSidebar({
     setIsBulkDeleting(true)
     try {
       await onBulkDelete(Array.from(selectedIds))
-      exitSelection()
+      clearSelection()
       setBulkDeleteOpen(false)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete conversations")
     } finally {
       setIsBulkDeleting(false)
     }
@@ -255,7 +233,7 @@ export function ConversationSidebar({
 
   const archiveSelected = () => {
     selectedIds.forEach((id) => onArchive(id))
-    exitSelection()
+    clearSelection()
   }
 
   const shareLink = (id: string) => {
@@ -282,70 +260,52 @@ export function ConversationSidebar({
         )}
       >
         {/* Header */}
-        <div className="flex h-14 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3">
-          {selectionMode ? (
-            <TooltipProvider delayDuration={300}>
-              <div className="flex items-center gap-1 flex-1">
+        <div className="flex min-h-14 flex-col justify-center gap-2 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-3 py-2">
+          <TooltipProvider delayDuration={300}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-semibold text-[color:var(--g-text-primary)]">History</span>
+              <div className="flex shrink-0 items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={exitSelection} aria-label="Cancel selection">
-                      <X className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-[color:var(--g-text-muted)]" onClick={onNew} aria-label="New conversation">
+                      <MessageSquarePlus className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">Cancel</TooltipContent>
+                  <TooltipContent side="bottom">New conversation</TooltipContent>
                 </Tooltip>
-                <span className="pl-1 text-sm font-medium tabular-nums text-sidebar-foreground">
-                  {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select items"}
-                </span>
-                <div className="ml-auto flex items-center gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={toggleSelectAll} aria-label={allSelected ? "Clear selection" : "Select all"}>
-                        {allSelected ? <CheckCheck className="h-4 w-4 text-emerald-600" /> : <ListChecks className="h-4 w-4" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">{allSelected ? "Clear selection" : "Select all"}</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground disabled:opacity-40"
-                        disabled={selectedIds.size === 0}
-                        onClick={archiveSelected}
-                        aria-label="Archive selected"
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Archive</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-red-500 hover:bg-destructive/10 hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
-                        disabled={selectedIds.size === 0}
-                        onClick={() => setBulkDeleteOpen(true)}
-                        aria-label="Delete selected"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">Delete</TooltipContent>
-                  </Tooltip>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-[color:var(--g-text-muted)] md:hidden"
+                  onClick={onToggle}
+                  aria-label="Close conversation history"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-            </TooltipProvider>
-          ) : (
-            <TooltipProvider delayDuration={300}>
-              <span className="pl-1 text-sm font-semibold text-sidebar-foreground">History</span>
-              <div className="flex items-center gap-0.5">
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                {filtered.length > 0 ? (
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={allSelected}
+                    aria-label={allSelected ? "Clear selection" : "Select all conversations"}
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
+                      allSelected && "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
+                    )}
+                    onClick={toggleSelectAll}
+                  >
+                    {allSelected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setSearchOpen((v) => !v)} aria-label="Search conversations">
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-[color:var(--g-text-muted)]" onClick={() => setSearchOpen((v) => !v)} aria-label="Search conversations">
                       <Search className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -359,10 +319,10 @@ export function ConversationSidebar({
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "h-8 w-8",
-                            dateFilter === "all" ? "text-muted-foreground" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                            "h-9 w-9",
+                            dateFilter === "all" ? "text-[color:var(--g-text-muted)]" : "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
                           )}
-                          aria-label="Filter conversations by date"
+                          aria-label="Filter conversations"
                         >
                           <Filter className="h-4 w-4" />
                         </Button>
@@ -371,61 +331,92 @@ export function ConversationSidebar({
                     <TooltipContent side="bottom">Filter</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end" className="w-40">
-                    {DATE_FILTER_OPTIONS.map((option) => (
+                    {HISTORY_DATE_FILTER_OPTIONS.map((option) => (
                       <DropdownMenuItem
                         key={option.value}
-                        onClick={() => setDateFilter(option.value)}
+                        onClick={() => {
+                          setDateFilter(option.value)
+                          writeStoredHistoryDateFilter(option.value)
+                        }}
                         className="flex items-center justify-between"
                       >
                         <span>{option.label}</span>
                         {dateFilter === option.value && (
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <Check className="h-3.5 w-3.5 text-[color:var(--g-brand)]" />
                         )}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground disabled:opacity-40"
-                      disabled={conversations.length === 0}
-                      onClick={enterSelection}
-                      aria-label="Select conversations"
-                    >
-                      <ListChecks className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Select</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={onNew} aria-label="New conversation">
-                      <MessageSquarePlus className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">New conversation</TooltipContent>
-                </Tooltip>
-                {/* Explicit close affordance on mobile (sidebar is an overlay there) */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground md:hidden"
-                  onClick={onToggle}
-                  aria-label="Close conversation history"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-9 w-9",
+                            sort === "newest" ? "text-[color:var(--g-text-muted)]" : "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+                          )}
+                          aria-label="Sort conversations"
+                        >
+                          <ArrowDownUp className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Sort</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="w-40">
+                    {HISTORY_SORT_OPTIONS.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        onClick={() => {
+                          setSort(option.value)
+                          writeStoredHistorySort(option.value)
+                        }}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{option.label}</span>
+                        {sort === option.value && (
+                          <Check className="h-3.5 w-3.5 text-[color:var(--g-brand)]" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-            </TooltipProvider>
-          )}
+            </div>
+          </TooltipProvider>
         </div>
 
+        {bulkOpen ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] px-3 py-2">
+            <span className="text-xs font-medium tabular-nums text-[color:var(--g-text-primary)]">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-9" onClick={archiveSelected}>
+                Archive
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 text-destructive"
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                Delete
+              </Button>
+              <Button variant="ghost" size="sm" className="h-9" onClick={clearSelection}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Search */}
-        {searchOpen && !selectionMode && (
-          <div className="border-b border-sidebar-border bg-sidebar px-3 py-2">
+        {searchOpen && (
+          <div className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-3 py-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -455,15 +446,18 @@ export function ConversationSidebar({
           </div>
         )}
 
-        {dateFilter !== "all" && !selectionMode && (
-          <div className="flex items-center justify-between border-b border-sidebar-border bg-sidebar px-3 py-2">
-            <span className="text-[11px] font-medium text-muted-foreground">
-              {DATE_FILTER_OPTIONS.find((option) => option.value === dateFilter)?.label}
+        {dateFilter !== "all" && (
+          <div className="flex items-center justify-between border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-3 py-2">
+            <span className="text-[11px] font-medium text-[color:var(--g-text-muted)]">
+              {HISTORY_DATE_FILTER_OPTIONS.find((option) => option.value === dateFilter)?.label}
             </span>
             <button
               type="button"
               className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-              onClick={() => setDateFilter("all")}
+              onClick={() => {
+                setDateFilter("all")
+                writeStoredHistoryDateFilter("all")
+              }}
             >
               Clear
             </button>
@@ -523,50 +517,44 @@ export function ConversationSidebar({
                             exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
                             transition={{ type: "spring", stiffness: 420, damping: 34 }}
                             className={cn(
-                              "relative group flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2.5 py-2 transition-colors",
-                              isActive && !selectionMode
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                              "relative group flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-[var(--np-radius-md)] px-2 py-1.5 transition-colors",
+                              isActive
+                                ? "bg-[color:var(--g-surface-2)] text-[color:var(--g-text-primary)]"
                                 : isSelected
-                                  ? "bg-emerald-500/10"
-                                  : "hover:bg-sidebar-accent/80",
+                                  ? "bg-[color:var(--g-brand-soft)]"
+                                  : "hover:bg-[color:var(--g-surface-2)]",
                             )}
                             onClick={() => handleRowClick(conv.id)}
                             onContextMenu={(e) => e.preventDefault()}
                           >
-                            {isActive && !selectionMode && (
+                            {isActive && (
                               <motion.span
                                 layoutId="conversation-active-rail"
-                                className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-emerald-500"
+                                className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-[color:var(--g-brand)]"
                                 transition={{ type: "spring", stiffness: 500, damping: 40 }}
                               />
                             )}
 
-                            {/* Leading: checkbox in selection mode, chat glyph otherwise */}
-                            {selectionMode ? (
-                              <span
-                                className={cn(
-                                  "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                                  isSelected ? "border-emerald-600 bg-emerald-600 text-white" : "border-border bg-background",
-                                )}
-                                aria-hidden
-                              >
-                                {isSelected && <Check className="h-3 w-3" strokeWidth={3} />}
-                              </span>
-                            ) : conv.pinned_at ? (
-                              <Pin
-                                className={cn(
-                                  "h-4 w-4 shrink-0",
-                                  isActive ? "text-emerald-500" : "text-muted-foreground",
-                                )}
-                              />
-                            ) : (
-                              <MessageCircle
-                                className={cn(
-                                  "h-4 w-4 shrink-0",
-                                  isActive ? "text-emerald-500" : "text-muted-foreground",
-                                )}
-                              />
-                            )}
+                            <button
+                              type="button"
+                              role="checkbox"
+                              aria-checked={isSelected}
+                              aria-label={isSelected ? "Deselect conversation" : "Select conversation"}
+                              className={cn(
+                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
+                                isSelected && "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleSelected(conv.id)
+                              }}
+                            >
+                              {isSelected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+                            </button>
+
+                            {!isSelected && conv.pinned_at ? (
+                              <Pin className="h-4 w-4 shrink-0 text-[color:var(--g-brand)]" />
+                            ) : null}
 
                             <div className="min-w-0 flex-1 overflow-hidden pr-1">
                               {isRenaming ? (
@@ -594,7 +582,7 @@ export function ConversationSidebar({
                                     title={conv.title || "New conversation"}
                                     className={cn(
                                       "min-w-0 flex-1 truncate text-sm leading-snug text-sidebar-foreground",
-                                      isActive && !selectionMode && "font-medium",
+                                      isActive && "font-medium",
                                     )}
                                   >
                                     {conv.title || "New conversation"}
@@ -607,12 +595,12 @@ export function ConversationSidebar({
                             </div>
 
                             {/* Trailing actions (hidden in selection mode) */}
-                            {!selectionMode && !isRenaming && (
-                              <DropdownMenu>
+                            {!isRenaming && (
+                              <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     onClick={(e) => e.stopPropagation()}
-                                    className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-colors hover:bg-sidebar-accent hover:text-foreground focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-100 hover:bg-sidebar-accent hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 data-[state=open]:opacity-100"
                                     aria-label="Conversation options"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />

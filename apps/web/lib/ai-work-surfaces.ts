@@ -8,6 +8,8 @@ export type AiWorkSurface = {
   summary: string
   whenToUse: string
   notThis: string
+  /** Open the persistent assistant instead of a dedicated /ai page. */
+  summon?: boolean
 }
 
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -16,21 +18,23 @@ import { APP_ROUTES } from "@/lib/app-routes"
 export const AI_WORK_SURFACES: AiWorkSurface[] = [
   {
     id: "gravitre-ai",
-    href: APP_ROUTES.gravitreAi,
+    href: APP_ROUTES.home,
     title: "Gravitre AI",
     badge: "Unified",
     summary: "One intelligent front door — execute tracked work, chat with tools, or find records across your org.",
     whenToUse: "When you want Gravitre to route your intent to the right engine automatically.",
     notThis: "Not three separate products — one unified AI workspace.",
+    summon: true,
   },
   {
     id: "workspace-chat",
-    href: `${APP_ROUTES.gravitreAi}?mode=chat`,
+    href: APP_ROUTES.home,
     title: "Workspace Chat",
     badge: "Chat",
     summary: "Multi-turn conversation with tools, daily briefings, and platform help.",
     whenToUse: "When you want to ask questions, brainstorm, or explore ideas in a saved thread.",
     notThis: "Not for delegating tracked operator tasks.",
+    summon: true,
   },
   {
     id: "universal-search",

@@ -154,7 +154,7 @@ export function routeMesonSuggestion(
     return
   }
   if (id.includes("chat") || label.includes("delegate") || label.includes("summarize")) {
-    go(APP_ROUTES.gravitreAi)
+    go(APP_ROUTES.home)
     return
   }
   if (path.startsWith("/connectors")) {

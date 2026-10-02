@@ -10,7 +10,6 @@ export type AppNavItem = {
 export const ADMIN_APP_NAV_ITEMS: AppNavItem[] = [
   { name: "Getting Started", href: "/welcome", expectedPathPrefix: "/welcome", optional: true },
   { name: "Home", href: "/home", expectedPathPrefix: "/home" },
-  { name: "Chat", href: "/ai", expectedPathPrefix: "/ai" },
   { name: "Agents", href: "/agents", expectedPathPrefix: "/agents" },
   { name: "Assignments", href: "/assignments", expectedPathPrefix: "/assignments" },
   { name: "Goals", href: "/goals", expectedPathPrefix: "/goals" },

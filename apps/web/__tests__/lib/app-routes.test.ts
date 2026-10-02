@@ -54,6 +54,7 @@ describe("ADMIN_SIDEBAR_NAV IA consolidation", () => {
     const hrefs = ADMIN_SIDEBAR_NAV.flatMap((g) => g.items.map((i) => i.href))
     expect(hrefs).toContain("/activity")
     expect(hrefs).toContain("/intelligence")
+    expect(hrefs).not.toContain("/ai")
     expect(hrefs).not.toContain("/runs")
     expect(hrefs).not.toContain("/metrics")
     expect(hrefs).not.toContain("/multi-agent-run")

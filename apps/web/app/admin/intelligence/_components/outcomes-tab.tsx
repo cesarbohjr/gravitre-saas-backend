@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { intelligenceApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 import { ChartLineUp, CheckCircle, Hourglass, ArrowRight } from "@phosphor-icons/react"
 import { NotYetPopulated, readNumber, SectionCard, TabStateGate } from "./shared"
 
@@ -88,10 +89,10 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
             </NotYetPopulated>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button asChild size="sm">
-                <Link href={APP_ROUTES.gravitreAi}>
+                <OpenGravitreAIButton>
                   Open chat
                   <ArrowRight className="ml-1.5 h-4 w-4" weight="bold" aria-hidden />
-                </Link>
+                </OpenGravitreAIButton>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link href={APP_ROUTES.connectors}>Check connectors</Link>

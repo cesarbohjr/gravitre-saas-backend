@@ -7,7 +7,7 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-card"
 import { Button } from "@/components/ui/button"
 import { agentsApi, agentKnowledgeApi } from "@/lib/api"
-import { APP_ROUTES } from "@/lib/app-routes"
+import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 import { Loader2 } from "lucide-react"
 
 export default function AgentCapabilitiesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,9 +66,9 @@ export default function AgentCapabilitiesPage({ params }: { params: Promise<{ id
         {!isLoading && !error && !profile ? (
           <p className="text-sm text-muted-foreground">
             No capability profile yet. Run the agent on{" "}
-            <Link href={APP_ROUTES.gravitreAi} className="text-primary underline-offset-4 hover:underline">
+            <OpenGravitreAIButton className="text-primary underline-offset-4 hover:underline">
               Gravitre AI
-            </Link>{" "}
+            </OpenGravitreAIButton>{" "}
             to populate learning signals.
           </p>
         ) : null}

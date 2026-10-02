@@ -24,11 +24,14 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 export function clampFloatSize(size: WindowSize, viewport: { width: number; height: number }): WindowSize {
-  const maxW = Math.min(GRAVITRE_FLOAT_MAX_SIZE.width, Math.max(GRAVITRE_FLOAT_MIN_SIZE.width, viewport.width - 24))
-  const maxH = Math.min(GRAVITRE_FLOAT_MAX_SIZE.height, Math.max(GRAVITRE_FLOAT_MIN_SIZE.height, viewport.height - 24))
+  const gutter = 16
+  const maxW = Math.min(GRAVITRE_FLOAT_MAX_SIZE.width, Math.max(280, viewport.width - gutter))
+  const maxH = Math.min(GRAVITRE_FLOAT_MAX_SIZE.height, Math.max(320, viewport.height - gutter))
+  const minW = Math.min(GRAVITRE_FLOAT_MIN_SIZE.width, maxW)
+  const minH = Math.min(GRAVITRE_FLOAT_MIN_SIZE.height, maxH)
   return {
-    width: clamp(size.width, GRAVITRE_FLOAT_MIN_SIZE.width, maxW),
-    height: clamp(size.height, GRAVITRE_FLOAT_MIN_SIZE.height, maxH),
+    width: clamp(size.width, minW, maxW),
+    height: clamp(size.height, minH, maxH),
   }
 }
 

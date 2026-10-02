@@ -43,7 +43,7 @@ import { NucleoChat, NucleoPanelToggle } from "@/components/icons/nucleo/semanti
 import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { MOTION, NUCLEO_SIZE } from "@/lib/design-system"
+import { MOTION, NUCLEO_SIZE, TYPE, WINDOW_CHROME } from "@/lib/design-system"
 import { GRAVITRE_AI_WORKSPACE_LAYOUT_ID } from "@/lib/gravitre-ai-presentation"
 import { useMotionPrefs } from "@/lib/animations"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
@@ -137,10 +137,11 @@ export function GravitreAIWorkspaceShell({
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
       transition={{ duration: reduceMotion ? 0 : MOTION.major, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden border border-divide bg-[color:var(--g-surface-1)] shadow-2xl focus:outline-none",
+        "pointer-events-auto fixed z-[85] flex flex-col overflow-hidden focus:outline-none",
+        WINDOW_CHROME.frame,
         isFullscreen
           ? "inset-0 rounded-none"
-          : "inset-6 rounded-[var(--g-radius-panel)] sm:inset-10 md:inset-x-16 md:inset-y-10",
+          : "inset-3 rounded-[var(--g-radius-panel)] sm:inset-6 md:inset-x-12 md:inset-y-8",
       )}
       data-gravitre-ai-shell=""
       data-gravitre-ai-shell-mode={mode}
@@ -149,18 +150,18 @@ export function GravitreAIWorkspaceShell({
       aria-modal={isFullscreen ? true : undefined}
       aria-label="Gravitre AI workspace"
     >
-      <div className="dark flex min-h-12 shrink-0 items-center justify-between border-b border-[color:var(--g-frame-rule)] bg-[color:var(--g-frame)] px-3 py-2 text-foreground">
+      <div className={cn(WINDOW_CHROME.header, "justify-between")}>
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] border border-[color:var(--g-frame-rule)] bg-white/[0.04] text-foreground">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
             <NucleoChat width={NUCLEO_SIZE.default} height={NUCLEO_SIZE.default} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-foreground">Gravitre AI</p>
+            <p className={cn(TYPE.cardTitle, "truncate")}>Gravitre AI</p>
             {titleAccessory}
           </div>
           <span
             className={cn(
-              "ml-1 hidden shrink-0 items-center gap-1.5 rounded-[3px] border border-[color:var(--g-frame-rule)] px-1.5 py-0.5 text-[11px] font-medium sm:flex",
+              "ml-1 hidden shrink-0 items-center gap-1.5 rounded-full bg-[color:var(--g-surface-2)] px-1.5 py-0.5 text-[11px] font-medium sm:flex",
               copy.tone,
             )}
           >
@@ -186,7 +187,7 @@ export function GravitreAIWorkspaceShell({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-9 w-9 sm:h-8 sm:w-8"
             aria-label={leftCollapsed ? "Show conversation history" : "Hide conversation history"}
             aria-pressed={!leftCollapsed}
             onClick={onToggleLeft}
@@ -198,7 +199,7 @@ export function GravitreAIWorkspaceShell({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-9 w-9 sm:h-8 sm:w-8"
             aria-label={rightCollapsed ? "Show inspector" : "Hide inspector"}
             aria-pressed={!rightCollapsed}
             onClick={onToggleRight}

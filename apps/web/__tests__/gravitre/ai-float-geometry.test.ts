@@ -13,9 +13,18 @@ describe("ai-float-geometry", () => {
       { width: 900, height: 900 },
       { width: 500, height: 500 },
     )
-    expect(next.width).toBeLessThanOrEqual(500 - 24)
-    expect(next.height).toBeLessThanOrEqual(500 - 24)
-    expect(next.width).toBeGreaterThanOrEqual(GRAVITRE_FLOAT_MIN_SIZE.width)
+    expect(next.width).toBeLessThanOrEqual(500 - 16)
+    expect(next.height).toBeLessThanOrEqual(500 - 16)
+    expect(next.width).toBeGreaterThanOrEqual(Math.min(GRAVITRE_FLOAT_MIN_SIZE.width, 500 - 16))
+  })
+
+  it("fits a phone viewport instead of overflowing the min size", () => {
+    const next = clampFloatSize(
+      { width: 520, height: 560 },
+      { width: 360, height: 640 },
+    )
+    expect(next.width).toBeLessThanOrEqual(360 - 16)
+    expect(next.height).toBeLessThanOrEqual(640 - 16)
   })
 
   it("keeps default size unchanged on a large viewport", () => {

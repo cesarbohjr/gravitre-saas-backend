@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Icon, type IconName } from "@/lib/icons"
-import { APP_ROUTES } from "@/lib/app-routes"
+import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { cn } from "@/lib/utils"
 import { useViewModeSafe } from "@/lib/view-mode-context"
 import { PulseDot } from "@/components/gravitre/visual"
@@ -23,24 +23,6 @@ interface CommandItem {
 }
 
 const navigationItems: CommandItem[] = [
-  {
-    id: "nav-ai",
-    type: "navigation",
-    title: "Chat",
-    subtitle: "Unified execute, chat, and find",
-    icon: "chat",
-    href: APP_ROUTES.gravitreAi,
-    keywords: ["ai", "execute", "task", "delegate", "chat", "find"],
-  },
-  {
-    id: "nav-assistant",
-    type: "navigation",
-    title: "Workspace chat",
-    subtitle: "Multi-turn chat with tools",
-    icon: "chat",
-    href: `${APP_ROUTES.gravitreAi}?mode=chat`,
-    keywords: ["assistant", "chat", "conversation", "help"],
-  },
   {
     id: "nav-search",
     type: "navigation",
@@ -83,6 +65,7 @@ export function GlobalCommandBar() {
   const router = useRouter()
   const viewMode = useViewModeSafe()
   const isLite = Boolean(viewMode?.isLite)
+  const { summonWorkspace } = useGravitreAIWorkspace()
 
   // Filter items based on query
   const filteredItems = useCallback(() => {
@@ -138,13 +121,12 @@ export function GlobalCommandBar() {
 
   // Handle navigation within list
   const handleSelect = (item: CommandItem) => {
-    if (item.href) {
+    if (item.type === "ai") {
+      summonWorkspace({ composerText: item.title })
+    } else if (item.href) {
       router.push(item.href)
     } else if (item.action) {
       item.action()
-    } else if (item.type === "ai") {
-      // Navigate to operator with the query
-      router.push(`${APP_ROUTES.gravitreAi}?prompt=${encodeURIComponent(item.title)}`)
     }
     setIsOpen(false)
     setQuery("")

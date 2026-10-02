@@ -4,6 +4,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Bot, Layers, Network, Target } from "lucide-react"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
 
 type MultiAgentRunOverviewProps = {
   activeRuns: number
@@ -55,12 +56,9 @@ export function MultiAgentRunOverview({
               AI Team
             </Link>
             ; delegate tracked execution from{" "}
-            <Link
-              href={APP_ROUTES.gravitreAi}
-              className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300"
-            >
+            <OpenGravitreAIButton className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
               Gravitre AI
-            </Link>
+            </OpenGravitreAIButton>
             .
           </p>
         </div>

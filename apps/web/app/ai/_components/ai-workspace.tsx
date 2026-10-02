@@ -92,6 +92,7 @@ import {
   type PersistedInlineTurn,
 } from "@/lib/ai-inline-turn-persistence"
 import { agentsApi, conversationsApi, searchApi, assistantApi, authApi } from "@/lib/api"
+import { optimisticRemoveConversations } from "@/lib/conversation-history-controls"
 import {
   deriveConversationTitle,
   shouldRefreshConversationTitle,
@@ -1826,9 +1827,18 @@ export function AiWorkspace({
   const handleDeleteConversation = useCallback(
     async (id: string) => {
       clearCachedConversationMessages(id)
-      await conversationsApi.delete(id)
+      await mutateConversations(
+        (current) => optimisticRemoveConversations(current, [id]),
+        { revalidate: false },
+      )
+      try {
+        await conversationsApi.delete(id)
+        await mutateConversations()
+      } catch (error) {
+        await mutateConversations()
+        throw error
+      }
       if (activeConversationId === id) handleNewConversation()
-      void mutateConversations()
     },
     [activeConversationId, handleNewConversation, mutateConversations],
   )
@@ -1877,9 +1887,18 @@ export function AiWorkspace({
 
   const handleBulkDeleteConversations = useCallback(
     async (ids: string[]) => {
-      await conversationsApi.bulkDelete(ids)
+      await mutateConversations(
+        (current) => optimisticRemoveConversations(current, ids),
+        { revalidate: false },
+      )
+      try {
+        await conversationsApi.bulkDelete(ids)
+        await mutateConversations()
+      } catch (error) {
+        await mutateConversations()
+        throw error
+      }
       if (activeConversationId && ids.includes(activeConversationId)) handleNewConversation()
-      void mutateConversations()
     },
     [activeConversationId, handleNewConversation, mutateConversations],
   )

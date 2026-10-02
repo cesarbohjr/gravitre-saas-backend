@@ -9,7 +9,7 @@
  * not as invented answers or data.
  */
 
-import Link from "next/link"
+import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import useSWR from "swr"
 import { assistantApi } from "@/lib/api"
 import { TYPE } from "@/lib/design-system"
@@ -34,6 +34,7 @@ export function AskGravitreEntry({
   suggestions: string[] | null | undefined
   className?: string
 }) {
+  const { summonWorkspace } = useGravitreAIWorkspace()
   const questions = suggestions?.length ? suggestions.slice(0, 3) : FALLBACK_QUESTIONS
   const usingFallback = !suggestions?.length
 
@@ -63,14 +64,15 @@ export function AskGravitreEntry({
 
       <div className="mt-4 flex flex-wrap gap-2">
         {questions.map((question) => (
-          <Link
+          <button
             key={question}
-            href={`/ai?prompt=${encodeURIComponent(question)}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-divide bg-[color:var(--g-surface-2)] px-3 py-1.5 text-xs font-medium text-[color:var(--g-text-secondary)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-surface)] hover:text-[color:var(--g-brand)]"
+            type="button"
+            onClick={() => summonWorkspace({ composerText: question })}
+            className="inline-flex max-w-full items-center gap-1.5 truncate rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2 text-left text-xs font-medium text-[color:var(--g-text-secondary)] transition-colors hover:border-[color:var(--g-brand-border)] hover:bg-[color:var(--g-brand-surface)] hover:text-[color:var(--g-brand)]"
           >
             {question}
-            <ArrowRight className="h-3 w-3" aria-hidden />
-          </Link>
+            <ArrowRight className="h-3 w-3 shrink-0" aria-hidden />
+          </button>
         ))}
       </div>
 
@@ -81,13 +83,14 @@ export function AskGravitreEntry({
       ) : null}
 
       <div className="mt-4">
-        <Link
-          href="/ai"
+        <button
+          type="button"
+          onClick={() => summonWorkspace()}
           className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
-          Open the full assistant
+          Open Gravitre AI
           <ArrowRight className="h-3 w-3" aria-hidden />
-        </Link>
+        </button>
       </div>
     </section>
   )

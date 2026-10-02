@@ -18,6 +18,8 @@
 import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import {
   NucleoClose,
   NucleoCollapse,
@@ -61,7 +63,7 @@ export function ChatWindowControls({
   const ids = controlsForSurface(surface)
 
   return (
-    <div className={className ?? "flex items-center gap-0.5"}>
+    <div className={className ?? "flex flex-wrap items-center justify-end gap-0.5"}>
       {leading}
       {ids.map((id) => {
         const onClick = handlers[id]
@@ -77,7 +79,7 @@ export function ChatWindowControls({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className={cn(TOUCH_ICON_BUTTON, "h-9 w-9 sm:h-8 sm:w-8")}
                 aria-label={label}
                 data-chat-window-control={id}
                 onClick={onClick}
