@@ -179,8 +179,9 @@ def _assert_outcome_pack_certified(client: Any, asset: dict[str, Any]) -> None:
         for finding in report.findings
         if finding.blocking
     ]
+    finding_text = ", ".join(blocking) if blocking else report.level
     raise MarketplacePublishError(
-        "Marketplace 3.0 Outcome Pack requires production evidence before publish",
+        f"Marketplace 3.0 Outcome Pack requires production evidence before publish: {finding_text}",
         code="CERTIFICATION_REQUIRED",
     )
 
