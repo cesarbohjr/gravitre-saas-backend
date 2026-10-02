@@ -15,6 +15,7 @@ from app.marketplace.marketplace3.certification_store import (
     get_outcome_pack_certification,
 )
 from app.marketplace.schemas import OutcomePackAssetConfig
+from app.marketplace.marketplace3.production_evidence import collect_production_evidence
 from app.services.tool_service import list_registered_actions
 from app.services.write_success_verification import resolve_success_verification
 
@@ -250,24 +251,27 @@ def run_outcome_pack_certification(
     fixture_passed = all(check.passed for check in checks)
 
     if mode == "production":
-        raise CertificationRunnerError(
-            "Live production certification requires the provider execution runner; "
-            "fixture checks cannot be promoted to production evidence.",
-            code="LIVE_PROVIDER_RUNNER_REQUIRED",
+        evidence = collect_production_evidence(
+            client,
+            org_id=org_id,
+            asset_id=str(asset["id"]),
+            config=config,
         )
-
-    evidence = {
-        "runner_mode": "fixture",
-        "fixture_checks_passed": fixture_passed,
-        "fixture_checks": [check.as_dict() for check in checks],
-        # Required production proof stays false in fixture mode by design.
-        "fresh_install_passed": False,
-        "golden_path_passed": False,
-        "failure_path_passed": False,
-        "permissions_passed": False,
-        "kpi_reconciliation_passed": False,
-        "source_of_record_verification_passed": False,
-    }
+        evidence["fixture_checks_passed"] = fixture_passed
+        evidence["fixture_checks"] = [check.as_dict() for check in checks]
+    else:
+        evidence = {
+            "runner_mode": "fixture",
+            "fixture_checks_passed": fixture_passed,
+            "fixture_checks": [check.as_dict() for check in checks],
+            # Required production proof stays false in fixture mode by design.
+            "fresh_install_passed": False,
+            "golden_path_passed": False,
+            "failure_path_passed": False,
+            "permissions_passed": False,
+            "kpi_reconciliation_passed": False,
+            "source_of_record_verification_passed": False,
+        }
 
     resolved_skill_ids = {
         str(package_id).strip()
@@ -289,6 +293,7 @@ def run_outcome_pack_certification(
         "mode": mode,
         "fixturePassed": fixture_passed,
         "checks": [check.as_dict() for check in checks],
+        "productionEvidence": evidence if mode == "production" else None,
         "certification": certification,
     }
 
