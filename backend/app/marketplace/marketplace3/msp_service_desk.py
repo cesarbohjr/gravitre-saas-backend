@@ -20,6 +20,33 @@ MSP_SERVICE_DESK_PLAY_KEYS = (
 )
 
 
+def _tool_step(
+    step_id: str,
+    name: str,
+    action: str,
+    *,
+    param_sources: dict[str, Any] | None = None,
+    connector: str = "freshservice",
+) -> dict[str, Any]:
+    config: dict[str, Any] = {
+        "action": action,
+        "tool_action": action,
+        "vendor": connector,
+        "connector": connector,
+        "selectedAction": action.split(".", 1)[-1],
+        "selected_action": action.split(".", 1)[-1],
+    }
+    if param_sources:
+        config["param_sources"] = param_sources
+    return {
+        "id": step_id,
+        "name": name,
+        "type": "invoke_tool",
+        "config": config,
+        "requires_connector": connector,
+    }
+
+
 def _agent_step(step_id: str, name: str, agent_seed: str, task: str) -> dict[str, Any]:
     return {
         "id": step_id,
@@ -43,20 +70,23 @@ def _play(
     agent_seed: str,
     task: str,
     approvals: list[dict[str, Any]] | None = None,
+    evidence_steps: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    workflow_steps = list(evidence_steps or [])
+    workflow_steps.append(
+        _agent_step(
+            f"{key}-analyze",
+            f"{name} analysis",
+            agent_seed,
+            task,
+        )
+    )
     return {
         "key": key,
         "name": name,
         "description": description,
         "trigger": trigger,
-        "workflow_steps": [
-            _agent_step(
-                f"{key}-analyze",
-                f"{name} analysis",
-                agent_seed,
-                task,
-            )
-        ],
+        "workflow_steps": workflow_steps,
         "outcome_events": [outcome_event],
         "kpi_keys": kpis,
         "approvals": approvals or [],
@@ -178,6 +208,20 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="ticket_intake_completed",
             trigger={"type": "event", "event": "ticket.created"},
             agent_seed="agent:msp-service-coordinator",
+            evidence_steps=[
+                _tool_step(
+                    "ticket-context",
+                    "Fetch Freshservice ticket context",
+                    "freshservice.tickets.get",
+                    param_sources={"ticket_id": "$TICKET_ID"},
+                ),
+                _tool_step(
+                    "ticket-activities",
+                    "Fetch recent ticket activity",
+                    "freshservice.tickets.activities",
+                    param_sources={"ticket_id": "$TICKET_ID"},
+                ),
+            ],
             task=(
                 "Review new ticket context, identify category and urgency, detect SLA/business impact, "
                 "and prepare the correct queue/routing recommendation. Do not claim a provider update "
@@ -192,6 +236,20 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="resolution_path_prepared",
             trigger={"type": "event", "event": "ticket.assigned"},
             agent_seed="agent:msp-resolution-engineer",
+            evidence_steps=[
+                _tool_step(
+                    "resolution-ticket-context",
+                    "Fetch Freshservice ticket context",
+                    "freshservice.tickets.get",
+                    param_sources={"ticket_id": "$TICKET_ID", "include": "stats,assets"},
+                ),
+                _tool_step(
+                    "resolution-ticket-activities",
+                    "Fetch ticket activity history",
+                    "freshservice.tickets.activities",
+                    param_sources={"ticket_id": "$TICKET_ID"},
+                ),
+            ],
             task=(
                 "Assemble evidence from service history and assigned runbooks. Produce a remediation "
                 "plan, identify missing evidence, and separate recommendations from actions."
@@ -205,6 +263,20 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="ticket_sla_saved",
             trigger={"type": "threshold", "metric": "sla_minutes_remaining", "lte": 60},
             agent_seed="agent:msp-service-coordinator",
+            evidence_steps=[
+                _tool_step(
+                    "sla-ticket-context",
+                    "Fetch SLA ticket context",
+                    "freshservice.tickets.get",
+                    param_sources={"ticket_id": "$TICKET_ID", "include": "stats"},
+                ),
+                _tool_step(
+                    "sla-ticket-activities",
+                    "Fetch SLA ticket activity",
+                    "freshservice.tickets.activities",
+                    param_sources={"ticket_id": "$TICKET_ID"},
+                ),
+            ],
             task=(
                 "Investigate why the ticket is stalled, identify the correct owner/escalation, and "
                 "prepare a rescue action. Any consequential write requires approval and source-of-record verification."
@@ -219,6 +291,14 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="stale_ticket_reactivated",
             trigger={"type": "scheduled", "cadence": "hourly"},
             agent_seed="agent:msp-service-coordinator",
+            evidence_steps=[
+                _tool_step(
+                    "stale-ticket-list",
+                    "List recently updated Freshservice tickets",
+                    "freshservice.tickets.list",
+                    param_sources={"per_page": 100},
+                ),
+            ],
             task=(
                 "Classify why each stale ticket is blocked and recommend the smallest valid next step. "
                 "Do not fabricate customer/vendor responses."
@@ -232,6 +312,14 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="recurring_problem_identified",
             trigger={"type": "scheduled", "cadence": "daily"},
             agent_seed="agent:msp-service-analyst",
+            evidence_steps=[
+                _tool_step(
+                    "recurring-ticket-list",
+                    "Load Freshservice incident sample",
+                    "freshservice.tickets.list",
+                    param_sources={"type": "Incident", "per_page": 100},
+                ),
+            ],
             task=(
                 "Cluster repeated issues by client, user, asset, category, and symptoms. Produce evidence "
                 "for a problem record, knowledge update, or preventive automation opportunity."
@@ -245,6 +333,14 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="client_update_prepared",
             trigger={"type": "event", "event": "ticket.status_changed"},
             agent_seed="agent:msp-service-coordinator",
+            evidence_steps=[
+                _tool_step(
+                    "client-update-context",
+                    "Fetch verified Freshservice ticket status",
+                    "freshservice.tickets.get",
+                    param_sources={"ticket_id": "$TICKET_ID", "include": "stats"},
+                ),
+            ],
             task=(
                 "Draft a concise client update using only verified ticket status, known impact, and next "
                 "steps. Flag uncertainty rather than inventing progress."
@@ -259,6 +355,14 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="knowledge_gap_identified",
             trigger={"type": "scheduled", "cadence": "daily"},
             agent_seed="agent:msp-service-analyst",
+            evidence_steps=[
+                _tool_step(
+                    "knowledge-gap-ticket-list",
+                    "Load service ticket sample",
+                    "freshservice.tickets.list",
+                    param_sources={"per_page": 100},
+                ),
+            ],
             task=(
                 "Analyze repeated unresolved cases, escalations, and missing runbook evidence. Propose "
                 "specific knowledge articles, SOP changes, or decision rules with source examples."
@@ -272,6 +376,14 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             outcome_event="service_desk_optimization_reviewed",
             trigger={"type": "scheduled", "cadence": "weekly"},
             agent_seed="agent:msp-service-analyst",
+            evidence_steps=[
+                _tool_step(
+                    "optimization-ticket-list",
+                    "Load service desk operating sample",
+                    "freshservice.tickets.list",
+                    param_sources={"per_page": 100},
+                ),
+            ],
             task=(
                 "Review KPI trends and Play outcomes. Identify the highest-value operational bottlenecks, "
                 "automation candidates, and workflow changes, tied to measurable baseline evidence."
@@ -424,8 +536,20 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             "knowledge-gap-analysis",
             "service-operations-analysis",
         ],
+        "certified_runtime_profiles": [
+            {
+                "provider": "freshservice",
+                "status": "implementation",
+                "actions": [
+                    "freshservice.tickets.list",
+                    "freshservice.tickets.get",
+                    "freshservice.tickets.activities",
+                    "freshservice.tickets.update_status",
+                ],
+            }
+        ],
         "connector_alternatives": [
-            ["halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"],
+            ["freshservice"],
             ["microsoft_intune", "jumpcloud", "jamf_pro"],
             ["huntress", "sentinelone", "crowdstrike", "connectsecure"],
             ["microsoft_365", "slack", "microsoft_teams"],
