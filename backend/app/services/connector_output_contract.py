@@ -131,6 +131,7 @@ _SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
         "gmail.messages.send",
         "engagebay.contacts.create",
         "engagebay.contacts.update",
+        "freshservice.tickets.update_status",
     }
 )
 
