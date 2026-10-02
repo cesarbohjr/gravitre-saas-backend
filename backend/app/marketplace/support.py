@@ -370,8 +370,12 @@ def _deactivate_install_entities(
         except Exception:  # noqa: BLE001
             continue
 
+    capability_ids = [
+        str(v) for v in (metadata.get("capabilityPackageIds") or []) if v
+    ]
     if entity_type == "capability_package" and entity_id:
-        capability_id = str(entity_id)
+        capability_ids.append(str(entity_id))
+    for capability_id in dict.fromkeys(capability_ids):
         try:
             client.table("capability_packages").update(
                 {"status": "disabled", "updated_at": now}

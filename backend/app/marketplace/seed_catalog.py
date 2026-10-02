@@ -1111,6 +1111,9 @@ def _intelligence_packs() -> list[CatalogAsset]:
 
 def list_catalog_assets() -> list[CatalogAsset]:
     """Return the full Gravitre starter library in dependency order (children before packs)."""
+    from app.marketplace.marketplace3.msp_service_desk import (
+        msp_service_desk_marketplace3_assets,
+    )
     from app.marketplace.seed_catalog_expansion import expansion_catalog_assets
 
     assets = (
@@ -1119,6 +1122,7 @@ def list_catalog_assets() -> list[CatalogAsset]:
         + _knowledge_packs()
         + _intelligence_packs()
         + expansion_catalog_assets()
+        + msp_service_desk_marketplace3_assets()
         + _department_packs()
     )
     slugs = [asset.slug for asset in assets]

@@ -12,13 +12,19 @@ def test_catalog_asset_counts():
     by_type: dict[str, int] = {}
     for asset in assets:
         by_type[asset.asset_type] = by_type.get(asset.asset_type, 0) + 1
-    assert by_type["ai_agent"] == 20
+    assert by_type["ai_agent"] == 23
     assert by_type["workflow"] == 20
-    assert by_type["knowledge_pack"] == 14
+    assert by_type["knowledge_pack"] == 15
     assert by_type["department_pack"] == 6
     # 8 original packs + AI Search + Finance + HR Talent + Platform Health
     assert by_type.get("intelligence_pack", 0) == 12
-    assert len(assets) == 72
+    # Marketplace 3.0 flagship bundle: 8 Plays + skill/dataset/dashboard/outcome.
+    assert by_type.get("play", 0) == 8
+    assert by_type.get("capability_package", 0) == 1
+    assert by_type.get("dataset_pack", 0) == 1
+    assert by_type.get("dashboard_pack", 0) == 1
+    assert by_type.get("outcome_pack", 0) == 1
+    assert len(assets) == 88
 
 
 # Formerly deferred Slice A binding failures — remediated (Part 2 finish).
@@ -84,7 +90,7 @@ def test_remediated_packs_are_install_ready(asset_slug: str):
 def test_department_pack_children_exist():
     by_slug = catalog_assets_by_slug()
     for asset in list_catalog_assets():
-        if asset.asset_type != "department_pack":
+        if asset.asset_type not in {"department_pack", "outcome_pack"}:
             continue
         for child_slug in asset.pack_children:
             assert child_slug in by_slug, f"{asset.slug} missing child {child_slug}"

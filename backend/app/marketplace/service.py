@@ -970,6 +970,71 @@ def _install_outcome_pack(
         except Exception as exc:  # noqa: BLE001
             failures.append({"component": "agent", "key": seed, "error": str(exc)})
 
+    skill_package_rows: list[dict[str, Any]] = []
+    capability_package_ids: list[str] = []
+    requires_capability_review = False
+    for skill_ref in dict.fromkeys(
+        str(value).strip()
+        for value in config.skill_bindings.values()
+        if str(value).strip()
+    ):
+        try:
+            result = (
+                client.table("marketplace_assets")
+                .select("*")
+                .eq("slug", skill_ref)
+                .eq("asset_type", "capability_package")
+                .eq("status", "published")
+                .limit(1)
+                .execute()
+            )
+            rows = result.data or []
+            if not rows:
+                raise MarketplaceError(
+                    f"Required skill package {skill_ref!r} is not published",
+                    code="OUTCOME_PACK_SKILL_MISSING",
+                )
+            skill_asset = dict(rows[0])
+            skill_config = CapabilityPackageAssetConfig.model_validate(
+                skill_asset.get("config") or {}
+            )
+            installed_skill = _install_capability_package(
+                client,
+                org_id,
+                skill_asset,
+                skill_config,
+                actor_id=actor_id,
+                environment_name=environment_name,
+            )
+            package_id = str(installed_skill.get("capabilityPackageId") or installed_skill.get("entityId") or "")
+            if package_id:
+                capability_package_ids.append(package_id)
+            requires_capability_review = (
+                requires_capability_review
+                or bool(installed_skill.get("requiresReview"))
+            )
+            skill_package_rows.append(
+                {
+                    "requirementRefs": [
+                        requirement
+                        for requirement, binding in config.skill_bindings.items()
+                        if str(binding).strip() == skill_ref
+                    ],
+                    "marketplaceSlug": skill_ref,
+                    "capabilityPackageId": package_id or None,
+                    "status": installed_skill.get("status"),
+                    "requiresReview": bool(installed_skill.get("requiresReview")),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            failures.append(
+                {
+                    "component": "skill_package",
+                    "key": skill_ref,
+                    "error": str(exc),
+                }
+            )
+
     knowledge_result = _install_knowledge_pack(
         client,
         org_id,
@@ -1053,6 +1118,9 @@ def _install_outcome_pack(
         "outcomeContract": config.outcome_contract.model_dump(mode="json"),
         "kpiKeys": [row.key for row in config.outcome_contract.kpis],
         "skills": list(config.skills),
+        "skillPackages": skill_package_rows,
+        "capabilityPackageIds": capability_package_ids,
+        "requiresCapabilityReview": requires_capability_review,
         "executionAuthority": "canonical_workflow_runtime",
     }
 
