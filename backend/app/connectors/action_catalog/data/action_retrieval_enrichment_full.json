@@ -1,8 +1,8 @@
 {
   "generated_at": "2026-08-13T08:32:00.083626+00:00",
-  "catalog_action_count": 731,
-  "vendor_count": 84,
-  "enriched_action_count": 731,
+  "catalog_action_count": 735,
+  "vendor_count": 86,
+  "enriched_action_count": 735,
   "generator_model": "gpt-4o-mini",
   "taxonomy_version": 1,
   "actions": {
@@ -13562,6 +13562,79 @@
         "seo",
         "search",
         "analytics"
+      ]
+    },
+    "freshservice.tickets.list": {
+      "examples": [
+        "List open Freshservice tickets that need service desk attention.",
+        "Show recent Freshservice tickets for this MSP service desk.",
+        "Find Freshservice incidents that are still open.",
+        "Review the latest Freshservice ticket queue.",
+        "List Freshservice tickets updated recently."
+      ],
+      "tags": [
+        "freshservice",
+        "tickets",
+        "service-desk",
+        "itsm",
+        "support",
+        "list",
+        "triage"
+      ]
+    },
+    "freshservice.tickets.get": {
+      "examples": [
+        "Get Freshservice ticket 42 and show its current status.",
+        "Open the details for this Freshservice service ticket.",
+        "Fetch the Freshservice ticket before deciding the next action.",
+        "Show the latest source-of-record details for a Freshservice ticket.",
+        "Read this Freshservice incident including its current fields."
+      ],
+      "tags": [
+        "freshservice",
+        "tickets",
+        "service-desk",
+        "itsm",
+        "support",
+        "get",
+        "details"
+      ]
+    },
+    "freshservice.tickets.activities": {
+      "examples": [
+        "Show the activity history for this Freshservice ticket.",
+        "Get recent events and updates on the Freshservice ticket.",
+        "Review the Freshservice ticket timeline before troubleshooting.",
+        "List activity recorded on this Freshservice incident.",
+        "Show who changed this Freshservice ticket and when."
+      ],
+      "tags": [
+        "freshservice",
+        "tickets",
+        "activities",
+        "history",
+        "timeline",
+        "service-desk",
+        "itsm"
+      ]
+    },
+    "freshservice.tickets.update_status": {
+      "examples": [
+        "Update this Freshservice ticket status after I approve the change.",
+        "Move Freshservice ticket 42 to the requested status.",
+        "Change the ticket state in Freshservice and verify it afterwards.",
+        "Set this Freshservice incident to the approved status.",
+        "Update a Freshservice ticket status using the governed write flow."
+      ],
+      "tags": [
+        "freshservice",
+        "tickets",
+        "status",
+        "update",
+        "write",
+        "service-desk",
+        "itsm",
+        "approval"
       ]
     }
   }
