@@ -148,6 +148,11 @@ from app.marketplace.payouts import (
 )
 from app.marketplace.publisher_analytics import get_publisher_revenue_analytics
 from app.marketplace.roi import marketplace_roi_summary
+from app.marketplace.marketplace3.certification_runner import (
+    CertificationRunnerError,
+    get_current_outcome_pack_certification,
+    run_outcome_pack_certification,
+)
 from app.marketplace.service import fetch_marketplace_asset
 from app.workflows.audit import write_audit_event
 
@@ -314,6 +319,10 @@ class AssetPricingRequest(BaseModel):
     currency: str = Field(default="usd")
 
     model_config = {"populate_by_name": True}
+
+
+class OutcomePackCertificationRunRequest(BaseModel):
+    mode: Literal["fixture", "production"] = "fixture"
 
 
 class RejectAssetReviewRequest(BaseModel):
@@ -1211,6 +1220,78 @@ async def archive_marketplace_asset_route(
         )
     except MarketplaceCrudError as exc:
         raise _crud_http_error(exc) from exc
+
+
+@router.get("/assets/{asset_ref}/certification")
+async def get_marketplace_outcome_pack_certification(
+    asset_ref: str,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        return get_current_outcome_pack_certification(
+            client,
+            org_id=org_id,
+            asset_ref=asset_ref,
+        )
+    except CertificationRunnerError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if exc.code == "NOT_FOUND"
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail={"message": str(exc), "code": exc.code},
+        ) from exc
+
+
+@router.post("/assets/{asset_ref}/certification/run")
+async def run_marketplace_outcome_pack_certification(
+    asset_ref: str,
+    body: OutcomePackCertificationRunRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    user, org_id = admin
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = run_outcome_pack_certification(
+            client,
+            org_id=org_id,
+            asset_ref=asset_ref,
+            actor_id=user["user_id"],
+            mode=body.mode,
+        )
+    except CertificationRunnerError as exc:
+        status_code = (
+            status.HTTP_409_CONFLICT
+            if exc.code == "LIVE_PROVIDER_RUNNER_REQUIRED"
+            else status.HTTP_404_NOT_FOUND
+            if exc.code == "NOT_FOUND"
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail={"message": str(exc), "code": exc.code},
+        ) from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="marketplace.outcome_pack.certification_ran",
+        resource_type="marketplace_asset",
+        resource_id=result["assetId"],
+        metadata={
+            "mode": result["mode"],
+            "fixturePassed": result["fixturePassed"],
+            "level": (result.get("certification") or {}).get("level"),
+            "publishReady": (result.get("certification") or {}).get("publishReady"),
+        },
+    )
+    return result
 
 
 @router.post("/assets/{asset_ref}/submit-for-review")
