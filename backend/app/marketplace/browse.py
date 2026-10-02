@@ -63,6 +63,70 @@ def _sanitize_search(value: str) -> str:
     return cleaned[:120]
 
 
+def _marketplace3_insights(config: dict[str, Any] | None) -> dict[str, Any]:
+    """Return compact outcome-first metadata without exposing the full asset config."""
+    if not isinstance(config, dict) or config.get("marketplace_version") != "3.0":
+        return {}
+    outcome = config.get("outcome_contract")
+    if not isinstance(outcome, dict):
+        outcome = {}
+    kpis = []
+    for row in outcome.get("kpis") or []:
+        if not isinstance(row, dict) or not row.get("key"):
+            continue
+        kpis.append(
+            {
+                "key": str(row.get("key")),
+                "label": str(row.get("label") or row.get("key")),
+                "unit": str(row.get("unit") or "count"),
+                "direction": str(row.get("direction") or "increase"),
+                "target": row.get("target"),
+            }
+        )
+
+    level = "compatible"
+    publish_ready = False
+    try:
+        from app.marketplace.marketplace3.certification import certify_outcome_pack
+        from app.marketplace.schemas import OutcomePackAssetConfig
+
+        certification = certify_outcome_pack(OutcomePackAssetConfig.model_validate(config))
+        level = certification.level
+        publish_ready = certification.publish_ready
+    except Exception:
+        # Browse must remain available even when a draft pack is incomplete.
+        pass
+
+    return {
+        "marketplaceVersion": "3.0",
+        "outcomeTarget": outcome.get("target_outcome"),
+        "baselineMetric": outcome.get("baseline_metric"),
+        "kpiImpact": kpis,
+        "verificationLevel": level,
+        "certificationPublishReady": publish_ready,
+        "playCount": len(config.get("plays") or []),
+    }
+
+
+def _marketplace3_configs_by_asset(client: Any, asset_ids: list[str]) -> dict[str, dict[str, Any]]:
+    if not asset_ids:
+        return {}
+    try:
+        result = (
+            client.table("marketplace_assets")
+            .select("id, config")
+            .in_("id", asset_ids)
+            .execute()
+        )
+    except Exception:
+        return {}
+    return {
+        str(row["id"]): dict(row.get("config") or {})
+        for row in (result.data or [])
+        if row.get("id")
+    }
+
+
 def _checklist_summary(
     required_connectors: list[Any] | None,
     validation: dict[str, Any],
@@ -96,8 +160,10 @@ def _serialize_asset_summary(
     *,
     install: dict[str, Any] | None = None,
     connector_summary: dict[str, Any] | None = None,
+    marketplace3_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     summary = connector_summary or {}
+    marketplace3 = marketplace3_summary or {}
     return {
         "id": row["id"],
         "slug": row["slug"],
@@ -134,6 +200,7 @@ def _serialize_asset_summary(
         "installedAt": install.get("installed_at") if install else None,
         "installId": install.get("id") if install else None,
         **summary,
+        **marketplace3,
     }
 
 
@@ -337,6 +404,10 @@ def list_marketplace_assets(
     result = query.range(offset, offset + limit - 1).execute()
     rows = [dict(row) for row in (result.data or [])]
     asset_ids = [str(row["id"]) for row in rows]
+    outcome_asset_ids = [
+        str(row["id"]) for row in rows if row.get("asset_type") == "outcome_pack"
+    ]
+    marketplace3_configs = _marketplace3_configs_by_asset(client, outcome_asset_ids)
     installs = _active_installs_by_asset(client, org_id, asset_ids)
     entitlements = _active_entitlements_by_asset(client, org_id, asset_ids)
     pack_asset_ids = [
@@ -360,6 +431,7 @@ def list_marketplace_assets(
             row,
             install=installs.get(asset_id),
             connector_summary=connector_summary,
+            marketplace3_summary=_marketplace3_insights(marketplace3_configs.get(asset_id)),
         )
         summary["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
         summary["hasEntitlement"] = asset_id in entitlements
@@ -443,6 +515,8 @@ def get_marketplace_asset(
         connector_summary=connector_summary,
         pack_items=pack_items,
     )
+    if row.get("asset_type") == "outcome_pack":
+        detail.update(_marketplace3_insights(row.get("config") or {}))
     detail["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
     detail["hasEntitlement"] = asset_id in _active_entitlements_by_asset(client, org_id, [asset_id])
     return {"asset": detail}
