@@ -167,6 +167,31 @@ def _assert_capability_provenance_current(
         )
 
 
+def _assert_outcome_pack_publish_ready(
+    asset_type: str,
+    validated_config: dict[str, Any],
+) -> None:
+    """Require Marketplace 3.0 certification before an Outcome Pack is published."""
+    if str(asset_type or "") != "outcome_pack":
+        return
+
+    from app.marketplace.marketplace3.certification import certify_outcome_pack
+    from app.marketplace.schemas import OutcomePackAssetConfig
+
+    config = OutcomePackAssetConfig.model_validate(validated_config)
+    report = certify_outcome_pack(config)
+    if not report.publish_ready:
+        blocking = [
+            finding.as_dict()
+            for finding in report.findings
+            if finding.blocking
+        ]
+        raise MarketplacePublishError(
+            "Outcome Pack has not reached Marketplace 3.0 production certification",
+            code="OUTCOME_PACK_NOT_CERTIFIED",
+        )
+
+
 def _snapshot_version(
     client: Any,
     asset: dict[str, Any],
@@ -285,6 +310,8 @@ def approve_asset_for_internal_publish(
         )
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
+
+    _assert_outcome_pack_publish_ready(str(asset["asset_type"]), validated["config"])
 
     version_number = _snapshot_version(
         client,
@@ -409,6 +436,8 @@ def submit_asset_for_public_review(
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
 
+    _assert_outcome_pack_publish_ready(str(asset["asset_type"]), validated["config"])
+
     client.table("marketplace_assets").update(
         {
             "status": "pending_review",
@@ -526,6 +555,8 @@ def approve_asset_for_public_publish(
         )
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
+
+    _assert_outcome_pack_publish_ready(str(asset["asset_type"]), validated["config"])
 
     version_number = _snapshot_version(
         client,
