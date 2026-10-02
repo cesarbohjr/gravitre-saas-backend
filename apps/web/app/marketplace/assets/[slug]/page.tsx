@@ -247,7 +247,9 @@ function MarketplaceAssetDetailContent() {
                   </p>
                 </div>
                 <Badge variant={(asset.installReady ?? asset.canInstall) ? "secondary" : "outline"}>
-                  {asset.requiredConnectorsConnected}/{asset.requiredConnectorsTotal} required apps connected
+                  {asset.requiredConnectorsTotal > 0
+                    ? `${asset.requiredConnectorsConnected}/${asset.requiredConnectorsTotal} required apps connected`
+                    : "No required apps"}
                 </Badge>
               </div>
             </div>
