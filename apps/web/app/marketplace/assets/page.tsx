@@ -51,6 +51,7 @@ import {
 } from "@/components/marketplace/marketplace-asset-commerce"
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
+import { MarketplaceOutcomeSummary } from "@/components/marketplace/marketplace-outcome-summary"
 import { getCategoryIcon } from "@/lib/marketplace-category-icons"
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
@@ -207,13 +208,13 @@ function AssetCard({
           >
             <h3 className="text-[14px] font-semibold leading-snug text-foreground">{asset.title}</h3>
           </button>
-          <p className="mt-0.5 text-[12.5px] text-foreground">
-            <span className="text-muted-foreground">Adds </span>
-            {adds}
-            <span className="text-muted-foreground"> · </span>
-            <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
+          <p className="mt-0.5 text-[11.5px] font-medium uppercase tracking-wide text-muted-foreground">
+            {(asset.department ?? "All departments").replace(/_/g, " ")}
           </p>
-          {asset.description ? (
+          <div className="mt-1.5 max-w-2xl">
+            <MarketplaceOutcomeSummary asset={asset} compact />
+          </div>
+          {asset.description && !asset.outcomeTarget && !asset.businessOutcome ? (
             <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
           ) : null}
         </div>
@@ -301,6 +302,9 @@ function AssetCard({
               ))}
             </div>
           ) : null}
+          <p className="text-[11.5px] text-muted-foreground">
+            <span className="font-medium text-foreground">Includes:</span> {adds}
+          </p>
           <PackContentsPreview items={asset.packItems} compact />
           {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
         </div>
