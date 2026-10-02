@@ -124,7 +124,12 @@ from app.marketplace.support import (
     unsave_asset,
     upsert_my_asset_review,
 )
-from app.marketplace.service import MarketplaceError, install_asset, preview_install
+from app.marketplace.service import (
+    MarketplaceError,
+    RESOURCE_TYPE_MARKETPLACE_ASSET,
+    install_asset,
+    preview_install,
+)
 from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
 from app.marketplace.entitlements import (
     AUDIT_CHECKOUT_CREATED,
@@ -152,6 +157,7 @@ from app.marketplace.service import fetch_marketplace_asset
 from app.marketplace.marketplace3.evidence import (
     MarketplaceCertificationEvidenceError,
     certification_report_for_asset,
+    certification_target_version,
     list_runtime_evidence,
     record_runtime_evidence,
 )
@@ -1245,11 +1251,7 @@ async def get_marketplace3_asset_certification(
         evidence = list_runtime_evidence(
             client,
             str(asset["id"]),
-            asset_version=max(
-                1,
-                int(asset.get("current_version") or 1)
-                + (1 if str(asset.get("status") or "") in {"draft", "pending_review"} else 0),
-            ),
+            asset_version=certification_target_version(asset),
         )
     except MarketplaceCertificationEvidenceError as exc:
         raise HTTPException(
@@ -1258,11 +1260,7 @@ async def get_marketplace3_asset_certification(
         ) from exc
     return {
         "assetId": str(asset["id"]),
-        "assetVersion": max(
-            1,
-            int(asset.get("current_version") or 1)
-            + (1 if str(asset.get("status") or "") in {"draft", "pending_review"} else 0),
-        ),
+        "assetVersion": certification_target_version(asset),
         "certification": report.as_dict(),
         "runtimeEvidence": {
             provider: {
@@ -1280,6 +1278,7 @@ async def record_marketplace3_runtime_evidence(
     asset_ref: str,
     body: MarketplaceRuntimeEvidenceRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
@@ -1300,21 +1299,23 @@ async def record_marketplace3_runtime_evidence(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"message": str(exc), "code": exc.code},
         ) from exc
-    write_audit_event(
-        client,
-        org_id=str(asset.get("org_id") or ""),
-        actor_id=user["user_id"],
-        action="marketplace.outcome_pack.runtime_evidence_recorded",
-        resource_type=RESOURCE_TYPE_MARKETPLACE_ASSET,
-        resource_id=str(asset["id"]),
-        metadata={
-            "provider": body.provider,
-            "environment": body.environment,
-            "evidenceRef": body.evidence_ref,
-            "verifiedActions": body.verified_actions,
-            "certificationLevel": result["certification"].get("level"),
-        },
-    )
+    audit_org_id = str(asset.get("org_id") or org_id or "")
+    if audit_org_id:
+        write_audit_event(
+            client,
+            org_id=audit_org_id,
+            actor_id=user["user_id"],
+            action="marketplace.outcome_pack.runtime_evidence_recorded",
+            resource_type=RESOURCE_TYPE_MARKETPLACE_ASSET,
+            resource_id=str(asset["id"]),
+            metadata={
+                "provider": body.provider,
+                "environment": body.environment,
+                "evidenceRef": body.evidence_ref,
+                "verifiedActions": body.verified_actions,
+                "certificationLevel": result["certification"].get("level"),
+            },
+        )
     return result
 
 
