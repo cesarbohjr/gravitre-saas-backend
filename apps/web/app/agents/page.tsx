@@ -815,7 +815,7 @@ export default function AgentsPage() {
 
   return (
   <AppShell title={SURFACE_COPY.pages.agents.title}>
-    <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)] lg:flex-row">
+    <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)] lg:flex-row" data-composition="manage">
   {/* Left - Agent roster */}
   <div className="relative z-10 flex min-w-0 flex-1 flex-col border-divide lg:border-r">
           {chromeCollapsed ? (
@@ -839,7 +839,7 @@ export default function AgentsPage() {
               <GravitrePageHeader
                 className="shrink-0"
                 title={SURFACE_COPY.pages.agents.rosterTitle}
-                description={SURFACE_COPY.pages.agents.description}
+                description="A team of specialists. See who is working, what they can do, and where attention is needed."
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
                 status={
                   agents.length > 0 ? (
