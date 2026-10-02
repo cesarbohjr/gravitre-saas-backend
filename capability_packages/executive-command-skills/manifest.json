@@ -1,0 +1,32 @@
+{
+  "schema": "gravitre.capability.v1",
+  "format": "gravitre",
+  "name": "Executive Command Center Skills",
+  "version": "1.0.0",
+  "description": "First-party guidance skills for the Gravitre Marketplace 3.0 Executive Command Center pack.",
+  "license": "MIT",
+  "skills": [
+    {
+      "name": "executive-briefing"
+    },
+    {
+      "name": "revenue-risk-analysis"
+    },
+    {
+      "name": "cash-risk-analysis"
+    },
+    {
+      "name": "customer-risk-analysis"
+    },
+    {
+      "name": "service-risk-analysis"
+    },
+    {
+      "name": "operational-anomaly-analysis"
+    },
+    {
+      "name": "cross-functional-prioritization"
+    }
+  ],
+  "permissions": []
+}

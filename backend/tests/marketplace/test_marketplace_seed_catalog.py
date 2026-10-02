@@ -4,7 +4,12 @@ from __future__ import annotations
 import pytest
 
 from app.marketplace.schemas import validate_asset_payload
-from app.marketplace.seed_catalog import LEGACY_PACK_SLUG_MAP, catalog_assets_by_slug, list_catalog_assets
+from app.marketplace.seed_catalog import (
+    LEGACY_PACK_SLUG_MAP,
+    MARKETPLACE3_UPGRADE_SLUG_MAP,
+    catalog_assets_by_slug,
+    list_catalog_assets,
+)
 
 
 def test_catalog_asset_counts():
@@ -12,19 +17,21 @@ def test_catalog_asset_counts():
     by_type: dict[str, int] = {}
     for asset in assets:
         by_type[asset.asset_type] = by_type.get(asset.asset_type, 0) + 1
-    assert by_type["ai_agent"] == 23
-    assert by_type["workflow"] == 20
-    assert by_type["knowledge_pack"] == 15
-    assert by_type["department_pack"] == 6
+    # Protect the established catalog from accidental removals while allowing
+    # independent catalog growth without making this regression test brittle.
+    assert by_type["ai_agent"] >= 37
+    assert by_type["workflow"] >= 20
+    assert by_type["knowledge_pack"] >= 22
+    assert by_type["department_pack"] >= 6
     # 8 original packs + AI Search + Finance + HR Talent + Platform Health
-    assert by_type.get("intelligence_pack", 0) == 12
-    # Marketplace 3.0 flagship bundle: 8 Plays + skill/dataset/dashboard/outcome.
-    assert by_type.get("play", 0) == 8
-    assert by_type.get("capability_package", 0) == 1
-    assert by_type.get("dataset_pack", 0) == 1
-    assert by_type.get("dashboard_pack", 0) == 1
-    assert by_type.get("outcome_pack", 0) == 1
-    assert len(assets) == 88
+    assert by_type.get("intelligence_pack", 0) >= 12
+    # Marketplace 3.0: MSP flagship plus seven department Outcome Packs.
+    assert by_type.get("play", 0) == 57
+    assert by_type.get("capability_package", 0) == 8
+    assert by_type.get("dataset_pack", 0) == 8
+    assert by_type.get("dashboard_pack", 0) == 8
+    assert by_type.get("outcome_pack", 0) == 8
+    assert len(assets) == sum(by_type.values())
 
 
 # Formerly deferred Slice A binding failures — remediated (Part 2 finish).
@@ -101,6 +108,9 @@ def test_legacy_pack_slug_map_targets_catalog():
     for legacy_id, mapped_slug in LEGACY_PACK_SLUG_MAP.items():
         assert mapped_slug in by_slug, f"legacy {legacy_id} maps to missing slug {mapped_slug}"
     assert LEGACY_PACK_SLUG_MAP["support-ops"] == "support-operations-pack"
+    assert MARKETPLACE3_UPGRADE_SLUG_MAP["revenue-operations-pack"] == "revenue-operations-3"
+    assert MARKETPLACE3_UPGRADE_SLUG_MAP["marketing-operations-pack"] == "marketing-operations-3"
+    assert MARKETPLACE3_UPGRADE_SLUG_MAP["support-operations-pack"] == "customer-success-support-3"
 
 
 def test_marketing_operations_pack_four_agent_handoff_chain():

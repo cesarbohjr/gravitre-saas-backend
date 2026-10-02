@@ -1114,6 +1114,9 @@ def list_catalog_assets() -> list[CatalogAsset]:
     from app.marketplace.marketplace3.msp_service_desk import (
         msp_service_desk_marketplace3_assets,
     )
+    from app.marketplace.marketplace3.department_portfolio import (
+        department_portfolio_marketplace3_assets,
+    )
     from app.marketplace.seed_catalog_expansion import expansion_catalog_assets
 
     assets = (
@@ -1123,6 +1126,7 @@ def list_catalog_assets() -> list[CatalogAsset]:
         + _intelligence_packs()
         + expansion_catalog_assets()
         + msp_service_desk_marketplace3_assets()
+        + department_portfolio_marketplace3_assets()
         + _department_packs()
     )
     slugs = [asset.slug for asset in assets]
@@ -1141,4 +1145,13 @@ LEGACY_PACK_SLUG_MAP: dict[str, str] = {
     "marketing-ops": "marketing-operations-pack",
     "support-ops": "support-operations-pack",
     "finance-ops": "revenue-operations-pack",
+}
+
+# Presentation/discovery migration for new installs. Keep this separate from
+# LEGACY_PACK_SLUG_MAP because that map is authoritative for historical
+# marketplace_install backfills and must never relabel old runtime entities.
+MARKETPLACE3_UPGRADE_SLUG_MAP: dict[str, str] = {
+    "revenue-operations-pack": "revenue-operations-3",
+    "marketing-operations-pack": "marketing-operations-3",
+    "support-operations-pack": "customer-success-support-3",
 }
