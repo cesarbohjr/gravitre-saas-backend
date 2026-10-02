@@ -1,0 +1,32 @@
+{
+  "schema": "gravitre.capability.v1",
+  "format": "gravitre",
+  "name": "Marketing Operations Skills",
+  "version": "1.0.0",
+  "description": "First-party guidance skills for the Gravitre Marketplace 3.0 Marketing Operations pack.",
+  "license": "MIT",
+  "skills": [
+    {
+      "name": "campaign-performance-analysis"
+    },
+    {
+      "name": "attribution-analysis"
+    },
+    {
+      "name": "lead-handoff-qa"
+    },
+    {
+      "name": "paid-spend-anomaly-analysis"
+    },
+    {
+      "name": "seo-opportunity-analysis"
+    },
+    {
+      "name": "content-performance-analysis"
+    },
+    {
+      "name": "pipeline-contribution-analysis"
+    }
+  ],
+  "permissions": []
+}
