@@ -1861,7 +1861,10 @@ def install_asset(
     _check_plan_limits(client, org_id, str(asset["asset_type"]))
     resolved = _resolve_asset_payload(asset, install_variables)
     try:
-        # Publication certification is enforced before an asset can reach published status.\n        # Installation re-validates the stored config structurally; it must not attempt to\n        # recreate production evidence that is outside the schema parser.\n        parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=False)
+        # Publication certification is enforced before an asset can reach published status.
+        # Installation re-validates the stored config structurally; it must not attempt to
+        # recreate production evidence that is outside the schema parser.
+        parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=False)
     except MarketplaceValidationError as exc:
         raise MarketplaceError(
             exc.message,
