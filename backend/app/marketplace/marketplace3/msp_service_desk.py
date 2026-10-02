@@ -527,7 +527,10 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                 for row in kpis
             ],
         },
-        "skills": [
+        # Do not claim unresolved skill packages as installed ingredients.
+        # Certification resolves these capability requirements to reviewed package IDs.
+        "skills": [],
+        "skill_requirements": [
             "ticket-triage",
             "incident-diagnosis",
             "sla-analysis",
@@ -536,7 +539,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
             "knowledge-gap-analysis",
             "service-operations-analysis",
         ],
-        "certified_runtime_profiles": [
+        "runtime_profiles": [
             {
                 "provider": "freshservice",
                 "status": "implementation",
