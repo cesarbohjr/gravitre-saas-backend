@@ -8,6 +8,10 @@ from typing import Any
 from app.marketplace.crud import MarketplaceCrudError, _fetch_asset, _serialize_asset, _assert_org_owns_asset
 from app.marketplace.publishers import assert_org_can_publish_publicly
 from app.marketplace.schemas import MarketplaceValidationError, validate_asset_payload
+from app.marketplace.marketplace3.certification_store import (
+    OutcomePackCertificationError,
+    assert_outcome_pack_publish_ready,
+)
 from app.capabilities.provenance import inert_snapshot_digest, normalize_github_repository_url
 from app.capabilities.repository import list_package_resources
 from app.workflows.audit import write_audit_event
@@ -35,6 +39,35 @@ def _now() -> str:
 
 def _crud_to_publish(exc: MarketplaceCrudError) -> MarketplacePublishError:
     return MarketplacePublishError(str(exc), code=exc.code)
+
+
+def _assert_outcome_pack_certification_current(
+    client: Any,
+    asset: dict[str, Any],
+    *,
+    validated_config: dict[str, Any],
+) -> dict[str, Any] | None:
+    if str(asset.get("asset_type") or "") != "outcome_pack":
+        return None
+    asset_org_id = str(asset.get("org_id") or "").strip()
+    asset_id = str(asset.get("id") or "").strip()
+    if not asset_org_id or not asset_id:
+        raise MarketplacePublishError(
+            "Outcome Pack is missing organization or asset identity",
+            code="VALIDATION_ERROR",
+        )
+    try:
+        return assert_outcome_pack_publish_ready(
+            client,
+            org_id=asset_org_id,
+            asset_id=asset_id,
+            config=validated_config,
+        )
+    except OutcomePackCertificationError as exc:
+        raise MarketplacePublishError(
+            str(exc),
+            code="OUTCOME_PACK_CERTIFICATION_REQUIRED",
+        ) from exc
 
 
 def _assert_capability_provenance_current(
@@ -285,6 +318,12 @@ def approve_asset_for_internal_publish(
         )
     except MarketplaceValidationError as exc:
         raise MarketplacePublishError(exc.message, code="VALIDATION_ERROR") from exc
+
+    _assert_outcome_pack_certification_current(
+        client,
+        asset,
+        validated_config=validated["config"],
+    )
 
     version_number = _snapshot_version(
         client,
