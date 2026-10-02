@@ -125,6 +125,11 @@ from app.marketplace.support import (
     upsert_my_asset_review,
 )
 from app.marketplace.service import MarketplaceError, install_asset, preview_install
+from app.marketplace.marketplace3.certification_service import (
+    Marketplace3CertificationError,
+    certify_asset as certify_marketplace3_asset,
+    promote_certified_asset,
+)
 from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
 from app.marketplace.entitlements import (
     AUDIT_CHECKOUT_CREATED,
@@ -235,6 +240,20 @@ def _entitlement_http_error(exc: MarketplaceEntitlementError) -> HTTPException:
     return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
 
 
+def _marketplace3_certification_http_error(exc: Marketplace3CertificationError) -> HTTPException:
+    status_code = status.HTTP_400_BAD_REQUEST
+    if exc.code == "NOT_FOUND":
+        status_code = status.HTTP_404_NOT_FOUND
+    elif exc.code in {"CERTIFICATION_REQUIRED"}:
+        status_code = status.HTTP_409_CONFLICT
+    elif exc.code in {"UNSUPPORTED_ASSET_TYPE", "EVIDENCE_SECRET_FORBIDDEN"}:
+        status_code = status.HTTP_400_BAD_REQUEST
+    return HTTPException(
+        status_code=status_code,
+        detail={"message": str(exc), "code": exc.code, **exc.details},
+    )
+
+
 def _convergence_http_error(exc: MarketplaceConvergenceError) -> HTTPException:
     status_code = status.HTTP_400_BAD_REQUEST
     if exc.code == "NOT_FOUND":
@@ -332,6 +351,15 @@ class PublisherOnboardRequest(BaseModel):
 
 class AssetFlagRequest(BaseModel):
     enabled: bool
+
+
+class Marketplace3CertificationRequest(BaseModel):
+    runtime_evidence: dict[str, Any] = Field(default_factory=dict, alias="runtimeEvidence")
+    outcome_evidence: dict[str, Any] = Field(default_factory=dict, alias="outcomeEvidence")
+
+    model_config = {"populate_by_name": True}
+
+
 
 
 class LinkRegistryRequest(BaseModel):
@@ -1452,6 +1480,73 @@ async def set_platform_asset_verified(
         )
     except MarketplaceFlagsError as exc:
         raise _flags_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/marketplace3/certify")
+async def certify_platform_marketplace3_asset(
+    asset_ref: str,
+    body: Marketplace3CertificationRequest,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Run and persist Marketplace 3.0 certification using evidence references only."""
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = certify_marketplace3_asset(
+            client,
+            slug=asset_ref,
+            actor_id=user["user_id"],
+            runtime_evidence=body.runtime_evidence,
+            outcome_evidence=body.outcome_evidence,
+        )
+        write_audit_event(
+            client,
+            org_id="",
+            actor_id=user["user_id"],
+            action="marketplace3.asset.certified",
+            resource_type="marketplace_asset",
+            resource_id=str((result.get("asset") or {}).get("id") or asset_ref),
+            metadata={
+                "slug": asset_ref,
+                "certificationLevel": (result.get("certification") or {}).get("level"),
+                "publishReady": bool((result.get("certification") or {}).get("publishReady")),
+            },
+        )
+        return result
+    except Marketplace3CertificationError as exc:
+        raise _marketplace3_certification_http_error(exc) from exc
+
+
+@router.post("/platform/assets/{asset_ref}/marketplace3/promote")
+async def promote_platform_marketplace3_asset(
+    asset_ref: str,
+    user: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Promote only evidence-linked production/outcome verified Marketplace 3.0 packs."""
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    try:
+        result = promote_certified_asset(
+            client,
+            slug=asset_ref,
+            actor_id=user["user_id"],
+        )
+        write_audit_event(
+            client,
+            org_id="",
+            actor_id=user["user_id"],
+            action="marketplace3.asset.promoted",
+            resource_type="marketplace_asset",
+            resource_id=str((result.get("asset") or {}).get("id") or asset_ref),
+            metadata={
+                "slug": asset_ref,
+                "certificationLevel": (result.get("certification") or {}).get("level"),
+                "visibility": (result.get("asset") or {}).get("visibility"),
+            },
+        )
+        return result
+    except Marketplace3CertificationError as exc:
+        raise _marketplace3_certification_http_error(exc) from exc
 
 
 @router.patch("/platform/assets/{asset_ref}/pricing")
