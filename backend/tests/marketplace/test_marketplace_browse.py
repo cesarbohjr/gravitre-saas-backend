@@ -189,3 +189,35 @@ def test_marketplace3_outcome_read_model_is_evidence_conservative():
         finding["code"] != "PRODUCTION_EVIDENCE_MISSING"
         for finding in model["certificationFindings"]
     )
+
+
+
+def test_marketplace3_read_model_can_elevate_from_persisted_certification_evidence(monkeypatch):
+    from app.marketplace.marketplace3.certification import OutcomePackCertification
+    from app.marketplace.marketplace3.msp_service_desk import (
+        build_msp_service_desk_outcome_pack_config,
+    )
+
+    monkeypatch.setattr(
+        "app.marketplace.browse.certification_report_for_asset",
+        lambda *_a, **_k: OutcomePackCertification(
+            level="production_verified",
+            publish_ready=True,
+            findings=[],
+            play_count=8,
+            runtime_actions=["freshservice.tickets.get"],
+            verified_skills=[],
+            unresolved_skill_requirements=[],
+        ),
+    )
+    model = _outcome_pack_read_model(
+        {
+            "id": "asset-1",
+            "asset_type": "outcome_pack",
+            "config": build_msp_service_desk_outcome_pack_config(),
+        },
+        client=object(),
+    )
+
+    assert model["certificationLevel"] == "production_verified"
+    assert model["certificationPublishReady"] is True
