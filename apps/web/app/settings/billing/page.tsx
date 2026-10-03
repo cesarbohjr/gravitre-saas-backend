@@ -47,7 +47,7 @@ import {
   HardDrive,
   Clock,
   ExternalLink,
-  Sparkles,
+  Cpu,\n  CircleHelp,
   Crown,
   TrendingUp,
   Shield,
@@ -123,7 +123,7 @@ function emptyUsageMetrics(planCode: string): UsageMetric[] {
       name: "AI Credits",
       used: 0,
       limit: Math.max(limits.aiCredits || 1, 1),
-      icon: Sparkles,
+      icon: Cpu,
       color: "series2",
       unit: "credits",
       hint: "LLM tokens only — separate from Research Lookups",
@@ -327,7 +327,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
           name: "AI Credits",
           used: usageFromApi.totals.ai_tokens ?? 0,
           limit: coalesceLimit(usageFromApi.ai_credits_included, planLimits.aiCredits),
-          icon: Sparkles,
+          icon: Cpu,
           color: "series2",
           unit: "credits",
           hint: "LLM tokens only — separate from Research Lookups",
@@ -836,7 +836,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
             )}>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
+                  <Activity className="h-4 w-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold text-foreground">Current usage</h2>
                 </div>
                 <span className="text-xs text-muted-foreground">
@@ -1304,8 +1304,8 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
             )}>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)]">
+                    <CircleHelp className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">Need help with billing?</p>
