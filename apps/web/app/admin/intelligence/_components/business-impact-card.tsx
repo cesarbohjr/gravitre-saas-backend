@@ -16,7 +16,7 @@ function severityVariant(severity: string): "destructive" | "secondary" | "outli
 
 function scoreTone(score: number | null | undefined): string {
   if (score == null) return "text-foreground"
-  if (score >= 80) return "text-emerald-600 dark:text-emerald-400"
+  if (score >= 80) return "text-[color:var(--g-emerald-deep)]"
   if (score >= 60) return "text-amber-600 dark:text-amber-400"
   return "text-rose-600 dark:text-rose-400"
 }
@@ -30,7 +30,7 @@ function DimensionBar({ label, value, delay }: { label: string; value: number; d
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-secondary/80">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
+          className="h-full rounded-full bg-[color:var(--g-emerald)]"
           initial={{ width: 0 }}
           animate={{ width: `${Math.max(0, Math.min(100, value))}%` }}
           transition={{ duration: 0.6, ease: "easeOut", delay }}
@@ -56,12 +56,12 @@ export function BusinessImpactCard() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-emerald-500/[0.06] p-5 shadow-sm"
+        className="relative overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]"
       >
         <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
         <div className="relative space-y-4">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/20">
               <Gauge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
             </span>
             <div>
@@ -105,7 +105,7 @@ export function BusinessImpactCard() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.06 }}
-        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-amber-500/[0.05] p-5 shadow-sm"
+        className="relative overflow-hidden rounded-[10px] border border-amber-500/20 bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]"
       >
         <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-amber-500/10 blur-2xl" />
         <div className="relative space-y-4">
@@ -126,7 +126,7 @@ export function BusinessImpactCard() {
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : items.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border/80 bg-background/50 px-4 py-8 text-center">
+            <div className="rounded-[8px] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-4 py-8 text-center">
               <p className="text-sm font-medium text-foreground">All clear for now</p>
               <p className="mt-1 text-xs text-muted-foreground text-pretty">
                 No revenue-risk items pending review. Run optimization detection or wait for more outcome samples.
@@ -140,7 +140,7 @@ export function BusinessImpactCard() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="rounded-xl border border-border/70 bg-background/50 p-3 transition-colors hover:border-amber-500/25 hover:bg-background/80"
+                  className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] p-3 transition-colors hover:border-amber-500/25 hover:bg-[color:var(--g-surface-1)]"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-sm">{item.title}</span>
