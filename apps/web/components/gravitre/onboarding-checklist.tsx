@@ -9,7 +9,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Sparkles,
   Bot,
   Plug,
   Users,
@@ -331,11 +330,11 @@ export function OnboardingChecklist() {
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute inset-0 -m-4 rounded-3xl bg-gradient-to-br from-success/20 to-info/20 blur-xl"
+            className="absolute inset-0 -m-4 rounded-[10px] bg-gradient-to-br from-success/20 to-info/20 blur-xl"
           />
         )}
 
-        <div className="relative rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
+        <div className="relative rounded-[10px] border border-border bg-card shadow-xl overflow-hidden">
           {/* Header */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -490,7 +489,7 @@ export function OnboardingChecklist() {
                         onClick={dismiss}
                         className="w-full bg-success hover:bg-success/90"
                       >
-                        <Sparkles className="h-4 w-4 mr-2" />
+                        <Check className="h-4 w-4 mr-2" />
                         Dismiss checklist
                       </Button>
                     ) : (
@@ -528,7 +527,7 @@ export function OnboardingProgressCard({ className }: { className?: string }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "rounded-2xl border border-border bg-card p-5 relative overflow-hidden",
+        "rounded-[10px] border border-border bg-card p-5 relative overflow-hidden",
         className
       )}
     >
