@@ -705,13 +705,13 @@ export default function ChatPage() {
 
   return (
     <AppShell title="Universal search">
-      <div className="flex h-full flex-col md:flex-row">
+      <div className="flex h-full flex-col md:flex-row" data-composition="understand">
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="border-b border-border px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-card to-secondary/20">
+          <div className="border-b border-divide bg-[color:var(--g-surface-1)] px-4 py-3 md:px-6 md:py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-success/20 shrink-0">
-                  <Search className="h-4 w-4 md:h-5 md:w-5 text-success" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/20 md:h-10 md:w-10">
+                  <Search className="h-4 w-4 text-[color:var(--g-emerald-deep)] md:h-5 md:w-5" />
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-base md:text-lg font-semibold text-foreground">Universal search</h1>
@@ -739,7 +739,7 @@ export default function ChatPage() {
                   animate={{ opacity: 1 }}
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 flex items-center justify-center mb-6">
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[10px] border border-divide bg-[color:var(--g-surface-2)]">
                     <Search className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">Sign in required</h2>
@@ -753,25 +753,8 @@ export default function ChatPage() {
                   animate={{ opacity: 1 }}
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
-                  <div className="relative mb-6">
-                    <motion.div
-                      className="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center"
-                      animate={reduced ? undefined : { y: [0, -6, 0] }}
-                      transition={
-                        reduced
-                          ? undefined
-                          : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }
-                      }
-                    >
-                      <Sparkles className="h-8 w-8 text-success" />
-                    </motion.div>
-                    {!reduced && (
-                      <motion.div
-                        className="absolute inset-0 rounded-full border-2 border-success/30"
-                        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-                        transition={{ duration: 3, repeat: Infinity }}
-                      />
-                    )}
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[10px] border border-[color:var(--g-emerald)]/20 bg-[color:var(--g-emerald-pale)]">
+                    <Search className="h-7 w-7 text-[color:var(--g-emerald-deep)]" />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">
                     What do you want to find?
