@@ -107,18 +107,7 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
           icon={<Gauge className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr] md:items-center">
-            <div className="relative flex min-w-[10rem] flex-col items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-b from-secondary/60 to-background px-8 py-6 text-center">
-              <span
-                aria-hidden
-                className={cn(
-                  "pointer-events-none absolute -top-8 left-1/2 h-24 w-24 -translate-x-1/2 rounded-full opacity-25 blur-2xl",
-                  composite != null && composite >= 0.75
-                    ? "bg-emerald-500"
-                    : composite != null && composite >= 0.5
-                      ? "bg-amber-500"
-                      : "bg-rose-500",
-                )}
-              />
+            <div className="relative flex min-w-[10rem] flex-col items-center justify-center overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-2)] px-8 py-6 text-center">
               <span className="relative text-xs font-medium text-muted-foreground">
                 Overall quality
               </span>
