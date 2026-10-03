@@ -38,11 +38,11 @@ export const governedAiForMspsPost: BlogPost = {
     "governed AI agents",
   ],
   takeaways: [
-    "48% of MSPs rank AI and automation as their clients' top need for the year, ahead of security and backup — yet only 13% are currently generating meaningful revenue from AI services.",
+    "48% of MSPs rank AI and automation as their clients' top need for the year, ahead of security and backup, yet only 13% are currently generating meaningful revenue from AI services.",
     "That 35-point gap is the real opportunity, and the real risk, in the MSP market right now.",
     "Leading providers see 15% to 25% technician productivity gains and 40% to 70% reductions in ticket resolution time from AI, but only when it's deployed internally first and proven before being resold to clients.",
     "MSPs that skip straight to client-facing AI without proving it internally are the ones most exposed to the governance failures eroding trust across the industry.",
-    "The AI-era MSP looks like the Managed Intelligence Provider: owning, branding, and billing the AI layer the same way MSPs already own the infrastructure layer — which requires AI that's genuinely auditable client by client.",
+    "The AI-era MSP looks like the Managed Intelligence Provider: owning, branding, and billing the AI layer the same way MSPs already own the infrastructure layer, which requires AI that's genuinely auditable client by client.",
   ],
   faqs: [
     {
@@ -53,22 +53,22 @@ export const governedAiForMspsPost: BlogPost = {
     {
       question: "How can MSPs resell AI agents to clients?",
       answer:
-        "The providers seeing the strongest results deploy AI internally first — service desk automation, knowledge management, security operations — and prove real productivity gains (15–25% in leading providers) before reselling it to clients under their own brand with an auditable record of what the AI did.",
+        "The providers seeing the strongest results deploy AI internally first (service desk automation, knowledge management, security operations) and prove real productivity gains (15 to 25% in leading providers) before reselling it to clients under their own brand with an auditable record of what the AI did.",
     },
     {
       question: "What is a Managed Intelligence Provider?",
       answer:
-        "A Managed Intelligence Provider is the AI-era evolution of the MSP model: instead of (or alongside) owning a client's infrastructure layer, the provider owns, brands, and bills the AI layer their clients depend on — with the same accountability and auditability clients already expect from their MSP relationship.",
+        "A Managed Intelligence Provider is the AI-era evolution of the MSP model: instead of (or alongside) owning a client's infrastructure layer, the provider owns, brands, and bills the AI layer their clients depend on, with the same accountability and auditability clients already expect from their MSP relationship.",
     },
     {
       question: "What does “proving AI internally first” actually mean for an MSP?",
       answer:
-        "It means running AI agents against the MSP's own service desk, ticketing, and knowledge base before ever pointing them at a client's systems — so the provider has real productivity data and a track record of safe behavior, rather than asking a client to be the first test case.",
+        "It means running AI agents against the MSP's own service desk, ticketing, and knowledge base before ever pointing them at a client's systems, so the provider has real productivity data and a track record of safe behavior, rather than asking a client to be the first test case.",
     },
     {
       question: "Can AI agent actions be audited per client for compliance?",
       answer:
-        "Only if the platform is built to log and verify every consequential action against the real system of record, tagged to the specific client account it touched — not just a generic activity feed. That per-client audit trail is what makes AI resale defensible to a client's own compliance or security review.",
+        "Only if the platform is built to log and verify every consequential action against the real system of record, tagged to the specific client account it touched, not just a generic activity feed. That per-client audit trail is what makes AI resale defensible to a client's own compliance or security review.",
     },
   ],
   Content: () => (
@@ -83,7 +83,7 @@ export const governedAiForMspsPost: BlogPost = {
       <p>
         And yet <Cite>only 13% of MSPs are currently generating meaningful revenue from AI services</Cite>. That
         35-point gap between what clients are asking for and what MSPs are actually billing for is the single
-        biggest opportunity in the MSP market right now &mdash; and, left unaddressed, the single biggest exposure.
+        biggest opportunity in the MSP market right now. Left unaddressed, it is also the single biggest exposure.
       </p>
 
       <h2>The gap isn&apos;t a technology problem</h2>
@@ -104,14 +104,14 @@ export const governedAiForMspsPost: BlogPost = {
       <p>
         <Cite>Omdia&apos;s 2026 MSP research</Cite> found that leading providers see{" "}
         <Cite>15% to 25% technician productivity gains and 40% to 70% reductions in ticket resolution time</Cite>{" "}
-        from AI adoption &mdash; but only when AI is deployed internally first: service desk automation, knowledge
+        from AI adoption, but only when AI is deployed internally first: service desk automation, knowledge
         management, security operations, before it is ever resold to a client. The sequence matters. An MSP that
         proves AI against its own service desk builds a real track record and a real understanding of where the
         technology is reliable and where it isn&apos;t, before asking a client to trust it with their systems.
       </p>
       <p>
         MSPs that skip that step and go straight to client-facing AI are the ones most exposed to the governance
-        failures eroding trust across the industry right now &mdash; an AI agent that touches a client&apos;s
+        failures eroding trust across the industry right now. An AI agent that touches a client&apos;s
         ticketing system, inventory, or billing without a real approval step and a verifiable record of what it did
         is exactly the kind of incident that undoes years of an MSP&apos;s reputation in a single afternoon.
       </p>
@@ -128,7 +128,7 @@ export const governedAiForMspsPost: BlogPost = {
       <ul>
         <li>
           <strong>A real approval step on every consequential action</strong>, so nothing the AI does to a client&apos;s
-          systems happens without a visible, reviewable gate first &mdash; the same posture an MSP already takes
+          systems happens without a visible, reviewable gate first, the same posture an MSP already takes
           toward changes to production infrastructure.
         </li>
         <li>
