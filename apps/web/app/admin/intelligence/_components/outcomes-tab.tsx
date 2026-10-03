@@ -53,11 +53,11 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
           icon={<ChartLineUp className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-border/70 bg-secondary/30 px-4 py-3">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-4 py-3">
               <p className="text-xs font-medium text-muted-foreground">Agents tracked</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">{summaries.length}</p>
             </div>
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+            <div className="rounded-[8px] border border-[color:var(--g-emerald)]/20 bg-[color:var(--g-emerald-pale)] px-4 py-3">
               <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">
                 Ready to read
               </p>
@@ -65,7 +65,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
                 {ready.length}
               </p>
             </div>
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <div className="rounded-[8px] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
               <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
                 Still collecting
               </p>
@@ -111,7 +111,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
                   {ready.map((summary) => (
                     <article
                       key={summary.agentId}
-                      className="rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm"
+                      className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-medium text-foreground text-pretty">
@@ -149,7 +149,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
                     return (
                       <li
                         key={summary.agentId}
-                        className="rounded-2xl border border-border/60 bg-secondary/20 px-4 py-3"
+                        className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-4 py-3"
                       >
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <p className="font-medium text-foreground">
