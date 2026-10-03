@@ -2127,7 +2127,8 @@ function SettingsContent() {
   }
 
   return (
-    <SettingsShell
+    <div data-composition="configure" className="h-full min-h-0">
+      <SettingsShell
       activeSection={activeSection}
       onSectionChange={handleSectionChange}
       isAdmin={isAdmin}
@@ -2135,7 +2136,8 @@ function SettingsContent() {
       onMobileMenuOpenChange={setMobileMenuOpen}
     >
       {renderContent()}
-    </SettingsShell>
+      </SettingsShell>
+    </div>
   )
 }
 
