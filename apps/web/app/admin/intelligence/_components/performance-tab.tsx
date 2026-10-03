@@ -162,7 +162,7 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/20">
-              <Gauge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <Gauge className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
             </span>
             <div>
               <h3 className="text-base font-semibold text-foreground">Speed vs carefulness</h3>
