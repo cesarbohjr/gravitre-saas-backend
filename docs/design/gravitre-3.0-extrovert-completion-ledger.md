@@ -51,7 +51,7 @@ Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match
 | --- | --- |
 | ACTIVE_BRANCH | `feat/gravitre-3.0-extrovert-design` |
 | COMPLETION_PR | [draft #298](https://github.com/cesarbohjr/gravitre-saas-backend/pull/298) |
-| CANDIDATE_SHA | working tree on `db2eea5e` — replace with the pushed commit SHA immediately after this commit |
+| CANDIDATE_SHA | `4b851ea6` |
 | REVIEWED_SHA | `db2eea5e` (review findings applied on this working tree) |
 | IMPLEMENTATION_COMPLETE | NO — page 03 Figma frames unavailable; owner-live blocked; overlay stacking on mobile pack bar still open |
 | AUTOMATED_CHECKS | LOCAL PASS — `pnpm test` 1,127; lint 0 errors; `tsc --noEmit` 0; `pnpm build` 0; brand/surface/cognitive guards PASS. GitHub CI on the new SHA not yet attached |
@@ -178,7 +178,7 @@ Preview: `https://gravitre-saas-backend-isq7czh5j-gravitre-ai.vercel.app` (Verce
 | Local typecheck | `npm run typecheck` in `apps/web` exit 0 | automated-local @ `77ca50ce` |
 | Isolated Conversation Smoke | Not used | n/a |
 
-## Current automated evidence (working tree on `db2eea5e`)
+## Current automated evidence (candidate `4b851ea6`)
 
 | Check | Result | Class |
 | --- | --- | --- |
