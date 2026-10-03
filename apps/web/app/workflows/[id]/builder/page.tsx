@@ -4534,7 +4534,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
   return (
     <AppShell>
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col" data-composition="create">
         {/* Loading state */}
         {isLoadingGraph && (
           <div className="flex-1 flex items-center justify-center bg-background">
@@ -6339,7 +6339,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
       {/* Mobile Node List Sheet */}
       <Sheet open={showMobileNodeList} onOpenChange={setShowMobileNodeList}>
-        <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
+        <SheetContent side="bottom" className="h-[70vh] rounded-t-[10px]">
           <SheetHeader className="pb-4">
             <SheetTitle className="flex items-center justify-between">
               <span>Workflow nodes ({nodes.length})</span>
