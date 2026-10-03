@@ -9,7 +9,7 @@ import {
   Lightbulb,
   Loader2,
   Plus,
-  Sparkles,
+
   TrendingUp,
   Wrench,
   X,
