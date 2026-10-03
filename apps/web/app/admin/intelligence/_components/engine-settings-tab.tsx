@@ -72,7 +72,7 @@ export function EngineSettingsTab({ enabled }: { enabled: boolean }) {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <GearSix className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
+          <GearSix className="h-5 w-5 text-[color:var(--g-emerald-deep)]" weight="duotone" aria-hidden />
           <CardTitle>Search & grounding</CardTitle>
         </div>
         <CardDescription>
