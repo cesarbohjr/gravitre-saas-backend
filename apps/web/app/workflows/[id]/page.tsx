@@ -25,7 +25,7 @@ import {
   Loader2,
   Play,
   Rocket,
-  Sparkles,
+  GitBranch,
 } from "lucide-react"
 
 export default function WorkflowDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -160,7 +160,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
               </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/workflows/${id}/builder`}>
-                  <Sparkles className="h-4 w-4 mr-1" />
+                  <GitBranch className="h-4 w-4 mr-1" />
                   Open builder
                 </Link>
               </Button>
