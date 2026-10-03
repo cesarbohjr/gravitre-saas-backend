@@ -39,6 +39,23 @@ type TabKey =
   | "performance"
   | "cognitive"
 
+function TabGroup({ label, icon, tabs }: { label: string; icon: React.ReactNode; tabs: [TabKey, string][] }) {
+  return (
+    <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-2">
+      <div className="mb-1.5 flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground">
+        {icon}<span>{label}</span>
+      </div>
+      <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-transparent p-0 scrollbar-hide">
+        {tabs.map(([value, text]) => (
+          <TabsTrigger key={value} value={value} className="shrink-0 whitespace-nowrap px-2.5 py-1.5 text-xs data-[state=active]:bg-[color:var(--g-emerald-pale)] data-[state=active]:text-[color:var(--g-emerald-deep)]">
+            {text}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </div>
+  )
+}
+
 export default function AdminIntelligencePage() {
   const { user } = useAuth()
   const [tab, setTab] = useState<TabKey>("overview")
