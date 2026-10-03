@@ -9,7 +9,7 @@ import { statusLabel, snakeToTitle } from "@/lib/learning-ui-copy"
 import { BanditStatusCard } from "./bandit-status-card"
 import { MemoryConflictsCard } from "./memory-conflicts-card"
 import { NotYetPopulated, SectionCard } from "./shared"
-import { ChartLineUp, Sparkle } from "@phosphor-icons/react"
+import { ChartLineUp, Compass } from "@phosphor-icons/react"
 
 type SegmentRow = {
   segment_key?: string
@@ -58,7 +58,7 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
         {learningLoading ? (
           <p className="text-sm text-muted-foreground">Loading trends…</p>
         ) : segments.length ? (
-          <div className="overflow-x-auto rounded-xl border border-border/60">
+          <div className="overflow-x-auto rounded-[8px] border border-divide">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-muted-foreground">
@@ -103,20 +103,20 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
       <SectionCard
         title="Cross-cutting guidance"
         description="Soft preferences across models, agents, and tools. Advisory only. Nothing auto-executes."
-        icon={<Sparkle className="h-5 w-5" weight="duotone" aria-hidden />}
+        icon={<Compass className="h-5 w-5" weight="duotone" aria-hidden />}
         delay={0.05}
       >
         {learningLoading ? (
           <p className="text-sm text-muted-foreground">Loading guidance summary…</p>
         ) : (
           <dl className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-2">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
               <dt className="text-xs text-muted-foreground">Guidance areas</dt>
               <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">
                 {readNumber((meta.segment_summaries as unknown[] | undefined)?.length, 0)}
               </dd>
             </div>
-            <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-2">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
               <dt className="text-xs text-muted-foreground">Avg guidance strength</dt>
               <dd className="mt-1 text-lg font-semibold tabular-nums text-foreground">
                 {(meta.avg_guidance_strength as number | null | undefined) != null
@@ -124,7 +124,7 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
                   : "—"}
               </dd>
             </div>
-            <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-2">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
               <dt className="text-xs text-muted-foreground">Status</dt>
               <dd className="mt-1 text-sm font-medium text-foreground">
                 {statusLabel(readString(meta.status, "insufficient_data"))}
@@ -146,25 +146,25 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
           <p className="text-sm text-muted-foreground">Loading freshness…</p>
         ) : (
           <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-border/60 px-3 py-2">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
               <dt className="text-xs text-muted-foreground">Freshness</dt>
               <dd className="mt-1 text-sm font-medium capitalize text-foreground">
                 {statusLabel(readString(freshness.freshness_label, "—"))}
               </dd>
             </div>
-            <div className="rounded-lg border border-border/60 px-3 py-2">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
               <dt className="text-xs text-muted-foreground">Stale sources</dt>
               <dd className="mt-1 text-sm font-medium tabular-nums text-foreground">
                 {readNumber((freshness.stale_sources as unknown[] | undefined)?.length, 0)}
               </dd>
             </div>
-            <div className="rounded-lg border border-border/60 px-3 py-2">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
               <dt className="text-xs text-muted-foreground">Pending suggestions</dt>
               <dd className="mt-1 text-sm font-medium tabular-nums text-foreground">
                 {readNumber(optimization.pending_count, 0)}
               </dd>
             </div>
-            <div className="rounded-lg border border-border/60 px-3 py-2">
+            <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] px-3 py-2">
               <dt className="text-xs text-muted-foreground">Ready models</dt>
               <dd className="mt-1 text-sm font-medium tabular-nums text-foreground">
                 {readNumber(liveDashboard?.ready_model_count, 0)}
