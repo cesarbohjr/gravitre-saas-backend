@@ -7,6 +7,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
 import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
+import { DepartmentPipelineByDepartment } from "@/components/marketplace/department-pipeline-panel"
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import {
   ConnectorChecklist,
@@ -24,21 +25,20 @@ import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
+import { TYPE } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
-  ChevronRight,
   Copy,
   Loader2,
   ShoppingCart,
-  Sparkles,
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import type {
   MarketplaceAssetDetail,
-  MarketplaceAssetSummary,
   MarketplaceInstallBlocker,
 } from "@/types/api"
 
@@ -152,16 +152,30 @@ function MarketplaceAssetDetailContent() {
     )
   }
 
+  const installLabel = asset
+    ? needsPurchase
+      ? `Buy & install · ${formatAssetPrice(asset)}`
+      : asset.canInstall
+        ? "Install to workspace"
+        : "Connect apps to install"
+    : "Install"
+
   return (
     <AppShell title={asset?.title ?? "Marketplace asset"}>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link href="/marketplace/assets">
-            <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
-            Back to catalog
-          </Link>
-        </Button>
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)] pb-24 md:pb-8" data-composition="discover">
+        <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-8">
+          <div className="mx-auto max-w-[760px]">
+            <Button variant="ghost" size="sm" asChild className="-ml-2">
+              <Link href="/marketplace/assets">
+                <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
+                Back to catalog
+              </Link>
+            </Button>
+            <p className={cn(TYPE.eyebrow, "mt-3")}>Marketplace / Pack detail</p>
+          </div>
+        </section>
 
+        <div className="mx-auto max-w-[760px] space-y-6 px-[var(--np-page-pad-sm)] py-5 sm:px-[var(--np-page-pad)]">
         {isLoading && !asset ? (
           <div className="space-y-4">
             <Skeleton className="h-8 w-2/3" />
@@ -170,13 +184,13 @@ function MarketplaceAssetDetailContent() {
         ) : asset ? (
           <>
             <header className="space-y-4">
-              <div className="rounded-xl border bg-muted/20 p-4">
+              <div className="rounded-[10px] border border-[color:var(--g-border-default)] bg-background p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{asset.assetType.replace(/_/g, " ")}</Badge>
                   {asset.department ? <Badge variant="secondary">{asset.department}</Badge> : null}
                   <AssetTrustBadges asset={asset} />
                 </div>
-                <h1 className="mt-3 text-2xl font-semibold text-foreground">{asset.title}</h1>
+                <h1 className={cn(TYPE.pageTitle, "mt-3")}>{asset.title}</h1>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <PriceBadge asset={asset} className="text-sm" />
                   <EntitlementBadge
@@ -197,7 +211,7 @@ function MarketplaceAssetDetailContent() {
                 <p className="text-sm text-muted-foreground text-pretty">{asset.description}</p>
               ) : null}
               {asset.businessOutcome || asset.useCase || asset.estimatedHoursSaved != null ? (
-                <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+                <div className="rounded-[10px] border border-[color:var(--g-border-default)] bg-background p-4 text-sm">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">
                     Outcome
                   </p>
@@ -225,35 +239,32 @@ function MarketplaceAssetDetailContent() {
             {asset.blockers?.length ? <BlockerList blockers={asset.blockers} /> : null}
 
             {asset.connectorChecklist?.length ? (
-              <div className="rounded-lg border bg-muted/20 p-4">
+              <div className="rounded-[10px] border border-[color:var(--g-border-default)] bg-background p-4">
                 <ConnectorChecklist items={asset.connectorChecklist} />
               </div>
             ) : null}
 
             <PackContentsPreview items={asset.packItems} linkChildren />
 
+            {asset.department ? <DepartmentPipelineByDepartment department={asset.department} /> : null}
+
             {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="hidden flex-wrap gap-2 md:flex">
               {isAdmin && !asset.installed ? (
-                <Button className="rounded-full font-semibold" onClick={openInstall}>
+                <Button className="rounded-[10px] font-semibold" onClick={openInstall}>
                   {needsPurchase ? (
                     <>
                       <ShoppingCart className="mr-1.5 h-4 w-4" aria-hidden />
-                      {`Buy & install · ${formatAssetPrice(asset)}`}
-                    </>
-                  ) : asset.canInstall ? (
-                    <>
-                      <Sparkles className="mr-1.5 h-4 w-4" aria-hidden />
-                      Install to workspace
+                      {installLabel}
                     </>
                   ) : (
-                    "Connect apps to install"
+                    installLabel
                   )}
                 </Button>
               ) : null}
               {isAdmin ? (
-                <Button variant="ghost" className="rounded-full" disabled={busy} onClick={handleClone}>
+                <Button variant="ghost" className="rounded-[10px]" disabled={busy} onClick={handleClone}>
                   {busy ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
                   ) : (
@@ -264,7 +275,7 @@ function MarketplaceAssetDetailContent() {
               ) : null}
               {asset.installed ? (
                 <>
-                  <Button className="rounded-full font-semibold" asChild>
+                  <Button className="rounded-[10px] font-semibold" asChild>
                     <Link href="/marketplace/installed">
                       <CheckCircle2 className="mr-1.5 h-4 w-4 text-success" aria-hidden />
                       Open installed
@@ -291,6 +302,36 @@ function MarketplaceAssetDetailContent() {
               onStatsChange={() => void mutate()}
             />
           </>
+        ) : null}
+        </div>
+
+        {asset && (isAdmin || asset.installed) ? (
+          <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]/95 px-4 py-3 backdrop-blur-sm md:hidden">
+            <div className="mx-auto flex max-w-[760px] gap-2">
+              {isAdmin && !asset.installed ? (
+                <Button className="flex-1 rounded-[10px] font-semibold" onClick={openInstall}>
+                  {needsPurchase ? (
+                    <>
+                      <ShoppingCart className="mr-1.5 h-4 w-4" aria-hidden />
+                      {installLabel}
+                    </>
+                  ) : (
+                    installLabel
+                  )}
+                </Button>
+              ) : null}
+              {asset.installed ? (
+                <Button className="flex-1 rounded-[10px] font-semibold" asChild>
+                  <Link href="/marketplace/installed">Open installed</Link>
+                </Button>
+              ) : null}
+              {isAdmin ? (
+                <Button variant="outline" className="rounded-[10px]" disabled={busy} onClick={handleClone}>
+                  Clone
+                </Button>
+              ) : null}
+            </div>
+          </div>
         ) : null}
       </div>
 

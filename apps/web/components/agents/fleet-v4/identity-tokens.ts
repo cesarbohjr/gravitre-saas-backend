@@ -33,9 +33,9 @@ export const IDENTITY_COLOR_TOKENS: Record<
 > = {
   green: {
     label: "Green",
-    surfaceClass: "bg-emerald-100 dark:bg-emerald-950/50",
-    iconClass: "text-emerald-700 dark:text-emerald-200",
-    borderClass: "border-emerald-300 dark:border-emerald-700",
+    surfaceClass: "bg-[color:var(--g-emerald-pale)] dark:bg-[color:color-mix(in_srgb,var(--g-emerald)_18%,transparent)]",
+    iconClass: "text-[color:var(--g-emerald-deep)] dark:text-[color:var(--g-emerald-mint)]",
+    borderClass: "border-[color:var(--g-emerald)]/35 dark:border-[color:var(--g-emerald)]/45",
   },
   cyan: {
     label: "Cyan",
@@ -51,9 +51,9 @@ export const IDENTITY_COLOR_TOKENS: Record<
   },
   blue: {
     label: "Blue",
-    surfaceClass: "bg-sky-100 dark:bg-sky-950/50",
-    iconClass: "text-sky-700 dark:text-sky-200",
-    borderClass: "border-sky-300 dark:border-sky-700",
+    surfaceClass: "bg-[color:var(--ion-wash)] dark:bg-[color:color-mix(in_srgb,var(--g-electric)_16%,transparent)]",
+    iconClass: "text-[color:var(--g-electric)] dark:text-[color:var(--ion-300)]",
+    borderClass: "border-[color:var(--g-electric)]/30 dark:border-[color:var(--g-electric)]/40",
   },
   teal: {
     label: "Teal",
@@ -110,10 +110,10 @@ export const DEPARTMENT_ACCENT: Record<
   sales: { label: "Sales", accentClass: "text-violet-700 dark:text-violet-300", colorHint: "violet" },
   customer_success: {
     label: "Customer Success",
-    accentClass: "text-sky-700 dark:text-sky-300",
+    accentClass: "text-[color:var(--g-electric)]",
     colorHint: "blue",
   },
-  finance: { label: "Finance", accentClass: "text-emerald-700 dark:text-emerald-300", colorHint: "green" },
+  finance: { label: "Finance", accentClass: "text-[color:var(--g-emerald-deep)]", colorHint: "green" },
   operations: { label: "Operations", accentClass: "text-cyan-700 dark:text-cyan-300", colorHint: "cyan" },
   engineering: { label: "Engineering", accentClass: "text-teal-700 dark:text-teal-300", colorHint: "teal" },
   marketing: { label: "Marketing", accentClass: "text-amber-800 dark:text-amber-200", colorHint: "amber" },

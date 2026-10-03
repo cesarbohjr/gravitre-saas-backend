@@ -75,7 +75,7 @@ export default function IntelligenceLearningPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className="space-y-8 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+      <div className="space-y-8 bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]" data-composition="understand">
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}

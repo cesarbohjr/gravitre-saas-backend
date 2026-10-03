@@ -71,7 +71,7 @@ function MesonLogo({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shadow-violet-500/25",
+        "flex shrink-0 items-center justify-center rounded-xl bg-[color:var(--g-electric)]",
         compact ? "h-8 w-8" : "h-9 w-9",
       )}
     >
@@ -240,14 +240,10 @@ export function MesonPagePanel({
     <div className={cn(className)}>
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-500/8 via-card/60 to-purple-500/5 shadow-sm shadow-violet-500/10",
+          "relative overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-background",
           compact ? "p-3.5" : "p-4",
         )}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl"
-        />
 
         <div className="relative flex items-start gap-3">
           <MesonLogo compact={compact} />

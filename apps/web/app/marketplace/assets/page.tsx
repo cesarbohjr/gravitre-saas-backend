@@ -192,7 +192,10 @@ function AssetCard({
 
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
-  const isOutcome = asset.assetType === "play" || asset.assetType === "outcome_pack"
+  const isOutcome =
+    asset.assetType === "play" ||
+    asset.assetType === "outcome_pack" ||
+    asset.assetType === "department_pack"
 
   return (
     <article
@@ -559,7 +562,18 @@ function MarketplaceAssetsContent() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Browse by outcome">
+            <div className="mt-5 flex flex-col gap-5">
+            <div className="relative order-1 max-w-2xl md:order-2">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search outcomes, plays and capabilities…"
+                aria-label="Search marketplace"
+                className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
+              />
+            </div>
+            <div className="order-2 grid gap-2 sm:grid-cols-2 md:order-1 lg:grid-cols-4" aria-label="Browse by outcome">
               {OUTCOME_PATHS.map((path) => {
                 const active = departmentFilter?.toLowerCase() === path.department.toLowerCase()
                 return (
@@ -568,7 +582,7 @@ function MarketplaceAssetsContent() {
                     type="button"
                     onClick={() => setDepartmentFilter(active ? null : path.department)}
                     className={cn(
-                      "group relative min-h-24 overflow-hidden rounded-[10px] border p-4 text-left transition-[transform,box-shadow,border-color,background-color] duration-200 motion-safe:hover:-translate-y-0.5",
+                      "group relative min-h-[4.5rem] overflow-hidden rounded-[10px] border p-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-200 sm:min-h-24 sm:p-4 motion-safe:hover:-translate-y-0.5",
                       active
                         ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_32px_-24px_rgba(0,127,95,.7)]"
                         : "border-[color:var(--g-border-default)] bg-background hover:border-[color:var(--g-emerald)] hover:shadow-[0_14px_32px_-26px_rgba(16,24,22,.55)]",
@@ -581,16 +595,6 @@ function MarketplaceAssetsContent() {
                 )
               })}
             </div>
-
-            <div className="relative mt-5 max-w-2xl">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search outcomes, plays and capabilities…"
-                aria-label="Search marketplace"
-                className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
-              />
             </div>
 
             <div role="group" aria-label="Asset type" className={cn(HUB_TABS.nav, "mt-6")}>

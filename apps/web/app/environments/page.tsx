@@ -106,16 +106,11 @@ function HealthRing({ health, size = 48 }: { health: number; size?: number }) {
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (health / 100) * circumference
   
-  const color = health >= 90 ? "stroke-emerald-500" : health >= 70 ? "stroke-amber-500" : "stroke-red-500"
-  const glow = health >= 90 
-    ? "drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]" 
-    : health >= 70 
-      ? "drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]"
-      : "drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+  const color = health >= 90 ? "stroke-[color:var(--g-emerald)]" : health >= 70 ? "stroke-amber-500" : "stroke-red-500"
   
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg className={cn("transform -rotate-90", glow)} width={size} height={size}>
+      <svg className="transform -rotate-90" width={size} height={size}>
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -188,9 +183,9 @@ function EnvironmentNode({
   }
 
   const statusConfig = {
-    active: { color: "border-emerald-500/50", bg: "bg-emerald-500/5", glow: "shadow-[0_0_20px_rgba(16,185,129,0.15)]" },
-    inactive: { color: "border-zinc-500/50", bg: "bg-zinc-500/5", glow: "" },
-    degraded: { color: "border-amber-500/50", bg: "bg-amber-500/5", glow: "shadow-[0_0_20px_rgba(245,158,11,0.15)]" },
+    active: { color: "border-[color:var(--g-emerald)]/50", bg: "bg-[color:var(--g-emerald-pale)]" },
+    inactive: { color: "border-zinc-500/50", bg: "bg-zinc-500/5" },
+    degraded: { color: "border-amber-500/50", bg: "bg-amber-500/5" },
   }
   const cfg = statusConfig[environment.status]
 
@@ -203,7 +198,7 @@ function EnvironmentNode({
         "relative cursor-pointer rounded-[var(--np-radius-lg)] border-2 transition-all",
         cfg.color, cfg.bg,
         "bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
-        isSelected ? `ring-2 ring-primary ${cfg.glow}` : "hover:border-primary/30"
+        isSelected ? "ring-2 ring-[color:var(--g-emerald)]" : "hover:border-[color:var(--g-emerald)]/40"
       )}
       onClick={onSelect}
     >
@@ -401,7 +396,7 @@ export default function EnvironmentsPage() {
 
   return (
     <AppShell title="Environments">
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]" data-composition="manage">
         <GravitrePageHeader
           eyebrow="Infrastructure"
           title="Environments"

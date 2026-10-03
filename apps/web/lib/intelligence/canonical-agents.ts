@@ -62,9 +62,9 @@ export function canonicalAgentsToMapAgents(rows: CanonicalAgentRow[] | undefined
       description: "",
       status,
       personality: {
-        color: "#6366f1",
-        gradient: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-        glow: "rgba(99, 102, 241, 0.35)",
+        color: "var(--g-carbon)",
+        gradient: "from-transparent to-transparent",
+        glow: "shadow-none",
       },
       stats: {
         tasksToday: 0,

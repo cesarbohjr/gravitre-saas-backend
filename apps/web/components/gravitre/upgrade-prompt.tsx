@@ -26,8 +26,8 @@ const featureDetails = {
     title: "Meson",
     icon: Blocks,
     description: "Build agents, training, and workflows from a single request.",
-    color: "violet",
-    gradient: "from-violet-500 to-purple-500",
+    color: "electric",
+    gradient: "from-[#315CFF] to-[#315CFF]",
     requiredPlans: ["control", "command"],
     benefits: [
       "Create agents automatically",
@@ -126,7 +126,7 @@ export function UpgradePrompt({ open, onClose, feature, currentPlan = "node" }: 
         >
           {/* Header with gradient */}
           <div className={`relative p-6 bg-gradient-to-br ${featureInfo.gradient} bg-opacity-10`}
-            style={{ background: `linear-gradient(to bottom right, rgb(${featureInfo.color === 'violet' ? '139 92 246' : featureInfo.color === 'blue' ? '59 130 246' : featureInfo.color === 'emerald' ? '16 185 129' : '245 158 11'} / 0.1), transparent)` }}
+            style={{ background: `linear-gradient(to bottom right, rgb(${featureInfo.color === 'electric' ? '49 92 255' : featureInfo.color === 'blue' ? '59 130 246' : featureInfo.color === 'emerald' ? '16 185 129' : '245 158 11'} / 0.1), transparent)` }}
           >
             <button
               onClick={onClose}

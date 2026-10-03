@@ -1,7 +1,7 @@
-/** Shared chart colors aligned with Gravitre emerald/teal brand tokens. */
-export const CHART_EMERALD = "#10b981"
-export const CHART_TEAL = "#14b8a6"
-export const CHART_VIOLET = "#8b5cf6"
+/** Shared chart colors aligned with Brand Foundation (Figma 01). */
+export const CHART_EMERALD = "#00a878"
+export const CHART_TEAL = "#007f5f"
+export const CHART_VIOLET = "#315cff"
 
 export function progressBarClass(value: number): string {
   if (value >= 75) return "bg-emerald-500"

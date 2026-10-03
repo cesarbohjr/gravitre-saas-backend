@@ -20,7 +20,6 @@ import {
   TrendingUp, 
   TrendingDown, 
   AlertCircle,
-  Sparkles,
   Activity,
   Zap,
   Clock,
@@ -363,7 +362,7 @@ function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: (
   const config = {
     anomaly: { icon: AlertTriangle, color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     trend: { icon: TrendingUp, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-    optimization: { icon: Sparkles, color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    optimization: { icon: Activity, color: "text-[color:var(--g-emerald-deep)]", bg: "bg-[color:var(--g-emerald-pale)]", border: "border-[color:var(--g-emerald)]/25" },
   }
   const cfg = config[insight.type as keyof typeof config]
   const Icon = cfg.icon
@@ -405,8 +404,7 @@ function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: (
   )
 }
 
-// Custom tooltip with glow effect
-function GlowTooltip({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) {
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) {
   if (!active || !payload?.length) return null
   
   return (
@@ -509,7 +507,7 @@ export default function MetricsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.metrics.title}>
-      <div className="flex flex-col h-full">
+      <div className="flex h-full flex-col bg-[color:var(--g-canvas)]" data-composition="understand">
         <GravitrePageHeader
           eyebrow="Intelligence · Operational health"
           title={SURFACE_COPY.pages.metrics.headline}
@@ -656,12 +654,12 @@ export default function MetricsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
                       <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<GlowTooltip />} />
+                      <Tooltip content={<ChartTooltip />} />
                       <Area
                         type="monotone"
                         dataKey="completed"
                         name="Completed"
-                        stroke="oklch(0.65 0.18 145)"
+                        stroke="var(--g-emerald)"
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorCompleted)"
@@ -683,7 +681,7 @@ export default function MetricsPage() {
               {/* Meson Insights Panel */}
               <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
                 <div className="flex items-center gap-2 border-b border-divide px-4 py-3">
-                  <Sparkles className="h-4 w-4 text-[color:var(--g-brand)]" />
+                  <NucleoIntelligence className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
                   <h3 className="text-sm font-medium text-foreground">Meson insights</h3>
                 </div>
                 <div className="p-3 space-y-2 max-h-[280px] overflow-auto">
@@ -723,7 +721,7 @@ export default function MetricsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
                       <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<GlowTooltip />} />
+                      <Tooltip content={<ChartTooltip />} />
                       {latencySpikeTime ? (
                         <ReferenceLine x={latencySpikeTime} stroke="oklch(0.75 0.15 75)" strokeDasharray="3 3" />
                       ) : null}
@@ -760,7 +758,7 @@ export default function MetricsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
                       <XAxis dataKey="day" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip content={<GlowTooltip />} />
+                      <Tooltip content={<ChartTooltip />} />
                       {throughputTarget > 0 && (
                         <ReferenceLine
                           y={throughputTarget}

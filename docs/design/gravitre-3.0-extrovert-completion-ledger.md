@@ -5,21 +5,51 @@ Base: `origin/main` `2b39b87b` (PR #297 Emerald Intelligence migration, merged)
 Active branch: `feat/gravitre-3.0-extrovert-design`  
 Reason for new branch: `feat/emerald-intelligence-completion` / PR #297 is merged. This is the single continuation branch for Extrovert completion + Figma Brand Foundation alignment.
 
-Figma (viewed, not Dev Mode):  
+Figma file:  
 https://www.figma.com/design/OsDKeRy9HwfSKR3e9YyOFM/Gravitre-%E2%80%94-Brand-Foundation---Creative-Direction?node-id=6-2
+
+## Figma capability check (this session)
+
+Live tool catalog was searched for `figma` (no prefix assumed). Result: **no Figma namespace and no Figma tools**. Available MCP namespaces did not include a Figma server. Settings enablement was not treated as availability.
+
+| Value class | Used? | Notes |
+| --- | --- | --- |
+| Exported Figma variables | NO | No MCP export this session |
+| Inspected fills | PARTIAL | Browser view of page 03 Marketplace `8:2` and Intelligence `10:5` only; unsigned Figma, no variable panel export |
+| Written contract + first `:root` | YES | Current documented tokens preserved until an authoritative Figma export corrects them |
+
+## Brand Foundation tokens (applied)
+
+Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match that contract. Later Carbon `:root` had been overwriting them with `#2fbf8f` / Ion violet. No exported-variable correction this session.
+
+| Token | Hex | Role |
+| --- | --- | --- |
+| `--g-emerald` / `--g-brand` / `--brand` / `--signal-500` | `#00A878` | Brand / action |
+| `--g-emerald-deep` / `--g-brand-active` / `--signal-600` | `#007F5F` | Deep emerald |
+| `--g-brand-hover` | `#008F67` | Hover (existing named step) |
+| `--g-emerald-mint` / `--g-brand-soft` | `#CFF7E8` | Signal mint |
+| `--g-emerald-pale` / `--signal-wash` | `#EAF8F2` | Pale emerald |
+| `--g-brand-muted` / `--signal-300` | `#63D6B3` | Muted emerald |
+| `--g-carbon` | `#101816` | Carbon / ink |
+| `--g-bone` | `#F5F3EC` | Bone canvas |
+| `--g-electric` / `--ion-500` | `#315CFF` | Functional blue (Ion violet retired) |
+| `--ion-300` | `color-mix` of `#315CFF` toward white (`#6B8AFF`) | Lighter electric — implementation step |
+| `--g-warmth` | `#FF654D` | Coral / attention |
+
+`--primary` stays ink (`--ink-950`) for shadcn actions. Emerald is brand/action via `--g-brand` / `--g-emerald`, not an automatic healthy label.
 
 Pages observed:
 
 | Page | Status |
 | --- | --- |
-| 01 — Brand Foundation | Listed; hex values not extracted (Figma MCP unavailable; session unsigned) |
+| 01 — Brand Foundation | Tokens recorded above; MCP hex export still unavailable |
 | 02 — Gravitre Unlocked | Listed; not pixel-inspected |
-| 03 — Emerald Intelligence (current) | Implementation frames listed below |
+| 03 — Emerald Intelligence (current) | Marketplace `8:2`; Intelligence `10:5` (1440×900); Operate next |
 
 Implementation frames on page 03:
 
 - GRAVITRE / EMERALD INTELLIGENCE (node `6:3` — agent identity studies: Guardian / Atlas)
-- IMPLEMENTATION / Marketplace 3.0 Desktop
+- IMPLEMENTATION / Marketplace 3.0 Desktop (node `8:2`, 1440×1040)
 - IMPLEMENTATION / Marketplace 3.0 Mobile
 - IMPLEMENTATION / Intelligence
 - IMPLEMENTATION / Agents
@@ -31,8 +61,6 @@ Implementation frames on page 03:
 - IMPLEMENTATION / Handoff + Acceptance
 - IMPLEMENTATION / Graphic + Motion Language
 
-**Figma access gap:** plugin-figma MCP is not in this Cursor session. Browser opened the file view-only. Dev Mode / token hex export was not available without sign-in. Do not claim Figma hex values were measured. Prompt-specified Emerald `#00A878` / Deep Emerald `#007F5F` remain the written contract; shipped tokens still use logo green `#16a374`. Token replacement is deferred until Dev Mode or owner confirmation so we do not fight the logo without evidence.
-
 `VOICE_LIVE_*` and RLS / Lighthouse follow-ups stay out of this stream.
 
 ## Gate snapshot
@@ -40,8 +68,8 @@ Implementation frames on page 03:
 | Field | Value |
 | --- | --- |
 | ACTIVE_BRANCH | `feat/gravitre-3.0-extrovert-design` |
-| COMPLETION_PR | not opened |
-| CANDIDATE_SHA | pending |
+| COMPLETION_PR | opening as draft (single completion PR) |
+| CANDIDATE_SHA | pending push |
 | IMPLEMENTATION_COMPLETE | NO |
 | AUTOMATED_CHECKS | NOT_RUN |
 | BILLING_E2E | NOT_APPLICABLE (no billing scope in this slice) |
@@ -61,14 +89,14 @@ Implementation frames on page 03:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `/home` | Understand | KPI, time, drill-down | Owner-live metrics not re-checked after #297 | `components/home/home-dashboard.tsx` | owner metrics + time controls | owner-live | — | IMPLEMENTED / BRANCH (prior) | OWNER_LIVE |
 | `/ai` | Create | composer, history, tools | Protected chat seams — visual only | `app/ai/page.tsx` | stream + persist | owner-live | — | PARTIAL | auth + protected seams |
-| `/agents` | Manage | list, inspector | Decorative personality glow still applied | `app/agents/page.tsx`, `lib/department-gradient.ts` | list/detail consistency | visual + owner | — | IN PROGRESS | — |
-| `/agents/[id]` | Manage | tabs, autonomy | Glow remnant on identity | `app/agents/[id]/page.tsx` | save persist | owner-live | — | PARTIAL | OWNER_LIVE |
+| `/agents` | Manage | list, inspector | Glow fallbacks removed; identity green/blue on Brand Foundation tokens | `app/agents/page.tsx`, `components/agents/fleet-v4/identity-tokens.ts` | list/detail consistency | visual + owner | — | IN PROGRESS | OWNER_LIVE |
+| `/agents/[id]` | Manage | tabs, autonomy | Default glow/gradient no longer brand-shadow | `app/agents/[id]/page.tsx` | save persist | owner-live | — | PARTIAL | OWNER_LIVE |
 | `/connectors` | Manage | catalog, instance | Connection status must stay real | `app/connectors/page.tsx` | reconnect path | owner-live | — | PRIOR | OWNER_LIVE |
 | `/sources` | Manage | ingest, detail | Readiness honesty | `app/sources/page.tsx` | inventory | owner-live | — | PRIOR | OWNER_LIVE |
-| `/workflows` | Operate | list, builder | Handoff motif vs editable graph | `app/workflows/**` | safe run | owner-live | — | PRIOR | OWNER_LIVE |
-| `/intelligence` | Understand | map, rails, model studio | Empty graph honesty already present | `app/intelligence/**` | filters + evidence | owner-live | — | PRIOR | OWNER_LIVE |
-| `/marketplace/assets` | Discover | types, install | Pack UX vs catalog after #297 backend cuts | `app/marketplace/assets/**` | install + runtime id | owner-live | — | GAP | catalog/runtime proof |
-| `/marketplace/assets/[slug]` | Discover | detail, readiness | Same | `app/marketplace/assets/[slug]/page.tsx` | prerequisites | owner-live | — | GAP | OWNER_LIVE |
+| `/workflows` | Operate | list, builder | Composition retagged operate; Brand Foundation phase/metrics | `app/workflows/**` | safe run | owner-live | — | IN PROGRESS | OWNER_LIVE |
+| `/intelligence` | Understand | map, rails, model studio | Indigo map stubs removed; core aura uses Brand Foundation; idle no pulse | `app/intelligence/**` | filters + evidence | owner-live | — | IN PROGRESS | OWNER_LIVE |
+| `/marketplace/assets` | Discover | types, install | Mobile search-first + desktop outcomes-first implemented; catalog cards now treat department packs as outcome tiles; grouped pack contents | `app/marketplace/assets/**` | install + runtime id | fixture + owner-live | — | IN PROGRESS | catalog/runtime proof + OWNER_LIVE |
+| `/marketplace/assets/[slug]` | Discover | detail, readiness, sticky install | Discover chrome, grouped contents, pipeline when department present, sticky mobile install; Sparkles removed | `app/marketplace/assets/[slug]/page.tsx` | prerequisites + install | fixture + owner-live | — | IN PROGRESS | OWNER_LIVE |
 | `/approvals` | Operate | queue | Actor/context | `app/approvals/page.tsx` | approve/reject | owner-live | — | PRIOR | OWNER_LIVE |
 | `/activity` | Operate | runs | Execution state | `app/activity/page.tsx` | run vs activity | owner-live | — | PRIOR | OWNER_LIVE |
 | `/audit` | Configure | events | Real org events | `app/audit/page.tsx` | filters | owner-live | — | PRIOR | OWNER_LIVE |
@@ -85,13 +113,29 @@ From `backend/app/marketplace/department_pipelines/catalog.py` (do not invent pa
 
 | Pack slug | UX/UI complete | Pack content complete | Notes |
 | --- | --- | --- | --- |
-| `revenue-operations-pack` | UNVERIFIED | UNVERIFIED | Default RevOps pipeline |
-| `marketing-operations-pack` | UNVERIFIED | UNVERIFIED | |
-| `hr-operations-pack` | UNVERIFIED | UNVERIFIED | |
-| `msp-operations-pack` | UNVERIFIED | UNVERIFIED | |
+| `revenue-operations-pack` | PARTIAL (shared catalog/detail/install/installed/pipeline chrome) | UNVERIFIED | Nested UX implemented on shared surfaces; live pack rows not owner-inspected |
+| `marketing-operations-pack` | PARTIAL (shared surfaces) | UNVERIFIED | Same shared chrome; no invented pack |
+| `hr-operations-pack` | PARTIAL (shared surfaces) | UNVERIFIED | Same shared chrome; no invented pack |
+| `msp-operations-pack` | PARTIAL (shared surfaces) | UNVERIFIED | Same shared chrome; no invented pack |
 | (pipeline with `default_department_pack_slug=None`) | N/A | N/A | Honest gap in catalog |
 
 PR #297 removed several marketplace3 certification/portfolio modules and capability_package skill trees from `main`. Treat “six remaining packs complete” from older chat as **historical, not current**. Re-verify catalog + install identifiers on this SHA before any ready/outcome badge.
+
+## Inspection vs unverified vs login-blocked
+
+These rows stay in the acceptance checklist. **None are passed.** Isolated Conversation Smoke is not owner-tenant evidence.
+
+| Surface | Actually inspected | Visually unverified | Owner tasks blocked by login |
+| --- | --- | --- | --- |
+| Marketplace catalog `/marketplace/assets` | Code + unsigned Figma frame `8:2` (1440×1040) + login redirect on `gravitre.app` and `127.0.0.1:3010` | Authenticated catalog grid, live pack cards, install counts, mobile search-first with real data | Browse live catalog; filter department packs; install; confirm runtime IDs |
+| Marketplace detail `/marketplace/assets/[slug]` | Code (Discover chrome, grouped contents, sticky bar, pipeline hook) | Live pack detail, readiness checklist, sticky install, failure toast | Open each real department pack; install/readiness/failure |
+| Marketplace installed | Code (operate composition, inspector, pipeline) | Live installs, deep links, uninstall | Confirm owner-org installs and evidence |
+| Agents `/agents` + `/agents/[id]` | Code (glow fallbacks removed; identity green/blue rematched; stored avatar IDs untouched) + prior unsigned Agents frame | Authenticated list/inspector, personality tiles, save persist | List + detail save + history |
+| Intelligence `/intelligence` | Code (indigo stubs removed; Brand Foundation aura; idle no pulse) + unsigned frame `10:5` (1440×900) | Live map, rails, filters, evidence | Values / filters / evidence on owner org |
+| Operate `/workflows` + runs/activity/approvals | Code (composition retagged; builder Create chrome present; run-path glow left functional) | Live queue, run states, builder persist, safe run | Persist + approved safe run; decision queue |
+| Builder | Code inspection of nav/inspector/canvas; functional SVG glow left on active run only | Pixel match vs page 03 Builder frame (Figma MCP unavailable) | Builder persist + run |
+| Analytics `/metrics` + Intelligence performance | Code (Understand composition; ChartTooltip; completed stroke rematched) | Charts with live metrics | Dashboard / metrics time + drill-down |
+| Handoff / Motion | Approvals already Decision queue; decorative install glow/Sparkles removed; marketing motion-safe hovers | Page 03 Handoff + Motion frames not MCP-inspected | Owner walk of Lock→Route→Handoff→Resolve where those states exist |
 
 ## Owner-live checklist (NOT_RUN)
 
@@ -109,7 +153,7 @@ Every row: `NOT_RUN` until authenticated owner-org proof on a recorded SHA.
 
 ## Next concrete actions
 
-1. Finish Figma page 01 token capture when Dev Mode or Figma MCP is available.
-2. Remove remaining decorative glow / purple AI treatments on product (not marketing) surfaces.
-3. Reconcile Marketplace 3.0 desktop/mobile frames against live `/marketplace/assets`.
-4. Open one completion PR when there is a reviewable slice; do not open a PR per route.
+1. Owner sign-in required for authenticated Marketplace / Agents / Intelligence / Operate pass (`gravitre.app` and local 3010 both redirect to login). Isolated Conversation Smoke org is not owner proof.
+2. Figma remains absent from the live tool catalog — do not infer availability from settings. Preserve documented tokens until an exported-variable pass exists.
+3. Keep one completion PR; attach CI + fixture evidence to the candidate SHA.
+4. Remaining independently executable work: marketing legacy decorative purple, remaining admin/product chrome, fixture/responsive checks, required CI.

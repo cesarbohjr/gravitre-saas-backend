@@ -538,8 +538,8 @@ export function OptimizationInsightsPanel({
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30">
-              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[color:var(--g-border-default)] bg-[color:var(--g-emerald-pale)]">
+              <Sparkles className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
             </div>
             <div>
               <h3 className="font-semibold text-sm text-foreground">Optimization insights</h3>

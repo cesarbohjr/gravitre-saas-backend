@@ -70,7 +70,7 @@ export default function GravitreAiPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.ai.title}>
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col" data-composition="create">
         <Suspense fallback={null}>
           <AiPageContent />
         </Suspense>

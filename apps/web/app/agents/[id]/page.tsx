@@ -67,8 +67,8 @@ interface Agent {
 }
 
 function toProfileAgent(api: ApiAgent): Agent {
-  const gradient = api.personality?.gradient || "from-[color:var(--g-brand)] to-[color:var(--g-brand-active)]"
-  const glow = api.personality?.glow || "shadow-[color:var(--g-brand)]/20"
+  const gradient = api.personality?.gradient || "from-transparent to-transparent"
+  const glow = api.personality?.glow || "shadow-none"
   const rawRate = api.stats?.successRate
   const successRate =
     typeof rawRate === "number" && Number.isFinite(rawRate) ? rawRate : null
