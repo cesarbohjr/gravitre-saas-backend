@@ -5,7 +5,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence, type Variants } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
-import { Search, Loader2, Clock, Sparkles, Trash2, X, ExternalLink, Command, Zap, Bot, Link2, Workflow, Database, FileText, type LucideIcon } from "lucide-react"
+import { Search, Loader2, Clock, ArrowRight, Trash2, X, ExternalLink, Command, Zap, Bot, Link2, Workflow, Database, FileText, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMotionPrefs, hoverLift, pressScale } from "@/lib/animations"
 import Link from "next/link"
@@ -195,13 +195,13 @@ function SearchResultRow({
     >
       <Link
         href={result.url}
-        className="group flex items-start gap-3 rounded-xl border border-border bg-card/60 p-3 transition-colors hover:border-foreground/20 hover:bg-card"
+        className="group flex items-start gap-3 rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-3 transition-colors hover:border-foreground/20 hover:bg-card"
       >
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/80">
           {result.entity_type === "run" ? (
             <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           ) : result.entity_type === "agent" ? (
-            <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <Bot className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
           ) : result.entity_type === "connector" ? (
             <Link2 className="h-4 w-4 text-success" />
           ) : result.entity_type === "workflow" ? (
@@ -280,7 +280,7 @@ function SearchSuggestionChips({
             disabled && "pointer-events-none opacity-60",
           )}
         >
-          <Sparkles className="h-3 w-3 shrink-0" />
+          <ArrowRight className="h-3 w-3 shrink-0" />
           {chip.label}
         </motion.button>
       ))}
@@ -339,7 +339,7 @@ function SearchTypeaheadDropdown({
               <div
                 className={cn(
                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                  item.kind === "agent" && "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+                  item.kind === "agent" && "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)]",
                   item.kind === "workflow" && "bg-warning/10 text-warning",
                   item.kind === "connector" && "bg-success/10 text-success",
                   item.kind === "history" && "bg-secondary text-muted-foreground",
@@ -826,7 +826,7 @@ export default function ChatPage() {
                       {[0, 1, 2].map((i) => (
                         <div
                           key={i}
-                          className="relative overflow-hidden rounded-xl border border-border bg-card p-4"
+                          className="relative overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4"
                         >
                           <div className="space-y-2">
                             <div className="h-2.5 w-20 rounded bg-secondary" />
@@ -846,7 +846,7 @@ export default function ChatPage() {
                     </div>
                   )}
                   {!isSearching && results.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
+                    <div className="rounded-[10px] border border-dashed border-divide bg-[color:var(--g-surface-2)] p-8 text-center">
                       <p className="text-sm font-medium text-foreground mb-1">No matches found</p>
                       <p className="text-sm text-muted-foreground mb-4">
                         Try refining your query or pick another prompt below.
