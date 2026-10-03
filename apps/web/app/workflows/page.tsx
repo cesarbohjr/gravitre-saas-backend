@@ -18,7 +18,7 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap, Activity, AlertTriangle, Pause, FileEdit } from "lucide-react"
+import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap, Activity, AlertTriangle, FileEdit } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import {
@@ -502,11 +502,11 @@ export default function WorkflowsPage() {
             <div className="mb-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
               {[
                 { label: "Running", value: runningCount, icon: Activity, detail: "Executing now" },
-                { label: "Healthy", value: activeCount - errorCount, icon: TrendingUp, detail: "Active workflows" },
+                { label: "Active", value: activeCount, icon: TrendingUp, detail: "Enabled workflows" },
                 { label: "Attention", value: errorCount + pausedCount, icon: AlertTriangle, detail: "Failed or paused" },
                 { label: "Drafts", value: draftCount, icon: FileEdit, detail: "Not yet active" },
               ].map((metric) => (
-                <button key={metric.label} type="button" className="group flex min-h-24 items-start justify-between rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 text-left transition-colors hover:border-[color:var(--g-emerald)]" onClick={() => metric.label === "Running" ? setPhase("running") : metric.label === "Drafts" ? setPhase("draft") : undefined}>
+                <div key={metric.label} className="group flex min-h-24 items-start justify-between rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 text-left">
                   <div><p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{metric.label}</p><p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{Math.max(0, metric.value)}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>
                   <metric.icon className="h-4 w-4 text-[color:var(--g-emerald-deep)] opacity-75 transition-opacity group-hover:opacity-100" />
                 </button>
