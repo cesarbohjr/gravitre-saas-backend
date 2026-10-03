@@ -107,7 +107,7 @@ export function OverviewTab({
                 learningProgress.workflowRowsNeeded,
               )}`}
               iconSlot={
-                <Brain className="h-6 w-6 text-emerald-500" weight="duotone" aria-hidden />
+                <Stack className="h-6 w-6 text-[color:var(--g-emerald-deep)]" weight="duotone" aria-hidden />
               }
               size="md"
             />
