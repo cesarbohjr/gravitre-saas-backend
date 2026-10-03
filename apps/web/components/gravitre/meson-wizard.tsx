@@ -8,7 +8,7 @@ import {
   ArrowLeft, 
   Check, 
   Loader2, 
-  Sparkles,
+
   FileText,
   Workflow,
   Bot,
