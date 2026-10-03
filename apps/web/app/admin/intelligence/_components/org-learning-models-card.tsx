@@ -15,7 +15,7 @@ import {
   type OrgLearningModelId,
 } from "@/lib/org-learning-models"
 import { cn } from "@/lib/utils"
-import { Brain, Lightning, SpinnerGap } from "@phosphor-icons/react"
+import { Stack, Lightning, SpinnerGap } from "@phosphor-icons/react"
 
 function readDataCount(status: MlAdminOrgModelStatus | undefined): string | null {
   if (!status?.data_counts) return null
@@ -132,7 +132,7 @@ export function OrgLearningModelsCard({ enabled }: { enabled: boolean }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
+              <Stack className="h-5 w-5 text-[color:var(--g-emerald-deep)]" weight="duotone" aria-hidden />
               <CardTitle>Org learning models</CardTitle>
             </div>
             <CardDescription>
