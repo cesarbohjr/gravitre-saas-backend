@@ -1,6 +1,6 @@
 "use client"
 
-import { PAGE_FRAME } from "@/lib/design-system"
+import type { ReactNode } from "react"\nimport { PAGE_FRAME } from "@/lib/design-system"
 import { useState } from "react"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -39,7 +39,7 @@ type TabKey =
   | "performance"
   | "cognitive"
 
-function TabGroup({ label, icon, tabs }: { label: string; icon: React.ReactNode; tabs: [TabKey, string][] }) {
+function TabGroup({ label, icon, tabs }: { label: string; icon: ReactNode; tabs: [TabKey, string][] }) {
   return (
     <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-2">
       <div className="mb-1.5 flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground">
