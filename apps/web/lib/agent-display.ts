@@ -48,20 +48,20 @@ const PERSONALITY_BY_DEPARTMENT: Record<
   AgentDepartment,
   { color: string; gradient: string; glow: string }
 > = {
-  Marketing: { color: "pink", gradient: "from-pink-500 to-rose-500", glow: "shadow-pink-500/30" },
-  Sales: { color: "emerald", gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/30" },
-  Finance: { color: "violet", gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/30" },
-  Support: { color: "cyan", gradient: "from-cyan-500 to-blue-500", glow: "shadow-cyan-500/30" },
-  HR: { color: "amber", gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/30" },
-  Operations: { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/30" },
+  Marketing: { color: "pink", gradient: "from-pink-500 to-rose-500", glow: "shadow-none" },
+  Sales: { color: "emerald", gradient: "from-emerald-500 to-teal-500", glow: "shadow-none" },
+  Finance: { color: "violet", gradient: "from-violet-500 to-purple-500", glow: "shadow-none" },
+  Support: { color: "cyan", gradient: "from-cyan-500 to-blue-500", glow: "shadow-none" },
+  HR: { color: "amber", gradient: "from-amber-500 to-orange-500", glow: "shadow-none" },
+  Operations: { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-none" },
   "Customer Success": {
     color: "cyan",
     gradient: "from-cyan-500 to-teal-500",
-    glow: "shadow-cyan-500/30",
+    glow: "shadow-none",
   },
-  Engineering: { color: "teal", gradient: "from-teal-500 to-cyan-600", glow: "shadow-teal-500/30" },
-  Security: { color: "slate", gradient: "from-slate-500 to-zinc-600", glow: "shadow-slate-500/30" },
-  General: { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-blue-500/30" },
+  Engineering: { color: "teal", gradient: "from-teal-500 to-cyan-600", glow: "shadow-none" },
+  Security: { color: "slate", gradient: "from-slate-500 to-zinc-600", glow: "shadow-none" },
+  General: { color: "blue", gradient: "from-blue-500 to-indigo-500", glow: "shadow-none" },
 }
 
 const EXACT_DEPARTMENT: Record<string, AgentDepartment> = {
