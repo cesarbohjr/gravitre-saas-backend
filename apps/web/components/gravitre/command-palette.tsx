@@ -220,7 +220,7 @@ export function CommandPalette({
               onShowOptimizations?.()
             })}
           >
-            <Lightbulb className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <Lightbulb className="mr-2 h-4 w-4 text-[color:var(--g-signal)]" />
             <span>Show optimization insights</span>
             <CommandShortcut>O</CommandShortcut>
           </CommandItem>
@@ -290,7 +290,7 @@ export function CommandPalette({
             <span>Add approval gate</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
-            <GitBranch className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <GitBranch className="mr-2 h-4 w-4 text-[color:var(--g-signal)]" />
             <span>Add decision node</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
