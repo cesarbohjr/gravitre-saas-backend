@@ -52,7 +52,7 @@ import {
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { getCategoryIcon } from "@/lib/marketplace-category-icons"
-import { OrganizedIntelligenceField } from "@/components/marketplace/organized-intelligence-field"
+import { MarketplaceFeaturedOutcome } from "@/components/marketplace/marketplace-featured-outcome"
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
   { id: "ai_agent", label: "Agents", icon: Bot },
@@ -322,10 +322,10 @@ function AssetCard({
 }
 
 const OUTCOME_PATHS = [
-  { label: "Run IT", department: "IT", detail: "Service, security and operations" },
-  { label: "Grow Revenue", department: "Sales", detail: "Pipeline, enrichment and follow-up" },
-  { label: "Market Smarter", department: "Marketing", detail: "Campaigns, signals and content" },
-  { label: "Serve Customers", department: "Customer Success", detail: "Risk, support and retention" },
+  { label: "Run IT", department: "Operations", detail: "Service, security and operations", tone: "emerald" },
+  { label: "Grow Revenue", department: "Sales", detail: "Pipeline, enrichment and follow-up", tone: "electric" },
+  { label: "Market Smarter", department: "Marketing", detail: "Campaigns, signals and content", tone: "coral" },
+  { label: "Serve Customers", department: "Customer Success", detail: "Risk, support and retention", tone: "emerald" },
 ] as const
 
 function MarketplaceAssetsContent() {
@@ -345,7 +345,7 @@ function MarketplaceAssetsContent() {
   const [priceFilter, setPriceFilter] = useState<PriceFilter>(
     initialPrice === "free" || initialPrice === "paid" ? initialPrice : "all",
   )
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(searchParams.get("search") ?? "")
   const debouncedSearch = useDebouncedValue(search.trim())
   const [busy, setBusy] = useState<string | null>(null)
   const [installTarget, setInstallTarget] = useState<MarketplaceAssetSummary | null>(null)
@@ -481,6 +481,10 @@ function MarketplaceAssetsContent() {
     () => visibleAssets.filter((asset) => !asset.installed),
     [visibleAssets],
   )
+  // Promote an existing outcome without manufacturing a featured badge or catalog entry.
+  const featuredOutcome = discoveryAssets.find((asset) => asset.slug === "msp-operations-pack")
+    ?? discoveryAssets.find((asset) => ["play", "outcome_pack", "department_pack"].includes(asset.assetType))
+
   const installedInView = useMemo(
     () => visibleAssets.filter((asset) => asset.installed),
     [visibleAssets],
@@ -530,19 +534,19 @@ function MarketplaceAssetsContent() {
          so the grid can scroll with the page instead of clipping. */}
       <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-testid="marketplace-catalog-b" data-composition="discover">
         {/* Discovery hero: identity, search, and asset type as the primary axis */}
-        <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
+        <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
           <div className="mx-auto max-w-[1240px]">
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-2xl">
                 <p className={TYPE.eyebrow}>Marketplace / Outcomes first</p>
-                <h1 className={cn(TYPE.pageTitle, "mt-1 text-balance")}>Put Gravitre to work.</h1>
+                <h1 className={cn(TYPE.pageTitle, "mt-2 max-w-[12ch] sm:max-w-none font-[family-name:var(--font-space-grotesk)] text-[30px] font-medium leading-tight text-balance sm:text-[34px]")}>Put Gravitre to work.</h1>
                 <p className={cn(TYPE.pageLead, "mt-2")}>
                   Start with the outcome. Gravitre assembles the intelligence underneath.
                 </p>
               </div>
               <div className="space-y-3">
-                <OrganizedIntelligenceField className="hidden h-[190px] lg:block" />
-                <div className="flex flex-wrap items-center justify-end gap-3">
+
+                <div className="flex flex-wrap items-center justify-start gap-3 lg:justify-end">
                 <AskGravitreSummonButton />
                 {isAdmin ? (
                   <Button asChild size="sm" variant="outline">
@@ -563,7 +567,12 @@ function MarketplaceAssetsContent() {
             </div>
 
             <div className="mt-5 flex flex-col gap-5">
-            <div className="relative order-1 max-w-2xl md:order-2">
+            {!isLoading && !error && featuredOutcome ? (
+              <div className="order-2 md:order-1">
+                <MarketplaceFeaturedOutcome asset={featuredOutcome} onPreview={openDetail} />
+              </div>
+            ) : null}
+            <div className="relative order-1 max-w-2xl md:order-3">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
@@ -573,24 +582,30 @@ function MarketplaceAssetsContent() {
                 className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
               />
             </div>
-            <div className="order-2 grid gap-2 sm:grid-cols-2 md:order-1 lg:grid-cols-4" aria-label="Browse by outcome">
+            <div className="order-3 grid gap-3 sm:grid-cols-2 md:order-2 lg:grid-cols-4" aria-label="Browse by outcome">
               {OUTCOME_PATHS.map((path) => {
-                const active = departmentFilter?.toLowerCase() === path.department.toLowerCase()
+                const facet = departmentFacets.find((item) => item.key.toLowerCase() === path.department.toLowerCase())
+                  ?? (path.label === "Run IT" ? departmentFacets.find((item) => item.key.toLowerCase() === "it") : undefined)
+                const department = facet?.key ?? path.department
+                const active = departmentFilter?.toLowerCase() === department.toLowerCase()
                 return (
                   <button
                     key={path.label}
                     type="button"
-                    onClick={() => setDepartmentFilter(active ? null : path.department)}
+                    onClick={() => setDepartmentFilter(active ? null : department)}
+                    aria-pressed={active}
                     className={cn(
-                      "group relative min-h-[4.5rem] overflow-hidden rounded-[10px] border p-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-200 sm:min-h-24 sm:p-4 motion-safe:hover:-translate-y-0.5",
+                      "group relative min-h-[4.5rem] overflow-hidden rounded-[10px] border p-3 text-left transition-[transform,border-color,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-24 sm:p-4 motion-safe:hover:-translate-y-0.5",
+                      !active && (path.tone === "electric" ? "bg-[color:color-mix(in_srgb,var(--g-electric)_7%,white)]" : path.tone === "coral" ? "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,white)]" : "bg-[color:var(--g-emerald-pale)]"),
                       active
                         ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_32px_-24px_rgba(0,127,95,.7)]"
-                        : "border-[color:var(--g-border-default)] bg-background hover:border-[color:var(--g-emerald)] hover:shadow-[0_14px_32px_-26px_rgba(16,24,22,.55)]",
+                        : "border-transparent hover:border-[color:var(--g-emerald)]",
                     )}
                   >
-                    <span className="absolute right-3 top-3 size-2 rounded-full bg-[color:var(--g-emerald)] transition-transform duration-200 motion-safe:group-hover:scale-125" aria-hidden />
+
                     <span className="block text-[14px] font-semibold text-[color:var(--g-text-primary)]">{path.label}</span>
                     <span className="mt-1 block max-w-[18rem] text-xs leading-5 text-[color:var(--g-text-muted)]">{path.detail}</span>
+                    <span className="mt-2 flex items-center gap-2 text-xs font-medium text-[color:var(--g-emerald-deep)]">Explore <ChevronRight className="size-3.5" aria-hidden /></span>
                   </button>
                 )
               })}
