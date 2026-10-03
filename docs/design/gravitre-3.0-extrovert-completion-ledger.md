@@ -69,9 +69,9 @@ Implementation frames on page 03:
 | --- | --- |
 | ACTIVE_BRANCH | `feat/gravitre-3.0-extrovert-design` |
 | COMPLETION_PR | [draft #298](https://github.com/cesarbohjr/gravitre-saas-backend/pull/298) |
-| CANDIDATE_SHA | `4a4fff1e` (CI in progress; later commits supersede) |
+| CANDIDATE_SHA | `77ca50ce` |
 | IMPLEMENTATION_COMPLETE | NO |
-| AUTOMATED_CHECKS | NOT_RUN |
+| AUTOMATED_CHECKS | IN_PROGRESS on `77ca50ce` (local `tsc --noEmit` passed; GitHub CI not terminal) |
 | BILLING_E2E | NOT_APPLICABLE (no billing scope in this slice) |
 | OWNER_LIVE_ACCEPTANCE | NOT_RUN |
 | MERGE_READY | NO |
@@ -151,9 +151,23 @@ Every row: `NOT_RUN` until authenticated owner-org proof on a recorded SHA.
 - Marketplace each catalog pack surface + install IDs
 - Billing: separate workstream
 
+## Fixture visual evidence (not owner-live)
+
+Candidate SHA `77ca50ce`. Preview: `https://gravitre-saas-backend-isq7czh5j-gravitre-ai.vercel.app` (Vercel READY).
+
+| Check | Result | Class |
+| --- | --- | --- |
+| Marketing `/` desktop | Rendered on preview; Brand Foundation emerald heading, no page-theme purple | fixture |
+| Marketing `/features` desktop | Coordinate → Act → Approve → Resolve present; no invented prices | fixture |
+| Marketing `/features` 390×844 | Stacked header, wrapping chips, cookie sheet; layout holds | fixture-responsive |
+| Product `/marketplace/assets`, `/agents` | Preview redirects to `https://gravitre.app/login` | login-blocked |
+| `/e2e/shots/agents` on preview | 404 (shot routes not in this preview build) | fixture unavailable |
+| Local typecheck | `npm run typecheck` in `apps/web` exit 0 | automated-local |
+| Isolated Conversation Smoke | Not used | n/a |
+
 ## Next concrete actions
 
-1. Owner sign-in required for authenticated Marketplace / Agents / Intelligence / Operate pass (`gravitre.app` and local 3010 both redirect to login). Isolated Conversation Smoke org is not owner proof.
-2. Figma remains absent from the live tool catalog — do not infer availability from settings. Preserve documented tokens until an exported-variable pass exists.
-3. Keep one completion PR; attach CI + fixture evidence to the candidate SHA.
-4. Remaining independently executable work: marketing legacy decorative purple, remaining admin/product chrome, fixture/responsive checks, required CI.
+1. Owner sign-in required for authenticated Marketplace / Agents / Intelligence / Operate pass. Isolated Conversation Smoke org is not owner proof.
+2. Figma remains absent from the live tool catalog. Preserve documented tokens until an exported-variable pass exists.
+3. Wait for required CI on `77ca50ce`; fix failures on this same PR.
+4. Remaining owner-access tasks are listed in the inspection table — none are passed.
