@@ -51,7 +51,7 @@ Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match
 | --- | --- |
 | ACTIVE_BRANCH | `feat/gravitre-3.0-extrovert-design` |
 | COMPLETION_PR | [draft #298](https://github.com/cesarbohjr/gravitre-saas-backend/pull/298) |
-| CANDIDATE_SHA | `4b851ea6` |
+| CANDIDATE_SHA | `224d79a3` |
 | REVIEWED_SHA | `db2eea5e` (review findings applied on this working tree) |
 | IMPLEMENTATION_COMPLETE | NO — page 03 Figma frames unavailable; owner-live blocked; overlay stacking on mobile pack bar still open |
 | AUTOMATED_CHECKS | LOCAL PASS — `pnpm test` 1,127; lint 0 errors; `tsc --noEmit` 0; `pnpm build` 0; brand/surface/cognitive guards PASS. GitHub CI on the new SHA not yet attached |
@@ -110,12 +110,12 @@ Remote branch `blog/governed-ai-agents-smb-msp-revops` still carries the same pu
 
 No cached 404 observed on canonical production URLs at verification time. If 404s reappear after deploy, inspect `x-vercel-cache`, `age`, and `x-matched-path` before attributing to CDN alone.
 
-### Preview verification (PR #298)
+### Preview verification (PR #298 @ `224d79a3`)
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| `/blog` index lists MSP post | NOT_RUN this SHA | Re-run on Vercel preview after push of merge + regression test |
-| `/blog/governed-ai-for-msps` | NOT_RUN this SHA | Same |
+| Vercel preview anonymous HTTP | BLOCKED | `gravitre-saas-backend-git-feat-gravitre-30-e-b3cc3e-gravitre-ai.vercel.app` → 302 Vercel SSO (not a CDN 404) |
+| Local dev @ `224d79a3` (`localhost:3055`) | PASS | `GET /blog/governed-ai-for-msps` **200**, `x-pathname` set; body contains title + `governed-ai-for-msps-hero`; `/blog` index links slug |
 
 ## Marketplace reconciliation matrix
 
