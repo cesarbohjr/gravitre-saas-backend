@@ -603,7 +603,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   if (isLoading && !data) {
     return (
       <AppShell title={`Run ${id}`}>
-        <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+        <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]" data-composition="operate">
           <GravitrePageHeader
             eyebrow="Execution"
             title="Run detail"
@@ -620,7 +620,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
   return (
     <AppShell title={`Run ${id}`}>
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]" data-composition="operate">
         <GravitrePageHeader
           className="shrink-0"
           eyebrow="Outcome"
