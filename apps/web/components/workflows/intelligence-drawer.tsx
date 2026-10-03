@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
 
+  GitBranch,
   X,
   Beaker,
   ShieldAlert,
