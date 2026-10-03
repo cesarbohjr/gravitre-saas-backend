@@ -186,7 +186,8 @@ export default function BillingPage() {
 
   return (
     <AppShell title="Settings">
-      <div data-composition="configure" className="h-full min-h-0">\n      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+      <div data-composition="configure" className="h-full min-h-0">
+      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
         <SettingsShell
           activeSection="billing"
           isAdmin={isAdmin}
@@ -203,7 +204,9 @@ export default function BillingPage() {
             <BillingPageInner isAdmin={isAdmin} />
           )}
         </SettingsShell>
-      </Suspense>\n      </div>\n    </AppShell>
+      </Suspense>
+      </div>
+    </AppShell>
   )
 }
 
