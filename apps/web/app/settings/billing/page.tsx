@@ -5,12 +5,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
-import {
-  MorphingBackground,
-  AnimatedCounter,
-  StatusBeacon,
-  ActivityIndicator
-} from "@/components/gravitre/premium-effects"
+import { StatusBeacon } from "@/components/gravitre/premium-effects"
 import { 
   ComposedChart,
   Area, 
