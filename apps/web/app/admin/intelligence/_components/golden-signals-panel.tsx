@@ -114,7 +114,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
   return (
     <section
       data-testid="golden-signals-panel"
-      className={cn("rounded-2xl border border-border/60 bg-card/40 p-4 sm:p-5", className)}
+      className={cn("rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] sm:p-5", className)}
       aria-label="Platform health"
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
