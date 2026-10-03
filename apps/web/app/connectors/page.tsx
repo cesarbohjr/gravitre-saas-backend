@@ -1425,7 +1425,7 @@ function AddConnectorModal({
                   const colorMap: Record<string, { active: string, inactive: string }> = {
                     emerald: { active: "bg-emerald-500 text-white", inactive: "hover:bg-emerald-500/10 hover:text-emerald-800 dark:hover:text-emerald-400" },
                     blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-800 dark:hover:text-blue-400" },
-                    signal: { active: "bg-[color:var(--g-signal)] text-white", inactive: "hover:bg-[color:var(--g-signal-surface)] hover:text-[color:var(--g-signal)]" },
+                    violet: { active: "bg-[color:var(--g-signal)] text-white", inactive: "hover:bg-[color:var(--g-signal-surface)] hover:text-[color:var(--g-signal)]" },
                     amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-400" },
                     pink: { active: "bg-pink-500 text-white", inactive: "hover:bg-pink-500/10 hover:text-pink-400" },
                     cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-800 dark:hover:text-cyan-400" },
