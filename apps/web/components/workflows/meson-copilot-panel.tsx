@@ -492,7 +492,7 @@ export function MesonCopilotPanel({
                 disabled={editLoading || !editInstruction.trim()}
                 onClick={() => void handleProposeEdit()}
               >
-                {editLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                {editLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wrench className="h-3 w-3" />}
                 Propose diff
               </Button>
               <Button
