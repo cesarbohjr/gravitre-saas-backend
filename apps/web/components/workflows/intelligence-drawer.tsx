@@ -322,7 +322,7 @@ export function WorkflowIntelligenceDrawer({
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Sparkles className="h-4 w-4" />
+                  <GitBranch className="h-4 w-4" />
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold leading-tight text-foreground">
