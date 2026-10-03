@@ -128,7 +128,7 @@ export function HomeDashboard({
   }
 
   return (
-    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-[color:var(--g-canvas)]">
+    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-[color:var(--g-canvas)]" data-composition="operate">
       {/* Operating command strip — identity, live state, AI command line, range and layout controls */}
       <div
         data-dashboard-command-strip=""
@@ -270,7 +270,7 @@ export function HomeDashboard({
               <Link href={APP_ROUTES.plays} className="text-xs font-medium text-foreground underline-offset-4 hover:underline">View plays</Link>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-divide p-3">
+              <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] p-3">
                 <p className={TYPE.meta}>Verified results</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums">{data.playImpact.verifiedResultCount}</p>
               </div>
@@ -357,8 +357,8 @@ export function HomeDashboard({
                 key={widget.id}
                 className={cn(
                   "relative min-w-0",
-                  editMode && "rounded-[var(--np-radius-lg)] ring-offset-2",
-                  isDropTarget && "ring-2 ring-[color:var(--brand)]/40",
+                  editMode && "rounded-[10px] ring-offset-2",
+                  isDropTarget && "ring-2 ring-[color:var(--g-emerald)]/35",
                 )}
                 style={{
                   gridColumn: `${widget.x + 1} / span ${widget.w}`,
