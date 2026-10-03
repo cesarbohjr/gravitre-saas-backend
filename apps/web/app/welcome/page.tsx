@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Plug,
-  Sparkles,
+  Compass,
   Store,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,7 @@ import {
   type WelcomeRoleId,
 } from "@/lib/welcome-flow"
 import { cn } from "@/lib/utils"
-import { GlowOrb, GridPattern, ParticleField } from "@/components/gravitre/premium-effects"
+import { GridPattern } from "@/components/gravitre/premium-effects"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
 
 const STEPS = [
@@ -176,7 +176,7 @@ export default function WelcomePage() {
             <motion.div
               className={cn(
                 "h-1 rounded-full",
-                index <= stepIndex ? "bg-emerald-500" : "bg-muted",
+                index <= stepIndex ? "bg-[color:var(--g-emerald)]" : "bg-muted",
               )}
               initial={false}
               animate={
@@ -202,7 +202,7 @@ export default function WelcomePage() {
           {stepIndex === 0 && (
             <StepShell
               key="role"
-              icon={Sparkles}
+              icon={Compass}
               title="What brings you to Gravitre?"
               description="We'll tailor your home dashboard, marketplace recommendations, and first suggested prompt."
             >
