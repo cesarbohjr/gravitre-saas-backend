@@ -70,7 +70,7 @@ export default function AdminIntelligencePage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className={PAGE_FRAME}>
+      <div className={PAGE_FRAME} data-composition="understand">
         <GravitrePageHeader
           title={copy.title}
           description={copy.description}
