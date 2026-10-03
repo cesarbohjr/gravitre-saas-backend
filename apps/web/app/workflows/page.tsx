@@ -509,7 +509,7 @@ export default function WorkflowsPage() {
                 <div key={metric.label} className="group flex min-h-24 items-start justify-between rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 text-left">
                   <div><p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{metric.label}</p><p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{Math.max(0, metric.value)}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>
                   <metric.icon className="h-4 w-4 text-[color:var(--g-emerald-deep)] opacity-75 transition-opacity group-hover:opacity-100" />
-                </button>
+                </div>
               ))}
             </div>
           )}
