@@ -293,7 +293,7 @@ export default function AgentKnowledgePage({ params }: { params: Promise<{ id: s
 
   return (
     <AppShell title="Knowledge">
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]" data-composition="manage">
         <Suspense fallback={<Spinner size="lg" className="mx-auto mt-20" />}>
           <AgentKnowledgePageBody agentId={agentId} />
         </Suspense>
