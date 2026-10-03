@@ -54,6 +54,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
 import { FleetControls, FleetControlsCollapsed, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
+import { AgentCapabilityOverview } from "@/components/agents/fleet-v4/agent-capability-overview"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
 import type { AgentDepartmentId, AgentRuntimeState } from "@/components/agents/fleet-v4/types"
 import {
@@ -838,6 +839,7 @@ export default function AgentsPage() {
             <>
               <GravitrePageHeader
                 className="shrink-0"
+                eyebrow="Manage / Identity + capability"
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description="A team of specialists. See who is working, what they can do, and where attention is needed."
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
@@ -933,6 +935,10 @@ export default function AgentsPage() {
 
           {/* LIST / TEAM / GRAPH — no decorative atmosphere */}
           <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-4">
+            {!chromeCollapsed && !error && !isLoading && prefs.view !== "graph" && fleetAgents.length > 0 ? (() => {
+              const overviewAgent = fleetAgents.find((agent) => agent.id === visibleSelectedAgent?.id) ?? fleetAgents[0]
+              return <AgentCapabilityOverview agent={overviewAgent} connectedSystems={agentsById.get(overviewAgent.id)?.connectedSystems ?? []} onInspect={selectAgentById} />
+            })() : null}
             <div className="relative z-10 w-full min-h-[360px] flex-1 sm:min-h-0">
               {error ? (
                 <WorkSectionErrorCard

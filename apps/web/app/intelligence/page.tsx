@@ -59,7 +59,7 @@ import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-fo
 import { relationsForSelection, selectionForMapNode } from "@/lib/intelligence/selection-relations"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { ExtrovertSummary } from "@/components/gravitre/extrovert-summary"
 
 const ADVANCED_LINK_GROUPS = [
   {
@@ -424,18 +424,24 @@ function IntelligenceCenterInner() {
       <div className="relative bg-[color:var(--g-canvas)]" data-composition="understand">
         <IntelligenceSectionRedirect />
 
-        {/* Investigation toolbar — identity, hub sections, freshness and journey in one line */}
+        <header className="px-4 pt-6 md:px-5">
+          <p className={TYPE.eyebrow}>Understand / Evidence before answers</p>
+          <h1 className="mt-2 font-[family-name:var(--font-space-grotesk)] text-[30px] font-medium leading-tight text-foreground sm:text-[32px]">{copy.title}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">What is changing across the business?</p>
+          <div className="py-5">
+            <ExtrovertSummary label="Intelligence snapshot summary" items={[
+              { label: "Signals in view", value: signalsLoading ? null : signals.length },
+              { label: "Known entities", value: canonicalMetrics?.knowledge?.knownEntities ?? null },
+              { label: "Known relationships", value: canonicalMetrics?.knowledge?.knownRelationships ?? null, tone: "brand" },
+              { label: "Recorded outcomes", value: outcomes ? totalEvents : null },
+            ]} />
+          </div>
+        </header>
+        {/* Investigation tools retain freshness, lenses, journey, and evidence. */}
         <div
           data-investigation-toolbar=""
           className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-3 md:px-5"
         >
-          <h1 className={cn(TYPE.sectionTitle, "flex items-center gap-2 pb-2.5")}>
-            <NucleoIntelligence className="h-4 w-4" aria-hidden />
-            {copy.title}
-            <span className="sr-only">
-              — how your agents, systems, and knowledge connect. Select anything on the field to see the evidence.
-            </span>
-          </h1>
           <IntelligenceHubTabs active="overview" className="min-w-0 flex-1" />
           <div className="flex items-center gap-4 pb-2">
             <IntelligenceFreshnessBar
@@ -451,10 +457,10 @@ function IntelligenceCenterInner() {
 
         {/* Field-primary: the field owns the first viewport; insight and evidence rails are edge-attached */}
         <section className="relative border-b border-divide">
-          <div className="relative z-10 grid md:grid-cols-2 xl:h-[calc(100dvh-6.75rem)] xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
+          <div className="relative z-10 grid md:grid-cols-2 xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
             <aside
               aria-label="Insight"
-              className="order-2 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 md:border-r xl:order-1 xl:overflow-y-auto xl:border-t-0"
+              className="order-2 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-4 py-4 md:border-r xl:order-1 xl:overflow-y-auto xl:border-t-0"
             >
               <InsightRail
                 signals={signals}
@@ -519,7 +525,7 @@ function IntelligenceCenterInner() {
             </div>
             <aside
               aria-label="Evidence"
-              className="order-3 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 xl:overflow-y-auto xl:border-l xl:border-t-0"
+              className="order-3 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-4 py-4 xl:overflow-y-auto xl:border-l xl:border-t-0"
             >
               <EvidenceRail
                 selected={askSelected}

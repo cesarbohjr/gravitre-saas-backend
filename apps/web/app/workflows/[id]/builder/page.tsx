@@ -2969,7 +2969,7 @@ function ConfigPanel({
 
   return (
     <Sheet open={!!node} onOpenChange={() => onClose()}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
+      <SheetContent className="w-full max-w-full sm:w-[540px] overflow-y-auto px-6">
         {content}
       </SheetContent>
     </Sheet>
@@ -3069,7 +3069,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>("configure")
   const [mesonAttention, setMesonAttention] = useState(false)
   const mesonPanelOpen = inspectorMode === "meson"
-  const isNarrowViewport = useIsMobile()
+  const isNarrowViewport = useIsMobile(1024)
   const prevNodeCountRef = useRef(0)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
   const [intelligenceInitialTab, setIntelligenceInitialTab] = useState<"simulate" | "risk" | "dryrun">("simulate")
@@ -4606,7 +4606,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     className="group flex min-w-0 items-center gap-1.5 rounded-[5px] px-1.5 py-1 transition-colors hover:bg-[color:var(--g-chrome-hover)]"
                     title="Switch workflow"
                   >
-                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px]">
+                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px] font-[family-name:var(--font-space-grotesk)]">
                       {workflowMeta.name}
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
@@ -4860,12 +4860,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         </div>
 
         {/* Main content */}
-        <div className="flex flex-1 min-h-0 flex-col md:flex-row md:bg-[color:var(--g-chrome)]">
+        <div className="flex flex-1 min-h-0 flex-col lg:flex-row lg:bg-[color:var(--g-chrome)]">
           <BuilderNav workflowId={id} />
           {/* Left library panel - conditionally shown */}
           {libraryPanelOpen && (
           <div 
-            className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-card flex flex-col max-h-[40vh] md:max-h-none overflow-hidden relative animate-in slide-in-from-left-2 duration-200"
+            className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-border bg-card flex flex-col max-h-[40vh] lg:max-h-none overflow-hidden relative animate-in slide-in-from-left-2 duration-200"
             onMouseEnter={resetPanelTimer}
             onClick={resetPanelTimer}
           >
@@ -6123,8 +6123,32 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             ) : null}
           </BuilderInspector>
 
-          {/* Below md the inspector folds into sheets so configuration and Meson stay reachable. */}
+          {/* Below lg the inspector folds into sheets so configuration and Meson stay reachable. */}
           {isNarrowViewport ? renderConfigPanel(false) : null}
+          {isNarrowViewport ? (
+            <Sheet open={inspectorMode === "trace"} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
+              <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 overflow-y-auto p-0">
+                <SheetHeader className="border-b border-border px-4 py-3">
+                  <SheetTitle className="text-[15px]">Run trace</SheetTitle>
+                  <SheetDescription className="text-xs">Execution progress and evidence for this workflow.</SheetDescription>
+                </SheetHeader>
+                <BuilderRunTrace
+                  status={executionStatus}
+                  step={executionStep}
+                  total={nodes.length}
+                  elapsedSeconds={executionElapsed}
+                  error={executionError}
+                  lastRunId={lastRunId}
+                  traceOverlay={traceOverlay}
+                  onToggleTraceOverlay={() => setTraceOverlay((on) => !on)}
+                  onSelectNode={(nodeId) => { setSelectedNodeId(nodeId); changeInspectorMode("configure") }}
+                  nodes={[...nodes]
+                    .sort((x, y) => x.position.x - y.position.x || x.position.y - y.position.y)
+                    .map((n) => ({ id: n.id, name: n.name, typeLabel: getNodeTypeConfig(n.type).label, state: n.state, stepError: n.stepError }))}
+                />
+              </SheetContent>
+            </Sheet>
+          ) : null}
           {isNarrowViewport ? (
             <Sheet open={mesonPanelOpen} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
               <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 p-0">

@@ -38,7 +38,6 @@ export function ProductFrame({
   chromeLabel = "gravitre.app",
   treatment = "full",
   priority = false,
-  glowTone = "intelligence",
   className,
   secondarySrc,
   secondaryAlt,
@@ -48,13 +47,6 @@ export function ProductFrame({
   const isFade = treatment === "fade-system"
   const isDetail = treatment === "detail"
   const isStacked = treatment === "stacked" && Boolean(secondarySrc)
-
-  const glowClass =
-    glowTone === "operational"
-      ? "bg-[color:var(--g-emerald)]/10"
-      : glowTone === "intelligence"
-        ? "bg-[color:var(--g-intelligence)]/8"
-        : ""
 
   const frame = (
     <div
@@ -100,13 +92,6 @@ export function ProductFrame({
 
   return (
     <figure className={cn("relative flex flex-col gap-3", className)}>
-      {glowTone !== "none" ? (
-        <div
-          aria-hidden
-          className={cn("absolute -inset-6 rounded-[2rem] blur-3xl opacity-55", glowClass)}
-        />
-      ) : null}
-
       <motion.div
         initial={reduced ? false : { opacity: 0, y: 28, rotateX: isPerspective ? 8 : 0 }}
         whileInView={{ opacity: 1, y: 0, rotateX: isPerspective ? 6 : 0 }}

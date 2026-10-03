@@ -296,3 +296,24 @@ Verification of the changed working tree:
 | Browser / owner-live acceptance | NOT_RUN for this patch | No visual or owner acceptance claimed |
 
 MERGE_READY = NO. CAUGHT_UP = NO. Continue the full route/pack design work after obtaining an accessible authoritative Figma source; this bounded fix is not completion of the design sprint.
+
+## Continued Figma implementation — 2026-10-03
+
+Base: `35ea020793bb392f7fbcb99e5833ee0cb2d02fdb`. Historical evidence above does not validate this patch. The earlier MCP plan-limit blocker is resolved: page 03 frames are now accessible. The file exposes no local variable collections or styles; exact layer fills and typography were extracted, as documented in `gravitre-figma-token-provenance.md`. Do not describe this as a variable export.
+
+| Surface / Figma frame | Changes implemented on existing routes | Remaining acceptance |
+| --- | --- | --- |
+| Agents `10:52` | Emerald identity overview and capability panel for the actual filtered roster; saved icon/color/ID preserved; model, workflow count and explicit connected systems; working inspect/configuration actions | Authenticated roster, save/history, desktop/mobile comparison |
+| Intelligence `10:5` | Space Grotesk heading, actual snapshot summary, carbon graph canvas and light evidence rails; filters, lenses, relationships, map controls and analytical data retained | Authenticated map interaction, evidence/filter correctness and responsive geometry |
+| Operate / Activity `10:101` | Current-view counts for running, approval, completed and verified; successful execution is not verification; filter scope disclosed | Queue/decision persistence and owner evidence |
+| Builder `10:159`, responsive `20:2` | Carbon inspector, tablet cutover at 1024px, configuration/Meson/trace sheets, phone-width configuration sheet; real canvas, persistence and run actions retained | Desktop/tablet/mobile render; persist and approved safe run |
+| Analytics `14:2` | Flat KPI surfaces, display typography, semantic Figma chart palette, readable carbon tooltips, unique sparkline gradient IDs; dynamic charts and series retained | Live values, legends/tooltips, chart density and mobile disclosure |
+| Shared / marketing | Display-font product headings, stable live dots, decorative screenshot-wrapper glow removed | Rendered regression across affected routes |
+
+New regression coverage checks saved agent inspection IDs, absence of inferred connected systems, tablet/phone breakpoint changes and subscription cleanup, filtered activity counts and verification truth. Figma specimen numbers, names, charts and statuses were not substituted for live data.
+
+The full plan remains incomplete. Prior Marketplace changes are published at the base SHA; nested real-pack install/readiness/failure acceptance remains pending. No new prices, claims, badges, catalog entries or Enable toggles were added. The MSP article restoration is outside this patch and must remain intact.
+
+Visual / OWNER_LIVE = NOT_RUN for this patch. The local browser service blocks localhost; the external preview requires sign-in. Historical fixture screenshots are not evidence for the newly changed layouts. IMPLEMENTATION_COMPLETE = NO; MERGE_READY = NO; CAUGHT_UP = NO. Required GitHub CI must be checked on the published candidate SHA.
+
+Local verification: full Vitest 1,147 passed in 189 files; TypeScript passed; full ESLint 0 errors / 275 warnings; production Next.js build passed (including the tablet trace sheet); chat-surface, status-leak, intelligence-surface and brand guards passed. Cognitive regression guard passed with Python import smoke and targeted pytest skipped by that script. `git diff --check` passed. The first pnpm invocation aborted before running checks because it attempted dependency installation; the reported checks were subsequently run successfully with npm against the installed dependencies.

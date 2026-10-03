@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
@@ -288,33 +288,24 @@ function MetricCard({
   accentColor?: "blue" | "emerald" | "amber" | "red"
 }) {
   const isPositive = change === undefined ? null : change >= 0
-  const colorClasses = {
-    blue: "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400",
-    emerald: "from-emerald-500/20 to-emerald-500/5 text-emerald-700 dark:text-emerald-400",
-    amber: "from-amber-500/20 to-amber-500/5 text-amber-700 dark:text-amber-400",
-    red: "from-red-500/20 to-red-500/5 text-red-600 dark:text-red-400",
+  const gradientId = `metric-${useId().replace(/:/g, "")}`
+  const accents = {
+    blue: { color: "var(--g-electric)", surface: "bg-[color:color-mix(in_srgb,var(--g-electric)_5%,white)]" },
+    emerald: { color: "var(--g-emerald)", surface: "bg-[color:var(--g-emerald-pale)]" },
+    amber: { color: "var(--g-warmth)", surface: "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,white)]" },
+    red: { color: "var(--g-danger)", surface: "bg-[color:color-mix(in_srgb,var(--g-danger)_6%,white)]" },
   }
+  const accent = accents[accentColor]
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
+      className={cn("relative overflow-hidden rounded-[10px] border border-divide", accent.surface)}
     >
-      {/* Background gradient */}
-      <div className={cn(
-        "absolute inset-0 bg-gradient-to-br opacity-30",
-        colorClasses[accentColor]
-      )} />
-      
       <div className="relative p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-lg",
-            `bg-${accentColor}-500/10`
-          )}>
-            <Icon className={cn("h-5 w-5", colorClasses[accentColor].split(" ").pop())} />
-          </div>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <p className="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground"><Icon className="size-4 shrink-0" style={{ color: accent.color }} aria-hidden />{title}</p>
           {change !== undefined && (
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium",
@@ -326,8 +317,8 @@ function MetricCard({
           )}
         </div>
         
-        <p className="text-2xl font-semibold text-foreground mb-1">{value}</p>
-        <p className="text-xs text-muted-foreground">{title}</p>
+        <p className="mb-1 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tabular-nums text-foreground">{value}</p>
+        {changeLabel ? <p className="text-xs text-muted-foreground">{changeLabel}</p> : null}
         
         {/* Mini sparkline */}
         {trend && (
@@ -335,17 +326,17 @@ function MetricCard({
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trend.map((v, i) => ({ v }))}>
                 <defs>
-                  <linearGradient id={`spark-${accentColor}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={`var(--${accentColor}-500)`} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={`var(--${accentColor}-500)`} stopOpacity={0} />
+                  <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={accent.color} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={accent.color} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <Area
                   type="monotone"
                   dataKey="v"
-                  stroke={`oklch(0.65 0.18 ${accentColor === 'emerald' ? 145 : accentColor === 'amber' ? 75 : accentColor === 'red' ? 25 : 250})`}
+                  stroke={accent.color}
                   strokeWidth={1.5}
-                  fill={`url(#spark-${accentColor})`}
+                  fill={`url(#${gradientId})`}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -408,11 +399,11 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   if (!active || !payload?.length) return null
   
   return (
-    <div className="rounded-lg border border-border bg-card/95 backdrop-blur-sm px-3 py-2 shadow-lg">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+    <div role="tooltip" className="rounded-lg border border-white/10 bg-[color:var(--g-carbon)] px-3 py-2 text-white shadow-lg">
+      <p className="mb-1 text-xs text-white/70">{label}</p>
       {(payload as { name: string; value: number; color: string }[]).map((entry, i) => (
-        <p key={i} className="text-xs font-medium" style={{ color: entry.color }}>
-          {entry.name}: {entry.value.toLocaleString()}
+        <p key={i} className="flex items-center gap-2 text-xs font-medium">
+          <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: entry.color }} aria-hidden />{entry.name}: {entry.value.toLocaleString()}
         </p>
       ))}
     </div>
@@ -643,17 +634,17 @@ export default function MetricsPage() {
                     <AreaChart data={runData}>
                       <defs>
                         <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="oklch(0.65 0.18 145)" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="oklch(0.65 0.18 145)" stopOpacity={0} />
+                          <stop offset="5%" stopColor="var(--g-emerald)" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="var(--g-emerald)" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0} />
+                          <stop offset="5%" stopColor="var(--g-danger)" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="var(--g-danger)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
-                      <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--g-border-subtle)" vertical={false} />
+                      <XAxis dataKey="time" tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip content={<ChartTooltip />} />
                       <Area
                         type="monotone"
@@ -668,7 +659,7 @@ export default function MetricsPage() {
                         type="monotone"
                         dataKey="failed"
                         name="Failed"
-                        stroke="oklch(0.55 0.22 25)"
+                        stroke="var(--g-danger)"
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorFailed)"
@@ -714,20 +705,20 @@ export default function MetricsPage() {
                     <LineChart data={latencyData}>
                       <defs>
                         <linearGradient id="latencyGlow" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="oklch(0.65 0.2 250)" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="oklch(0.65 0.2 250)" stopOpacity={0} />
+                          <stop offset="0%" stopColor="var(--g-electric)" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="var(--g-electric)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
-                      <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--g-border-subtle)" vertical={false} />
+                      <XAxis dataKey="time" tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip content={<ChartTooltip />} />
                       {latencySpikeTime ? (
-                        <ReferenceLine x={latencySpikeTime} stroke="oklch(0.75 0.15 75)" strokeDasharray="3 3" />
+                        <ReferenceLine x={latencySpikeTime} stroke="var(--g-warmth)" strokeDasharray="3 3" />
                       ) : null}
-                      <Line type="monotone" dataKey="p50" name="P50" stroke="oklch(0.65 0.2 250)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="p95" name="P95" stroke="oklch(0.75 0.15 75)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="p99" name="P99" stroke="oklch(0.55 0.22 25)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p50" name="P50" stroke="var(--g-electric)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p95" name="P95" stroke="var(--g-warmth)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p99" name="P99" stroke="var(--g-danger)" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                   <div className="flex items-center justify-center gap-6 mt-3">
@@ -755,18 +746,18 @@ export default function MetricsPage() {
                 <div className="p-4">
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={throughputData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
-                      <XAxis dataKey="day" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--g-border-subtle)" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={<ChartTooltip />} />
                       {throughputTarget > 0 && (
                         <ReferenceLine
                           y={throughputTarget}
-                          stroke="oklch(0.65 0.18 145)"
+                          stroke="var(--g-emerald)"
                           strokeDasharray="5 5"
                           label={{
                             value: "Target",
-                            fill: "oklch(0.65 0.18 145)",
+                            fill: "var(--g-emerald)",
                             fontSize: 10,
                             position: "right",
                           }}
@@ -775,7 +766,7 @@ export default function MetricsPage() {
                       <Bar 
                         dataKey="records" 
                         name="Records"
-                        fill="oklch(0.65 0.2 250)" 
+                        fill="var(--g-electric)"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
