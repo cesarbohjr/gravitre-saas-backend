@@ -68,8 +68,8 @@ Implementation frames on page 03:
 | Field | Value |
 | --- | --- |
 | ACTIVE_BRANCH | `feat/gravitre-3.0-extrovert-design` |
-| COMPLETION_PR | opening as draft (single completion PR) |
-| CANDIDATE_SHA | pending push |
+| COMPLETION_PR | [draft #298](https://github.com/cesarbohjr/gravitre-saas-backend/pull/298) |
+| CANDIDATE_SHA | `4a4fff1e` (CI in progress; later commits supersede) |
 | IMPLEMENTATION_COMPLETE | NO |
 | AUTOMATED_CHECKS | NOT_RUN |
 | BILLING_E2E | NOT_APPLICABLE (no billing scope in this slice) |

@@ -378,7 +378,7 @@ function AnalyticsScreen() {
             <div className="text-lg font-bold text-foreground leading-tight">{stat.value}</div>
             <div className={`text-xs mt-1 ${
               stat.color === 'emerald' ? 'text-emerald-400' :
-              stat.color === 'blue' ? 'text-blue-400' : 'text-purple-400'
+              stat.color === 'blue' ? 'text-blue-400' : 'text-[color:var(--g-electric)]'
             }`}>
               {stat.change}
             </div>
