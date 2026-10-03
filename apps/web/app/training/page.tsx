@@ -539,7 +539,7 @@ function TrainingPageContent() {
 
   return (
     <AppShell title={SURFACE_COPY.training.title}>
-      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6" data-composition="create">
         <AgentsHubTabs active="training" />
         <LearningSurfacesCallout current="agent-training" />
 
@@ -593,7 +593,7 @@ function TrainingPageContent() {
         )}
 
         {agentFilterId && filteredAgent ? (
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="rounded-[8px] border border-[color:var(--g-emerald)]/20 bg-[color:var(--g-emerald-pale)] px-4 py-3 text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-muted-foreground">
               Training knowledge for <span className="font-medium text-foreground">{filteredAgent.name}</span>
             </span>
@@ -609,14 +609,14 @@ function TrainingPageContent() {
         ) : null}
 
         {!loadError && orgReady && datasets.length === 0 && jobs.length === 0 && instructions.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-emerald-500/25 bg-emerald-500/5 px-4 py-4 text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="rounded-[10px] border border-dashed border-[color:var(--g-emerald)]/25 bg-[color:var(--g-surface-2)] px-4 py-4 text-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-muted-foreground">
               No training datasets, jobs, or instructions yet. Create a dataset below or load starter examples.
             </span>
             <Button
               size="sm"
               variant="outline"
-              className="border-emerald-500/30 hover:bg-emerald-500/10"
+              className="border-[color:var(--g-emerald)]/30 hover:bg-[color:var(--g-emerald-pale)]"
               disabled={isCreatingStarter}
               onClick={() => void handleCreateStarterDataset()}
             >

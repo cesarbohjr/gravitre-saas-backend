@@ -71,7 +71,7 @@ function StageTooltip({
     <div className="rounded-lg border border-border/70 bg-card px-3 py-2 text-xs shadow-lg">
       <p className="font-medium capitalize text-foreground">{label}</p>
       <p className="mt-1 text-muted-foreground">
-        Avg <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{avg} ms</span>
+        Avg <span className="font-semibold tabular-nums text-[color:var(--g-emerald-deep)]">{avg} ms</span>
       </p>
       {p95 > 0 ? (
         <p className="text-muted-foreground">
@@ -156,13 +156,13 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-emerald-500/[0.05] p-5 shadow-sm"
+        className="relative overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]"
       >
         <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-              <Gauge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/20">
+              <Gauge className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
             </span>
             <div>
               <h3 className="text-base font-semibold text-foreground">Speed vs carefulness</h3>
@@ -183,10 +183,10 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
               transition={{ delay: index * 0.05 }}
               onClick={() => void saveMode(option.value)}
               className={cn(
-                "rounded-xl border p-4 text-left transition-all",
+                "rounded-[8px] border p-4 text-left transition-colors",
                 mode === option.value
-                  ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-500/20"
-                  : "border-border/70 bg-background/50 hover:border-emerald-500/25 hover:bg-background/80",
+                  ? "border-[color:var(--g-emerald)]/35 bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/15"
+                  : "border-divide bg-[color:var(--g-surface-2)] hover:border-[color:var(--g-emerald)]/25 hover:bg-[color:var(--g-surface-1)]",
               )}
             >
               <p className="text-sm font-medium text-foreground">{option.label}</p>
@@ -219,7 +219,7 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
 
       {isLoading || !dashboard ? (
         <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/70 bg-card/40 px-4 py-8 text-sm text-muted-foreground">
-          <Sparkles className="h-4 w-4 animate-pulse text-emerald-500" />
+          <Gauge className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
           Loading performance metrics…
         </div>
       ) : (

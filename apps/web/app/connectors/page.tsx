@@ -743,7 +743,7 @@ function ConnectorTopologyCard({
               {connectorNeedsOAuthReconnect(connector) && onReconnect && (
                   <button
                     type="button"
-                    className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                    className="text-[10px] text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
                     onClick={() => void onReconnect(connector)}
                   >
                     {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
@@ -751,7 +751,7 @@ function ConnectorTopologyCard({
                 )}
               <Link 
                 href={`/connectors/${connector.id}`}
-                className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                className="text-[10px] text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 Details
@@ -1457,7 +1457,7 @@ function AddConnectorModal({
                     <p className="text-sm text-muted-foreground">No connectors found</p>
                     <button 
                       onClick={() => { setSearchQuery(""); setModalCategoryFilter("all"); }}
-                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-1"
+                      className="text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 mt-1"
                     >
                       Clear filters
                     </button>
@@ -1504,7 +1504,7 @@ function AddConnectorModal({
                                   : !connector.partner && !isShippedConnector(connector)
                                   ? "bg-zinc-500/10 text-zinc-400"
                                   : connector.authType === "oauth"
-                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                    ? "bg-blue-500/10 text-[color:var(--g-emerald-deep)]"
                                     : connector.authType === "webhook"
                                       ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
                                       : "bg-warning/10 text-warning"
@@ -1545,7 +1545,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">OAuth</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-[color:var(--g-emerald-deep)] font-medium">OAuth</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1567,7 +1567,7 @@ function AddConnectorModal({
                 {oauthStatus === "idle" && (
                   <div className="space-y-4">
                     <div className="mx-auto h-16 w-16 rounded-full bg-blue-500/10 flex items-center justify-center">
-                      <Globe className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                      <Globe className="h-8 w-8 text-[color:var(--g-emerald-deep)]" />
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-foreground">Connect with {selectedType}</h3>
@@ -1619,7 +1619,7 @@ function AddConnectorModal({
                             href="https://docs.apollo.io/docs/use-oauth-20-authorization-flow-to-access-apollo-user-information-partners"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                            className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300"
                           >
                             Apollo OAuth partner guide
                             <ExternalLink className="h-3 w-3" />
@@ -2011,7 +2011,7 @@ function AddConnectorModal({
                         href="https://university.clay.com/docs/using-clay-as-an-api"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300"
                       >
                         Clay API guide
                         <ExternalLink className="h-3 w-3" />
@@ -2053,7 +2053,7 @@ function AddConnectorModal({
                         href="https://www.twilio.com/docs/iam/api-keys"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300"
                       >
                         Twilio API keys guide
                         <ExternalLink className="h-3 w-3" />
@@ -2181,7 +2181,7 @@ function AddConnectorModal({
                   <button
                     type="button"
                     onClick={switchToOAuthAuth}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline-offset-2 hover:underline"
+                    className="text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 underline-offset-2 hover:underline"
                   >
                     Connect with OAuth instead
                   </button>
@@ -2934,7 +2934,7 @@ function ConnectorsPageContent() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-col" data-testid="connectors-hub-b">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-col" data-testid="connectors-hub-b" data-composition="manage">
         <GravitrePageHeader
           title={SURFACE_COPY.pages.connectors.headline}
           description={chromeCollapsed ? undefined : SURFACE_COPY.pages.connectors.description}
@@ -3044,7 +3044,7 @@ function ConnectorsPageContent() {
                       className={cn(
                         "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all",
                         statusFilter === status.value
-                          ? "border-divide bg-[color:var(--g-surface-1)] text-foreground shadow-[var(--np-shadow)]"
+                          ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
                           : "border-transparent text-muted-foreground hover:text-foreground",
                       )}
                     >
@@ -3065,14 +3065,14 @@ function ConnectorsPageContent() {
                       <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
                         <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                         All Categories
-                        {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-600 dark:text-blue-400" />}
+                        {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-[color:var(--g-emerald-deep)]" />}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {Object.entries(connectorCategories).map(([cat, data]) => (
                         <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
                           <span className="flex-1">{cat}</span>
                           <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
-                          {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-600 dark:text-blue-400" />}
+                          {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-[color:var(--g-emerald-deep)]" />}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
@@ -3092,7 +3092,7 @@ function ConnectorsPageContent() {
                       className={cn(
                         "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all",
                         statusFilter === status.value
-                          ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
+                          ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] shadow-[var(--np-shadow)]"
                           : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
                       )}
                     >
@@ -3114,7 +3114,7 @@ function ConnectorsPageContent() {
                     <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
                       <LayoutGrid className="h-4 w-4 text-muted-foreground" />
                       All Categories
-                      {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-blue-600 dark:text-blue-400" />}
+                      {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-[color:var(--g-emerald-deep)]" />}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {Object.entries(connectorCategories).map(([cat, data]) => (
@@ -3122,7 +3122,7 @@ function ConnectorsPageContent() {
                         <div className={cn("h-2 w-2 rounded-full", `bg-${data.color}-500`)} />
                         <span className="flex-1">{cat}</span>
                         <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
-                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-blue-600 dark:text-blue-400" />}
+                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-[color:var(--g-emerald-deep)]" />}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>

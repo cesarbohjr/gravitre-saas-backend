@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowFatUp, Brain, CheckCircle, Lightning } from "@phosphor-icons/react"
+import { ArrowFatUp, Stack, CheckCircle, Lightning } from "@phosphor-icons/react"
 import { SectionCard, NotYetPopulated, TabStateGate, formatTime, readNumber } from "./shared"
 
 const PAGE_SIZE = 15
@@ -140,7 +140,7 @@ export function MemoryPromotionTab({ enabled }: { enabled: boolean }) {
         <SectionCard
           title="Memories to share"
           description="When the same useful fact shows up across agents and teams, review it here. Approve to make it available org-wide, or dismiss."
-          icon={<Brain className="h-5 w-5" weight="duotone" aria-hidden />}
+          icon={<Stack className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           {candidates.length > 0 ? (
             <>

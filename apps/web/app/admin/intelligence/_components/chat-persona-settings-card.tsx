@@ -69,7 +69,7 @@ export function ChatPersonaSettingsCard({ enabled }: { enabled: boolean }) {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <UserRound className="h-5 w-5 text-emerald-500" aria-hidden />
+          <UserRound className="h-5 w-5 text-[color:var(--g-emerald-deep)]" aria-hidden />
           <CardTitle>Default response style</CardTitle>
         </div>
         <CardDescription>
@@ -101,13 +101,13 @@ export function ChatPersonaSettingsCard({ enabled }: { enabled: boolean }) {
           </p>
         </div>
 
-        <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+        <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-2)] p-4">
           <p className="text-xs font-medium text-muted-foreground">Available personas</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {personaOptions.map((persona) => (
               <li
                 key={persona.key}
-                className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-sm"
+                className="rounded-[8px] border border-divide bg-[color:var(--g-surface-1)] px-3 py-2 text-sm"
               >
                 <p className="font-medium text-foreground">{persona.label}</p>
                 <p className="text-xs text-muted-foreground">

@@ -59,7 +59,7 @@ export default function PlaysPage() {
 
   return (
     <AppShell>
-      <div className={PAGE_FRAME}>
+      <div className={PAGE_FRAME} data-composition="discover">
         <GravitrePageHeader
           title="Plays"
           description="Turn business goals into coordinated action across your agents, data, and systems."
@@ -75,7 +75,7 @@ export default function PlaysPage() {
           />
         ) : isLoading ? (
           <div className="grid gap-4 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-64 rounded-xl" />)}
+            {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-64 rounded-[10px]" />)}
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-3">
@@ -84,10 +84,10 @@ export default function PlaysPage() {
               const connectorGroups = readiness.connector_groups ?? []
               const connectorReady = connectorGroups.filter((group) => group.ready).length
               return (
-                <article key={play.key} className="flex min-h-64 flex-col rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+                <article key={play.key} className="group flex min-h-64 flex-col rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-emerald)]/25">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-medium tracking-wide text-muted-foreground">Outcome play</p>
+                      <p className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Outcome play</p>
                       <h2 className="mt-1 text-lg font-semibold text-foreground">{play.name}</h2>
                     </div>
                     <Badge variant="outline" className={readinessClasses(state.tone)}>{state.label}</Badge>

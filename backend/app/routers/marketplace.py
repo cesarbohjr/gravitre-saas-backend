@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from typing import Annotated, Any, Literal
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -126,17 +125,6 @@ from app.marketplace.support import (
     upsert_my_asset_review,
 )
 from app.marketplace.service import MarketplaceError, install_asset, preview_install
-from app.marketplace.marketplace3.certification_service import (
-    Marketplace3CertificationError,
-    certify_asset as certify_marketplace3_asset,
-    promote_certified_asset,
-)
-from app.marketplace.marketplace3.certification_runner import (
-    CertificationRunnerError,
-    run_outcome_pack_certification_runner,
-)
-from app.marketplace.marketplace3.pack_audit import audit_catalog_packs
-from app.marketplace.marketplace3.portfolio_readiness import portfolio_readiness_report
 from app.marketplace.versions import MarketplaceVersionError, list_asset_versions, rollback_asset_version
 from app.marketplace.entitlements import (
     AUDIT_CHECKOUT_CREATED,
@@ -247,20 +235,6 @@ def _entitlement_http_error(exc: MarketplaceEntitlementError) -> HTTPException:
     return HTTPException(status_code=status_code, detail={"message": str(exc), "code": exc.code})
 
 
-def _marketplace3_certification_http_error(exc: Marketplace3CertificationError) -> HTTPException:
-    status_code = status.HTTP_400_BAD_REQUEST
-    if exc.code == "NOT_FOUND":
-        status_code = status.HTTP_404_NOT_FOUND
-    elif exc.code in {"CERTIFICATION_REQUIRED"}:
-        status_code = status.HTTP_409_CONFLICT
-    elif exc.code in {"UNSUPPORTED_ASSET_TYPE", "EVIDENCE_SECRET_FORBIDDEN"}:
-        status_code = status.HTTP_400_BAD_REQUEST
-    return HTTPException(
-        status_code=status_code,
-        detail={"message": str(exc), "code": exc.code, **exc.details},
-    )
-
-
 def _convergence_http_error(exc: MarketplaceConvergenceError) -> HTTPException:
     status_code = status.HTTP_400_BAD_REQUEST
     if exc.code == "NOT_FOUND":
@@ -358,30 +332,6 @@ class PublisherOnboardRequest(BaseModel):
 
 class AssetFlagRequest(BaseModel):
     enabled: bool
-
-
-class Marketplace3PilotRequest(BaseModel):
-    org_id: UUID = Field(alias="orgId")
-    install_variables: dict[str, str] = Field(default_factory=dict, alias="installVariables")
-
-    model_config = {"populate_by_name": True, "extra": "forbid"}
-
-
-class Marketplace3CertificationRequest(BaseModel):
-    runtime_evidence: dict[str, Any] = Field(default_factory=dict, alias="runtimeEvidence")
-    outcome_evidence: dict[str, Any] = Field(default_factory=dict, alias="outcomeEvidence")
-
-    model_config = {"populate_by_name": True}
-
-
-class Marketplace3RunnerRequest(BaseModel):
-    runtime_evidence: dict[str, Any] = Field(default_factory=dict, alias="runtimeEvidence")
-    outcome_evidence: dict[str, Any] = Field(default_factory=dict, alias="outcomeEvidence")
-    install_harness: dict[str, bool] = Field(default_factory=dict, alias="installHarness")
-
-    model_config = {"populate_by_name": True}
-
-
 
 
 class LinkRegistryRequest(BaseModel):
@@ -1504,176 +1454,6 @@ async def set_platform_asset_verified(
         raise _flags_http_error(exc) from exc
 
 
-@router.post("/platform/assets/{asset_ref}/marketplace3/install-pilot")
-async def install_platform_marketplace3_pilot(
-    asset_ref: str,
-    body: Marketplace3PilotRequest,
-    user: Annotated[dict, Depends(require_platform_admin)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    environment_name: Annotated[str, Depends(get_environment_context)],
-) -> dict:
-    """Install a governed internal draft into an explicit tenant in OBSERVE mode.
-
-    This administrative pilot does not publish the pack or certify its results.
-    """
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    try:
-        return install_asset(
-            client, str(body.org_id), asset_ref, actor_id=user["user_id"],
-            environment_name=environment_name, install_variables=body.install_variables,
-            _draft_pilot=True,
-        )
-    except MarketplaceError as exc:
-        raise _marketplace_http_error(exc) from exc
-
-
-@router.post("/platform/assets/{asset_ref}/marketplace3/certify")
-async def certify_platform_marketplace3_asset(
-    asset_ref: str,
-    body: Marketplace3CertificationRequest,
-    user: Annotated[dict, Depends(require_platform_admin)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    """Run and persist Marketplace 3.0 certification using evidence references only."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    try:
-        result = certify_marketplace3_asset(
-            client,
-            slug=asset_ref,
-            actor_id=user["user_id"],
-            runtime_evidence=body.runtime_evidence,
-            outcome_evidence=body.outcome_evidence,
-        )
-        write_audit_event(
-            client,
-            org_id="",
-            actor_id=user["user_id"],
-            action="marketplace3.asset.certified",
-            resource_type="marketplace_asset",
-            resource_id=str((result.get("asset") or {}).get("id") or asset_ref),
-            metadata={
-                "slug": asset_ref,
-                "certificationLevel": (result.get("certification") or {}).get("level"),
-                "publishReady": bool((result.get("certification") or {}).get("publishReady")),
-            },
-        )
-        return result
-    except Marketplace3CertificationError as exc:
-        raise _marketplace3_certification_http_error(exc) from exc
-
-
-@router.post("/platform/assets/{asset_ref}/marketplace3/certify-run")
-async def run_platform_marketplace3_certification(
-    asset_ref: str,
-    body: Marketplace3RunnerRequest,
-    user: Annotated[dict, Depends(require_platform_admin)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    """Run Marketplace 3.0 fixture certification. Failures stay blocking."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    try:
-        result = run_outcome_pack_certification_runner(
-            client,
-            slug=asset_ref,
-            actor_id=user["user_id"],
-            runtime_evidence=body.runtime_evidence,
-            outcome_evidence=body.outcome_evidence,
-            install_harness=body.install_harness or None,
-        )
-        write_audit_event(
-            client,
-            org_id="",
-            actor_id=user["user_id"],
-            action="marketplace3.asset.certify_run",
-            resource_type="marketplace_asset",
-            resource_id=asset_ref,
-            metadata={
-                "slug": asset_ref,
-                "fixturePassed": bool(result.get("fixturePassed")),
-                "failedKeys": [row.get("key") for row in (result.get("failedChecks") or [])],
-            },
-        )
-        return result
-    except CertificationRunnerError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"message": str(exc), "code": exc.code, **(exc.details or {})},
-        ) from exc
-
-
-@router.get("/platform/marketplace3/pack-audit")
-async def platform_marketplace3_pack_audit(
-    user: Annotated[dict, Depends(require_platform_admin)],
-) -> dict:
-    """Read-only audit of seeded Marketplace packs against the 3.0 Outcome Pack bar."""
-    del user
-    return audit_catalog_packs()
-
-
-@router.get("/platform/assets/{asset_ref}/marketplace3/blueprint")
-async def platform_marketplace3_blueprint(
-    asset_ref: str,
-    _user: Annotated[dict, Depends(require_platform_admin)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    from app.marketplace.marketplace3.workspace import contract_view
-    from app.marketplace.schemas import OutcomePackAssetConfig
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    try:
-        asset = fetch_marketplace_asset(client, asset_ref)
-        if asset.get("asset_type") != "outcome_pack":
-            raise MarketplaceError("Department pack required", code="NOT_FOUND")
-        return {"asset": {"id": asset["id"], "slug": asset["slug"], "title": asset["title"],
-                          "department": asset.get("department"), "certificationLevel": asset.get("certification_level")},
-                "contract": contract_view(OutcomePackAssetConfig.model_validate(asset["config"])),
-                "measurements": [], "sources": [], "recentRuns": [], "activityLimit": 100}
-    except MarketplaceError as exc:
-        raise _marketplace_http_error(exc) from exc
-
-
-@router.get("/platform/marketplace3/portfolio-readiness")
-async def platform_marketplace3_portfolio_readiness(
-    user: Annotated[dict, Depends(require_platform_admin)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    """Quantified readiness for every first-party Marketplace 3.0 Outcome Pack."""
-    del user
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    return portfolio_readiness_report(client)
-
-
-@router.post("/platform/assets/{asset_ref}/marketplace3/promote")
-async def promote_platform_marketplace3_asset(
-    asset_ref: str,
-    user: Annotated[dict, Depends(require_platform_admin)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    """Promote only evidence-linked production/outcome verified Marketplace 3.0 packs."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    try:
-        result = promote_certified_asset(
-            client,
-            slug=asset_ref,
-            actor_id=user["user_id"],
-        )
-        write_audit_event(
-            client,
-            org_id="",
-            actor_id=user["user_id"],
-            action="marketplace3.asset.promoted",
-            resource_type="marketplace_asset",
-            resource_id=str((result.get("asset") or {}).get("id") or asset_ref),
-            metadata={
-                "slug": asset_ref,
-                "certificationLevel": (result.get("certification") or {}).get("level"),
-                "visibility": (result.get("asset") or {}).get("visibility"),
-            },
-        )
-        return result
-    except Marketplace3CertificationError as exc:
-        raise _marketplace3_certification_http_error(exc) from exc
-
-
 @router.patch("/platform/assets/{asset_ref}/pricing")
 async def update_platform_asset_pricing(
     asset_ref: str,
@@ -1945,23 +1725,6 @@ async def rollback_marketplace_asset_version(
         )
     except MarketplaceVersionError as exc:
         raise _version_http_error(exc) from exc
-
-
-@router.get("/assets/{asset_ref}/workspace")
-async def marketplace_department_workspace(
-    asset_ref: str,
-    _user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict:
-    if org_id is None:
-        raise HTTPException(status_code=403, detail="Organization context required")
-    from app.marketplace.marketplace3.workspace import department_workspace
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    try:
-        return department_workspace(client, org_id, asset_ref)
-    except MarketplaceError as exc:
-        raise _marketplace_http_error(exc) from exc
 
 
 @router.get("/assets/{asset_ref}/install-check")

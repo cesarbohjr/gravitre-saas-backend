@@ -7,17 +7,13 @@ from typing import Any
 
 from app.marketplace.entitlements import asset_requires_payment
 from app.marketplace.service import MarketplaceError, validate_connectors_for_asset
-from app.marketplace.schemas import OutcomePackAssetConfig
-from app.marketplace.marketplace3.certification import certify_outcome_pack
-from app.marketplace.marketplace3.discovery import outcome_pack_discovery_metadata
 
 BROWSE_LIST_COLUMNS = (
     "id, slug, title, description, asset_type, category, department, tags, "
     "visibility, status, pricing_type, price_cents, pack_tier, currency, required_connectors, "
     "install_count, clone_count, average_rating, review_count, current_version, "
     "published_at, publisher_id, org_id, business_outcome, use_case, estimated_hours_saved, "
-    "featured, verified, review_scope, partner_registry_id, config, "
-    "certification_level, certification_report, certification_evidence, certification_updated_at, certified_by, "
+    "featured, verified, review_scope, partner_registry_id, "
     "created_at, updated_at"
 )
 
@@ -54,16 +50,6 @@ class MarketplaceBrowseError(Exception):
             self.code = code
 
 
-def _asset_alternative_groups(row: dict[str, Any]) -> list[list[str]] | None:
-    config = row.get("config")
-    if not isinstance(config, dict):
-        return None
-    raw = config.get("connector_alternatives") or config.get("connectorAlternatives")
-    if isinstance(raw, list) and raw:
-        return [list(group) for group in raw if isinstance(group, list)]
-    return None
-
-
 def is_uuid(value: str) -> bool:
     try:
         uuid.UUID(value)
@@ -95,90 +81,13 @@ def _checklist_summary(
     return {
         "requiredConnectorsTotal": required_total,
         "requiredConnectorsConnected": required_connected,
-        "connectorsReady": bool(validation.get("can_install", True)),
+        "connectorsReady": required_connected >= required_total if required_total else True,
         "canInstall": ready["installReady"],
         "installReady": ready["installReady"],
         "installReadyErrors": ready["installReadyErrors"],
         "manualSetupRequired": ready["manualSetupRequired"],
         "connectorChecklist": checklist,
         "requiredConnectors": required_connectors or [],
-        "connectorGroups": validation.get("connectorGroups") or [],
-    }
-
-
-def _outcome_pack_read_model(row: dict[str, Any]) -> dict[str, Any]:
-    """Expose outcome-first Marketplace 3.0 metadata without trusting display tags.
-
-    Certification here is evidence-conservative. Runtime/outcome evidence is not
-    invented by the browse layer; without persisted proof the strongest level
-    shown is whatever the pack contract itself can substantiate.
-    """
-    if str(row.get("asset_type") or "") != "outcome_pack":
-        return {}
-    raw = row.get("config")
-    if not isinstance(raw, dict):
-        return {
-            "certificationLevel": "compatible",
-            "certificationPublishReady": False,
-            "playCount": 0,
-            "kpiKeys": [],
-            "outcomeEvents": [],
-            "runtimeProviders": [],
-            "verificationRequired": True,
-            "outcomeTarget": row.get("business_outcome"),
-            "certificationFindings": [],
-        }
-    try:
-        config = OutcomePackAssetConfig.model_validate(raw)
-        persisted_evidence = (
-            row.get("certification_evidence")
-            if isinstance(row.get("certification_evidence"), dict)
-            else {}
-        )
-        runtime_evidence = (
-            persisted_evidence.get("runtime")
-            if isinstance(persisted_evidence.get("runtime"), dict)
-            else {}
-        )
-        outcome_evidence = (
-            persisted_evidence.get("outcome")
-            if isinstance(persisted_evidence.get("outcome"), dict)
-            else {}
-        )
-        report = certify_outcome_pack(
-            config,
-            runtime_evidence=runtime_evidence,
-            outcome_evidence=outcome_evidence,
-        )
-        discovery = outcome_pack_discovery_metadata(config)
-    except Exception:
-        return {
-            "certificationLevel": "compatible",
-            "certificationPublishReady": False,
-            "playCount": 0,
-            "kpiKeys": [],
-            "outcomeEvents": [],
-            "runtimeProviders": [],
-            "verificationRequired": True,
-            "outcomeTarget": row.get("business_outcome"),
-            "certificationFindings": [],
-        }
-    return {
-        "certificationLevel": report.level,
-        "certificationPublishReady": report.publish_ready,
-        "certificationUpdatedAt": row.get("certification_updated_at"),
-        "certifiedBy": row.get("certified_by"),
-        "playCount": report.play_count,
-        "kpiKeys": [kpi.key for kpi in config.outcome_contract.kpis],
-        "outcomeEvents": list(config.outcome_contract.outcome_events),
-        "runtimeProviders": [profile.provider for profile in config.runtime_profiles],
-        "verificationRequired": bool(config.outcome_contract.verification_required),
-        "outcomeTarget": config.outcome_contract.target_outcome,
-        "certificationFindings": [
-            finding.as_dict() for finding in report.findings if finding.blocking
-        ],
-        "aiDiscovery": discovery,
-        "connectorAlternatives": config.connector_alternatives,
     }
 
 
@@ -189,7 +98,6 @@ def _serialize_asset_summary(
     connector_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     summary = connector_summary or {}
-    outcome_model = _outcome_pack_read_model(row)
     return {
         "id": row["id"],
         "slug": row["slug"],
@@ -225,7 +133,6 @@ def _serialize_asset_summary(
         "installed": install is not None,
         "installedAt": install.get("installed_at") if install else None,
         "installId": install.get("id") if install else None,
-        **outcome_model,
         **summary,
     }
 
@@ -446,7 +353,6 @@ def list_marketplace_assets(
             org_id,
             row.get("required_connectors") or [],
             environment_name=environment_name,
-            alternative_groups=_asset_alternative_groups(row),
         )
         connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
         asset_id = str(row["id"])
@@ -523,7 +429,6 @@ def get_marketplace_asset(
         org_id,
         row.get("required_connectors") or [],
         environment_name=environment_name,
-        alternative_groups=_asset_alternative_groups(row),
     )
     connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
     installs = _active_installs_by_asset(client, org_id, [str(row["id"])])

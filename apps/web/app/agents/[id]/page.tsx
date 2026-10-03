@@ -255,7 +255,7 @@ export default function AgentProfilePage({
   const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
 
   return (
-    <AppShell title={agent.name}>
+    <AppShell title={agent.name}>\n      <div data-composition="manage" className="contents">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
           <AgentSurfaceSwitch surface="operate" agentId={agent.id} />
@@ -521,7 +521,7 @@ export default function AgentProfilePage({
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </div>\n      </div>
     </AppShell>
   )
 }

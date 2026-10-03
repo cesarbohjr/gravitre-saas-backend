@@ -209,7 +209,7 @@ export default function NewAgentPage() {
 
   return (
     <AppShell title="Add team member">
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]" data-composition="create">
         <GravitrePageHeader
           eyebrow="AI Team"
           title="Add team member"
@@ -234,9 +234,9 @@ export default function NewAgentPage() {
                   <div className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors",
                     currentStep === step.id
-                      ? "bg-foreground text-background"
+                      ? "bg-[color:var(--g-emerald)] text-white ring-2 ring-[color:var(--g-emerald)]/15"
                       : currentStep > step.id
-                        ? "bg-[color:var(--g-brand)] text-white"
+                        ? "bg-[color:var(--g-emerald-deep)] text-white"
                         : "bg-[color:var(--g-surface-2)] text-muted-foreground"
                   )}>
                     {currentStep > step.id ? <Check className="h-4 w-4" /> : step.id}

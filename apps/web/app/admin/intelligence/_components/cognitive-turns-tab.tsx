@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { intelligenceApi } from "@/lib/api"
 import { stageLabel, surfaceLabel } from "@/lib/learning-ui-copy"
-import { Brain, Clock, Path, CaretDown, CaretUp } from "@phosphor-icons/react"
+import { Clock, Path, CaretDown, CaretUp, GitBranch } from "@phosphor-icons/react"
 import { formatTime, NotYetPopulated, SectionCard, TabStateGate } from "./shared"
 import { cn } from "@/lib/utils"
 
@@ -169,7 +169,7 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
         <SectionCard
           title="Recent turns"
           description="Recent chat and agent turns: surface, timing, and step path."
-          icon={<Brain className="h-5 w-5" weight="duotone" aria-hidden />}
+          icon={<GitBranch className="h-5 w-5" weight="duotone" aria-hidden />}
         >
           {traces.length === 0 ? (
             <div className="mt-2">

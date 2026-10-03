@@ -173,7 +173,6 @@ def validate_connectors_for_asset(
     environment_name: str = "production",
     settings: Any | None = None,
     probe_apollo_discovery: bool = True,
-    alternative_groups: list[list[str]] | None = None,
 ) -> dict[str, Any]:
     """Return ``{can_install, blockers, checklist}`` (MKT-9.1 shape)."""
     refs: list[RequiredConnectorRef]
@@ -298,21 +297,10 @@ def validate_connectors_for_asset(
                     "needsConnection": needs_connection,
                 }
             )
-    from app.marketplace.marketplace3.connector_groups import evaluate_connector_or_groups
-
-    connected_types = {item["connectorType"] for item in checklist if item.get("connected")}
-    or_eval = evaluate_connector_or_groups(
-        connected=connected_types,
-        required_connectors=refs,
-        alternatives=alternative_groups,
-    )
-    if alternative_groups:
-        blockers = or_eval["blockers"]
     return {
         "can_install": len(blockers) == 0,
         "blockers": blockers,
         "checklist": checklist,
-        "connectorGroups": or_eval["groups"],
     }
 
 
@@ -344,22 +332,7 @@ def _looks_like_uuid(value: str) -> bool:
         return False
 
 
-def _assert_asset_installable(asset: dict[str, Any], *, draft_pilot: bool = False) -> None:
-    if draft_pilot:
-        if not (asset.get("asset_type") == "outcome_pack" and asset.get("status") == "draft"
-                and asset.get("visibility") == "internal" and asset.get("org_id") is None
-                and "marketplace-3" in (asset.get("tags") or [])):
-            raise MarketplaceError("Only internal Marketplace 3.0 draft Outcome Packs can be piloted", code="PILOT_NOT_ALLOWED")
-        from app.marketplace.marketplace3.certification import certify_outcome_pack
-        from app.marketplace.marketplace3.certification_runner import fixture_checks
-
-        try:
-            config = OutcomePackAssetConfig.model_validate(asset.get("config") or {})
-        except ValueError as exc:
-            raise MarketplaceError("Pilot config could not be validated", code="PILOT_NOT_READY") from exc
-        if certify_outcome_pack(config).level != "governed" or any(not check.passed for check in fixture_checks(config)):
-            raise MarketplaceError("Pilot requires a governed pack with passing component contracts", code="PILOT_NOT_READY")
-        return
+def _assert_asset_installable(asset: dict[str, Any]) -> None:
     if asset.get("status") != "published":
         raise MarketplaceError("Asset is not published", code="NOT_PUBLISHED")
     if asset.get("visibility") not in {"public", "internal", "private"}:
@@ -677,7 +650,6 @@ def _install_workflow_entity(
     agent_ids: dict[str, str] | None = None,
     connector_ids: dict[str, str | None] | None = None,
     workflow_label: str = "workflow",
-    runtime_inputs: list[str] | None = None,
 ) -> dict[str, Any]:
     workflow_id = marketplace_entity_id(org_id, str(asset["id"]), workflow_label)
     resolved_agent_ids = dict(agent_ids or {})
@@ -713,11 +685,8 @@ def _install_workflow_entity(
         for row in install_vars
         if isinstance(row, dict) and row.get("key")
     }
-    declared.update(runtime_inputs or [])
     assert_bindings_valid(definition, declared_parameters=declared)
     workflow_config = {"marketplaceAssetId": asset["id"]}
-    if runtime_inputs:
-        workflow_config["runtimeInputs"] = list(runtime_inputs)
     from app.marketplace.workflow_contract import steps_to_rich_contract
 
     contract_nodes, contract_edges = steps_to_rich_contract(steps)
@@ -840,7 +809,6 @@ def _install_play_asset(
         agent_ids=agent_ids,
         connector_ids=connector_ids,
         workflow_label=f"play:{config.key}",
-        runtime_inputs=config.runtime_inputs,
     )
     workflow_id = str(workflow_result["workflowId"])
     binding = bind_play_to_workflow(
@@ -863,7 +831,6 @@ def _install_play_asset(
             "marketplaceAssetId": str(asset["id"]),
             "marketplaceSlug": asset.get("slug"),
             "trigger": config.trigger,
-            "runtimeInputs": config.runtime_inputs,
             "outcomeEvents": config.outcome_events,
             "kpiKeys": config.kpi_keys,
             "approvals": config.approvals,
@@ -971,99 +938,6 @@ def _install_dashboard_pack(
     }
 
 
-def _rollback_partial_outcome_pack(
-    client: Any,
-    org_id: str,
-    *,
-    agent_ids: list[str],
-    play_rows: list[dict[str, Any]],
-    workflow_ids: list[str],
-    dataset_pack_id: str | None,
-    dashboard_pack_id: str | None,
-    rag_source_ids: list[str],
-) -> dict[str, list[str]]:
-    """Archive components created by a failed Outcome Pack install."""
-    now = _now()
-    rolled: dict[str, list[str]] = {
-        "agents": [],
-        "plays": [],
-        "workflows": [],
-        "datasetPacks": [],
-        "dashboardPacks": [],
-        "ragSources": [],
-    }
-    for agent_id in dict.fromkeys(agent_ids):
-        try:
-            client.table("operators").update(
-                {"deleted_at": now, "status": "inactive", "updated_at": now}
-            ).eq("id", agent_id).eq("org_id", org_id).execute()
-            rolled["agents"].append(agent_id)
-        except Exception:  # noqa: BLE001
-            continue
-    for row in play_rows:
-        play_key = str(row.get("playKey") or "").strip()
-        if not play_key:
-            continue
-        try:
-            client.table("play_installations").update(
-                {"status": "archived", "updated_at": now}
-            ).eq("org_id", org_id).eq("play_key", play_key).execute()
-            rolled["plays"].append(play_key)
-        except Exception:  # noqa: BLE001
-            continue
-    for workflow_id in dict.fromkeys(workflow_ids):
-        try:
-            client.table("workflows").update(
-                {"status": "archived", "updated_at": now}
-            ).eq("id", workflow_id).eq("org_id", org_id).execute()
-            rolled["workflows"].append(workflow_id)
-        except Exception:  # noqa: BLE001
-            continue
-    if dataset_pack_id:
-        try:
-            client.table("marketplace_dataset_pack_installations").update(
-                {"status": "archived", "updated_at": now}
-            ).eq("id", dataset_pack_id).eq("org_id", org_id).execute()
-            rolled["datasetPacks"].append(dataset_pack_id)
-        except Exception:  # noqa: BLE001
-            pass
-    if dashboard_pack_id:
-        try:
-            client.table("marketplace_dashboard_pack_installations").update(
-                {"status": "archived", "updated_at": now}
-            ).eq("id", dashboard_pack_id).eq("org_id", org_id).execute()
-            rolled["dashboardPacks"].append(dashboard_pack_id)
-        except Exception:  # noqa: BLE001
-            pass
-    for source_id in dict.fromkeys(rag_source_ids):
-        try:
-            client.table("rag_sources").update(
-                {"status": "archived", "updated_at": now}
-            ).eq("id", source_id).eq("org_id", org_id).execute()
-            rolled["ragSources"].append(source_id)
-        except Exception:  # noqa: BLE001
-            continue
-    return rolled
-
-
-def _outcome_skill_asset(client: Any, parent: dict[str, Any], skill_ref: str, *, allow_draft: bool = False) -> dict[str, Any]:
-    rows = (client.table("marketplace_assets").select("*").eq("slug", skill_ref)
-            .eq("asset_type", "capability_package").limit(1).execute()).data or []
-    if not rows:
-        raise MarketplaceError(f"Required skill package {skill_ref!r} is unavailable", code="OUTCOME_PACK_SKILL_MISSING")
-    skill = dict(rows[0])
-    if skill.get("status") != "published":
-        linked = (client.table("marketplace_pack_items").select("id")
-                  .eq("pack_asset_id", parent["id"]).eq("child_asset_id", skill["id"])
-                  .limit(1).execute()).data or []
-        if not (allow_draft and linked and skill.get("status") == "draft"
-                and skill.get("visibility") == "internal" and skill.get("org_id") is None
-                and skill.get("publisher_id") == parent.get("publisher_id")
-                and "marketplace-3" in (skill.get("tags") or [])):
-            raise MarketplaceError("Unpublished skill is not an authorized linked bundle component", code="OUTCOME_PACK_SKILL_MISSING")
-    return skill
-
-
 def _install_outcome_pack(
     client: Any,
     org_id: str,
@@ -1073,7 +947,6 @@ def _install_outcome_pack(
     actor_id: str,
     environment_name: str,
     connector_ids: dict[str, str | None],
-    allow_draft_skills: bool = False,
 ) -> dict[str, Any]:
     """Install a Marketplace 3.0 Outcome Pack as canonical Gravitre primitives."""
     root_id = marketplace_entity_id(org_id, str(asset["id"]), "outcome-pack")
@@ -1106,7 +979,22 @@ def _install_outcome_pack(
         if str(value).strip()
     ):
         try:
-            skill_asset = _outcome_skill_asset(client, asset, skill_ref, allow_draft=allow_draft_skills)
+            result = (
+                client.table("marketplace_assets")
+                .select("*")
+                .eq("slug", skill_ref)
+                .eq("asset_type", "capability_package")
+                .eq("status", "published")
+                .limit(1)
+                .execute()
+            )
+            rows = result.data or []
+            if not rows:
+                raise MarketplaceError(
+                    f"Required skill package {skill_ref!r} is not published",
+                    code="OUTCOME_PACK_SKILL_MISSING",
+                )
+            skill_asset = dict(rows[0])
             skill_config = CapabilityPackageAssetConfig.model_validate(
                 skill_asset.get("config") or {}
             )
@@ -1147,49 +1035,35 @@ def _install_outcome_pack(
                 }
             )
 
-    knowledge_result: dict[str, Any] = {
+    knowledge_result = _install_knowledge_pack(
+        client,
+        org_id,
+        asset,
+        KnowledgePackAssetConfig(documents=config.knowledge),
+        environment_name=environment_name,
+        primary_agent_id=next(iter(installed_agents), None),
+    ) if config.knowledge else {
         "entityType": "knowledge_pack",
         "entityId": root_id,
         "ragSourceIds": [],
     }
-    if config.knowledge:
-        try:
-            knowledge_result = _install_knowledge_pack(
-                client,
-                org_id,
-                asset,
-                KnowledgePackAssetConfig(documents=config.knowledge),
-                environment_name=environment_name,
-                primary_agent_id=next(iter(installed_agents), None),
-            )
-        except Exception as exc:  # noqa: BLE001
-            failures.append({"component": "knowledge", "key": "knowledge", "error": str(exc)})
 
-    dataset_result: dict[str, Any] = {}
-    try:
-        dataset_result = _install_dataset_pack(
-            client,
-            org_id,
-            asset,
-            config.dataset,
-            actor_id=actor_id,
-            source_outcome_pack_id=root_id,
-        )
-    except Exception as exc:  # noqa: BLE001
-        failures.append({"component": "dataset_pack", "key": "dataset", "error": str(exc)})
-
-    dashboard_result: dict[str, Any] = {}
-    try:
-        dashboard_result = _install_dashboard_pack(
-            client,
-            org_id,
-            asset,
-            config.dashboard,
-            actor_id=actor_id,
-            source_outcome_pack_id=root_id,
-        )
-    except Exception as exc:  # noqa: BLE001
-        failures.append({"component": "dashboard_pack", "key": "dashboard", "error": str(exc)})
+    dataset_result = _install_dataset_pack(
+        client,
+        org_id,
+        asset,
+        config.dataset,
+        actor_id=actor_id,
+        source_outcome_pack_id=root_id,
+    )
+    dashboard_result = _install_dashboard_pack(
+        client,
+        org_id,
+        asset,
+        config.dashboard,
+        actor_id=actor_id,
+        source_outcome_pack_id=root_id,
+    )
 
     play_rows: list[dict[str, Any]] = []
     workflow_ids: list[str] = []
@@ -1224,20 +1098,10 @@ def _install_outcome_pack(
     # successful Outcome Pack install. Every required Play and agent must
     # materialize before the Marketplace install record can be written.
     if failures:
-        rolled_back = _rollback_partial_outcome_pack(
-            client,
-            org_id,
-            agent_ids=installed_agents,
-            play_rows=play_rows,
-            workflow_ids=workflow_ids,
-            dataset_pack_id=str(dataset_result.get("datasetPackId") or "") or None,
-            dashboard_pack_id=str(dashboard_result.get("dashboardPackId") or "") or None,
-            rag_source_ids=list(knowledge_result.get("ragSourceIds") or []),
-        )
         raise MarketplaceError(
             "Outcome Pack installation could not materialize every required component",
             code="OUTCOME_PACK_COMPONENT_FAILED",
-            details={"failures": failures, "rolledBack": True, "componentState": rolled_back},
+            details={"failures": failures},
         )
 
     return {
@@ -1931,7 +1795,6 @@ def install_asset(
     environment_name: str = "production",
     install_variables: dict[str, str] | None = None,
     force: bool = False,
-    _draft_pilot: bool = False,
 ) -> dict[str, Any]:
     """
     Install a published marketplace asset into an org via existing creation paths.
@@ -1939,16 +1802,11 @@ def install_asset(
     Raises ``MarketplaceError`` with ``blockers`` when connectors are missing.
     """
     asset = fetch_marketplace_asset(client, asset_id)
-    if _draft_pilot and force:
-        raise MarketplaceError("Pilot cannot bypass connector or binding checks", code="PILOT_NOT_ALLOWED")
-    _assert_asset_installable(asset, draft_pilot=_draft_pilot)
+    _assert_asset_installable(asset)
 
     from app.marketplace.entitlements import assert_install_entitlement
 
-    # Platform-admin pilots are administrative OBSERVE installs, not purchases.
-    # Tenant plan limits, source readiness, and runtime approval/review still apply.
-    if not _draft_pilot:
-        assert_install_entitlement(client, org_id, asset)
+    assert_install_entitlement(client, org_id, asset)
 
     legacy_pack = get_pack_spec(str(asset.get("slug") or ""))
     config_payload = asset.get("config") or {}
@@ -2003,10 +1861,7 @@ def install_asset(
     _check_plan_limits(client, org_id, str(asset["asset_type"]))
     resolved = _resolve_asset_payload(asset, install_variables)
     try:
-        # Publication certification is enforced before an asset can reach published status.
-        # Installation re-validates the stored config structurally; it must not attempt to
-        # recreate production evidence that is outside the schema parser.
-        parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=False)
+        parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=True)
     except MarketplaceValidationError as exc:
         raise MarketplaceError(
             exc.message,
@@ -2097,7 +1952,6 @@ def install_asset(
             actor_id=actor_id,
             environment_name=environment_name,
             connector_ids=connector_ids,
-            allow_draft_skills=_draft_pilot or asset.get("certification_level") in {"production_verified", "outcome_verified"},
         )
     elif asset_type == "connector_config":
         installed = _install_connector_config(
@@ -2131,9 +1985,6 @@ def install_asset(
     else:
         raise MarketplaceError(f"Unsupported asset type: {asset_type}", code="VALIDATION_ERROR")
 
-    if _draft_pilot:
-        installed["pilot"] = True
-
     install_row = _record_install(
         client,
         org_id=org_id,
@@ -2143,7 +1994,7 @@ def install_asset(
         install_variables=install_variables,
         checklist=connector_validation["checklist"],
     )
-    _increment_install_count(client, str(asset["id"]))
+    _increment_install_count(client, asset_id)
 
     write_audit_event(
         client,
@@ -2158,7 +2009,6 @@ def install_asset(
             "entityType": installed["entityType"],
             "entityId": installed["entityId"],
             "installId": install_row.get("id"),
-            "pilot": _draft_pilot,
         },
     )
     from app.marketplace.support import build_install_deep_links

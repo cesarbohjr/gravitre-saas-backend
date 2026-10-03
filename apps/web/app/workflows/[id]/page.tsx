@@ -131,7 +131,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <AppShell title={workflow?.name ?? "Workflow"}>
-      <div className="mx-auto max-w-5xl space-y-6 pb-6">
+      <div className="mx-auto max-w-5xl space-y-6 pb-6" data-composition="manage">
         <GravitrePageHeader
           eyebrow="Workflows"
           title={

@@ -35,7 +35,7 @@ import {
   BarChart3,
   Plug,
   Users,
-  Sparkles,
+  ArrowRight,
   RotateCcw,
   Clock,
   CheckCircle,
@@ -49,7 +49,7 @@ import {
   History,
   TrendingUp,
   Activity,
-  Brain,
+  Layers3,
   Cpu,
   ShieldAlert,
   Rocket,
@@ -121,7 +121,7 @@ export function CommandPalette({
 
         <CommandGroup heading="Quick actions">
           <CommandItem onSelect={() => runCommand(() => summonWorkspace())}>
-            <Sparkles className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <ArrowRight className="mr-2 h-4 w-4 text-[color:var(--g-emerald-deep)]" />
             <span>Start chat</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => summonWorkspace())}>
@@ -169,7 +169,7 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => router.push("/workflows"))}
           >
-            <Sparkles className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <GitBranch className="mr-2 h-4 w-4 text-muted-foreground" />
             <span>Generate Workflow from Prompt</span>
           </CommandItem>
           <CommandItem
@@ -190,11 +190,11 @@ export function CommandPalette({
 
         <CommandGroup heading="Insights & learning">
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.intelligence))}>
-            <Sparkles className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <GitBranch className="mr-2 h-4 w-4 text-muted-foreground" />
             <span>{SURFACE_COPY.insights.title}</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.learning))}>
-            <Sparkles className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <GitBranch className="mr-2 h-4 w-4 text-muted-foreground" />
             <span>{SURFACE_COPY.learning.title}</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.builtInModels))}>
@@ -202,11 +202,11 @@ export function CommandPalette({
             <span>{SURFACE_COPY.builtInModels.title}</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.training))}>
-            <Brain className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <Layers3 className="mr-2 h-4 w-4 text-[color:var(--g-emerald-deep)]" />
             <span>{SURFACE_COPY.training.title}</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.models))}>
-            <Brain className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <Layers3 className="mr-2 h-4 w-4 text-muted-foreground" />
             <span>{SURFACE_COPY.models.title}</span>
           </CommandItem>
         </CommandGroup>
@@ -318,7 +318,7 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => summonWorkspace())}
           >
-            <Sparkles className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <ArrowRight className="mr-2 h-4 w-4 text-[color:var(--g-emerald-deep)]" />
             <span>Open Gravitre AI</span>
           </CommandItem>
           <CommandItem
@@ -330,7 +330,7 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.intelligence))}
           >
-            <Sparkles className="mr-2 h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <GitBranch className="mr-2 h-4 w-4 text-muted-foreground" />
             <span>{SURFACE_COPY.insights.title}</span>
           </CommandItem>
           <CommandItem

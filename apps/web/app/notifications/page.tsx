@@ -225,7 +225,7 @@ export default function NotificationsPage() {
 
   return (
     <AppShell title="Notifications">
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full" data-composition="operate">
         <GravitrePageHeader
           title="Notifications"
           description="Stay updated on your workflows and deliverables"

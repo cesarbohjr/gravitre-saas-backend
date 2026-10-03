@@ -65,7 +65,7 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
       ) : (
         <div className="space-y-3">
           {scopeNote ? <p className="text-sm text-muted-foreground text-pretty">{scopeNote}</p> : null}
-          <div className="overflow-x-auto rounded-xl border border-border/60">
+          <div className="overflow-x-auto rounded-[8px] border border-divide">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-left text-muted-foreground">
@@ -94,7 +94,7 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
             </table>
           </div>
           {clusterSegments.length > 0 ? (
-            <div className="overflow-x-auto rounded-xl border border-border/60">
+            <div className="overflow-x-auto rounded-[8px] border border-divide">
               <p className="border-b border-border/60 px-3 py-2 text-xs font-medium text-muted-foreground">
                 By question theme
               </p>

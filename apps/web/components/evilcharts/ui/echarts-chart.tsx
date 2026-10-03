@@ -11,6 +11,14 @@ export type EChartsRenderer = (typeof ECHARTS_RENDERERS)[keyof typeof ECHARTS_RE
 
 export const DEFAULT_ECHARTS_RENDERER = ECHARTS_RENDERERS.canvas;
 
+/** Emerald Intelligence defaults. Individual charts can still override these through config. */
+export const EMERALD_ECHARTS_PALETTE = [
+  "var(--g-viz-primary)",
+  "var(--g-viz-secondary)",
+  "var(--g-viz-attention)",
+  "var(--g-emerald-deep)",
+] as const;
+
 // Renderer registration is shared by every modular ECharts chart. Individual
 // chart modules only register the series and components they use.
 echarts.use([CanvasRenderer, SVGRenderer]);
@@ -135,6 +143,12 @@ export type ResolvedColors = {
     border: string;
     foreground: string;
     background: string;
+    emerald: string;
+    emeraldDeep: string;
+    vizSecondary: string;
+    vizAttention: string;
+    vizGrid: string;
+    vizTooltip: string;
   };
 };
 
@@ -171,6 +185,12 @@ export function resolveColors(
     border: readToken("text-border"),
     foreground: readToken("text-foreground"),
     background: readToken("text-background"),
+    emerald: normalizeColor(computed.getPropertyValue("--g-viz-primary").trim() || "#00a878"),
+    emeraldDeep: normalizeColor(computed.getPropertyValue("--g-emerald-deep").trim() || "#007f5f"),
+    vizSecondary: normalizeColor(computed.getPropertyValue("--g-viz-secondary").trim() || "#315cff"),
+    vizAttention: normalizeColor(computed.getPropertyValue("--g-viz-attention").trim() || "#ff654d"),
+    vizGrid: normalizeColor(computed.getPropertyValue("--g-viz-grid").trim() || "#dde5e1"),
+    vizTooltip: normalizeColor(computed.getPropertyValue("--g-viz-tooltip").trim() || "#101816"),
   };
   container.removeChild(probe);
 

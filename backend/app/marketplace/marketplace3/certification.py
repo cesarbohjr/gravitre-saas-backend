@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.connectors.action_catalog.registry import get_action_spec
-from app.marketplace.marketplace3.evidence import measured_outcome_valid
 from app.marketplace.schemas import OutcomePackAssetConfig
 from app.services.tool_service import list_registered_actions
 from app.services.write_success_verification import resolve_success_verification
@@ -87,15 +86,13 @@ def certify_outcome_pack(
     config: OutcomePackAssetConfig,
     *,
     resolved_skill_ids: set[str] | None = None,
-    runtime_evidence: dict[str, Any] | None = None,
     outcome_evidence: dict[str, Any] | None = None,
 ) -> OutcomePackCertification:
     """Return the strongest certification level supported by current evidence.
 
     This function never turns test intent into evidence. production_verified
-    requires resolved live proof for every advertised action in tested profiles,
-    and outcome_verified requires explicit measured outcome evidence. The service
-    resolves these proof payloads from tenant-scoped stored production records.
+    requires the runtime profile itself to carry production verification state,
+    and outcome_verified requires explicit measured outcome evidence.
     """
     findings: list[CertificationFinding] = []
     registered = set(list_registered_actions())
@@ -202,40 +199,6 @@ def certify_outcome_pack(
             )
         )
 
-    evidence = runtime_evidence if isinstance(runtime_evidence, dict) else {}
-    verified_profiles: set[str] = set()
-    for profile in config.runtime_profiles:
-        row = evidence.get(profile.provider)
-        if not isinstance(row, dict):
-            continue
-        environment = str(row.get("environment") or "").strip().lower()
-        evidence_ref = str(row.get("evidence_ref") or "").strip()
-        verified_actions = {
-            str(value).strip()
-            for value in (row.get("verified_actions") or [])
-            if str(value).strip()
-        }
-        if (
-            environment == "production"
-            and evidence_ref
-            and set(profile.actions).issubset(verified_actions)
-        ):
-            verified_profiles.add(profile.provider)
-
-    missing_live_profiles = sorted(
-        profile.provider
-        for profile in config.runtime_profiles
-        if profile.provider not in verified_profiles
-    )
-    if any(profile.status == "production_verified" for profile in config.runtime_profiles) and missing_live_profiles:
-        findings.append(
-            CertificationFinding(
-                "PRODUCTION_EVIDENCE_MISSING",
-                "Production Verified requires evidence-linked live production proof for every advertised runtime action.",
-                metadata={"providers": missing_live_profiles},
-            )
-        )
-
     schema_runtime_ok = not any(
         finding.code in {
             "MINIMUM_PLAYS",
@@ -262,22 +225,17 @@ def certify_outcome_pack(
     production_ok = (
         governed_ok
         and bool(config.runtime_profiles)
-        and all(profile.status in {"tested", "production_verified"} for profile in config.runtime_profiles)
-        and len(verified_profiles) == len(config.runtime_profiles)
+        and all(profile.status == "production_verified" for profile in config.runtime_profiles)
         and not unresolved_skills
     )
     if production_ok:
         level = "production_verified"
 
-    outcome_evidence_payload = outcome_evidence if isinstance(outcome_evidence, dict) else {}
-    plays = {play.key: play for play in config.plays}
+    evidence = outcome_evidence if isinstance(outcome_evidence, dict) else {}
     observed_events = {
-        value["outcomeEvent"]
-        for value in (outcome_evidence_payload.get("measurements") or [])
-        if isinstance(value, dict) and measured_outcome_valid(value)
-        and value["playKey"] in plays
-        and value["outcomeEvent"] in plays[value["playKey"]].outcome_events
-        and value["metricKey"] in plays[value["playKey"]].kpi_keys
+        str(value)
+        for value in (evidence.get("verified_outcome_events") or [])
+        if str(value).strip()
     }
     declared_events = set(config.outcome_contract.outcome_events)
     if production_ok and declared_events.intersection(observed_events):

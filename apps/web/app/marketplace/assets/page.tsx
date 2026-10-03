@@ -52,6 +52,7 @@ import {
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { getCategoryIcon } from "@/lib/marketplace-category-icons"
+import { OrganizedIntelligenceField } from "@/components/marketplace/organized-intelligence-field"
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
   { id: "ai_agent", label: "Agents", icon: Bot },
@@ -116,20 +117,6 @@ const CAPABILITY_NOUN: Record<string, [string, string]> = {
   outcome_pack: ["outcome pack", "outcome packs"],
   dataset_pack: ["dataset pack", "dataset packs"],
   dashboard_pack: ["dashboard pack", "dashboard packs"],
-}
-
-function packTypeCount(asset: MarketplaceAssetSummary, type: string): number {
-  return (asset.packItems ?? []).filter((item) => item.child.assetType === type).length
-}
-
-function certificationLabel(asset: MarketplaceAssetSummary): string {
-  const level = asset.certificationLevel
-  if (level === "outcome_verified") return "Outcome verified"
-  if (level === "production_verified") return "Production verified"
-  if (level === "governed") return "Governed"
-  if (level === "tested") return "Tested"
-  if (level === "compatible") return "Compatible"
-  return "Compatible"
 }
 
 /** What installing the asset adds to the workspace, from its catalogued contents only. */
@@ -205,21 +192,29 @@ function AssetCard({
 
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
+  const isOutcome = asset.assetType === "play" || asset.assetType === "outcome_pack"
 
   return (
     <article
-      className="group grid gap-x-6 gap-y-3 py-4 md:grid-cols-[minmax(0,1fr)_220px_auto]"
+      className={cn(
+        "group relative grid gap-x-6 gap-y-3 py-4 md:grid-cols-[minmax(0,1fr)_220px_auto]",
+        isOutcome && "my-2 overflow-hidden rounded-[12px] border border-[color:var(--g-border-default)] bg-background px-4 shadow-[0_14px_38px_-34px_rgba(16,24,22,.55)] transition-[border-color,box-shadow,transform] duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[color:var(--g-emerald)] hover:shadow-[0_18px_42px_-32px_rgba(0,127,95,.38)] md:px-5",
+      )}
       data-testid="marketplace-pack-row"
     >
       <div className="flex min-w-0 gap-3">
-        <AssetMark asset={asset} />
+        {isOutcome ? (
+          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[9px] border border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)]">
+            <AssetMark asset={asset} />
+          </div>
+        ) : <AssetMark asset={asset} />}
         <div className="min-w-0">
           <button
             type="button"
             onClick={() => onOpenDetail(asset)}
             className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <h3 className="text-[14px] font-semibold leading-snug text-foreground">{asset.title}</h3>
+            <h3 className={cn("text-[14px] font-semibold leading-snug text-foreground", isOutcome && "text-[15px] tracking-[-0.01em]")}>{asset.title}</h3>
           </button>
           <p className="mt-0.5 text-[12.5px] text-foreground">
             <span className="text-muted-foreground">Adds </span>
@@ -227,24 +222,8 @@ function AssetCard({
             <span className="text-muted-foreground"> · </span>
             <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
           </p>
-          {asset.assetType === "outcome_pack" && (asset.outcomeTarget || asset.businessOutcome) ? (
-            <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] font-medium leading-relaxed text-foreground">
-              {asset.outcomeTarget || asset.businessOutcome}
-            </p>
-          ) : asset.description ? (
+          {asset.description ? (
             <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
-          ) : null}
-          {asset.assetType === "outcome_pack" ? (
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
-              <span>{asset.playCount ?? packTypeCount(asset, "play")} Plays</span>
-              <span>{packTypeCount(asset, "ai_agent")} agents</span>
-              <span>{packTypeCount(asset, "dataset_pack")} dataset</span>
-              <span>{packTypeCount(asset, "dashboard_pack")} dashboard</span>
-              {asset.kpiKeys?.length ? <span>{asset.kpiKeys.length} KPIs</span> : null}
-              <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                {certificationLabel(asset)}
-              </Badge>
-            </div>
           ) : null}
         </div>
       </div>
@@ -302,7 +281,7 @@ function AssetCard({
           ) : null}
       </div>
       <details className="pl-7 md:col-span-3">
-        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">More about this pack</summary>
+        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{isOutcome ? "Under the hood" : "More about this pack"}</summary>
         <div className="mt-2 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <EntitlementBadge asset={asset} />
@@ -310,7 +289,7 @@ function AssetCard({
               <Badge variant="outline">Partner registry</Badge>
             ) : null}
             {asset.visibility === "internal" ? <Badge variant="outline">Internal</Badge> : null}
-            <AssetTrustBadges asset={asset.assetType === "outcome_pack" ? { ...asset, verified: false } : asset} />
+            <AssetTrustBadges asset={asset} />
             {asset.installCount != null && asset.installCount > 0 ? (
               <span className="text-[11px] text-muted-foreground">{asset.installCount.toLocaleString()} installs</span>
             ) : null}
@@ -331,38 +310,6 @@ function AssetCard({
               ))}
             </div>
           ) : null}
-          {asset.assetType === "outcome_pack" ? (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Outcome</p>
-                <p className="mt-1 text-xs text-foreground">{asset.outcomeTarget || asset.businessOutcome || asset.description}</p>
-              </div>
-              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Plays</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">{asset.playCount ?? packTypeCount(asset, "play")}</p>
-              </div>
-              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Measured value</p>
-                <p className="mt-1 text-xs text-foreground">
-                  {asset.kpiKeys?.length
-                    ? `${asset.kpiKeys.length} KPI${asset.kpiKeys.length === 1 ? "" : "s"} · ${asset.outcomeEvents?.length ?? 0} outcome event${(asset.outcomeEvents?.length ?? 0) === 1 ? "" : "s"}`
-                    : "Outcome telemetry included"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Runtime providers</p>
-                <p className="mt-1 text-xs text-foreground">
-                  {asset.runtimeProviders?.length
-                    ? asset.runtimeProviders.join(", ").replace(/_/g, " ")
-                    : "No runtime profile declared"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Verification</p>
-                <p className="mt-1 text-xs font-medium text-foreground">{certificationLabel(asset)}</p>
-              </div>
-            </div>
-          ) : null}
           <PackContentsPreview items={asset.packItems} compact />
           {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
         </div>
@@ -370,6 +317,13 @@ function AssetCard({
     </article>
   )
 }
+
+const OUTCOME_PATHS = [
+  { label: "Run IT", department: "IT", detail: "Service, security and operations" },
+  { label: "Grow Revenue", department: "Sales", detail: "Pipeline, enrichment and follow-up" },
+  { label: "Market Smarter", department: "Marketing", detail: "Campaigns, signals and content" },
+  { label: "Serve Customers", department: "Customer Success", detail: "Risk, support and retention" },
+] as const
 
 function MarketplaceAssetsContent() {
   const { user } = useAuth()
@@ -571,21 +525,21 @@ function MarketplaceAssetsContent() {
     <AppShell title="Marketplace">
       {/* shrink-0 keeps AppShell's flex-col <main> from compressing the catalog
          so the grid can scroll with the page instead of clipping. */}
-      <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-testid="marketplace-catalog-b">
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-testid="marketplace-catalog-b" data-composition="discover">
         {/* Discovery hero: identity, search, and asset type as the primary axis */}
         <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
           <div className="mx-auto max-w-[1240px]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
               <div className="max-w-2xl">
-                <p className={TYPE.eyebrow}>Gravitre Marketplace</p>
-                <h1 className="mt-1 text-balance text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] text-[color:var(--g-text-primary)] sm:text-[32px]">
-                  Install packs into your workspace
-                </h1>
+                <p className={TYPE.eyebrow}>Marketplace / Outcomes first</p>
+                <h1 className={cn(TYPE.pageTitle, "mt-1 text-balance")}>Put Gravitre to work.</h1>
                 <p className={cn(TYPE.pageLead, "mt-2")}>
-                  Install measurable operating capabilities: outcome packs, plays, agents, workflows, knowledge, datasets, dashboards, and governed skills.
+                  Start with the outcome. Gravitre assembles the intelligence underneath.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="space-y-3">
+                <OrganizedIntelligenceField className="hidden h-[190px] lg:block" />
+                <div className="flex flex-wrap items-center justify-end gap-3">
                 <AskGravitreSummonButton />
                 {isAdmin ? (
                   <Button asChild size="sm" variant="outline">
@@ -601,7 +555,31 @@ function MarketplaceAssetsContent() {
                     <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
                   </Link>
                 </Button>
+                </div>
               </div>
+            </div>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" aria-label="Browse by outcome">
+              {OUTCOME_PATHS.map((path) => {
+                const active = departmentFilter?.toLowerCase() === path.department.toLowerCase()
+                return (
+                  <button
+                    key={path.label}
+                    type="button"
+                    onClick={() => setDepartmentFilter(active ? null : path.department)}
+                    className={cn(
+                      "group relative min-h-24 overflow-hidden rounded-[10px] border p-4 text-left transition-[transform,box-shadow,border-color,background-color] duration-200 motion-safe:hover:-translate-y-0.5",
+                      active
+                        ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_32px_-24px_rgba(0,127,95,.7)]"
+                        : "border-[color:var(--g-border-default)] bg-background hover:border-[color:var(--g-emerald)] hover:shadow-[0_14px_32px_-26px_rgba(16,24,22,.55)]",
+                    )}
+                  >
+                    <span className="absolute right-3 top-3 size-2 rounded-full bg-[color:var(--g-emerald)] transition-transform duration-200 motion-safe:group-hover:scale-125" aria-hidden />
+                    <span className="block text-[14px] font-semibold text-[color:var(--g-text-primary)]">{path.label}</span>
+                    <span className="mt-1 block max-w-[18rem] text-xs leading-5 text-[color:var(--g-text-muted)]">{path.detail}</span>
+                  </button>
+                )
+              })}
             </div>
 
             <div className="relative mt-5 max-w-2xl">
@@ -609,7 +587,7 @@ function MarketplaceAssetsContent() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search outcomes, plays, agents, workflows, datasets, dashboards, skills and packs…"
+                placeholder="Search outcomes, plays and capabilities…"
                 aria-label="Search marketplace"
                 className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
               />
@@ -765,12 +743,8 @@ function MarketplaceAssetsContent() {
           ) : (
             <div className="space-y-8">
               <section data-review-surface="marketplace-discovery" aria-labelledby="marketplace-discovery-heading">
-                <h2 id="marketplace-discovery-heading" className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-                  Available to install
-                </h2>
-                <p className={cn(TYPE.meta, "mt-0.5")}>
-                  Packs not yet installed in this workspace.
-                </p>
+                <h2 id="marketplace-discovery-heading" className={TYPE.sectionTitle}>Plays and outcome packs</h2>
+                <p className={cn(TYPE.meta, "mt-1")}>Choose the result. Reveal the machinery when you need it.</p>
                 {discoveryAssets.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">
                     No uninstalled packs match these filters. Installed packs are listed under ops below.

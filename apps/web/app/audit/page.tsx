@@ -158,7 +158,7 @@ export default function AuditPage() {
 
   return (
     <AppShell>
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]" data-composition="operate">
         <GravitrePageHeader
           className="shrink-0"
           eyebrow="Governance"

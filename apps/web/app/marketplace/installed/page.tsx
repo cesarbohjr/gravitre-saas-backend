@@ -121,9 +121,6 @@ function InstalledInspector({
           {agentCount} agents · {workflowCount} workflows · {sourceCount} sources
         </p>
       )}
-      {asset?.assetType === "outcome_pack" && slug ? (
-        <Button asChild className="w-full"><Link href={`/marketplace/departments/${encodeURIComponent(slug)}`}>Open department workspace<ArrowRight className="ml-2 h-4 w-4" aria-hidden /></Link></Button>
-      ) : null}
       <DepartmentPipelineByDepartment department={department} />
       <div className="flex flex-wrap gap-2">
         {slug ? (
@@ -242,7 +239,7 @@ function InstalledContent() {
               hint="Install a department pack or catalog asset to deploy agents, workflows, and knowledge in one click."
               action={
                 <Button asChild>
-                  <Link href="/marketplace/assets?type=outcome_pack">
+                  <Link href="/marketplace/assets?type=department_pack">
                     Browse department packs
                     <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden />
                   </Link>

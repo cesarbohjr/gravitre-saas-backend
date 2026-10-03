@@ -42,7 +42,7 @@ export function ConnectorOpsCard() {
           {hasSpike ? (
             <div
               role="status"
-              className="flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5"
+              className="flex items-start gap-3 rounded-[8px] border border-rose-500/30 bg-rose-500/10 px-3 py-2.5"
             >
               <WarningCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" weight="duotone" aria-hidden />
               <div className="min-w-0 space-y-1">
@@ -67,7 +67,7 @@ export function ConnectorOpsCard() {
               No connector tool calls in this period.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-border/60">
+            <div className="overflow-x-auto rounded-[8px] border border-divide">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60 text-left text-muted-foreground">

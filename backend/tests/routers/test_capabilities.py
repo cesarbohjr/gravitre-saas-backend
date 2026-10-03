@@ -86,25 +86,3 @@ def test_capabilities_does_not_refresh_tokens():
                 response = client.get("/api/capabilities")
     assert response.status_code == 200
     assert refresh.call_count == 0
-
-
-def test_openapi_exposes_candidate_review_and_marketplace3_pilots():
-    app.openapi_schema = None
-    response = client.get("/openapi.json")
-    assert response.status_code == 200
-    schema = response.json()
-    assert "/api/marketplace/platform/assets/{asset_ref}/marketplace3/install-pilot" in schema["paths"]
-    review = schema["components"]["schemas"]["CandidateReviewRequest"]
-    assert review["properties"]["decision"]["enum"] == ["approve", "reject"]
-    assert "decision" in review["required"]
-
-
-def test_candidate_review_validates_decision_before_database_access():
-    from app.auth.dependencies import require_admin
-    _authenticate()
-    app.dependency_overrides[require_admin] = lambda: ({"user_id": "admin-1"}, "org-1")
-    with patch("app.routers.capabilities.get_supabase_client") as db:
-        response = client.post("/api/capabilities/marketplace-candidates/candidate-1/review",
-                               json={"decision": "execute"})
-    assert response.status_code == 422
-    db.assert_not_called()

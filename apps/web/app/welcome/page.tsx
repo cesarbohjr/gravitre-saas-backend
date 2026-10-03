@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Plug,
-  Sparkles,
+  Compass,
   Store,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,7 @@ import {
   type WelcomeRoleId,
 } from "@/lib/welcome-flow"
 import { cn } from "@/lib/utils"
-import { GlowOrb, GridPattern, ParticleField } from "@/components/gravitre/premium-effects"
+import { GridPattern } from "@/components/gravitre/premium-effects"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
 
 const STEPS = [
@@ -160,11 +160,8 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-background via-background to-emerald-500/5 px-4 py-10">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[color:var(--g-canvas)] px-4 py-10">
       <GridPattern color="emerald" className="opacity-[0.25]" />
-      <ParticleField count={28} color="emerald" className="opacity-50" />
-      <GlowOrb color="emerald" size={280} className="-left-20 top-10 opacity-30" />
-      <GlowOrb color="violet" size={200} className="-right-10 bottom-20 opacity-25" />
 
       <motion.div
         initial={reduced ? false : { opacity: 0, y: -8 }}
@@ -176,7 +173,7 @@ export default function WelcomePage() {
             <motion.div
               className={cn(
                 "h-1 rounded-full",
-                index <= stepIndex ? "bg-emerald-500" : "bg-muted",
+                index <= stepIndex ? "bg-[color:var(--g-emerald)]" : "bg-muted",
               )}
               initial={false}
               animate={
@@ -196,13 +193,13 @@ export default function WelcomePage() {
         variants={cardVariants}
         initial="initial"
         animate="animate"
-        className="relative z-10 w-full max-w-2xl rounded-2xl border border-border/70 bg-card/80 p-6 shadow-xl shadow-emerald-500/5 backdrop-blur sm:p-8"
+        className="relative z-10 w-full max-w-2xl rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-6 shadow-[var(--elevation-2)] sm:p-8"
       >
         <AnimatePresence mode="wait">
           {stepIndex === 0 && (
             <StepShell
               key="role"
-              icon={Sparkles}
+              icon={Compass}
               title="What brings you to Gravitre?"
               description="We'll tailor your home dashboard, marketplace recommendations, and first suggested prompt."
             >
@@ -349,7 +346,7 @@ export default function WelcomePage() {
               title="Start your first AI conversation"
               description="Gravitre routes your request to the right engine — execute tracked work, chat, or search records."
             >
-              <div className="rounded-xl border border-dashed border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-violet-500/5 p-4 text-sm text-muted-foreground">
+              <div className="rounded-[10px] border border-dashed border-[color:var(--g-emerald)]/35 bg-[color:var(--g-emerald-pale)] p-4 text-sm text-muted-foreground">
                 Suggested prompt:{" "}
                 <span className="font-medium text-foreground">
                   {selectedRole?.suggestedPrompt ?? "What should Gravitre help me with first?"}
@@ -443,7 +440,7 @@ function StepShell({
       className="space-y-4"
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-violet-500/10 ring-1 ring-emerald-500/20">
+        <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/25">
           <Icon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
         </div>
         <div>

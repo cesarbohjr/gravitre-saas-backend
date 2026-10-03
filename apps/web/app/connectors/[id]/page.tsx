@@ -200,7 +200,7 @@ export default function ConnectorDetailPage() {
   }
 
   return (
-    <AppShell title={connector.name} breadcrumbVendor={connector.type}>
+    <AppShell title={connector.name} breadcrumbVendor={connector.type}>\n      <div data-composition="manage" className="contents">
       <div className="flex min-h-full flex-col" data-testid="connector-detail-b">
         <GravitrePageHeader
           eyebrow="Connectors"
@@ -483,7 +483,7 @@ export default function ConnectorDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </div>\n      </div>
     </AppShell>
   )
 }

@@ -335,7 +335,7 @@ export default function WorkflowsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.workflows.title}>
-      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]">
+      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]" data-composition="manage">
         {/* Header */}
         <div className="relative z-10">
           <GravitrePageHeader

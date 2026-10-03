@@ -7,8 +7,6 @@ instance must bind to canonical workflow ids before execution is possible.
 from __future__ import annotations
 
 from app.plays.contracts import PlayDefinition
-from app.marketplace.marketplace3.department_portfolio import PACK_SPECS
-from app.marketplace.marketplace3.department_depth import PLAY_EVIDENCE
 
 
 CUSTOMER_RESCUE = PlayDefinition(
@@ -83,11 +81,11 @@ REVENUE_LEAK_HUNTER = PlayDefinition(
     name="Revenue Leak Hunter",
     version="1",
     objective="Find recoverable revenue hidden in overdue invoices, stalled opportunities, renewals, billing exceptions, and operational gaps.",
-    required_connector_groups=(("quickbooks",), ("stripe",)),
-    required_read_action_groups=tuple(
-        (action,) for action in PLAY_EVIDENCE["revenue-leak-hunter"]
+    required_connector_groups=(
+        ("stripe", "quickbooks", "xero", "sage_intacct"),
+        ("hubspot", "salesforce"),
     ),
-    optional_connectors=("hubspot", "salesforce", "xero", "sage_intacct", "chargebee", "recurly", "pax8"),
+    optional_connectors=("chargebee", "recurly", "pax8"),
     outcome_metrics=("revenue_recovered", "revenue_at_risk", "dso"),
 )
 
@@ -215,34 +213,6 @@ SERVICE_DESK_OPTIMIZATION_REVIEW = PlayDefinition(
 )
 
 
-
-def _department_portfolio_plays() -> tuple[PlayDefinition, ...]:
-    plays: list[PlayDefinition] = []
-    for spec in PACK_SPECS.values():
-        required_connector_groups = tuple((connector,) for connector in spec["connectors"])
-        optional_connectors = tuple(spec["optional"])
-        for key, name, description, action, kpi_key in spec["plays"]:
-            plays.append(
-                PlayDefinition(
-                    key=key,
-                    name=name,
-                    version="1",
-                    objective=description,
-                    required_connector_groups=required_connector_groups,
-                    optional_connectors=optional_connectors,
-                    required_read_action_groups=tuple(
-                        (evidence_action,)
-                        for evidence_action in PLAY_EVIDENCE.get(key, (action,))
-                    ),
-                    outcome_metrics=(kpi_key,),
-                )
-            )
-    return tuple(plays)
-
-
-DEPARTMENT_PORTFOLIO_PLAYS = _department_portfolio_plays()
-
-
 PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     CUSTOMER_RESCUE,
     REVENUE_RECOVERY,
@@ -260,9 +230,6 @@ PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     RECURRING_PROBLEM_HUNTER,
     CLIENT_COMMUNICATION_MANAGER,
     SERVICE_DESK_OPTIMIZATION_REVIEW,
-    # The signature version carries the same tested Finance evidence contract.
-    # Keep one canonical template per key so lookup order cannot hide readiness.
-    *(play for play in DEPARTMENT_PORTFOLIO_PLAYS if play.key != REVENUE_LEAK_HUNTER.key),
 )
 
 

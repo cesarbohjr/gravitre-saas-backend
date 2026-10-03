@@ -34,25 +34,3 @@ def test_rerunning_seed_does_not_duplicate_assets(mock_publisher):
 
     assert table.insert.call_count == 1
     assert table.update.call_count == 1
-
-
-def test_internal_draft_seed_keeps_parent_unpublished_and_versions_timestamped():
-    from datetime import datetime
-    from types import SimpleNamespace
-
-    asset = next(a for a in list_catalog_assets() if a.slug == "msp-service-desk-3")
-    assets = MagicMock()
-    assets.select.return_value.eq.return_value.limit.return_value.execute.return_value = SimpleNamespace(data=[])
-    assets.insert.return_value.execute.return_value = SimpleNamespace(data=[{"id": "asset-1"}])
-    versions = MagicMock()
-    versions.upsert.return_value.execute.return_value = SimpleNamespace(data=[])
-    client = MagicMock()
-    client.table.side_effect = lambda name: assets if name == "marketplace_assets" else versions
-
-    upsert_catalog_asset(client, "pub-1", asset)
-
-    parent = assets.insert.call_args.args[0]
-    version = versions.upsert.call_args.args[0]
-    assert parent["status"] == "draft"
-    assert parent["published_at"] is None
-    assert datetime.fromisoformat(version["published_at"]).tzinfo is not None

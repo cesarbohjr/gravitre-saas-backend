@@ -908,7 +908,7 @@ function ApprovalsContent() {
 
   return (
     <>
-      <div className="flex flex-col lg:flex-row h-full pb-28 lg:pb-0">
+      <div className="flex flex-col lg:flex-row h-full pb-28 lg:pb-0" data-composition="operate">
         {/* Left: Queue */}
         <div className={cn(
           "flex w-full flex-col border-divide",

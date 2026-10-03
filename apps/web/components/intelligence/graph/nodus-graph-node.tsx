@@ -57,19 +57,14 @@ export function NodusGraphNodeTile({
     <div className={cn("flex max-w-[8.5rem] flex-col items-center gap-1.5", className)}>
       <div
         className={cn(
-          "relative shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700",
+          "relative shrink-0 overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-px shadow-[0_12px_30px_-26px_rgba(16,24,22,.65)]",
           box,
           selected && "ring-2 ring-[color:var(--g-brand)] ring-offset-1",
-          active && "ring-1 ring-[color:var(--color-brand,#16a374)]",
+          active && "ring-1 ring-[color:var(--g-emerald)]",
         )}
       >
-        {spin ? (
-          <>
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand,#16a374)_20%,transparent_30%)]" />
-          </>
-        ) : null}
-        <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white text-[color:var(--color-brand,#16a374)] dark:bg-neutral-900">
+        {spin ? <div className="absolute inset-x-1 bottom-0 h-[2px] overflow-hidden rounded-full bg-[color:var(--g-emerald-pale)]"><div className="h-full w-1/2 animate-[g-node-route_1.2s_ease-in-out_infinite] rounded-full bg-[color:var(--g-emerald)]" /></div> : null}
+        <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-background text-[color:var(--g-emerald-deep)]">
           <Icon className={iconSize} aria-hidden />
         </div>
       </div>

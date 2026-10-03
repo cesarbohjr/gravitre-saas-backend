@@ -23,7 +23,7 @@
 export const TYPE = {
   /** The single <h1> on a page — Nodus product scale (~20–24px), not marketing H1. */
   pageTitle:
-    "font-sans text-2xl font-semibold tracking-[-0.02em] text-[color:var(--g-text-primary)] sm:text-[28px] sm:leading-9",
+    "font-sans text-[30px] leading-[1.08] font-semibold tracking-[-0.025em] text-[color:var(--g-text-primary)]",
   /** Title of an immersive or expert workspace (builder, studio). */
   workspaceTitle:
     "font-sans text-xl font-semibold tracking-[-0.015em] text-[color:var(--g-text-primary)]",
@@ -31,12 +31,12 @@ export const TYPE = {
   pageLead: "font-sans text-sm text-pretty text-[color:var(--g-text-muted)]",
   /** Section heading inside a page (<h2>). */
   sectionTitle:
-    "font-sans text-[15px] font-semibold leading-6 tracking-[-0.01em] text-[color:var(--g-text-primary)]",
+    "font-sans text-[21px] leading-[1.2] font-semibold tracking-[-0.018em] text-[color:var(--g-text-primary)]",
   /** IDs, versions, schemas, timestamps, environment metadata. */
   mono: "font-mono text-xs font-medium tabular-nums text-[color:var(--g-text-muted)]",
   /** Card / list-item heading (<h3>) / widget title. */
   cardTitle:
-    "font-sans text-sm font-semibold leading-tight tracking-tight text-[color:var(--g-text-primary)]",
+    "font-sans text-base font-semibold leading-tight tracking-[-0.012em] text-[color:var(--g-text-primary)]",
   /**
    * Label above a title or over a group of controls. Sentence case, no
    * tracking (master spec §9.1 — uppercase tracking is out).
@@ -223,11 +223,11 @@ export const MOTION = {
   /** Alias of micro — prefer `micro` in new code. */
   fast: 0.15,
   /** Standard UI enter/exit (250ms). */
-  ui: 0.25,
+  ui: 0.2,
   /** Alias of ui — existing hub consumers; keep in sync with `ui`. */
-  base: 0.25,
+  base: 0.2,
   /** Major surface / route transitions (400ms). */
-  major: 0.4,
+  major: 0.32,
   /** Emphasis / slow reveals (600ms). */
   slow: 0.6,
   /** Staggered list reveals. */
@@ -275,6 +275,10 @@ export const MOTION_CONCEPT = {
   CONNECT: "connect",
   EXECUTE: "execute",
   COMPLETE: "complete",
+  /** Emerald Intelligence: responsibility moves between owners. */
+  HANDOFF: "handoff",
+  /** Emerald Intelligence: several paths coordinate into one result. */
+  ORCHESTRATE: "orchestrate",
 } as const
 
 /**
@@ -384,3 +388,25 @@ export const TOUCH_ICON_BUTTON = "h-11 w-11 sm:h-8 sm:w-8 [&_svg]:size-5 sm:[&_s
 /** Canonical hover/focus transition for interactive surfaces. */
 export const INTERACTION =
   "transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+
+
+/** Emerald Intelligence composition families. Shared tokens, different spatial grammars. */
+export const COMPOSITION = {
+  discover: "discover",
+  understand: "understand",
+  manage: "manage",
+  operate: "operate",
+  create: "create",
+  configure: "configure",
+} as const
+
+/** Data-rich surfaces keep their analytical vocabulary; styling changes, capability does not. */
+export const DATA_VIZ = {
+  primary: "var(--g-emerald)",
+  verified: "var(--g-emerald-deep)",
+  selected: "var(--g-emerald)",
+  secondary: "var(--g-signal)",
+  attention: "var(--g-warmth)",
+  grid: "var(--g-border-subtle)",
+  tooltip: "var(--g-carbon)",
+} as const

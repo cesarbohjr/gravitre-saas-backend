@@ -51,7 +51,7 @@ function CertificationSummary({ submission }: { submission: PartnerConnectorSubm
 
   return (
     <div className="mt-3 space-y-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-3 text-xs">
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-composition="operate" className="flex flex-wrap items-center gap-2">
         {submission.certificationStatus && (
           <StatusBadge variant={CERT_VARIANT[submission.certificationStatus] ?? "muted"}>
             cert {submission.certificationStatus}

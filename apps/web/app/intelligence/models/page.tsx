@@ -185,7 +185,7 @@ export default function IntelligenceModelsPage() {
   const copy = SURFACE_COPY.builtInModels
   return (
     <AppShell title={copy.title}>
-      <div className="space-y-2">
+      <div className="space-y-2" data-composition="understand">
         <div className="px-4 pt-4 md:px-6">
           <GravitrePageHeader
             title={copy.title}

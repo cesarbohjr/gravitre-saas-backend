@@ -64,7 +64,7 @@ export function MemoryConflictsCard({ enabled }: { enabled: boolean }) {
       ) : (
         <div className="space-y-3">
           {conflicts.slice(0, 5).map((row) => (
-            <div key={`${row.agentId}-${row.memory_a_id}-${row.memory_b_id}`} className="rounded-lg border border-border/60 p-3 text-sm">
+            <div key={`${row.agentId}-${row.memory_a_id}-${row.memory_b_id}`} className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] p-3 text-sm">
               <p className="font-medium text-foreground">Agent {row.agentId}</p>
               <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{row.memory_a_preview}</p>
               <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{row.memory_b_preview}</p>

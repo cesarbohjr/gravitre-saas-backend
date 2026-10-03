@@ -115,11 +115,6 @@ class PackageReviewRequest(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
-class CandidateReviewRequest(BaseModel):
-    decision: Literal["approve", "reject"]
-    notes: str | None = Field(default=None, max_length=2000)
-
-
 class NativeComponentBindingRequest(BaseModel):
     component_kind: Literal["agent", "play", "template", "trigger"] = Field(alias="componentKind")
     component_name: str = Field(min_length=1, max_length=160, alias="componentName")

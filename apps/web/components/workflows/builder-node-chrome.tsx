@@ -85,13 +85,13 @@ export function handleDotClass(connectState: NodeConnectState, selected: boolean
     "block h-2 w-2 rounded-full border transition-[transform,background-color,border-color,opacity] duration-150",
     "group-focus-visible/handle:ring-2 group-focus-visible/handle:ring-ring group-focus-visible/handle:ring-offset-1 group-focus-visible/handle:ring-offset-background",
     connectState === "source"
-      ? "border-[var(--signal-500)] bg-[var(--signal-500)]"
+      ? "border-[var(--g-emerald)] bg-[var(--g-emerald)]"
       : connectState === "valid"
-        ? "scale-125 border-[var(--signal-500)] bg-card group-hover/handle:bg-[var(--signal-500)]"
+        ? "scale-125 border-[var(--g-emerald)] bg-card group-hover/handle:bg-[var(--g-emerald)]"
         : connectState === "invalid"
           ? "border-[color:var(--g-border-default)] bg-muted opacity-50"
           : selected
-            ? "border-[var(--signal-500)] bg-card group-hover/handle:scale-125 group-hover/handle:bg-[var(--signal-500)]"
+            ? "border-[var(--g-emerald)] bg-card group-hover/handle:scale-125 group-hover/handle:bg-[var(--g-emerald)]"
             : "border-[color:var(--g-border-strong)] bg-card group-hover/handle:scale-125 group-hover/handle:border-foreground",
   )
 }
@@ -108,11 +108,11 @@ export function NodeHandles(props: Omit<NodeHandleProps, "side">) {
   )
 }
 
-/** Node surface: Carbon 900 at rest; Graphite 800 + Signal border when selected. No fill, no glow. */
+/** Node surface: quiet at rest; Emerald means selected/connected intelligence. */
 export function nodeSurfaceClass(selected: boolean): string {
   return selected
-    ? "border-[var(--signal-500)] bg-[color-mix(in_srgb,var(--signal-500)_5%,var(--card))] dark:bg-[var(--graphite-800)]"
-    : "border-[color:var(--g-border-default)] bg-card hover:border-[color:var(--g-border-strong)]"
+    ? "border-[var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_34px_-30px_rgba(0,127,95,.6)] dark:bg-[var(--graphite-800)]"
+    : "border-[color:var(--g-border-default)] bg-card transition-[border-color,box-shadow] duration-200 hover:border-[color:var(--g-emerald)] hover:shadow-[0_14px_34px_-32px_rgba(16,24,22,.5)]"
 }
 
 /** 2px Signal edge on the leading side of a selected node. */
@@ -120,7 +120,7 @@ export function NodeSelectionEdge() {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute -left-px bottom-2 top-2 w-[2px] rounded-full bg-[var(--signal-500)]"
+      className="pointer-events-none absolute -left-px bottom-2 top-2 w-[2px] rounded-full bg-[var(--g-emerald)]"
     />
   )
 }

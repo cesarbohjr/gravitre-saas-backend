@@ -64,7 +64,7 @@ function PayoutTransferHero({ summary }: { summary: MarketplaceAssetPayoutSummar
   const rate = transferRate(summary)
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+      <div data-composition="configure" className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium">Asset payout transfer rate</p>
           <p className="text-xs text-muted-foreground">

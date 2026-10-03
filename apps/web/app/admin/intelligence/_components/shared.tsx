@@ -12,20 +12,20 @@ import { Info } from "@phosphor-icons/react"
 export function scoreColor(score: number): { bar: string; text: string; glow: string } {
   if (score >= 0.75)
     return {
-      bar: "bg-gradient-to-r from-emerald-500 to-teal-400",
+      bar: "bg-[color:var(--g-emerald)]",
       text: "text-emerald-600",
-      glow: "shadow-[0_0_12px_-2px] shadow-emerald-500/50",
+      glow: "",
     }
   if (score >= 0.5)
     return {
-      bar: "bg-gradient-to-r from-amber-500 to-yellow-400",
+      bar: "bg-amber-500",
       text: "text-amber-600",
-      glow: "shadow-[0_0_12px_-2px] shadow-amber-500/50",
+      glow: "",
     }
   return {
-    bar: "bg-gradient-to-r from-rose-500 to-red-400",
+    bar: "bg-rose-500",
     text: "text-rose-600",
-    glow: "shadow-[0_0_12px_-2px] shadow-rose-500/50",
+    glow: "",
   }
 }
 
@@ -128,15 +128,10 @@ export function SectionCard({
         className,
       )}
     >
-      {/* Brand accent line that reveals on hover */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-      />
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {icon ? (
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/20 transition-transform duration-300 group-hover:scale-105 dark:text-emerald-400">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] ring-1 ring-inset ring-[color:var(--g-emerald)]/20">
               {icon}
             </span>
           ) : null}
@@ -160,7 +155,7 @@ export function SectionCard({
  */
 export function NotYetPopulated({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-dashed border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+    <div className="flex items-start gap-2.5 rounded-[8px] border border-dashed border-divide bg-[color:var(--g-surface-2)] px-4 py-3 text-sm text-muted-foreground">
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" weight="duotone" aria-hidden />
       <p className="leading-relaxed text-pretty">{children}</p>
     </div>

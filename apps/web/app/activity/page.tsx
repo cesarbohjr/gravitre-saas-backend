@@ -357,11 +357,11 @@ function ActivityPageInner() {
       {/* lg+: fill the viewport and delegate scrolling to the panes. Below lg
           there is no vertical budget for split panes, so the page scrolls
           normally and the panes stack. */}
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden">
+      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden" data-composition="operate">
         <GravitrePageHeader
           className="shrink-0"
           title="Activity"
-          description="Every outcome, work object and failure your agents and workflows produced, with its evidence."
+          description="Work in motion. Outcomes, exceptions and evidence—without the noise."
           icon={<NucleoActivity className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
@@ -399,7 +399,7 @@ function ActivityPageInner() {
                   className={cn(
                     "-mb-px border-b-2 pb-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active
-                      ? "border-[color:var(--g-text-primary)] text-[color:var(--g-text-primary)]"
+                      ? "border-[color:var(--g-emerald)] text-[color:var(--g-text-primary)]"
                       : "border-transparent text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
                   )}
                 >
@@ -660,18 +660,18 @@ function ActivityPageInner() {
                                     delay: reduceMotion ? 0 : Math.min(index, 12) * MOTION.stagger,
                                   }}
                                   className={cn(
-                                    "group relative flex w-full flex-col gap-0.5 py-2 pl-3.5 pr-3 text-left transition-colors duration-150",
+                                    "group relative flex w-full flex-col gap-0.5 py-2.5 pl-3.5 pr-3 text-left transition-[background-color,box-shadow] duration-200",
                                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                                     active
-                                      ? "bg-[color:var(--g-brand-soft)]/60"
-                                      : "hover:bg-[color:var(--g-surface-2)]",
+                                      ? "bg-[color:var(--g-emerald-pale)]"
+                                      : "hover:bg-[color:var(--g-surface-2)] hover:shadow-[inset_2px_0_0_0_var(--g-border-default)]",
                                   )}
                                   onClick={() => setSelectedWorkObjectId(id)}
                                 >
                                   {active ? (
                                     <motion.span
                                       layoutId="activity-row-accent"
-                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-brand)]"
+                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-emerald)]"
                                       transition={
                                         reduceMotion
                                           ? { duration: 0 }
@@ -745,13 +745,13 @@ function ActivityPageInner() {
                                     delay: reduceMotion ? 0 : Math.min(index, 12) * MOTION.stagger,
                                   }}
                                   className={cn(
-                                    "group relative flex w-full flex-col gap-0.5 py-2 pl-3.5 pr-3 text-left transition-colors duration-150",
+                                    "group relative flex w-full flex-col gap-0.5 py-2.5 pl-3.5 pr-3 text-left transition-[background-color,box-shadow] duration-200",
                                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                                     String(outcome.status || "").toLowerCase() === "flagged_for_review" &&
                                       "bg-warning/[0.05]",
                                     active
-                                      ? "bg-[color:var(--g-brand-soft)]/60"
-                                      : "hover:bg-[color:var(--g-surface-2)]",
+                                      ? "bg-[color:var(--g-emerald-pale)]"
+                                      : "hover:bg-[color:var(--g-surface-2)] hover:shadow-[inset_2px_0_0_0_var(--g-border-default)]",
                                   )}
                                   onClick={() => setSelectedOutcomeId(id)}
                                 >
@@ -764,7 +764,7 @@ function ActivityPageInner() {
                                   {active ? (
                                     <motion.span
                                       layoutId="activity-row-accent"
-                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-brand)]"
+                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-emerald)]"
                                       transition={
                                         reduceMotion
                                           ? { duration: 0 }

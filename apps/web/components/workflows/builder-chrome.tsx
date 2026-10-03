@@ -69,6 +69,7 @@ export function BuilderNav({ workflowId }: { workflowId: string }) {
     <nav
       aria-label="Workflow builder"
       data-review-surface="builder-nav"
+      data-composition="create"
       className="hidden shrink-0 flex-col gap-4 overflow-y-auto border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] py-3 lg:flex lg:w-12 xl:w-52"
     >
       {groups.map((group) => (
@@ -86,7 +87,7 @@ export function BuilderNav({ workflowId }: { workflowId: string }) {
                   "relative flex h-8 items-center gap-2.5 rounded-[5px] px-2 text-[13px] font-medium transition-colors",
                   "justify-center xl:justify-start",
                   item.current
-                    ? "bg-[color:var(--g-surface-3)] text-foreground before:absolute before:inset-y-1.5 before:left-0 before:w-[2px] before:rounded-full before:bg-[color:var(--g-brand)] before:content-['']"
+                    ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-text-primary)] before:absolute before:inset-y-1.5 before:left-0 before:w-[2px] before:rounded-full before:bg-[color:var(--g-emerald)] before:content-['']"
                     : "text-muted-foreground hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground",
                 )}
               >
@@ -128,7 +129,7 @@ export function BuilderInspector({
       aria-label="Inspector"
       data-review-surface="builder-inspector"
       data-inspector-mode={mode}
-      className="hidden min-h-0 shrink-0 flex-col border-l border-[color:var(--g-border-subtle)] bg-card dark:border-[color:var(--graphite-700)] md:flex md:w-[300px] xl:w-[340px]"
+      className="hidden min-h-0 shrink-0 flex-col border-l border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] dark:border-[color:var(--graphite-700)] md:flex md:w-[300px] xl:w-[340px]"
     >
       <div role="tablist" aria-label="Inspector mode" className="flex h-10 shrink-0 items-stretch gap-4 border-b border-[color:var(--g-border-subtle)] px-4">
         {INSPECTOR_TABS.map((tab) => {
@@ -147,7 +148,7 @@ export function BuilderInspector({
                 "relative inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors",
                 "after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:content-['']",
                 selected
-                  ? "text-foreground after:bg-[color:var(--g-text-primary)]"
+                  ? "text-foreground after:bg-[color:var(--g-emerald)]"
                   : "text-muted-foreground hover:text-foreground after:bg-transparent",
               )}
             >
@@ -157,7 +158,7 @@ export function BuilderInspector({
                   aria-hidden
                   className={cn(
                     "size-1.5 rounded-full",
-                    tab.id === "trace" ? "bg-[color:var(--info)] motion-safe:animate-pulse" : "bg-[color:var(--g-brand)]",
+                    tab.id === "trace" ? "bg-[color:var(--g-electric)] motion-safe:animate-pulse" : "bg-[color:var(--g-emerald)]",
                   )}
                 />
               ) : null}
@@ -320,7 +321,7 @@ export type TraceStatus = "idle" | "running" | "completed" | "error" | "paused" 
 const TRACE_STATUS: Record<TraceStatus, { label: string; dot: string }> = {
   idle: { label: "No active run", dot: "bg-[color:var(--g-text-muted)]" },
   running: { label: "Running", dot: "bg-[color:var(--info)] motion-safe:animate-pulse" },
-  completed: { label: "Completed", dot: "bg-[color:var(--g-brand)]" },
+  completed: { label: "Verified", dot: "bg-[color:var(--g-emerald)]" },
   error: { label: "Failed", dot: "bg-destructive" },
   paused: { label: "Paused", dot: "bg-[color:var(--g-approval)]" },
   waiting: { label: "Awaiting approval", dot: "bg-[color:var(--g-approval)]" },
@@ -331,8 +332,8 @@ const NODE_STATE_DOT: Record<string, { label: string; dot: string }> = {
   running: { label: "Running", dot: "bg-[color:var(--info)] motion-safe:animate-pulse" },
   evaluating: { label: "Evaluating", dot: "bg-[color:var(--info)] motion-safe:animate-pulse" },
   debating: { label: "Debating", dot: "bg-[color:var(--info)] motion-safe:animate-pulse" },
-  success: { label: "Completed", dot: "bg-[color:var(--g-brand)]" },
-  consensus: { label: "Consensus", dot: "bg-[color:var(--g-brand)]" },
+  success: { label: "Verified", dot: "bg-[color:var(--g-emerald)]" },
+  consensus: { label: "Consensus", dot: "bg-[color:var(--g-emerald)]" },
   error: { label: "Failed", dot: "bg-destructive" },
   escalated: { label: "Escalated", dot: "bg-destructive" },
   waiting: { label: "Waiting", dot: "bg-[color:var(--g-approval)]" },

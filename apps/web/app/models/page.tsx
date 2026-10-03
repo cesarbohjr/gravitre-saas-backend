@@ -236,7 +236,7 @@ export default function ModelsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.models.title}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6" data-composition="understand">
         <GravitrePageHeader
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}

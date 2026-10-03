@@ -46,10 +46,10 @@ export function GravitreAgentCard({
         onDragStart={onDragStart}
         aria-pressed={selected}
         className={cn(
-          "group flex h-full w-full flex-col rounded-[12px] border bg-card p-3 text-left transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "group relative flex h-full w-full flex-col overflow-hidden rounded-[12px] border bg-card p-3 text-left transition-[border-color,box-shadow,transform] duration-200 motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           selected
-            ? "border-[color:var(--g-brand)] shadow-[0_0_0_3px_var(--g-brand-soft)]"
-            : "border-[color:var(--g-border-default)] hover:border-[color:var(--g-border-strong)] hover:shadow-sm",
+            ? "border-[color:var(--g-emerald)] shadow-[0_0_0_3px_var(--g-emerald-pale)]"
+            : "border-[color:var(--g-border-default)] hover:border-[color:var(--g-emerald)] hover:shadow-[0_16px_38px_-32px_rgba(0,127,95,.48)]",
           draggable && "cursor-grab active:cursor-grabbing",
           className,
         )}

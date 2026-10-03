@@ -6,7 +6,6 @@ import { aiTransparencyApprovalPost } from "./content/ai-transparency-approval"
 import { measuringAiRoiPost } from "./content/measuring-ai-roi"
 import { enterpriseAiGovernancePost } from "./content/enterprise-ai-governance"
 import { aiAgentBestPracticesPost } from "./content/ai-agent-best-practices"
-import { governedAiForMspsPost } from "./content/governed-ai-for-msps"
 import { SITE_URL, type BlogFAQ, type BlogPost } from "./types"
 
 export { GRAVITRE_BLOG_AUTHOR } from "./authors"
@@ -215,7 +214,6 @@ export const blogPosts: BlogPost[] = [
   workflowTemplatesPost,
   enterpriseAiGovernancePost,
   aiAgentBestPracticesPost,
-  governedAiForMspsPost,
 ]
 
 export function getFeaturedBlogPost(): BlogPost {

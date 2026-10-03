@@ -36,8 +36,8 @@ import {
   Upload,
   Loader2,
   X,
-  Brain,
-  Sparkles,
+  GitBranch,
+  Route,
   Info,
   Plus,
   Trash2,
@@ -1259,8 +1259,8 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
           onChange={setWorkspaceModel}
           showAdvanced
         />
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-info/5 border border-info/20">
-          <Sparkles className="h-4 w-4 text-info shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 rounded-[8px] border border-info/20 bg-info/5 p-3">
+          <Route className="h-4 w-4 text-info shrink-0 mt-0.5" />
           <div className="text-xs text-muted-foreground">
             <span className="text-info font-medium">Auto-select</span> analyzes each task and picks the best model automatically. Recommended for most workspaces.
           </div>
@@ -1283,7 +1283,7 @@ function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
                   --chart-* ramp rather than health tones (emerald here did not
                   mean "good"). */}
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-chart-4/10 text-chart-4">
-                <Brain className="h-4 w-4" />
+                <GitBranch className="h-4 w-4" />
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">AI Operator</p>
@@ -2127,7 +2127,8 @@ function SettingsContent() {
   }
 
   return (
-    <SettingsShell
+    <div data-composition="configure" className="h-full min-h-0">
+      <SettingsShell
       activeSection={activeSection}
       onSectionChange={handleSectionChange}
       isAdmin={isAdmin}
@@ -2135,7 +2136,8 @@ function SettingsContent() {
       onMobileMenuOpenChange={setMobileMenuOpen}
     >
       {renderContent()}
-    </SettingsShell>
+      </SettingsShell>
+    </div>
   )
 }
 

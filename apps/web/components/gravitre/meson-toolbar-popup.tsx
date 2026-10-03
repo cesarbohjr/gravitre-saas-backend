@@ -13,7 +13,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import useSWR from "swr"
 import { AnimatePresence, motion } from "framer-motion"
-import { Blocks, ChevronDown, Sparkles, X } from "lucide-react"
+import { Blocks, ChevronDown, Route, X } from "lucide-react"
 import { MesonPagePanel, briefToInsights } from "@/components/gravitre/meson-page-panel"
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 import { NucleoAgent } from "@/components/icons/nucleo/semantic"
@@ -113,9 +113,9 @@ function MesonGibeVoice({
 }) {
   if (isLoading && !insight) {
     return (
-      <div className="space-y-1.5 rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
-        <Skeleton className="h-3 w-2/3 bg-violet-500/10" />
-        <Skeleton className="h-3 w-full bg-violet-500/10" />
+      <div className="space-y-1.5 rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] p-2.5">
+        <Skeleton className="h-3 w-2/3 bg-muted" />
+        <Skeleton className="h-3 w-full bg-muted" />
       </div>
     )
   }
@@ -123,9 +123,9 @@ function MesonGibeVoice({
   if (!insight) return null
 
   return (
-    <div className="rounded-lg border border-violet-500/15 bg-violet-500/5 p-2.5">
-      <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400">
-        <Sparkles className="h-3 w-3" />
+    <div className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] p-2.5">
+      <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[color:var(--g-emerald-deep)]">
+        <Route className="h-3 w-3" />
         {source === "gibe" ? "GIBE · Meson's take" : "Meson"}
       </div>
       <p className="text-xs font-medium leading-snug text-foreground">{insight.title}</p>
@@ -134,7 +134,7 @@ function MesonGibeVoice({
       </p>
       <Link
         href={APP_ROUTES.intelligence}
-        className="mt-1 inline-block text-[10px] font-medium text-violet-600 underline-offset-4 hover:underline dark:text-violet-400"
+        className="mt-1 inline-block text-[10px] font-medium text-[color:var(--g-emerald-deep)] underline-offset-4 hover:underline"
       >
         Advisory only — open Intelligence (GIBE)
       </Link>
@@ -316,11 +316,11 @@ export function MesonToolbarPopup() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -6, scale: 0.98 }}
           transition={{ duration: 0.18 }}
-          className="pointer-events-auto fixed right-3 top-[3.75rem] z-[70] w-[min(calc(100vw-1.5rem),22rem)] overflow-hidden rounded-2xl border border-violet-500/20 bg-card/95 shadow-xl shadow-violet-500/10 backdrop-blur-md sm:right-4"
+          className="pointer-events-auto fixed right-3 top-[3.75rem] z-[70] w-[min(calc(100vw-1.5rem),22rem)] overflow-hidden rounded-[10px] border border-divide bg-card shadow-[var(--np-shadow)] sm:right-4"
         >
           <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
             <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-              <Blocks className="h-3.5 w-3.5 text-violet-500" />
+              <Blocks className="h-3.5 w-3.5 text-[color:var(--g-emerald-deep)]" />
               Meson tips
             </div>
             <div className="flex items-center gap-1">

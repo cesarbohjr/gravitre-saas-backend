@@ -5,13 +5,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
-import {
-  MorphingBackground,
-  GlowOrb,
-  AnimatedCounter,
-  StatusBeacon,
-  ActivityIndicator
-} from "@/components/gravitre/premium-effects"
+import { StatusBeacon } from "@/components/gravitre/premium-effects"
 import { 
   ComposedChart,
   Area, 
@@ -191,7 +185,7 @@ export default function BillingPage() {
 
   return (
     <AppShell title="Settings">
-      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+      <div data-composition="configure" className="h-full min-h-0">\n      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
         <SettingsShell
           activeSection="billing"
           isAdmin={isAdmin}
@@ -208,8 +202,7 @@ export default function BillingPage() {
             <BillingPageInner isAdmin={isAdmin} />
           )}
         </SettingsShell>
-      </Suspense>
-    </AppShell>
+      </Suspense>\n      </div>\n    </AppShell>
   )
 }
 
@@ -700,19 +693,19 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
         {/* Ambient background scoped to billing content — never covers the settings rail */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div className="absolute inset-0 opacity-40">
-            <MorphingBackground colors={["emerald", "blue"]} />
+            <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(rgba(0,168,120,.18)_1px,transparent_1px)] [background-size:20px_20px]" aria-hidden />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/92 to-background" />
+          <div className="absolute inset-0 bg-[color:var(--g-surface-1)]/90" />
         </div>
         
         {/* Hero Header */}
         <div className="relative z-10 overflow-hidden border-b border-divide/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-chart-4/10" />
+          <div className="absolute inset-0 [background-image:linear-gradient(90deg,transparent,rgba(0,168,120,.08),transparent)]" />
           <div className="absolute top-0 right-0 pointer-events-none">
-            <GlowOrb size={280} color="emerald" intensity={0.22} />
+
           </div>
           <div className="absolute bottom-0 left-0 pointer-events-none">
-            <GlowOrb size={220} color="emerald" intensity={0.16} />
+
           </div>
           
           <div className="relative px-4 py-6 md:px-6 md:py-8">
@@ -726,13 +719,13 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                 <div>
                   <div className="flex items-center gap-4 mb-2">
                     <motion.div 
-                      className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-xl shadow-primary/30"
+                      className="relative flex h-14 w-14 items-center justify-center rounded-[10px] bg-[color:var(--g-emerald)] shadow-[var(--elevation-2)]"
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 3, repeat: Infinity }}
                     >
                       <Crown className="h-7 w-7 text-primary-foreground" />
                       <motion.div 
-                        className="absolute inset-0 rounded-2xl border-2 border-primary"
+                        className="absolute inset-0 rounded-[10px] border-2 border-[color:var(--g-emerald)]"
                         animate={{ scale: [1, 1.2], opacity: [0.6, 0] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       />
@@ -1083,7 +1076,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                 {/* Projection chart */}
                 <div className="relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] backdrop-blur-sm p-6 overflow-hidden lg:col-span-3">
                   <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none">
-                    <GlowOrb size={100} color="emerald" intensity={0.2} />
+                    <div className="absolute right-0 top-0 h-px w-24 bg-[color:var(--g-emerald)]/35" aria-hidden />
                   </div>
                   <div className="flex items-end justify-between mb-4">
                     <div>
@@ -1306,7 +1299,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
 
             {/* Footer */}
             <div className={cn(
-              "relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-br from-[color:var(--g-surface-2)] to-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6 transition-all duration-500 delay-600",
+              "relative overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6 transition-all duration-300",
               mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

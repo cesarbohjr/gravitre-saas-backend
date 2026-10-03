@@ -421,15 +421,15 @@ function IntelligenceCenterInner() {
   const journeyStep: 0 | 1 | 2 = !askSelected ? 0 : askSelected.kind === "relationship" ? 2 : 1
   return (
     <AppShell title={copy.title}>
-      <div className="relative bg-[color:var(--g-canvas)]">
+      <div className="relative bg-[color:var(--g-canvas)]" data-composition="understand">
         <IntelligenceSectionRedirect />
 
         {/* Investigation toolbar — identity, hub sections, freshness and journey in one line */}
         <div
           data-investigation-toolbar=""
-          className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-2 md:px-5"
+          className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-3 md:px-5"
         >
-          <h1 className="flex items-center gap-2 pb-2.5 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+          <h1 className={cn(TYPE.sectionTitle, "flex items-center gap-2 pb-2.5")}>
             <NucleoIntelligence className="h-4 w-4" aria-hidden />
             {copy.title}
             <span className="sr-only">

@@ -98,7 +98,7 @@ export default function MarketplaceSubmitPage() {
 
   return (
     <AppShell title="Submit connector">
-      <div className="bg-[color:var(--g-canvas)]">
+      <div data-composition="create" className="bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           eyebrow="Partner marketplace"
           title="Submit connector package"

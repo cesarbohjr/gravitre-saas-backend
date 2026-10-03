@@ -47,7 +47,7 @@ export default function PlayDetailPage() {
 
   return (
     <AppShell title={data?.play.name ?? "Play"}>
-      <div className="mx-auto max-w-4xl space-y-6 pb-8">
+      <div className="mx-auto max-w-4xl space-y-6 pb-8" data-composition="operate">
         <GravitrePageHeader
           eyebrow="Plays"
           title={isLoading ? "Loading…" : data?.play.name ?? "Play"}
@@ -61,19 +61,19 @@ export default function PlayDetailPage() {
         <div className="space-y-5 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
           {error ? (
             <WorkSectionErrorCard title="Could not load play" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
-          ) : isLoading || !data ? <Skeleton className="h-72 rounded-xl" /> : (
+          ) : isLoading || !data ? <Skeleton className="h-72 rounded-[10px]" /> : (
             <>
-              <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+              <section className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground">Readiness</p>
+                    <p className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Readiness</p>
                     <h2 className="mt-1 text-base font-semibold">{data.readiness.observe_ready ? "Ready with your workspace" : "Finish setup to use this play"}</h2>
                   </div>
                   {data.readiness.observe_ready ? <CheckCircle2 className="size-5 text-success" /> : <CircleAlert className="size-5 text-warning" />}
                 </div>
                 {(data.readiness.blockers?.length ?? 0) > 0 ? (
                   <ul className="mt-4 space-y-2">
-                    {data.readiness.blockers!.map((blocker) => <li key={blocker} className="rounded-lg border border-divide px-3 py-2 text-sm text-muted-foreground">{blocker}</li>)}
+                    {data.readiness.blockers!.map((blocker) => <li key={blocker} className="rounded-[8px] border border-divide px-3 py-2 text-sm text-muted-foreground">{blocker}</li>)}
                   </ul>
                 ) : null}
                 {!data.readiness.observe_ready ? (
@@ -84,11 +84,11 @@ export default function PlayDetailPage() {
                 ) : null}
               </section>
 
-              <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground">How this play works</p>
+              <section className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+                <p className="text-xs font-medium text-muted-foreground">Operating path</p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
                   {["Detect", "Understand", "Decide", "Approve", "Act", "Measure"].map((stage, index) => (
-                    <div key={stage} className="rounded-lg border border-divide p-3">
+                    <div key={stage} className="rounded-[8px] border border-divide p-3">
                       <p className="text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>
                       <p className="mt-1 text-sm font-medium">{stage}</p>
                     </div>
@@ -104,12 +104,12 @@ export default function PlayDetailPage() {
               <PlayResults playKey={data.play.key} />
 
               <section className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
+                <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5">
                   <p className="text-xs text-muted-foreground">Linked workflows</p>
                   <p className="mt-1 text-2xl font-semibold">{data.workflowBindingCount}</p>
                   <Button className="mt-4" variant="ghost" size="sm" asChild><Link href="/workflows">View workflows <ArrowRight className="size-4" /></Link></Button>
                 </div>
-                <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5">
+                <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5">
                   <p className="text-xs text-muted-foreground">Current operating capability</p>
                   <p className="mt-1 text-lg font-semibold">{mode(data.readiness)}</p>
                   <p className="mt-2 text-xs text-muted-foreground">This reflects current readiness. Saved authority can never exceed these validated controls.</p>

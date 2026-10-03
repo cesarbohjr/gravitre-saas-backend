@@ -2101,40 +2101,6 @@ export interface MarketplaceAssetSummary {
   federated?: boolean
   registryId?: string
   vendor?: string
-  certificationLevel?: "compatible" | "tested" | "governed" | "production_verified" | "outcome_verified" | string
-  certificationPublishReady?: boolean
-  certificationUpdatedAt?: string | null
-  certifiedBy?: string | null
-  certificationFindings?: Array<{
-    code: string
-    message: string
-    blocking: boolean
-    metadata?: Record<string, unknown>
-  }>
-  playCount?: number
-  kpiKeys?: string[]
-  outcomeEvents?: string[]
-  runtimeProviders?: string[]
-  verificationRequired?: boolean
-  outcomeTarget?: string | null
-  aiDiscovery?: {
-    jobToBeDone?: string
-    targetOutcome?: string
-    playCount?: number
-    supportedPlayCount?: number
-    kpiKeys?: string[]
-    requiredSystems?: string[]
-    supportedSystems?: string[]
-    connectorGroups?: Array<Record<string, unknown>>
-    plays?: Array<Record<string, unknown>>
-  }
-  connectorAlternatives?: string[][]
-  connectorGroups?: Array<{
-    connectors: string[]
-    satisfied: boolean
-    connectedMembers: string[]
-    required: boolean
-  }>
 }
 
 export interface MarketplaceAssetsListResponse {
@@ -2214,12 +2180,9 @@ export interface MarketplaceRoiAssetRow {
   installId: string
   slug?: string | null
   title?: string | null
-  assetType?: string | null
   estimatedHoursSaved: number
   realizedHoursSaved: number
   usageEvents: number
-  verifiedOutcomeEvents: number
-  outcomeVerified: boolean
   installedAt?: string | null
   businessOutcome?: string | null
   useCase?: string | null
@@ -2229,9 +2192,7 @@ export interface MarketplaceRoiSummary {
   orgId: string
   activeInstalls: number
   assetsWithUsage: number
-  assetsWithVerifiedOutcomes: number
   totalUsageEvents: number
-  totalVerifiedOutcomeEvents: number
   totalEstimatedHoursSaved: number
   totalRealizedHoursSaved: number
   realizationRate: number

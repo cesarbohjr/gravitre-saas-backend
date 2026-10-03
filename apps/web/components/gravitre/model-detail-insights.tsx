@@ -12,7 +12,6 @@ import {
   Layers,
   Link2,
   Rocket,
-  Sparkles,
   Target,
   Workflow,
 } from "lucide-react"
@@ -37,7 +36,7 @@ import { SixQuestionsPanel, type SixQuestionsAnswer } from "@/components/intelli
 
 const availabilityBadge: Record<string, string> = {
   platform: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25",
-  connected: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
+  connected: "bg-emerald-500/10 text-[color:var(--g-emerald-deep)] border-emerald-500/25",
   requires_connection: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25",
 }
 
@@ -152,24 +151,19 @@ export function ModelDetailInsights({
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5" data-composition="understand">
       <motion.section
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-emerald-500/5 p-5 sm:p-6"
+        transition={{ duration: 0.2 }}
+        className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] sm:p-5"
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl"
-        />
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             {typeMeta ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                <Sparkles className="h-3 w-3" />
+              <Badge variant="outline" className="border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald-pale)] font-medium text-[color:var(--g-emerald-deep)]">
                 {typeMeta.label}
-              </div>
+              </Badge>
             ) : null}
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
               {typeMeta?.tagline ??
@@ -230,16 +224,16 @@ export function ModelDetailInsights({
                   transition={{ delay: index * 0.05 }}
                   className={cn(
                     "rounded-xl border p-3 text-center transition-colors",
-                    current && "border-emerald-500/40 bg-emerald-500/5",
-                    done && !current && "border-emerald-500/25 bg-emerald-500/5",
+                    current && "border-[color:var(--g-emerald)]/40 bg-[color:var(--g-emerald-pale)]",
+                    done && !current && "border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald-pale)]",
                     !done && !current && "border-border/60 bg-secondary/20"
                   )}
                 >
                   <div className="mb-2 flex justify-center">
                     {done ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+                      <CheckCircle2 className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
                     ) : (
-                      <Circle className={cn("h-5 w-5", current ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/40")} />
+                      <Circle className={cn("h-5 w-5", current ? "text-[color:var(--g-emerald-deep)]" : "text-muted-foreground/40")} />
                     )}
                   </div>
                   <p className="text-xs font-medium">{step.label}</p>
@@ -306,7 +300,7 @@ export function ModelDetailInsights({
                         </Badge>
                       ) : null}
                       {baseModelOption.fineTunable ? (
-                        <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
+                        <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-[color:var(--g-emerald-deep)]">
                           Fine-tunable
                         </Badge>
                       ) : null}
@@ -463,7 +457,7 @@ export function ModelDetailInsights({
                       <div className="flex items-center gap-2">
                         <span className="font-medium">v{version.version}</span>
                         {isLive ? (
-                          <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px]">
+                          <Badge variant="outline" className="border-emerald-500/30 text-[color:var(--g-emerald-deep)] text-[10px]">
                             Live
                           </Badge>
                         ) : null}

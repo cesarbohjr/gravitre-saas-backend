@@ -178,21 +178,3 @@ def test_set_org_asset_pricing_delegates_with_ownership(mock_fetch, mock_assert,
     assert result["updated"] is True
     mock_assert.assert_called_once()
     mock_set.assert_called_once()
-
-
-@patch("app.marketplace.flags._fetch_asset")
-def test_set_asset_verified_rejects_marketplace3_outcome_pack(mock_fetch):
-    mock_fetch.return_value = _asset(
-        asset_type="outcome_pack",
-        slug="msp-service-desk-3",
-        title="MSP Service Desk 3.0",
-    )
-    client = MagicMock()
-    with pytest.raises(MarketplaceFlagsError) as exc:
-        set_asset_verified(
-            client,
-            "msp-service-desk-3",
-            verified=True,
-            actor_id="platform-1",
-        )
-    assert "certification lifecycle" in str(exc.value)

@@ -6,7 +6,7 @@
 
 /*
  * Nodus Agent Template tokens → Gravitre (Gate 0 approved 2026-09-06).
- * Orange #f17463 → logo green #16a374. Light-first only.
+ * Orange #f17463 → logo green #00a878. Light-first only.
  * Vendor zip remains gitignored; committed mirrors live under apps/web/fonts.
  */
 @theme {
@@ -21,8 +21,8 @@
   --color-gray-500: #c0c0c0;
   --color-gray-600: #6b6b70;
   /* Nodus --color-brand was #f17463; Gravitre brand green */
-  --color-brand: #16a374;
-  --color-brand-soft: #e0f3ec;
+  --color-brand: #00a878;
+  --color-brand-soft: #cff7e8;
   --shadow-aceternity:
     0px 2px 3px -1px rgba(0, 0, 0, 0.1), 0px 1px 0px 0px rgba(25, 28, 33, 0.02),
     0px 0px 0px 1px rgba(25, 28, 33, 0.08);
@@ -54,19 +54,33 @@
 }
 
 :root {
+  /* Emerald Intelligence — approved Gravitre product identity (2026-10). */
+  --g-emerald: #00a878;
+  --g-emerald-deep: #007f5f;
+  --g-emerald-mint: #cff7e8;
+  --g-emerald-pale: #eaf8f2;
+  --g-carbon: #101816;
+  --g-bone: #f5f3ec;
+  --g-electric: #315cff;
+  --g-warmth: #ff654d;
+  --g-viz-primary: var(--g-emerald);
+  --g-viz-secondary: var(--g-electric);
+  --g-viz-attention: var(--g-warmth);
+  --g-viz-grid: #dde5e1;
+  --g-viz-tooltip: var(--g-carbon);
   /* Gravitre Brand — light-first (Nodus full-match) */
-  /* Brand green #16a374 from gravitre-icon-green-1024.png */
-  --brand: #16a374;
-  --brand-soft: #e0f3ec;
+  /* Brand green #00a878 from gravitre-icon-green-1024.png */
+  --brand: #00a878;
+  --brand-soft: #cff7e8;
   /* Explicit brand ladder (Nodus product reconstruction Gate 2026-09-07) */
-  --g-brand: #16a374;
-  --g-brand-hover: #128a63;
-  --g-brand-active: #0f7a58;
-  --g-brand-soft: #e0f3ec;
-  --g-brand-muted: #5ec49a;
-  --g-brand-surface: color-mix(in srgb, #16a374 6%, #ffffff);
-  --g-brand-border: color-mix(in srgb, #16a374 22%, #eaedf1);
-  --g-brand-glow: 0 8px 28px -10px color-mix(in srgb, #16a374 30%, transparent);
+  --g-brand: #00a878;
+  --g-brand-hover: #008f67;
+  --g-brand-active: #007f5f;
+  --g-brand-soft: #cff7e8;
+  --g-brand-muted: #63d6b3;
+  --g-brand-surface: color-mix(in srgb, #00a878 6%, #ffffff);
+  --g-brand-border: color-mix(in srgb, #00a878 22%, #eaedf1);
+  --g-brand-glow: 0 8px 28px -10px color-mix(in srgb, #00a878 30%, transparent);
   /* Nodus Product Image layout tokens (measured from dashboard@3x.png) */
   --np-sidebar: 236px;
   --np-sidebar-rail: 64px;
@@ -99,7 +113,7 @@
   --popover: #ffffff;
   --popover-foreground: #202020;
   /* Primary = Gravitre brand green (was approximate oklch; now exact hex) */
-  --primary: #16a374;
+  --primary: #00a878;
   --primary-foreground: #ffffff;
   --secondary: #f5f5f5;
   --secondary-foreground: #202020;
@@ -117,7 +131,7 @@
   --destructive-foreground: oklch(0.99 0 0);
   --border: #eaedf1;
   --input: #f5f5f5;
-  --ring: #16a374;
+  --ring: #00a878;
   /* Status colors. The -foreground pairs are for content sitting on a SOLID
      status fill (e.g. a filled success dot); text on a low-opacity status tint
      should use text-success/-warning/-info instead. */
@@ -156,24 +170,24 @@
   /* Sidebar: subtle cool surface with brand-emerald accents */
   --sidebar: #f2f3f1;
   --sidebar-foreground: #202020;
-  --sidebar-primary: #16a374;
+  --sidebar-primary: #00a878;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #e8eae7;
   --sidebar-accent-foreground: #202020;
   --sidebar-border: #eaedf1;
-  --sidebar-ring: #16a374;
+  --sidebar-ring: #00a878;
   /* Assistant chat avatar (design handoff). A muted brand green (#3f5b52) that
      stays dark in both themes so the white mark keeps contrast without needing a
      per-theme asset swap. `speaking` brightens to --primary, which is the same
-     green the handoff specified as #16a374. */
+     green the handoff specified as #00a878. */
   --assistant-avatar: oklch(0.42 0.035 165);
   --assistant-avatar-foreground: oklch(0.99 0 0);
   /* Voice presentation (Pilot E) — hex SOTs from voice handoff, tokenized so
      Wave/Orb never ship hard-coded literals again. */
-  --gv-voice-user: #16a374;
+  --gv-voice-user: #00a878;
   --gv-voice-user-bright: #34d399;
   --gv-voice-user-deep: #0f5132;
-  --gv-voice-user-hover: #128a63;
+  --gv-voice-user-hover: #008f67;
   --gv-voice-idle: #9a9a96;
   --gv-voice-idle-dark: #6b6b68;
   --gv-voice-agent: #3f5b52;
@@ -196,7 +210,7 @@
 
   /* ------------------------------------------------------------------
      Nodus full-match foundations (light-first).
-     White/Nodus gray canvas · charcoal type · brand green #16a374 ·
+     White/Nodus gray canvas · charcoal type · brand green #00a878 ·
      violet intelligence (product only) · cyan signal · amber approval.
      Same token names bridge web app, desktop, extension, responsive web.
      ------------------------------------------------------------------ */
@@ -208,7 +222,7 @@
   --g-surface-2: #f9f9f9;
   --g-surface-3: #f5f5f5;
   --g-surface-elevated: #ffffff;
-  --g-surface-active: color-mix(in srgb, #16a374 6%, var(--g-surface-1));
+  --g-surface-active: color-mix(in srgb, #00a878 6%, var(--g-surface-1));
   /* Light mode gets authority from ink and rules, not darker surfaces:
      structure is carried by border-default rules, so they must read on white. */
   --g-text-primary: #18181b;
@@ -225,8 +239,8 @@
   --g-intelligence-surface: color-mix(in oklch, oklch(0.55 0.16 290) 8%, var(--g-surface-1));
   --g-intelligence-glow: 0 8px 32px -12px color-mix(in oklch, oklch(0.55 0.16 290) 28%, transparent);
   --g-emerald: var(--primary);
-  --g-emerald-bright: #128a63;
-  --g-emerald-soft: #e0f3ec;
+  --g-emerald-bright: #008f67;
+  --g-emerald-soft: #cff7e8;
   --g-emerald-surface: color-mix(in srgb, var(--primary) 8%, var(--g-surface-1));
   --g-emerald-glow: 0 8px 28px -10px color-mix(in srgb, var(--primary) 30%, transparent);
   /* Nodus divide / pattern tokens */
@@ -1696,3 +1710,53 @@ details[open] > .g-disclosure > :first-child::after {
   background-image: none;
   background-color: var(--tw-gradient-from, transparent);
 }
+
+
+/* Emerald Intelligence — semantic art and motion primitives. */
+.g-intelligence-field {
+  background-color: var(--g-carbon);
+  color: white;
+  background-image:
+    radial-gradient(circle at 20% 25%, color-mix(in srgb, var(--g-emerald) 20%, transparent) 0 1px, transparent 2px),
+    linear-gradient(color-mix(in srgb, white 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, white 5%, transparent) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+}
+.g-data-surface { background: #fff; border: 1px solid var(--g-border-default); border-radius: 10px; }
+.g-viz-primary { color: var(--g-viz-primary); }
+.g-viz-secondary { color: var(--g-viz-secondary); }
+.g-viz-attention { color: var(--g-viz-attention); }
+.g-topology-path { stroke: var(--g-emerald); stroke-width: 2; stroke-linecap: round; }
+@keyframes g-route { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+@keyframes g-verify { 0% { opacity: .35; transform: scale(.94); } 100% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: no-preference) {
+  .g-motion-route { stroke-dasharray: 8 8; animation: g-route .8s linear infinite; }
+  .g-motion-verify { transform-origin: center; animation: g-verify .18s ease-out both; }
+}
+
+
+/* Emerald Intelligence responsive composition contracts. */
+[data-composition] { container-type: inline-size; }
+@media (max-width: 767px) {
+  [data-composition="discover"] .g-desktop-context,
+  [data-composition="understand"] .g-desktop-context,
+  [data-composition="manage"] .g-desktop-context,
+  [data-composition="operate"] .g-desktop-context,
+  [data-composition="create"] .g-desktop-context { display: none; }
+  [data-composition] .g-primary-action { min-height: 44px; }
+}
+@media (pointer: coarse) {
+  [data-composition] button:not([data-compact-control]),
+  [data-composition] a[role="button"] { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-composition] *, [data-composition] *::before, [data-composition] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+@keyframes g-node-route { 0% { transform: translateX(-110%); } 55% { transform: translateX(100%); } 100% { transform: translateX(220%); } }
+@media (prefers-reduced-motion: reduce) { [class*="g-node-route"] { animation: none !important; } }

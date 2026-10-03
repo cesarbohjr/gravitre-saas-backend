@@ -10,7 +10,7 @@ import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import type { IntelligenceSnapshot } from "@/lib/api"
 import { intelligenceApi } from "@/lib/api"
 import type { IconProps } from "@phosphor-icons/react"
-import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots, Brain } from "@phosphor-icons/react"
+import { ChartBar, BookOpen, Stack, Warning, ChatCircleDots } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 import { BanditStatusCard } from "./bandit-status-card"
 import { MemoryConflictsCard } from "./memory-conflicts-card"
@@ -47,7 +47,7 @@ function StatTile({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
-      className="group flex items-center gap-4 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-md hover:shadow-emerald-500/5"
+      className="group flex items-center gap-4 rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-emerald)]/25"
     >
       <span
         className={cn(
@@ -107,7 +107,7 @@ export function OverviewTab({
                 learningProgress.workflowRowsNeeded,
               )}`}
               iconSlot={
-                <Brain className="h-6 w-6 text-emerald-500" weight="duotone" aria-hidden />
+                <Stack className="h-6 w-6 text-[color:var(--g-emerald-deep)]" weight="duotone" aria-hidden />
               }
               size="md"
             />
