@@ -191,7 +191,7 @@ export default function BillingPage() {
 
   return (
     <AppShell title="Settings">
-      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+      <div data-composition="configure" className="h-full min-h-0">\n      <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
         <SettingsShell
           activeSection="billing"
           isAdmin={isAdmin}
@@ -208,8 +208,7 @@ export default function BillingPage() {
             <BillingPageInner isAdmin={isAdmin} />
           )}
         </SettingsShell>
-      </Suspense>
-    </AppShell>
+      </Suspense>\n      </div>\n    </AppShell>
   )
 }
 
@@ -700,7 +699,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
         {/* Ambient background scoped to billing content — never covers the settings rail */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div className="absolute inset-0 opacity-40">
-            <MorphingBackground colors={["emerald", "blue"]} />
+            <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(rgba(0,168,120,.18)_1px,transparent_1px)] [background-size:20px_20px]" aria-hidden />
           </div>
           <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/92 to-background" />
         </div>
@@ -709,10 +708,10 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
         <div className="relative z-10 overflow-hidden border-b border-divide/50">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-chart-4/10" />
           <div className="absolute top-0 right-0 pointer-events-none">
-            <GlowOrb size={280} color="emerald" intensity={0.22} />
+
           </div>
           <div className="absolute bottom-0 left-0 pointer-events-none">
-            <GlowOrb size={220} color="emerald" intensity={0.16} />
+
           </div>
           
           <div className="relative px-4 py-6 md:px-6 md:py-8">
