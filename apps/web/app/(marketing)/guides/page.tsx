@@ -190,7 +190,7 @@ const guides = [
 const difficultyColors: Record<string, string> = {
   Beginner: "text-primary bg-primary/15",
   Intermediate: "text-amber-700 bg-amber-100",
-  Advanced: "text-purple-700 bg-purple-100",
+  Advanced: "text-[color:var(--g-carbon)] bg-[color:var(--g-emerald-pale)]",
 }
 
 const learningPath = [

@@ -496,7 +496,7 @@ export default function SourcesPage() {
 
   return (
     <AppShell title={SOURCES_TITLE}>
-      <div data-testid="sources-hub-b">
+      <div data-testid="sources-hub-b" data-composition="manage" className="bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
           title={SOURCES_TITLE}
           description={SOURCES_DESCRIPTION}

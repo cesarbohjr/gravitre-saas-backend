@@ -109,12 +109,12 @@ function AgentsScreen() {
             <div className={`h-10 w-10 rounded-lg flex items-center justify-center relative ${
               agent.color === 'emerald' ? 'bg-primary/15' :
               agent.color === 'blue' ? 'bg-blue-100' :
-              agent.color === 'purple' ? 'bg-purple-100' : 'bg-amber-100'
+              agent.color === 'purple' ? 'bg-[color:var(--g-electric)]/10' : 'bg-amber-100'
             }`}>
               <agent.icon className={`h-5 w-5 ${
                 agent.color === 'emerald' ? 'text-primary' :
                 agent.color === 'blue' ? 'text-blue-600' :
-                agent.color === 'purple' ? 'text-purple-600' : 'text-amber-600'
+                agent.color === 'purple' ? 'text-[color:var(--g-electric)]' : 'text-amber-600'
               }`} />
               {agent.status === "active" && (
                 <motion.div
@@ -293,7 +293,7 @@ function WorkflowBuilderScreen() {
             whileInView={{ width: 40 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4 }}
-            className="h-0.5 bg-gradient-to-r from-blue-400 to-purple-400"
+            className="h-0.5 bg-gradient-to-r from-[color:var(--g-electric)] to-[color:var(--g-emerald)]"
           />
           
           {/* Condition */}
@@ -304,8 +304,8 @@ function WorkflowBuilderScreen() {
             transition={{ delay: 0.5 }}
             className="flex flex-col items-center"
           >
-            <div className="h-14 w-14 rounded-xl border border-purple-200 bg-purple-50 flex items-center justify-center shadow-sm rotate-45">
-              <GitBranch className="h-5 w-5 text-purple-600 -rotate-45" />
+            <div className="h-14 w-14 rounded-xl border border-[color:var(--g-electric)]/20 bg-[color:var(--g-electric)]/10 flex items-center justify-center shadow-sm rotate-45">
+              <GitBranch className="h-5 w-5 text-[color:var(--g-electric)] -rotate-45" />
             </div>
             <span className="text-[10px] text-muted-foreground mt-1.5 font-medium">Condition</span>
           </motion.div>
@@ -316,7 +316,7 @@ function WorkflowBuilderScreen() {
             whileInView={{ width: 40 }}
             viewport={{ once: true }}
             transition={{ delay: 0.6 }}
-            className="h-0.5 bg-gradient-to-r from-purple-400 to-amber-400"
+            className="h-0.5 bg-gradient-to-r from-[color:var(--g-electric)] to-[color:var(--g-warmth)]"
           />
           
           {/* Action */}
@@ -609,7 +609,7 @@ export function FeaturesLegacyContent({
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         />
         <motion.div 
-          className="absolute top-40 -right-32 w-[350px] h-[350px] bg-purple-100 rounded-full blur-3xl"
+          className="absolute top-40 -right-32 w-[350px] h-[350px] bg-[color:var(--g-electric)]/10 rounded-full"
           animate={{ 
             x: [0, -30, 0],
             opacity: [0.15, 0.25, 0.15],
@@ -904,13 +904,13 @@ export function FeaturesLegacyContent({
                         transition={{ delay: 0.5 + i * 0.1 }}
                         className={`h-16 w-16 rounded-xl border flex items-center justify-center shadow-sm ${
                           agent.color === 'blue' ? 'bg-blue-50 border-blue-200' :
-                          agent.color === 'purple' ? 'bg-purple-50 border-purple-200' :
+                          agent.color === 'purple' ? 'bg-[color:var(--g-electric)]/10 border-[color:var(--g-electric)]/20' :
                           'bg-amber-50 border-amber-200'
                         }`}
                       >
                         <agent.icon className={`h-7 w-7 ${
                           agent.color === 'blue' ? 'text-blue-500' :
-                          agent.color === 'purple' ? 'text-purple-500' :
+                          agent.color === 'purple' ? 'text-[color:var(--g-electric)]' :
                           'text-amber-500'
                         }`} />
                       </motion.div>
@@ -1040,11 +1040,11 @@ export function FeaturesLegacyContent({
               >
                 <div className={`h-14 w-14 mx-auto rounded-2xl flex items-center justify-center mb-4 ${
                   item.color === 'emerald' ? 'bg-primary/15' :
-                  item.color === 'blue' ? 'bg-blue-100' : 'bg-purple-100'
+                  item.color === 'blue' ? 'bg-blue-100' : 'bg-[color:var(--g-electric)]/10'
                 }`}>
                   <item.icon className={`h-7 w-7 ${
                     item.color === 'emerald' ? 'text-primary' :
-                    item.color === 'blue' ? 'text-blue-600' : 'text-purple-600'
+                    item.color === 'blue' ? 'text-blue-600' : 'text-[color:var(--g-electric)]'
                   }`} />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
@@ -1163,9 +1163,9 @@ export function FeaturesLegacyContent({
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-purple-50 border border-purple-200 px-3 py-1 mb-4">
-                  <Workflow className="h-3.5 w-3.5 text-purple-600" />
-                  <span className="text-xs font-medium text-purple-700">Workflow Builder</span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--g-electric)]/10 border border-[color:var(--g-electric)]/20 px-3 py-1 mb-4">
+                  <Workflow className="h-3.5 w-3.5 text-[color:var(--g-electric)]" />
+                  <span className="text-xs font-medium text-[color:var(--g-electric)]">Workflow Builder</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground mb-4">Visual automation, zero code</h3>
                 <p className="text-muted-foreground mb-6 leading-relaxed text-lg">
@@ -1175,8 +1175,8 @@ export function FeaturesLegacyContent({
                 <ul className="space-y-3">
                   {['Drag-and-drop interface', 'Conditional branching', 'Human-in-the-loop approvals', 'Version control'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="h-5 w-5 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Check className="h-3 w-3 text-purple-600" />
+                      <div className="h-5 w-5 rounded-full bg-[color:var(--g-electric)]/10 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-[color:var(--g-electric)]" />
                       </div>
                       {item}
                     </li>
@@ -1187,7 +1187,7 @@ export function FeaturesLegacyContent({
                 src="/product/app-workflows.png"
                 alt="Workflows list showing five workflows with their environment, last run, success rate, and run count, including a paused and a draft workflow."
                 chromeLabel="Workflows"
-                glowClassName="bg-gradient-to-r from-purple-100/60 to-pink-100/60"
+                glowClassName="bg-gradient-to-r from-[color:var(--g-electric)]/10 to-[color:var(--g-emerald)]/10"
               />
             </motion.div>
             ) : null}
@@ -1282,9 +1282,9 @@ export function FeaturesLegacyContent({
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div className="lg:order-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 border border-violet-200 px-3 py-1 mb-4">
-                  <Blocks className="h-3.5 w-3.5 text-violet-600" />
-                  <span className="text-xs font-medium text-violet-700">Meson</span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--g-electric)]/10 border border-[color:var(--g-electric)]/20 px-3 py-1 mb-4">
+                  <Blocks className="h-3.5 w-3.5 text-[color:var(--g-electric)]" />
+                  <span className="text-xs font-medium text-[color:var(--g-electric)]">Meson</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground mb-4">{MARKETING_COPY.meson.title}</h3>
                 <p className="text-muted-foreground mb-6 leading-relaxed text-lg">
@@ -1293,22 +1293,22 @@ export function FeaturesLegacyContent({
                 <ul className="space-y-3">
                   {MARKETING_COPY.meson.bullets.map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="h-5 w-5 rounded-full bg-violet-100 flex items-center justify-center">
-                        <Check className="h-3 w-3 text-violet-600" />
+                      <div className="h-5 w-5 rounded-full bg-[color:var(--g-electric)]/10 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-[color:var(--g-electric)]" />
                       </div>
                       {item}
                     </li>
                   ))}
                 </ul>
-                <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200">
-                  <p className="text-sm text-violet-800">
+                <div className="mt-6 p-4 rounded-xl bg-[color:var(--g-electric)]/8 border border-[color:var(--g-electric)]/20">
+                  <p className="text-sm text-[color:var(--g-text-primary)]">
                     <span className="font-semibold">Why upgrade?</span> Meson is available in Control and Command plans. 
                     Build in seconds what would take hours manually.
                   </p>
                 </div>
               </div>
               <div className="lg:order-1 relative">
-                <div className="absolute -inset-4 bg-gradient-to-r from-violet-100/60 to-purple-100/60 rounded-3xl blur-2xl" />
+                <div className="absolute -inset-4 rounded-3xl bg-[color:var(--g-electric)]/8" />
                 <div className="relative rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border">
                     <div className="flex gap-1.5">
@@ -1317,7 +1317,7 @@ export function FeaturesLegacyContent({
                       <div className="h-3 w-3 rounded-full bg-emerald-400" />
                     </div>
                     <div className="flex-1 flex justify-center">
-                      <div className="px-3 py-1 rounded-md bg-violet-100 text-[10px] text-violet-600 font-medium">Meson Builder</div>
+                      <div className="px-3 py-1 rounded-md bg-[color:var(--g-electric)]/10 text-[10px] text-[color:var(--g-electric)] font-medium">Meson Builder</div>
                     </div>
                   </div>
                   <div className="p-5 bg-muted/50/50 min-h-[340px]">
@@ -1331,11 +1331,11 @@ export function FeaturesLegacyContent({
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-3">
                         <motion.div 
-                          className="h-2 w-2 rounded-full bg-violet-500"
+                          className="h-2 w-2 rounded-full bg-[color:var(--g-electric)]"
                           animate={{ scale: [1, 1.2, 1] }}
                           transition={{ duration: 1.5, repeat: Infinity }}
                         />
-                        <span className="text-xs font-medium text-violet-600">Meson generating...</span>
+                        <span className="text-xs font-medium text-[color:var(--g-electric)]">Meson generating...</span>
                       </div>
                       
                       {[
@@ -1356,12 +1356,12 @@ export function FeaturesLegacyContent({
                             <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
                               item.color === 'emerald' ? 'bg-primary/10' :
                               item.color === 'blue' ? 'bg-blue-50' :
-                              item.color === 'purple' ? 'bg-purple-50' : 'bg-violet-50'
+                              item.color === 'purple' ? 'bg-[color:var(--g-electric)]/10' : 'bg-[color:var(--g-electric)]/8'
                             }`}>
                               <item.icon className={`h-4 w-4 ${
                                 item.color === 'emerald' ? 'text-primary' :
                                 item.color === 'blue' ? 'text-blue-500' :
-                                item.color === 'purple' ? 'text-purple-500' : 'text-violet-500'
+                                item.color === 'purple' ? 'text-[color:var(--g-electric)]' : 'text-[color:var(--g-electric)]'
                               }`} />
                             </div>
                             <div>
@@ -1373,12 +1373,12 @@ export function FeaturesLegacyContent({
                             <div className={`h-2 w-2 rounded-full ${
                               item.color === 'emerald' ? 'bg-primary/100' :
                               item.color === 'blue' ? 'bg-blue-500' :
-                              item.color === 'purple' ? 'bg-purple-500' : 'bg-violet-500'
+                              item.color === 'purple' ? 'bg-[color:var(--g-electric)]' : 'bg-[color:var(--g-electric)]'
                             }`} />
                             <span className={`text-[10px] capitalize ${
                               item.color === 'emerald' ? 'text-primary' :
                               item.color === 'blue' ? 'text-blue-600' :
-                              item.color === 'purple' ? 'text-purple-600' : 'text-violet-600'
+                              item.color === 'purple' ? 'text-[color:var(--g-electric)]' : 'text-[color:var(--g-electric)]'
                             }`}>{item.status}</span>
                           </div>
                         </motion.div>

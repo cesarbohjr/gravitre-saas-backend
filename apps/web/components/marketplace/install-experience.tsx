@@ -39,7 +39,6 @@ import {
   ExternalLink,
   Loader2,
   Package,
-  Sparkles,
   Workflow,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -119,16 +118,12 @@ export function InstallSuccessPanel({
     <motion.div
       initial={reduced ? false : { opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className="relative overflow-hidden rounded-3xl border border-success/25 bg-gradient-to-br from-success/10 via-card to-primary/5 p-5"
+      className="relative overflow-hidden rounded-[10px] border border-success/25 bg-background p-5"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-success/20 blur-3xl"
-      />
       <div className="relative space-y-4">
         <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-success/15 text-success shadow-inner">
-            <Sparkles className="h-5 w-5" aria-hidden />
+          <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-success/15 text-success">
+            <CheckCircle2 className="h-5 w-5" aria-hidden />
           </span>
           <div>
             <p className="text-xs font-semibold text-success/80">

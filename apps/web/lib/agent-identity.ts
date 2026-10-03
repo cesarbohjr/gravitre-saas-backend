@@ -94,32 +94,32 @@ const COLOR_GRADIENTS: Record<AgentAvatarColorId, AgentPersonality> = {
   "bg-emerald-500": {
     color: "emerald",
     gradient: "from-emerald-500 to-teal-600",
-    glow: "shadow-emerald-500/30",
+    glow: "shadow-none",
   },
   "bg-blue-500": {
     color: "blue",
     gradient: "from-blue-500 to-indigo-600",
-    glow: "shadow-blue-500/30",
+    glow: "shadow-none",
   },
   "bg-amber-500": {
     color: "amber",
     gradient: "from-amber-500 to-orange-600",
-    glow: "shadow-amber-500/30",
+    glow: "shadow-none",
   },
   "bg-purple-500": {
     color: "purple",
     gradient: "from-purple-500 to-violet-600",
-    glow: "shadow-purple-500/30",
+    glow: "shadow-none",
   },
   "bg-rose-500": {
     color: "rose",
     gradient: "from-rose-500 to-pink-600",
-    glow: "shadow-rose-500/30",
+    glow: "shadow-none",
   },
   "bg-cyan-500": {
     color: "cyan",
     gradient: "from-cyan-500 to-blue-600",
-    glow: "shadow-cyan-500/30",
+    glow: "shadow-none",
   },
 }
 

@@ -5,6 +5,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { RADIUS, STATUS } from "@/lib/design-system"
 import { departmentPipelinesApi } from "@/lib/api"
+import { pipelineDepartmentKey } from "@/lib/marketplace-department-pipeline"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { Switch } from "@/components/ui/switch"
 import { CheckCircle2, Circle, AlertTriangle, Loader2, Clock } from "lucide-react"
@@ -221,13 +222,13 @@ export function DepartmentPipelinePanel({
 }
 
 export function DepartmentPipelineByDepartment({ department }: { department: string }) {
-  const normalized = department.trim().toLowerCase()
-  const key = normalized && normalized !== "general" ? `dept-pipeline:${normalized}` : null
+  const pipelineKey = pipelineDepartmentKey(department)
+  const key = pipelineKey ? `dept-pipeline:${pipelineKey}` : null
   const { data, error, isLoading, mutate } = useSWR(key, () =>
-    departmentPipelinesApi.byDepartment(normalized),
+    departmentPipelinesApi.byDepartment(pipelineKey as string),
   )
 
-  if (!normalized || normalized === "general") return null
+  if (!pipelineKey) return null
 
   if (isLoading) {
     return (

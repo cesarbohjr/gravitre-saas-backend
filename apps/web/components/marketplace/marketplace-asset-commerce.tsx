@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { CheckCircle2, ChevronDown } from "lucide-react"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
@@ -139,6 +140,21 @@ export function ConnectorChecklist({
   )
 }
 
+function packItemTypeLabel(item: MarketplacePackItem): string {
+  return (item.child.assetType || "item").replace(/_/g, " ")
+}
+
+function groupPackItems(items: MarketplacePackItem[]): { type: string; items: MarketplacePackItem[] }[] {
+  const groups = new Map<string, MarketplacePackItem[]>()
+  for (const item of items) {
+    const type = packItemTypeLabel(item)
+    const current = groups.get(type) ?? []
+    current.push(item)
+    groups.set(type, current)
+  }
+  return [...groups.entries()].map(([type, grouped]) => ({ type, items: grouped }))
+}
+
 export function PackContentsPreview({
   items,
   compact = false,
@@ -150,23 +166,34 @@ export function PackContentsPreview({
 }) {
   if (!items?.length) return null
 
+  const groups = groupPackItems(items)
   const body = (
-    <ul className={cn("space-y-1.5", compact ? "text-xs" : "text-sm")}>
-      {items.map((item) => (
-        <li key={item.child.id} className="flex items-center justify-between gap-2">
-          {linkChildren && item.child.slug ? (
-            <Link href={`/marketplace/assets/${encodeURIComponent(item.child.slug)}`} className="text-primary hover:underline">
-              {item.child.title}
-            </Link>
-          ) : (
-            <span className="text-foreground">{item.child.title}</span>
-          )}
-          <Badge variant="outline" className="text-[10px] capitalize">
-            {(item.child.assetType || "item").replace(/_/g, " ")}
-          </Badge>
-        </li>
+    <div className={cn("space-y-3", compact ? "text-xs" : "text-sm")}>
+      {groups.map((group) => (
+        <div key={group.type}>
+          <p className={cn(TYPE.eyebrow, "mb-1.5 capitalize")}>
+            {group.type}
+            <span className="ml-1 tabular-nums">({group.items.length})</span>
+          </p>
+          <ul className="space-y-1.5">
+            {group.items.map((item) => (
+              <li key={item.child.id} className="flex items-center justify-between gap-2">
+                {linkChildren && item.child.slug ? (
+                  <Link href={`/marketplace/assets/${encodeURIComponent(item.child.slug)}`} className="text-[color:var(--g-emerald-deep)] hover:underline">
+                    {item.child.title}
+                  </Link>
+                ) : (
+                  <span className="text-foreground">{item.child.title}</span>
+                )}
+                <Badge variant="outline" className="text-[10px] capitalize">
+                  {packItemTypeLabel(item)}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   )
 
   if (compact) {

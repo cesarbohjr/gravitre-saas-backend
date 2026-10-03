@@ -85,7 +85,7 @@ export default function MarketplaceAnalyticsPage() {
   if (!isAdmin) {
     return (
       <AppShell title="Marketplace analytics">
-        <div className="bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+        <div className="bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]" data-composition="understand">
           <GravitreSurface className="mx-auto max-w-lg text-center text-sm text-muted-foreground">
             Admin access is required to view marketplace analytics.
           </GravitreSurface>
@@ -96,7 +96,7 @@ export default function MarketplaceAnalyticsPage() {
 
   return (
     <AppShell title="Marketplace analytics">
-      <div className="relative shrink-0 bg-[color:var(--g-canvas)]">
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)]" data-composition="understand">
         <GravitrePageHeader
           eyebrow="Gravitre Marketplace"
           title="Marketplace analytics"

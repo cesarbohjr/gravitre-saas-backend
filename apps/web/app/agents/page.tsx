@@ -152,8 +152,8 @@ function normalizeAgent(input: Record<string, unknown>): Agent {
           : null,
     personality: {
       color: String(personality.color ?? "blue"),
-      gradient: String(personality.gradient ?? "from-blue-500 to-indigo-500"),
-      glow: String(personality.glow ?? "shadow-blue-500/30"),
+      gradient: String(personality.gradient ?? "from-transparent to-transparent"),
+      glow: String(personality.glow ?? "shadow-none"),
     },
     stats: (() => {
       const tasksToday = Number(stats.tasksToday ?? stats.tasks_today ?? 0)

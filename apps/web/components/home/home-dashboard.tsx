@@ -128,7 +128,7 @@ export function HomeDashboard({
   }
 
   return (
-    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-[color:var(--g-canvas)]" data-composition="operate">
+    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-[color:var(--g-canvas)]" data-composition="understand">
       {/* Operating command strip — identity, live state, AI command line, range and layout controls */}
       <div
         data-dashboard-command-strip=""

@@ -99,7 +99,7 @@ export default function GoalsPage() {
 
   return (
     <AppShell>
-      <div className={PAGE_FRAME}>
+      <div className={PAGE_FRAME} data-composition="operate">
         <GravitrePageHeader
           title={SURFACE_COPY.pages.goals.title}
           description={SURFACE_COPY.pages.goals.description}

@@ -9,6 +9,8 @@ import AssignmentsPage from "@/app/assignments/page"
 import ConnectorsPage from "@/app/connectors/page"
 import HomePage from "@/app/home/page"
 import IntelligencePage from "@/app/intelligence/page"
+import MarketplaceAssetsPage from "@/app/marketplace/assets/page"
+import MarketplaceInstalledPage from "@/app/marketplace/installed/page"
 import WorkflowsPage from "@/app/workflows/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
@@ -32,6 +34,8 @@ export const SHOT_SURFACES = {
   connectors: ConnectorsPage,
   home: HomePage,
   "intelligence-field": IntelligencePage,
+  marketplace: MarketplaceAssetsPage,
+  "marketplace-installed": MarketplaceInstalledPage,
   workflows: WorkflowsPage,
   proof: AiWorkspaceProofPage,
   "agent-chat": AgentChatProofPage,

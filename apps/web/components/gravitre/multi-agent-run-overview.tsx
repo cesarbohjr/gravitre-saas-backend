@@ -26,11 +26,7 @@ export function MultiAgentRunOverview({
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl"
+        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[color:var(--g-emerald)]/8"
       />
 
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -68,7 +64,7 @@ export function MultiAgentRunOverview({
             <Target className="h-3.5 w-3.5" />
             1 objective
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/20 bg-violet-500/5 px-2.5 py-1.5 font-medium text-violet-600 dark:text-violet-400">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--g-electric)]/20 bg-[color:var(--g-electric)]/5 px-2.5 py-1.5 font-medium text-[color:var(--g-electric)]">
             <Bot className="h-3.5 w-3.5" />
             Parallel agents
           </span>

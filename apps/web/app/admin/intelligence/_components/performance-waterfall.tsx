@@ -24,16 +24,17 @@ export function PerformanceWaterfall({
   subtitle: string
   stages: WaterfallStage[]
   emptyLabel: string
-  tone?: "emerald" | "violet" | "cyan"
+  tone?: "emerald" | "electric" | "cyan" | "violet"
 }) {
   const maxMs = Math.max(...stages.map((s) => readNumber(s.avgMs)), 1)
   const totalMs = stages.reduce((sum, s) => sum + readNumber(s.avgMs), 0)
+  const resolvedTone = tone === "violet" ? "electric" : tone
 
   const toneBar = {
-    emerald: "bg-emerald-500/80",
-    violet: "bg-violet-500/75",
+    emerald: "bg-[color:var(--g-emerald)]/80",
+    electric: "bg-[color:var(--g-electric)]/75",
     cyan: "bg-cyan-500/75",
-  }[tone]
+  }[resolvedTone]
 
   return (
     <motion.div

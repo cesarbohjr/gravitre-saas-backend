@@ -14,6 +14,7 @@
  */
 
 import shotActionCatalog from "./e2e-shot-action-catalog.json"
+import { MARKETPLACE_SHOT_FIXTURES } from "./e2e-shot-marketplace-fixtures"
 
 const DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
@@ -1442,4 +1443,6 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     qualityFlags: [],
     suggestedQuestions: [],
   },
+
+  ...MARKETPLACE_SHOT_FIXTURES,
 }

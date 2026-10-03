@@ -265,7 +265,7 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
                   ? "No unified-turn samples in this period."
                   : "Instrumentation required — unified-turn stages appear after live chat turns."
               }
-              tone="violet"
+              tone="electric"
             />
             <PerformanceWaterfall
               title="Classical pipeline waterfall"

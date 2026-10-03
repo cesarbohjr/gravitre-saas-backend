@@ -50,10 +50,10 @@ interface DisplayMemory {
 }
 
 const categoryConfig = {
-  fact: { label: "Fact", icon: "database", color: "blue", glow: "shadow-blue-500/20" },
-  preference: { label: "Preference", icon: "heart", color: "rose", glow: "shadow-destructive/20" },
-  pattern: { label: "Pattern", icon: "sparkles", color: "signal", glow: "shadow-[var(--g-glow-signal)]" },
-  rule: { label: "Rule", icon: "shield", color: "amber", glow: "shadow-warning/20" },
+  fact: { label: "Fact", icon: "database", color: "blue" },
+  preference: { label: "Preference", icon: "heart", color: "rose" },
+  pattern: { label: "Pattern", icon: "sparkles", color: "signal" },
+  rule: { label: "Rule", icon: "shield", color: "amber" },
 }
 
 function formatDate(value?: string): string {

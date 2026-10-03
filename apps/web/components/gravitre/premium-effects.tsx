@@ -193,10 +193,10 @@ export function GlowOrb({
 }) {
   const gradients = {
     emerald: "from-emerald-400 via-emerald-500 to-teal-600",
-    violet: "from-violet-400 via-purple-500 to-indigo-600",
+    violet: "from-[#315CFF] via-[#315CFF] to-[#6B8AFF]",
     blue: "from-blue-400 via-blue-500 to-cyan-600",
     amber: "from-amber-400 via-orange-500 to-red-500",
-    mixed: "from-emerald-400 via-violet-500 to-blue-600",
+    mixed: "from-emerald-400 via-[#315CFF] to-blue-600",
   }
 
   return (

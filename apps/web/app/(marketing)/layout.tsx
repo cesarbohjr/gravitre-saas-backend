@@ -32,7 +32,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
   const country = await getMarketingVisitorCountry()
 
   return (
-    <div className={interDisplayMarketing.className}>
+    <div className={interDisplayMarketing.className} data-composition="discover">
       <GoogleTagManager />
       <MarketingChrome>{children}</MarketingChrome>
       <MarketingConsentBanner country={country} />

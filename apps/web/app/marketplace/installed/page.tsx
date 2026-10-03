@@ -185,7 +185,7 @@ function InstalledContent() {
 
   return (
     <AppShell title="Installed assets">
-      <div className="bg-[color:var(--g-canvas)]">
+      <div className="bg-[color:var(--g-canvas)]" data-composition="operate">
         <GravitrePageHeader
           eyebrow="Gravitre Marketplace"
           title="Installed assets"

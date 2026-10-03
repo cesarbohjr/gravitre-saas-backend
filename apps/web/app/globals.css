@@ -69,7 +69,7 @@
   --g-viz-grid: #dde5e1;
   --g-viz-tooltip: var(--g-carbon);
   /* Gravitre Brand — light-first (Nodus full-match) */
-  /* Brand green #00a878 from gravitre-icon-green-1024.png */
+  /* Brand green #00a878 — Brand Foundation Emerald (Figma 01). */
   --brand: #00a878;
   --brand-soft: #cff7e8;
   /* Explicit brand ladder (Nodus product reconstruction Gate 2026-09-07) */
@@ -233,11 +233,11 @@
   --g-border-default: #e2e4e8;
   --g-border-strong: #d7d7d7;
   --g-border-active: color-mix(in srgb, var(--primary) 28%, var(--g-border-default));
-  --g-intelligence: oklch(0.52 0.16 290);
-  --g-intelligence-bright: oklch(0.46 0.18 290);
-  --g-intelligence-soft: oklch(0.94 0.035 290);
-  --g-intelligence-surface: color-mix(in oklch, oklch(0.55 0.16 290) 8%, var(--g-surface-1));
-  --g-intelligence-glow: 0 8px 32px -12px color-mix(in oklch, oklch(0.55 0.16 290) 28%, transparent);
+  --g-intelligence: #315cff;
+  --g-intelligence-bright: #315cff;
+  --g-intelligence-soft: color-mix(in srgb, #315cff 12%, var(--g-surface-1));
+  --g-intelligence-surface: color-mix(in srgb, #315cff 8%, var(--g-surface-1));
+  --g-intelligence-glow: 0 0 #0000;
   --g-emerald: var(--primary);
   --g-emerald-bright: #008f67;
   --g-emerald-soft: #cff7e8;
@@ -393,8 +393,8 @@
   --g-emerald: var(--primary);
   --g-emerald-bright: oklch(0.78 0.16 155);
   --g-emerald-glow: 0 0 48px color-mix(in oklch, var(--primary) 40%, transparent);
-  --g-intelligence: oklch(0.72 0.14 300);
-  --g-intelligence-bright: oklch(0.78 0.14 300);
+  --g-intelligence: #6b8aff;
+  --g-intelligence-bright: #6b8aff;
   --g-signal: oklch(0.7 0.14 230);
   --g-shadow-product: 0 28px 64px -20px oklch(0 0 0 / 0.75), 0 0 0 1px oklch(1 0 0 / 0.06);
   --g-glow-operational: var(--g-emerald-glow);
@@ -540,10 +540,10 @@
   --g-border-subtle: color-mix(in oklch, var(--border) 75%, transparent);
   --g-border-default: var(--border);
   --g-border-active: color-mix(in oklch, var(--primary) 40%, var(--border));
-  --g-intelligence: oklch(0.70 0.14 305);
-  --g-intelligence-bright: oklch(0.76 0.15 305);
-  --g-intelligence-soft: color-mix(in oklch, oklch(0.70 0.14 305) 10%, transparent);
-  --g-intelligence-glow: 0 0 48px color-mix(in oklch, oklch(0.70 0.14 305) 20%, transparent);
+  --g-intelligence: #6b8aff;
+  --g-intelligence-bright: #6b8aff;
+  --g-intelligence-soft: color-mix(in srgb, #315cff 16%, transparent);
+  --g-intelligence-glow: 0 0 #0000;
   --g-emerald: var(--primary);
   --g-emerald-bright: oklch(0.78 0.14 162);
   --g-emerald-soft: color-mix(in oklch, var(--primary) 10%, transparent);
@@ -624,13 +624,11 @@
 }
 
 /* ==================================================================
-   Gravitre Carbon Intelligence palette (3.0 Plus visual maturity).
-   Layered after the legacy blocks so every existing token name resolves
-   to the new system. Green is a signal (live / healthy / verified /
-   selected), Ion violet is the analytical accent, primary actions are ink.
-   Light-mode TEXT variants of semantic hues are one step darker than the
-   swatch so body copy holds WCAG AA on Porcelain and Bone; the swatch
-   hue is used for dots, edges and fills.
+   Carbon surfaces + Brand Foundation hues (Figma 01).
+   Later remaps must not invent a second green or a decorative violet.
+   Emerald is brand/action. Electric is the functional blue signal.
+   Primary actions stay ink. Status greens reuse the emerald ladder
+   rather than a separate mint.
    ================================================================== */
 :root {
   --carbon-950: #0a0b0c;
@@ -640,13 +638,14 @@
   --porcelain-50: #f7f7f5;
   --bone-100: #efefeb;
   --ink-950: #151618;
-  --signal-500: #2fbf8f;
-  --signal-600: #239b75;
-  --signal-300: #79d8b8;
-  --signal-wash: #e8f5ef;
-  --ion-500: #7c6cf2;
-  --ion-300: #a89cf8;
-  --ion-wash: #f0eeff;
+  /* Brand Foundation (Figma 01) — later Carbon remaps must not invent a second green. */
+  --signal-500: #00a878;
+  --signal-600: #007f5f;
+  --signal-300: #63d6b3;
+  --signal-wash: #eaf8f2;
+  --ion-500: #315cff;
+  --ion-300: color-mix(in srgb, #315cff 62%, #ffffff);
+  --ion-wash: #eef2ff;
   --attention-500: #c8902f;
   --failure-500: #c94c4c;
   --information-500: #4e7fcb;
@@ -706,23 +705,30 @@
   --status-estimate: var(--attention-500);
   --status-idle: #8b9097;
 
-  --brand: var(--signal-500);
-  --brand-soft: var(--signal-wash);
-  --g-brand: var(--signal-500);
-  --g-brand-hover: var(--signal-600);
-  --g-brand-active: #1b7a5c;
-  --g-brand-soft: var(--signal-wash);
-  --g-brand-muted: var(--signal-300);
-  --g-brand-surface: var(--signal-wash);
-  --g-brand-border: color-mix(in srgb, var(--signal-500) 38%, var(--border));
+  --brand: #00a878;
+  --brand-soft: #cff7e8;
+  --g-brand: #00a878;
+  --g-brand-hover: #008f67;
+  --g-brand-active: #007f5f;
+  --g-brand-soft: #cff7e8;
+  --g-brand-muted: #63d6b3;
+  --g-brand-surface: color-mix(in srgb, #00a878 6%, #ffffff);
+  --g-brand-border: color-mix(in srgb, #00a878 22%, var(--border));
   --g-brand-glow: 0 0 #0000;
-  --g-emerald: var(--signal-500);
-  --g-emerald-bright: #1b7a5c;
-  --g-emerald-soft: var(--signal-wash);
-  --g-emerald-surface: var(--signal-wash);
+  --g-emerald: #00a878;
+  --g-emerald-deep: #007f5f;
+  --g-emerald-mint: #cff7e8;
+  --g-emerald-pale: #eaf8f2;
+  --g-emerald-bright: #007f5f;
+  --g-emerald-soft: #cff7e8;
+  --g-emerald-surface: #eaf8f2;
+  --g-carbon: #101816;
+  --g-bone: #f5f3ec;
+  --g-electric: #315cff;
+  --g-warmth: #ff654d;
   --g-emerald-glow: 0 0 #0000;
   --g-intelligence: var(--ion-500);
-  --g-intelligence-bright: #5647c9;
+  --g-intelligence-bright: var(--ion-500);
   --g-intelligence-soft: var(--ion-wash);
   --g-intelligence-surface: var(--ion-wash);
   --g-intelligence-glow: 0 0 #0000;
@@ -737,9 +743,9 @@
   --g-success: var(--signal-600);
   --g-warning: var(--attention-500);
 
-  --g-canvas: var(--porcelain-50);
-  --g-background: var(--porcelain-50);
-  --g-background-muted: var(--bone-100);
+  --g-canvas: var(--g-bone);
+  --g-background: var(--g-bone);
+  --g-background-muted: #efefeb;
   --g-surface-1: #fbfbfa;
   --g-surface-2: #f2f2ef;
   --g-surface-3: var(--bone-100);
@@ -760,7 +766,7 @@
   --g-chrome-hover: #e5e5df;
   --g-frame: var(--carbon-900);
   --g-frame-rule: var(--graphite-700);
-  --g-rail-bg: #f2f2ef;
+  --g-rail-bg: color-mix(in srgb, var(--g-bone) 88%, #ffffff);
   --g-workspace-radius: 8px;
   --g-workspace-shadow: 0 0 0 1px var(--border);
 
@@ -1004,30 +1010,30 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  /* Carbon palette remap: legacy mint / violet / sky / amber / red utility
-     classes resolve onto the Signal, Ion and semantic ladders. */
-  --color-emerald-50: #f1f8f4;
-  --color-emerald-100: #e8f5ef;
-  --color-emerald-200: #cdeadf;
-  --color-emerald-300: #79d8b8;
-  --color-emerald-400: #4fcf9f;
-  --color-emerald-500: #2fbf8f;
-  --color-emerald-600: #239b75;
-  --color-emerald-700: #1b7a5c;
-  --color-emerald-800: #155f48;
-  --color-emerald-900: #0f4535;
-  --color-emerald-950: #0a2e23;
-  --color-green-50: #f1f8f4;
-  --color-green-100: #e8f5ef;
-  --color-green-200: #cdeadf;
-  --color-green-300: #79d8b8;
-  --color-green-400: #4fcf9f;
-  --color-green-500: #2fbf8f;
-  --color-green-600: #239b75;
-  --color-green-700: #1b7a5c;
-  --color-green-800: #155f48;
-  --color-green-900: #0f4535;
-  --color-green-950: #0a2e23;
+  /* Brand Foundation remap: leftover emerald/green/teal utilities use the
+     Figma 01 ladder instead of Carbon mint. */
+  --color-emerald-50: #eaf8f2;
+  --color-emerald-100: #eaf8f2;
+  --color-emerald-200: #cff7e8;
+  --color-emerald-300: #63d6b3;
+  --color-emerald-400: color-mix(in srgb, #00a878 62%, #63d6b3);
+  --color-emerald-500: #00a878;
+  --color-emerald-600: #008f67;
+  --color-emerald-700: #007f5f;
+  --color-emerald-800: color-mix(in srgb, #007f5f 78%, #101816);
+  --color-emerald-900: color-mix(in srgb, #007f5f 58%, #101816);
+  --color-emerald-950: color-mix(in srgb, #007f5f 38%, #101816);
+  --color-green-50: #eaf8f2;
+  --color-green-100: #eaf8f2;
+  --color-green-200: #cff7e8;
+  --color-green-300: #63d6b3;
+  --color-green-400: color-mix(in srgb, #00a878 62%, #63d6b3);
+  --color-green-500: #00a878;
+  --color-green-600: #008f67;
+  --color-green-700: #007f5f;
+  --color-green-800: color-mix(in srgb, #007f5f 78%, #101816);
+  --color-green-900: color-mix(in srgb, #007f5f 58%, #101816);
+  --color-green-950: color-mix(in srgb, #007f5f 38%, #101816);
   --color-teal-50: #f1f8f4;
   --color-teal-100: #e8f5ef;
   --color-teal-200: #cdeadf;

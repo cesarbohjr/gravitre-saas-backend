@@ -2,7 +2,8 @@
 
 /**
  * Phase F — WebGL2 central Intelligence Core aura (raw WebGL2, no three.js).
- * Decorative state-driven glow behind CoreHubNode; does not invent topology.
+ * State-driven core aura behind CoreHubNode; Brand Foundation hues.
+ * Idle / low-confidence do not pulse. Does not invent topology.
  *
  * Perf / a11y: pauses offscreen, static frame when prefers-reduced-motion,
  * tears down on unmount. Falls back to nothing if WebGL2 unavailable.
@@ -20,21 +21,21 @@ type Props = {
 }
 
 const STATE_RGB: Record<IntelligenceCoreVisualState, [number, number, number]> = {
-  idle: [0.55, 0.62, 0.58],
-  "flow-inward": [0.2, 0.55, 0.95],
-  trace: [0.09, 0.64, 0.45],
-  "pending-approval": [0.85, 0.47, 0.04],
-  resolved: [0.09, 0.64, 0.45],
-  "low-confidence": [0.58, 0.64, 0.72],
+  idle: [0.063, 0.094, 0.086],
+  "flow-inward": [0.192, 0.361, 1.0],
+  trace: [0.0, 0.659, 0.471],
+  "pending-approval": [1.0, 0.396, 0.302],
+  resolved: [0.0, 0.498, 0.373],
+  "low-confidence": [0.38, 0.4, 0.39],
 }
 
 const STATE_SPEED: Record<IntelligenceCoreVisualState, number> = {
-  idle: 0.35,
+  idle: 0,
   "flow-inward": 0.9,
   trace: 1.2,
   "pending-approval": 0.75,
   resolved: 0.5,
-  "low-confidence": 0.25,
+  "low-confidence": 0,
 }
 
 export function CoreHubWebGL({ state, className, activity = 0.35 }: Props) {

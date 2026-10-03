@@ -115,17 +115,17 @@ export function GoalMonitoringPanel({
     <motion.div
       layout
       className={cn(
-        "rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-purple-500/5 overflow-hidden",
+        "overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-background",
         className
       )}
     >
       {/* Header */}
       <div 
-        className="p-4 flex items-start gap-3 cursor-pointer hover:bg-violet-500/5 transition-colors"
+        className="flex cursor-pointer items-start gap-3 p-4 transition-colors hover:bg-[color:var(--g-emerald-pale)]/60"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/20 border border-violet-500/30">
-          <Target className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-emerald-pale)]">
+          <Target className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">

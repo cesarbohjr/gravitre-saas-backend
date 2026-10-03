@@ -335,7 +335,7 @@ export default function WorkflowsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.workflows.title}>
-      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]" data-composition="manage">
+      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]" data-composition="operate">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_18%_0%,var(--g-emerald-pale),transparent_58%)] opacity-80" />
         {/* Header */}
         <div className="relative z-10 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/88 backdrop-blur-sm">

@@ -32,7 +32,6 @@ import {
   type WelcomeRoleId,
 } from "@/lib/welcome-flow"
 import { cn } from "@/lib/utils"
-import { GridPattern } from "@/components/gravitre/premium-effects"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
 
 const STEPS = [
@@ -161,8 +160,6 @@ export default function WelcomePage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[color:var(--g-canvas)] px-4 py-10" data-composition="create">
-      <GridPattern color="emerald" className="opacity-[0.25]" />
-
       <motion.div
         initial={reduced ? false : { opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}

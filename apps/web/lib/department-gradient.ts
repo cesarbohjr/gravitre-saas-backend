@@ -1,11 +1,6 @@
-// Single source of truth for per-department orb colors. Shared by the Agents
-// grid (lucide icons) and the Marketplace Department packs (phosphor icons) so
-// both surfaces read as the same color language: one vivid gradient per
-// department, applied to a glossy circular orb with a white glyph.
-//
-// Colors are deliberately aligned with the marketplace category palette
-// (CS = teal, HR = rose, Revenue/Sales = blue, Ops = amber, Marketing = violet)
-// so a department looks identical wherever it appears.
+// Per-department identity accents shared by Agents and Marketplace.
+// Glow is intentionally none — Extrovert / Emerald Intelligence uses
+// compact identity, not glossy orbs (Figma page 03 agent studies).
 
 export type DepartmentGradient = {
   /** Tailwind `from-*`/`to-*` classes for the orb's `bg-gradient-to-br`. */
@@ -16,13 +11,14 @@ export type DepartmentGradient = {
   border: string
 }
 
-const TEAL: DepartmentGradient = { gradient: "from-teal-400 to-cyan-600", glow: "shadow-teal-500/30", border: "border-teal-500/60" }
-const ROSE: DepartmentGradient = { gradient: "from-rose-400 to-pink-600", glow: "shadow-rose-500/30", border: "border-rose-500/60" }
-const BLUE: DepartmentGradient = { gradient: "from-blue-400 to-indigo-600", glow: "shadow-blue-500/30", border: "border-blue-500/60" }
-const AMBER: DepartmentGradient = { gradient: "from-amber-400 to-orange-600", glow: "shadow-amber-500/30", border: "border-amber-500/60" }
-const VIOLET: DepartmentGradient = { gradient: "from-violet-400 to-fuchsia-600", glow: "shadow-violet-500/30", border: "border-violet-500/60" }
-const EMERALD: DepartmentGradient = { gradient: "from-emerald-400 to-green-600", glow: "shadow-emerald-500/30", border: "border-emerald-500/60" }
-const SLATE: DepartmentGradient = { gradient: "from-slate-400 to-slate-600", glow: "shadow-slate-500/30", border: "border-slate-500/60" }
+const NONE = "shadow-none"
+const TEAL: DepartmentGradient = { gradient: "from-teal-400 to-cyan-600", glow: NONE, border: "border-teal-500/60" }
+const ROSE: DepartmentGradient = { gradient: "from-rose-400 to-pink-600", glow: NONE, border: "border-rose-500/60" }
+const BLUE: DepartmentGradient = { gradient: "from-blue-400 to-indigo-600", glow: NONE, border: "border-blue-500/60" }
+const AMBER: DepartmentGradient = { gradient: "from-amber-400 to-orange-600", glow: NONE, border: "border-amber-500/60" }
+const VIOLET: DepartmentGradient = { gradient: "from-violet-400 to-fuchsia-600", glow: NONE, border: "border-violet-500/60" }
+const EMERALD: DepartmentGradient = { gradient: "from-emerald-400 to-green-600", glow: NONE, border: "border-emerald-500/60" }
+const SLATE: DepartmentGradient = { gradient: "from-slate-400 to-slate-600", glow: NONE, border: "border-slate-500/60" }
 
 // Canonical department key -> gradient.
 const GRADIENTS: Record<string, DepartmentGradient> = {
@@ -72,7 +68,7 @@ const ALIASES: Record<string, string> = {
   infra: "engineering",
 }
 
-/** Resolves the vivid gradient + glow for any department string. */
+/** Resolves the department accent (gradient + border; glow is unused). */
 export function departmentGradient(department: string | null | undefined): DepartmentGradient {
   const raw = (department ?? "").toLowerCase().trim().replace(/\s+/g, "_")
   if (!raw) return BLUE

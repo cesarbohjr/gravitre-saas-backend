@@ -23,7 +23,7 @@ export default function ModelStudioPage() {
 
   return (
     <AppShell title="Model Studio">
-      <div className={PAGE_FRAME}>
+      <div className={PAGE_FRAME} data-composition="understand">
         <GravitrePageHeader
           title="Model Studio"
           description="Create, train, evaluate, and deploy models for your business, and review every run."
