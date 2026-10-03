@@ -16,8 +16,7 @@ import {
   Phone,
   Building2,
   MapPin,
-  Sparkles,
-  Shield,
+    Shield,
   Clock,
   Activity,
   Zap,
@@ -262,7 +261,7 @@ export default function ProfilePage() {
                 if (isUploadingAvatar) return
                 fileInputRef.current?.click()
               }}
-              className="flex w-full items-center gap-3 rounded-xl border border-divide bg-[color:var(--g-surface-2)] p-4 text-left transition-colors hover:bg-secondary/50 disabled:opacity-60"
+              className="flex w-full items-center gap-3 rounded-[10px] border border-divide bg-[color:var(--g-surface-2)] p-4 text-left transition-colors hover:bg-secondary/50 disabled:opacity-60"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                 <ImagePlus className="h-5 w-5 text-primary" />
@@ -278,7 +277,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => void handleRemoveAvatar()}
-                className="flex w-full items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-left transition-colors hover:bg-destructive/10"
+                className="flex w-full items-center gap-3 rounded-[10px] border border-destructive/20 bg-destructive/5 p-4 text-left transition-colors hover:bg-destructive/10"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
                   <X className="h-5 w-5 text-destructive" />
@@ -292,19 +291,9 @@ export default function ProfilePage() {
           </DialogContent>
         </Dialog>
         <div className="flex-1 overflow-auto">
-        {/* Hero Header with gradient */}
-        <div className="relative overflow-hidden">
-          {/* Was blue -> purple -> pink; purple and pink appear nowhere else in
-              the product, so the hero read as a generic template rather than
-              this app. Now a single brand-primary wash. */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
-          
-          {/* Animated grid pattern */}
-          <div className="absolute inset-0 opacity-[0.02]" style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-            backgroundSize: '32px 32px'
-          }} />
+        {/* Identity header: restrained Emerald signal, no decorative AI field. */}
+        <div className="relative overflow-hidden border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_16%_0%,var(--g-emerald-pale),transparent_62%)] opacity-70" />
 
           <div className="relative px-6 py-8 lg:px-8">
             <div className="max-w-4xl mx-auto">
@@ -453,7 +442,7 @@ export default function ProfilePage() {
                   <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-[color:var(--g-brand-soft)] blur-2xl -translate-y-1/2 translate-x-1/2" />
                   <div className="relative">
                     <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className="h-4 w-4 text-[color:var(--g-brand)]" />
+                      <Activity className="h-4 w-4 text-[color:var(--g-brand)]" />
                       <span className="text-xs font-medium text-[color:var(--g-brand)]">
                         Meson insight
                       </span>
@@ -594,7 +583,7 @@ export default function ProfilePage() {
                 <section>
                   <div className="flex items-center gap-2 mb-6">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                      <Sparkles className="h-4 w-4 text-primary" />
+                      <Activity className="h-4 w-4 text-primary" />
                     </div>
                     <h2 className="text-sm font-semibold text-foreground">About you</h2>
                   </div>
