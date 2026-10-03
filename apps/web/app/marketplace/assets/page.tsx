@@ -120,6 +120,18 @@ const CAPABILITY_NOUN: Record<string, [string, string]> = {
 }
 
 /** What installing the asset adds to the workspace, from its catalogued contents only. */
+function packTypeCount(asset: MarketplaceAssetSummary, type: string): number {
+  return (asset.packItems ?? []).filter((item) => item.child.assetType === type).length
+}
+
+function outcomeVerificationLabel(asset: MarketplaceAssetSummary): string | null {
+  const tags = new Set((asset.tags ?? []).map((tag) => tag.trim().toLowerCase()))
+  if (tags.has("outcome-verified")) return "Outcome verified"
+  if (tags.has("production-verified")) return "Production verified"
+  if (tags.has("governed")) return "Governed"
+  if (tags.has("tested")) return "Tested"
+  return asset.verified ? "Verified" : null
+}
 function capabilitySummary(asset: MarketplaceAssetSummary): string {
   const counts = new Map<string, number>()
   const items = asset.packItems ?? []
@@ -222,8 +234,28 @@ function AssetCard({
             <span className="text-muted-foreground"> · </span>
             <span className="capitalize text-muted-foreground">{(asset.department ?? "All departments").replace(/_/g, " ")}</span>
           </p>
-          {asset.description ? (
+          {asset.assetType === "outcome_pack" && asset.businessOutcome ? (
+            <p className="mt-1 max-w-2xl text-[12.5px] font-medium leading-relaxed text-foreground">
+              {asset.businessOutcome}
+            </p>
+          ) : asset.description ? (
             <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">{asset.description}</p>
+          ) : null}
+          {asset.assetType === "outcome_pack" ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+              <span>{packTypeCount(asset, "play")} Plays</span>
+              <span>{packTypeCount(asset, "ai_agent")} agents</span>
+              <span>{packTypeCount(asset, "dashboard_pack")} dashboard</span>
+              <span>{packTypeCount(asset, "dataset_pack")} dataset</span>
+              {asset.estimatedHoursSaved != null ? (
+                <span>Est. {asset.estimatedHoursSaved} hrs saved / month</span>
+              ) : null}
+              {outcomeVerificationLabel(asset) ? (
+                <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                  {outcomeVerificationLabel(asset)}
+                </Badge>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -308,6 +340,28 @@ function AssetCard({
                   {tag}
                 </Badge>
               ))}
+            </div>
+          ) : null}
+          {asset.assetType === "outcome_pack" ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Outcome</p>
+                <p className="mt-1 text-xs text-foreground">{asset.businessOutcome || asset.description}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Plays</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{packTypeCount(asset, "play")}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Measured value</p>
+                <p className="mt-1 text-xs text-foreground">
+                  {asset.estimatedHoursSaved != null ? `${asset.estimatedHoursSaved} estimated hours saved / month` : "Outcome telemetry included"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-secondary/20 p-2.5">
+                <p className="text-[11px] font-medium text-muted-foreground">Verification</p>
+                <p className="mt-1 text-xs font-medium text-foreground">{outcomeVerificationLabel(asset) || "Compatible"}</p>
+              </div>
             </div>
           ) : null}
           <PackContentsPreview items={asset.packItems} compact />

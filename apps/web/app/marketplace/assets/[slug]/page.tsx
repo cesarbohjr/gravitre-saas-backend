@@ -42,6 +42,18 @@ import type {
   MarketplaceInstallBlocker,
 } from "@/types/api"
 
+function packTypeCount(asset: MarketplaceAssetDetail, type: string): number {
+  return (asset.packItems ?? []).filter((item) => item.child.assetType === type).length
+}
+
+function verificationLabel(asset: MarketplaceAssetDetail): string {
+  const tags = new Set((asset.tags ?? []).map((tag) => tag.trim().toLowerCase()))
+  if (tags.has("outcome-verified")) return "Outcome verified"
+  if (tags.has("production-verified")) return "Production verified"
+  if (tags.has("governed")) return "Governed"
+  if (tags.has("tested")) return "Tested"
+  return asset.verified ? "Verified" : "Compatible"
+}
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   if (!blockers.length) return null
   return (
@@ -204,11 +216,17 @@ function MarketplaceAssetDetailContent() {
                   {asset.businessOutcome ? (
                     <p className="text-foreground">{asset.businessOutcome}</p>
                   ) : null}
-                  <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {asset.useCase ? (
                       <div>
                         <dt className="text-xs text-muted-foreground">Use case</dt>
                         <dd>{asset.useCase}</dd>
+                      </div>
+                    ) : null}
+                    {asset.assetType === "outcome_pack" ? (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Plays</dt>
+                        <dd className="font-medium">{packTypeCount(asset, "play")}</dd>
                       </div>
                     ) : null}
                     {asset.estimatedHoursSaved != null ? (
@@ -217,7 +235,24 @@ function MarketplaceAssetDetailContent() {
                         <dd>{asset.estimatedHoursSaved}h</dd>
                       </div>
                     ) : null}
+                    {asset.assetType === "outcome_pack" ? (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Verification</dt>
+                        <dd className="font-medium">{verificationLabel(asset)}</dd>
+                      </div>
+                    ) : null}
                   </dl>
+                  {asset.assetType === "outcome_pack" ? (
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      <span>{packTypeCount(asset, "ai_agent")} agents</span>
+                      <span>·</span>
+                      <span>{packTypeCount(asset, "knowledge_pack")} knowledge pack</span>
+                      <span>·</span>
+                      <span>{packTypeCount(asset, "dataset_pack")} dataset</span>
+                      <span>·</span>
+                      <span>{packTypeCount(asset, "dashboard_pack")} dashboard</span>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </header>
