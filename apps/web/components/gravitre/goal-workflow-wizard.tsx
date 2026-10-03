@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import {
   Target,
-  Sparkles,
+
   Building2,
   Database,
   Users,
@@ -35,7 +35,7 @@ import {
   RotateCcw,
   ChevronRight,
   Loader2,
-  Brain,
+
   Workflow,
   MessageSquare,
   Mail,
@@ -775,7 +775,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                             {[0, 1, 2].map((i) => (
                               <motion.div
                                 key={i}
-                                className="h-1.5 w-1.5 rounded-full bg-violet-400"
+                                className="h-1.5 w-1.5 rounded-full bg-[color:var(--g-emerald)]"
                                 animate={{ opacity: [0.3, 1, 0.3] }}
                                 transition={{ duration: 0.8, delay: i * 0.2, repeat: Infinity }}
                               />
