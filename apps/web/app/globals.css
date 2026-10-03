@@ -69,7 +69,7 @@
   --g-viz-grid: #dde5e1;
   --g-viz-tooltip: var(--g-carbon);
   /* Gravitre Brand — light-first (Nodus full-match) */
-  /* Brand green #00a878 — Brand Foundation Emerald (Figma 01). */
+  /* Brand green #00a878 — Emerald implementation (Figma page 03). */
   --brand: #00a878;
   --brand-soft: #cff7e8;
   /* Explicit brand ladder (Nodus product reconstruction Gate 2026-09-07) */
@@ -624,7 +624,7 @@
 }
 
 /* ==================================================================
-   Carbon surfaces + Brand Foundation hues (Figma 01).
+   Carbon surfaces + Emerald implementation hues (Figma page 03).
    Later remaps must not invent a second green or a decorative violet.
    Emerald is brand/action. Electric is the functional blue signal.
    Primary actions stay ink. Status greens reuse the emerald ladder
@@ -638,7 +638,7 @@
   --porcelain-50: #f7f7f5;
   --bone-100: #efefeb;
   --ink-950: #151618;
-  /* Brand Foundation (Figma 01) — later Carbon remaps must not invent a second green. */
+  /* Emerald implementation (Figma page 03) — later Carbon remaps must not invent a second green. */
   --signal-500: #00a878;
   --signal-600: #007f5f;
   --signal-300: #63d6b3;
@@ -661,7 +661,7 @@
   --secondary: var(--bone-100);
   --secondary-foreground: var(--ink-950);
   --muted: var(--bone-100);
-  --muted-foreground: #5f656c;
+  --muted-foreground: #65716b;
   --accent: #e9e9e4;
   --accent-foreground: var(--ink-950);
   --border: #dcdcd6;
@@ -746,14 +746,14 @@
   --g-canvas: var(--g-bone);
   --g-background: var(--g-bone);
   --g-background-muted: #efefeb;
-  --g-surface-1: #fbfbfa;
+  --g-surface-1: #ffffff;
   --g-surface-2: #f2f2ef;
   --g-surface-3: var(--bone-100);
   --g-surface-elevated: #fdfdfc;
   --g-surface-active: color-mix(in srgb, var(--signal-500) 7%, var(--card));
   --g-text-primary: var(--ink-950);
   --g-text-secondary: #3a3d41;
-  --g-text-muted: #5f656c;
+  --g-text-muted: #65716b;
   --g-icon-muted: #6f767e;
   --g-border-subtle: #e6e6e1;
   --g-border-default: #dcdcd6;

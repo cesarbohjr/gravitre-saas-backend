@@ -33,3 +33,7 @@ Marketplace 8:2 and 8:87 were read with high-fidelity design context and screens
 Space Grotesk is self-hosted from the Google Fonts official `ofl/spacegrotesk` source, with its OFL license included. Marketplace uses this display face; body and unrelated surfaces retain their existing font roles.
 
 Rendered component behavior is covered by marketplace-featured-outcome.test.tsx. Local full suite: 1142 tests / 187 files passed; TypeScript and changed-file ESLint passed. Browser service rejected the local fixture URL with ERR_BLOCKED_BY_CLIENT; desktop/mobile pixel verification and owner-live acceptance remain NOT_RUN. This pass does not complete Agents, Intelligence, Operate, Builder, Analytics, or the full design.
+
+## Continued implementation and token audit
+
+Agents 10:52, Intelligence 10:5, Operate 10:101, Builder 10:159, Analytics 14:2 and responsive 20:2 were inspected directly with design context and screenshots. Their live-data adaptations are recorded in the completion ledger. The subsequent cascade audit found that the final light root still overwrote muted text with #5F656C and panel surfaces with #FBFBFA. Light muted text now uses the extracted #65716B (17:5), and light panel surfaces use the white panels shown in those implementation frames. Dark-mode contrast overrides remain unchanged. CSS comments now identify page 03 accurately; page 01 does not supply these Emerald swatches.

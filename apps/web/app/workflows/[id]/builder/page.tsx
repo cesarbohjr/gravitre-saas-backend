@@ -2969,7 +2969,7 @@ function ConfigPanel({
 
   return (
     <Sheet open={!!node} onOpenChange={() => onClose()}>
-      <SheetContent className="w-full max-w-full sm:w-[540px] overflow-y-auto px-6">
+      <SheetContent className="w-full max-w-full sm:w-[540px] sm:max-w-[540px] overflow-y-auto px-6">
         {content}
       </SheetContent>
     </Sheet>
