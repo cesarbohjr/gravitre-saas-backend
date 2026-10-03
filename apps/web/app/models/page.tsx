@@ -56,7 +56,7 @@ import {
 import {
   Filter,
   RefreshCw,
-  Sparkles,
+  Layers3,
 } from "lucide-react"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
@@ -382,7 +382,7 @@ export default function ModelsPage() {
         <DialogContent className="flex max-h-[min(92vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
           <DialogHeader className="shrink-0 space-y-3 border-b border-border/60 px-6 pb-4 pt-6">
             <DialogTitle className="flex items-center gap-2 pr-8">
-              <Sparkles className="h-4 w-4 text-primary" />
+              <Layers3 className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
               Register model
             </DialogTitle>
             <DialogDescription className="text-left">
