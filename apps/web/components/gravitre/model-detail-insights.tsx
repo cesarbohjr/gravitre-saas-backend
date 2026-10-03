@@ -154,10 +154,9 @@ export function ModelDetailInsights({
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             {typeMeta ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                <Sparkles className="h-3 w-3" />
+              <Badge variant="outline" className="border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald-pale)] font-medium text-[color:var(--g-emerald-deep)]">
                 {typeMeta.label}
-              </div>
+              </Badge>
             ) : null}
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
               {typeMeta?.tagline ??
