@@ -40,8 +40,8 @@ const typeConfig = {
   },
   assignment_created: {
     icon: UserCheck,
-    color: "text-violet-500",
-    bg: "bg-violet-500/10",
+    color: "text-[color:var(--g-signal)]",
+    bg: "bg-[color:var(--g-signal-surface)]",
     label: "Assignment",
   },
   run_completed: {
