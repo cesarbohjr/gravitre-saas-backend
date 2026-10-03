@@ -1081,7 +1081,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                 {/* Projection chart */}
                 <div className="relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] backdrop-blur-sm p-6 overflow-hidden lg:col-span-3">
                   <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none">
-                    <GlowOrb size={100} color="emerald" intensity={0.2} />
+                    <div className="absolute right-0 top-0 h-px w-24 bg-[color:var(--g-emerald)]/35" aria-hidden />
                   </div>
                   <div className="flex items-end justify-between mb-4">
                     <div>
@@ -1304,7 +1304,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
 
             {/* Footer */}
             <div className={cn(
-              "relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-br from-[color:var(--g-surface-2)] to-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6 transition-all duration-500 delay-600",
+              "relative overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6 transition-all duration-300",
               mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
