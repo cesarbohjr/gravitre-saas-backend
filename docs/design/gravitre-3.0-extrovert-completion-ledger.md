@@ -8,19 +8,22 @@ Reason for new branch: `feat/emerald-intelligence-completion` / PR #297 is merge
 Figma file:  
 https://www.figma.com/design/OsDKeRy9HwfSKR3e9YyOFM/Gravitre-%E2%80%94-Brand-Foundation---Creative-Direction?node-id=6-2
 
-## Figma capability check (this session)
+## Figma capability check
 
-Live tool catalog was searched for `figma` (no prefix assumed). Result: **no Figma namespace and no Figma tools**. Available MCP namespaces did not include a Figma server. Settings enablement was not treated as availability.
+Live tool catalog was inspected. Namespace `project-0-Gravitre Operator AI-Figma` is present with `get_metadata`, `get_design_context`, `get_variable_defs`, and related tools.
 
 | Value class | Used? | Notes |
 | --- | --- | --- |
-| Exported Figma variables | NO | No MCP export this session |
-| Inspected fills | PARTIAL | Browser view of page 03 Marketplace `8:2` and Intelligence `10:5` only; unsigned Figma, no variable panel export |
-| Written contract + first `:root` | YES | Current documented tokens preserved until an authoritative Figma export corrects them |
+| Exported Figma variables | NO | `get_variable_defs` on `0:1` hit Starter-plan MCP rate limit; `6:2` required a selected layer |
+| Inspected fills / page XML labels | YES | Page `0:1` “01 — Brand Foundation”; Color Foundation labels on node `1:3` (Organized Intelligence 1440×1996): Porcelain `#F7F8F6`, Ink `#151A1D`, Graphite `#485257`, Mist `#E6ECEA`, Signal `#20B9A5`, Ion `#2D8CFF`, Warmth `#F26B45`. Marketplace study on same page lists Run IT / Grow Revenue / Market Smarter / Serve Customers. These are inspected labels, not exported variables. |
+| Written contract + first `:root` | YES | Documented Brand Foundation tokens preserved. Inspected Signal `#20B9A5` / Ion `#2D8CFF` were **not** applied as a rematch. |
+| Page 02 / 03 implementation frames | UNAVAILABLE | Current file metadata listed only page `0:1`. Exact Figma matching for Marketplace `8:2`, Intelligence `10:5`, Agents, Operate, Builder, Analytics, Handoff, Motion remains **unverified**. |
+
+Historical note: an earlier session recorded Figma as absent from the catalog. That limitation is superseded by this check. Browser-only views of page 03 from earlier sessions stay historical, not current MCP evidence.
 
 ## Brand Foundation tokens (applied)
 
-Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match that contract. Later Carbon `:root` had been overwriting them with `#2fbf8f` / Ion violet. No exported-variable correction this session.
+Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match that contract. Later Carbon `:root` had been overwriting them with `#2fbf8f` / Ion violet. No exported-variable correction this stream.
 
 | Token | Hex | Role |
 | --- | --- | --- |
@@ -38,30 +41,9 @@ Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match
 
 `--primary` stays ink (`--ink-950`) for shadcn actions. Emerald is brand/action via `--g-brand` / `--g-emerald`, not an automatic healthy label.
 
-Pages observed:
+`--g-intelligence` / `--g-intelligence-bright` rematched from analytical violet (`#5647c9`) to Electric (`#315CFF` / `#6B8AFF` dark / `var(--ion-500)`). Identity palette `--color-violet-700` / `--color-purple-700` `#5647c9` left for agent/department identity.
 
-| Page | Status |
-| --- | --- |
-| 01 — Brand Foundation | Tokens recorded above; MCP hex export still unavailable |
-| 02 — Gravitre Unlocked | Listed; not pixel-inspected |
-| 03 — Emerald Intelligence (current) | Marketplace `8:2`; Intelligence `10:5` (1440×900); Operate next |
-
-Implementation frames on page 03:
-
-- GRAVITRE / EMERALD INTELLIGENCE (node `6:3` — agent identity studies: Guardian / Atlas)
-- IMPLEMENTATION / Marketplace 3.0 Desktop (node `8:2`, 1440×1040)
-- IMPLEMENTATION / Marketplace 3.0 Mobile
-- IMPLEMENTATION / Intelligence
-- IMPLEMENTATION / Agents
-- IMPLEMENTATION / Operate
-- IMPLEMENTATION / Builder
-- IMPLEMENTATION / Analytics + Visualization System
-- IMPLEMENTATION / Tokens + Components + Responsive
-- IMPLEMENTATION / Responsive Product Studies
-- IMPLEMENTATION / Handoff + Acceptance
-- IMPLEMENTATION / Graphic + Motion Language
-
-`VOICE_LIVE_*` and RLS / Lighthouse follow-ups stay out of this stream.
+`GlowOrb` remains unused on product routes. Decorative `GridPattern` removed from `/welcome` and `/multi-agent-run`. Functional `PulseRing` / `StatusBeacon` / `DataStream` / `AnimatedCounter` preserved.
 
 ## Gate snapshot
 
@@ -69,11 +51,12 @@ Implementation frames on page 03:
 | --- | --- |
 | ACTIVE_BRANCH | `feat/gravitre-3.0-extrovert-design` |
 | COMPLETION_PR | [draft #298](https://github.com/cesarbohjr/gravitre-saas-backend/pull/298) |
-| CANDIDATE_SHA | `77ca50ce` |
-| IMPLEMENTATION_COMPLETE | NO |
-| AUTOMATED_CHECKS | IN_PROGRESS on `77ca50ce` (local `tsc --noEmit` passed; GitHub CI not terminal) |
-| BILLING_E2E | NOT_APPLICABLE (no billing scope in this slice) |
-| OWNER_LIVE_ACCEPTANCE | NOT_RUN |
+| CANDIDATE_SHA | working tree on `db2eea5e` — replace with the pushed commit SHA immediately after this commit |
+| REVIEWED_SHA | `db2eea5e` (review findings applied on this working tree) |
+| IMPLEMENTATION_COMPLETE | NO — page 03 Figma frames unavailable; owner-live blocked; overlay stacking on mobile pack bar still open |
+| AUTOMATED_CHECKS | LOCAL PASS — `pnpm test` 1,127; lint 0 errors; `tsc --noEmit` 0; `pnpm build` 0; brand/surface/cognitive guards PASS. GitHub CI on the new SHA not yet attached |
+| BILLING_E2E | NOT_APPLICABLE for required PR CI — job only runs on `workflow_dispatch` (`ci.yml` `billing-e2e`). This PR’s billing pages received composition/token supporting work only; no checkout, plan, or entitlement behavior change. Not marked passed. |
+| OWNER_LIVE_ACCEPTANCE | NOT_RUN / BLOCKED — owner login wall |
 | MERGE_READY | NO |
 | MAIN_SHA | `2b39b87b` |
 | DEPLOYED_SHA | unverified this session |
@@ -81,61 +64,91 @@ Implementation frames on page 03:
 | CAUGHT_UP | NO |
 | OUTCOME_VERIFIED | not claimed |
 
+## Marketplace reconciliation matrix
+
+Sources: `backend/app/marketplace/seed_catalog.py`, `department_pipelines/catalog.py`, `intelligence_packs/catalog.py`, `docs/delivery/phase0-twelve-pack-marketplace-vision.md`, `LEGACY_PACK_SLUG_MAP`, PR #297 (removed marketplace3 certification/portfolio modules and capability_package skill-tree surfaces from `main`). No packs invented. No removed modules restored.
+
+`original requirement | current asset/pack | catalog source | change history | content status | UX/UI status | missing capability | next action`
+
+### Department packs (installable catalog type `department_pack`)
+
+| original requirement | current asset/pack | catalog source | change history | content status | UX/UI status | missing capability | next action |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Marketing ops / `marketing-ops` | `marketing-operations-pack` | `seed_catalog._department_packs` | Legacy slug mapped | Seeded agents/workflow/RAG/connectors | Shared Discover catalog + detail + grouped contents + pipeline alias `Marketing`→`marketing` + mobile install/uninstall | Paid pack; required GA/Apollo not connected in fixture | Fixture visual of this slug; owner-live install IDs |
+| MSP / ops | `msp-operations-pack` | seed | Current slug | Seeded coordinator/runbooks/weekly status | Shared chrome; pipeline alias `Operations`→`msp` | — | Fixture visual; owner-live |
+| RevOps / `sales-ops` | `revenue-operations-pack` | seed | Legacy `sales-ops` mapped here | Seeded RevOps + sales pipeline + exec rollup | Shared chrome; pipeline alias `Revenue Operations`→`sales`; installed fixture | — | Fixture visual of installed state; owner-live runtime IDs |
+| Customer Success | `customer-success-pack` | seed | Current slug | Seeded CS agent/health rubric/monitoring | Shared chrome; **no department pipeline** (honest) | No pipeline by design | Do not invent a CS pipeline; fixture visual of pack-only detail |
+| HR ops | `hr-operations-pack` | seed | Current slug | Seeded HR coordinator/policy RAG/onboarding | Shared chrome; pipeline `HR`→`hr` | Live HRIS/ATS governance-gated | Fixture visual; owner-live |
+| Support / `support-ops` | `support-operations-pack` | seed | Legacy slug mapped | Seeded triage/Zendesk/SLA | Shared chrome; **no department pipeline** (honest) | Paid pack; Zendesk required | Fixture visual of blocked install; owner-live |
+| Finance department pack / `finance-ops` | **none** | pipeline `default_department_pack_slug=None`; legacy `finance-ops` maps to `revenue-operations-pack` | Consolidated, not a Finance pack | N/A | Finance pipeline exists without a default department pack | Honest gap | Do not invent a Finance department pack |
+| Compliance department pack | **none** | never seeded | 12-pack vision listed Compliance as NEW | N/A | N/A | Never built | Do not invent |
+
+### Intelligence packs (separate catalog type; 12-pack vision)
+
+| original requirement | current asset/pack | catalog source | change history | content status | UX/UI status | missing capability | next action |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Marketing Intelligence | `marketing-intelligence-pack` | `intelligence_packs/catalog.py` | Exists | Assignments + GSC/GA4/HubSpot/Canva refs | Same Marketplace detail chrome when listed | Raw query Memory/KG gated | Catalog-vs-runtime ID proof on owner org |
+| RevOps Intelligence | `revops-intelligence-pack` | same | Exists | HubSpot pipeline snapshot | Shared chrome | CRM-only; finance F3 separate | Owner-live |
+| Sales Intelligence | `sales-intelligence-pack` | same | Exists (vision “shipped”) | Pipeline/CRM | Shared chrome | — | Owner-live |
+| Prospecting | `prospecting-intelligence-pack` | same | Exists; not merged into Sales | Apollo/PDL/Crunchbase/ZoomInfo BYO | Shared chrome | Contact Memory/KG STA-312 | Owner-live |
+| AI Search | `ai-search-intelligence-pack` | same | Exists | Visibility analyst + GSC | Shared chrome | No scrape | Owner-live |
+| Finance Intelligence | `finance-intelligence-pack` | same | Exists; live connectors gated | Cash-flow analyst refs | Shared chrome | Governance before live QB/Xero/NetSuite/Plaid | Do not activate connectors |
+| HR Talent Intelligence | `hr-talent-intelligence-pack` | same | Exists; live HRIS gated | Recruiting analyst refs | Shared chrome | Governance before live Workday/Greenhouse | Do not activate connectors |
+| Support Intelligence | `support-intelligence-pack` | same | Extra vs original 12 | Support analyst | Shared chrome | — | Owner-live |
+| Customer Success Intelligence | `customer-success-intelligence-pack` | same | Exists | Health analyst | Shared chrome | Shared Pack KPI dashboard still NEW from Phase 0 | Owner-live |
+| MSP Intelligence | `msp-intelligence-pack` | same | Exists | Vuln/CISA/NVD | Shared chrome | — | Owner-live |
+| Executive | `executive-intelligence-pack` | same | Exists | Executive analyst | Shared chrome | — | Owner-live |
+| Business OS / platform | `platform-health-intelligence-pack` | same | Renamed/extended from Business OS | Platform reliability | Shared chrome | — | Owner-live |
+| Compliance Intelligence | **none** | Phase 0: NEW / guidance-docs only | Never catalogued | N/A | N/A | Never built | Do not invent |
+
+PR #297 removal claims: marketplace3 certification/portfolio modules and capability_package skill-tree product surfaces were removed on `main` (verified as the merged base of this branch, not restored). Treat older “six remaining packs complete” chat claims as historical.
+
+Pipeline-linked defaults are four (`revenue-operations-pack`, `marketing-operations-pack`, `hr-operations-pack`, `msp-operations-pack`). That is not the complete Marketplace catalog.
+
 ## Route inventory
 
-`route | composition family | nested surfaces | current gap | implementation files | verification required | evidence type | tested SHA | status | blocker`
+`route | family | nested | current gap | files | verification | evidence | SHA | status | blocker`
 
 | route | family | nested | current gap | files | verification | evidence | SHA | status | blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/home` | Understand | KPI, time, drill-down | Owner-live metrics not re-checked after #297 | `components/home/home-dashboard.tsx` | owner metrics + time controls | owner-live | — | IMPLEMENTED / BRANCH (prior) | OWNER_LIVE |
-| `/ai` | Create | composer, history, tools | Protected chat seams — visual only | `app/ai/page.tsx` | stream + persist | owner-live | — | PARTIAL | auth + protected seams |
-| `/agents` | Manage | list, inspector | Glow fallbacks removed; identity green/blue on Brand Foundation tokens | `app/agents/page.tsx`, `components/agents/fleet-v4/identity-tokens.ts` | list/detail consistency | visual + owner | — | IN PROGRESS | OWNER_LIVE |
-| `/agents/[id]` | Manage | tabs, autonomy | Default glow/gradient no longer brand-shadow | `app/agents/[id]/page.tsx` | save persist | owner-live | — | PARTIAL | OWNER_LIVE |
-| `/connectors` | Manage | catalog, instance | Connection status must stay real | `app/connectors/page.tsx` | reconnect path | owner-live | — | PRIOR | OWNER_LIVE |
-| `/sources` | Manage | ingest, detail | Readiness honesty | `app/sources/page.tsx` | inventory | owner-live | — | PRIOR | OWNER_LIVE |
-| `/workflows` | Operate | list, builder | Composition retagged operate; Brand Foundation phase/metrics | `app/workflows/**` | safe run | owner-live | — | IN PROGRESS | OWNER_LIVE |
-| `/intelligence` | Understand | map, rails, model studio | Indigo map stubs removed; core aura uses Brand Foundation; idle no pulse | `app/intelligence/**` | filters + evidence | owner-live | — | IN PROGRESS | OWNER_LIVE |
-| `/marketplace/assets` | Discover | types, install | Mobile search-first + desktop outcomes-first implemented; catalog cards now treat department packs as outcome tiles; grouped pack contents | `app/marketplace/assets/**` | install + runtime id | fixture + owner-live | — | IN PROGRESS | catalog/runtime proof + OWNER_LIVE |
-| `/marketplace/assets/[slug]` | Discover | detail, readiness, sticky install | Discover chrome, grouped contents, pipeline when department present, sticky mobile install; Sparkles removed | `app/marketplace/assets/[slug]/page.tsx` | prerequisites + install | fixture + owner-live | — | IN PROGRESS | OWNER_LIVE |
-| `/approvals` | Operate | queue | Actor/context | `app/approvals/page.tsx` | approve/reject | owner-live | — | PRIOR | OWNER_LIVE |
-| `/activity` | Operate | runs | Execution state | `app/activity/page.tsx` | run vs activity | owner-live | — | PRIOR | OWNER_LIVE |
-| `/audit` | Configure | events | Real org events | `app/audit/page.tsx` | filters | owner-live | — | PRIOR | OWNER_LIVE |
-| `/settings/**` | Configure | billing, team, profile | Billing E2E separate | `app/settings/**` | save + entitlements | billing e2e | — | PRIOR | billing e2e |
-| `/plays` | Operate | play, results | Not invented this sprint | `app/plays/**` | real play data | owner-live | — | PRIOR | — |
-| `/admin/intelligence` | Understand | admin tabs | Glow/hover remnants | `app/admin/intelligence/**` | admin-only | owner-live | — | GAP | role gate |
-| marketing `/*` | Discover | purple legacy | Decorative purple on legacy feature pages | `app/(marketing)/**` | visual | fixture | — | GAP | not Talk-blocking |
+| `/home` | Understand | KPI, time, drill-down | Already composed Understand; owner metrics not live-checked | `components/home/home-dashboard.tsx` | populated fixture + owner metrics | fixture pending this SHA; owner-live | `db2eea5e`+ | IMPLEMENTED ON BRANCH | OWNER_LIVE |
+| `/ai` | Create | composer, history, tools | Protected chat seams | `app/ai/page.tsx` | stream + persist | fixture `/e2e/shots/ai` exists; owner-live | prior | PARTIAL | auth + protected seams |
+| `/agents` | Manage | list, inspector | Glow fallbacks removed earlier | `app/agents/page.tsx` | list/inspector | fixture `/e2e/shots/agents` exists; owner-live | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE + fixture visual this SHA |
+| `/agents/[id]` | Manage | tabs, autonomy | Stored avatar IDs untouched | `app/agents/[id]/page.tsx` | save persist | fixture `/e2e/shots/agent-detail` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
+| `/connectors` | Manage | catalog, instance | Connection status must stay real | `app/connectors/page.tsx` | reconnect | fixture `/e2e/shots/connectors` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
+| `/sources` | Manage | ingest, detail | Readiness honesty | `app/sources/page.tsx` | inventory | owner-live | prior | PRIOR / UNVERIFIED | OWNER_LIVE |
+| `/workflows` | Operate | list | Composition operate | `app/workflows/page.tsx` | safe run | fixture `/e2e/shots/workflows` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
+| `/workflows/[id]/builder` | Create | canvas, inspector | Functional run glow left | `app/workflows/[id]/builder/page.tsx` | persist + run | fixture `/e2e/shots/builder` | prior | IMPLEMENTED ON BRANCH | page 03 frame unavailable |
+| `/intelligence` | Understand | map, rails | Indigo stubs removed; idle no pulse | `app/intelligence/page.tsx` | filters + evidence | fixture `/e2e/shots/intelligence-field` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE + page 03 unverified |
+| `/marketplace/assets` | Discover | types, install | Mobile search-first + pack tiles | `app/marketplace/assets/page.tsx` | catalog + filters | new `/e2e/shots/marketplace` | this tree | IMPLEMENTED ON BRANCH | fixture visual + OWNER_LIVE |
+| `/marketplace/assets/[slug]` | Discover | detail, readiness, mobile actions | Uninstall restored in overflow; bar above MobileBottomNav | `app/marketplace/assets/[slug]/page.tsx` | install/uninstall states | new `/e2e/shots/marketplace-pack/[slug]` | this tree | IMPLEMENTED ON BRANCH | fixture visual + OWNER_LIVE |
+| `/marketplace/installed` | Operate | inspector, uninstall | Installed management | `app/marketplace/installed/page.tsx` | uninstall + deep links | new `/e2e/shots/marketplace-installed` | this tree | IMPLEMENTED ON BRANCH | fixture visual + OWNER_LIVE |
+| `/approvals` | Operate | queue | Actor/context | `app/approvals/page.tsx` | approve/reject | fixture `/e2e/shots/approvals` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
+| `/activity` | Operate | runs | Execution state | `app/activity/page.tsx` | run vs activity | fixture `/e2e/shots/activity` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
+| `/audit` | Configure | events | Real org events | `app/audit/page.tsx` | filters | owner-live | prior | PRIOR / UNVERIFIED | OWNER_LIVE |
+| `/notifications` | Operate | list | — | `app/notifications/page.tsx` | mark-read | owner-live | prior | PRIOR / UNVERIFIED | OWNER_LIVE |
+| `/settings/**` | Configure | billing, team, profile | Composition/token only | `app/settings/**` | save + entitlements | billing e2e not required on PR CI | prior | PRIOR / SUPPORTING | no billing behavior change |
+| `/plays` | Operate | play, results | Not invented this sprint | `app/plays/**` | real play data | owner-live | prior | PRIOR | — |
+| `/admin/intelligence` | Understand | admin tabs | Glow remnants already empty; Understand composition present | `app/admin/intelligence/**` | admin-only | owner-live | this tree | IMPLEMENTED ON BRANCH | role gate + OWNER_LIVE |
+| `/training` | Create | onboarding training | Create composition present | `app/training/page.tsx` | — | owner-live | prior | PRIOR / UNVERIFIED | OWNER_LIVE |
+| `/welcome` | Create | role pick | Decorative GridPattern removed | `app/welcome/page.tsx` | first-run | fixture not added | this tree | IMPLEMENTED ON BRANCH | — |
+| marketing `/*` | Discover | legacy features | Decorative purple rematched to Electric | `components/marketing/features/legacy-page.tsx` | visual | historical `77ca50ce` marketing shots | this tree | IMPLEMENTED ON BRANCH | re-shot this SHA |
+| `/multi-agent-run` | Manage | swarm | Decorative GridPattern + violet orb removed | `app/multi-agent-run/page.tsx` | execution states | owner-live | this tree | IMPLEMENTED ON BRANCH | OWNER_LIVE |
 
 Hidden / legacy (reachable, do not invent new paths): `/operator`, `/command-center`, `/chat`, `/assistant`, `/tasks`, `/systems`, `/admin/intelligence`, `/training`, `/multi-agent-run`, `/metrics`, `/outcomes` → activity.
 
-## Department pack matrix
-
-From `backend/app/marketplace/department_pipelines/catalog.py` (do not invent packs):
-
-| Pack slug | UX/UI complete | Pack content complete | Notes |
-| --- | --- | --- | --- |
-| `revenue-operations-pack` | PARTIAL (shared catalog/detail/install/installed/pipeline chrome) | UNVERIFIED | Nested UX implemented on shared surfaces; live pack rows not owner-inspected |
-| `marketing-operations-pack` | PARTIAL (shared surfaces) | UNVERIFIED | Same shared chrome; no invented pack |
-| `hr-operations-pack` | PARTIAL (shared surfaces) | UNVERIFIED | Same shared chrome; no invented pack |
-| `msp-operations-pack` | PARTIAL (shared surfaces) | UNVERIFIED | Same shared chrome; no invented pack |
-| (pipeline with `default_department_pack_slug=None`) | N/A | N/A | Honest gap in catalog |
-
-PR #297 removed several marketplace3 certification/portfolio modules and capability_package skill trees from `main`. Treat “six remaining packs complete” from older chat as **historical, not current**. Re-verify catalog + install identifiers on this SHA before any ready/outcome badge.
-
 ## Inspection vs unverified vs login-blocked
-
-These rows stay in the acceptance checklist. **None are passed.** Isolated Conversation Smoke is not owner-tenant evidence.
 
 | Surface | Actually inspected | Visually unverified | Owner tasks blocked by login |
 | --- | --- | --- | --- |
-| Marketplace catalog `/marketplace/assets` | Code + unsigned Figma frame `8:2` (1440×1040) + login redirect on `gravitre.app` and `127.0.0.1:3010` | Authenticated catalog grid, live pack cards, install counts, mobile search-first with real data | Browse live catalog; filter department packs; install; confirm runtime IDs |
-| Marketplace detail `/marketplace/assets/[slug]` | Code (Discover chrome, grouped contents, sticky bar, pipeline hook) | Live pack detail, readiness checklist, sticky install, failure toast | Open each real department pack; install/readiness/failure |
-| Marketplace installed | Code (operate composition, inspector, pipeline) | Live installs, deep links, uninstall | Confirm owner-org installs and evidence |
-| Agents `/agents` + `/agents/[id]` | Code (glow fallbacks removed; identity green/blue rematched; stored avatar IDs untouched) + prior unsigned Agents frame | Authenticated list/inspector, personality tiles, save persist | List + detail save + history |
-| Intelligence `/intelligence` | Code (indigo stubs removed; Brand Foundation aura; idle no pulse) + unsigned frame `10:5` (1440×900) | Live map, rails, filters, evidence | Values / filters / evidence on owner org |
-| Operate `/workflows` + runs/activity/approvals | Code (composition retagged; builder Create chrome present; run-path glow left functional) | Live queue, run states, builder persist, safe run | Persist + approved safe run; decision queue |
-| Builder | Code inspection of nav/inspector/canvas; functional SVG glow left on active run only | Pixel match vs page 03 Builder frame (Figma MCP unavailable) | Builder persist + run |
-| Analytics `/metrics` + Intelligence performance | Code (Understand composition; ChartTooltip; completed stroke rematched) | Charts with live metrics | Dashboard / metrics time + drill-down |
-| Handoff / Motion | Approvals already Decision queue; decorative install glow/Sparkles removed; marketing motion-safe hovers | Page 03 Handoff + Motion frames not MCP-inspected | Owner walk of Lock→Route→Handoff→Resolve where those states exist |
+| Marketplace catalog | Code + fixtures added + unsigned historical frame `8:2` | Fixture render this SHA; live catalog | Browse live catalog; install; runtime IDs |
+| Marketplace pack detail (6 slugs) | Code; mobile uninstall overflow; pipeline alias | Fixture render each slug this SHA | Open each real pack |
+| Marketplace installed | Code + fixture payload | Fixture render this SHA | Owner-org installs |
+| Agents list/detail | Code + existing shot routes | Fixture re-render this SHA | List + save |
+| Intelligence | Code + existing shot routes | Fixture re-render this SHA | Values / filters / evidence |
+| Operate / Builder / Approvals | Code + existing shot routes | Fixture re-render this SHA | Persist + approved safe run |
+| Analytics / metrics | Code (Understand; ChartTooltip) | Fixture `/metrics` not added | Live metrics |
+| Handoff / Motion | Decorative install glow/Sparkles removed earlier | Page 03 frames not in Figma file | Owner walk of Lock→Route→Handoff→Resolve where real |
 
 ## Owner-live checklist (NOT_RUN)
 
@@ -149,25 +162,58 @@ Every row: `NOT_RUN` until authenticated owner-org proof on a recorded SHA.
 - Intelligence values / filters / evidence
 - AI workspace retrieve / stream / tools
 - Marketplace each catalog pack surface + install IDs
-- Billing: separate workstream
+- Billing: separate workstream (`workflow_dispatch` only)
 
-## Fixture visual evidence (not owner-live)
+## Historical fixture visual evidence (SHA `77ca50ce` — do not relabel as current)
 
-Candidate SHA `77ca50ce`. Preview: `https://gravitre-saas-backend-isq7czh5j-gravitre-ai.vercel.app` (Vercel READY).
+Preview: `https://gravitre-saas-backend-isq7czh5j-gravitre-ai.vercel.app` (Vercel READY at that SHA).
 
 | Check | Result | Class |
 | --- | --- | --- |
-| Marketing `/` desktop | Rendered on preview; Brand Foundation emerald heading, no page-theme purple | fixture |
-| Marketing `/features` desktop | Coordinate → Act → Approve → Resolve present; no invented prices | fixture |
-| Marketing `/features` 390×844 | Stacked header, wrapping chips, cookie sheet; layout holds | fixture-responsive |
+| Marketing `/` desktop | Rendered on preview; Brand Foundation emerald heading, no page-theme purple | fixture @ `77ca50ce` |
+| Marketing `/features` desktop | Coordinate → Act → Approve → Resolve present; no invented prices | fixture @ `77ca50ce` |
+| Marketing `/features` 390×844 | Stacked header, wrapping chips, cookie sheet; layout holds | fixture-responsive @ `77ca50ce` |
 | Product `/marketplace/assets`, `/agents` | Preview redirects to `https://gravitre.app/login` | login-blocked |
-| `/e2e/shots/agents` on preview | 404 (shot routes not in this preview build) | fixture unavailable |
-| Local typecheck | `npm run typecheck` in `apps/web` exit 0 | automated-local |
+| `/e2e/shots/agents` on preview | 404 (shot routes gated out of production builds) | fixture unavailable on preview |
+| Local typecheck | `npm run typecheck` in `apps/web` exit 0 | automated-local @ `77ca50ce` |
 | Isolated Conversation Smoke | Not used | n/a |
+
+## Current automated evidence (working tree on `db2eea5e`)
+
+| Check | Result | Class |
+| --- | --- | --- |
+| `__tests__/gravitre/micro-label-guard.test.ts` | 4 passed; guard not weakened | automated-local |
+| `__tests__/gravitre/marketplace-mobile-actions.test.ts` | 2 passed — uninstall on mobile bar; bar above nav | automated-local (source) |
+| `__tests__/gravitre/marketplace-department-pipeline.test.ts` | 2 passed | automated-local |
+| `pnpm test` | 1,127 passed / 183 files on the pre-fixture tree; focused 8/8 after fixture/pipeline tests | automated-local |
+| lint | 0 errors / 276 pre-existing warnings | automated-local |
+| typecheck | `tsc --noEmit` exit 0 | automated-local |
+| build | `pnpm build` exit 0 | automated-local |
+| brand / chat-surface / status-leak / intelligence-surface / cognitive | PASS | automated-local |
+| Web CI @ `db2eea5e` | FAIL `micro-label-guard` — fixed on this tree, not yet on a new SHA | CI historical |
+| Billing E2E | `workflow_dispatch` only in `ci.yml`; no billing behavior change this PR | NOT_APPLICABLE on PR CI |
+
+## Current fixture visual evidence (localhost:3055, Northwind shots — not owner-live)
+
+Use `http://localhost:…` not `127.0.0.1` (HMR/dev origin). Shot token short-circuit in `getAccessToken` is gated on `__GRAVITRE_AI_INSTRUMENT` (shots layout only; 404 in production).
+
+| Surface | Viewport | Rendered states | Result | Class |
+| --- | --- | --- | --- | --- |
+| `/e2e/shots/marketplace` | desktop | Populated 6 department packs; Discover chrome; grouped contents sentence-case; paid Marketing/Support use existing seed prices; RevOps in Installed | Visually verified | fixture |
+| `/e2e/shots/marketplace-pack/revenue-operations-pack` | desktop | Installed, grouped contents, Sales Pipeline via department alias, Uninstall + Open installed | Visually verified | fixture |
+| same slug | 390×844 | Sticky bar above MobileBottomNav; Open installed + Clone + More; Uninstall in overflow | Visually verified; floating issues badge overlaps the bar | fixture-responsive |
+| `/e2e/shots/marketplace-pack/marketing-operations-pack` | desktop | Uninstalled paid; GA/Apollo blockers; Buy & install; grouped contents | Visually verified | fixture |
+| `/e2e/shots/marketplace-installed` | desktop | 1 active install (RevOps); inspector closed until select | Visually verified | fixture |
+| `/e2e/shots/agents` | desktop | Populated roster/team; Deal Desk executing; filters | Visually verified | fixture |
+| `/e2e/shots/intelligence-field` | desktop | Field + Knows/Learns/Predicts tabs; graph nodes; honest empty attention/learning; evidence rail | Visually verified | fixture |
+| `/e2e/shots/workflows` | — | Navigation started; screenshot not captured this pass | PARTIAL | fixture |
+| Owner product `/marketplace` `/agents` | preview | Login redirect | login-blocked | owner-live NOT_RUN |
 
 ## Next concrete actions
 
-1. Owner sign-in required for authenticated Marketplace / Agents / Intelligence / Operate pass. Isolated Conversation Smoke org is not owner proof.
-2. Figma remains absent from the live tool catalog. Preserve documented tokens until an exported-variable pass exists.
-3. Wait for required CI on `77ca50ce`; fix failures on this same PR.
-4. Remaining owner-access tasks are listed in the inspection table — none are passed.
+1. Finish lint, typecheck, build, and brand/surface guards on this tree.
+2. Render `/e2e/shots/marketplace`, each pack slug, installed, agents, intelligence, workflows, builder, approvals at desktop and 390px. Record SHA after commit.
+3. Owner sign-in required for owner-tenant acceptance. Isolated Conversation Smoke is not owner proof.
+4. Exact Figma page 03 matching stays unverified until those frames exist in the live file and exported variables are available.
+5. MERGE_READY stays NO until required Web CI is green on the final SHA and fixture visual evidence for changed product routes is attached. Production deploy is not a pre-merge requirement.
+6. CAUGHT_UP stays NO until in-scope design work is merged, deployed, and production-verified.

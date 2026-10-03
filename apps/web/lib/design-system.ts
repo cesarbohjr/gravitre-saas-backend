@@ -320,7 +320,7 @@ export const STATUS_DOT: Record<StatusTone, string> = {
 export const HIGHLIGHT = {
   brand: "text-[color:var(--g-brand-active)]",
   signal: "text-[color:var(--info)]",
-  intelligence: "text-[color:var(--g-intelligence-bright)]",
+  intelligence: "text-[color:var(--g-electric)]",
   warning: "text-[color:var(--warning)]",
   danger: "text-destructive",
   neutral: "text-[color:var(--g-text-secondary)]",

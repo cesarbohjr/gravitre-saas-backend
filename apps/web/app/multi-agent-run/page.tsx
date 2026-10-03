@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { ChevronRight, Network, Plus, RefreshCw } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
-import { GridPattern, AnimatedCounter } from "@/components/gravitre/premium-effects"
+import { AnimatedCounter } from "@/components/gravitre/premium-effects"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { MultiAgentRunOverview } from "@/components/gravitre/multi-agent-run-overview"
 import { agentSwarmApi } from "@/lib/api"
@@ -132,7 +132,6 @@ function MultiAgentRunContent() {
 
   return (
     <div className="relative min-h-full">
-      <GridPattern className="opacity-[0.35]" />
       <div className="relative z-10 mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <AgentsHubTabs active="multi-agent" />
         <GravitrePageHeader

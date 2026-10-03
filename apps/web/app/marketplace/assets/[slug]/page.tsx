@@ -28,11 +28,18 @@ import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
   Copy,
   Loader2,
+  MoreHorizontal,
   ShoppingCart,
   Trash2,
 } from "lucide-react"
@@ -162,7 +169,7 @@ function MarketplaceAssetDetailContent() {
 
   return (
     <AppShell title={asset?.title ?? "Marketplace asset"}>
-      <div className="relative shrink-0 bg-[color:var(--g-canvas)] pb-24 md:pb-8" data-composition="discover">
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)] pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-8" data-composition="discover">
         <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-8">
           <div className="mx-auto max-w-[760px]">
             <Button variant="ghost" size="sm" asChild className="-ml-2">
@@ -306,29 +313,59 @@ function MarketplaceAssetDetailContent() {
         </div>
 
         {asset && (isAdmin || asset.installed) ? (
-          <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]/95 px-4 py-3 backdrop-blur-sm md:hidden">
-            <div className="mx-auto flex max-w-[760px] gap-2">
+          <div
+            className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]/95 px-4 py-3 backdrop-blur-sm md:hidden"
+            data-testid="marketplace-mobile-actions"
+          >
+            <div className="mx-auto flex max-w-[760px] items-center gap-2">
               {isAdmin && !asset.installed ? (
-                <Button className="flex-1 rounded-[10px] font-semibold" onClick={openInstall}>
+                <Button className="min-w-0 flex-1 rounded-[10px] font-semibold" onClick={openInstall}>
                   {needsPurchase ? (
                     <>
-                      <ShoppingCart className="mr-1.5 h-4 w-4" aria-hidden />
-                      {installLabel}
+                      <ShoppingCart className="mr-1.5 h-4 w-4 shrink-0" aria-hidden />
+                      <span className="truncate">{installLabel}</span>
                     </>
                   ) : (
-                    installLabel
+                    <span className="truncate">{installLabel}</span>
                   )}
                 </Button>
               ) : null}
               {asset.installed ? (
-                <Button className="flex-1 rounded-[10px] font-semibold" asChild>
+                <Button className="min-w-0 flex-1 rounded-[10px] font-semibold" asChild>
                   <Link href="/marketplace/installed">Open installed</Link>
                 </Button>
               ) : null}
               {isAdmin ? (
-                <Button variant="outline" className="rounded-[10px]" disabled={busy} onClick={handleClone}>
+                <Button variant="outline" className="shrink-0 rounded-[10px]" disabled={busy} onClick={handleClone}>
                   Clone
                 </Button>
+              ) : null}
+              {isAdmin && asset.installed ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0 rounded-[10px]"
+                      aria-label="More asset actions"
+                      disabled={busy}
+                    >
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <MoreHorizontal className="h-4 w-4" aria-hidden />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" side="top" className="z-50">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      disabled={busy}
+                      onSelect={() => {
+                        void handleUninstall()
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-3.5 w-3.5" aria-hidden />
+                      Uninstall
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null}
             </div>
           </div>

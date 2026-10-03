@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { CheckCircle2, ChevronDown } from "lucide-react"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
@@ -170,7 +171,7 @@ export function PackContentsPreview({
     <div className={cn("space-y-3", compact ? "text-xs" : "text-sm")}>
       {groups.map((group) => (
         <div key={group.type}>
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <p className={cn(TYPE.eyebrow, "mb-1.5 capitalize")}>
             {group.type}
             <span className="ml-1 tabular-nums">({group.items.length})</span>
           </p>
