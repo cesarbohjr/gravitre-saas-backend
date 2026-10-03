@@ -259,7 +259,7 @@ function FederationContent() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex items-center gap-3 rounded-xl border border-chart-3/30 bg-chart-3/5 p-4"
+          className="mb-6 flex items-center gap-3 rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-signal-surface)] p-4"
         >
           <Inbox className="h-5 w-5 shrink-0 text-chart-3" />
           <p className="text-sm">
