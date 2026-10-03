@@ -79,7 +79,7 @@ export function KpiPickerDialog({
               aria-label="Search KPIs"
             />
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="KPI categories">
             {[
               { id: "recommended", label: "Recommended" },
               { id: "displayed", label: "Currently displayed" },
@@ -91,7 +91,7 @@ export function KpiPickerDialog({
                 type="button"
                 onClick={() => setCategory(tab.id)}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                  "shrink-0 rounded-[6px] px-2 py-1 text-[11px] font-medium transition-colors",
                   category === tab.id
                     ? "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
