@@ -151,6 +151,13 @@ export function ModelDetailInsights({
   ]
 
   return (
+    <div className="space-y-5" data-composition="understand">
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] sm:p-5"
+      >
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             {typeMeta ? (
