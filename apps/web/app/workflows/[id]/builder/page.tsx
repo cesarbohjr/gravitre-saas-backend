@@ -1002,7 +1002,7 @@ function AIReasoningPanel({
   return (
     <div className={cn(
       "rounded-lg border transition-all duration-300",
-      "bg-gradient-to-br from-emerald-500/5 to-[color:var(--g-signal-surface)]",
+      "bg-[color:var(--g-emerald-pale)]",
       "border-success/20"
     )}>
       {/* Header - always visible */}
@@ -1012,10 +1012,10 @@ function AIReasoningPanel({
       >
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/20">
-            <Brain className="h-4 w-4 text-success" />
+            <NucleoIntelligence className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
           </div>
           <div className="text-left">
-            <p className="text-xs font-medium text-success">AI Decision Made</p>
+            <p className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Decision resolved</p>
             <p className="text-[10px] text-muted-foreground">
               {reasoning.confidence}% confidence
             </p>
