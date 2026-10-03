@@ -88,7 +88,7 @@ export default function HitlApprovalsPage() {
 function ApprovalsDenied() {
   return (
     <div className="m-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-8 text-center md:m-6">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-emerald-pale)]">
         <ShieldCheck className="h-6 w-6 text-muted-foreground" />
       </div>
       <h2 className="text-lg font-semibold text-foreground">Admin access required</h2>
@@ -372,7 +372,7 @@ function ApprovalsContent() {
             <div>
               <label className="text-xs font-medium text-muted-foreground">Name</label>
               <Input
-                className="mt-1.5 h-11 rounded-xl"
+                className="mt-1.5 h-10 rounded-[var(--np-radius-md)]"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Sales write approval"
