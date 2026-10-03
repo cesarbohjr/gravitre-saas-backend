@@ -68,7 +68,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
                         </AiFullPageSlotProvider>
                       </GravitreAIWorkspaceProvider>
                     </ViewModeProvider>
-                    <OnboardingChecklist />
                   </OnboardingProvider>
                 </NotificationProvider>
               </UserProfileProvider>
