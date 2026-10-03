@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
-import { ArrowsClockwise } from "@phosphor-icons/react"
+import { ArrowsClockwise, Graph, Pulse, SlidersHorizontal } from "@phosphor-icons/react"
 import { OverviewTab } from "./_components/overview-tab"
 import { BusinessImpactCard } from "./_components/business-impact-card"
 import { ConnectorOpsCard } from "./_components/connector-ops-card"
@@ -83,76 +83,46 @@ export default function AdminIntelligencePage() {
           }
         />
 
-        <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-6">
-          <TabsList className="w-full max-w-full overflow-x-auto scrollbar-hide">
-            <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap">
-              {tabs.overview}
-            </TabsTrigger>
-            <TabsTrigger value="memory" className="shrink-0 whitespace-nowrap">
-              {tabs.memory}
-            </TabsTrigger>
-            <TabsTrigger value="relationships" className="shrink-0 whitespace-nowrap">
-              {tabs.relationships}
-            </TabsTrigger>
-            <TabsTrigger value="evaluation" className="shrink-0 whitespace-nowrap">
-              {tabs.evaluation}
-            </TabsTrigger>
-            <TabsTrigger value="outcomes" className="shrink-0 whitespace-nowrap">
-              {tabs.outcomes}
-            </TabsTrigger>
-            <TabsTrigger value="learning" className="shrink-0 whitespace-nowrap">
-              {tabs.learning}
-            </TabsTrigger>
-            <TabsTrigger value="engine" className="shrink-0 whitespace-nowrap">
-              {tabs.engine}
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="shrink-0 whitespace-nowrap">
-              {tabs.performance}
-            </TabsTrigger>
-            <TabsTrigger value="cognitive" className="shrink-0 whitespace-nowrap">
-              {tabs.cognitive}
-            </TabsTrigger>
-          </TabsList>
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div>
+            <p className="text-sm font-medium text-foreground">What do you need to inspect?</p>
+            <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+              Start with platform health, then move into learning, outcomes, or engineering diagnostics only when you need the detail.
+            </p>
+          </div>
+          <div className="text-xs text-muted-foreground">Admin telemetry · read before tuning</div>
+        </div>
 
-          <TabsContent value="overview" className="mt-0 space-y-6">
+        <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-5">
+          <div className="grid gap-2 lg:grid-cols-3">
+            <TabGroup label="Health" icon={<Pulse className="h-4 w-4" />} tabs={[
+              ["overview", tabs.overview], ["performance", "Performance"], ["cognitive", "Recent turns"],
+            ]} />
+            <TabGroup label="Intelligence" icon={<Graph className="h-4 w-4" />} tabs={[
+              ["memory", tabs.memory], ["relationships", tabs.relationships], ["evaluation", tabs.evaluation], ["learning", tabs.learning],
+            ]} />
+            <TabGroup label="Impact & control" icon={<SlidersHorizontal className="h-4 w-4" />} tabs={[
+              ["outcomes", tabs.outcomes], ["engine", tabs.engine],
+            ]} />
+          </div>
+
+          <TabsContent value="overview" className="mt-0 space-y-5">
             <GoldenSignalsPanel />
-            <BusinessImpactCard />
-            <ConnectorOpsCard />
+            <div className="grid gap-5 xl:grid-cols-2">
+              <BusinessImpactCard />
+              <ConnectorOpsCard />
+            </div>
             <KnowledgeFabricQualityCard />
             <OverviewTab data={data} isLoading={isLoading} />
           </TabsContent>
-
-          <TabsContent value="memory" className="mt-0">
-            <MemoryPromotionTab enabled={tab === "memory"} />
-          </TabsContent>
-
-          <TabsContent value="relationships" className="mt-0">
-            <RelationshipsTab data={data} isLoading={isLoading} enabled={tab === "relationships"} />
-          </TabsContent>
-
-          <TabsContent value="evaluation" className="mt-0">
-            <EvaluationTab enabled={tab === "evaluation"} />
-          </TabsContent>
-
-          <TabsContent value="outcomes" className="mt-0">
-            <OutcomesTab enabled={tab === "outcomes"} />
-          </TabsContent>
-
-          <TabsContent value="learning" className="mt-0">
-            <LearningTrendsTab enabled={tab === "learning"} />
-          </TabsContent>
-
-          <TabsContent value="engine" className="mt-0">
-            <EngineTab enabled={tab === "engine"} />
-          </TabsContent>
-
-          <TabsContent value="performance" className="mt-0">
-            <PerformanceTab enabled={tab === "performance"} />
-          </TabsContent>
-
-          <TabsContent value="cognitive" className="mt-0">
-            <CognitiveTurnsTab enabled={tab === "cognitive"} />
-          </TabsContent>
+          <TabsContent value="memory" className="mt-0"><MemoryPromotionTab enabled={tab === "memory"} /></TabsContent>
+          <TabsContent value="relationships" className="mt-0"><RelationshipsTab data={data} isLoading={isLoading} enabled={tab === "relationships"} /></TabsContent>
+          <TabsContent value="evaluation" className="mt-0"><EvaluationTab enabled={tab === "evaluation"} /></TabsContent>
+          <TabsContent value="outcomes" className="mt-0"><OutcomesTab enabled={tab === "outcomes"} /></TabsContent>
+          <TabsContent value="learning" className="mt-0"><LearningTrendsTab enabled={tab === "learning"} /></TabsContent>
+          <TabsContent value="engine" className="mt-0"><EngineTab enabled={tab === "engine"} /></TabsContent>
+          <TabsContent value="performance" className="mt-0"><PerformanceTab enabled={tab === "performance"} /></TabsContent>
+          <TabsContent value="cognitive" className="mt-0"><CognitiveTurnsTab enabled={tab === "cognitive"} /></TabsContent>
         </Tabs>
       </div>
     </AppShell>
