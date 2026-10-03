@@ -270,3 +270,29 @@ Use `http://localhost:…` not `127.0.0.1` (HMR/dev origin). Shot token short-ci
 4. Exact Figma page 03 matching stays unverified until those frames exist in the live file and exported variables are available.
 5. MERGE_READY stays NO until required Web CI is green on the final SHA and fixture visual evidence for changed product routes is attached. Production deploy is not a pre-merge requirement.
 6. CAUGHT_UP stays NO until in-scope design work is merged, deployed, and production-verified.
+
+## Direct implementation pass — 2026-10-03
+
+Starting branch head: `4390f7ba027aa4572acad4d013a09429d2722eb9`. This section records new work; earlier gate snapshots and screenshot rows remain historical and are not evidence for this patch.
+
+Implemented:
+
+- Move the floating AI launcher above the mobile Marketplace pack action bar only while that bar is mounted. Preserve its normal mobile position elsewhere and desktop docking.
+- Increase pack-detail bottom clearance for the stacked navigation, action bar and AI launcher. This does not resolve the separate reported development issues-badge overlap; that needs a rendered inspection.
+- Restrict screenshot-token substitution to instrumented `/e2e/shots` paths in non-production or explicitly enabled public E2E builds. Ordinary product routes and normal production builds retain real user/session validation, even if the browser instrumentation flag is set.
+- Add eight behavioral auth-isolation tests and a launcher clearance regression assertion.
+
+Verification of the changed working tree:
+
+| Check | Result | Limit |
+| --- | --- | --- |
+| Full Vitest suite | 1,141 passed / 186 files | Automated local, not owner-live |
+| Focused auth/mobile tests | 20 passed / 3 files | Offset assertions do not prove rendered geometry |
+| TypeScript `tsc --noEmit` | PASS | Not a production build |
+| ESLint on changed code/tests | 0 errors; 1 existing auth navigation warning | Not full-repository lint |
+| Tailwind 4.2 compile of conditional mobile offset | PASS; emitted matching `:has` selector and bottom calculation | No screenshot comparison |
+| `git diff --check` | PASS | Whitespace only |
+| Figma variable export on `0:1` | BLOCKED: Starter-plan MCP call limit | No tokens extracted; no palette changes made |
+| Browser / owner-live acceptance | NOT_RUN for this patch | No visual or owner acceptance claimed |
+
+MERGE_READY = NO. CAUGHT_UP = NO. Continue the full route/pack design work after obtaining an accessible authoritative Figma source; this bounded fix is not completion of the design sprint.

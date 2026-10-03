@@ -17,7 +17,7 @@ describe("marketplace pack detail mobile actions", () => {
 
   it("sits above MobileBottomNav instead of covering it", () => {
     expect(slugPage).toContain("bottom-[calc(3.5rem+env(safe-area-inset-bottom))]")
-    expect(slugPage).toContain("pb-[calc(8.5rem+env(safe-area-inset-bottom))]")
+    expect(slugPage).toContain("pb-[calc(12rem+env(safe-area-inset-bottom))]")
     expect(slugPage).not.toMatch(/marketplace-mobile-actions[\s\S]{0,200}bottom-0/)
   })
 })

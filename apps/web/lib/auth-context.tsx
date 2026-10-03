@@ -151,7 +151,9 @@ export function useAuth() {
 // Helper to get access token for API requests
 export async function getAccessToken(): Promise<string | null> {
   if (
+    (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1") &&
     typeof window !== "undefined" &&
+    /^\/e2e\/shots(?:\/|$)/.test(window.location.pathname) &&
     (window as Window & { __GRAVITRE_AI_INSTRUMENT?: boolean }).__GRAVITRE_AI_INSTRUMENT
   ) {
     return "shot-access-token"

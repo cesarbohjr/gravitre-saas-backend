@@ -99,6 +99,16 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     expect(button.className).toContain("md:bottom-5")
   })
 
+  it("reserves the pack action bar's space only while that bar is mounted", async () => {
+    await renderHelper()
+    const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
+    expect(button.className).toContain(
+      "max-md:[:root:has([data-testid=marketplace-mobile-actions])_&]:bottom-[calc(56px+env(safe-area-inset-bottom)+76px)]",
+    )
+    // 76px reserves the existing 36px action + 24px padding + border + gap.
+    expect(76).toBeGreaterThan(36 + 24 + 1)
+  })
+
   it("docks centred on the workspace panel from md up, collapsed or expanded rail", async () => {
     await renderHelper()
     const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement

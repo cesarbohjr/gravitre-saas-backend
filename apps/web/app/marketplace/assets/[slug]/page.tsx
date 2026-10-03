@@ -169,7 +169,7 @@ function MarketplaceAssetDetailContent() {
 
   return (
     <AppShell title={asset?.title ?? "Marketplace asset"}>
-      <div className="relative shrink-0 bg-[color:var(--g-canvas)] pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-8" data-composition="discover">
+      <div className="relative shrink-0 bg-[color:var(--g-canvas)] pb-[calc(12rem+env(safe-area-inset-bottom))] md:pb-8" data-composition="discover">
         <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-8">
           <div className="mx-auto max-w-[760px]">
             <Button variant="ghost" size="sm" asChild className="-ml-2">
