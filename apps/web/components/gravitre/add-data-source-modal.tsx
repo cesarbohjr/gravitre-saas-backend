@@ -219,8 +219,8 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && resetAndClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="text-left">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden p-0">
+        <DialogHeader className="border-b border-divide px-5 py-4 text-left">
           {/* pr-8 keeps the title clear of the absolute top-right close button */}
           <DialogTitle className="pr-8">
             {step === 1 && "Add Data Source"}
@@ -229,7 +229,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-1.5 border-b border-divide px-5 py-2">
           {[1, 2, 3].map((s) => (
             <div
               key={s}
@@ -255,7 +255,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Data source categories">
               <button
                 type="button"
                 onClick={() => setCategory(null)}
@@ -296,7 +296,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                       key={type.id}
                       type="button"
                       onClick={() => handleSelectType(type)}
-                      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-all hover:border-primary/30 hover:bg-card/80"
+                      className="flex items-center gap-3 rounded-[8px] border border-border bg-card p-3 text-left transition-colors hover:border-[color:var(--g-emerald)]/30 hover:bg-[color:var(--g-surface-2)]"
                     >
                       <ConnectorIcon
                         vendor={useBrandLogo ? vendorKey : undefined}
