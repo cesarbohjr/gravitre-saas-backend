@@ -58,11 +58,64 @@ Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match
 | BILLING_E2E | NOT_APPLICABLE for required PR CI — job only runs on `workflow_dispatch` (`ci.yml` `billing-e2e`). This PR’s billing pages received composition/token supporting work only; no checkout, plan, or entitlement behavior change. Not marked passed. |
 | OWNER_LIVE_ACCEPTANCE | NOT_RUN / BLOCKED — owner login wall |
 | MERGE_READY | NO |
-| MAIN_SHA | `2b39b87b` |
-| DEPLOYED_SHA | unverified this session |
-| PRODUCTION_VERIFIED | NO |
+| MAIN_SHA | `8c737d50` (includes PR #299 MSP blog restoration) |
+| DEPLOYED_SHA | production marketing on `gravitre.app` serves PR #299 MSP route (HTTP evidence below) |
+| PRODUCTION_VERIFIED | PARTIAL — MSP blog route + hero asset verified on canonical production URL; completion PR preview re-check pending post-push |
 | CAUGHT_UP | NO |
 | OUTCOME_VERIFIED | not claimed |
+
+## Unrelated published content preservation audit (2026-10-03)
+
+Scope: before merging PR #298, confirm Emerald migration (PR #297) and the Extrovert completion branch did not drop unrelated marketing/blog routes, images, or registrations. A green build does not prove routes survived.
+
+### PR #299 verification (repository history)
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| PR #299 merged to `main` | PASS | merge commit `8c737d50` @ 2026-10-03T16:38:38Z — “Restore MSP blog post dropped by Emerald Intelligence migration” |
+| Restored content module | PASS | `apps/web/app/(marketing)/blog/content/governed-ai-for-msps.tsx` added (+161 lines) |
+| Restored `posts.tsx` wiring | PASS | import `governedAiForMspsPost` + array entry in same merge |
+| Restored hero asset | PASS | `apps/web/public/images/blog/governed-ai-for-msps-hero.jpg` (+226113 bytes) |
+
+Root cause (from merge message): PR #297 landed from a snapshot of `main` that predated MSP post merges (#294/#295); the post was missing on `2b39b87b`, not deleted file-by-file inside the Emerald diff against `2c23a56b` (marketing tree unchanged in that merge).
+
+### PR #298 catch-up vs `main`
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Branch contained MSP post before catch-up | FAIL | `origin/feat/gravitre-3.0-extrovert-design` @ `2953b1eb` lacked `governed-ai-for-msps.tsx`, hero JPG, and `posts.tsx` registration |
+| `merge origin/main` on completion branch | PASS | merge commit on this branch re-applied PR #299 three-file restoration without conflict |
+| Extrovert marketing diffs vs `main` (intentional) | PASS | only `enterprise-ai-governance.tsx` hero gradient token swap, `guides/page.tsx` + `layout.tsx` token/class tweaks — no other blog slugs or images removed |
+| PR #298 file deletions vs `main` | PASS | `git diff origin/main...HEAD --name-status` shows **zero** `D` entries (adds/modifies only) |
+
+### Broader accidental-removal scan (`2c23a56b` → `origin/main`)
+
+Marketing/content delta on `main` since pre-Emerald parent: **only** PR #299 MSP restoration (3 files). No other blog posts, hero images, or marketing routes removed on `main` in that range.
+
+Remote branch `blog/governed-ai-agents-smb-msp-revops` still carries the same published slug set as `main`; no additional published posts to restore without product authorization.
+
+### Repairs on this branch
+
+| Item | Action |
+| --- | --- |
+| MSP post + hero + registration | Restored via `merge origin/main` (PR #299), not manual cherry-pick |
+| Regression coverage | Added `apps/web/__tests__/marketing/blog-content-registry.test.ts` — slug in `getAllBlogSlugs`, listing, hero path, on-disk asset |
+
+### Production URL verification (canonical, no cache-bust query)
+
+| URL | HTTP | Cache / routing notes |
+| --- | --- | --- |
+| `https://gravitre.app/blog/governed-ai-for-msps` | **200** | `x-matched-path: /blog/[slug]`, `x-pathname: /blog/governed-ai-for-msps`, `x-vercel-cache: MISS`, `age: 0` @ 2026-10-03T16:45:59Z |
+| `https://gravitre.app/images/blog/governed-ai-for-msps-hero.jpg` | **200** | `content-type: image/jpeg`, `age: 0` @ 2026-10-03T16:46:00Z |
+
+No cached 404 observed on canonical production URLs at verification time. If 404s reappear after deploy, inspect `x-vercel-cache`, `age`, and `x-matched-path` before attributing to CDN alone.
+
+### Preview verification (PR #298)
+
+| Check | Status | Notes |
+| --- | --- | --- |
+| `/blog` index lists MSP post | NOT_RUN this SHA | Re-run on Vercel preview after push of merge + regression test |
+| `/blog/governed-ai-for-msps` | NOT_RUN this SHA | Same |
 
 ## Marketplace reconciliation matrix
 
