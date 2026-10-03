@@ -7,7 +7,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import {
   MorphingBackground,
-  GlowOrb,
   AnimatedCounter,
   StatusBeacon,
   ActivityIndicator
@@ -701,12 +700,12 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
           <div className="absolute inset-0 opacity-40">
             <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(rgba(0,168,120,.18)_1px,transparent_1px)] [background-size:20px_20px]" aria-hidden />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/92 to-background" />
+          <div className="absolute inset-0 bg-[color:var(--g-surface-1)]/90" />
         </div>
         
         {/* Hero Header */}
         <div className="relative z-10 overflow-hidden border-b border-divide/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-chart-4/10" />
+          <div className="absolute inset-0 [background-image:linear-gradient(90deg,transparent,rgba(0,168,120,.08),transparent)]" />
           <div className="absolute top-0 right-0 pointer-events-none">
 
           </div>
@@ -725,13 +724,13 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                 <div>
                   <div className="flex items-center gap-4 mb-2">
                     <motion.div 
-                      className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-xl shadow-primary/30"
+                      className="relative flex h-14 w-14 items-center justify-center rounded-[10px] bg-[color:var(--g-emerald)] shadow-[var(--elevation-2)]"
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 3, repeat: Infinity }}
                     >
                       <Crown className="h-7 w-7 text-primary-foreground" />
                       <motion.div 
-                        className="absolute inset-0 rounded-2xl border-2 border-primary"
+                        className="absolute inset-0 rounded-[10px] border-2 border-[color:var(--g-emerald)]"
                         animate={{ scale: [1, 1.2], opacity: [0.6, 0] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       />
