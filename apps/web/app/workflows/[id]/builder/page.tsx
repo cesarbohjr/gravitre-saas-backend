@@ -5138,7 +5138,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   <LibraryItem
                     name="Choose Next Action"
                     description="AI selects best action"
-                    icon={Brain}
+                    icon={GitBranch}
                     nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
