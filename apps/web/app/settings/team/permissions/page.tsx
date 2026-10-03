@@ -71,7 +71,7 @@ export default function PermissionsMatrixPage() {
                   What each workspace role can access. Loaded from org role definitions on the backend.
                 </p>
               </div>
-              <div className="rounded-2xl border border-divide bg-[color:var(--g-surface-1)]/90 px-4 py-3 backdrop-blur">
+              <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] px-4 py-3">
                 <p className="text-xs text-muted-foreground font-medium">Roles</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{roles.length}</p>
               </div>
@@ -100,7 +100,7 @@ export default function PermissionsMatrixPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <div className="rounded-[10px] border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               Could not load role permissions. Try again later.
             </div>
           ) : (
