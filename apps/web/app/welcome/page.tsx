@@ -162,9 +162,6 @@ export default function WelcomePage() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[color:var(--g-canvas)] px-4 py-10">
       <GridPattern color="emerald" className="opacity-[0.25]" />
-      <ParticleField count={28} color="emerald" className="opacity-50" />
-      <GlowOrb color="emerald" size={280} className="-left-20 top-10 opacity-30" />
-      <GlowOrb color="violet" size={200} className="-right-10 bottom-20 opacity-25" />
 
       <motion.div
         initial={reduced ? false : { opacity: 0, y: -8 }}
