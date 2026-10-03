@@ -1,6 +1,7 @@
 "use client"
 
-import type { ReactNode } from "react"\nimport { PAGE_FRAME } from "@/lib/design-system"
+import type { ReactNode } from "react"
+import { PAGE_FRAME } from "@/lib/design-system"
 import { useState } from "react"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
