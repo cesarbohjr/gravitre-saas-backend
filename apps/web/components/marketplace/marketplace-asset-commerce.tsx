@@ -107,18 +107,18 @@ export function ConnectorChecklist({
                 {item.connected ? (
                   <CheckCircle2 className={cn("h-3.5 w-3.5 shrink-0", checklistTone(item))} aria-label="Connected" />
                 ) : null}
-                <span className={cn("truncate", !item.connected && item.required && "font-medium")}>
+                <span className={cn("min-w-0 break-words", !item.connected && item.required && "font-medium")}>
                   {item.label || item.connectorType}
                   {item.required ? (
-                    <span className="ml-1 text-xs font-semibold text-destructive">Required</span>
+                    <span className={cn("ml-1 text-xs font-semibold", !item.connected && "text-destructive")}>Required</span>
                   ) : (
                     <span className="ml-1 text-[10px] text-muted-foreground">Optional</span>
                   )}
                 </span>
               </div>
               {!item.connected ? (
-                <Button size="sm" variant="outline" className="shrink-0" asChild>
-                  <Link href={item.action_url || item.connectPath}>Connect</Link>
+                <Button size="sm" variant="outline" className="min-h-11 shrink-0 sm:min-h-8" asChild>
+                  <Link href={item.action_url || item.connectPath} aria-label={`Connect ${item.label || item.connectorType}`}>Connect</Link>
                 </Button>
               ) : null}
             </div>
@@ -177,17 +177,15 @@ export function PackContentsPreview({
           </p>
           <ul className="space-y-1.5">
             {group.items.map((item) => (
-              <li key={item.child.id} className="flex items-center justify-between gap-2">
+              <li key={item.child.id} className="flex items-start justify-between gap-3">
                 {linkChildren && item.child.slug ? (
-                  <Link href={`/marketplace/assets/${encodeURIComponent(item.child.slug)}`} className="text-[color:var(--g-emerald-deep)] hover:underline">
+                  <Link href={`/marketplace/assets/${encodeURIComponent(item.child.slug)}`} className="min-w-0 flex-1 break-words rounded-sm text-[color:var(--g-emerald-deep)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--g-brand)]">
                     {item.child.title}
                   </Link>
                 ) : (
-                  <span className="text-foreground">{item.child.title}</span>
+                  <span className="min-w-0 flex-1 break-words text-foreground">{item.child.title}</span>
                 )}
-                <Badge variant="outline" className="text-[10px] capitalize">
-                  {packItemTypeLabel(item)}
-                </Badge>
+                <span className="shrink-0 text-xs text-muted-foreground">{item.required ? "Required" : "Optional"}</span>
               </li>
             ))}
           </ul>
@@ -198,23 +196,23 @@ export function PackContentsPreview({
 
   if (compact) {
     return (
-      <details className="group mb-4 rounded-lg border border-border/60 bg-muted/20 p-3">
-        <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold text-muted-foreground [&::-webkit-details-marker]:hidden">
+      <details className="group rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] px-3">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-sm text-xs font-semibold text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--g-brand)] [&::-webkit-details-marker]:hidden">
           <span>What&apos;s included ({items.length})</span>
           <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
         </summary>
-        <div className="mt-3">{body}</div>
+        <div className="pb-3">{body}</div>
       </details>
     )
   }
 
   return (
-    <div className="rounded-lg border bg-muted/20 p-4">
+    <section aria-label="Pack contents" className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4">
       <p className="mb-2 text-xs font-semibold text-muted-foreground">
         What&apos;s included ({items.length})
       </p>
       {body}
-    </div>
+    </section>
   )
 }
 

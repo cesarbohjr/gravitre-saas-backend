@@ -13,7 +13,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { marketplaceApi } from "@/lib/api"
 import { DepartmentPipelineByDepartment } from "@/components/marketplace/department-pipeline-panel"
+import { PackContentsPreview } from "@/components/marketplace/marketplace-asset-commerce"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { cn } from "@/lib/utils"
 import {
   Package,
@@ -50,9 +54,10 @@ function InstalledAssetRow({
     <li>
       <button
         type="button"
+        aria-pressed={isSelected}
         onClick={onSelect}
         className={cn(
-          "flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left",
+          "flex min-h-11 w-full items-start justify-between gap-3 rounded-sm px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--g-brand)]",
           isSelected ? "bg-[color:var(--g-surface-2)]" : "hover:bg-[color:var(--g-surface-2)]/50",
         )}
       >
@@ -72,15 +77,21 @@ function InstalledInspector({
   install,
   busy,
   onUninstall,
+  isAdmin,
 }: {
   install: MarketplaceInstall
   busy: string | null
   onUninstall: (install: MarketplaceInstall) => void
+  isAdmin: boolean
 }) {
   const asset = install.asset
   const department = asset?.department ?? "general"
   const installedAt = formatInstalledAt(install.installedAt)
   const slug = asset?.slug
+  const { data: packDetail, error: packError, isLoading: packLoading, mutate: refreshPack } = useSWR(
+    slug ? ["marketplace-asset", slug] : null,
+    () => marketplaceApi.getAsset(slug!),
+  )
   const agentCount =
     install.metadata?.agentIds?.length ??
     (install.metadata?.agentId || install.metadata?.operatorId ? 1 : 0)
@@ -96,7 +107,7 @@ function InstalledInspector({
     <div className="space-y-4 p-4" data-review-surface="marketplace-ops-inspect">
       <div>
         <p className="text-xs font-medium text-muted-foreground">Install</p>
-        <h2 className="mt-1 text-base font-medium text-foreground">{asset?.title ?? "Installed asset"}</h2>
+        <h2 className="mt-1 break-words font-[family-name:var(--font-space-grotesk)] text-xl font-medium text-foreground">{asset?.title ?? "Installed asset"}</h2>
         <p className="mt-1 text-xs capitalize text-muted-foreground">
           {department.replace(/-/g, " ")}
           {installedAt ? ` · Installed ${installedAt}` : ""}
@@ -104,14 +115,14 @@ function InstalledInspector({
       </div>
       {deepLinks.length ? (
         <ul className="divide-y divide-divide border-y border-divide text-sm">
-          {deepLinks.slice(0, 4).map((link) => (
+          {deepLinks.map((link) => (
             <li key={`${link.entityType}:${link.entityId}:${link.path}`}>
               <Link
                 href={link.entityType === "workflow" ? `${link.path}/builder` : link.path}
-                className="flex items-center justify-between py-2 hover:underline"
+                className="flex min-h-11 items-center justify-between gap-3 rounded-sm py-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--g-brand)]"
               >
-                {link.label}
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                <span className="min-w-0 break-words">{link.label}</span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
               </Link>
             </li>
           ))}
@@ -121,6 +132,9 @@ function InstalledInspector({
           {agentCount} agents · {workflowCount} workflows · {sourceCount} sources
         </p>
       )}
+      {packLoading ? <p role="status" className="text-sm text-muted-foreground">Loading pack contents…</p> : null}
+      {packError ? <div role="alert" className="space-y-2 text-sm"><p>Could not load pack contents.</p><Button variant="outline" size="sm" onClick={() => void refreshPack()}>Retry contents</Button></div> : null}
+      {!packError ? <PackContentsPreview items={packDetail?.asset?.packItems} compact linkChildren /> : null}
       <DepartmentPipelineByDepartment department={department} />
       <div className="flex flex-wrap gap-2">
         {slug ? (
@@ -131,7 +145,7 @@ function InstalledInspector({
             </Link>
           </Button>
         ) : null}
-        {slug ? (
+        {slug && isAdmin ? (
           <Button
             variant="ghost"
             size="sm"
@@ -154,6 +168,8 @@ function InstalledInspector({
 
 function InstalledContent() {
   const { user } = useAuth()
+  const { isAdmin } = useOrgAdmin()
+  const useSheetInspector = useIsMobile(1024)
   const [busy, setBusy] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const { data, error, isLoading, mutate } = useSWR(
@@ -166,7 +182,7 @@ function InstalledContent() {
 
   const handleUninstall = async (install: MarketplaceInstall) => {
     const slug = install.asset?.slug
-    if (!slug) return
+    if (!slug || !isAdmin) return
     if (!window.confirm(`Uninstall "${install.asset?.title ?? slug}"? This removes the marketplace install record.`)) {
       return
     }
@@ -187,7 +203,7 @@ function InstalledContent() {
     <AppShell title="Installed assets">
       <div className="bg-[color:var(--g-canvas)]" data-composition="operate">
         <GravitrePageHeader
-          eyebrow="Gravitre Marketplace"
+          eyebrow="Operate / Installed capabilities"
           title="Installed assets"
           description="Marketplace assets your team has deployed, with quick links to agents, workflows, and knowledge sources."
           icon={<CheckCircle2 className="h-5 w-5" />}
@@ -205,7 +221,7 @@ function InstalledContent() {
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
             <GravitreMetric
               label="Active installs"
-              value={isLoading && !data ? "—" : installed.length}
+              value={error || (isLoading && !data) ? "—" : installed.length}
               hint="Select an install — inspector stays closed until then."
               icon={<Package className="h-4 w-4" />}
             />
@@ -230,7 +246,7 @@ function InstalledContent() {
             </div>
           ) : null}
 
-          {isLoading && !data ? (
+          {error ? null : isLoading && !data ? (
             <p className="text-sm text-muted-foreground">Loading installed assets…</p>
           ) : installed.length === 0 ? (
             <GravitreEmpty
@@ -247,7 +263,7 @@ function InstalledContent() {
               }
             />
           ) : (
-            <div className="flex flex-col border border-divide lg:flex-row">
+            <div className="flex min-w-0 overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] lg:flex-row">
               <ul className="min-w-0 flex-1 divide-y divide-divide" data-review-surface="marketplace-ops">
                 {installed.map((install) => (
                   <InstalledAssetRow
@@ -258,9 +274,9 @@ function InstalledContent() {
                   />
                 ))}
               </ul>
-              {selected ? (
-                <div className="flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0 lg:border-l">
-                  <InstalledInspector install={selected} busy={busy} onUninstall={handleUninstall} />
+              {selected && !useSheetInspector ? (
+                <div className="min-w-0 flex-1 border-l border-divide bg-[color:var(--g-surface-1)]">
+                  <InstalledInspector install={selected} busy={busy} onUninstall={handleUninstall} isAdmin={isAdmin} />
                 </div>
               ) : (
                 <p className="sr-only">Select an install — inspector stays closed until then.</p>
@@ -268,6 +284,17 @@ function InstalledContent() {
             </div>
           )}
         </div>
+        {useSheetInspector ? (
+          <Sheet open={Boolean(selected) && !error} onOpenChange={(open) => { if (!open) setSelectedId(null) }}>
+            <SheetContent className="w-full overflow-y-auto bg-[color:var(--g-canvas)] sm:max-w-lg">
+              <SheetHeader>
+                <SheetTitle className="font-[family-name:var(--font-space-grotesk)] text-2xl font-medium">Installed capability</SheetTitle>
+                <SheetDescription>Inspect the pack and open its provisioned resources.</SheetDescription>
+              </SheetHeader>
+              {selected ? <InstalledInspector install={selected} busy={busy} onUninstall={handleUninstall} isAdmin={isAdmin} /> : null}
+            </SheetContent>
+          </Sheet>
+        ) : null}
       </div>
     </AppShell>
   )

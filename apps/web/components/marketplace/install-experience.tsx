@@ -8,6 +8,7 @@ import { AssetPurchaseButton } from "@/components/marketplace/asset-purchase-but
 import {
   ConnectorChecklist,
   NonAdminPurchaseNotice,
+  PackContentsPreview,
   assetRequiresPurchase,
   formatAssetPrice,
 } from "@/components/marketplace/marketplace-asset-commerce"
@@ -127,9 +128,9 @@ export function InstallSuccessPanel({
           </span>
           <div>
             <p className="text-xs font-semibold text-success/80">
-              {requiresReview ? "Installed · review required" : "Live in your workspace"}
+              {requiresReview ? "Installed · review required" : "Added to your workspace"}
             </p>
-            <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+            <h3 className="mt-1 font-[family-name:var(--font-space-grotesk)] text-xl font-medium tracking-tight text-foreground">
               {assetTitle} is installed
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -211,11 +212,24 @@ export function InstallStepperSheet({
   onComplete: () => void
   isAdmin: boolean
 }) {
+  // A new asset or a newly opened sheet starts its own install session.
+  // External closes (not just Sheet's close button) must clear prior success.
+  return <InstallStepperSession key={`${asset?.id ?? "none"}:${open ? "open" : "closed"}`} asset={asset} open={open} onOpenChange={onOpenChange} onComplete={onComplete} isAdmin={isAdmin} />
+}
+
+function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin }: {
+  asset: MarketplaceAssetSummary | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onComplete: () => void
+  isAdmin: boolean
+}) {
   const [step, setStep] = useState<InstallStep>("check")
   const [installResult, setInstallResult] = useState<MarketplaceAssetInstallResult | null>(null)
+  const [installError, setInstallError] = useState<string | null>(null)
 
   const checkKey = open && asset ? ["marketplace-install-check", asset.id] : null
-  const { data: check, isLoading: checkLoading, mutate: refreshCheck } = useSWR(
+  const { data: check, error: checkError, isLoading: checkLoading, isValidating: checkValidating, mutate: refreshCheck } = useSWR(
     checkKey,
     () => marketplaceApi.installCheck(asset!.id),
     { revalidateOnFocus: false },
@@ -232,17 +246,19 @@ export function InstallStepperSheet({
   const activeStep: InstallStep =
     step === "installing" || step === "done"
       ? step
-      : step === "check" && check && !checkLoading
+      : step === "check" && check && !checkLoading && !checkError
         ? check.canInstall
           ? "confirm"
           : "check"
         : step
 
   const runInstall = async () => {
-    if (!asset) return
+    if (!asset || !isAdmin || !check?.canInstall || checkLoading || checkValidating || checkError || step === "installing") return
+    setInstallError(null)
     setStep("installing")
     try {
       const result = await marketplaceApi.installAsset(asset.slug)
+      if (!result.installed) throw new Error("The server did not confirm installation. Review the requirements and try again.")
       setInstallResult(result)
       setStep("done")
       onComplete()
@@ -250,29 +266,34 @@ export function InstallStepperSheet({
       toast.success(
         requiresReview
           ? `${asset.title} is installed and requires review`
-          : `${asset.title} is live in your workspace`,
+          : `${asset.title} is installed in your workspace`,
       )
     } catch (err) {
+      setInstallError(err instanceof Error ? err.message : "Install failed. Review the requirements and try again.")
       toastMarketplaceInstallFailure(err, {
         blockerActionUrl: check?.blockers?.[0]?.action_url,
       })
-      await refreshCheck()
       setStep("check")
+      void refreshCheck()
     }
   }
 
   const checklist = check?.connectorChecklist ?? asset?.connectorChecklist ?? []
   const blockers = check?.blockers ?? []
-  const needsPurchase = asset ? assetRequiresPurchase(asset) : false
+  const needsPurchase = asset ? assetRequiresPurchase({
+    ...asset,
+    hasEntitlement: check?.hasEntitlement ?? asset.hasEntitlement,
+    requiresPayment: check?.requiresPayment ?? asset.requiresPayment,
+  }) : false
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col border-l border-border/60 bg-background/95 sm:max-w-md">
+      <SheetContent side="right" className="flex w-full flex-col gap-0 border-l border-border/60 bg-[color:var(--g-canvas)] sm:max-w-md">
         <SheetHeader className="space-y-2 border-b border-border/50 pb-4">
           <p className="text-xs font-semibold text-muted-foreground">
             Install into workspace
           </p>
-          <SheetTitle className="text-xl tracking-tight">{asset?.title ?? "Asset"}</SheetTitle>
+          <SheetTitle className="pr-5 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tracking-tight">{asset?.title ?? "Asset"}</SheetTitle>
           <SheetDescription>
             {asset?.assetType === "capability_package"
               ? "Gravitre will install the reviewed capability snapshot in quarantine for your organization to approve. MCP activation stays separate."
@@ -280,11 +301,12 @@ export function InstallStepperSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-1 py-4">
-          <ol className="flex gap-2 text-xs font-semibold text-muted-foreground">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          <ol aria-label="Installation progress" className="flex flex-wrap gap-3 text-xs font-semibold text-muted-foreground">
             {(["check", "confirm", "done"] as const).map((id, idx) => (
               <li
                 key={id}
+                aria-current={activeStep === id || (step === "installing" && id === "confirm") ? "step" : undefined}
                 className={cn(
                   "flex items-center gap-1.5",
                   (activeStep === id ||
@@ -307,20 +329,29 @@ export function InstallStepperSheet({
                     idx + 1
                   )}
                 </span>
-                {id}
+                {{ check: "Check apps", confirm: "Confirm", done: "Installed" }[id]}
               </li>
             ))}
           </ol>
 
           {checkLoading ? (
-            <div className="grid place-items-center py-10">
+            <div role="status" className="grid place-items-center gap-3 py-10">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
+              <p className="text-sm text-muted-foreground">Checking install requirements…</p>
             </div>
           ) : null}
 
-          {!checkLoading && activeStep === "check" && !check?.canInstall ? (
+          {checkError && activeStep !== "done" ? (
+            <div role="alert" className="space-y-3 rounded-[10px] border border-destructive/30 bg-[color:var(--g-surface-1)] p-4">
+              <p className="text-sm">Could not check install requirements. Installation is unavailable until the check succeeds.</p>
+              <Button variant="outline" className="min-h-11" disabled={checkValidating} onClick={() => void refreshCheck()}>Retry check</Button>
+            </div>
+          ) : null}
+          {installError ? <p role="alert" className="rounded-[10px] border border-destructive/30 bg-destructive/5 p-3 text-sm">{installError}</p> : null}
+          {!isAdmin && activeStep !== "done" ? <NonAdminPurchaseNotice /> : null}
+
+          {!checkLoading && !checkError && activeStep === "check" && !check?.canInstall ? (
             <>
-              {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
               <BlockerList blockers={blockers} />
               <ConnectorChecklist items={checklist} />
               {check?.requiresPayment && !check?.hasEntitlement && asset && isAdmin ? (
@@ -329,14 +360,15 @@ export function InstallStepperSheet({
             </>
           ) : null}
 
-          {!checkLoading && (activeStep === "confirm" || step === "installing") ? (
+          {!checkLoading && !checkError && (activeStep === "confirm" || step === "installing") ? (
             <>
-              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+              <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 text-sm text-muted-foreground">
                 {asset?.assetType === "capability_package"
                   ? "Confirm to add this reviewed capability snapshot in quarantine. An org admin must approve it before the skill can be used; imported scripts remain inert and MCP dependencies are not activated automatically."
                   : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
               </div>
               <ConnectorChecklist items={checklist} />
+              <PackContentsPreview items={asset?.packItems} compact linkChildren />
             </>
           ) : null}
 
@@ -350,7 +382,7 @@ export function InstallStepperSheet({
           ) : null}
         </div>
 
-        <SheetFooter className="border-t border-border/50 pt-4">
+        <SheetFooter className="shrink-0 border-t border-border/50 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 [&_button]:min-h-11">
           {activeStep === "check" && !check?.canInstall ? (
             <Button variant="outline" className="rounded-full" onClick={() => handleOpenChange(false)}>
               Close
@@ -361,7 +393,7 @@ export function InstallStepperSheet({
               <Button variant="outline" className="rounded-full" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button className="rounded-full" onClick={runInstall}>
+              <Button className="rounded-full" disabled={!isAdmin || checkValidating || Boolean(checkError)} onClick={runInstall}>
                 Confirm install
                 {asset && needsPurchase ? ` · ${formatAssetPrice(asset)}` : ""}
               </Button>
