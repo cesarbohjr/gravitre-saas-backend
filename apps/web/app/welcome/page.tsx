@@ -160,7 +160,7 @@ export default function WelcomePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[color:var(--g-canvas)] px-4 py-10">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[color:var(--g-canvas)] px-4 py-10" data-composition="create">
       <GridPattern color="emerald" className="opacity-[0.25]" />
 
       <motion.div
@@ -324,7 +324,7 @@ export default function WelcomePage() {
               {selectedRole?.packSlug ? (
                 <Link
                   href={`/marketplace/assets/${encodeURIComponent(selectedRole.packSlug)}?returnTo=${encodeURIComponent(APP_ROUTES.welcome)}`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300"
+                  className="inline-flex items-center gap-2 rounded-[8px] border border-[color:var(--g-emerald)]/30 bg-[color:var(--g-emerald-pale)] px-4 py-3 text-sm font-medium text-[color:var(--g-emerald-deep)]"
                 >
                   Preview recommended pack
                   <ArrowRight className="h-4 w-4" />

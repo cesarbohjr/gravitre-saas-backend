@@ -4,8 +4,11 @@ import { useCallback, useState, use } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { Button } from "@/components/ui/button"
+import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
+import { PAGE_FRAME, RADIUS } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { ArrowLeft, Plus, RefreshCw } from "lucide-react"
+import { ArrowLeft, Plus, RefreshCw, CalendarClock } from "lucide-react"
 import { describeCron, type ScheduleKind } from "@/lib/schedules"
 import { useSchedules } from "@/lib/use-schedules"
 import { ScheduleEditorDialog } from "@/components/schedules/schedule-editor-dialog"
@@ -36,48 +39,52 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
 
   return (
     <AppShell title="Schedules">
-      <div className="mx-auto max-w-7xl p-4 sm:p-6">
-        <div className="mb-5">
-          <Link
-            href={`/workflows/${id}`}
-            className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to workflow
-          </Link>
+      <div className={PAGE_FRAME}>
+        <Link
+          href={`/workflows/${id}`}
+          className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to workflow
+        </Link>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl font-semibold text-foreground">Schedules</h1>
-                <span className="text-muted-foreground">·</span>
-                <span className="font-mono text-sm text-muted-foreground">{id.slice(0, 8)}…</span>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Create one-time or recurring runs for this workflow.{" "}
-                {items.find((i) => i.cron)?.cron
-                  ? `Example: ${describeCron(items.find((i) => i.cron)!.cron!)}`
-                  : "Use New schedule to get started."}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" className="h-8 gap-2" onClick={() => setCreateOpen(true)}>
+        <GravitrePageHeader
+          className="min-w-0"
+          title="Workflow schedules"
+          description={
+            items.find((item) => item.cron)?.cron
+              ? `Recurring and one-time execution windows · ${describeCron(items.find((item) => item.cron)!.cron!)}`
+              : "Recurring and one-time execution windows for this workflow."
+          }
+          icon={<CalendarClock className="h-5 w-5" />}
+          status={
+            <LiveStatus tone={isLoading ? "idle" : items.length > 0 ? "live" : "idle"}>
+              {isLoading ? "Syncing schedules" : items.length > 0 ? `${items.length} in this window` : "No schedules in window"}
+            </LiveStatus>
+          }
+          actions={
+            <>
+              <Button
+                size="sm"
+                className={cn("shrink-0 gap-2", RADIUS.control)}
+                onClick={() => setCreateOpen(true)}
+              >
                 <Plus className="h-3.5 w-3.5" />
                 New schedule
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-2"
+                className={cn("shrink-0 gap-2", RADIUS.control)}
                 onClick={refresh}
                 disabled={isLoading}
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
                 Refresh
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {error && items.length === 0 ? (
           <WorkSectionErrorCard

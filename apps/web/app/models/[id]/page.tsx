@@ -164,7 +164,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
           }
         />
 
-        <div className="mx-auto max-w-7xl space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+        <div className="mx-auto max-w-7xl space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]" data-composition="understand">
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full rounded-xl" />

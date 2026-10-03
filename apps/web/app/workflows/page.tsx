@@ -18,7 +18,7 @@ import {
 } from "@/components/gravitre/premium-effects"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap } from "lucide-react"
+import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap, Activity, AlertTriangle, FileEdit } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import {
@@ -336,8 +336,9 @@ export default function WorkflowsPage() {
   return (
     <AppShell title={SURFACE_COPY.pages.workflows.title}>
       <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]" data-composition="manage">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_18%_0%,var(--g-emerald-pale),transparent_58%)] opacity-80" />
         {/* Header */}
-        <div className="relative z-10">
+        <div className="relative z-10 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/88 backdrop-blur-sm">
           <GravitrePageHeader
             title={SURFACE_COPY.pages.workflows.title}
             description={SURFACE_COPY.pages.workflows.description}
@@ -474,6 +475,10 @@ export default function WorkflowsPage() {
             </>
           }
           />
+          <div className="px-4 pb-4 md:px-6">
+            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--g-emerald-deep)]">
+              <Activity className="h-3.5 w-3.5" /> Operating state
+            </div>
           <PhaseBand
             label="Workflow phases"
             loading={isLoading && workflows.length === 0}
@@ -487,11 +492,27 @@ export default function WorkflowsPage() {
             active={phase}
             onSelect={(next) => setPhase(next as WorkflowPhase | null)}
           />
+          </div>
         </div>
 
         {/* List is the product; live counts live in Totals. */}
 
-        <div className="relative z-10 flex-1 overflow-y-auto p-4 md:p-6 scrollbar-on-hover">
+        <div className="relative z-10 flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6 scrollbar-on-hover">
+          {workflows.length > 0 && (
+            <div className="mb-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              {[
+                { label: "Running", value: runningCount, icon: Activity, detail: "Executing now" },
+                { label: "Active", value: activeCount, icon: TrendingUp, detail: "Enabled workflows" },
+                { label: "Attention", value: errorCount + pausedCount, icon: AlertTriangle, detail: "Failed or paused" },
+                { label: "Drafts", value: draftCount, icon: FileEdit, detail: "Not yet active" },
+              ].map((metric) => (
+                <div key={metric.label} className="group flex min-h-24 items-start justify-between rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 text-left">
+                  <div><p className="text-[11px] font-medium text-muted-foreground">{metric.label}</p><p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{Math.max(0, metric.value)}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>
+                  <metric.icon className="h-4 w-4 text-[color:var(--g-emerald-deep)] opacity-75 transition-opacity group-hover:opacity-100" />
+                </div>
+              ))}
+            </div>
+          )}
           {/* Error state with retry */}
           {error && (
             <ErrorState
@@ -532,7 +553,7 @@ export default function WorkflowsPage() {
           {workflows.length > 0 && (
           <>
           {/* Search and View Toggle */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex flex-col gap-3 rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1 sm:max-w-xs md:max-w-sm">
               <div className="absolute left-3 top-1/2 -translate-y-1/2">
                 <Icon name="search" size="sm" className="text-muted-foreground" />
@@ -543,7 +564,7 @@ export default function WorkflowsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
-                  "h-9 w-full border border-border bg-secondary/50 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground",
+                  "h-9 w-full border-0 bg-transparent pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground",
                   // Uses the shared ring token instead of a raw blue-500 focus
                   // ring, so keyboard focus looks identical to every other input.
                   RADIUS.control,
@@ -655,7 +676,7 @@ export default function WorkflowsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="-mx-4 border-y border-[color:var(--g-border-default)] md:-mx-6"
+                className="overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
               >
                 <DataTable
                   columns={columns}

@@ -8,7 +8,7 @@ import {
   ArrowLeft, 
   Check, 
   Loader2, 
-  Sparkles,
+
   FileText,
   Workflow,
   Bot,
@@ -64,7 +64,7 @@ const departments = [
   { id: "operations", name: "Operations", icon: Workflow },
   { id: "finance", name: "Finance", icon: BarChart3 },
   { id: "hr", name: "HR", icon: Users },
-  { id: "custom", name: "Custom", icon: Sparkles },
+  { id: "custom", name: "Custom", icon: Workflow },
 ]
 
 const systems = [
@@ -290,16 +290,16 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+          className="relative w-full max-w-md overflow-hidden rounded-[10px] border border-border bg-card shadow-2xl"
         >
-          <div className="relative p-6 bg-gradient-to-br from-violet-500/10 to-transparent">
+          <div className="relative p-6 bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-transparent">
             <button
               onClick={handleClose}
               className="absolute top-4 right-4 h-8 w-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors"
             >
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center mb-4">
+            <div className="h-14 w-14 rounded-[10px] bg-gradient-to-br from-[color:var(--g-emerald)] to-[color:var(--g-emerald-deep)] flex items-center justify-center mb-4">
               <Blocks className="h-7 w-7 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-foreground">
@@ -316,7 +316,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
             <ul className="space-y-3">
               {["Create agents automatically", "Generate training structures", "Build workflows in seconds", "Deploy immediately"].map((benefit, i) => (
                 <li key={i} className="flex items-center gap-3">
-                  <div className="h-5 w-5 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                  <div className="h-5 w-5 rounded-full bg-gradient-to-br from-[color:var(--g-emerald)] to-[color:var(--g-emerald-deep)] flex items-center justify-center">
                     <Check className="h-3 w-3 text-white" />
                   </div>
                   <span className="text-sm text-foreground">{benefit}</span>
@@ -340,7 +340,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
               <Button variant="outline" className="flex-1" onClick={handleClose}>
                 Maybe later
               </Button>
-              <Button asChild className="flex-1 bg-gradient-to-r from-violet-500 to-purple-500 hover:opacity-90">
+              <Button asChild className="flex-1 bg-gradient-to-r from-[color:var(--g-emerald)] to-[color:var(--g-emerald-deep)] hover:opacity-90">
                 <Link href="/settings/billing">
                   Upgrade now
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -369,14 +369,14 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl border border-violet-500/20 bg-card shadow-2xl shadow-violet-500/10"
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[10px] border border-[color:var(--g-emerald)]/20 bg-card shadow-2xl shadow-[color:var(--g-emerald)]/10"
       >
         {/* Header */}
-        <div className="border-b border-border px-6 py-4 bg-gradient-to-r from-violet-500/10 to-transparent">
+        <div className="border-b border-border px-6 py-4 bg-gradient-to-r from-[color:var(--g-emerald-pale)] to-transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
-                <Blocks className="h-5 w-5 text-violet-400" />
+              <div className="h-10 w-10 rounded-xl bg-[color:var(--g-emerald-pale)] flex items-center justify-center">
+                <Blocks className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Build with Meson</h2>
@@ -398,14 +398,14 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 <div className={cn(
                   "h-2 w-2 rounded-full transition-colors",
                   currentStep >= step.id 
-                    ? "bg-violet-500" 
+                    ? "bg-[color:var(--g-emerald)]" 
                     : "bg-secondary"
                 )} />
                 {i < steps.length - 1 && (
                   <div className={cn(
                     "h-px w-8 transition-colors",
                     currentStep > step.id 
-                      ? "bg-violet-500" 
+                      ? "bg-[color:var(--g-emerald)]" 
                       : "bg-secondary"
                   )} />
                 )}
@@ -438,7 +438,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                   value={intent}
                   onChange={(e) => setIntent(e.target.value)}
                   placeholder="Example: Create a marketing agent for SaaS onboarding campaigns that sends personalized welcome sequences based on user behavior..."
-                  className="w-full h-32 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 resize-none"
+                  className="w-full h-32 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--g-emerald)]/50 focus:border-[color:var(--g-emerald)]/50 resize-none"
                 />
                 
                 <div className="flex flex-wrap gap-2">
@@ -486,13 +486,13 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                         className={cn(
                           "p-4 rounded-xl border text-center transition-all",
                           selectedDepartment === dept.id
-                            ? "border-violet-500 bg-violet-500/10"
-                            : "border-border hover:border-violet-500/50 hover:bg-secondary/50"
+                            ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)]"
+                            : "border-border hover:border-[color:var(--g-emerald)]/50 hover:bg-secondary/50"
                         )}
                       >
                         <Icon className={cn(
                           "h-5 w-5 mx-auto mb-2",
-                          selectedDepartment === dept.id ? "text-violet-400" : "text-muted-foreground"
+                          selectedDepartment === dept.id ? "text-[color:var(--g-emerald-deep)]" : "text-muted-foreground"
                         )} />
                         <span className="text-sm font-medium text-foreground">{dept.name}</span>
                       </button>
@@ -513,17 +513,17 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                           className={cn(
                             "w-full p-3 rounded-xl border flex items-center gap-3 transition-all text-left",
                             isSelected
-                              ? "border-violet-500 bg-violet-500/10"
-                              : "border-border hover:border-violet-500/50 hover:bg-secondary/50"
+                              ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)]"
+                              : "border-border hover:border-[color:var(--g-emerald)]/50 hover:bg-secondary/50"
                           )}
                         >
                           <div className={cn(
                             "h-8 w-8 rounded-lg flex items-center justify-center",
-                            isSelected ? "bg-violet-500/20" : "bg-secondary"
+                            isSelected ? "bg-[color:var(--g-emerald-pale)]" : "bg-secondary"
                           )}>
                             <Icon className={cn(
                               "h-4 w-4",
-                              isSelected ? "text-violet-400" : "text-muted-foreground"
+                              isSelected ? "text-[color:var(--g-emerald-deep)]" : "text-muted-foreground"
                             )} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -532,7 +532,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                           </div>
                           <div className={cn(
                             "h-5 w-5 rounded-full border flex items-center justify-center",
-                            isSelected ? "border-violet-500 bg-violet-500" : "border-border"
+                            isSelected ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald)]" : "border-border"
                           )}>
                             {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
@@ -571,15 +571,15 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                         className={cn(
                           "p-4 rounded-xl border text-left transition-all",
                           isSelected
-                            ? "border-violet-500 bg-violet-500/10"
-                            : "border-border hover:border-violet-500/50 hover:bg-secondary/50"
+                            ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)]"
+                            : "border-border hover:border-[color:var(--g-emerald)]/50 hover:bg-secondary/50"
                         )}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-foreground">{output.name}</span>
                           <div className={cn(
                             "h-5 w-5 rounded-full border flex items-center justify-center",
-                            isSelected ? "border-violet-500 bg-violet-500" : "border-border"
+                            isSelected ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald)]" : "border-border"
                           )}>
                             {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
@@ -606,11 +606,11 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
               >
                 <div className="text-center py-8">
                   <motion.div
-                    className="h-20 w-20 mx-auto rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-6"
+                    className="h-20 w-20 mx-auto rounded-[10px] bg-[color:var(--g-emerald-pale)] border border-[color:var(--g-emerald)]/20 flex items-center justify-center mb-6"
                     animate={{ scale: [1, 1.05, 1] }}
                     transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                   >
-                    <Sparkles className="h-10 w-10 text-violet-400" />
+                    <Workflow className="h-10 w-10 text-[color:var(--g-emerald-deep)]" />
                   </motion.div>
                   <h3 className="text-xl font-semibold text-foreground mb-2">Ready to build</h3>
                   <p className="text-sm text-muted-foreground max-w-sm mx-auto">
@@ -665,7 +665,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 exit={{ opacity: 0 }}
                 className="py-12 text-center"
               >
-                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-[10px] border border-[color:var(--g-emerald)]/20 bg-[color:var(--g-emerald-pale)]">
                   <GravitreLoader size="md" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -686,7 +686,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                         i < generationStep 
                           ? "bg-emerald-500" 
                           : i === generationStep 
-                            ? "bg-violet-500 animate-pulse" 
+                            ? "bg-[color:var(--g-emerald)] animate-pulse" 
                             : "bg-secondary"
                       )}>
                         {i < generationStep ? (
@@ -717,7 +717,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 className="space-y-6"
               >
                 <div className="text-center">
-                  <div className="h-16 w-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
+                  <div className="h-16 w-16 mx-auto rounded-[10px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
                     <Check className="h-8 w-8 text-emerald-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-foreground mb-1">System generated</h3>
@@ -772,8 +772,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                   {/* Workflows */}
                   <div className="rounded-xl border border-border bg-secondary/30 p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                        <Workflow className="h-4 w-4 text-violet-400" />
+                      <div className="h-8 w-8 rounded-lg bg-[color:var(--g-emerald-pale)] flex items-center justify-center">
+                        <Workflow className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">Workflows</p>
@@ -836,7 +836,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 size="sm" 
                 onClick={handleNext}
                 disabled={!canProceed()}
-                className="bg-violet-600 hover:bg-violet-500"
+                className="bg-[color:var(--g-emerald-deep)] hover:bg-[color:var(--g-emerald-deep)]"
               >
                 Continue
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -847,9 +847,9 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
               <Button 
                 size="sm" 
                 onClick={handleNext}
-                className="bg-violet-600 hover:bg-violet-500"
+                className="bg-[color:var(--g-emerald-deep)] hover:bg-[color:var(--g-emerald-deep)]"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
+                <Workflow className="h-4 w-4 mr-2" />
                 Run Meson
               </Button>
             )}

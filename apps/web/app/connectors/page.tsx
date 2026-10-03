@@ -1672,7 +1672,7 @@ function AddConnectorModal({
                   </div>
                 )}
                 {oauthStatus === "redirecting" && (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/70 bg-secondary/20 px-6 py-8 text-center shadow-[var(--elevation-1)]">
+                  <div className="flex flex-col items-center gap-4 rounded-[10px] border border-divide bg-secondary/20 px-6 py-8 text-center shadow-[var(--elevation-1)]">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[color-mix(in_oklch,var(--info)_12%,transparent)] text-[var(--info)] ring-1 ring-[color-mix(in_oklch,var(--info)_28%,transparent)]">
                       <Loader2 className="h-5 w-5 animate-spin" />
                     </div>
@@ -1685,7 +1685,7 @@ function AddConnectorModal({
                   </div>
                 )}
                 {oauthStatus === "success" && (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-8 text-center shadow-[var(--elevation-1)]">
+                  <div className="flex flex-col items-center gap-4 rounded-[10px] border border-[color:var(--g-emerald)]/25 bg-primary/5 px-6 py-8 text-center shadow-[var(--elevation-1)]">
                     <motion.div
                       initial={{ scale: 0.85, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
@@ -1704,7 +1704,7 @@ function AddConnectorModal({
                   </div>
                 )}
                 {oauthStatus === "error" && (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border border-destructive/20 bg-card px-6 py-8 text-center shadow-[var(--elevation-2)]">
+                  <div className="flex flex-col items-center gap-4 rounded-[10px] border border-destructive/20 bg-card px-6 py-8 text-center shadow-[var(--elevation-2)]">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive ring-1 ring-destructive/20">
                       <XCircle className="h-5 w-5" />
                     </div>

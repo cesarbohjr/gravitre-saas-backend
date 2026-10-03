@@ -159,7 +159,7 @@ import {
   Lightbulb,
   Clock,
   PanelRightOpen,
-  Sparkles,
+
   CircleDot,
   LayoutGrid,
   Activity,
@@ -168,7 +168,7 @@ import {
   GitMerge,
   Split,
   Repeat,
-  Brain,
+
   MessageSquare,
   ThumbsUp,
   ThumbsDown,
@@ -847,7 +847,7 @@ function DecisionNode({
         {/* AI Reasoning badge */}
         {hasReasoning && !isEvaluating && (
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-[5px] border border-[color:var(--g-border-default)] bg-card">
-            <Brain className="h-3 w-3 text-[color:var(--g-intelligence-bright)]" />
+            <GitBranch className="h-3 w-3 text-[color:var(--g-intelligence-bright)]" />
             <span className="font-mono text-[11px] font-medium text-foreground">
               {node.decisionConfig?.reasoning?.confidence}% confidence
             </span>
@@ -1012,7 +1012,7 @@ function AIReasoningPanel({
       >
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/20">
-            <Brain className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
+            <GitBranch className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
           </div>
           <div className="text-left">
             <p className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Decision resolved</p>
@@ -1128,7 +1128,7 @@ function DecisionSummaryToast({
     <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2 fade-in">
       <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-success/30 shadow-md max-w-sm">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/20 shrink-0">
-          <Brain className="h-4 w-4 text-success" />
+          <GitBranch className="h-4 w-4 text-success" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">AI Decision Complete</p>
@@ -2201,7 +2201,7 @@ function ConfigPanel({
               {selectedAction && (
                 <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-[color:var(--info)]" />
+                    <Workflow className="h-4 w-4 text-[color:var(--info)]" />
                     <span className="text-sm font-medium">Action parameters</span>
                   </div>
                   {selectedAction.fields.map((field) => (
@@ -2630,7 +2630,7 @@ function ConfigPanel({
     {node.decisionConfig?.reasoning && (
       <div className="p-3 rounded-lg bg-success/5 border border-success/20">
         <div className="flex items-center gap-2 mb-2">
-          <Brain className="h-4 w-4 text-success" />
+          <GitBranch className="h-4 w-4 text-success" />
           <span className="text-xs font-medium text-success">AI Reasoning</span>
           <span className="ml-auto text-[10px] text-success bg-success/20 px-1.5 py-0.5 rounded">
             {node.decisionConfig.reasoning.confidence}% confidence
@@ -4325,7 +4325,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       // Show decision toast
       toast.success(`AI Decision: ${chosenPath.label}`, {
         description: `${currentNode.name} completed with ${confidence}% confidence`,
-        icon: <Brain className="h-4 w-4 text-success" />,
+        icon: <GitBranch className="h-4 w-4 text-success" />,
       })
       
     } else {
@@ -4534,7 +4534,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
   return (
     <AppShell>
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col" data-composition="create">
         {/* Loading state */}
         {isLoadingGraph && (
           <div className="flex-1 flex items-center justify-center bg-background">
@@ -4767,7 +4767,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 {
                   key: "intelligence",
                   label: "Intelligence",
-                  icon: Brain,
+                  icon: GitBranch,
                   active: intelligenceOpen,
                   onClick: () => setIntelligenceOpen(true),
                   dialog: true,
@@ -4775,7 +4775,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 {
                   key: "meson",
                   label: "Meson",
-                  icon: Sparkles,
+                  icon: Workflow,
                   active: mesonPanelOpen,
                   pressed: mesonPanelOpen,
                   onClick: toggleMesonPanel,
@@ -5138,7 +5138,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   <LibraryItem
                     name="Choose Next Action"
                     description="AI selects best action"
-                    icon={Brain}
+                    icon={GitBranch}
                     nodeType="decision"
                     onAdd={() => {
                       const newNode: WorkflowNode = {
@@ -6339,7 +6339,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
       {/* Mobile Node List Sheet */}
       <Sheet open={showMobileNodeList} onOpenChange={setShowMobileNodeList}>
-        <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl">
+        <SheetContent side="bottom" className="h-[70vh] rounded-t-[10px]">
           <SheetHeader className="pb-4">
             <SheetTitle className="flex items-center justify-between">
               <span>Workflow nodes ({nodes.length})</span>

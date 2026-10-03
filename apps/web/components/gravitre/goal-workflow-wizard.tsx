@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import {
   Target,
-  Sparkles,
+
   Building2,
   Database,
   Users,
@@ -35,7 +35,7 @@ import {
   RotateCcw,
   ChevronRight,
   Loader2,
-  Brain,
+
   Workflow,
   MessageSquare,
   Mail,
@@ -133,7 +133,7 @@ const goalCategories: GoalCategory[] = [
     id: "reporting",
     label: "Reports & Analytics",
     icon: BarChart3,
-    color: "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30",
+    color: "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30",
     examples: ["Weekly executive summary", "Monthly performance report", "Trend analysis"],
   },
   {
@@ -166,7 +166,7 @@ const availableConnectors: Connector[] = CONNECTOR_CATALOG.map((entry) => ({
 }))
 
 const planningStages = [
-  { id: "understanding", label: "Understanding goal", icon: Brain },
+  { id: "understanding", label: "Understanding goal", icon: GitBranch },
   { id: "data", label: "Identifying required data", icon: Database },
   { id: "connectors", label: "Mapping connectors", icon: Plug },
   { id: "agents", label: "Selecting agents", icon: Bot },
@@ -418,7 +418,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
       case "task": return "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
       case "connector": return "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
       case "approval": return "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
-      case "decision": return "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30"
+      case "decision": return "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30"
       case "council": return "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
       default: return "bg-muted text-muted-foreground"
     }
@@ -439,8 +439,8 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
         <div className="px-6 pt-6 pb-4 border-b border-border">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30">
-                <Target className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-[color:var(--g-signal-surface)] border border-[color:var(--g-emerald)]/30">
+                <Target className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
               </div>
               <div>
                 <DialogTitle className="text-lg">Create from Goal</DialogTitle>
@@ -461,7 +461,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 <div className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition-all",
                   step > s ? "bg-emerald-500 text-white" :
-                  step === s ? "bg-violet-500 text-white" :
+                  step === s ? "bg-[color:var(--g-emerald)] text-white" :
                   "bg-secondary text-muted-foreground"
                 )}>
                   {step > s ? <CheckCircle className="h-4 w-4" /> : s}
@@ -562,7 +562,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                           className={cn(
                             "flex-1 py-2 px-2 rounded-lg border text-xs font-medium capitalize transition-all",
                             frequency === f
-                              ? "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30"
+                              ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30"
                               : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
                           )}
                         >
@@ -578,9 +578,9 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
-                    className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20"
+                    className="p-3 rounded-lg bg-[color:var(--g-emerald-pale)] border border-[color:var(--g-emerald)]/20"
                   >
-                    <p className="text-xs text-violet-600 dark:text-violet-400 mb-2">Example goals for this category:</p>
+                    <p className="text-xs text-[color:var(--g-emerald-deep)] mb-2">Example goals for this category:</p>
                     <div className="flex flex-wrap gap-2">
                       {goalCategories.find(c => c.id === selectedCategory)?.examples.map((ex, i) => (
                         <button
@@ -619,7 +619,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                         className={cn(
                           "py-2.5 px-3 rounded-lg border text-sm font-medium transition-all",
                           selectedDepartment === dept
-                            ? "bg-violet-500/20 text-violet-600 dark:text-violet-400 border-violet-500/30"
+                            ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30"
                             : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
                         )}
                       >
@@ -704,16 +704,16 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 {/* Animated brain icon */}
                 <div className="relative mb-8">
                   <motion.div
-                    className="absolute inset-0 rounded-full bg-violet-500/20 blur-xl"
+                    className="absolute inset-0 rounded-full bg-[color:var(--g-emerald-pale)] blur-xl"
                     animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
                   <motion.div
-                    className="relative h-20 w-20 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30 flex items-center justify-center"
+                    className="relative h-20 w-20 rounded-full bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-[color:var(--g-signal-surface)] border border-[color:var(--g-emerald)]/30 flex items-center justify-center"
                     animate={{ rotate: 360 }}
                     transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                   >
-                    <Brain className="h-10 w-10 text-violet-600 dark:text-violet-400" />
+                    <GitBranch className="h-10 w-10 text-[color:var(--g-emerald-deep)]" />
                   </motion.div>
                 </div>
 
@@ -740,14 +740,14 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg transition-all",
                           isComplete ? "bg-emerald-500/10" :
-                          isActive ? "bg-violet-500/10" :
+                          isActive ? "bg-[color:var(--g-emerald-pale)]" :
                           "bg-secondary/30"
                         )}
                       >
                         <div className={cn(
                           "h-8 w-8 rounded-full flex items-center justify-center transition-all",
                           isComplete ? "bg-emerald-500 text-white" :
-                          isActive ? "bg-violet-500 text-white" :
+                          isActive ? "bg-[color:var(--g-emerald)] text-white" :
                           "bg-secondary text-muted-foreground"
                         )}>
                           {isComplete ? (
@@ -761,7 +761,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                         <span className={cn(
                           "text-sm font-medium",
                           isComplete ? "text-emerald-700 dark:text-emerald-400" :
-                          isActive ? "text-violet-600 dark:text-violet-400" :
+                          isActive ? "text-[color:var(--g-emerald-deep)]" :
                           "text-muted-foreground"
                         )}>
                           {stage.label}
@@ -775,7 +775,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                             {[0, 1, 2].map((i) => (
                               <motion.div
                                 key={i}
-                                className="h-1.5 w-1.5 rounded-full bg-violet-400"
+                                className="h-1.5 w-1.5 rounded-full bg-[color:var(--g-emerald)]"
                                 animate={{ opacity: [0.3, 1, 0.3] }}
                                 transition={{ duration: 0.8, delay: i * 0.2, repeat: Infinity }}
                               />
@@ -799,10 +799,10 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 className="space-y-6"
               >
                 {/* Goal summary */}
-                <div className="p-4 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20">
+                <div className="p-4 rounded-xl bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-[color:var(--g-signal-surface)] border border-[color:var(--g-emerald)]/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <Target className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                    <span className="text-xs font-medium text-violet-600 dark:text-violet-400">Goal</span>
+                    <Target className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
+                    <span className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Goal</span>
                   </div>
                   <p className="text-foreground font-medium">{generatedPlan.goalSummary}</p>
                   <div className="flex items-center gap-4 mt-3">
@@ -940,7 +940,7 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
                 {/* Suggestions */}
                 <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <Workflow className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <span className="text-sm font-medium text-foreground">Smart suggestions</span>
                   </div>
                   <div className="space-y-1.5">
@@ -992,9 +992,9 @@ export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoal
             {step === 2 && (
               <Button
                 onClick={handleGeneratePlan}
-                className="gap-2 bg-violet-600 hover:bg-violet-700"
+                className="gap-2 bg-[color:var(--g-emerald-deep)] hover:bg-[color:var(--g-emerald)]"
               >
-                <Sparkles className="h-4 w-4" />
+                <Workflow className="h-4 w-4" />
                 Generate plan
               </Button>
             )}

@@ -357,9 +357,10 @@ function ActivityPageInner() {
       {/* lg+: fill the viewport and delegate scrolling to the panes. Below lg
           there is no vertical budget for split panes, so the page scrolls
           normally and the panes stack. */}
-      <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden" data-composition="operate">
+      <div className="relative flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden" data-composition="operate">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_18%_0%,var(--g-emerald-pale),transparent_60%)] opacity-70" />
         <GravitrePageHeader
-          className="shrink-0"
+          className="relative z-10 shrink-0 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/88 backdrop-blur-sm"
           title="Activity"
           description="Work in motion. Outcomes, exceptions and evidence—without the noise."
           icon={<NucleoActivity className="h-5 w-5" />}
@@ -415,7 +416,7 @@ function ActivityPageInner() {
           </div>
         </GravitrePageHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5 lg:overflow-hidden">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5 lg:overflow-hidden">
 
         {tab === "failures" ? (
           <FailureAlertsPanel />
