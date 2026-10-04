@@ -3124,6 +3124,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const debateNode = nodes.find(n => n.id === debateNodeId) || null
   
   // Saving and running state
+  const persistenceLock = useRef(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   // G1: live blocking-issue count to disable Save/Publish + drive warnings.
@@ -3176,9 +3177,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           setWorkflowMeta(result.meta)
           setSettingsName(result.meta.name)
           setSettingsDescription(result.meta.description || "")
-          if (result.nodes.length > 0) {
-            setNodes(result.nodes)
-          }
+          setNodes(result.nodes)
         }
       } catch (err) {
         console.error("[WorkflowBuilder] Failed to load graph:", err)
@@ -4008,6 +4007,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       return
     }
 
+    if (persistenceLock.current || isLoadingGraph || loadError) return
+    persistenceLock.current = true
     setIsSaving(true)
     try {
       const result = await saveBuilderGraph(id, nodes, {
@@ -4024,9 +4025,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         description: err instanceof Error ? err.message : "Could not save workflow"
       })
     } finally {
+      persistenceLock.current = false
       setIsSaving(false)
     }
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
+  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
   const handlePreview = useCallback(async () => {
     if (!canPersist) {
       toast.info("Demo mode", {
@@ -4045,6 +4047,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       return
     }
 
+    if (persistenceLock.current || isLoadingGraph || loadError) return
+    persistenceLock.current = true
     setIsSaving(true)
     try {
       await saveBuilderGraph(id, nodes, {
@@ -4063,12 +4067,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         description: err instanceof Error ? err.message : "Could not save workflow before preview",
       })
     } finally {
+      persistenceLock.current = false
       setIsSaving(false)
     }
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
+  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
 
   // Handle run workflow with live run polling (STA-166)
   const handleRun = useCallback(async () => {
+    if (persistenceLock.current || isLoadingGraph || loadError) return
     const finishExecution = (snapshot: RunMonitorSnapshot, runId: string) => {
       setIsExecuting(false)
       setIsRunning(false)
@@ -4134,6 +4140,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         })
         return
       }
+      if (!["completed", "success", "succeeded"].includes(status)) {
+        setExecutionStatus("waiting")
+        toast.message("Execution status needs review", {
+          description: `Reported status: ${snapshot.status || "Not reported"}`,
+          action: { label: "View run", onClick: () => router.push(`/runs/${runId}`) },
+        })
+        return
+      }
       setExecutionStatus("completed")
       toast.success("Workflow executed successfully", {
         description: `Run ID: ${runId}`,
@@ -4146,6 +4160,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
     // For UUID workflows, save first then execute via API
     if (canPersist) {
+    persistenceLock.current = true
     setIsRunning(true)
     let saved = false
     try {
@@ -4248,6 +4263,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             }
           : undefined,
       })
+    } finally {
+      persistenceLock.current = false
     }
     return
   }
@@ -4361,7 +4378,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   toast.success("Workflow completed successfully", {
     description: `Executed ${orderedNodes.length} steps in ${((Date.now() - (executionStartTime || Date.now())) / 1000).toFixed(1)}s`,
   })
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router, executionStartTime])
+  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router, executionStartTime])
   
   const handlePauseRun = useCallback(async () => {
     if (!lastRunId) return
@@ -4678,7 +4695,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               size="sm"
               className="h-8 gap-2"
               onClick={handleSave}
-              disabled={isSaving || isLoadingGraph || isRunning || connectorBlockingIssues.length > 0}
+              disabled={isSaving || isLoadingGraph || Boolean(loadError) || isRunning || connectorBlockingIssues.length > 0}
               aria-busy={isSaving}
               title={
                 connectorBlockingIssues.length > 0
@@ -4703,7 +4720,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               size="sm"
               className="h-8 gap-2"
               onClick={handleRun}
-              disabled={isRunning || isLoadingGraph || isSaving}
+              disabled={isRunning || isLoadingGraph || Boolean(loadError) || isSaving}
               aria-busy={isRunning}
             >
               {isRunning ? (

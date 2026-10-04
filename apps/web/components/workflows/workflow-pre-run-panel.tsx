@@ -1,6 +1,13 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import { useReducedMotion } from "framer-motion"
+import {
+  formatSimulationDuration as formatMs,
+  simulationDuration,
+  totalSimulationDuration,
+  reportedCount,
+} from "@/lib/workflow-evidence"
 import { motion } from "framer-motion"
 import {
   Beaker,
@@ -31,21 +38,6 @@ const SEVERITY_STYLES: Record<string, { badge: string; label: string }> = {
   low: { badge: STATUS.idle, label: "Low" },
 }
 
-const TYPE_PROFILE: Record<string, { ms: number; source: "fixture" | "llm"; note: string }> = {
-  source: { ms: 480, source: "fixture", note: "Connector fixture replay" },
-  connector: { ms: 620, source: "fixture", note: "Connector fixture replay" },
-  task: { ms: 350, source: "fixture", note: "Deterministic handler" },
-  agent: { ms: 2400, source: "llm", note: "LLM estimate" },
-  approval: { ms: 0, source: "fixture", note: "Waits for human approval" },
-  decision: { ms: 120, source: "fixture", note: "Branch evaluation" },
-}
-
-function formatMs(ms: number): string {
-  if (ms === 0) return "—"
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
-
 function mapDigitalTwinSteps(
   rawSteps: Array<Record<string, unknown>>,
   canvasNodes: IntelligenceDrawerNode[],
@@ -57,26 +49,28 @@ function mapDigitalTwinSteps(
     const nodeType = canvasNode?.type ?? String(step.step_type ?? step.stepType ?? "task")
     const output = (step.output_snapshot ?? step.outputSnapshot ?? {}) as Record<string, unknown>
     const rawSource = String(output.source ?? "")
-    const source: "fixture" | "llm" =
-      rawSource === "fixture" || rawSource === "live_read" ? "fixture" : "llm"
-    const fallback = TYPE_PROFILE[nodeType] ?? { ms: 500, source: "llm" as const, note: "LLM estimate" }
-    let predictedMs = 0
-    const startedAt = step.started_at ?? step.startedAt
-    const completedAt = step.completed_at ?? step.completedAt
-    if (startedAt && completedAt) {
-      predictedMs = Math.max(
-        0,
-        new Date(String(completedAt)).getTime() - new Date(String(startedAt)).getTime(),
-      )
-    }
-    if (predictedMs === 0) predictedMs = fallback.ms
+    const source =
+      rawSource === "fixture" || rawSource === "live_read"
+        ? ("fixture" as const)
+        : rawSource === "llm"
+          ? ("llm" as const)
+          : ("unknown" as const)
+    const predictedMs = simulationDuration(step)
+    const note =
+      rawSource === "fixture"
+        ? "Connector fixture replay"
+        : rawSource === "live_read"
+          ? "Knowledge read in simulation"
+          : rawSource === "llm"
+            ? "AI simulation"
+            : "Source not reported"
     return {
       id: stepId,
       name: canvasNode?.name ?? String(step.step_name ?? step.stepName ?? `Step ${index + 1}`),
       type: nodeType,
       predictedMs,
       source,
-      note: fallback.note,
+      note,
     }
   })
 }
@@ -90,13 +84,16 @@ export function WorkflowPreRunPanel({
   nodes: IntelligenceDrawerNode[]
   className?: string
 }) {
+  const reduced = useReducedMotion()
   const [tab, setTab] = useState<PanelTab>("timing")
   const [simSteps, setSimSteps] = useState<ReturnType<typeof mapDigitalTwinSteps> | null>(null)
   const [simRunning, setSimRunning] = useState(false)
   const [simError, setSimError] = useState<string | null>(null)
-  const [simStats, setSimStats] = useState<{ fixtureHits: number; llmPredictions: number; ragReads: number } | null>(
-    null,
-  )
+  const [simStats, setSimStats] = useState<{
+    fixtureHits: number | null
+    llmPredictions: number | null
+    ragReads: number | null
+  } | null>(null)
   const [alerts, setAlerts] = useState<WorkflowFailureAlert[] | null>(null)
   const [riskLoading, setRiskLoading] = useState(false)
   const [riskError, setRiskError] = useState<string | null>(null)
@@ -107,12 +104,15 @@ export function WorkflowPreRunPanel({
     setSimError(null)
     setSimStats(null)
     try {
-      const res: WorkflowDigitalTwinResponse = await workflowsApi.digitalTwin({ workflow_id: workflowId })
+      const res: WorkflowDigitalTwinResponse = await workflowsApi.digitalTwin({
+        workflow_id: workflowId,
+      })
+      if (res.errors?.length) setSimError(res.errors.join(" · "))
       setSimSteps(mapDigitalTwinSteps((res.steps ?? []) as Array<Record<string, unknown>>, nodes))
       setSimStats({
-        fixtureHits: res.fixtureHits ?? 0,
-        llmPredictions: res.llmPredictions ?? 0,
-        ragReads: res.ragReads ?? 0,
+        fixtureHits: reportedCount(res.fixtureHits),
+        llmPredictions: reportedCount(res.llmPredictions),
+        ragReads: reportedCount(res.ragReads),
       })
     } catch (err) {
       setSimError(err instanceof Error ? err.message : "Timing estimate failed")
@@ -126,7 +126,8 @@ export function WorkflowPreRunPanel({
     setRiskError(null)
     try {
       const res = await workflowsApi.scanFailurePredictions(workflowId)
-      setAlerts(res.alerts ?? [])
+      if (!Array.isArray(res.alerts)) throw new Error("Risk scan returned no alert inventory.")
+      setAlerts(res.alerts)
     } catch (err) {
       setRiskError(err instanceof Error ? err.message : "Failure scan failed")
     } finally {
@@ -134,7 +135,7 @@ export function WorkflowPreRunPanel({
     }
   }, [workflowId])
 
-  const totalPredictedMs = (simSteps ?? []).reduce((sum, step) => sum + step.predictedMs, 0)
+  const totalPredictedMs = totalSimulationDuration(simSteps)
 
   return (
     <Card className={cn("border-border/80", className)}>
@@ -146,14 +147,18 @@ export function WorkflowPreRunPanel({
               Before you run
             </CardTitle>
             <CardDescription>
-              Safe checks only — nothing executes against production connectors. Use Run in production
-              below when you are ready to go live.
+              Safe checks only — nothing executes against production connectors. Use Run in
+              production below when you are ready to go live.
             </CardDescription>
           </div>
           <div className="flex gap-1 rounded-lg border border-border p-0.5">
             {(
               [
-                { id: "timing" as const, label: "Timing estimate", icon: Clock },
+                {
+                  id: "timing" as const,
+                  label: "Timing evidence",
+                  icon: Clock,
+                },
                 { id: "risk" as const, label: "Risk scan", icon: ShieldAlert },
               ] as const
             ).map((item) => (
@@ -186,10 +191,12 @@ export function WorkflowPreRunPanel({
                 ) : (
                   <Clock className="h-4 w-4 mr-2" />
                 )}
-                Estimate step timing
+                Run timing simulation
               </Button>
               {nodes.length === 0 ? (
-                <span className="text-xs text-muted-foreground">Add steps in the builder first.</span>
+                <span className="text-xs text-muted-foreground">
+                  Add steps in the builder first.
+                </span>
               ) : (
                 <span className="text-xs text-muted-foreground">
                   Estimated from past runs and sample data. Nothing is executed.
@@ -207,24 +214,37 @@ export function WorkflowPreRunPanel({
                 <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2">
                   <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
-                    Predicted total
+                    Simulation elapsed
                   </span>
-                  <span className="font-mono text-sm font-semibold">{formatMs(totalPredictedMs)}</span>
+                  <span className="font-mono text-sm font-semibold">
+                    {formatMs(totalPredictedMs)}
+                  </span>
                 </div>
                 {simStats ? (
                   <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-                    <Badge variant="outline">Sample data {simStats.fixtureHits}</Badge>
-                    <Badge variant="outline">AI estimates {simStats.llmPredictions}</Badge>
-                    {simStats.ragReads > 0 ? <Badge variant="outline">Knowledge lookups {simStats.ragReads}</Badge> : null}
+                    <Badge variant="outline">
+                      Sample data {simStats.fixtureHits ?? "Not reported"}
+                    </Badge>
+                    <Badge variant="outline">
+                      AI estimates {simStats.llmPredictions ?? "Not reported"}
+                    </Badge>
+                    {simStats.ragReads !== null && simStats.ragReads > 0 ? (
+                      <Badge variant="outline">
+                        Knowledge lookups {simStats.ragReads ?? "Not reported"}
+                      </Badge>
+                    ) : null}
                   </div>
                 ) : null}
                 <ol className="space-y-2">
                   {simSteps.map((step, i) => (
                     <motion.li
                       key={step.id}
-                      initial={{ opacity: 0, y: 6 }}
+                      initial={reduced ? false : { opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
+                      transition={{
+                        duration: reduced ? 0 : 0.18,
+                        delay: reduced ? 0 : i * 0.04,
+                      }}
                       className="rounded-lg border border-border/70 px-3 py-2"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -250,7 +270,12 @@ export function WorkflowPreRunPanel({
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant="outline" disabled={riskLoading} onClick={() => void runRiskScan()}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={riskLoading}
+                onClick={() => void runRiskScan()}
+              >
                 {riskLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -258,7 +283,9 @@ export function WorkflowPreRunPanel({
                 )}
                 Scan for failure risks
               </Button>
-              <span className="text-xs text-muted-foreground">Prediction only — does not execute steps.</span>
+              <span className="text-xs text-muted-foreground">
+                Prediction only — does not execute steps.
+              </span>
             </div>
             {riskError ? (
               <p className="text-sm text-destructive flex items-center gap-2">
@@ -277,10 +304,16 @@ export function WorkflowPreRunPanel({
                 {alerts.map((alert) => {
                   const style = SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES.medium
                   return (
-                    <li key={alert.id} className="rounded-lg border border-border/70 px-3 py-2 space-y-1">
+                    <li
+                      key={alert.id}
+                      className="rounded-lg border border-border/70 px-3 py-2 space-y-1"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium">{alert.title}</p>
-                        <Badge variant="outline" className={cn("shrink-0 text-[10px]", style.badge)}>
+                        <Badge
+                          variant="outline"
+                          className={cn("shrink-0 text-[10px]", style.badge)}
+                        >
                           {style.label}
                         </Badge>
                       </div>

@@ -164,7 +164,7 @@ export function CognitiveTurnsTab({ enabled }: { enabled: boolean }) {
   const detail = (detailData?.trace ?? selected) as TraceRow | null
 
   return (
-    <TabStateGate isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
+    <TabStateGate hasData={Boolean(data)} isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <SectionCard
           title="Recent turns"

@@ -45,7 +45,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
   )
 
   return (
-    <TabStateGate isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
+    <TabStateGate hasData={Boolean(data)} isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
       <div className="space-y-6">
         <SectionCard
           title="Business outcomes"

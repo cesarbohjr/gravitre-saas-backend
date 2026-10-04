@@ -1,7 +1,7 @@
 "use client"
 
 import { type ReactNode } from "react"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
 import { ErrorState } from "@/components/gravitre/empty-state"
@@ -30,7 +30,7 @@ export function scoreColor(score: number): { bar: string; text: string; glow: st
 }
 
 export function formatScore(score: number | null): string {
-  if (score == null || Number.isNaN(score)) return "—"
+  if (score == null || !Number.isFinite(score)) return "—"
   return score.toFixed(2)
 }
 
@@ -62,9 +62,11 @@ export function ScoreBar({
   weight,
 }: {
   label: string
-  score: number
+  score: number | null | undefined
   weight?: number
 }) {
+  const reduced = useReducedMotion()
+  if (score == null || !Number.isFinite(score)) return <div className="flex items-baseline justify-between gap-2 text-sm"><span>{label}</span><span className="text-muted-foreground">Not reported</span></div>
   const clamped = Math.max(0, Math.min(1, score))
   const { bar, text, glow } = scoreColor(clamped)
   return (
@@ -92,7 +94,7 @@ export function ScoreBar({
           className={cn("h-full rounded-full", bar, glow)}
           initial={{ width: 0 }}
           animate={{ width: `${clamped * 100}%` }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: reduced ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] }}
         />
       </div>
     </div>
@@ -167,11 +169,13 @@ export function TabStateGate({
   isLoading,
   error,
   onRetry,
+  hasData = false,
   children,
 }: {
   isLoading: boolean
   error: unknown
   onRetry: () => void
+  hasData?: boolean
   children: ReactNode
 }) {
   if (isLoading) {
@@ -182,7 +186,7 @@ export function TabStateGate({
       </div>
     )
   }
-  if (error) {
+  if (error && !hasData) {
     return (
       <ErrorState
         title="Couldn't load intelligence data"
@@ -191,5 +195,5 @@ export function TabStateGate({
       />
     )
   }
-  return <>{children}</>
+  return <>{error ? <ErrorState title="Intelligence data could not refresh" description="Showing the last loaded snapshot." onRetry={onRetry} /> : null}{children}</>
 }

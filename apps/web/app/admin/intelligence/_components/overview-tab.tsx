@@ -118,21 +118,21 @@ export function OverviewTab({
         <StatTile
           icon={ChatCircleDots}
           label="Questions logged"
-          value={isLoading ? "…" : (volume?.totalLogged ?? 0)}
+          value={isLoading ? "…" : (volume?.totalLogged ?? "Not reported")}
           tone="emerald"
           delay={0}
         />
         <StatTile
           icon={Stack}
           label="Unique question themes"
-          value={isLoading ? "…" : (volume?.distinctNormalized ?? 0)}
+          value={isLoading ? "…" : (volume?.distinctNormalized ?? "Not reported")}
           tone="sky"
           delay={0.05}
         />
         <StatTile
           icon={Warning}
           label={SURFACE_COPY.learningAdmin.failedSearchesTitle}
-          value={isLoading ? "…" : (volume?.failedSearchCount ?? 0)}
+          value={isLoading ? "…" : (volume?.failedSearchCount ?? "Not reported")}
           tone="amber"
           emphasize
           delay={0.1}
@@ -255,7 +255,7 @@ export function OverviewTab({
                     <tr key={String(term.id ?? term.term)} className="border-b border-border">
                       <td className="py-2 pr-4 font-medium">{String(term.term ?? "")}</td>
                       <td className="py-2 pr-4 capitalize">{String(term.term_type ?? "").replace(/_/g, " ")}</td>
-                      <td className="py-2 pr-4 tabular-nums">{String(term.frequency ?? 0)}</td>
+                      <td className="py-2 pr-4 tabular-nums">{String(term.frequency ?? "Not reported")}</td>
                       <td className="py-2 pr-4">{String(term.associated_department ?? "—")}</td>
                       <td className="py-2">
                         <Badge variant="secondary">{statusLabel(term.status ?? "candidate")}</Badge>

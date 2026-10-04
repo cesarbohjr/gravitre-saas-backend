@@ -6,7 +6,7 @@ This inventory discovers routes and reachable local JSX controls/disclosures, in
 
 **Visual acceptance: NOT RUN.** A listed file is not an accepted surface. Read each route and its reachable UI, then record browser evidence at 1440 / 834 / 390 including empty, error, loading, selected, pending and permission states.
 
-Discovered 175 page routes and 365 reachable files containing controls or disclosures.
+Discovered 176 page routes and 366 reachable files containing controls or disclosures.
 
 | Route | Level | Scope | Proposed family | Redirect expression | UI files | Source |
 |---|---|---|---|---|---:|---|
@@ -129,7 +129,7 @@ Discovered 175 page routes and 365 reachable files containing controls or disclo
 | /marketplace/assets/[slug] | Secondary/nested | Product | Discover | — | 71 | apps/web/app/marketplace/assets/[slug]/page.tsx |
 | /marketplace/assets | Secondary/nested | Product | Discover | — | 72 | apps/web/app/marketplace/assets/page.tsx |
 | /marketplace/billing | Secondary/nested | Product | Create | — | 64 | apps/web/app/marketplace/billing/page.tsx |
-| /marketplace/capabilities | Secondary/nested | Product | Discover | — | 64 | apps/web/app/marketplace/capabilities/page.tsx |
+| /marketplace/capabilities | Secondary/nested | Product | Discover | — | 65 | apps/web/app/marketplace/capabilities/page.tsx |
 | /marketplace/connectors | Secondary/nested | Product | Discover | — | 64 | apps/web/app/marketplace/connectors/page.tsx |
 | /marketplace/installed | Secondary/nested | Product | Manage | — | 66 | apps/web/app/marketplace/installed/page.tsx |
 | /marketplace/org/assets/new | Secondary/nested | Product | Create | — | 64 | apps/web/app/marketplace/org/assets/new/page.tsx |
@@ -180,9 +180,10 @@ Discovered 175 page routes and 365 reachable files containing controls or disclo
 | /training | Primary | Product | Create | — | 66 | apps/web/app/training/page.tsx |
 | /welcome | Primary | Product | Create | — | 54 | apps/web/app/welcome/page.tsx |
 | /workflows/[id]/builder | Secondary/nested | Product | Create | — | 70 | apps/web/app/workflows/[id]/builder/page.tsx |
-| /workflows/[id] | Secondary/nested | Product | Operate | — | 67 | apps/web/app/workflows/[id]/page.tsx |
+| /workflows/[id] | Secondary/nested | Product | Operate | — | 68 | apps/web/app/workflows/[id]/page.tsx |
 | /workflows/[id]/schedules | Secondary/nested | Product | Operate | — | 72 | apps/web/app/workflows/[id]/schedules/page.tsx |
 | /workflows/failure-predictions | Secondary/nested | Product | Operate | — | 52 | apps/web/app/workflows/failure-predictions/page.tsx |
+| /workflows/new/builder | Secondary/nested | Product | Create | — | 64 | apps/web/app/workflows/new/builder/page.tsx |
 | /workflows/new | Secondary/nested | Product | Create | — | 52 | apps/web/app/workflows/new/page.tsx |
 | /workflows | Primary | Product | Operate | — | 72 | apps/web/app/workflows/page.tsx |
 
@@ -222,15 +223,15 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/agents/[id]/page.tsx | — | 7 | 2 |
 | apps/web/app/agents/new/page.tsx | — | 10 | 1 |
 | apps/web/app/agents/page.tsx | AgentFleetInspectorBody, AgentPreviewSheet, Sheet | 9 | 16 |
-| apps/web/app/ai/_components/ai-execute-results.tsx | — | 1 | 174 |
-| apps/web/app/ai/_components/ai-find-results.tsx | — | 1 | 174 |
-| apps/web/app/ai/_components/ai-landing.tsx | — | 1 | 174 |
-| apps/web/app/ai/_components/ai-mobile-sheet-bridge.tsx | GravitreAIMobileSheet | 1 | 174 |
-| apps/web/app/ai/_components/ai-starting-state.tsx | — | 1 | 174 |
-| apps/web/app/ai/_components/ai-voice-agent-picker.tsx | DropdownMenu | 3 | 174 |
-| apps/web/app/ai/_components/ai-workspace.tsx | ChatModality, ChatWindowControls, ConnectedFilePickerDialog, DropdownMenu, GravitreAIMobileSheetBridge, VoiceMicSettingsPopover | 9 | 174 |
-| apps/web/app/ai/_components/connected-file-picker-dialog.tsx | Dialog | 8 | 174 |
-| apps/web/app/ai/_components/live-activity-rail.tsx | — | 2 | 174 |
+| apps/web/app/ai/_components/ai-execute-results.tsx | — | 1 | 175 |
+| apps/web/app/ai/_components/ai-find-results.tsx | — | 1 | 175 |
+| apps/web/app/ai/_components/ai-landing.tsx | — | 1 | 175 |
+| apps/web/app/ai/_components/ai-mobile-sheet-bridge.tsx | GravitreAIMobileSheet | 1 | 175 |
+| apps/web/app/ai/_components/ai-starting-state.tsx | — | 1 | 175 |
+| apps/web/app/ai/_components/ai-voice-agent-picker.tsx | DropdownMenu | 3 | 175 |
+| apps/web/app/ai/_components/ai-workspace.tsx | ChatModality, ChatWindowControls, ConnectedFilePickerDialog, DropdownMenu, GravitreAIMobileSheetBridge, VoiceMicSettingsPopover | 9 | 175 |
+| apps/web/app/ai/_components/connected-file-picker-dialog.tsx | Dialog | 8 | 175 |
+| apps/web/app/ai/_components/live-activity-rail.tsx | — | 2 | 175 |
 | apps/web/app/ai/help/control/page.tsx | — | 3 | 1 |
 | apps/web/app/approvals/page.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle | 7 | 16 |
 | apps/web/app/assignments/[id]/page.tsx | AssignmentApprovalDialog, Dialog, SelectionInspector | 9 | 1 |
@@ -269,7 +270,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/e2e/voice-duplex/harness.tsx | — | 1 | 1 |
 | apps/web/app/environments/page.tsx | DropdownMenu | 8 | 1 |
 | apps/web/app/extension/connect/page.tsx | — | 2 | 1 |
-| apps/web/app/global-error.tsx | — | 1 | 174 |
+| apps/web/app/global-error.tsx | — | 1 | 175 |
 | apps/web/app/goals/[id]/page.tsx | — | 1 | 1 |
 | apps/web/app/goals/page.tsx | — | 7 | 1 |
 | apps/web/app/integrations/[id]/page.tsx | — | 6 | 1 |
@@ -289,7 +290,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/marketplace/assets/[slug]/page.tsx | DropdownMenu, InstallStepperSheet, MarketplaceDecisionDialog | 11 | 2 |
 | apps/web/app/marketplace/assets/page.tsx | InstallStepperSheet | 14 | 16 |
 | apps/web/app/marketplace/billing/page.tsx | — | 9 | 1 |
-| apps/web/app/marketplace/capabilities/page.tsx | — | 43 | 1 |
+| apps/web/app/marketplace/capabilities/page.tsx | WorkDecisionDialog | 43 | 1 |
 | apps/web/app/marketplace/connectors/page.tsx | — | 5 | 1 |
 | apps/web/app/marketplace/installed/page.tsx | Dialog, InstalledInspector, Sheet | 10 | 16 |
 | apps/web/app/marketplace/org-admin/page.tsx | Dialog, MarketplaceDecisionDialog | 12 | 1 |
@@ -335,8 +336,9 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/training/page.tsx | Dialog | 47 | 1 |
 | apps/web/app/welcome/page.tsx | — | 11 | 1 |
 | apps/web/app/workflows/[id]/builder/page.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, BuilderInspector, DebateViewDialog, Dialog, DropdownMenu, ScheduleEditorDialog, Sheet, WorkflowIntelligenceDrawer | 91 | 2 |
-| apps/web/app/workflows/[id]/page.tsx | — | 11 | 1 |
+| apps/web/app/workflows/[id]/page.tsx | WorkDecisionDialog | 11 | 1 |
 | apps/web/app/workflows/[id]/schedules/page.tsx | ScheduleEditorDialog | 2 | 1 |
+| apps/web/app/workflows/new/builder/page.tsx | — | 5 | 1 |
 | apps/web/app/workflows/page.tsx | DropdownMenu | 9 | 16 |
 | apps/web/components/activity/activity-trace-panel.tsx | — | 5 | 16 |
 | apps/web/components/agent-swarm/start-swarm-dialog.tsx | Dialog | 11 | 1 |
@@ -360,8 +362,8 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/agents/knowledge/agent-knowledge-sources-tab.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle | 4 | 2 |
 | apps/web/components/assignments/assignment-create-workspace.tsx | — | 15 | 1 |
 | apps/web/components/assignments/assignment-detail-surfaces.tsx | Dialog | 12 | 1 |
-| apps/web/components/billing/trial-expired-banner.tsx | — | 2 | 113 |
-| apps/web/components/billing/upgrade-modal.tsx | Dialog | 3 | 113 |
+| apps/web/components/billing/trial-expired-banner.tsx | — | 2 | 114 |
+| apps/web/components/billing/upgrade-modal.tsx | Dialog | 3 | 114 |
 | apps/web/components/connectors/available-connectors-strip.tsx | — | 4 | 16 |
 | apps/web/components/connectors/connector-linkage.tsx | — | 3 | 1 |
 | apps/web/components/connectors/connector-operating.tsx | ConnectorInspector, Sheet | 9 | 16 |
@@ -395,69 +397,70 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/gravitre/agent-identity-picker.tsx | — | 2 | 20 |
 | apps/web/components/gravitre/agent-personality-section.tsx | — | 1 | 3 |
 | apps/web/components/gravitre/agent-profile-editors.tsx | — | 4 | 2 |
-| apps/web/components/gravitre/agent-ui/thinking-row.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/agent-ui/tool-execution-group.tsx | — | 1 | 174 |
+| apps/web/components/gravitre/agent-ui/thinking-row.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/agent-ui/tool-execution-group.tsx | — | 1 | 175 |
 | apps/web/components/gravitre/agent-voice-assignment.tsx | — | 12 | 4 |
-| apps/web/components/gravitre/ai-context-indicator.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/ai-floating-workspace.tsx | ChatWindowControls | 0 | 174 |
-| apps/web/components/gravitre/ai-insights-panel.tsx | Dialog | 12 | 174 |
-| apps/web/components/gravitre/ai-mobile-sheet.tsx | ChatWindowControls, Drawer, GravitreAIMobileSheetSnapMode | 0 | 174 |
-| apps/web/components/gravitre/ai-right-panel.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/ai-runtime-details.tsx | GravitreInspector, GravitreInspectorFields, GravitreInspectorNotice, GravitreInspectorSection | 1 | 174 |
-| apps/web/components/gravitre/ai-workspace-shell.tsx | ChatWindowControls | 2 | 174 |
-| apps/web/components/gravitre/app-shell.tsx | UpgradeModal | 3 | 113 |
+| apps/web/components/gravitre/ai-context-indicator.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/ai-floating-workspace.tsx | ChatWindowControls | 0 | 175 |
+| apps/web/components/gravitre/ai-insights-panel.tsx | Dialog | 12 | 175 |
+| apps/web/components/gravitre/ai-mobile-sheet.tsx | ChatWindowControls, Drawer, GravitreAIMobileSheetSnapMode | 0 | 175 |
+| apps/web/components/gravitre/ai-right-panel.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/ai-runtime-details.tsx | GravitreInspector, GravitreInspectorFields, GravitreInspectorNotice, GravitreInspectorSection | 1 | 175 |
+| apps/web/components/gravitre/ai-workspace-shell.tsx | ChatWindowControls | 2 | 175 |
+| apps/web/components/gravitre/app-shell.tsx | UpgradeModal | 3 | 114 |
 | apps/web/components/gravitre/ask-prompt-chips.tsx | — | 1 | 17 |
 | apps/web/components/gravitre/assignments/new-assignment-modal.tsx | Dialog | 13 | 16 |
-| apps/web/components/gravitre/assistant/assistant-markdown.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/chat-execution-panel.tsx | — | 4 | 174 |
-| apps/web/components/gravitre/assistant/chat-session-controls.tsx | DropdownMenu | 3 | 174 |
-| apps/web/components/gravitre/assistant/chat-theme-picker.tsx | Popover | 2 | 174 |
-| apps/web/components/gravitre/assistant/chat-transcript.tsx | — | 3 | 174 |
-| apps/web/components/gravitre/assistant/clarification-message.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/conversation-sidebar.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, DropdownMenu | 24 | 174 |
-| apps/web/components/gravitre/assistant/explainability-panel.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/file-reference-chip.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/preview-code-pane.tsx | — | 2 | 174 |
-| apps/web/components/gravitre/assistant/read-aloud-button.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/research-scope-prompt.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/shared-chat-composer-controls.tsx | — | 5 | 174 |
-| apps/web/components/gravitre/assistant/task-side-panel.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/tool-chip.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/assistant/voice-mic-settings-popover.tsx | Popover | 4 | 174 |
-| apps/web/components/gravitre/assistant/voice-mode-toggle.tsx | — | 3 | 174 |
-| apps/web/components/gravitre/assistant/voice-presentation.tsx | — | 5 | 174 |
-| apps/web/components/gravitre/assistant/voice-session-presence.tsx | — | 2 | 174 |
+| apps/web/components/gravitre/assistant/assistant-markdown.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/chat-execution-panel.tsx | — | 4 | 175 |
+| apps/web/components/gravitre/assistant/chat-session-controls.tsx | DropdownMenu | 3 | 175 |
+| apps/web/components/gravitre/assistant/chat-theme-picker.tsx | Popover | 2 | 175 |
+| apps/web/components/gravitre/assistant/chat-transcript.tsx | — | 3 | 175 |
+| apps/web/components/gravitre/assistant/clarification-message.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/conversation-sidebar.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, DropdownMenu | 25 | 175 |
+| apps/web/components/gravitre/assistant/explainability-panel.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/file-reference-chip.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/preview-code-pane.tsx | — | 2 | 175 |
+| apps/web/components/gravitre/assistant/read-aloud-button.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/research-scope-prompt.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/shared-chat-composer-controls.tsx | — | 5 | 175 |
+| apps/web/components/gravitre/assistant/task-side-panel.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/tool-chip.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/assistant/voice-mic-settings-popover.tsx | Popover | 4 | 175 |
+| apps/web/components/gravitre/assistant/voice-mode-toggle.tsx | — | 3 | 175 |
+| apps/web/components/gravitre/assistant/voice-presentation.tsx | — | 5 | 175 |
+| apps/web/components/gravitre/assistant/voice-session-presence.tsx | — | 2 | 175 |
 | apps/web/components/gravitre/built-in-models-brain.tsx | — | 7 | 3 |
-| apps/web/components/gravitre/business-outcome/business-outcome-view.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/chat-window-controls.tsx | ChatWindowControlId | 1 | 174 |
-| apps/web/components/gravitre/command-palette.tsx | CommandDialog | 0 | 113 |
+| apps/web/components/gravitre/business-outcome/business-outcome-view.tsx | — | 1 | 175 |
+| apps/web/components/gravitre/chat-window-controls.tsx | ChatWindowControlId | 1 | 175 |
+| apps/web/components/gravitre/command-palette.tsx | CommandDialog | 0 | 114 |
 | apps/web/components/gravitre/data-freshness.tsx | — | 1 | 32 |
 | apps/web/components/gravitre/data-table.tsx | — | 1 | 16 |
-| apps/web/components/gravitre/empty-state.tsx | — | 2 | 174 |
+| apps/web/components/gravitre/empty-state.tsx | — | 2 | 175 |
 | apps/web/components/gravitre/filter-chip.tsx | — | 3 | 24 |
-| apps/web/components/gravitre/global-command-bar.tsx | — | 3 | 113 |
-| apps/web/components/gravitre/goal-workflow-wizard.tsx | Dialog | 16 | 113 |
+| apps/web/components/gravitre/global-command-bar.tsx | — | 3 | 114 |
+| apps/web/components/gravitre/goal-workflow-wizard.tsx | Dialog | 16 | 114 |
 | apps/web/components/gravitre/hub-tabs.tsx | — | 1 | 27 |
-| apps/web/components/gravitre/inspector/gravitre-inspector.tsx | GravitreInspectorKind, Sheet | 0 | 174 |
-| apps/web/components/gravitre/meson-page-panel.tsx | — | 2 | 174 |
-| apps/web/components/gravitre/meson-toolbar-popup.tsx | — | 5 | 113 |
+| apps/web/components/gravitre/inspector/gravitre-inspector.tsx | GravitreInspectorKind, Sheet | 0 | 175 |
+| apps/web/components/gravitre/meson-page-panel.tsx | — | 2 | 175 |
+| apps/web/components/gravitre/meson-toolbar-popup.tsx | — | 5 | 114 |
 | apps/web/components/gravitre/meson-wizard.tsx | — | 15 | 17 |
 | apps/web/components/gravitre/model-detail-insights.tsx | — | 5 | 1 |
 | apps/web/components/gravitre/model-selector.tsx | — | 5 | 3 |
-| apps/web/components/gravitre/notification-center.tsx | — | 5 | 174 |
-| apps/web/components/gravitre/onboarding-checklist.tsx | — | 4 | 174 |
+| apps/web/components/gravitre/notification-center.tsx | — | 5 | 175 |
+| apps/web/components/gravitre/onboarding-checklist.tsx | — | 4 | 175 |
 | apps/web/components/gravitre/open-gravitre-ai-button.tsx | — | 1 | 19 |
 | apps/web/components/gravitre/operating/operating-primitives.tsx | — | 2 | 22 |
-| apps/web/components/gravitre/pre-action-card.tsx | — | 4 | 174 |
-| apps/web/components/gravitre/route-error.tsx | — | 1 | 174 |
+| apps/web/components/gravitre/pre-action-card.tsx | — | 4 | 175 |
+| apps/web/components/gravitre/route-error.tsx | — | 1 | 175 |
 | apps/web/components/gravitre/selection-inspector.tsx | Sheet | 0 | 3 |
-| apps/web/components/gravitre/sidebar.tsx | — | 3 | 113 |
+| apps/web/components/gravitre/sidebar.tsx | — | 3 | 114 |
 | apps/web/components/gravitre/source-query-panel.tsx | — | 3 | 1 |
-| apps/web/components/gravitre/suggested-actions.tsx | Dialog | 9 | 174 |
-| apps/web/components/gravitre/top-bar.tsx | DropdownMenu | 19 | 113 |
+| apps/web/components/gravitre/suggested-actions.tsx | Dialog | 9 | 175 |
+| apps/web/components/gravitre/top-bar.tsx | DropdownMenu | 19 | 114 |
 | apps/web/components/gravitre/window-manager/gravitre-docked-shell.tsx | ChatWindowControls, GravitreWindowFrame | 0 | 1 |
 | apps/web/components/gravitre/window-manager/gravitre-window-manager-shell.tsx | ChatWindowControls, GravitreWindowFrame | 2 | 1 |
-| apps/web/components/gravitre/work-section-error-card.tsx | — | 2 | 174 |
+| apps/web/components/gravitre/work-decision-dialog.tsx | Dialog | 2 | 7 |
+| apps/web/components/gravitre/work-section-error-card.tsx | — | 2 | 175 |
 | apps/web/components/gravitre/workflow-card.tsx | DropdownMenu | 6 | 16 |
 | apps/web/components/home/home-dashboard.tsx | KpiPickerDialog | 12 | 16 |
 | apps/web/components/home/kpi-picker-dialog.tsx | Dialog | 3 | 16 |
@@ -528,7 +531,6 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/marketplace/department-pipeline-panel.tsx | — | 1 | 19 |
 | apps/web/components/marketplace/install-experience.tsx | Sheet | 10 | 18 |
 | apps/web/components/marketplace/marketplace-asset-commerce.tsx | — | 1 | 19 |
-| apps/web/components/marketplace/marketplace-decision-dialog.tsx | Dialog | 2 | 5 |
 | apps/web/components/marketplace/marketplace-featured-outcome.tsx | — | 1 | 16 |
 | apps/web/components/plays/play-results.tsx | — | 1 | 1 |
 | apps/web/components/plays/play-run-control.tsx | — | 1 | 1 |
@@ -545,15 +547,15 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/settings/team-settings.tsx | Dialog | 13 | 1 |
 | apps/web/components/settings/webhooks-settings.tsx | Dialog | 7 | 1 |
 | apps/web/components/sources/source-inspector.tsx | — | 5 | 16 |
-| apps/web/components/ui/alert-dialog.tsx | AlertDialogOverlay, AlertDialogPortal, AlertDialogPrimitive.Action, AlertDialogPrimitive.Cancel, AlertDialogPrimitive.Content, AlertDialogPrimitive.Description, AlertDialogPrimitive.Overlay, AlertDialogPrimitive.Portal, AlertDialogPrimitive.Root, AlertDialogPrimitive.Title, AlertDialogPrimitive.Trigger | 0 | 174 |
-| apps/web/components/ui/command.tsx | Dialog | 0 | 113 |
-| apps/web/components/ui/input.tsx | — | 1 | 174 |
-| apps/web/components/ui/textarea.tsx | — | 1 | 115 |
+| apps/web/components/ui/alert-dialog.tsx | AlertDialogOverlay, AlertDialogPortal, AlertDialogPrimitive.Action, AlertDialogPrimitive.Cancel, AlertDialogPrimitive.Content, AlertDialogPrimitive.Description, AlertDialogPrimitive.Overlay, AlertDialogPrimitive.Portal, AlertDialogPrimitive.Root, AlertDialogPrimitive.Title, AlertDialogPrimitive.Trigger | 0 | 175 |
+| apps/web/components/ui/command.tsx | Dialog | 0 | 114 |
+| apps/web/components/ui/input.tsx | — | 1 | 175 |
+| apps/web/components/ui/textarea.tsx | — | 1 | 116 |
 | apps/web/components/workflows/builder-chrome.tsx | — | 6 | 3 |
 | apps/web/components/workflows/failure-alerts-panel.tsx | — | 6 | 16 |
 | apps/web/components/workflows/failure-prediction-alerts.tsx | — | 2 | 17 |
 | apps/web/components/workflows/integration-suggestion-evidence-banner.tsx | — | 1 | 2 |
-| apps/web/components/workflows/intelligence-drawer.tsx | — | 6 | 3 |
+| apps/web/components/workflows/intelligence-drawer.tsx | Sheet | 5 | 3 |
 | apps/web/components/workflows/meson-copilot-panel.tsx | — | 11 | 2 |
 | apps/web/components/workflows/workflow-pre-run-panel.tsx | — | 3 | 1 |
-| apps/web/lib/chat-window-state.ts | ChatWindowControlId, ChatWindowControls | 0 | 174 |
+| apps/web/lib/chat-window-state.ts | ChatWindowControlId, ChatWindowControls | 0 | 175 |

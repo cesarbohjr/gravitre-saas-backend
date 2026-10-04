@@ -99,7 +99,7 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
   const pageItems = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
 
   return (
-    <TabStateGate isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
+    <TabStateGate hasData={Boolean(data)} isLoading={isLoading && !data} error={error} onRetry={() => mutate()}>
       <div className="space-y-6">
         <SectionCard
           title={SURFACE_COPY.learningAdmin.evaluationQualityTitle}
@@ -134,7 +134,7 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
 
             <div className="space-y-4">
               {components.map((c) => (
-                <ScoreBar key={c.key} label={c.label} score={c.score ?? 0} weight={c.weight} />
+                <ScoreBar key={c.key} label={c.label} score={c.score} weight={c.weight} />
               ))}
             </div>
           </div>
@@ -193,7 +193,7 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
               {pageItems.length > 0 ? (
                 <ul className="divide-y divide-border">
                   {pageItems.map((s) => {
-                    const { text } = scoreColor(s.compositeScore ?? 0)
+                    const { text } = s.compositeScore == null ? { text: "text-muted-foreground" } : scoreColor(s.compositeScore)
                     return (
                       <li
                         key={s.id}

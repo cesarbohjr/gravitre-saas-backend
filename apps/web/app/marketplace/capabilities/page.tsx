@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react"
+import { WorkDecisionDialog } from "@/components/gravitre/work-decision-dialog"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
@@ -58,8 +59,8 @@ function canPublishPackage(item: {
   )
   const trustedSigned = Boolean(
     item.content_digest &&
-      item.signature_status === "verified" &&
-      (item.publisher_trusted || item.publisher_verified),
+    item.signature_status === "verified" &&
+    (item.publisher_trusted || item.publisher_verified),
   )
   return gitPinned || trustedSigned
 }
@@ -299,7 +300,18 @@ export default function CapabilityMarketplacePage() {
     }
   }, [adminLoading, isAdmin, router, user])
 
+  const operationLocks = useRef<Record<string, boolean>>({})
+  const [decision, setDecision] = useState<{
+    title: string
+    description: string
+    actionLabel: string
+    destructive?: boolean
+    onConfirm: () => Promise<void>
+  } | null>(null)
+
   async function stageCommunitySource(sourceKey: string) {
+    if (operationLocks.current.community) return
+    operationLocks.current.community = true
     setCommunityBusy(sourceKey)
     try {
       const result =
@@ -319,6 +331,7 @@ export default function CapabilityMarketplacePage() {
           : "Could not stage official capability catalog",
       )
     } finally {
+      operationLocks.current.community = false
       setCommunityBusy(null)
     }
   }
@@ -332,22 +345,31 @@ export default function CapabilityMarketplacePage() {
       !bindingTargetId.trim()
     )
       return
+    if (operationLocks.current.binding) return
+    operationLocks.current.binding = true
     setBindingBusy(true)
     try {
-      await portableCapabilitiesApi.createBinding(bindingPackageId, {
-        componentKind: selectedBindingComponent.kind,
-        componentName: selectedBindingComponent.name,
-        targetType: bindingTargetType as
-          | "agent"
-          | "play"
-          | "workflow"
-          | "workflow_schedule"
-          | "marketplace_asset",
-        targetId: bindingTargetId.trim(),
-      })
+      const result = await portableCapabilitiesApi.createBinding(
+        bindingPackageId,
+        {
+          componentKind: selectedBindingComponent.kind,
+          componentName: selectedBindingComponent.name,
+          targetType: bindingTargetType as
+            | "agent"
+            | "play"
+            | "workflow"
+            | "workflow_schedule"
+            | "marketplace_asset",
+          targetId: bindingTargetId.trim(),
+        },
+      )
+      if (!result.binding?.id)
+        throw new Error(
+          "No binding was returned. Refresh bindings before trying again.",
+        )
       toast.success("Native capability binding created")
       setBindingTargetId("")
-      await nativeBindings.mutate()
+      await Promise.allSettled([nativeBindings.mutate()])
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -355,30 +377,38 @@ export default function CapabilityMarketplacePage() {
           : "Could not create native binding",
       )
     } finally {
+      operationLocks.current.binding = false
       setBindingBusy(false)
     }
   }
 
   async function deleteNativeBinding(bindingId: string) {
     if (!bindingPackageId) return
+    if (operationLocks.current.binding)
+      throw new Error(
+        "Another operation is still pending. Try again when it finishes.",
+      )
+    operationLocks.current.binding = true
     setBindingBusy(true)
     try {
-      await portableCapabilitiesApi.deleteBinding(bindingPackageId, bindingId)
-      toast.success("Native capability binding removed")
-      await nativeBindings.mutate()
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not remove native binding",
+      const result = await portableCapabilitiesApi.deleteBinding(
+        bindingPackageId,
+        bindingId,
       )
+      if (result.deleted !== true)
+        throw new Error("The server did not confirm binding removal.")
+      toast.success("Native capability binding removed")
+      await Promise.allSettled([nativeBindings.mutate()])
     } finally {
+      operationLocks.current.binding = false
       setBindingBusy(false)
     }
   }
 
   async function inspectZip() {
     if (!zipFile) return
+    if (operationLocks.current.zip) return
+    operationLocks.current.zip = true
     setZipBusy(true)
     try {
       const result = await portableCapabilitiesApi.inspectZip(zipFile)
@@ -394,12 +424,15 @@ export default function CapabilityMarketplacePage() {
         error instanceof Error ? error.message : "ZIP inspection failed",
       )
     } finally {
+      operationLocks.current.zip = false
       setZipBusy(false)
     }
   }
 
   async function installZip() {
     if (!zipFile || !zipInspection?.installationAllowed || !isAdmin) return
+    if (operationLocks.current.zip) return
+    operationLocks.current.zip = true
     setZipBusy(true)
     try {
       const hasSignatureInputs = Boolean(
@@ -414,19 +447,26 @@ export default function CapabilityMarketplacePage() {
         )
         return
       }
-      await portableCapabilitiesApi.installZip(zipFile, {
+      const result = await portableCapabilitiesApi.installZip(zipFile, {
         signingPublicKeyPem: zipSigningPublicKey.trim() || undefined,
         signature: zipSignature.trim() || undefined,
       })
-      toast.success("Portable capability installed")
+      if (!result.package?.id)
+        throw new Error(
+          "No package was returned. Refresh packages before installing again.",
+        )
+      toast.success("Portable package stored", {
+        description: `Returned status: ${result.package.status ?? "Not reported"}. Direct execution stays disabled.`,
+      })
       setZipFile(null)
       setZipSigningPublicKey("")
       setZipSignature("")
       setZipInspection(null)
-      await packages.mutate()
+      await Promise.allSettled([packages.mutate()])
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "ZIP install failed")
     } finally {
+      operationLocks.current.zip = false
       setZipBusy(false)
     }
   }
@@ -434,6 +474,8 @@ export default function CapabilityMarketplacePage() {
   async function addTrustedPublisher(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!trustedPublisherName.trim() || !trustedPublisherKey.trim()) return
+    if (operationLocks.current.trust) return
+    operationLocks.current.trust = true
     setTrustBusy(true)
     try {
       await portableCapabilitiesApi.addTrustedPublisher({
@@ -454,6 +496,7 @@ export default function CapabilityMarketplacePage() {
           : "Could not trust publisher key",
       )
     } finally {
+      operationLocks.current.trust = false
       setTrustBusy(false)
     }
   }
@@ -461,6 +504,8 @@ export default function CapabilityMarketplacePage() {
   async function addMarketplace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!name.trim() || !repositoryUrl.trim()) return
+    if (operationLocks.current.source) return
+    operationLocks.current.source = true
     setBusy(true)
     try {
       await portableCapabilitiesApi.addMarketplace({
@@ -477,12 +522,13 @@ export default function CapabilityMarketplacePage() {
       setBranch("main")
       setMarketplaceRootPath("")
       setMarketplaceAutoSync(false)
-      await marketplaces.mutate()
+      await Promise.allSettled([marketplaces.mutate()])
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not add marketplace",
       )
     } finally {
+      operationLocks.current.source = false
       setBusy(false)
     }
   }
@@ -491,9 +537,20 @@ export default function CapabilityMarketplacePage() {
     packageId: string,
     status: "installed" | "quarantined" | "disabled",
   ) {
+    if (operationLocks.current.package)
+      throw new Error(
+        "Another operation is still pending. Try again when it finishes.",
+      )
+    operationLocks.current.package = true
     setPackageBusy(packageId)
     try {
-      await portableCapabilitiesApi.reviewPackage(packageId, { status })
+      const result = await portableCapabilitiesApi.reviewPackage(packageId, {
+        status,
+      })
+      if (result.reviewed !== true || result.package?.status !== status)
+        throw new Error(
+          "The server did not confirm the requested capability status.",
+        )
       toast.success(
         status === "installed"
           ? "Capability approved"
@@ -501,17 +558,16 @@ export default function CapabilityMarketplacePage() {
             ? "Capability disabled"
             : "Capability quarantined",
       )
-      await packages.mutate()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Capability review failed",
-      )
+      await Promise.allSettled([packages.mutate()])
     } finally {
+      operationLocks.current.package = false
       setPackageBusy(null)
     }
   }
 
   async function validatePackage(packageId: string) {
+    if (operationLocks.current.package) return
+    operationLocks.current.package = true
     setPackageBusy(packageId)
     try {
       const report = await portableCapabilitiesApi.validatePackage(packageId)
@@ -533,11 +589,14 @@ export default function CapabilityMarketplacePage() {
         error instanceof Error ? error.message : "Capability validation failed",
       )
     } finally {
+      operationLocks.current.package = false
       setPackageBusy(null)
     }
   }
 
   async function prepareMcp(packageId: string) {
+    if (operationLocks.current.package) return
+    operationLocks.current.package = true
     setPackageBusy(packageId)
     try {
       const result = await portableCapabilitiesApi.prepareMcp(packageId)
@@ -550,23 +609,27 @@ export default function CapabilityMarketplacePage() {
         error instanceof Error ? error.message : "MCP preparation failed",
       )
     } finally {
+      operationLocks.current.package = false
       setPackageBusy(null)
     }
   }
 
   async function discoverMcp(serverId: string) {
+    if (operationLocks.current.mcp) return
+    operationLocks.current.mcp = true
     setMcpBusy(serverId)
     try {
       const result = await mcpAdminApi.discoverTools(serverId)
       toast.success("MCP tools discovered", {
         description: `${result.count} tool${result.count === 1 ? "" : "s"} found. Portable-package tools remain disabled until approved.`,
       })
-      await mcpTools.mutate()
+      await Promise.allSettled([mcpTools.mutate()])
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "MCP discovery failed",
       )
     } finally {
+      operationLocks.current.mcp = false
       setMcpBusy(null)
     }
   }
@@ -585,9 +648,11 @@ export default function CapabilityMarketplacePage() {
       )
       return
     }
+    if (operationLocks.current.mcp) return
+    operationLocks.current.mcp = true
     setMcpBusy(server.id)
     try {
-      await mcpAdminApi.configureServerAuth(server.id, {
+      const result = await mcpAdminApi.configureServerAuth(server.id, {
         authType: server.auth_type,
         authConfig:
           server.auth_type === "bearer"
@@ -597,6 +662,8 @@ export default function CapabilityMarketplacePage() {
                 header: values.header.trim() || "X-API-Key",
               },
       })
+      if (result.credentialsStored !== true)
+        throw new Error("The server did not confirm credential storage.")
       setMcpCredentialInputs((current) => ({
         ...current,
         [server.id]: { secret: "", header: values.header || "X-API-Key" },
@@ -607,41 +674,52 @@ export default function CapabilityMarketplacePage() {
         error instanceof Error ? error.message : "MCP credential update failed",
       )
     } finally {
+      operationLocks.current.mcp = false
       setMcpBusy(null)
     }
   }
 
   async function setMcpServerEnabled(serverId: string, enabled: boolean) {
+    if (operationLocks.current.mcp)
+      throw new Error(
+        "Another operation is still pending. Try again when it finishes.",
+      )
+    operationLocks.current.mcp = true
     setMcpBusy(serverId)
     try {
-      await mcpAdminApi.patchServer(serverId, enabled)
+      const result = await mcpAdminApi.patchServer(serverId, enabled)
+      if (result.server?.enabled !== enabled)
+        throw new Error("The server did not confirm this MCP server state.")
       toast.success(enabled ? "MCP server approved" : "MCP server disabled")
-      await mcpServers.mutate()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "MCP server update failed",
-      )
+      await Promise.allSettled([mcpServers.mutate()])
     } finally {
+      operationLocks.current.mcp = false
       setMcpBusy(null)
     }
   }
 
   async function setMcpToolEnabled(toolId: string, enabled: boolean) {
+    if (operationLocks.current.mcp)
+      throw new Error(
+        "Another operation is still pending. Try again when it finishes.",
+      )
+    operationLocks.current.mcp = true
     setMcpBusy(toolId)
     try {
-      await mcpAdminApi.patchTool(toolId, enabled)
+      const result = await mcpAdminApi.patchTool(toolId, enabled)
+      if (result.tool?.enabled !== enabled)
+        throw new Error("The server did not confirm this tool state.")
       toast.success(enabled ? "MCP tool enabled" : "MCP tool disabled")
-      await mcpTools.mutate()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "MCP tool update failed",
-      )
+      await Promise.allSettled([mcpTools.mutate()])
     } finally {
+      operationLocks.current.mcp = false
       setMcpBusy(null)
     }
   }
 
   async function syncMarketplace(sourceId: string) {
+    if (operationLocks.current.source) return
+    operationLocks.current.source = true
     setSourceBusy(sourceId)
     try {
       const result = await portableCapabilitiesApi.syncMarketplace(sourceId)
@@ -658,6 +736,7 @@ export default function CapabilityMarketplacePage() {
         error instanceof Error ? error.message : "Marketplace sync failed",
       )
     } finally {
+      operationLocks.current.source = false
       setSourceBusy(null)
     }
   }
@@ -666,6 +745,8 @@ export default function CapabilityMarketplacePage() {
     candidateId: string,
     decision: "approve" | "reject",
   ) {
+    if (operationLocks.current.package) return
+    operationLocks.current.package = true
     setPackageBusy(candidateId)
     try {
       await portableCapabilitiesApi.reviewCandidate(candidateId, { decision })
@@ -680,26 +761,40 @@ export default function CapabilityMarketplacePage() {
         error instanceof Error ? error.message : "Candidate review failed",
       )
     } finally {
+      operationLocks.current.package = false
       setPackageBusy(null)
     }
   }
 
   async function installCandidate(candidateId: string) {
+    if (operationLocks.current.package)
+      throw new Error(
+        "Another operation is still pending. Try again when it finishes.",
+      )
+    operationLocks.current.package = true
     setPackageBusy(candidateId)
     try {
-      await portableCapabilitiesApi.installCandidate(candidateId)
-      toast.success("Capability installed")
+      const result = await portableCapabilitiesApi.installCandidate(candidateId)
+      if (!result.package?.id)
+        throw new Error(
+          "No installed package was returned. Refresh the package list before trying again.",
+        )
+      toast.success("Capability package created", {
+        description: `Returned status: ${result.package.status ?? "Not reported"}`,
+      })
       await Promise.allSettled([candidates.mutate(), packages.mutate()])
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Capability install failed",
-      )
     } finally {
+      operationLocks.current.package = false
       setPackageBusy(null)
     }
   }
 
   async function rollbackVersion(packageId: string, versionId: string) {
+    if (operationLocks.current.history)
+      throw new Error(
+        "Another operation is still pending. Try again when it finishes.",
+      )
+    operationLocks.current.history = true
     setHistoryBusy(versionId)
     try {
       const result = await portableCapabilitiesApi.rollbackVersion(
@@ -709,14 +804,11 @@ export default function CapabilityMarketplacePage() {
       toast.success("Capability version restored", {
         description: result.requiresReview
           ? "The restored package is quarantined and requires review before use."
-          : "The restored package is active.",
+          : `Returned status: ${result.package?.status ?? result.status ?? "Not reported"}`,
       })
       await Promise.allSettled([packages.mutate(), packageVersions.mutate()])
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Capability rollback failed",
-      )
     } finally {
+      operationLocks.current.history = false
       setHistoryBusy(null)
     }
   }
@@ -773,6 +865,12 @@ export default function CapabilityMarketplacePage() {
             ? "Checking administrator access…"
             : "Redirecting to Marketplace…"}
         </div>
+        {decision ? (
+          <WorkDecisionDialog
+            {...decision}
+            onCancel={() => setDecision(null)}
+          />
+        ) : null}
       </AppShell>
     )
   }
@@ -1355,7 +1453,13 @@ export default function CapabilityMarketplacePage() {
                                   item.risk_level === "blocked"
                                 }
                                 onClick={() =>
-                                  void reviewPackage(item.id!, "installed")
+                                  setDecision({
+                                    title: "Approve this capability?",
+                                    description: `${item.name} will become available for native use. Existing license and risk checks still apply.`,
+                                    actionLabel: "Approve capability",
+                                    onConfirm: () =>
+                                      reviewPackage(item.id!, "installed"),
+                                  })
                                 }
                               >
                                 Approve
@@ -1364,9 +1468,16 @@ export default function CapabilityMarketplacePage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                disabled={packageBusy === item.id}
+                                disabled={Boolean(packageBusy)}
                                 onClick={() =>
-                                  void reviewPackage(item.id!, "quarantined")
+                                  setDecision({
+                                    title: "Quarantine this capability?",
+                                    description: `${item.name} will be marked quarantined. Review linked agents and workflows before changing availability.`,
+                                    actionLabel: "Quarantine capability",
+                                    destructive: true,
+                                    onConfirm: () =>
+                                      reviewPackage(item.id!, "quarantined"),
+                                  })
                                 }
                               >
                                 Quarantine
@@ -1376,7 +1487,7 @@ export default function CapabilityMarketplacePage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={packageBusy === item.id}
+                                disabled={Boolean(packageBusy)}
                                 onClick={() => void validatePackage(item.id!)}
                               >
                                 Validate
@@ -1387,7 +1498,7 @@ export default function CapabilityMarketplacePage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={packageBusy === item.id}
+                                disabled={Boolean(packageBusy)}
                                 onClick={() => void prepareMcp(item.id!)}
                               >
                                 Prepare MCP
@@ -1419,7 +1530,7 @@ export default function CapabilityMarketplacePage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              disabled={packageBusy === item.id}
+                              disabled={Boolean(packageBusy)}
                               onClick={() =>
                                 setHistoryPackageId(
                                   historyPackageId === item.id
@@ -1435,9 +1546,16 @@ export default function CapabilityMarketplacePage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              disabled={packageBusy === item.id}
+                              disabled={Boolean(packageBusy)}
                               onClick={() =>
-                                void reviewPackage(item.id!, "disabled")
+                                setDecision({
+                                  title: "Disable this capability?",
+                                  description: `${item.name} will be marked disabled. Review linked agents and workflows before changing availability.`,
+                                  actionLabel: "Disable capability",
+                                  destructive: true,
+                                  onConfirm: () =>
+                                    reviewPackage(item.id!, "disabled"),
+                                })
                               }
                             >
                               Disable
@@ -1813,7 +1931,15 @@ export default function CapabilityMarketplacePage() {
                           size="sm"
                           variant="ghost"
                           disabled={bindingBusy}
-                          onClick={() => void deleteNativeBinding(binding.id)}
+                          onClick={() =>
+                            setDecision({
+                              title: "Remove this native binding?",
+                              description: `Remove binding ${binding.id} from this package. The target entity is retained.`,
+                              actionLabel: "Remove binding",
+                              destructive: true,
+                              onConfirm: () => deleteNativeBinding(binding.id),
+                            })
+                          }
                         >
                           Remove
                         </Button>
@@ -1885,7 +2011,13 @@ export default function CapabilityMarketplacePage() {
                           variant="outline"
                           disabled={historyBusy === version.id}
                           onClick={() =>
-                            void rollbackVersion(historyPackageId, version.id)
+                            setDecision({
+                              title: "Restore this package version?",
+                              description: `Restore version ${version.id}. The returned review policy determines whether it can be used immediately.`,
+                              actionLabel: "Restore version",
+                              onConfirm: () =>
+                                rollbackVersion(historyPackageId, version.id),
+                            })
                           }
                         >
                           {historyBusy === version.id
@@ -2019,7 +2151,7 @@ export default function CapabilityMarketplacePage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={mcpBusy === server.id}
+                              disabled={Boolean(mcpBusy)}
                               onClick={() => void discoverMcp(server.id)}
                             >
                               {mcpBusy === server.id
@@ -2034,10 +2166,22 @@ export default function CapabilityMarketplacePage() {
                                 (!server.enabled && serverTools.length === 0)
                               }
                               onClick={() =>
-                                void setMcpServerEnabled(
-                                  server.id,
-                                  !server.enabled,
-                                )
+                                setDecision({
+                                  title: server.enabled
+                                    ? "Disable this MCP server?"
+                                    : "Approve this MCP server?",
+                                  description:
+                                    "This changes server availability. Tool enablement and write approval policies remain separate controls.",
+                                  actionLabel: server.enabled
+                                    ? "Disable server"
+                                    : "Approve server",
+                                  destructive: server.enabled,
+                                  onConfirm: () =>
+                                    setMcpServerEnabled(
+                                      server.id,
+                                      !server.enabled,
+                                    ),
+                                })
                               }
                             >
                               {server.enabled
@@ -2063,9 +2207,11 @@ export default function CapabilityMarketplacePage() {
                                     </p>
                                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                                       {tool.capability_tier} ·{" "}
-                                      {tool.requires_approval
+                                      {tool.requires_approval === true
                                         ? "approval required"
-                                        : "no write approval required"}{" "}
+                                        : tool.requires_approval === false
+                                          ? "no write approval required"
+                                          : "approval policy not reported"}{" "}
                                       · {tool.risk_level ?? "unrated"} risk
                                     </p>
                                   </div>
@@ -2077,10 +2223,21 @@ export default function CapabilityMarketplacePage() {
                                       (!server.enabled && !tool.enabled)
                                     }
                                     onClick={() =>
-                                      void setMcpToolEnabled(
-                                        tool.id,
-                                        !tool.enabled,
-                                      )
+                                      setDecision({
+                                        title: tool.enabled
+                                          ? "Disable this tool?"
+                                          : "Enable this tool?",
+                                        description: `${tool.tool_name} will be ${tool.enabled ? "disabled" : "enabled"}. Server availability and backend approval policy also govern execution.`,
+                                        actionLabel: tool.enabled
+                                          ? "Disable tool"
+                                          : "Enable tool",
+                                        destructive: tool.enabled,
+                                        onConfirm: () =>
+                                          setMcpToolEnabled(
+                                            tool.id,
+                                            !tool.enabled,
+                                          ),
+                                      })
                                     }
                                   >
                                     {tool.enabled ? "Disable" : "Enable"}
@@ -2197,7 +2354,15 @@ export default function CapabilityMarketplacePage() {
                           <Button
                             size="sm"
                             disabled={packageBusy === candidate.id}
-                            onClick={() => void installCandidate(candidate.id)}
+                            onClick={() =>
+                              setDecision({
+                                title: "Install this capability candidate?",
+                                description:
+                                  "Create a package from this reviewed candidate. Package status, binding and MCP enablement are separate steps.",
+                                actionLabel: "Install candidate",
+                                onConfirm: () => installCandidate(candidate.id),
+                              })
+                            }
                           >
                             {packageBusy === candidate.id
                               ? "Installing…"
@@ -2213,6 +2378,9 @@ export default function CapabilityMarketplacePage() {
           </GravitreSurface>
         </div>
       </div>
+      {decision ? (
+        <WorkDecisionDialog {...decision} onCancel={() => setDecision(null)} />
+      ) : null}
     </AppShell>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { reportedCount } from "@/lib/workflow-evidence"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import {
@@ -131,21 +132,25 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
     [stageChart],
   )
 
-  if (error) {
+  const modeLock = useRef(false)
+  if (error && !dashboard) {
     const message = error instanceof ApiError ? error.message : "Failed to load performance metrics."
     return <ErrorState title="Unable to load performance" description={message} onRetry={() => mutate()} />
   }
 
   const saveMode = async (next: PerformanceMode) => {
+    if (modeLock.current) return
+    modeLock.current = true
     setSavingMode(true)
     try {
       await intelligenceApi.updatePerformanceMode({ mode: next })
       setMode(next)
       toast.success("Performance mode updated")
-      await mutateMode()
+      await Promise.allSettled([mutateMode()])
     } catch (saveError) {
       toast.error(saveError instanceof ApiError ? saveError.message : "Could not save performance mode")
     } finally {
+      modeLock.current = false
       setSavingMode(false)
     }
   }
@@ -217,7 +222,8 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
         </div>
       </div>
 
-      {isLoading || !dashboard ? (
+      {error ? <ErrorState title="Performance snapshot could not refresh" description="Showing the last loaded metrics." onRetry={() => void mutate()} /> : null}
+      {isLoading && !dashboard || !dashboard ? (
         <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/70 bg-card/40 px-4 py-8 text-sm text-muted-foreground">
           <Gauge className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
           Loading performance metrics…
@@ -229,28 +235,28 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
               icon={Clock}
               tone="emerald"
               label="Avg response"
-              value={`${readNumber(dashboard.avgTotalResponseMs)} ms`}
+              value={reportedCount(dashboard.avgTotalResponseMs) === null ? "Not reported" : `${dashboard.avgTotalResponseMs} ms`}
               delay={0}
             />
             <KpiTile
               icon={Timer}
               tone="sky"
               label="Slow responses (P95)"
-              value={`${readNumber(dashboard.p95TotalResponseMs)} ms`}
+              value={reportedCount(dashboard.p95TotalResponseMs) === null ? "Not reported" : `${dashboard.p95TotalResponseMs} ms`}
               delay={0.05}
             />
             <KpiTile
               icon={Coins}
               tone="teal"
               label="Avg cost / answer"
-              value={`$${readNumber(dashboard.avgCostPerAnswerUsd).toFixed(4)}`}
+              value={reportedCount(dashboard.avgCostPerAnswerUsd) === null ? "Not reported" : `$${dashboard.avgCostPerAnswerUsd.toFixed(4)}`}
               delay={0.1}
             />
             <KpiTile
               icon={AlertTriangle}
               tone="amber"
               label="Timeout rate"
-              value={formatPercent(readNumber(dashboard.timeoutRate))}
+              value={reportedCount(dashboard.timeoutRate) === null ? "Not reported" : formatPercent(dashboard.timeoutRate)}
               delay={0.15}
             />
           </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import useSWR from "swr"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { intelligenceApi } from "@/lib/api"
@@ -95,7 +96,7 @@ function passFail(pass: boolean | undefined, empty = "—"): string {
 }
 
 export function GoldenSignalsPanel({ className }: { className?: string }) {
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     ["admin-golden-signals"],
     () => intelligenceApi.goldenSignals(),
     { revalidateOnFocus: false, refreshInterval: 60_000 },
@@ -125,9 +126,10 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
           </p>
         </div>
         <span className="text-xs text-muted-foreground">
-          {isLoading ? "Loading…" : error ? "Unavailable" : `Last ${signals?.period ?? "24h"}`}
+          {isLoading ? "Loading…" : error ? "Unavailable" : `Last ${signals?.period ?? "period not reported"}`}
         </span>
       </div>
+      {error ? <WorkSectionErrorCard error={error} onRetry={() => void mutate()} /> : null}
       <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
         <GravitreMetric
           label="Latest deploy check"
@@ -187,7 +189,7 @@ export function GoldenSignalsPanel({ className }: { className?: string }) {
           label="Research lookups healthy"
           value={
             research?.sample_count
-              ? `${research.serper_pct ?? 0}% primary (${research.sample_count})`
+              ? `${research.serper_pct ?? "Not reported"}% primary (${research.sample_count})`
               : "—"
           }
           warning={Boolean(research?.alerts?.length)}

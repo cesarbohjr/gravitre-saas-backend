@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { CalendarClock, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -92,6 +92,7 @@ export function ScheduleEditorDialog({
   initial?: ScheduleEditorInitial | null
   onSaved?: (schedule: WorkflowSchedule) => void
 }) {
+  const lock = useRef(false)
   const isEdit = Boolean(initial?.scheduleId)
   const [workflowId, setWorkflowId] = useState("")
   const [name, setName] = useState("")
@@ -134,11 +135,13 @@ export function ScheduleEditorDialog({
   }
 
   const handleSave = async () => {
+    if (lock.current) return
     const targetWorkflowId = lockedWorkflowId || workflowId
     if (!targetWorkflowId) {
       toast.error("Select a workflow")
       return
     }
+    lock.current = true
     setSaving(true)
     try {
       const payload =
@@ -174,18 +177,20 @@ export function ScheduleEditorDialog({
         ? await workflowsApi.updateSchedule(targetWorkflowId, initial.scheduleId, payload)
         : await workflowsApi.createSchedule(targetWorkflowId, payload)
 
+      if (!saved?.id) throw new Error("No schedule ID was returned. Refresh schedules before trying again.")
       toast.success(isEdit ? "Schedule updated" : "Schedule created")
       onOpenChange(false)
       onSaved?.(saved)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save schedule")
     } finally {
+      lock.current = false
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => { if (!lock.current) onOpenChange(next) }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

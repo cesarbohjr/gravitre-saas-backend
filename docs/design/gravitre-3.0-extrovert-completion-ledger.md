@@ -588,3 +588,22 @@ The full suite caught one uppercase micro-label, which was corrected to sentence
 Remaining: full Workflow/Builder/run and AI workspace state review; exhaustive capability/MCP activation/binding/version and remaining admin diagnostic journeys; every changed route's rendered viewport/state matrix and owner-tenant acceptance. Generated goal proposals remain session-only and are not passed into builder inputs. Existing API limitations for field clearing, delegation administration, native text knowledge and ceiling removal remain. Organization logo upload, Slack/email verification, Finance/Compliance product scope and Billing E2E remain open.
 
 `IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`. Draft PR #298 remains unmerged and is not production-deployed.
+
+## Workflow / governance / AI implementation continuation — 2026-10-04 UTC
+
+Parent: `bb3e05e3f9d82d8537c43d9d625d6171c5538510`. Detailed surface decisions and limits are in `3.0-plus/19-design-led-review.md`.
+
+- Real workflow creation through the existing API replaces the `new` demo-builder route; draft recovery, mutation exclusion, returned UUID reuse and source handoff preserved.
+- Workflow production activation/run and cancellation have scope review; graph/history/active-check failures have separate retry and retain cached data. A returned run ID/status supplies execution evidence.
+- Builder preserves empty saved graphs, blocks writes after graph load errors, excludes overlapping persistence work and only reports known terminal success.
+- Simulation has no local invented duration profile or assumed completed status. Missing evidence stays unreported; actual zero is preserved. Intelligence drawer now uses a focus-managed responsive Sheet.
+- Run commands exclude overlapping mutations and separate successful API writes from refresh failure. Missing records/durations/dates/environment stay unreported; retry requires a run ID. Schedule saves guard submission/dismissal and require returned identity. The compact schedule detail Sheet was already wired in the current parent.
+- Capability/MCP scoped decisions retain API refusals inline. Binding/package IDs, review/removal flags, enabled state and credential-storage results must confirm success. Locks cover independent governance operation groups. ZIP storage is distinguished from direct execution.
+- AI history keyboard/closed/pending/cache states and shared composer/window touch targets improved without mounting a second runtime or changing text/voice execution.
+- Admin diagnostics retain charts and cached evidence, offer retry, and avoid inferred zero/healthy/completed/readiness from absent API values. Unknown evaluation scores have no fabricated progress bar.
+
+Final local checks: **1,328 tests / 210 files PASS**, full lint **0 errors / 238 existing warnings**, changed-file lint **0 errors / 34 existing warnings**, post-build typecheck **PASS**, clean production build **PASS (372 routes)**, chat/status/intelligence/brand guards **PASS**, whitespace **PASS**. Static inventory: **176 routes / 366 control/disclosure files**. Backend/owner-live/Billing E2E were not run by this frontend pass; skipped or absent checks are not passes.
+
+Current local browser attempt: `http://localhost:3055/workflows` rejected by cloud browser with `net::ERR_BLOCKED_BY_CLIENT`. No rendered acceptance or owner-live evidence. Draft #298 remains unmerged and not production-deployed. `IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
+
+Remaining: viewport/Figma and owner-tenant state/mutation acceptance across all reviewed surfaces; CI on the published SHA; resolution of any findings from that review. Goal proposal persistence/Builder input handoff and existing policy/field-clear/native-knowledge contract limits remain. Logo upload, Slack/email verification, Finance/Compliance product scope and Billing E2E remain open. This source pass does not establish exhaustive design completion or backend authorization.

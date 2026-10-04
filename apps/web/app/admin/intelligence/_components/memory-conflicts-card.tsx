@@ -1,5 +1,6 @@
 "use client"
 
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
@@ -16,11 +17,11 @@ type ConflictRow = {
 }
 
 export function MemoryConflictsCard({ enabled }: { enabled: boolean }) {
-  const { data, isLoading, error } = useSWR(enabled ? "admin/intelligence/memory-conflicts" : null, () =>
+  const { data, isLoading, error, mutate } = useSWR(enabled ? "admin/intelligence/memory-conflicts" : null, () =>
     intelligenceApi.memoryConflicts(),
   )
   if (!enabled) return null
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <SectionCard
         title={SURFACE_COPY.learningAdmin.memoryConflictsTitle}
@@ -30,19 +31,19 @@ export function MemoryConflictsCard({ enabled }: { enabled: boolean }) {
       </SectionCard>
     )
   }
-  if (error) {
+  if (error && !data) {
     return (
       <SectionCard
         title={SURFACE_COPY.learningAdmin.memoryConflictsTitle}
         description="Unable to load conflict scan."
       >
-        <p className="text-sm text-muted-foreground">Try refreshing the page.</p>
+        <WorkSectionErrorCard error={error} onRetry={() => void mutate()} />
       </SectionCard>
     )
   }
 
-  const conflictCount = Number(data?.conflict_count ?? 0)
-  const scanned = Number(data?.scanned_memories ?? 0)
+  const conflictCount = typeof data?.conflict_count === "number" ? data.conflict_count : null
+  const scanned = typeof data?.scanned_memories === "number" ? data.scanned_memories : null
   const conflicts = (data?.conflicts as ConflictRow[]) || []
 
   return (
@@ -50,12 +51,13 @@ export function MemoryConflictsCard({ enabled }: { enabled: boolean }) {
       title={SURFACE_COPY.learningAdmin.memoryConflictsTitle}
       description="When two agent memories disagree, they show up here for a human decision."
       action={
-        <Badge variant={conflictCount > 0 ? "destructive" : "outline"} className="font-normal">
-          {conflictCount} conflict{conflictCount === 1 ? "" : "s"}
+        <Badge variant={conflictCount !== null && conflictCount > 0 ? "destructive" : "outline"} className="font-normal">
+          {conflictCount ?? "Not reported"} conflict{conflictCount === 1 ? "" : "s"}
         </Badge>
       }
     >
-      {scanned === 0 ? (
+      {error ? <WorkSectionErrorCard error={error} onRetry={() => void mutate()} /> : null}
+      {scanned === null || conflictCount === null ? <NotYetPopulated>Scan counts not reported.</NotYetPopulated> : scanned === 0 ? (
         <NotYetPopulated>No agent memories scanned yet.</NotYetPopulated>
       ) : conflictCount === 0 ? (
         <p className="text-sm text-muted-foreground">
