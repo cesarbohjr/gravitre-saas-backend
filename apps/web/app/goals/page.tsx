@@ -1,16 +1,23 @@
 "use client"
 
-import { PAGE_FRAME } from "@/lib/design-system"
-import { useCallback, useState } from "react"
+import { PAGE_FRAME, TYPE } from "@/lib/design-system"
+import { useCallback, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
-import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
+import {
+  GravitrePageHeader,
+  LiveStatus,
+} from "@/components/gravitre/nodus-product"
+import {
+  OperatingEmpty,
+  PhaseBand,
+} from "@/components/gravitre/operating/operating-primitives"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Target, Plus, RefreshCw } from "lucide-react"
@@ -31,67 +38,125 @@ const statusStyles: Record<string, string> = {
 }
 
 function formatDate(value?: string | null): string {
-  if (!value) return "—"
+  if (!value) return "Not reported"
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "—"
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+  if (Number.isNaN(date.getTime())) return "Not reported"
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
 }
 
 function GoalRow({ goal, index }: { goal: GoalRecord; index: number }) {
-  const status = goal.status ?? "draft"
+  const reduced = useReducedMotion()
+  const status =
+    goal.status && statusStyles[goal.status] ? goal.status : "unreported"
   return (
     <motion.li
-      initial={{ opacity: 0 }}
+      initial={reduced ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ delay: Math.min(index, 8) * 0.03 }}
+      transition={{
+        duration: reduced ? 0 : 0.18,
+        delay: reduced ? 0 : Math.min(index, 5) * 0.02,
+      }}
     >
-    <Link
-      href={`/goals/${goal.id}`}
-      className="group block px-[var(--np-page-pad-sm)] py-3.5 transition-colors sm:px-[var(--np-page-pad)] hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-medium text-foreground">
-            {goal.objective}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {goal.category ? <span className="capitalize">{goal.category}</span> : null}
-            {goal.department ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{goal.department}</span>
-              </>
+      <Link
+        href={`/goals/${goal.id}`}
+        className="group block px-[var(--np-page-pad-sm)] py-3.5 transition-colors sm:px-[var(--np-page-pad)] hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+          <div className="min-w-0 flex-1">
+            <p className="line-clamp-2 text-sm font-medium text-foreground">
+              {goal.objective || "Objective not reported"}
+            </p>
+            {typeof goal.successMetrics?.primary === "string" &&
+            goal.successMetrics.primary ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Success measure: {goal.successMetrics.primary}
+              </p>
             ) : null}
-            {goal.priority ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="capitalize">{goal.priority} priority</span>
-              </>
-            ) : null}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {goal.category ? (
+                <span className="capitalize">{goal.category}</span>
+              ) : null}
+              {goal.department ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{goal.department}</span>
+                </>
+              ) : null}
+              {goal.priority ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="capitalize">{goal.priority} priority</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-col sm:items-end sm:gap-1">
+            <Badge
+              className={cn(
+                "capitalize",
+                statusStyles[status] ?? statusStyles.draft,
+              )}
+            >
+              {status === "unreported" ? "Not reported" : status}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(goal.createdAt)}
+            </span>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <Badge className={cn("capitalize", statusStyles[status] ?? statusStyles.draft)}>
-            {status}
-          </Badge>
-          <span className="text-xs text-muted-foreground">{formatDate(goal.createdAt)}</span>
-        </div>
-      </div>
-    </Link>
+      </Link>
     </motion.li>
   )
 }
 
 export default function GoalsPage() {
+  const [search, setSearch] = useState("")
+  const [department, setDepartment] = useState("")
+  const [order, setOrder] = useState("recent")
   const [wizardOpen, setWizardOpen] = useState(false)
-  const { data, error, isLoading, mutate } = useSWR(GOALS_REFRESH_KEY, fetchGoalList, {
-    refreshInterval: 30_000,
-  })
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    GOALS_REFRESH_KEY,
+    fetchGoalList,
+    {
+      refreshInterval: 30_000,
+    },
+  )
 
   const [phase, setPhase] = useState<string | null>(null)
-  const allGoals = data ?? []
-  const goals = phase ? allGoals.filter((goal) => (goal.status ?? "draft") === phase) : allGoals
-  const countOf = (status: string) => allGoals.filter((goal) => (goal.status ?? "draft") === status).length
+  const allGoals = useMemo(() => data ?? [], [data])
+  const known = (goal: GoalRecord) =>
+    goal.status && statusStyles[goal.status] ? goal.status : "unreported"
+  const departments = [
+    ...new Set(
+      allGoals.map((g) => g.department).filter((v): v is string => Boolean(v)),
+    ),
+  ].sort()
+  const goals = allGoals
+    .filter(
+      (goal) =>
+        (!phase || known(goal) === phase) &&
+        (!department || goal.department === department) &&
+        `${goal.objective} ${goal.department ?? ""} ${goal.category ?? ""}`
+          .toLowerCase()
+          .includes(search.trim().toLowerCase()),
+    )
+    .sort((a, b) =>
+      order === "priority"
+        ? (["high", "medium", "low"].indexOf(a.priority ?? "") < 0
+            ? 3
+            : ["high", "medium", "low"].indexOf(a.priority!)) -
+          (["high", "medium", "low"].indexOf(b.priority ?? "") < 0
+            ? 3
+            : ["high", "medium", "low"].indexOf(b.priority!))
+        : (Date.parse(b.createdAt ?? "") || 0) -
+          (Date.parse(a.createdAt ?? "") || 0),
+    )
+  const countOf = (status: string) =>
+    allGoals.filter((goal) => known(goal) === status).length
   const activeGoals = countOf("active")
   const refreshGoals = useCallback(() => {
     void mutate()
@@ -107,13 +172,22 @@ export default function GoalsPage() {
           status={
             allGoals.length > 0 ? (
               <LiveStatus tone={activeGoals > 0 ? "live" : "idle"}>
-                {activeGoals > 0 ? `${activeGoals} objective${activeGoals === 1 ? "" : "s"} in motion` : "No objective in motion"}
+                {activeGoals > 0
+                  ? `${activeGoals} objective${activeGoals === 1 ? "" : "s"} in motion`
+                  : "No objective in motion"}
               </LiveStatus>
             ) : undefined
           }
           actions={
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={refreshGoals} aria-label="Refresh goals">
+            <div className="flex flex-wrap items-center gap-2 [&_[data-slot=button]]:min-h-11">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="min-w-11"
+                disabled={isValidating}
+                onClick={refreshGoals}
+                aria-label="Refresh goals"
+              >
                 <RefreshCw className="size-4" />
               </Button>
               <Button onClick={() => setWizardOpen(true)}>
@@ -127,21 +201,27 @@ export default function GoalsPage() {
         {error ? (
           <WorkSectionErrorCard
             title="Could not load goals"
-            message={error instanceof Error ? error.message : "Unknown error"}
+            message="Your last loaded goals remain available. Try again to refresh the list."
             onRetry={refreshGoals}
           />
-        ) : isLoading ? (
+        ) : null}
+        {isLoading && !data ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-24 w-full rounded-xl" />
             ))}
           </div>
-        ) : allGoals.length === 0 ? (
+        ) : !data ? null : allGoals.length === 0 ? (
           <OperatingEmpty
             className="px-0 sm:px-0"
             title="No objectives yet"
             body="A goal states the outcome you want. Gravitre drafts a plan tied to your connectors and approval gates, agents carry out the work, and results are measured against the goal."
-            path={["Set the objective", "Plan the work", "Agents execute", "Measure the outcome"]}
+            path={[
+              "Set the objective",
+              "Plan the work",
+              "Agents execute",
+              "Measure the outcome",
+            ]}
             action={
               <Button onClick={() => setWizardOpen(true)}>
                 <Plus className="size-4" />
@@ -150,21 +230,103 @@ export default function GoalsPage() {
             }
           />
         ) : (
-          <div className="-mx-[var(--np-page-pad-sm)] sm:-mx-[var(--np-page-pad)]">
+          <div className="space-y-4 -mx-[var(--np-page-pad-sm)] sm:-mx-[var(--np-page-pad)]">
+            <div className="grid gap-3 px-4 sm:grid-cols-[minmax(0,1fr)_12rem_12rem]">
+              <Input
+                className="min-h-11"
+                aria-label="Search goals"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search objectives, categories or departments"
+              />
+              <select
+                aria-label="Goal department"
+                className="min-h-11 rounded-md border border-input bg-background px-3 text-sm"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+              >
+                <option value="">All departments</option>
+                {departments.map((d) => (
+                  <option key={d}>{d}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Sort goals"
+                className="min-h-11 rounded-md border border-input bg-background px-3 text-sm"
+                value={order}
+                onChange={(e) => setOrder(e.target.value)}
+              >
+                <option value="recent">Newest first</option>
+                <option value="priority">Highest priority</option>
+              </select>
+            </div>
             <PhaseBand
               label="Goal phases"
               phases={[
-                { id: "active", label: "In motion", count: activeGoals, tone: "live" },
-                { id: "draft", label: "Draft", count: countOf("draft"), tone: "neutral" },
-                { id: "paused", label: "Paused", count: countOf("paused"), tone: "attention" },
-                { id: "completed", label: "Completed", count: countOf("completed"), tone: "done" },
-                { id: "cancelled", label: "Cancelled", count: countOf("cancelled"), tone: "neutral" },
+                {
+                  id: "active",
+                  label: "In motion",
+                  count: activeGoals,
+                  tone: "live",
+                },
+                {
+                  id: "draft",
+                  label: "Draft",
+                  count: countOf("draft"),
+                  tone: "neutral",
+                },
+                {
+                  id: "paused",
+                  label: "Paused",
+                  count: countOf("paused"),
+                  tone: "attention",
+                },
+                {
+                  id: "completed",
+                  label: "Completed",
+                  count: countOf("completed"),
+                  tone: "done",
+                },
+                {
+                  id: "cancelled",
+                  label: "Cancelled",
+                  count: countOf("cancelled"),
+                  tone: "neutral",
+                },
+                ...(countOf("unreported")
+                  ? [
+                      {
+                        id: "unreported",
+                        label: "Not reported",
+                        count: countOf("unreported"),
+                        tone: "neutral" as const,
+                      },
+                    ]
+                  : []),
               ]}
               active={phase}
               onSelect={setPhase}
             />
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4">
+              <p className={TYPE.meta}>
+                {goals.length} of {allGoals.length} loaded goals
+              </p>
+              {phase || search || department ? (
+                <Button
+                  className="min-h-11"
+                  variant="ghost"
+                  onClick={() => {
+                    setPhase(null)
+                    setSearch("")
+                    setDepartment("")
+                  }}
+                >
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
             {goals.length === 0 ? (
-              <OperatingEmpty title="No goals in this phase" />
+              <OperatingEmpty title="No goals match these filters" />
             ) : (
               <ul className="divide-y divide-[color:var(--g-border-subtle)] border-b border-[color:var(--g-border-default)]">
                 {goals.map((goal, index) => (

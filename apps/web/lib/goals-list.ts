@@ -2,7 +2,12 @@ import { apiFetch } from "@/lib/fetcher"
 
 export const GOALS_REFRESH_KEY = "goals-list"
 
-export type GoalStatus = "draft" | "active" | "paused" | "completed" | "cancelled"
+export type GoalStatus =
+  | "draft"
+  | "active"
+  | "paused"
+  | "completed"
+  | "cancelled"
 
 export interface GoalRecord {
   id: string
@@ -25,5 +30,7 @@ export async function fetchGoalList(): Promise<GoalRecord[]> {
     throw new Error(body.error ?? `Failed to load goals (${response.status})`)
   }
   const payload = (await response.json()) as { goals?: GoalRecord[] }
-  return Array.isArray(payload.goals) ? payload.goals : []
+  if (!Array.isArray(payload.goals))
+    throw new Error("The server did not return a goal list")
+  return payload.goals
 }

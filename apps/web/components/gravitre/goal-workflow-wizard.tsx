@@ -1,1030 +1,580 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { cn } from "@/lib/utils"
-import { CONNECTOR_CATALOG } from "@/lib/connectors"
-import { apiFetch } from "@/lib/fetcher"
+import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import useSWR from "swr"
 import { toast } from "sonner"
+import { ArrowLeft, ArrowRight, Loader2, RefreshCw } from "lucide-react"
+import { apiFetch } from "@/lib/fetcher"
+import { connectorsApi } from "@/lib/api"
+import { CONNECTOR_CATALOG } from "@/lib/connectors"
+import { TYPE } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import {
-  Target,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
-  Building2,
-  Database,
-  Users,
-  Zap,
-  CheckCircle,
-  AlertTriangle,
-  ArrowRight,
-  ArrowLeft,
-  Bot,
-  Shield,
-  GitBranch,
-  FileText,
-  Plug,
-  Clock,
-  RefreshCw,
-  Edit3,
-  Play,
-  Save,
-  RotateCcw,
-  ChevronRight,
-  Loader2,
-
-  Workflow,
-  MessageSquare,
-  Mail,
-  CreditCard,
-  HelpCircle,
-  TrendingUp,
-  Calendar,
-  BarChart3,
-  Send,
-  AlertCircle,
-  Lock,
-  Eye,
-  X,
-} from "lucide-react"
-
-// Types
-interface GoalCategory {
-  id: string
-  label: string
-  icon: typeof Target
-  color: string
-  examples: string[]
-}
-
-interface Connector {
-  id: string
-  name: string
-  icon: string
-  category: "crm" | "finance" | "support" | "comms" | "knowledge" | "analytics"
-  connected: boolean
-  required?: boolean
-}
-
-interface ProposedStep {
-  id: string
-  name: string
-  description: string
-  type: "source" | "agent" | "task" | "connector" | "approval" | "decision" | "council"
-  agent?: string
-  connector?: string
-  dataRequired?: string[]
-  output?: string
-  riskLevel?: "low" | "medium" | "high"
-  requiresApproval?: boolean
-}
-
-interface GeneratedPlan {
+type Plan = {
   goalSummary: string
-  steps: ProposedStep[]
-  requiredConnectors: Connector[]
-  agents: { id: string; name: string; role: string }[]
-  approvalGates: { stepId: string; reason: string }[]
-  estimatedRuntime: string
-  riskLevel: "low" | "medium" | "high"
+  steps: { id: string; name: string; description: string; type: "task" }[]
+  requiredConnectors: { id: string; name: string; connected: boolean | null }[]
+  approvalGates: { stepId: string; reason: string; required: boolean | null }[]
+  estimatedRuntime: string | null
+  riskLevel: string | null
   successMetric: string
 }
+const CATEGORIES = [
+  "marketing",
+  "sales",
+  "support",
+  "finance",
+  "reporting",
+  "operations",
+]
+const selectClass =
+  "min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
 
-interface GoalWorkflowWizardProps {
+export function GoalWorkflowWizard({
+  open,
+  onOpenChange,
+  onBuildWorkflow,
+  onGoalSaved,
+}: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onBuildWorkflow?: (plan: GeneratedPlan) => void
+  onBuildWorkflow?: (plan: Plan) => void
   onGoalSaved?: () => void
-}
-
-const goalCategories: GoalCategory[] = [
-  {
-    id: "marketing",
-    label: "Marketing & Campaigns",
-    icon: Send,
-    color: "bg-pink-500/20 text-pink-400 border-pink-500/30",
-    examples: ["Launch reactivation campaign", "Create weekly newsletter", "Segment audience"],
-  },
-  {
-    id: "sales",
-    label: "Sales & Revenue",
-    icon: TrendingUp,
-    color: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
-    examples: ["Qualify new leads", "Follow up on opportunities", "Route leads to reps"],
-  },
-  {
-    id: "support",
-    label: "Customer support",
-    icon: HelpCircle,
-    color: "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30",
-    examples: ["Monitor ticket trends", "Escalate high-priority issues", "Summarize support data"],
-  },
-  {
-    id: "finance",
-    label: "Finance & Billing",
-    icon: CreditCard,
-    color: "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30",
-    examples: ["Reduce overdue invoices", "Process refunds", "Generate billing reports"],
-  },
-  {
-    id: "reporting",
-    label: "Reports & Analytics",
-    icon: BarChart3,
-    color: "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30",
-    examples: ["Weekly executive summary", "Monthly performance report", "Trend analysis"],
-  },
-  {
-    id: "operations",
-    label: "Operations & Data",
-    icon: Database,
-    color: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border-cyan-500/30",
-    examples: ["Sync customer data", "Clean duplicate records", "Archive old data"],
-  },
-]
-
-const WIZARD_CATEGORY_MAP: Record<string, Connector["category"]> = {
-  "CRM / Marketing": "crm",
-  "Sales / Prospecting": "crm",
-  "Payments / Finance": "finance",
-  "Communication": "comms",
-  "DevOps / Incidents": "knowledge",
-  "Operations / Workflow": "knowledge",
-  "Customer Support": "support",
-  "HR / People": "knowledge",
-  "Storage / Dev / Infra": "analytics",
-}
-
-const availableConnectors: Connector[] = CONNECTOR_CATALOG.map((entry) => ({
-  id: entry.vendorKey,
-  name: entry.type,
-  icon: entry.type.slice(0, 1).toUpperCase(),
-  category: WIZARD_CATEGORY_MAP[entry.category] ?? "knowledge",
-  connected: entry.shipped === true,
-}))
-
-const planningStages = [
-  { id: "understanding", label: "Understanding goal", icon: GitBranch },
-  { id: "data", label: "Identifying required data", icon: Database },
-  { id: "connectors", label: "Mapping connectors", icon: Plug },
-  { id: "agents", label: "Selecting agents", icon: Bot },
-  { id: "workflow", label: "Creating workflow steps", icon: Workflow },
-  { id: "controls", label: "Adding review controls", icon: Shield },
-  { id: "deliverables", label: "Preparing deliverables", icon: FileText },
-]
-
-function connectorFromId(id: string): Connector {
-  const catalogEntry = CONNECTOR_CATALOG.find(
-    (entry) => entry.vendorKey === id || entry.type === id
-  )
-  const label = catalogEntry?.vendorKey ?? id
-  return {
-    id: label,
-    name: label.replace(/_/g, " "),
-    icon: label.slice(0, 1).toUpperCase(),
-    category: "crm",
-    connected: Boolean(catalogEntry),
-    required: true,
-  }
-}
-
-function mapApiPlanToGeneratedPlan(
-  payload: Record<string, unknown>,
-  goalSummary: string,
-  metric: string
-): GeneratedPlan {
-  const proposedSteps = (payload.proposedSteps ??
-    (payload.goalPlan as { proposedSteps?: unknown[] } | undefined)?.proposedSteps ??
-    []) as Array<Record<string, unknown>>
-  const requiredConnectorIds = (payload.requiredConnectors ?? []) as string[]
-  const approvalGatesRaw = (payload.approvalGates ?? []) as Array<Record<string, unknown>>
-  const estimatedImpact = (payload.estimatedImpact ?? {}) as Record<string, unknown>
-
-  const steps: ProposedStep[] = proposedSteps.map((step, index) => ({
-    id: String(step.id ?? `step-${index + 1}`),
-    name: String(step.title ?? step.name ?? `Step ${index + 1}`),
-    description: String(step.title ?? step.name ?? `Step ${index + 1}`),
-    type: "task",
-    riskLevel: "medium",
-  }))
-
-  const approvalGates = approvalGatesRaw.map((gate, index) => ({
-    stepId: String(gate.stepId ?? steps[index]?.id ?? `step-${index + 1}`),
-    reason: String(gate.phase ?? gate.reason ?? "Approval required"),
-  }))
-
-  return {
-    goalSummary,
-    steps: steps.length
-      ? steps
-      : [
-          {
-            id: "step-1",
-            name: goalSummary,
-            description: goalSummary,
-            type: "task",
-            riskLevel: "medium",
-          },
-        ],
-    requiredConnectors: requiredConnectorIds.map(connectorFromId),
-    agents: [],
-    approvalGates,
-    estimatedRuntime: "15-30 minutes",
-    riskLevel: "medium",
-    successMetric:
-      metric ||
-      String(estimatedImpact.expectedLift ?? "Define a measurable success metric"),
-  }
-}
-
-export function GoalWorkflowWizard({ open, onOpenChange, onBuildWorkflow, onGoalSaved }: GoalWorkflowWizardProps) {
+}) {
   const [step, setStep] = useState(1)
-  const [isPlanning, setIsPlanning] = useState(false)
-  const [planningStage, setPlanningStage] = useState(0)
-  const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null)
+  const [objective, setObjective] = useState("")
+  const [category, setCategory] = useState("")
+  const [department, setDepartment] = useState("")
+  const [priority, setPriority] = useState("medium")
+  const [frequency, setFrequency] = useState("once")
+  const [metric, setMetric] = useState("")
+  const [systems, setSystems] = useState<string[]>([])
+  const [plan, setPlan] = useState<Plan | null>(null)
+  const [busy, setBusy] = useState<"save" | "plan" | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [goalId, setGoalId] = useState<string | null>(null)
-  const [planError, setPlanError] = useState<string | null>(null)
-  
-  // Step 1: Goal definition
-  const [goalText, setGoalText] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium")
-  const [frequency, setFrequency] = useState<"once" | "daily" | "weekly" | "monthly">("once")
-  
-  // Step 2: Business context
-  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null)
-  const [selectedConnectors, setSelectedConnectors] = useState<string[]>([])
-  const [successMetric, setSuccessMetric] = useState("")
-
-  // Reset when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setTimeout(() => {
-        setStep(1)
-        setIsPlanning(false)
-        setPlanningStage(0)
-        setGeneratedPlan(null)
-        setGoalId(null)
-        setPlanError(null)
-        setGoalText("")
-        setSelectedCategory(null)
-        setPriority("medium")
-        setFrequency("once")
-        setSelectedDepartment(null)
-        setSelectedConnectors([])
-        setSuccessMetric("")
-      }, 300)
-    }
-  }, [open])
-
-  const buildGoalPayload = (status: string) => ({
-    objective: goalText.trim(),
-    category: selectedCategory,
-    priority,
-    frequency,
-    department: selectedDepartment,
-    connectedSystems: selectedConnectors,
-    successMetrics: successMetric ? { primary: successMetric } : {},
-    status,
-  })
-
-  const persistGoal = async (status = "draft"): Promise<string> => {
-    if (goalId) {
-      const patchResponse = await apiFetch(`/api/goals/${goalId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildGoalPayload(status)),
-      })
-      if (!patchResponse.ok) {
-        const body = (await patchResponse.json().catch(() => ({}))) as { error?: string }
-        throw new Error(body.error ?? `Failed to update goal (${patchResponse.status})`)
-      }
-      return goalId
-    }
-
-    const createResponse = await apiFetch("/api/goals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildGoalPayload(status)),
-    })
-    if (!createResponse.ok) {
-      const body = (await createResponse.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? `Failed to create goal (${createResponse.status})`)
-    }
-    const payload = (await createResponse.json()) as { goal?: { id?: string } }
-    const createdId = payload.goal?.id
-    if (!createdId) {
-      throw new Error("Goal was created without an id")
-    }
-    setGoalId(createdId)
-    return createdId
+  const persistedId = useRef<string | null>(null)
+  const lock = useRef(false)
+  const wasOpen = useRef(false)
+  const {
+    data,
+    error: connectorError,
+    isLoading: connectorLoading,
+    mutate,
+  } = useSWR(open ? "goals/create/connectors" : null, () =>
+    connectorsApi.list(),
+  )
+  const connections = data?.connectors ?? []
+  const connectionState = (vendor: string): boolean | null => {
+    if (!data || connectorError) return null
+    return connections.some(
+      (c) =>
+        [c.vendor, c.type, c.id].some(
+          (v) => v?.toLowerCase() === vendor.toLowerCase(),
+        ) && c.status === "active",
+    )
   }
-
-  const handleGeneratePlan = async () => {
-    setStep(3)
-    setIsPlanning(true)
-    setPlanError(null)
-
-    const animation = (async () => {
-      for (let i = 0; i < planningStages.length; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 450))
-        setPlanningStage(i + 1)
-      }
-    })()
-
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      setStep(1)
+      setObjective("")
+      setCategory("")
+      setDepartment("")
+      setPriority("medium")
+      setFrequency("once")
+      setMetric("")
+      setSystems([])
+      setPlan(null)
+      setError(null)
+      setGoalId(null)
+      persistedId.current = null
+    }
+    wasOpen.current = open
+  }, [open])
+  function close(next: boolean) {
+    if (!lock.current) onOpenChange(next)
+  }
+  async function persist() {
+    const id = persistedId.current
+    const response = await apiFetch(id ? `/api/goals/${id}` : "/api/goals", {
+      method: id ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        objective: objective.trim(),
+        category: category || null,
+        priority,
+        frequency,
+        department: department.trim() || null,
+        connectedSystems: systems,
+        successMetrics: metric.trim() ? { primary: metric.trim() } : {},
+        status: "draft",
+      }),
+    })
+    if (!response.ok)
+      throw new Error(
+        "Could not save this goal. Your edits are retained; try again.",
+      )
+    const result = (await response.json()) as { goal?: { id?: string } }
+    const saved = result.goal?.id || id
+    if (!saved)
+      throw new Error(
+        "The server did not return a saved goal. Check the goal list before trying again.",
+      )
+    persistedId.current = saved
+    setGoalId(saved)
+    onGoalSaved?.()
+    return saved
+  }
+  async function run(kind: "save" | "plan") {
+    if (lock.current || !objective.trim()) return
+    lock.current = true
+    setBusy(kind)
+    setError(null)
     try {
-      const savedGoalId = await persistGoal("active")
-      const planResponse = await apiFetch(`/api/goals/${savedGoalId}/generate-plan`, {
+      const id = await persist()
+      if (kind === "save") {
+        toast.success("Goal saved as draft")
+        lock.current = false
+        close(false)
+        return
+      }
+      const response = await apiFetch(`/api/goals/${id}/generate-plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          objective: goalText.trim(),
+          objective: objective.trim(),
           context: [
-            selectedDepartment ? `Department: ${selectedDepartment}` : null,
-            selectedConnectors.length ? `Connectors: ${selectedConnectors.join(", ")}` : null,
-            successMetric ? `Success metric: ${successMetric}` : null,
+            department.trim() ? `Department: ${department.trim()}` : "",
+            systems.length ? `Requested systems: ${systems.join(", ")}` : "",
+            metric.trim() ? `Success metric: ${metric.trim()}` : "",
           ]
             .filter(Boolean)
             .join("\n"),
-          constraints: successMetric ? [successMetric] : [],
+          constraints: metric.trim() ? [metric.trim()] : [],
         }),
       })
-
-      if (!planResponse.ok) {
-        const body = (await planResponse.json().catch(() => ({}))) as { error?: string; detail?: string }
-        throw new Error(body.error ?? body.detail ?? `Plan generation failed (${planResponse.status})`)
-      }
-
-      const planPayload = (await planResponse.json()) as Record<string, unknown>
-      await animation
-      setGeneratedPlan(mapApiPlanToGeneratedPlan(planPayload, goalText.trim(), successMetric))
-      onGoalSaved?.()
-      setIsPlanning(false)
-      setStep(4)
-    } catch (error) {
-      await animation
-      const message = error instanceof Error ? error.message : "Failed to generate plan"
-      setPlanError(message)
-      setIsPlanning(false)
-      setStep(2)
-      toast.error(message)
+      if (!response.ok)
+        throw new Error(
+          "Your goal is saved as a draft. Plan generation failed; your context is retained for retry.",
+        )
+      const payload = (await response.json()) as Record<string, unknown>
+      const source = (payload.goalPlan ?? payload) as Record<string, unknown>
+      const steps = Array.isArray(source.proposedSteps)
+        ? (source.proposedSteps as Record<string, unknown>[])
+        : []
+      const connectors = Array.isArray(source.requiredConnectors)
+        ? source.requiredConnectors.filter(
+            (v): v is string => typeof v === "string",
+          )
+        : []
+      const gates = Array.isArray(source.approvalGates)
+        ? (source.approvalGates as Record<string, unknown>[])
+        : []
+      setPlan({
+        goalSummary: objective.trim(),
+        steps: steps.map((s, i) => ({
+          id: String(s.id ?? i),
+          name: String(s.title ?? s.name ?? "Unnamed proposed step"),
+          description: String(s.description ?? s.title ?? s.name ?? ""),
+          type: "task",
+        })),
+        requiredConnectors: connectors.map((id) => ({
+          id,
+          name: id.replace(/_/g, " "),
+          connected: connectionState(id),
+        })),
+        approvalGates: gates.map((g, i) => ({
+          stepId: String(g.stepId ?? i),
+          reason: String(g.reason ?? g.phase ?? "Approval policy"),
+          required: typeof g.required === "boolean" ? g.required : null,
+        })),
+        estimatedRuntime:
+          typeof source.estimatedRuntime === "string"
+            ? source.estimatedRuntime
+            : null,
+        riskLevel:
+          typeof source.riskLevel === "string" ? source.riskLevel : null,
+        successMetric: metric.trim(),
+      })
+      setStep(3)
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not complete this request. Try again.",
+      )
+    } finally {
+      lock.current = false
+      setBusy(null)
     }
   }
-
-  const handleSaveDraft = async () => {
-    try {
-      await persistGoal("draft")
-      onGoalSaved?.()
-      toast.success("Goal saved as draft")
-      onOpenChange(false)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save goal")
-    }
-  }
-
-  const handleBuildWorkflow = () => {
-    if (generatedPlan && onBuildWorkflow) {
-      onBuildWorkflow(generatedPlan)
-    }
-    onOpenChange(false)
-  }
-
-  const handleRegeneratePlan = () => {
-    setGeneratedPlan(null)
-    setIsPlanning(false)
-    setPlanningStage(0)
-    handleGeneratePlan()
-  }
-
-  const getStepTypeIcon = (type: ProposedStep["type"]) => {
-    switch (type) {
-      case "source": return Database
-      case "agent": return Bot
-      case "task": return FileText
-      case "connector": return Plug
-      case "approval": return Shield
-      case "decision": return GitBranch
-      case "council": return Users
-      default: return Zap
-    }
-  }
-
-  const getStepTypeColor = (type: ProposedStep["type"]) => {
-    switch (type) {
-      case "source": return "bg-slate-500/20 text-slate-400 border-slate-500/30"
-      case "agent": return "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
-      case "task": return "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-      case "connector": return "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
-      case "approval": return "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
-      case "decision": return "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30"
-      case "council": return "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30"
-      default: return "bg-muted text-muted-foreground"
-    }
-  }
-
-  const getRiskColor = (risk: "low" | "medium" | "high") => {
-    switch (risk) {
-      case "low": return "text-emerald-700 dark:text-emerald-400"
-      case "medium": return "text-amber-700 dark:text-amber-400"
-      case "high": return "text-red-600 dark:text-red-400"
-    }
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-[color:var(--g-signal-surface)] border border-[color:var(--g-emerald)]/30">
-                <Target className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg">Create from Goal</DialogTitle>
-                <DialogDescription>
-                  {step === 1 && "Define your business outcome"}
-                  {step === 2 && "Select your business context"}
-                  {step === 3 && "Gravitre is designing your workflow"}
-                  {step === 4 && "Review your generated plan"}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          
-          {/* Progress indicator */}
-          <div className="flex items-center gap-2 mt-4">
-            {[1, 2, 3, 4].map((s) => (
-              <div key={s} className="flex items-center gap-2 flex-1">
-                <div className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition-all",
-                  step > s ? "bg-emerald-500 text-white" :
-                  step === s ? "bg-[color:var(--g-emerald)] text-white" :
-                  "bg-secondary text-muted-foreground"
-                )}>
-                  {step > s ? <CheckCircle className="h-4 w-4" /> : s}
-                </div>
-                {s < 4 && (
-                  <div className={cn(
-                    "flex-1 h-0.5 rounded-full transition-all",
-                    step > s ? "bg-emerald-500" : "bg-border"
-                  )} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <AnimatePresence mode="wait">
-            {/* Step 1: Define Goal */}
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                {/* Goal input */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    What do you want to achieve?
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent
+        className="flex max-h-[90dvh] max-w-3xl flex-col overflow-hidden"
+        data-composition="create"
+      >
+        <DialogHeader>
+          <p className={TYPE.eyebrow}>Create / Business objective</p>
+          <DialogTitle className="font-[family-name:var(--font-space-grotesk)]">
+            Start with the outcome
+          </DialogTitle>
+          <DialogDescription>
+            Define success, choose context and review a proposed plan before
+            building or executing work.
+          </DialogDescription>
+        </DialogHeader>
+        <ol
+          aria-label="Goal creation steps"
+          className="flex gap-4 border-b border-border pb-3 text-sm"
+        >
+          {["Objective", "Context", "Review"].map((label, i) => (
+            <li
+              key={label}
+              aria-current={step === i + 1 ? "step" : undefined}
+              className={cn(
+                step === i + 1
+                  ? "font-medium text-[color:var(--g-brand-active)]"
+                  : "text-muted-foreground",
+              )}
+            >
+              {i + 1}. {label}
+            </li>
+          ))}
+        </ol>
+        <div className="min-h-0 overflow-y-auto space-y-5 pr-1">
+          <fieldset
+            disabled={busy !== null}
+            className="min-w-0 space-y-5 [&_[data-slot=button]]:min-h-11 [&_input]:min-h-11"
+          >
+            {step === 1 ? (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="goal-objective" className={TYPE.body}>
+                    What outcome do you want?
                   </label>
                   <Textarea
-                    value={goalText}
-                    onChange={(e) => setGoalText(e.target.value)}
-                    placeholder="e.g., Launch a reactivation campaign for dormant leads, Monitor high-priority support tickets and escalate risks, Create weekly revenue summary for leadership..."
-                    className="min-h-[100px] text-base bg-secondary/50 border-border resize-none"
+                    id="goal-objective"
+                    rows={4}
+                    value={objective}
+                    onChange={(e) => setObjective(e.target.value)}
+                    placeholder="Reduce overdue invoices and define how we’ll measure the change"
                   />
                 </div>
-
-                {/* Category selection */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-3 block">
-                    Goal category
+                <div className="space-y-2">
+                  <label htmlFor="goal-category" className={TYPE.meta}>
+                    Category
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {goalCategories.map((cat) => {
-                      const IconComponent = cat.icon
-                      return (
-                        <button
-                          key={cat.id}
-                          onClick={() => setSelectedCategory(cat.id)}
-                          className={cn(
-                            "flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all",
-                            selectedCategory === cat.id
-                              ? `${cat.color} border-current`
-                              : "bg-secondary/30 border-border hover:bg-secondary/50"
-                          )}
-                        >
-                          <IconComponent className="h-4 w-4 shrink-0" />
-                          <span className="text-sm font-medium">{cat.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Priority and frequency */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-2 block">Priority</label>
-                    <div className="flex gap-2">
-                      {(["low", "medium", "high"] as const).map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => setPriority(p)}
-                          className={cn(
-                            "flex-1 py-2 px-3 rounded-lg border text-sm font-medium capitalize transition-all",
-                            priority === p
-                              ? p === "low" ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" :
-                                p === "medium" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30" :
-                                "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
-                              : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
-                          )}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-2 block">Frequency</label>
-                    <div className="flex gap-2">
-                      {(["once", "daily", "weekly", "monthly"] as const).map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => setFrequency(f)}
-                          className={cn(
-                            "flex-1 py-2 px-2 rounded-lg border text-xs font-medium capitalize transition-all",
-                            frequency === f
-                              ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30"
-                              : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
-                          )}
-                        >
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Example goals */}
-                {selectedCategory && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    className="p-3 rounded-lg bg-[color:var(--g-emerald-pale)] border border-[color:var(--g-emerald)]/20"
+                  <select
+                    id="goal-category"
+                    className={selectClass}
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
                   >
-                    <p className="text-xs text-[color:var(--g-emerald-deep)] mb-2">Example goals for this category:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {goalCategories.find(c => c.id === selectedCategory)?.examples.map((ex, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setGoalText(ex)}
-                          className="text-xs text-muted-foreground hover:text-foreground bg-secondary/50 px-2.5 py-1 rounded-full transition-colors"
-                        >
-                          {ex}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-
-            {/* Step 2: Business Context */}
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                {/* Department selection */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-3 block">
-                    Which department owns this?
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["Marketing", "Sales", "Support", "Finance", "Operations", "Executive"].map((dept) => (
-                      <button
-                        key={dept}
-                        onClick={() => setSelectedDepartment(dept)}
-                        className={cn(
-                          "py-2.5 px-3 rounded-lg border text-sm font-medium transition-all",
-                          selectedDepartment === dept
-                            ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] border-[color:var(--g-emerald)]/30"
-                            : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
-                        )}
-                      >
-                        {dept}
-                      </button>
+                    <option value="">Choose a category (optional)</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
-
-                {/* Connector selection */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-3 block">
-                    Which systems should be used?
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {availableConnectors.map((conn) => {
-                      const isSelected = selectedConnectors.includes(conn.id)
-                      return (
-                        <button
-                          key={conn.id}
-                          onClick={() => {
-                            setSelectedConnectors(prev =>
-                              isSelected
-                                ? prev.filter(c => c !== conn.id)
-                                : [...prev, conn.id]
-                            )
-                          }}
-                          className={cn(
-                            "flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all",
-                            isSelected
-                              ? "bg-emerald-500/10 border-emerald-500/30"
-                              : "bg-secondary/30 border-border hover:bg-secondary/50"
-                          )}
-                        >
-                          <div className={cn(
-                            "h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold",
-                            isSelected ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400" : "bg-secondary text-muted-foreground"
-                          )}>
-                            {conn.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-foreground">{conn.name}</div>
-                            <div className="flex items-center gap-1">
-                              {conn.connected ? (
-                                <span className="text-[10px] text-emerald-700 dark:text-emerald-400">Connected</span>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground">Not connected</span>
-                              )}
-                            </div>
-                          </div>
-                          {isSelected && <CheckCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Success metric */}
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    How will you measure success? <span className="text-muted-foreground">(optional)</span>
-                  </label>
-                  <Input
-                    value={successMetric}
-                    onChange={(e) => setSuccessMetric(e.target.value)}
-                    placeholder="e.g., Email open rate > 20%, Response time < 2 hours, Revenue increase > 10%"
-                    className="bg-secondary/50 border-border"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 3: AI Planning */}
-            {step === 3 && isPlanning && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-12"
-              >
-                {/* Animated brain icon */}
-                <div className="relative mb-8">
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-[color:var(--g-emerald-pale)] blur-xl"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                  <motion.div
-                    className="relative h-20 w-20 rounded-full bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-[color:var(--g-signal-surface)] border border-[color:var(--g-emerald)]/30 flex items-center justify-center"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                  >
-                    <GitBranch className="h-10 w-10 text-[color:var(--g-emerald-deep)]" />
-                  </motion.div>
-                </div>
-
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Designing your workflow
-                </h3>
-                <p className="text-sm text-muted-foreground mb-8 text-center max-w-md">
-                  Gravitre is analyzing your goal and creating an optimized execution plan
-                </p>
-
-                {/* Planning stages */}
-                <div className="w-full max-w-sm space-y-2">
-                  {planningStages.map((stage, idx) => {
-                    const StageIcon = stage.icon
-                    const isComplete = planningStage > idx
-                    const isActive = planningStage === idx
-                    
-                    return (
-                      <motion.div
-                        key={stage.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg transition-all",
-                          isComplete ? "bg-emerald-500/10" :
-                          isActive ? "bg-[color:var(--g-emerald-pale)]" :
-                          "bg-secondary/30"
-                        )}
-                      >
-                        <div className={cn(
-                          "h-8 w-8 rounded-full flex items-center justify-center transition-all",
-                          isComplete ? "bg-emerald-500 text-white" :
-                          isActive ? "bg-[color:var(--g-emerald)] text-white" :
-                          "bg-secondary text-muted-foreground"
-                        )}>
-                          {isComplete ? (
-                            <CheckCircle className="h-4 w-4" />
-                          ) : isActive ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <StageIcon className="h-4 w-4" />
-                          )}
-                        </div>
-                        <span className={cn(
-                          "text-sm font-medium",
-                          isComplete ? "text-emerald-700 dark:text-emerald-400" :
-                          isActive ? "text-[color:var(--g-emerald-deep)]" :
-                          "text-muted-foreground"
-                        )}>
-                          {stage.label}
-                        </span>
-                        {isActive && (
-                          <motion.div
-                            className="ml-auto flex gap-1"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                          >
-                            {[0, 1, 2].map((i) => (
-                              <motion.div
-                                key={i}
-                                className="h-1.5 w-1.5 rounded-full bg-[color:var(--g-emerald)]"
-                                animate={{ opacity: [0.3, 1, 0.3] }}
-                                transition={{ duration: 0.8, delay: i * 0.2, repeat: Infinity }}
-                              />
-                            ))}
-                          </motion.div>
-                        )}
-                      </motion.div>
-                    )
-                  })}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 4: Plan Review */}
-            {step === 4 && generatedPlan && (
-              <motion.div
-                key="step4"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                {/* Goal summary */}
-                <div className="p-4 rounded-xl bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-[color:var(--g-signal-surface)] border border-[color:var(--g-emerald)]/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Target className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
-                    <span className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Goal</span>
-                  </div>
-                  <p className="text-foreground font-medium">{generatedPlan.goalSummary}</p>
-                  <div className="flex items-center gap-4 mt-3">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" />
-                      {generatedPlan.estimatedRuntime}
-                    </div>
-                    <div className={cn("flex items-center gap-1.5 text-xs", getRiskColor(generatedPlan.riskLevel))}>
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      {generatedPlan.riskLevel} risk
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      {generatedPlan.successMetric}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Proposed steps */}
-                <div>
-                  <h4 className="text-sm font-medium text-foreground mb-3">Proposed workflow steps</h4>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    {generatedPlan.steps.map((stepItem, idx) => {
-                      const StepIcon = getStepTypeIcon(stepItem.type)
-                      return (
-                        <div
-                          key={stepItem.id}
-                          className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30 border border-border hover:bg-secondary/50 transition-colors group"
-                        >
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs font-medium text-muted-foreground w-5">{idx + 1}</span>
-                            <div className={cn(
-                              "h-8 w-8 rounded-lg flex items-center justify-center border",
-                              getStepTypeColor(stepItem.type)
-                            )}>
-                              <StepIcon className="h-4 w-4" />
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm text-foreground">{stepItem.name}</span>
-                              {stepItem.requiresApproval && (
-                                <Badge variant="outline" className="text-[9px] py-0 h-4 bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30">
-                                  <Lock className="h-2.5 w-2.5 mr-1" />
-                                  Approval
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">{stepItem.description}</p>
-                            <div className="flex items-center gap-3 mt-2">
-                              {stepItem.agent && (
-                                <span className="text-[10px] text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                                  <Bot className="h-3 w-3" />
-                                  {stepItem.agent}
-                                </span>
-                              )}
-                              {stepItem.connector && (
-                                <span className="text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                                  <Plug className="h-3 w-3" />
-                                  {stepItem.connector}
-                                </span>
-                              )}
-                              {stepItem.riskLevel && (
-                                <span className={cn("text-[10px] flex items-center gap-1", getRiskColor(stepItem.riskLevel))}>
-                                  <AlertTriangle className="h-3 w-3" />
-                                  {stepItem.riskLevel} risk
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <button className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-secondary transition-all">
-                            <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-                          </button>
-                        </div>
-                      )
-                    })}
+                    <label htmlFor="goal-priority">Priority</label>
+                    <select
+                      id="goal-priority"
+                      className={selectClass}
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                    >
+                      {["low", "medium", "high"].map((v) => (
+                        <option key={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="goal-frequency">Cadence</label>
+                    <select
+                      id="goal-frequency"
+                      className={selectClass}
+                      value={frequency}
+                      onChange={(e) => setFrequency(e.target.value)}
+                    >
+                      {["once", "daily", "weekly", "monthly"].map((v) => (
+                        <option key={v}>{v}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-
-                {/* Required connectors */}
-                <div>
-                  <h4 className="text-sm font-medium text-foreground mb-3">Required connectors</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {generatedPlan.requiredConnectors.map((conn) => (
-                      <div
-                        key={conn.id}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg border",
-                          conn.connected
-                            ? "bg-emerald-500/10 border-emerald-500/30"
-                            : "bg-amber-500/10 border-amber-500/30"
-                        )}
+              </>
+            ) : null}
+            {step === 2 ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="goal-department">
+                      Department (optional)
+                    </label>
+                    <Input
+                      id="goal-department"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="goal-metric">
+                      Success measure (optional)
+                    </label>
+                    <Input
+                      id="goal-metric"
+                      value={metric}
+                      onChange={(e) => setMetric(e.target.value)}
+                      placeholder="For example: reduce overdue balance by 10%"
+                    />
+                  </div>
+                </div>
+                <section className="space-y-3">
+                  <h3 className={TYPE.sectionTitle}>
+                    Systems the plan may use
+                  </h3>
+                  <p className={TYPE.bodyMuted}>
+                    These selections describe planning context. They do not
+                    connect an app or grant tool permissions.
+                  </p>
+                  {connectorLoading ? (
+                    <p role="status">Loading workspace connections…</p>
+                  ) : null}
+                  {connectorError ? (
+                    <div role="alert">
+                      <p>
+                        Connection status is unavailable. You can still describe
+                        the requested systems.
+                      </p>
+                      <Button variant="outline" onClick={() => void mutate()}>
+                        Retry connections
+                      </Button>
+                    </div>
+                  ) : null}
+                  <div className="grid gap-x-4 sm:grid-cols-2">
+                    {CONNECTOR_CATALOG.map((c) => (
+                      <label
+                        key={c.vendorKey}
+                        className="flex min-h-11 items-center gap-3 border-b border-border py-2 text-sm"
                       >
-                        <div className="h-6 w-6 rounded flex items-center justify-center bg-secondary text-xs font-bold">
-                          {conn.icon}
-                        </div>
-                        <span className="text-sm font-medium text-foreground">{conn.name}</span>
-                        {conn.connected ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
-                        )}
-                      </div>
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-[color:var(--g-brand)]"
+                          checked={systems.includes(c.vendorKey)}
+                          onChange={(e) =>
+                            setSystems((prev) =>
+                              e.target.checked
+                                ? [...prev, c.vendorKey]
+                                : prev.filter((id) => id !== c.vendorKey),
+                            )
+                          }
+                        />
+                        <span className="min-w-0 flex-1">{c.type}</span>
+                        <span className={TYPE.meta}>
+                          {connectionState(c.vendorKey) === null
+                            ? "Not reported"
+                            : connectionState(c.vendorKey)
+                              ? "Connected"
+                              : "Not connected"}
+                        </span>
+                      </label>
                     ))}
                   </div>
-                  {generatedPlan.requiredConnectors.some(c => !c.connected) && (
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      Some connectors need to be connected before activation
+                </section>
+              </>
+            ) : null}
+            {step === 3 && plan ? (
+              <>
+                <div className="border-l-2 border-[color:var(--g-brand)] pl-4">
+                  <p className={TYPE.eyebrow}>Proposed plan</p>
+                  <h3 className={cn(TYPE.sectionTitle, "mt-1")}>
+                    {plan.goalSummary}
+                  </h3>
+                  <p className={cn(TYPE.bodyMuted, "mt-2")}>
+                    The goal is saved as a draft. This generated proposal is
+                    shown in this session; generating it does not save a
+                    workflow or start execution.
+                  </p>
+                </div>
+                <dl className="grid grid-cols-2 gap-4 border-y border-border py-3 text-sm">
+                  <div>
+                    <dt className={TYPE.meta}>Estimated runtime</dt>
+                    <dd>{plan.estimatedRuntime ?? "Not reported"}</dd>
+                  </div>
+                  <div>
+                    <dt className={TYPE.meta}>Reported risk</dt>
+                    <dd>{plan.riskLevel ?? "Not reported"}</dd>
+                  </div>
+                </dl>
+                {plan.steps.length ? (
+                  <ol className="divide-y divide-border">
+                    {plan.steps.map((s, i) => (
+                      <li key={s.id} className="flex gap-3 py-3">
+                        <span className={TYPE.eyebrow}>
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium">{s.name}</p>
+                          {s.description !== s.name ? (
+                            <p className={TYPE.bodyMuted}>{s.description}</p>
+                          ) : null}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p>Proposed steps not reported.</p>
+                )}
+                <section className="space-y-2">
+                  <h4 className={TYPE.eyebrow}>Required systems</h4>
+                  {plan.requiredConnectors.length ? (
+                    plan.requiredConnectors.map((c) => (
+                      <p key={c.id} className="text-sm">
+                        {c.name} ·{" "}
+                        {c.connected === null
+                          ? "Connection not reported"
+                          : c.connected
+                            ? "Connected"
+                            : "Not connected"}
+                      </p>
+                    ))
+                  ) : (
+                    <p className={TYPE.bodyMuted}>
+                      No required systems returned.
                     </p>
                   )}
-                </div>
-
-                {/* Approval gates */}
-                {generatedPlan.approvalGates.length > 0 && (
-                  <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Shield className="h-4 w-4 text-red-600 dark:text-red-400" />
-                      <span className="text-sm font-medium text-foreground">Human approval required</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      This workflow includes steps that require human confirmation before execution:
+                </section>
+                <section className="space-y-2">
+                  <h4 className={TYPE.eyebrow}>Approval policy</h4>
+                  {plan.approvalGates.length ? (
+                    plan.approvalGates.map((g) => (
+                      <p key={g.stepId} className="text-sm">
+                        {g.reason} ·{" "}
+                        {g.required === null
+                          ? "Requirement not reported"
+                          : g.required
+                            ? "Required"
+                            : "Not required by this proposal"}
+                      </p>
+                    ))
+                  ) : (
+                    <p className={TYPE.bodyMuted}>
+                      Approval requirements not reported.
                     </p>
-                    <div className="space-y-1">
-                      {generatedPlan.approvalGates.map((gate) => (
-                        <div key={gate.stepId} className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
-                          <Lock className="h-3 w-3" />
-                          {gate.reason}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Suggestions */}
-                <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Workflow className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-foreground">Smart suggestions</span>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                      Add Slack notification when campaign is scheduled
-                    </p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                      Track email open rate as success metric
-                    </p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                      Use Agent Council for content review decisions
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  )}
+                </section>
+              </>
+            ) : null}
+          </fieldset>
+          {busy ? (
+            <p role="status" className="flex items-center gap-2 text-sm">
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+              {busy === "plan"
+                ? "Waiting for the planner’s response…"
+                : "Saving goal…"}
+            </p>
+          ) : null}
+          {error ? (
+            <p
+              role="alert"
+              className="border-l-2 border-destructive pl-3 text-sm text-destructive"
+            >
+              {error}
+            </p>
+          ) : null}
         </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 [&_[data-slot=button]]:min-h-11 [&_a]:min-h-11">
           <div>
-            {step > 1 && step < 4 && (
+            {step > 1 ? (
               <Button
                 variant="ghost"
-                size="sm"
+                disabled={busy !== null}
                 onClick={() => setStep(step - 1)}
-                className="gap-2"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="mr-1 size-4" />
                 Back
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                disabled={busy !== null}
+                onClick={() => close(false)}
+              >
+                Cancel
               </Button>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {step === 1 && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={busy !== null || !objective.trim()}
+              onClick={() => void run("save")}
+            >
+              Save draft
+            </Button>
+            {step === 1 ? (
               <Button
+                disabled={!objective.trim() || busy !== null}
                 onClick={() => setStep(2)}
-                disabled={!goalText.trim()}
-                className="gap-2"
               >
                 Continue
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="ml-1 size-4" />
               </Button>
-            )}
-            {step === 2 && (
-              <Button
-                onClick={handleGeneratePlan}
-                className="gap-2 bg-[color:var(--g-emerald-deep)] hover:bg-[color:var(--g-emerald)]"
-              >
-                <Workflow className="h-4 w-4" />
+            ) : step === 2 ? (
+              <Button disabled={busy !== null} onClick={() => void run("plan")}>
                 Generate plan
               </Button>
-            )}
-            {step === 4 && (
+            ) : (
               <>
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={handleRegeneratePlan}
-                  className="gap-2"
+                  disabled={busy !== null}
+                  onClick={() => void run("plan")}
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  <RefreshCw className="mr-1 size-4" />
                   Regenerate
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveDraft}
-                  className="gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  Save draft
-                </Button>
-                <Button
-                  onClick={handleBuildWorkflow}
-                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Play className="h-4 w-4" />
-                  Build workflow
-                </Button>
+                {onBuildWorkflow && plan ? (
+                  <Button
+                    disabled={busy !== null}
+                    onClick={() => {
+                      onBuildWorkflow(plan)
+                      close(false)
+                    }}
+                  >
+                    Open workflow builder
+                  </Button>
+                ) : goalId ? (
+                  <Button asChild>
+                    <Link
+                      href={`/goals/${goalId}`}
+                      aria-disabled={busy !== null}
+                      tabIndex={busy !== null ? -1 : undefined}
+                      onClick={(event) => {
+                        if (lock.current) event.preventDefault()
+                        else close(false)
+                      }}
+                    >
+                      Open saved goal
+                    </Link>
+                  </Button>
+                ) : null}
               </>
             )}
           </div>

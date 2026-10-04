@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
@@ -52,11 +52,17 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
     <ul className="space-y-2 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
       {blockers.map((blocker) => (
         <li key={blocker.connector} className="flex items-start gap-2">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />
+          <AlertCircle
+            className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+            aria-hidden
+          />
           <div className="flex-1">
             <p>{blocker.reason}</p>
             {blocker.action_url ? (
-              <Link href={blocker.action_url} className="text-primary underline-offset-4 hover:underline">
+              <Link
+                href={blocker.action_url}
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 Connect {blocker.connector}
               </Link>
             ) : null}
@@ -101,7 +107,12 @@ export function InstallSuccessPanel({
     const agentId = entities.agentId || entities.operatorId
     const workflowId = entities.workflowId
     if (typeof agentId === "string" && agentId) {
-      links.push({ label: "Agent", entityType: "agent", entityId: agentId, path: `/agents/${agentId}` })
+      links.push({
+        label: "Agent",
+        entityType: "agent",
+        entityId: agentId,
+        path: `/agents/${agentId}`,
+      })
     }
     if (typeof workflowId === "string" && workflowId) {
       links.push({
@@ -128,7 +139,9 @@ export function InstallSuccessPanel({
           </span>
           <div>
             <p className="text-xs font-semibold text-success/80">
-              {requiresReview ? "Installed · review required" : "Added to your workspace"}
+              {requiresReview
+                ? "Installed · review required"
+                : "Added to your workspace"}
             </p>
             <h3 className="mt-1 font-[family-name:var(--font-space-grotesk)] text-xl font-medium tracking-tight text-foreground">
               {assetTitle} is installed
@@ -136,7 +149,7 @@ export function InstallSuccessPanel({
             <p className="mt-1 text-sm text-muted-foreground">
               {requiresReview
                 ? "Gravitre installed this capability in quarantine. Review and approve it before the skill or declared tools can be used."
-                : `We added it to your Gravitre instance. A confirmation is in your notifications${links.length ? " — jump in below." : "."}`}
+                : `We added it to your Gravitre instance. ${links.length ? "Open the created resources below." : "The server confirmed installation."}`}
             </p>
           </div>
         </div>
@@ -162,11 +175,18 @@ export function InstallSuccessPanel({
                         <Icon className="h-4 w-4 text-foreground" aria-hidden />
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium text-foreground">{link.label}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">{link.path}</span>
+                        <span className="block text-sm font-medium text-foreground">
+                          {link.label}
+                        </span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {link.path}
+                        </span>
                       </span>
                     </span>
-                    <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <ExternalLink
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
                   </Link>
                 </Button>
               )
@@ -214,28 +234,51 @@ export function InstallStepperSheet({
 }) {
   // A new asset or a newly opened sheet starts its own install session.
   // External closes (not just Sheet's close button) must clear prior success.
-  return <InstallStepperSession key={`${asset?.id ?? "none"}:${open ? "open" : "closed"}`} asset={asset} open={open} onOpenChange={onOpenChange} onComplete={onComplete} isAdmin={isAdmin} />
+  return (
+    <InstallStepperSession
+      key={`${asset?.id ?? "none"}:${open ? "open" : "closed"}`}
+      asset={asset}
+      open={open}
+      onOpenChange={onOpenChange}
+      onComplete={onComplete}
+      isAdmin={isAdmin}
+    />
+  )
 }
 
-function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin }: {
+function InstallStepperSession({
+  asset,
+  open,
+  onOpenChange,
+  onComplete,
+  isAdmin,
+}: {
   asset: MarketplaceAssetSummary | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onComplete: () => void
   isAdmin: boolean
 }) {
+  const lock = useRef(false)
   const [step, setStep] = useState<InstallStep>("check")
-  const [installResult, setInstallResult] = useState<MarketplaceAssetInstallResult | null>(null)
+  const [installResult, setInstallResult] =
+    useState<MarketplaceAssetInstallResult | null>(null)
   const [installError, setInstallError] = useState<string | null>(null)
 
-  const checkKey = open && asset ? ["marketplace-install-check", asset.id] : null
-  const { data: check, error: checkError, isLoading: checkLoading, isValidating: checkValidating, mutate: refreshCheck } = useSWR(
-    checkKey,
-    () => marketplaceApi.installCheck(asset!.id),
-    { revalidateOnFocus: false },
-  )
+  const checkKey =
+    open && asset ? ["marketplace-install-check", asset.id] : null
+  const {
+    data: check,
+    error: checkError,
+    isLoading: checkLoading,
+    isValidating: checkValidating,
+    mutate: refreshCheck,
+  } = useSWR(checkKey, () => marketplaceApi.installCheck(asset!.id), {
+    revalidateOnFocus: false,
+  })
 
   const handleOpenChange = (next: boolean) => {
+    if (lock.current) return
     if (!next) {
       setStep("check")
       setInstallResult(null)
@@ -253,15 +296,33 @@ function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin 
         : step
 
   const runInstall = async () => {
-    if (!asset || !isAdmin || !check?.canInstall || checkLoading || checkValidating || checkError || step === "installing") return
+    if (
+      lock.current ||
+      !asset ||
+      !isAdmin ||
+      !check?.canInstall ||
+      checkLoading ||
+      checkValidating ||
+      checkError ||
+      step === "installing"
+    )
+      return
+    lock.current = true
     setInstallError(null)
     setStep("installing")
     try {
       const result = await marketplaceApi.installAsset(asset.slug)
-      if (!result.installed) throw new Error("The server did not confirm installation. Review the requirements and try again.")
+      if (!result.installed)
+        throw new Error(
+          "The server did not confirm installation. Review the requirements and try again.",
+        )
       setInstallResult(result)
       setStep("done")
-      onComplete()
+      try {
+        onComplete()
+      } catch {
+        toast.info("Installed; refresh workspace resources to view the update.")
+      }
       const requiresReview = Boolean(result.entities?.requiresReview)
       toast.success(
         requiresReview
@@ -269,44 +330,65 @@ function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin 
           : `${asset.title} is installed in your workspace`,
       )
     } catch (err) {
-      setInstallError(err instanceof Error ? err.message : "Install failed. Review the requirements and try again.")
+      setInstallError(
+        err instanceof Error
+          ? err.message
+          : "Install failed. Review the requirements and try again.",
+      )
       toastMarketplaceInstallFailure(err, {
         blockerActionUrl: check?.blockers?.[0]?.action_url,
       })
       setStep("check")
       void refreshCheck()
+    } finally {
+      lock.current = false
     }
   }
 
   const checklist = check?.connectorChecklist ?? asset?.connectorChecklist ?? []
   const blockers = check?.blockers ?? []
-  const needsPurchase = asset ? assetRequiresPurchase({
-    ...asset,
-    hasEntitlement: check?.hasEntitlement ?? asset.hasEntitlement,
-    requiresPayment: check?.requiresPayment ?? asset.requiresPayment,
-  }) : false
+  const needsPurchase = asset
+    ? assetRequiresPurchase({
+        ...asset,
+        hasEntitlement: check?.hasEntitlement ?? asset.hasEntitlement,
+        requiresPayment: check?.requiresPayment ?? asset.requiresPayment,
+      })
+    : false
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 border-l border-border/60 bg-[color:var(--g-canvas)] sm:max-w-md">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 [&_[data-slot=button]]:min-h-11 [&_a]:min-h-11 border-l border-border/60 bg-[color:var(--g-canvas)] sm:max-w-md"
+      >
         <SheetHeader className="space-y-2 border-b border-border/50 pb-4">
           <p className="text-xs font-semibold text-muted-foreground">
             Install into workspace
           </p>
-          <SheetTitle className="pr-5 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tracking-tight">{asset?.title ?? "Asset"}</SheetTitle>
+          <SheetTitle className="pr-5 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tracking-tight">
+            {asset?.title ?? "Asset"}
+          </SheetTitle>
           <SheetDescription>
             {asset?.assetType === "capability_package"
               ? "Gravitre will install the reviewed capability snapshot in quarantine for your organization to approve. MCP activation stays separate."
-              : "We’ll provision agents, workflows, and knowledge — then notify you when it’s ready."}
+              : "Review requirements, confirm installation and open the resources returned by the server."}
           </SheetDescription>
         </SheetHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
-          <ol aria-label="Installation progress" className="flex flex-wrap gap-3 text-xs font-semibold text-muted-foreground">
+          <ol
+            aria-label="Installation progress"
+            className="flex flex-wrap gap-3 text-xs font-semibold text-muted-foreground"
+          >
             {(["check", "confirm", "done"] as const).map((id, idx) => (
               <li
                 key={id}
-                aria-current={activeStep === id || (step === "installing" && id === "confirm") ? "step" : undefined}
+                aria-current={
+                  activeStep === id ||
+                  (step === "installing" && id === "confirm")
+                    ? "step"
+                    : undefined
+                }
                 className={cn(
                   "flex items-center gap-1.5",
                   (activeStep === id ||
@@ -318,7 +400,8 @@ function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin 
                 <span
                   className={cn(
                     "grid h-6 w-6 place-items-center rounded-full border text-[10px]",
-                    activeStep === id || (activeStep === "done" && id === "done")
+                    activeStep === id ||
+                      (activeStep === "done" && id === "done")
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border",
                   )}
@@ -329,38 +412,83 @@ function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin 
                     idx + 1
                   )}
                 </span>
-                {{ check: "Check apps", confirm: "Confirm", done: "Installed" }[id]}
+                {
+                  {
+                    check: "Check apps",
+                    confirm: "Confirm",
+                    done: "Installed",
+                  }[id]
+                }
               </li>
             ))}
           </ol>
 
           {checkLoading ? (
             <div role="status" className="grid place-items-center gap-3 py-10">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
-              <p className="text-sm text-muted-foreground">Checking install requirements…</p>
+              <Loader2
+                className="h-6 w-6 animate-spin text-muted-foreground"
+                aria-hidden
+              />
+              <p className="text-sm text-muted-foreground">
+                Checking install requirements…
+              </p>
             </div>
           ) : null}
 
           {checkError && activeStep !== "done" ? (
-            <div role="alert" className="space-y-3 rounded-[10px] border border-destructive/30 bg-[color:var(--g-surface-1)] p-4">
-              <p className="text-sm">Could not check install requirements. Installation is unavailable until the check succeeds.</p>
-              <Button variant="outline" className="min-h-11" disabled={checkValidating} onClick={() => void refreshCheck()}>Retry check</Button>
+            <div
+              role="alert"
+              className="space-y-3 rounded-[10px] border border-destructive/30 bg-[color:var(--g-surface-1)] p-4"
+            >
+              <p className="text-sm">
+                Could not check install requirements. Installation is
+                unavailable until the check succeeds.
+              </p>
+              <Button
+                variant="outline"
+                className="min-h-11"
+                disabled={checkValidating}
+                onClick={() => void refreshCheck()}
+              >
+                Retry check
+              </Button>
             </div>
           ) : null}
-          {installError ? <p role="alert" className="rounded-[10px] border border-destructive/30 bg-destructive/5 p-3 text-sm">{installError}</p> : null}
-          {!isAdmin && activeStep !== "done" ? <NonAdminPurchaseNotice /> : null}
+          {installError ? (
+            <p
+              role="alert"
+              className="rounded-[10px] border border-destructive/30 bg-destructive/5 p-3 text-sm"
+            >
+              {installError}
+            </p>
+          ) : null}
+          {!isAdmin && activeStep !== "done" ? (
+            <NonAdminPurchaseNotice />
+          ) : null}
 
-          {!checkLoading && !checkError && activeStep === "check" && !check?.canInstall ? (
+          {!checkLoading &&
+          !checkError &&
+          activeStep === "check" &&
+          !check?.canInstall ? (
             <>
               <BlockerList blockers={blockers} />
               <ConnectorChecklist items={checklist} />
-              {check?.requiresPayment && !check?.hasEntitlement && asset && isAdmin ? (
-                <AssetPurchaseButton asset={asset} check={check} onPurchased={() => void refreshCheck()} />
+              {check?.requiresPayment &&
+              !check?.hasEntitlement &&
+              asset &&
+              isAdmin ? (
+                <AssetPurchaseButton
+                  asset={asset}
+                  check={check}
+                  onPurchased={() => void refreshCheck()}
+                />
               ) : null}
             </>
           ) : null}
 
-          {!checkLoading && !checkError && (activeStep === "confirm" || step === "installing") ? (
+          {!checkLoading &&
+          !checkError &&
+          (activeStep === "confirm" || step === "installing") ? (
             <>
               <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 text-sm text-muted-foreground">
                 {asset?.assetType === "capability_package"
@@ -368,7 +496,11 @@ function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin 
                   : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
               </div>
               <ConnectorChecklist items={checklist} />
-              <PackContentsPreview items={asset?.packItems} compact linkChildren />
+              <PackContentsPreview
+                items={asset?.packItems}
+                compact
+                linkChildren
+              />
             </>
           ) : null}
 
@@ -382,18 +514,30 @@ function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin 
           ) : null}
         </div>
 
-        <SheetFooter className="shrink-0 border-t border-border/50 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 [&_button]:min-h-11">
+        <SheetFooter className="shrink-0 border-t border-border/50 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 [&_[data-slot=button]]:min-h-11">
           {activeStep === "check" && !check?.canInstall ? (
-            <Button variant="outline" className="rounded-full" onClick={() => handleOpenChange(false)}>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => handleOpenChange(false)}
+            >
               Close
             </Button>
           ) : null}
           {activeStep === "confirm" ? (
             <>
-              <Button variant="outline" className="rounded-full" onClick={() => handleOpenChange(false)}>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => handleOpenChange(false)}
+              >
                 Cancel
               </Button>
-              <Button className="rounded-full" disabled={!isAdmin || checkValidating || Boolean(checkError)} onClick={runInstall}>
+              <Button
+                className="rounded-full"
+                disabled={!isAdmin || checkValidating || Boolean(checkError)}
+                onClick={runInstall}
+              >
                 Confirm install
                 {asset && needsPurchase ? ` · ${formatAssetPrice(asset)}` : ""}
               </Button>
@@ -406,7 +550,10 @@ function InstallStepperSession({ asset, open, onOpenChange, onComplete, isAdmin 
             </Button>
           ) : null}
           {activeStep === "done" ? (
-            <Button className="rounded-full" onClick={() => handleOpenChange(false)}>
+            <Button
+              className="rounded-full"
+              onClick={() => handleOpenChange(false)}
+            >
               Done
             </Button>
           ) : null}

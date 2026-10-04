@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import useSWR from "swr"
 import { Bookmark, BookmarkCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,13 +21,18 @@ export function AssetSaveButton({
   variant?: "ghost" | "outline"
   className?: string
 }) {
-  const { data: savesData, mutate } = useSWR("marketplace-saves", () =>
+  const {
+    data: savesData,
+    error,
+    mutate,
+  } = useSWR("marketplace-saves", () =>
     marketplaceApi.listSaves({ limit: 100 }),
   )
 
   const serverSaved = Boolean(
     savesData?.saves?.some(
-      (entry) => entry.asset?.slug === slug || (assetId && entry.assetId === assetId),
+      (entry) =>
+        entry.asset?.slug === slug || (assetId && entry.assetId === assetId),
     ),
   )
 
@@ -35,6 +40,7 @@ export function AssetSaveButton({
   // highlighted, instead of waiting on (and depending on) a list re-fetch that
   // can lag or fail to match the new entry.
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
+  const lock = useRef(false)
   const [pending, setPending] = useState(false)
 
   // Once the server list catches up to our optimistic value, drop the override
@@ -50,7 +56,12 @@ export function AssetSaveButton({
   async function toggleSave(event: React.MouseEvent) {
     event.stopPropagation()
     event.preventDefault()
-    if (pending) return
+    if (lock.current) return
+    if (!savesData && optimistic === null) {
+      void mutate()
+      return
+    }
+    lock.current = true
 
     const next = !saved
     setOptimistic(next)
@@ -62,11 +73,12 @@ export function AssetSaveButton({
       // Trust the authoritative result from the API.
       setOptimistic(result.saved)
       toast.success(result.saved ? "Saved to your list" : "Removed from saved")
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       setOptimistic(null)
       toast.error(err instanceof Error ? err.message : "Could not update save")
     } finally {
+      lock.current = false
       setPending(false)
     }
   }
@@ -78,11 +90,19 @@ export function AssetSaveButton({
         size="icon"
         variant={saved ? "secondary" : variant}
         className={cn(
-          "h-8 w-8 shrink-0",
-          saved && "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15",
+          "min-h-11 min-w-11 shrink-0",
+          saved &&
+            "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15",
           className,
         )}
-        aria-label={saved ? "Remove from saved" : "Save asset"}
+        disabled={pending || (!savesData && !error && optimistic === null)}
+        aria-label={
+          !savesData && error
+            ? "Retry saved status"
+            : saved
+              ? "Remove from saved"
+              : "Save asset"
+        }
         aria-pressed={saved}
         onClick={toggleSave}
       >
@@ -101,9 +121,11 @@ export function AssetSaveButton({
       size="sm"
       variant={saved ? "secondary" : variant}
       className={cn(
-        saved && "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15",
+        saved &&
+          "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15",
         className,
       )}
+      disabled={pending || (!savesData && !error && optimistic === null)}
       aria-pressed={saved}
       onClick={toggleSave}
     >
@@ -112,7 +134,13 @@ export function AssetSaveButton({
       ) : (
         <Bookmark className="mr-1.5 h-3.5 w-3.5" aria-hidden />
       )}
-      {saved ? "Saved" : "Save"}
+      {!savesData && error
+        ? "Retry saved status"
+        : pending
+          ? "Saving…"
+          : saved
+            ? "Saved"
+            : "Save"}
     </Button>
   )
 }

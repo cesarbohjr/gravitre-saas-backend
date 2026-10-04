@@ -560,3 +560,31 @@ Starting published head: `8da69b5db402a46874e0d484ed36d72322b74baa`. Training pr
 Final local validation: `TZ=UTC npx vitest run` — 1,294 tests passed across 208 files, including 19 new behavioral checks; changed-file ESLint — 0 errors / 0 warnings; full ESLint — 0 errors / 248 existing warnings; `npx tsc --noEmit` — exit 0; clean `npm run build` — exit 0; chat-surface, user-facing-status, intelligence-customer-surface and brand guards — PASS; `git diff --check` — PASS. Regenerated source inventory: 175 routes and 364 reachable control/disclosure source files. Rendered viewport/Figma and owner-live acceptance remain NOT RUN. Billing E2E has not been run by this continuation. No merge or production deployment is authorized by these local checks.
 
 `IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
+
+### 2026-10-04 UTC — Goals / Marketplace / admin continuation
+
+Starting published head: `9af4079431b5f2053a7b3aea65d34f549395ea10`. Goals list and creation now use distinct Operate/Create structures with reported connections, draft persistence and a session-only plan review. Marketplace retains its outcome-led discovery, while installed inspection and publication decisions foreground operational context. Pricing/outcomes/version/review controls use quiet disclosures, labelled fields, retained drafts and scoped confirmations. Publisher/partner/private/sandbox/billing evidence and scoped intelligence settings have truthful loading/error/pending recovery. Existing APIs, revenue/ROI charts and the single AI runtime are retained. See the detailed scope/limits table in `3.0-plus/19-design-led-review.md`.
+
+Final local validation:
+
+| Check | Result |
+| --- | --- |
+| Vitest (`TZ=UTC`) | 1,315 passed / 209 files; 21 new Goals/Marketplace/admin behavior tests |
+| Focused journey + installed inspector | 24 tests; included in full pass |
+| Changed-file ESLint | 0 errors / 0 warnings |
+| Full ESLint | 0 errors / 238 existing warnings |
+| Typecheck | Exit 0 |
+| Clean production build | Exit 0 |
+| Chat-surface / user-facing-status / Intelligence customer surface / brand | PASS |
+| `git diff --check` | PASS |
+| Regenerated static inventory | 175 routes / 365 reachable control/disclosure source files; discovery is not acceptance |
+| GitHub CI | Must be assessed on the published SHA; not inferred from local checks |
+| Rendered 1440/834/390 + Figma acceptance | NOT_RUN — local error tab refused by browser policy; preview login wall |
+| Owner-live saves / installs / payment / exports / delivery | NOT_RUN |
+| Billing E2E | Not run by this continuation |
+
+The full suite caught one uppercase micro-label, which was corrected to sentence case. Regression coverage also catches mobile uninstall bypassing confirmation, server-refused publication/uninstall, and a newly appearing publisher profile overwriting a draft. Documentation does not count source file discovery as completed button/window review.
+
+Remaining: full Workflow/Builder/run and AI workspace state review; exhaustive capability/MCP activation/binding/version and remaining admin diagnostic journeys; every changed route's rendered viewport/state matrix and owner-tenant acceptance. Generated goal proposals remain session-only and are not passed into builder inputs. Existing API limitations for field clearing, delegation administration, native text knowledge and ceiling removal remain. Organization logo upload, Slack/email verification, Finance/Compliance product scope and Billing E2E remain open.
+
+`IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`. Draft PR #298 remains unmerged and is not production-deployed.

@@ -1,13 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { marketplaceApi } from "@/lib/api"
 import { Loader2, ShoppingCart } from "lucide-react"
 import { toast } from "sonner"
-import type { MarketplaceAssetInstallCheck, MarketplaceAssetSummary } from "@/types/api"
+import type {
+  MarketplaceAssetInstallCheck,
+  MarketplaceAssetSummary,
+} from "@/types/api"
 
 function formatPrice(cents?: number, currency = "usd") {
+  if (cents == null || !Number.isSafeInteger(cents) || cents <= 0)
+    return "Price not reported"
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
@@ -25,8 +30,11 @@ export function AssetPurchaseButton({
   onPurchased: () => void
   className?: string
 }) {
+  const lock = useRef(false)
   const [busy, setBusy] = useState(false)
   const runCheckout = async () => {
+    if (lock.current) return
+    lock.current = true
     setBusy(true)
     try {
       const origin = window.location.origin
@@ -44,11 +52,16 @@ export function AssetPurchaseButton({
         description: err instanceof Error ? err.message : "Try again",
       })
     } finally {
+      lock.current = false
       setBusy(false)
     }
   }
   return (
-    <Button className={className ?? "w-full"} disabled={busy} onClick={() => void runCheckout()}>
+    <Button
+      className={className ?? "w-full"}
+      disabled={busy}
+      onClick={() => void runCheckout()}
+    >
       {busy ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
       ) : (

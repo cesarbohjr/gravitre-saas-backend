@@ -6,7 +6,7 @@ This inventory discovers routes and reachable local JSX controls/disclosures, in
 
 **Visual acceptance: NOT RUN.** A listed file is not an accepted surface. Read each route and its reachable UI, then record browser evidence at 1440 / 834 / 390 including empty, error, loading, selected, pending and permission states.
 
-Discovered 175 page routes and 364 reachable files containing controls or disclosures.
+Discovered 175 page routes and 365 reachable files containing controls or disclosures.
 
 | Route | Level | Scope | Proposed family | Redirect expression | UI files | Source |
 |---|---|---|---|---|---:|---|
@@ -89,7 +89,7 @@ Discovered 175 page routes and 364 reachable files containing controls or disclo
 | /e2e/shots/learning-4 | Secondary/nested | Fixture/development | Review | — | 70 | apps/web/app/e2e/shots/learning-4/page.tsx |
 | /e2e/shots/marketplace | Secondary/nested | Fixture/development | Review | — | 128 | apps/web/app/e2e/shots/marketplace/page.tsx |
 | /e2e/shots/marketplace-installed | Secondary/nested | Fixture/development | Review | — | 128 | apps/web/app/e2e/shots/marketplace-installed/page.tsx |
-| /e2e/shots/marketplace-pack/[slug] | Secondary/nested | Fixture/development | Review | — | 69 | apps/web/app/e2e/shots/marketplace-pack/[slug]/page.tsx |
+| /e2e/shots/marketplace-pack/[slug] | Secondary/nested | Fixture/development | Review | — | 71 | apps/web/app/e2e/shots/marketplace-pack/[slug]/page.tsx |
 | /e2e/shots/metrics | Secondary/nested | Fixture/development | Review | — | 128 | apps/web/app/e2e/shots/metrics/page.tsx |
 | /e2e/shots/outcome-states | Secondary/nested | Fixture/development | Review | — | 52 | apps/web/app/e2e/shots/outcome-states/page.tsx |
 | /e2e/shots/proof | Secondary/nested | Fixture/development | Review | — | 128 | apps/web/app/e2e/shots/proof/page.tsx |
@@ -126,7 +126,7 @@ Discovered 175 page routes and 364 reachable files containing controls or disclo
 | /marketplace/admin | Secondary/nested | Product | Manage | — | 64 | apps/web/app/marketplace/admin/page.tsx |
 | /marketplace/analytics | Secondary/nested | Product | Understand | — | 64 | apps/web/app/marketplace/analytics/page.tsx |
 | /marketplace/analytics/roi | Secondary/nested | Product | Understand | — | 52 | apps/web/app/marketplace/analytics/roi/page.tsx |
-| /marketplace/assets/[slug] | Secondary/nested | Product | Discover | — | 69 | apps/web/app/marketplace/assets/[slug]/page.tsx |
+| /marketplace/assets/[slug] | Secondary/nested | Product | Discover | — | 71 | apps/web/app/marketplace/assets/[slug]/page.tsx |
 | /marketplace/assets | Secondary/nested | Product | Discover | — | 72 | apps/web/app/marketplace/assets/page.tsx |
 | /marketplace/billing | Secondary/nested | Product | Create | — | 64 | apps/web/app/marketplace/billing/page.tsx |
 | /marketplace/capabilities | Secondary/nested | Product | Discover | — | 64 | apps/web/app/marketplace/capabilities/page.tsx |
@@ -134,13 +134,13 @@ Discovered 175 page routes and 364 reachable files containing controls or disclo
 | /marketplace/installed | Secondary/nested | Product | Manage | — | 66 | apps/web/app/marketplace/installed/page.tsx |
 | /marketplace/org/assets/new | Secondary/nested | Product | Create | — | 64 | apps/web/app/marketplace/org/assets/new/page.tsx |
 | /marketplace/org | Secondary/nested | Product | Discover | — | 64 | apps/web/app/marketplace/org/page.tsx |
-| /marketplace/org-admin | Secondary/nested | Product | Manage | — | 67 | apps/web/app/marketplace/org-admin/page.tsx |
-| /marketplace/platform-admin | Secondary/nested | Product | Manage | — | 65 | apps/web/app/marketplace/platform-admin/page.tsx |
+| /marketplace/org-admin | Secondary/nested | Product | Manage | — | 68 | apps/web/app/marketplace/org-admin/page.tsx |
+| /marketplace/platform-admin | Secondary/nested | Product | Manage | — | 66 | apps/web/app/marketplace/platform-admin/page.tsx |
 | /marketplace/private | Secondary/nested | Product | Discover | — | 64 | apps/web/app/marketplace/private/page.tsx |
 | /marketplace/publisher/analytics | Secondary/nested | Product | Understand | — | 64 | apps/web/app/marketplace/publisher/analytics/page.tsx |
 | /marketplace/publisher | Secondary/nested | Product | Manage | — | 64 | apps/web/app/marketplace/publisher/page.tsx |
 | /marketplace/role-packs | Secondary/nested | Product | Discover | /marketplace/assets?type=department_pack | 52 | apps/web/app/marketplace/role-packs/page.tsx |
-| /marketplace/sandbox | Secondary/nested | Product | Create | — | 64 | apps/web/app/marketplace/sandbox/page.tsx |
+| /marketplace/sandbox | Secondary/nested | Product | Create | — | 65 | apps/web/app/marketplace/sandbox/page.tsx |
 | /marketplace/saved | Secondary/nested | Product | Discover | — | 65 | apps/web/app/marketplace/saved/page.tsx |
 | /marketplace/submit | Secondary/nested | Product | Create | — | 64 | apps/web/app/marketplace/submit/page.tsx |
 | /metrics | Primary | Product | Understand | — | 64 | apps/web/app/metrics/page.tsx |
@@ -271,7 +271,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/extension/connect/page.tsx | — | 2 | 1 |
 | apps/web/app/global-error.tsx | — | 1 | 174 |
 | apps/web/app/goals/[id]/page.tsx | — | 1 | 1 |
-| apps/web/app/goals/page.tsx | — | 3 | 1 |
+| apps/web/app/goals/page.tsx | — | 7 | 1 |
 | apps/web/app/integrations/[id]/page.tsx | — | 6 | 1 |
 | apps/web/app/integrations/new/page.tsx | — | 10 | 1 |
 | apps/web/app/intelligence/learning/page.tsx | — | 1 | 1 |
@@ -286,20 +286,20 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/lite/tasks/page.tsx | — | 3 | 1 |
 | apps/web/app/marketplace/admin/page.tsx | Dialog | 12 | 1 |
 | apps/web/app/marketplace/analytics/page.tsx | — | 2 | 1 |
-| apps/web/app/marketplace/assets/[slug]/page.tsx | DropdownMenu, InstallStepperSheet | 11 | 2 |
-| apps/web/app/marketplace/assets/page.tsx | InstallStepperSheet | 13 | 16 |
+| apps/web/app/marketplace/assets/[slug]/page.tsx | DropdownMenu, InstallStepperSheet, MarketplaceDecisionDialog | 11 | 2 |
+| apps/web/app/marketplace/assets/page.tsx | InstallStepperSheet | 14 | 16 |
 | apps/web/app/marketplace/billing/page.tsx | — | 9 | 1 |
 | apps/web/app/marketplace/capabilities/page.tsx | — | 43 | 1 |
 | apps/web/app/marketplace/connectors/page.tsx | — | 5 | 1 |
-| apps/web/app/marketplace/installed/page.tsx | InstalledInspector, Sheet | 7 | 16 |
-| apps/web/app/marketplace/org-admin/page.tsx | Dialog | 13 | 1 |
+| apps/web/app/marketplace/installed/page.tsx | Dialog, InstalledInspector, Sheet | 10 | 16 |
+| apps/web/app/marketplace/org-admin/page.tsx | Dialog, MarketplaceDecisionDialog | 12 | 1 |
 | apps/web/app/marketplace/org/assets/new/page.tsx | — | 13 | 1 |
 | apps/web/app/marketplace/org/page.tsx | — | 2 | 1 |
-| apps/web/app/marketplace/platform-admin/page.tsx | Dialog | 10 | 1 |
+| apps/web/app/marketplace/platform-admin/page.tsx | Dialog, MarketplaceDecisionDialog | 10 | 1 |
 | apps/web/app/marketplace/private/page.tsx | — | 9 | 1 |
 | apps/web/app/marketplace/publisher/analytics/page.tsx | — | 6 | 1 |
 | apps/web/app/marketplace/publisher/page.tsx | — | 10 | 1 |
-| apps/web/app/marketplace/sandbox/page.tsx | — | 6 | 1 |
+| apps/web/app/marketplace/sandbox/page.tsx | MarketplaceDecisionDialog | 6 | 1 |
 | apps/web/app/marketplace/saved/page.tsx | — | 3 | 1 |
 | apps/web/app/marketplace/submit/page.tsx | — | 6 | 1 |
 | apps/web/app/metrics/page.tsx | DropdownMenu | 6 | 16 |
@@ -436,7 +436,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/gravitre/empty-state.tsx | — | 2 | 174 |
 | apps/web/components/gravitre/filter-chip.tsx | — | 3 | 24 |
 | apps/web/components/gravitre/global-command-bar.tsx | — | 3 | 113 |
-| apps/web/components/gravitre/goal-workflow-wizard.tsx | Dialog | 15 | 113 |
+| apps/web/components/gravitre/goal-workflow-wizard.tsx | Dialog | 16 | 113 |
 | apps/web/components/gravitre/hub-tabs.tsx | — | 1 | 27 |
 | apps/web/components/gravitre/inspector/gravitre-inspector.tsx | GravitreInspectorKind, Sheet | 0 | 174 |
 | apps/web/components/gravitre/meson-page-panel.tsx | — | 2 | 174 |
@@ -522,12 +522,13 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/marketplace/asset-outcome-editor.tsx | — | 4 | 1 |
 | apps/web/components/marketplace/asset-pricing-editor.tsx | — | 3 | 2 |
 | apps/web/components/marketplace/asset-purchase-button.tsx | — | 1 | 18 |
-| apps/web/components/marketplace/asset-reviews-section.tsx | — | 6 | 2 |
-| apps/web/components/marketplace/asset-save-button.tsx | — | 2 | 17 |
-| apps/web/components/marketplace/asset-version-history.tsx | — | 1 | 1 |
+| apps/web/components/marketplace/asset-reviews-section.tsx | MarketplaceDecisionDialog | 6 | 2 |
+| apps/web/components/marketplace/asset-save-button.tsx | — | 2 | 19 |
+| apps/web/components/marketplace/asset-version-history.tsx | — | 4 | 1 |
 | apps/web/components/marketplace/department-pipeline-panel.tsx | — | 1 | 19 |
 | apps/web/components/marketplace/install-experience.tsx | Sheet | 10 | 18 |
 | apps/web/components/marketplace/marketplace-asset-commerce.tsx | — | 1 | 19 |
+| apps/web/components/marketplace/marketplace-decision-dialog.tsx | Dialog | 2 | 5 |
 | apps/web/components/marketplace/marketplace-featured-outcome.tsx | — | 1 | 16 |
 | apps/web/components/plays/play-results.tsx | — | 1 | 1 |
 | apps/web/components/plays/play-run-control.tsx | — | 1 | 1 |

@@ -1,9 +1,11 @@
 "use client"
 
-import { Suspense, useCallback, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
+import { MarketplaceDecisionDialog } from "@/components/marketplace/marketplace-decision-dialog"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
 import { MarketplaceAssetOverview } from "@/components/marketplace/marketplace-asset-overview"
@@ -51,11 +53,17 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
     <ul className="space-y-2 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
       {blockers.map((blocker) => (
         <li key={blocker.connector} className="flex items-start gap-2">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />
+          <AlertCircle
+            className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+            aria-hidden
+          />
           <div className="flex-1">
             <p>{blocker.reason}</p>
             {blocker.action_url ? (
-              <Link href={blocker.action_url} className="text-primary underline-offset-4 hover:underline">
+              <Link
+                href={blocker.action_url}
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 Connect {blocker.connector}
               </Link>
             ) : null}
@@ -74,6 +82,8 @@ function MarketplaceAssetDetailContent() {
   const { user } = useAuth()
   const { isAdmin } = useOrgAdmin()
   const [installOpen, setInstallOpen] = useState(false)
+  const lock = useRef(false)
+  const [uninstallOpen, setUninstallOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -91,7 +101,9 @@ function MarketplaceAssetDetailContent() {
     const purchase = searchParams.get("purchase")
     if (!purchase) return
     if (purchase === "success") {
-      toast.success("Purchase complete", { description: "You can install this asset now." })
+      toast.info("Checkout returned", {
+        description: "Checking workspace access before installation.",
+      })
       void mutateEntitlement()
       setInstallOpen(true)
     } else if (purchase === "cancelled") {
@@ -99,54 +111,67 @@ function MarketplaceAssetDetailContent() {
     } else if (purchase === "1") {
       setInstallOpen(true)
     }
-    router.replace(`/marketplace/assets/${encodeURIComponent(slug)}`, { scroll: false })
+    router.replace(`/marketplace/assets/${encodeURIComponent(slug)}`, {
+      scroll: false,
+    })
   }, [mutateEntitlement, router, searchParams, slug])
 
   const needsPurchase = Boolean(
-    asset && assetRequiresPurchase({ ...asset, hasEntitlement: entitlement?.hasEntitlement ?? asset.hasEntitlement }),
+    asset &&
+      assetRequiresPurchase({
+        ...asset,
+        hasEntitlement: entitlement?.hasEntitlement ?? asset.hasEntitlement,
+      }),
   )
 
   const handleClone = async () => {
-    if (!asset) return
+    if (!asset || !isAdmin || lock.current) return
+    lock.current = true
     setBusy(true)
     try {
       const result = await marketplaceApi.cloneAsset(asset.slug)
       toast.success("Draft copy created", { description: result.asset.title })
     } catch (err) {
-      toast.error("Clone failed", { description: err instanceof Error ? err.message : "Try again" })
+      toast.error("Clone failed", {
+        description: err instanceof Error ? err.message : "Try again",
+      })
     } finally {
+      lock.current = false
       setBusy(false)
     }
   }
 
   const handleUninstall = async () => {
-    if (!asset || !isAdmin) return
-    if (
-      !window.confirm(
-        `Uninstall "${asset.title}"? This removes the marketplace install record from your org.`,
-      )
-    ) {
-      return
-    }
+    if (!asset || !isAdmin || lock.current)
+      throw new Error("Another asset update is pending")
+    lock.current = true
     setBusy(true)
     try {
-      await marketplaceApi.uninstallAsset(asset.slug)
+      const result = await marketplaceApi.uninstallAsset(asset.slug)
+      if (!result.uninstalled)
+        throw new Error(
+          "The server did not confirm uninstall. Refresh the asset before retrying.",
+        )
       toast.success("Asset uninstalled")
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Uninstall failed")
+      throw err
     } finally {
+      lock.current = false
       setBusy(false)
     }
   }
 
   const openInstall = useCallback(() => setInstallOpen(true), [])
 
-  if (error) {
+  if (error && !asset) {
     return (
       <AppShell title="Asset not found">
         <div className="mx-auto max-w-2xl rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
-          <p className="text-sm text-destructive">Could not load this marketplace asset.</p>
+          <WorkSectionErrorCard
+            title="Could not load this marketplace asset"
+            onRetry={() => void mutate()}
+          />
           <Button className="mt-4" variant="outline" asChild>
             <Link href="/marketplace/assets">Back to catalog</Link>
           </Button>
@@ -165,114 +190,179 @@ function MarketplaceAssetDetailContent() {
 
   return (
     <AppShell title={asset?.title ?? "Marketplace asset"}>
-      <div className="relative shrink-0 bg-[color:var(--g-canvas)] pb-[calc(12rem+env(safe-area-inset-bottom))] md:pb-8" data-composition="discover">
+      {error ? (
+        <WorkSectionErrorCard
+          title="Could not refresh asset details"
+          message="Loaded details remain available."
+          onRetry={() => void mutate()}
+        />
+      ) : null}
+      <div
+        className="relative shrink-0 bg-[color:var(--g-canvas)] pb-[calc(12rem+env(safe-area-inset-bottom))] md:pb-8"
+        data-composition="discover"
+      >
         <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-8">
           <div className="mx-auto max-w-5xl">
-            <Button variant="ghost" size="sm" asChild className="-ml-2 min-h-11 sm:min-h-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="-ml-2 min-h-11 sm:min-h-8"
+            >
               <Link href="/marketplace/assets">
                 <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                 Back to catalog
               </Link>
             </Button>
-            <p className={cn(TYPE.eyebrow, "mt-3")}>Marketplace / Pack detail</p>
+            <p className={cn(TYPE.eyebrow, "mt-3")}>
+              Marketplace / Pack detail
+            </p>
           </div>
         </section>
 
         <div className="mx-auto max-w-5xl space-y-6 px-[var(--np-page-pad-sm)] py-5 sm:px-[var(--np-page-pad)]">
-        {isLoading && !asset ? (
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-2/3" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : asset ? (
-          <>
-            <MarketplaceAssetOverview
-              asset={{ ...asset, hasEntitlement: entitlement?.hasEntitlement ?? asset.hasEntitlement, requiresPayment: entitlement?.requiresPayment ?? asset.requiresPayment }}
-              needsPurchase={needsPurchase}
-              isAdmin={isAdmin}
-              actions={
-                <div className="hidden flex-wrap gap-2 md:flex">
-                  {isAdmin && !asset.installed ? (
-                    <Button className="min-h-11 h-auto w-full whitespace-normal rounded-[10px] py-2 font-semibold" onClick={openInstall}>
-                      {needsPurchase ? (
-                        <>
-                          <ShoppingCart className="mr-1.5 h-4 w-4" aria-hidden />
-                          {installLabel}
-                        </>
-                      ) : (
-                        installLabel
-                      )}
-                    </Button>
-                  ) : null}
-                  {isAdmin ? (
-                    <Button variant="ghost" className="min-h-11 rounded-[10px]" disabled={busy} onClick={handleClone}>
-                      {busy ? (
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-                      ) : (
-                        <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                      )}
-                      Clone draft
-                    </Button>
-                  ) : null}
-                  {asset.installed ? (
-                    <>
-                      <Button className="min-h-11 h-auto w-full whitespace-normal rounded-[10px] py-2 font-semibold" asChild>
-                        <Link href="/marketplace/installed">
-                          <CheckCircle2 className="mr-1.5 h-4 w-4 text-success" aria-hidden />
-                          Open installed
-                        </Link>
+          {isLoading && !asset ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-2/3" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : asset ? (
+            <>
+              <MarketplaceAssetOverview
+                asset={{
+                  ...asset,
+                  hasEntitlement:
+                    entitlement?.hasEntitlement ?? asset.hasEntitlement,
+                  requiresPayment:
+                    entitlement?.requiresPayment ?? asset.requiresPayment,
+                }}
+                needsPurchase={needsPurchase}
+                isAdmin={isAdmin}
+                actions={
+                  <div className="hidden flex-wrap gap-2 md:flex">
+                    {isAdmin && !asset.installed ? (
+                      <Button
+                        className="min-h-11 h-auto w-full whitespace-normal rounded-[10px] py-2 font-semibold"
+                        onClick={openInstall}
+                      >
+                        {needsPurchase ? (
+                          <>
+                            <ShoppingCart
+                              className="mr-1.5 h-4 w-4"
+                              aria-hidden
+                            />
+                            {installLabel}
+                          </>
+                        ) : (
+                          installLabel
+                        )}
                       </Button>
-                      {isAdmin ? (
-                        <Button variant="ghost" className="min-h-11 text-destructive" disabled={busy} onClick={handleUninstall}>
-                          {busy ? (
-                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-                          ) : (
-                            <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                          )}
-                          Uninstall
+                    ) : null}
+                    {isAdmin ? (
+                      <Button
+                        variant="ghost"
+                        className="min-h-11 rounded-[10px]"
+                        disabled={busy}
+                        onClick={handleClone}
+                      >
+                        {busy ? (
+                          <Loader2
+                            className="mr-1.5 h-3.5 w-3.5 animate-spin"
+                            aria-hidden
+                          />
+                        ) : (
+                          <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        )}
+                        Clone draft
+                      </Button>
+                    ) : null}
+                    {asset.installed ? (
+                      <>
+                        <Button
+                          className="min-h-11 h-auto w-full whitespace-normal rounded-[10px] py-2 font-semibold"
+                          asChild
+                        >
+                          <Link href="/marketplace/installed">
+                            <CheckCircle2
+                              className="mr-1.5 h-4 w-4 text-success"
+                              aria-hidden
+                            />
+                            Open installed
+                          </Link>
                         </Button>
-                      ) : null}
-                    </>
-                  ) : null}
+                        {isAdmin ? (
+                          <Button
+                            variant="ghost"
+                            className="min-h-11 text-destructive"
+                            disabled={busy}
+                            onClick={() => setUninstallOpen(true)}
+                          >
+                            {busy ? (
+                              <Loader2
+                                className="mr-1.5 h-3.5 w-3.5 animate-spin"
+                                aria-hidden
+                              />
+                            ) : (
+                              <Trash2
+                                className="mr-1.5 h-3.5 w-3.5"
+                                aria-hidden
+                              />
+                            )}
+                            Uninstall
+                          </Button>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                }
+              />
+
+              {asset.blockers?.length ? (
+                <BlockerList blockers={asset.blockers} />
+              ) : null}
+
+              {asset.connectorChecklist?.length ? (
+                <div className="rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4">
+                  <ConnectorChecklist items={asset.connectorChecklist} />
                 </div>
-              }
-            />
+              ) : null}
 
-            {asset.blockers?.length ? <BlockerList blockers={asset.blockers} /> : null}
+              <PackContentsPreview items={asset.packItems} linkChildren />
 
-            {asset.connectorChecklist?.length ? (
-              <div className="rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4">
-                <ConnectorChecklist items={asset.connectorChecklist} />
-              </div>
-            ) : null}
+              {asset.department ? (
+                <DepartmentPipelineByDepartment department={asset.department} />
+              ) : null}
 
-            <PackContentsPreview items={asset.packItems} linkChildren />
+              {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
 
-            {asset.department ? <DepartmentPipelineByDepartment department={asset.department} /> : null}
-
-            {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
-
-            <AssetReviewsSection
-              assetRef={asset.slug}
-              averageRating={asset.averageRating}
-              reviewCount={asset.reviewCount}
-              onStatsChange={() => void mutate()}
-            />
-          </>
-        ) : null}
+              <AssetReviewsSection
+                assetRef={asset.slug}
+                averageRating={asset.averageRating}
+                reviewCount={asset.reviewCount}
+                onStatsChange={() => void mutate()}
+              />
+            </>
+          ) : null}
         </div>
 
         {asset && (isAdmin || asset.installed) ? (
           <div
             className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]/95 px-4 py-3 backdrop-blur-sm md:hidden"
-            data-testid="marketplace-mobile-actions" data-gravitre-mobile-action-dock
+            data-testid="marketplace-mobile-actions"
+            data-gravitre-mobile-action-dock
           >
             <div className="mx-auto flex max-w-5xl items-center gap-2">
               {isAdmin && !asset.installed ? (
-                <Button className="min-h-11 min-w-0 flex-1 rounded-[10px] font-semibold" onClick={openInstall}>
+                <Button
+                  className="min-h-11 min-w-0 flex-1 rounded-[10px] font-semibold"
+                  onClick={openInstall}
+                >
                   {needsPurchase ? (
                     <>
-                      <ShoppingCart className="mr-1.5 h-4 w-4 shrink-0" aria-hidden />
+                      <ShoppingCart
+                        className="mr-1.5 h-4 w-4 shrink-0"
+                        aria-hidden
+                      />
                       <span className="truncate">{installLabel}</span>
                     </>
                   ) : (
@@ -281,7 +371,10 @@ function MarketplaceAssetDetailContent() {
                 </Button>
               ) : null}
               {asset.installed ? (
-                <Button className="min-h-11 min-w-0 flex-1 rounded-[10px] font-semibold" asChild>
+                <Button
+                  className="min-h-11 min-w-0 flex-1 rounded-[10px] font-semibold"
+                  asChild
+                >
                   <Link href="/marketplace/installed">Open installed</Link>
                 </Button>
               ) : null}
@@ -295,24 +388,33 @@ function MarketplaceAssetDetailContent() {
                       aria-label="More asset actions"
                       disabled={busy}
                     >
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <MoreHorizontal className="h-4 w-4" aria-hidden />}
+                      {busy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <MoreHorizontal className="h-4 w-4" aria-hidden />
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="top" className="z-50">
-                    <DropdownMenuItem disabled={busy} onSelect={() => void handleClone()}>
+                    <DropdownMenuItem
+                      disabled={busy}
+                      onSelect={() => void handleClone()}
+                    >
                       <Copy className="mr-2 h-3.5 w-3.5" aria-hidden />
                       Clone draft
                     </DropdownMenuItem>
-                    {asset.installed ? <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      disabled={busy}
-                      onSelect={() => {
-                        void handleUninstall()
-                      }}
-                    >
-                      <Trash2 className="mr-2 h-3.5 w-3.5" aria-hidden />
-                      Uninstall
-                    </DropdownMenuItem> : null}
+                    {asset.installed ? (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={busy}
+                        onSelect={() => {
+                          setUninstallOpen(true)
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" aria-hidden />
+                        Uninstall
+                      </DropdownMenuItem>
+                    ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}
@@ -328,6 +430,16 @@ function MarketplaceAssetDetailContent() {
         onComplete={() => void mutate()}
         isAdmin={isAdmin}
       />
+      {uninstallOpen && asset ? (
+        <MarketplaceDecisionDialog
+          title={`Uninstall ${asset.title}?`}
+          description="This removes the marketplace install record from your organization. Review created resources separately before deleting agents, workflows or knowledge."
+          actionLabel="Confirm uninstall"
+          destructive
+          onCancel={() => setUninstallOpen(false)}
+          onConfirm={handleUninstall}
+        />
+      ) : null}
     </AppShell>
   )
 }

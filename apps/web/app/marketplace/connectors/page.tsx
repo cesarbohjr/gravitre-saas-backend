@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
@@ -20,6 +21,7 @@ import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { ArrowLeft, Search } from "lucide-react"
 
 function formatPrice(cents?: number, currency = "usd") {
+  if (cents == null) return "Price not reported"
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
@@ -39,8 +41,10 @@ export default function FederatedConnectorsPage() {
   const { user } = useAuth()
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search.trim())
-  const { data, error, isLoading } = useSWR(
-    user ? (["marketplace-federated-connectors", debouncedSearch] as const) : null,
+  const { data, error, isLoading, mutate } = useSWR(
+    user
+      ? (["marketplace-federated-connectors", debouncedSearch] as const)
+      : null,
     () =>
       marketplaceApi.listFederatedConnectors({
         search: debouncedSearch || undefined,
@@ -52,7 +56,10 @@ export default function FederatedConnectorsPage() {
 
   return (
     <AppShell title="Partner connectors">
-      <div className="bg-[color:var(--g-canvas)]">
+      <div
+        className="bg-[color:var(--g-canvas)] pb-24 [&_[data-slot=button]]:min-h-11 [&_input]:min-h-11"
+        data-composition="discover"
+      >
         <GravitrePageHeader
           eyebrow="Gravitre Marketplace"
           title="Federated partner connectors"
@@ -67,7 +74,9 @@ export default function FederatedConnectorsPage() {
                 </Link>
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/marketplace/assets?type=connector_config">Browse in catalog</Link>
+                <Link href="/marketplace/assets?type=connector_config">
+                  Browse in catalog
+                </Link>
               </Button>
             </div>
           }
@@ -77,23 +86,30 @@ export default function FederatedConnectorsPage() {
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              aria-label="Search partner connectors"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search partner connectors…"
               className="rounded-[var(--np-radius-md)] pl-9"
             />
           </div>
+          {error ? (
+            <WorkSectionErrorCard
+              title="Could not refresh partner connectors"
+              message="Loaded entries remain available."
+              onRetry={() => void mutate()}
+            />
+          ) : null}
           {isLoading && !data ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-20 rounded-[var(--np-radius-lg)]" />
+                <Skeleton
+                  key={index}
+                  className="h-20 rounded-[var(--np-radius-lg)]"
+                />
               ))}
             </div>
-          ) : error ? (
-            <GravitreSurface className="border-destructive/30 bg-destructive/5 text-sm text-destructive">
-              Could not load federated connectors.
-            </GravitreSurface>
-          ) : assets.length === 0 ? (
+          ) : !data ? null : assets.length === 0 ? (
             <GravitreEmpty
               title={
                 debouncedSearch
@@ -117,18 +133,28 @@ export default function FederatedConnectorsPage() {
                           <Badge variant="outline">partner registry</Badge>
                           {asset.verified ? <Badge>Certified</Badge> : null}
                           {asset.pricingType !== "free" ? (
-                            <Badge variant="secondary">{formatPrice(asset.priceCents, asset.currency)}</Badge>
+                            <Badge variant="secondary">
+                              {formatPrice(asset.priceCents, asset.currency)}
+                            </Badge>
                           ) : (
                             <Badge variant="secondary">Free</Badge>
                           )}
                         </div>
-                        <p className="font-medium text-foreground">{asset.title}</p>
+                        <p className="font-medium text-foreground">
+                          {asset.title}
+                        </p>
                         {asset.description ? (
-                          <p className="mt-1 text-sm text-muted-foreground">{asset.description}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {asset.description}
+                          </p>
                         ) : null}
                         {asset.vendor ? (
                           <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <ProviderLogo provider={asset.vendor} size="sm" decorative />
+                            <ProviderLogo
+                              provider={asset.vendor}
+                              size="sm"
+                              decorative
+                            />
                             Vendor: {asset.vendor}
                           </p>
                         ) : null}
@@ -136,7 +162,11 @@ export default function FederatedConnectorsPage() {
                       <div className="flex flex-wrap gap-2">
                         {asset.slug ? (
                           <Button variant="default" size="sm" asChild>
-                            <Link href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}>Catalog detail</Link>
+                            <Link
+                              href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
+                            >
+                              Catalog detail
+                            </Link>
                           </Button>
                         ) : null}
                         <Button variant="outline" size="sm" asChild>
