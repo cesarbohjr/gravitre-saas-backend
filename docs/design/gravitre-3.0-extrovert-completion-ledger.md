@@ -424,3 +424,18 @@ New focused suite: **20 passed / 3 files**, covering standalone navigation, href
 Clean-cache production build **PASS (exit 0)**, final standalone TypeScript **PASS**, full ESLint **0 errors / 271 existing warnings**, changed-file ESLint **0 errors / 1 existing unused BillingUsageSettings warning**. Chat/status/intelligence/brand guards and whitespace **PASS**. Cognitive guard **PASS**, with Python import smoke and targeted pytest explicitly skipped. No dependency, lockfile, database, backend route or build configuration changes.
 
 This is implementation and automated evidence. No new browser screenshot or owner-live acceptance was performed; the previously recorded local browser/network restriction remains unresolved. Other Settings forms and billing behavior still require their own route/state review. Candidate GitHub CI must be inspected independently on publication. IMPLEMENTATION_COMPLETE = NO; VISUAL_ACCEPTANCE = NOT_RUN; OWNER_LIVE_ACCEPTANCE = NOT_RUN; MERGE_READY = NO; CAUGHT_UP = NO. Draft PR #298 remains unmerged; no production deployment.
+
+## Settings remaining forms — 2026-10-04 UTC
+
+Base: `1cce2b48`. Organization and notification forms from that commit were kept. Remaining in-page forms were extracted or corrected so they cannot present unsaved local state as persisted product settings.
+
+| Form | Change | Still required |
+| --- | --- | --- |
+| Security / SSO | Real SSO load/save/enable/disable/delete/test kept. Action row wraps. Missing `provider_type` no longer crashes. Organization-wide 2FA Enable and IP allowlist Save were removed — those have no settings API. | Owner SSO round-trip |
+| Team | Loading/error/retry, compact cards below `md`, 44px actions, viewer role on edit. Invite/update/remove still use `/api/settings/team`. | Owner invite/remove |
+| API keys | Loading/error/retry, named create, per-key rotate/revoke, one-time revealed value when the API returns it. | Owner create/rotate |
+| Webhooks | Admin-gated fetch, loading/error/retry, wrapping URLs, honest status text. Create/delete APIs unchanged. | Owner delivery |
+| AI Models | Fake workspace-default Save removed. Memory entity matching remains the persisted policy. | Owner embeddings save |
+| Lite seats / Meson addons | Loading/error/retry and admin copy. Existing department/addon/voice APIs unchanged. Meson prices still come from the API, not invented here. | Owner allocation/billing |
+
+Focused Settings tests: 21 passed. Typecheck exit 0. Visual/owner-live remain NOT_RUN. Model Studio, Plays, Training, Schedules, AI workspace, and fixture visual verification were not completed in this pass. IMPLEMENTATION_COMPLETE = NO. MERGE_READY = NO. CAUGHT_UP = NO.

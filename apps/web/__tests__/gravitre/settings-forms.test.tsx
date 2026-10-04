@@ -4,13 +4,19 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { OrganizationSettings } from "@/components/settings/organization-settings"
 import { NotificationSettings } from "@/components/settings/notification-settings"
+import { SecuritySettings } from "@/components/settings/security-settings"
+import { TeamSettings } from "@/components/settings/team-settings"
+import { AIModelsSettings } from "@/components/settings/ai-models-settings"
 
 const mocks = vi.hoisted(() => ({
   response: { data: undefined as { notifications: { emailEnabled: boolean; slackEnabled: boolean; recipients: string[] } } | undefined, error: undefined as Error | undefined, isLoading: false },
   mutate: vi.fn(), updateOrg: vi.fn(), update: vi.fn(), success: vi.fn(), error: vi.fn(), refresh: vi.fn(),
 }))
 vi.mock("swr", () => ({ default: () => ({ ...mocks.response, mutate: mocks.mutate }) }))
-vi.mock("@/lib/api", () => ({ settingsApi: { updateOrg: mocks.updateOrg } }))
+vi.mock("@/lib/api", () => ({
+  settingsApi: { updateOrg: mocks.updateOrg, getMemoryEntityEmbeddings: vi.fn().mockResolvedValue({ memoryEntityEmbeddings: { enabled: false, connectors: [] } }), updateMemoryEntityEmbeddings: vi.fn() },
+  ssoApi: { getConfig: vi.fn().mockResolvedValue(null), saveConfig: vi.fn(), enable: vi.fn(), disable: vi.fn(), deleteConfig: vi.fn(), initLogin: vi.fn() },
+}))
 vi.mock("@/lib/fetcher", () => ({ apiFetch: mocks.update, fetcher: vi.fn() }))
 vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error } }))
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -101,6 +107,26 @@ it("does not save preferences when the server omits channel or recipient fields"
   mocks.response.data = { notifications: {} } as typeof mocks.response.data
   notification(); expect(container.querySelector("form")).toBeNull()
   expect(container.querySelector('[role="alert"]')).not.toBeNull()
+})
+it("does not offer fake 2FA or IP allowlist saves on Security", () => {
+  act(() => root.render(<SecuritySettings />))
+  expect(container.textContent).toContain("Organization-wide 2FA enforcement is not available")
+  expect(container.textContent).toContain("IP restriction is not available")
+  expect(container.textContent).not.toContain("Enable 2FA")
+  expect(container.textContent).not.toContain("Save allowlist")
+})
+it("shows team loading and error without inventing members", () => {
+  act(() => root.render(<TeamSettings members={[]} isLoading isAdmin onUpdate={mocks.refresh} />))
+  expect(container.textContent).toContain("Loading team members")
+  act(() => root.render(<TeamSettings members={[]} error={new Error("Denied")} onRetry={mocks.mutate} isAdmin onUpdate={mocks.refresh} />))
+  expect(container.querySelector('[role="alert"]')).not.toBeNull()
+  act(() => container.querySelector("button")!.click())
+  expect(mocks.mutate).toHaveBeenCalledOnce()
+})
+it("does not present unsaved workspace model defaults as persistable", () => {
+  act(() => root.render(<AIModelsSettings isAdmin />))
+  expect(container.textContent).toContain("no organization API for workspace default models")
+  expect(container.textContent).not.toContain("Saved!")
 })
 it("serializes repeated preference submissions until the server responds", async () => {
   let finish!: (result: unknown) => void
