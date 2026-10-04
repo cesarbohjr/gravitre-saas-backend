@@ -11,134 +11,59 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Target } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
+import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
 interface GoalProgressPayload {
-  goal: {
-    id: string
-    objective: string
-    status?: string
-    category?: string | null
-    department?: string | null
-  }
-  completionPercentage: number | null
-  milestoneStatus: Array<{ id: string; title: string; status: string }>
+  goal: { id: string; objective: string; status?: string; category?: string | null; department?: string | null }
+  completionPercentage?: number | null
+  milestoneStatus?: Array<{ id: string; title: string; status?: string }> | null
 }
 
 export default function GoalDetailPage() {
-  const params = useParams<{ id: string }>()
-  const goalId = params.id
-
-  const { data, error, isLoading, mutate } = useSWR<GoalProgressPayload>(
-    goalId ? `/api/goals/${goalId}/progress` : null,
-    fetcher
-  )
+  const { id: goalId } = useParams<{ id: string }>()
+  const { data, error, isLoading, mutate } = useSWR<GoalProgressPayload>(goalId ? `/api/goals/${goalId}/progress` : null, fetcher)
+  const reported = data?.completionPercentage
+  const progress = typeof reported === "number" && Number.isFinite(reported) ? Math.min(100, Math.max(0, reported)) : null
+  const milestones = data?.milestoneStatus
 
   return (
-    <AppShell title={data?.goal.objective ?? "Goal"}>
-      <div className="mx-auto max-w-3xl space-y-6 pb-6">
+    <AppShell title={data?.goal?.objective ?? "Goal"}>
+      <div className="mx-auto max-w-4xl space-y-6 pb-[calc(80px+env(safe-area-inset-bottom))]" data-composition="operate">
         <GravitrePageHeader
           eyebrow="Goals"
-          title={
-            isLoading
-              ? "Loading…"
-              : error
-                ? "Could not load goal"
-                : (data?.goal.objective ?? "Goal")
-          }
-          description={
-            data?.goal.department
-              ? `Department: ${data.goal.department}`
-              : undefined
-          }
+          title={data?.goal?.objective ?? (isLoading ? "Loading…" : error ? "Could not load goal" : "Goal")}
+          description={data?.goal?.department ? `Department: ${data.goal.department}` : undefined}
           icon={<Target className="h-5 w-5" />}
-          actions={
-            <Button variant="ghost" size="sm" asChild className="gap-2">
-              <Link href="/goals">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Link>
-            </Button>
-          }
+          actions={<Button variant="ghost" size="sm" asChild className="min-h-11 gap-2"><Link href="/goals"><ArrowLeft className="h-4 w-4" />Back to goals</Link></Button>}
         >
-          {data ? (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {data.goal.status ? (
-                <Badge variant="outline" className="capitalize">
-                  {data.goal.status}
-                </Badge>
-              ) : null}
-              {data.goal.category ? (
-                <Badge variant="outline" className="capitalize">
-                  {data.goal.category}
-                </Badge>
-              ) : null}
-            </div>
-          ) : null}
+          {data?.goal ? <div className="flex flex-wrap gap-2 pt-1">
+            {data.goal.status ? <Badge variant="outline" className="capitalize">{data.goal.status.replaceAll("_", " ")}</Badge> : null}
+            {data.goal.category ? <Badge variant="outline" className="capitalize">{data.goal.category}</Badge> : null}
+          </div> : null}
         </GravitrePageHeader>
-
         <div className="space-y-6 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
-          {error ? (
-            <WorkSectionErrorCard
-              title="Could not load goal"
-              message={error instanceof Error ? error.message : "Unknown error"}
-              onRetry={() => void mutate()}
-            />
-          ) : isLoading || !data ? (
-            <Skeleton className="h-48 w-full rounded-xl" />
-          ) : (
-            <>
-              <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6">
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="font-medium text-foreground">
-                    {data.completionPercentage == null ? "Not measured" : `${data.completionPercentage}%`}
-                  </span>
-                </div>
-                {data.completionPercentage == null ? (
-                  <p className="text-xs text-muted-foreground">
-                    Goal progress is not tracked by runs yet. It shows 100% once the goal is marked completed.
-                  </p>
-                ) : (
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${Math.min(100, Math.max(0, data.completionPercentage))}%` }}
-                    />
-                  </div>
-                )}
+          {error ? <WorkSectionErrorCard title={data ? "Could not refresh goal" : "Could not load goal"} message={data ? "Showing the last retrieved goal. Retry for the current state." : error instanceof Error ? error.message : "Try again to retrieve this goal."} onRetry={() => void mutate()} /> : null}
+          {isLoading && !data ? <Skeleton className="h-48 w-full" /> : data ? <>
+            <section aria-labelledby="goal-progress-heading" className="grid gap-4 border-y border-divide py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              <div className="min-w-0">
+                <h2 id="goal-progress-heading" className={TYPE.eyebrow}>Goal progress</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{progress == null ? "No progress measurement was returned for this goal." : "Progress reported by the goal service."}</p>
+                {progress != null ? <div role="progressbar" aria-label="Goal progress" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="mt-4 h-1.5 overflow-hidden bg-secondary"><div className="h-full bg-[color:var(--g-brand)] transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${progress}%` }} /></div> : null}
               </div>
-
-              {data.milestoneStatus.length > 0 ? (
-                <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-6">
-                  <h2 className="mb-4 text-sm font-medium text-foreground">Plan milestones</h2>
-                  <div className="space-y-3">
-                    {data.milestoneStatus.map((milestone) => (
-                      <div
-                        key={milestone.id}
-                        className="flex items-center justify-between rounded-lg border border-divide/60 px-3 py-2"
-                      >
-                        <span className="text-sm text-foreground">{milestone.title}</span>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "capitalize",
-                            milestone.status === "completed"
-                              ? "border-success/30 text-success"
-                              : milestone.status === "in_progress"
-                                ? "border-blue-500/30 text-blue-600 dark:text-blue-400"
-                                : "border-zinc-500/30 text-zinc-400"
-                          )}
-                        >
-                          {milestone.status.replace("_", " ")}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </>
-          )}
+              <p className="font-[family-name:var(--font-space-grotesk)] text-3xl font-medium tabular-nums text-[color:var(--g-text-primary)]">{progress == null ? "Not reported" : `${progress}%`}</p>
+            </section>
+            <section aria-labelledby="goal-milestones-heading">
+              <h2 id="goal-milestones-heading" className="font-[family-name:var(--font-space-grotesk)] text-xl font-medium">Plan milestones</h2>
+              {milestones == null ? <p className="mt-4 text-sm text-muted-foreground">Milestones not reported.</p> : milestones.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No milestones have been added to this goal.</p> : <ol className="mt-4 divide-y divide-divide border-y border-divide">
+                {milestones.map((milestone, index) => <li key={milestone.id} className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 py-4 sm:grid-cols-[32px_minmax(0,1fr)_auto]">
+                  <span aria-hidden className="pt-0.5 font-mono text-xs tabular-nums text-muted-foreground">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="min-w-0 break-words text-sm font-medium">{milestone.title}</span>
+                  <Badge variant="outline" className={cn("col-start-2 w-fit capitalize sm:col-start-3", milestone.status === "completed" ? "border-[color:var(--g-brand)] text-[color:var(--g-brand-active)]" : milestone.status === "in_progress" ? "border-[color:var(--g-electric)] text-[color:var(--g-electric)]" : "text-muted-foreground")}>{milestone.status?.replaceAll("_", " ") || "Not reported"}</Badge>
+                </li>)}
+              </ol>}
+            </section>
+          </> : !error && !isLoading ? <p className="text-sm text-muted-foreground">Goal details not reported.</p> : null}
         </div>
       </div>
     </AppShell>

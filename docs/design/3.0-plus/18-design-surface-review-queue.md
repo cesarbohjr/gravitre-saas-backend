@@ -6,7 +6,7 @@ This inventory discovers routes and reachable local JSX controls/disclosures, in
 
 **Visual acceptance: NOT RUN.** A listed file is not an accepted surface. Read each route and its reachable UI, then record browser evidence at 1440 / 834 / 390 including empty, error, loading, selected, pending and permission states.
 
-Discovered 175 page routes and 361 reachable files containing controls or disclosures.
+Discovered 175 page routes and 362 reachable files containing controls or disclosures.
 
 | Route | Level | Scope | Proposed family | Redirect expression | UI files | Source |
 |---|---|---|---|---|---:|---|
@@ -51,7 +51,7 @@ Discovered 175 page routes and 361 reachable files containing controls or disclo
 | /ai/help/control | Secondary/nested | Product | Create | — | 64 | apps/web/app/ai/help/control/page.tsx |
 | /ai | Primary | Product | Create | — | 63 | apps/web/app/ai/page.tsx |
 | /approvals | Primary | Product | Operate | — | 67 | apps/web/app/approvals/page.tsx |
-| /assignments/[id] | Secondary/nested | Product | Operate | — | 64 | apps/web/app/assignments/[id]/page.tsx |
+| /assignments/[id] | Secondary/nested | Product | Operate | — | 66 | apps/web/app/assignments/[id]/page.tsx |
 | /assignments/new | Secondary/nested | Product | Create | — | 64 | apps/web/app/assignments/new/page.tsx |
 | /assignments | Primary | Product | Operate | — | 67 | apps/web/app/assignments/page.tsx |
 | /assistant | Primary | Product | Create | — | 52 | apps/web/app/assistant/page.tsx |
@@ -233,7 +233,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/ai/_components/live-activity-rail.tsx | — | 2 | 174 |
 | apps/web/app/ai/help/control/page.tsx | — | 3 | 1 |
 | apps/web/app/approvals/page.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle | 7 | 16 |
-| apps/web/app/assignments/[id]/page.tsx | AssignmentApprovalDialog, Dialog | 19 | 1 |
+| apps/web/app/assignments/[id]/page.tsx | AssignmentApprovalDialog, Dialog, SelectionInspector | 9 | 1 |
 | apps/web/app/assignments/new/page.tsx | — | 13 | 1 |
 | apps/web/app/assignments/page.tsx | MissionInspector, NewAssignmentModal | 6 | 16 |
 | apps/web/app/audit/page.tsx | — | 12 | 1 |
@@ -357,6 +357,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/agents/knowledge/agent-knowledge-retrieval-tab.tsx | — | 2 | 1 |
 | apps/web/components/agents/knowledge/agent-knowledge-shot-harness.tsx | — | 1 | 1 |
 | apps/web/components/agents/knowledge/agent-knowledge-sources-tab.tsx | — | 3 | 2 |
+| apps/web/components/assignments/assignment-detail-surfaces.tsx | Dialog | 12 | 1 |
 | apps/web/components/billing/trial-expired-banner.tsx | — | 2 | 113 |
 | apps/web/components/billing/upgrade-modal.tsx | Dialog | 3 | 113 |
 | apps/web/components/connectors/available-connectors-strip.tsx | — | 4 | 16 |
@@ -447,7 +448,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/gravitre/operating/operating-primitives.tsx | — | 2 | 22 |
 | apps/web/components/gravitre/pre-action-card.tsx | — | 4 | 174 |
 | apps/web/components/gravitre/route-error.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/selection-inspector.tsx | Sheet | 0 | 1 |
+| apps/web/components/gravitre/selection-inspector.tsx | Sheet | 0 | 2 |
 | apps/web/components/gravitre/sidebar.tsx | — | 3 | 113 |
 | apps/web/components/gravitre/source-query-panel.tsx | — | 3 | 1 |
 | apps/web/components/gravitre/suggested-actions.tsx | Dialog | 9 | 174 |

@@ -22,7 +22,7 @@ The depth sequence remains canvas → inline/work content → selected context �
 
 ## Scope discovery
 
-Run `python3 scripts/inventory-design-surfaces.py` to regenerate [the surface queue](18-design-surface-review-queue.md). Current discovery: 175 page routes; 108 product/legacy-product entries, 31 public/auth/support entries, 36 fixture/development entries; 361 reachable source files containing controls or disclosure JSX.
+Run `python3 scripts/inventory-design-surfaces.py` to regenerate [the surface queue](18-design-surface-review-queue.md). Current discovery: 175 page routes; 108 product/legacy-product entries, 31 public/auth/support entries, 36 fixture/development entries; 362 reachable source files containing controls or disclosure JSX.
 
 This inventory follows literal local imports and re-exports, includes ancestor layouts/templates/loading/error boundaries composed by Next, and records redirect expressions. Counts are source occurrences and static reachability, not visible controls or acceptance. Conditional tabs, permissions, computed imports, shared layouts and runtime-created controls still require a manual walkthrough. Existing route groups can produce duplicate route strings; source paths retain the distinction. Public, auth and fixture entries remain listed so they cannot silently disappear from scope.
 
@@ -43,7 +43,7 @@ This inventory follows literal local imports and re-exports, includes ancestor l
 
 These are queued review targets, not accepted surfaces or presumed defects.
 
-1. Assignments/new/detail and Goals/detail: execution trace, evidence, approval/edit/push windows, deliverable selection, long content, progress provenance, motion and mobile action clearance.
+1. Assignments/new and Goals list remain queued. Assignment and Goal detail received the dated implementation pass below; execution trace, evidence, approval/edit/push windows and mobile geometry still require visual/owner-live acceptance.
 2. Agents detail/chat/capabilities/knowledge/memory, model detail/built-ins, Training/multi-agent: capability identity, relation/evidence structure, tab state, validation and responsive inspectors.
 3. Marketplace asset detail, installed/private/saved/sandbox/submit/publisher/org/platform admin: outcome hierarchy followed by machinery, installation/permission/billing depth and actual authority enforcement.
 4. Workflows detail/builder/runs/failure prediction, Connectors/Sources nested pages and Integrations create/detail: contextual inspector selection, configuration windows, error recovery and real connections.
@@ -59,3 +59,13 @@ The cloud browser returned `net::ERR_BLOCKED_BY_CLIENT` for `http://localhost:30
 `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `IMPLEMENTATION_COMPLETE = NO`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
 
 Owner-live saves, installs, exports and delivery remain unverified. Organization logo upload, Slack/email delivery, Finance department and Compliance pack scope remain open. Billing E2E skipped remains skipped. Frontend permission controls are not proof of backend authorization. Draft PR #298 remains unmerged and is not production-deployed.
+
+## Assignment and Goal detail continuation — 2026-10-04 UTC
+
+Starting head `a388e0e7`. Assignment detail now uses a trace and ruled deliverable queue with adjacent desktop context and selection-driven compact sheets. Selection and assignment review are separate native buttons. Local per-deliverable approval markers were removed: review opens the assignment-wide decision flow; approved state derives from the API-returned handoff. There is no per-deliverable approval endpoint. Approval/rejection errors remain in the window; pending decisions cannot be dismissed. Explicit URL-opened review can be dismissed without deciding.
+
+Primary-response editing and delivery remain on their existing APIs; recommendation previews do not expose those actions as applicable. Delivery is only announced when the destination returns `ok: true`. Cached refresh errors retain the current work, and failed execution does not hide returned output. Rejection copy confirms the saved decision without claiming agent notification. Self-reported confidence preserves zero, rejects invalid values and remains labeled unverified. Missing execution trace/progress stay unreported rather than synthesizing successful phases or a completion percentage. The existing shared result helpers remain unchanged for other surfaces. Timeline motion belongs to a running step; idle/success/failure/pending states do not loop.
+
+Goals use a ruled progress band and ordered milestone sequence, with shared semantic tokens and typography. Missing progress/milestones remain unreported, actual zero remains zero, failed refresh retains cached evidence and long milestone titles/status badges reflow. Goal milestone state remains textual as well as colored.
+
+This pass does not complete Assignments/new, Goals list or the remaining nested Agent/Model/Marketplace/Admin review queue. No rendered screen, pixel parity or owner-live acceptance is claimed.
