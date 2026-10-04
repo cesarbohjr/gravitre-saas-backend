@@ -265,7 +265,7 @@ function MarketplaceAssetDetailContent() {
         {asset && (isAdmin || asset.installed) ? (
           <div
             className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)]/95 px-4 py-3 backdrop-blur-sm md:hidden"
-            data-testid="marketplace-mobile-actions"
+            data-testid="marketplace-mobile-actions" data-gravitre-mobile-action-dock
           >
             <div className="mx-auto flex max-w-5xl items-center gap-2">
               {isAdmin && !asset.installed ? (

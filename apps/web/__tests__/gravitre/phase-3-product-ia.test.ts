@@ -38,7 +38,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     const src = readFileSync(resolve(webRoot, "app/connectors/page.tsx"), "utf8")
     expect(src).toMatch(/useState<"topology" \| "grid">\("grid"\)/)
     expect(src).toMatch(/<ConnectorOperatingRow/)
-    expect(src).toMatch(/\{selectedConnector \? \(\s*<ConnectorInspector/)
+    expect(src).toMatch(/\{selectedConnector \? \(\s*<ResponsiveConnectorInspector/)
     expect(src).toMatch(/data-review-surface="connectors-management"/)
     expect(src).not.toMatch(/requestsToday|dataFlowRate|usedByWorkflows|triggeredByAgents/)
     expect(src).not.toMatch(/ConnectorsAtmosphere/)
@@ -51,11 +51,13 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(strip).not.toMatch(/Available\s*</)
   })
 
-  it("sources list is a table, not a card-first grid", () => {
+  it("sources retain the desktop table with compact disclosure below tablet cutover", () => {
     const src = readFileSync(resolve(webRoot, "app/sources/page.tsx"), "utf8")
     expect(src).toMatch(/<table/)
     expect(src).not.toMatch(/xl:grid-cols-4/)
     expect(src).toMatch(/Last sync/)
+    expect(src).toMatch(/data-testid="sources-compact-view"/)
+    expect(src).toMatch(/useIsMobile\(1024\)/)
     expect(src).toMatch(/data-source-ingest="syncing"/)
     expect(src).toMatch(/source\.status === "syncing"/)
   })

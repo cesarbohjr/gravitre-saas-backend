@@ -8,7 +8,7 @@ Reason for new branch: `feat/emerald-intelligence-completion` / PR #297 is merge
 Figma file:  
 https://www.figma.com/design/OsDKeRy9HwfSKR3e9YyOFM/Gravitre-%E2%80%94-Brand-Foundation---Creative-Direction?node-id=6-2
 
-## Figma capability check
+## Historical Figma capability check (see resolved access and provenance below)
 
 Live tool catalog was inspected. Namespace `project-0-Gravitre Operator AI-Figma` is present with `get_metadata`, `get_design_context`, `get_variable_defs`, and related tools.
 
@@ -45,7 +45,7 @@ Source: written contract + first `:root` in `globals.css` (PR #297). Hexes match
 
 `GlowOrb` remains unused on product routes. Decorative `GridPattern` removed from `/welcome` and `/multi-agent-run`. Functional `PulseRing` / `StatusBeacon` / `DataStream` / `AnimatedCounter` preserved.
 
-## Gate snapshot
+## Historical gate snapshot (superseded by dated implementation records below)
 
 | Field | Value |
 | --- | --- |
@@ -339,3 +339,23 @@ Behavioral tests: 12 new tests cover outcome content, child routes/requirements,
 Local checks: full Vitest 1,159 passed / 191 files; TypeScript passed; production Next.js build passed on the final code; full ESLint 0 errors / 275 warnings, changed-file ESLint clean on final code; brand/chat/status/intelligence guards passed; cognitive guard passed with Python import smoke and targeted pytest skipped by that script; whitespace check passed.
 
 Browser access rechecked against the current branch preview: redirected to **Vercel login** before the product route loaded. Local browser access was previously rejected by the browser service. No new rendered layout or owner acceptance is claimed. Prior screenshots and base-SHA CI are historical. IMPLEMENTATION_COMPLETE = NO; OWNER_LIVE_ACCEPTANCE = NOT_RUN; MERGE_READY = NO; CAUGHT_UP = NO. The PR remains draft and unmerged.
+
+## Connection, source and approval disclosure — 2026-10-04 UTC
+
+Base: `46b33a297b2d498ea1a508304448188bd34a82c2`. GitHub CI `37158380523` and Marketing Lighthouse `37158380533` were independently checked as completed/success. These base results do not establish candidate CI.
+
+Figma handoff `22:2` was read through design context with its screenshot. It specifies Manage identity/capability, tablet sheets, phone task/disclosure, status text, and preservation of charts and operational behavior. There is no separate Sources or Connectors pixel specimen in this inspection. This pass applies the handoff contract to existing routes; it does not claim an exact screen match.
+
+| Surface | Implemented changes | Still required |
+| --- | --- | --- |
+| Connectors list / inspector | Existing selected identity, authorization, capability catalog and agent dependencies retained. Selected inspector opens in a labelled, scrollable 540px maximum sheet below 1024px. Configure/reconnect closes the sheet before opening the next flow. Keyboard row selection and phone action targets retained/enlarged. | 1440/834/390 render, focus return, live permission/reconnect/sync states |
+| Sources inventory / inspector | Desktop comparative table retained. Below 1024px, compact source rows disclose status, environment, tables, records, workflow count and sync time. Selection opens a source sheet; desktop retains inline context. Full reported schema names, health gauge/value, operator usage, sync/delete confirmation, details and source-to-workflow handoff retained. Attention selection works independently of category/stage filters. | Rendered geometry, real inventory/ingestion, mutation permissions, persisted source workflow creation |
+| Sources truth / freshness | Missing or unfamiliar status is unknown, never implicitly connected. Missing health remains unreported. Freshness updates on successful fetch, not every render. | Owner response shapes and freshness/recovery walk |
+| Approval request / phone dock | Display typography, wrapping request values, 44px queue-return target, extra content clearance. Shared action-dock marker moves AI launcher above mounted Marketplace/Approval controls; approval-specific clearance also applies below 1024px. Approval/rejection backend operations and rejection confirmation retained. | Phone/tablet geometry, decision persistence and execution handoff |
+| Capture harness | Added real-page Sources and Metrics shot routes. Sources fixture includes connected, syncing and failing inventory; Analytics fixture includes run volume, P50/P95/P99 latency and throughput. Explicit screenshot-only payloads. Existing production harness/auth restrictions unchanged. | New fixture screenshots; fixtures are not live tenant proof |
+
+Seven new behavioral tests cover unknown status, full tablet source/schema/workflow context, selected sync/delete targeting and confirmation, failed inventory retry, tablet connector readiness disclosure, close-before-configuration and inline desktop inspection. The prior structural IA test now recognizes the responsive inspector wrapper; its other discovery/table/capability assertions remain intact.
+
+Final local verification: full Vitest **1,166 passed / 193 files**; production Next.js build **PASS**; TypeScript **PASS**; full ESLint **0 errors / 275 existing warnings**, final changed-file lint **0 errors**; chat/status/intelligence/brand guards **PASS**. Cognitive guard reports **PASS** with Python import smoke and targeted pytest explicitly skipped. Whitespace check **PASS**. The first build failed on a corrupt Turbopack cache; a clean-cache build and the subsequent final-code build both passed. No lockfile or dependency change.
+
+Browser check: local fixture URL rejected with `net::ERR_BLOCKED_BY_CLIENT`. A dev-server attempt also failed on this environment's `uv_interface_addresses` system call; it was stopped. No new browser screenshot or visual acceptance is claimed. Added capture routes are implementation, not captured evidence. OWNER_LIVE_ACCEPTANCE = NOT_RUN. IMPLEMENTATION_COMPLETE = NO. MERGE_READY = NO pending remaining implementation, rendered route/state evidence, owner requirements and candidate CI. CAUGHT_UP = NO. Draft continuation PR remains unmerged; no production deployment performed.

@@ -169,7 +169,8 @@ export function GravitreAIHelper() {
             "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
             // Pack actions occupy the space directly above mobile navigation.
             // Match only while that bar is mounted, without shifting other routes.
-            "max-md:[:root:has([data-testid=marketplace-mobile-actions])_&]:bottom-[calc(56px+env(safe-area-inset-bottom)+76px)]",
+            "max-md:[:root:has([data-gravitre-mobile-action-dock])_&]:bottom-[calc(56px+env(safe-area-inset-bottom)+76px)]",
+            "max-lg:[:root:has([data-testid=approval-mobile-actions])_&]:bottom-[calc(56px+env(safe-area-inset-bottom)+84px)]",
             onBuilder
               ? "md:left-[calc(var(--np-sidebar-rail)+12px)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]"
               : cn(

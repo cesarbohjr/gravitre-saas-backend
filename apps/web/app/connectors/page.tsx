@@ -21,7 +21,7 @@ import { ConnectorRecommendations } from "@/components/connectors/connector-reco
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
 import {
   ConnectorAttentionList,
-  ConnectorInspector,
+  ResponsiveConnectorInspector,
   ConnectorOperatingRow,
   ConnectorOperatingSummary,
   ConnectorRowHeader,
@@ -3351,7 +3351,7 @@ function ConnectorsPageContent() {
                   ))}
                 </section>
                 {selectedConnector ? (
-                  <ConnectorInspector
+                  <ResponsiveConnectorInspector
                     connector={selectedConnector}
                     statusLabel={
                       selectedConnector.status === "syncing" ? "Syncing" : connectorStatusLabel(selectedConnector)
