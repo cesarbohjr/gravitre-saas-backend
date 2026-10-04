@@ -3,7 +3,7 @@
 /**
  * I8 — Model Studio: Create · Train · Evaluate · Deploy · Runs with intent-first create.
  */
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
@@ -77,6 +77,7 @@ export function ModelStudioStage({
   suggestedQuestions?: string[]
 }) {
   const router = useRouter()
+  const referenceLock = useRef(false)
   const [segment, setSegment] = useState<StudioSegment>("create")
   const compactInspector = useIsMobile(1024)
   const [inspectorOpen, setInspectorOpen] = useState(false)
@@ -103,7 +104,7 @@ export function ModelStudioStage({
     () => mlModelsApi.list(),
     { revalidateOnFocus: false },
   )
-  const { data: externalAgentsData } = useSWR(
+  const { data: externalAgentsData, error: agentsError, isLoading: agentsLoading, mutate: mutateAgents } = useSWR(
     enabled &&
       segment === "train" &&
       (externalTargetType === "agent" || externalTargetType === "department")
@@ -112,14 +113,14 @@ export function ModelStudioStage({
     () => agentsApi.list(),
     { revalidateOnFocus: false },
   )
-  const { data: externalWorkflowsData } = useSWR(
+  const { data: externalWorkflowsData, error: workflowsError, isLoading: workflowsLoading, mutate: mutateWorkflows } = useSWR(
     enabled && segment === "train" && externalTargetType === "workflow"
       ? "external-dataset-target-workflows"
       : null,
     () => workflowsApi.list(),
     { revalidateOnFocus: false },
   )
-  const { data: externalPlaysData } = useSWR(
+  const { data: externalPlaysData, error: playsError, isLoading: playsLoading, mutate: mutatePlays } = useSWR(
     enabled && segment === "train" && externalTargetType === "play"
       ? "external-dataset-target-plays"
       : null,
@@ -167,6 +168,8 @@ export function ModelStudioStage({
   )
   const {
     data: externalReferencesData,
+    error: referencesError,
+    isLoading: referencesLoading,
     mutate: mutateExternalReferences,
   } = useSWR(
     enabled && segment === "train" ? "external-dataset-references-studio" : null,
@@ -174,7 +177,7 @@ export function ModelStudioStage({
     { revalidateOnFocus: false },
   )
 
-  const models = modelsData?.models ?? []
+  const models = useMemo(() => modelsData?.models ?? [], [modelsData])
   const catalog = useMemo(() => models.map(formatModelCatalogRow), [models])
   const evaluateModels = catalog.filter((m) =>
     ["ready", "validating", "evaluating", "training"].includes(m.technicalStatus),
@@ -232,6 +235,19 @@ export function ModelStudioStage({
     modelsData,
   ])
 
+  const targetLoad = externalTargetType === "model"
+    ? { error: modelsError, loading: modelsLoading, retry: mutateModels }
+    : externalTargetType === "agent" || externalTargetType === "department"
+      ? { error: agentsError, loading: agentsLoading, retry: mutateAgents }
+      : externalTargetType === "workflow"
+        ? { error: workflowsError, loading: workflowsLoading, retry: mutateWorkflows }
+        : externalTargetType === "play"
+          ? { error: playsError, loading: playsLoading, retry: mutatePlays }
+          : { error: null, loading: false, retry: () => Promise.resolve() }
+  const targetReady = externalTargetType === "evaluation"
+    ? Boolean(externalTargetId.trim())
+    : !targetLoad.error && !targetLoad.loading && externalTargetOptions.some(option => option.id === externalTargetId)
+
   function startCreate() {
     const params = new URLSearchParams({ action: "register" })
     if (intent) params.set("intent", intent)
@@ -239,12 +255,13 @@ export function ModelStudioStage({
   }
 
   async function saveExternalDatasetReference() {
-    if (!externalProviderId || !selectedExternalDatasetId || !externalTargetId.trim()) return
+    if (referenceLock.current || !externalProviderId || !selectedExternalDatasetId || !selectedExternalDataset || externalInspectError || !targetReady) return
+    referenceLock.current = true
     setExternalReferenceSaving(true)
     setExternalReferenceError(null)
     setExternalReferenceSaved(null)
     try {
-      await trainingApi.createExternalDatasetReference({
+      const saved = await trainingApi.createExternalDatasetReference({
         provider: externalProviderId,
         datasetId: selectedExternalDatasetId,
         purpose: externalPurpose,
@@ -253,20 +270,23 @@ export function ModelStudioStage({
         accessMode: "reference",
         metadata: { source: "model_studio" },
       })
-      await mutateExternalReferences()
-      setExternalReferenceSaved("Dataset added to the selected target as a reusable provider reference.")
+      if (!saved.id) throw new Error("The server did not confirm a saved reference. Your selection is retained.")
+      setExternalReferenceSaved(`Reference saved for ${externalTargetType} ${externalTargetId.trim()}. This save does not import or index provider files.`)
+      // Refresh failure must not turn an acknowledged save into a failed mutation.
+      void Promise.allSettled([mutateExternalReferences()])
     } catch (error) {
       setExternalReferenceError(
         error instanceof Error ? error.message : "Could not add the dataset reference.",
       )
     } finally {
+      referenceLock.current = false
       setExternalReferenceSaving(false)
     }
   }
 
   return (
     <div className="space-y-6">
-      {modelsError || jobsError || datasetsError ? (
+      {((segment === "evaluate" || segment === "deploy") && modelsError) || jobsError || datasetsError ? (
         <WorkSectionErrorCard
           title="Could not load Model Studio"
           message={
@@ -298,6 +318,7 @@ export function ModelStudioStage({
                   key={item.id}
                   type="button"
                   onClick={() => { setSegment(item.id); setInspectorOpen(false); setDatasetInspectorOpen(false) }}
+                  disabled={externalReferenceSaving}
                   aria-current={active ? "step" : undefined}
                   className={cn(
                     "flex min-h-11 shrink-0 items-baseline gap-2 border-b-2 px-2 py-1.5 text-left text-sm lg:border-b-0 lg:border-l-2 lg:py-2",
@@ -385,18 +406,18 @@ export function ModelStudioStage({
 
           {segment === "train" ? (
             <div className="space-y-4">
-              <section className="border-y border-divide" aria-labelledby="dataset-picker">
+              <section className="border-y border-divide" aria-labelledby="external-dataset-connectors">
                 <div className="flex flex-col gap-2 border-b border-divide px-3 py-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p id="external-dataset-connectors" className="text-sm font-medium text-foreground">
-                      External dataset connectors
+                      External datasets
                     </p>
                     <p className={cn(TYPE.meta, "mt-0.5")}>
-                      Browse free dataset providers, preview a dataset, then add it to your model.
+                      Search provider metadata, review access and purpose, then choose where to use it.
                     </p>
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    {externalProviders.length > 0 ? externalProviders.map((p) => p.label).join(" · ") : providersLoading ? "Loading providers…" : "No providers available"}
+                    {providersError ? "Providers unavailable" : externalProviders.length > 0 ? externalProviders.map((p) => p.label).join(" · ") : providersLoading ? "Loading providers…" : "No providers returned"}
                   </span>
                 </div>
                 <form
@@ -408,6 +429,7 @@ export function ModelStudioStage({
                 >
                   {externalProviders.length > 1 ? (
                     <select
+                      disabled={externalReferenceSaving}
                       value={externalProviderId}
                       onChange={(event) => {
                         setExternalProvider(event.target.value)
@@ -428,6 +450,7 @@ export function ModelStudioStage({
                     </select>
                   ) : null}
                   <input
+                    disabled={externalReferenceSaving}
                     value={externalQuery}
                     onChange={(event) => setExternalQuery(event.target.value)}
                     placeholder={`Search ${externalProviderLabel} datasets`}
@@ -437,7 +460,7 @@ export function ModelStudioStage({
                   <Button
                     type="submit"
                     variant="outline"
-                    disabled={!externalQuery.trim() || !externalProviderId}
+                    disabled={!externalQuery.trim() || !externalProviderId || externalReferenceSaving}
                   >
                     Search
                   </Button>
@@ -461,7 +484,7 @@ export function ModelStudioStage({
                         <li key={dataset.dataset_id}>
                           <button
                             type="button"
-                            disabled={restricted}
+                            disabled={restricted || externalReferenceSaving}
                             aria-pressed={selected}
                             onClick={() => {
                               setSelectedExternalDatasetId(dataset.dataset_id)
@@ -499,9 +522,10 @@ export function ModelStudioStage({
                 {selectedExternalDatasetId ? (
                   <SelectionInspector
                     open={datasetInspectorOpen}
-                    onOpenChange={setDatasetInspectorOpen}
+                    pending={externalReferenceSaving}
+                    onOpenChange={open => { if (!referenceLock.current) setDatasetInspectorOpen(open) }}
                     title={selectedExternalDatasetId}
-                    description="Review provider metadata and choose where to use this dataset."
+                    description={externalReferenceSaving ? "Saving this reference. Your review stays open until the request returns." : "Review provider metadata and choose where to use this dataset."}
                     className="border-t border-divide px-3 py-3"
                   >
                   <div data-review-surface="external-dataset-inspect">
@@ -528,8 +552,9 @@ export function ModelStudioStage({
                           <label className="space-y-1">
                             <span className={TYPE.meta}>Purpose</span>
                             <select
+                              disabled={externalReferenceSaving}
                               value={externalPurpose}
-                              onChange={(event) => setExternalPurpose(event.target.value as ExternalDatasetPurpose)}
+                              onChange={(event) => { setExternalPurpose(event.target.value as ExternalDatasetPurpose); setExternalReferenceSaved(null); setExternalReferenceError(null) }}
                               className="min-h-11 w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                             >
                               {EXTERNAL_DATASET_PURPOSES.map((option) => (
@@ -540,6 +565,7 @@ export function ModelStudioStage({
                           <label className="space-y-1">
                             <span className={TYPE.meta}>Use with</span>
                             <select
+                              disabled={externalReferenceSaving}
                               value={externalTargetType}
                               onChange={(event) => {
                                 setExternalTargetType(event.target.value as ExternalDatasetTargetType)
@@ -556,23 +582,25 @@ export function ModelStudioStage({
                           </label>
                           <label className="space-y-1">
                             <span className={TYPE.meta}>
-                              {externalTargetType === "evaluation" ? "Evaluation ID" : "Canonical target"}
+                              {externalTargetType === "evaluation" ? "Evaluation ID" : `Existing ${externalTargetType}`}
                             </span>
                             {externalTargetType === "evaluation" ? (
                               <input
+                                disabled={externalReferenceSaving}
                                 value={externalTargetId}
-                                onChange={(event) => setExternalTargetId(event.target.value)}
+                                onChange={(event) => { setExternalTargetId(event.target.value); setExternalReferenceSaved(null); setExternalReferenceError(null) }}
                                 placeholder="Existing evaluation ID"
                                 className="min-h-11 w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                               />
                             ) : (
                               <select
                                 value={externalTargetId}
-                                onChange={(event) => setExternalTargetId(event.target.value)}
-                                aria-label="Canonical dataset target"
+                                onChange={(event) => { setExternalTargetId(event.target.value); setExternalReferenceSaved(null); setExternalReferenceError(null) }}
+                                disabled={externalReferenceSaving || targetLoad.loading || Boolean(targetLoad.error)}
+                                aria-label="Dataset target"
                                 className="min-h-11 w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                               >
-                                <option value="">Select an existing target</option>
+                                <option value="">{targetLoad.loading ? "Loading targets…" : targetLoad.error ? "Targets unavailable" : "Select an existing target"}</option>
                                 {externalTargetOptions.map((option) => (
                                   <option key={option.id} value={option.id}>{option.label}</option>
                                 ))}
@@ -581,25 +609,30 @@ export function ModelStudioStage({
                           </label>
                         </div>
 
+                        {targetLoad.error ? (
+                          <WorkSectionErrorCard title="Could not load dataset targets" message="Your dataset and purpose are retained. Retry before choosing existing work." onRetry={() => void targetLoad.retry()} />
+                        ) : externalTargetType !== "evaluation" && !targetLoad.loading && externalTargetOptions.length === 0 ? (
+                          <p className={TYPE.meta}>No existing {externalTargetType} targets were returned. Choose another target type or create the target in its workspace first.</p>
+                        ) : null}
                         <div className="flex flex-wrap items-center gap-3">
                           <Button
                             type="button"
                             variant="outline"
                             className="min-h-11"
-                            disabled={!externalTargetId.trim() || externalReferenceSaving}
+                            disabled={!targetReady || externalReferenceSaving || Boolean(externalInspectError)}
                             onClick={() => void saveExternalDatasetReference()}
                           >
-                            {externalReferenceSaving ? "Adding dataset…" : "Use dataset"}
+                            {externalReferenceSaving ? "Saving reference…" : "Save dataset reference"}
                           </Button>
                           <p className={TYPE.meta}>
                             Adds a reusable dataset reference to Gravitre. Provider files are only imported when a supported materialization step is explicitly started.
                           </p>
                         </div>
                         {externalReferenceError ? (
-                          <p className="text-sm text-destructive">{externalReferenceError}</p>
+                          <p role="alert" className="text-sm text-destructive">{externalReferenceError}</p>
                         ) : null}
                         {externalReferenceSaved ? (
-                          <p className="text-sm text-[color:var(--g-brand-active)]">{externalReferenceSaved}</p>
+                          <p role="status" className="text-sm text-[color:var(--g-brand-active)]">{externalReferenceSaved}</p>
                         ) : null}
                       </div>
                     ) : (
@@ -609,6 +642,21 @@ export function ModelStudioStage({
                   </SelectionInspector>
                 ) : null}
 
+                <section aria-label="Saved dataset references" className="border-t border-divide px-3 py-3">
+                  <p className={TYPE.eyebrow}>Saved references</p>
+                  {referencesError ? <WorkSectionErrorCard title="Could not refresh saved references" message="An acknowledged save is retained. Retry to inspect the workspace list." onRetry={() => void mutateExternalReferences()} /> : null}
+                  {referencesLoading && !externalReferencesData ? <p className={TYPE.meta}>Loading saved references…</p> : Array.isArray(externalReferencesData?.references) && !referencesError && externalReferences.length === 0 ? <p className={TYPE.meta}>No saved references returned.</p> : null}
+                  {!referencesLoading && !referencesError && !Array.isArray(externalReferencesData?.references) ? <p className={TYPE.meta}>Saved references not reported.</p> : null}
+                  <ul className="mt-2 divide-y divide-divide">
+                    {externalReferences.map(reference => (
+                      <li key={reference.id} className="min-w-0 py-2">
+                        <p className="break-all text-sm font-medium">{reference.external_dataset_id}</p>
+                        <p className={cn(TYPE.meta, "break-words")}>{reference.purpose} · {reference.target_type} · {reference.target_id}</p>
+                        <p className={TYPE.meta}>{reference.provider} · {reference.access_mode === "reference" ? "Reference metadata; no import or indexing confirmed" : `${reference.access_mode} access requested; materialization not reported here`}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
                 {externalReferences.length > 0 ? (
                   <div className="border-t border-divide px-3 py-2">
                     <p className={TYPE.meta}>
@@ -626,7 +674,7 @@ export function ModelStudioStage({
                   action={{
                     label: "Create or upload dataset",
                     onClick: () => {
-                      window.location.href = APP_ROUTES.training
+                      router.push(APP_ROUTES.training)
                     },
                   }}
                 />
@@ -641,7 +689,7 @@ export function ModelStudioStage({
               )}
               <Link
                 href={APP_ROUTES.training}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
+                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
               >
                 Manage datasets and training runs
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -706,7 +754,7 @@ export function ModelStudioStage({
               ) : jobs.length === 0 ? (
                 <EmptyState
                   title="No training runs yet"
-                  description="Runs are the same jobs as /training — shown here so Training is not a hub tab."
+                  description="Reported training jobs appear here. Open a run to inspect progress and preparation requirements."
                 />
               ) : (
                 jobs.slice(0, 12).map((job) => {
@@ -723,7 +771,7 @@ export function ModelStudioStage({
               )}
               <Link
                 href={APP_ROUTES.training}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
+                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
               >
                 Open full run history
                 <ArrowRight className="h-3.5 w-3.5" />

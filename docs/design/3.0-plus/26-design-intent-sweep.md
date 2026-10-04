@@ -118,3 +118,26 @@ Final local checks on the implementation tree:
 GitHub checks must be inspected on the published continuation SHA independently; prior-head checks do not establish current-head acceptance.
 
 Current-head browser rendering remains blocked by `ERR_BLOCKED_BY_CLIENT` in the available browser. No valid capture or Figma pixel acceptance was obtained. Owner-live acceptance is not run. Finance department/Compliance catalog scope, Slack/email destination delivery and Billing E2E remain the previously documented open gates. Draft PR stays unmerged and not production-deployed; **IMPLEMENTATION_COMPLETE = NO; MERGE_READY = NO; CAUGHT_UP = NO**.
+
+
+## Model Studio reference continuation — 2026-10-04
+
+Based on published `79e03cb4`. Independent GitHub inspection at the start of this continuation found Web, Backend, runtime, dependency audit and Lighthouse passing; Billing E2E skipped. These results belong to that SHA, not the next continuation.
+
+Model Studio now follows a preparation journey: provider metadata → access preview → purpose → existing target → acknowledged reference. It uses Create composition and a purposeful Plan model work entry to the canonical workspace. External datasets are not described as universally free or immediately usable models. A saved-reference ledger shows actual dataset, provider, purpose, target and access mode, without inventing import/index/readiness evidence.
+
+Source review found three concrete gaps in this nested flow: duplicate writes/dismissal during save, invisible target/reference query errors, and acknowledged saves becoming failed saves when list refresh rejected. The implementation adds a synchronous mutation guard, frozen provider/dataset/purpose/target/segment while pending, independent loading/error/retry for targets and reference lists, and separate save acknowledgement from refresh outcome. Failed saves retain the selected review. Missing acknowledgement remains an error rather than an invented success. Refresh is independent after acknowledgement, so it does not trap the user in a completed write.
+
+The shared SelectionInspector accepts opt-in pending state: compact close is disabled, Escape/outside dismissal is prevented, and ordinary dismissal/focus return resumes after the request returns. Other inspectors retain their existing behavior. This is contract/DOM-tested, not rendered viewport acceptance. Native controls and links retain minimum touch targets; no new backend endpoint, catalog promise or AI runtime was introduced.
+
+Final checks and current-head CI are recorded with the publication handoff. The route matrix remains VISUAL_ACCEPTANCE = NOT_RUN, and owner-live save/authorization/materialization remain open. Draft stays unmerged and not deployed.
+
+
+Model Studio continuation validation:
+
+- Full Vitest TZ=UTC: **1,352 passed / 212 files**. New rendered-DOM behavior checks cover target retry, refused draft retention, pending duplicate/scope exclusion, acknowledged save with failed refresh, and saved provenance. Shared inspector checks cover disabled pending close/Escape and resumed dismissal. DOM checks are not screenshot acceptance.
+- `tsc --noEmit`: **exit 0**. Production build: **exit 0** after discarding a corrupted generated Turbopack cache; the earlier cache failure was not a successful build.
+- Changed-file ESLint: **0 errors / 0 warnings**.
+- Intelligence customer surface, chat surface and whitespace guards: **PASS**.
+- Independent GitHub jobs on parent **79e03cb4**: Web, Backend, Integration Smoke, runtime, dependency audit and Lighthouse **pass**; Billing E2E **skipped**. Inspect the next SHA separately.
+- **VISUAL_ACCEPTANCE = NOT_RUN; OWNER_LIVE_ACCEPTANCE = NOT_RUN; IMPLEMENTATION_COMPLETE = NO; MERGE_READY = NO**. No merge/deployment.

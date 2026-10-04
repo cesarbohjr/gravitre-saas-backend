@@ -17,7 +17,7 @@ describe("Model Studio external dataset connectors", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/Browse free dataset providers, preview a dataset, then add it to your model/)
+    expect(studio).toMatch(/Search provider metadata, review access and purpose, then choose where to use it/)
     expect(studio).toMatch(/PREVIEW/)
     expect(studio).toMatch(/Hugging Face/)
     expect(studio).toMatch(/Kaggle/)
@@ -75,7 +75,7 @@ describe("Model Studio external dataset reference binding", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/disabled=\{restricted\}/)
+    expect(studio).toMatch(/disabled=\{restricted \|\| externalReferenceSaving\}/)
     expect(studio).toMatch(/RESTRICTED/)
   })
 })
@@ -98,7 +98,7 @@ describe("Model Studio canonical dataset targets", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/aria-label="Canonical dataset target"/)
+    expect(studio).toMatch(/aria-label="Dataset target"/)
     expect(studio).toMatch(/Select an existing target/)
     expect(studio).toMatch(/externalTargetType === "evaluation"/)
     expect(studio).toMatch(/placeholder="Existing evaluation ID"/)
@@ -121,9 +121,9 @@ describe("Model Studio user-first dataset picker", () => {
       resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
       "utf8",
     )
-    expect(studio).toMatch(/Browse free dataset providers, preview a dataset, then add it to your model/)
+    expect(studio).toMatch(/Search provider metadata, review access and purpose, then choose where to use it/)
     expect(studio).toMatch(/Search datasets/)
-    expect(studio).toMatch(/Use dataset/)
+    expect(studio).toMatch(/Save dataset reference/)
     expect(studio).toMatch(/Create or upload dataset/)
   })
 

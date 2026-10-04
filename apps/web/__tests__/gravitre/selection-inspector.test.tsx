@@ -15,10 +15,10 @@ beforeEach(() => {
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
 })
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.unstubAllGlobals() })
-function Example() {
+function Example({ pending = false }: { pending?: boolean }) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState("Existing target")
-  return <><button onClick={() => setOpen(true)}>Inspect</button><SelectionInspector open={open} onOpenChange={setOpen} title="Dataset" description="Review before use"><input aria-label="Target" value={value} onChange={e => setValue(e.target.value)} /></SelectionInspector></>
+  return <><button onClick={() => setOpen(true)}>Inspect</button><SelectionInspector open={open} pending={pending} onOpenChange={setOpen} title="Dataset" description="Review before use"><input aria-label="Target" value={value} onChange={e => setValue(e.target.value)} /></SelectionInspector></>
 }
 const mount = () => act(() => root.render(<Example />))
 const open = () => act(() => { const button = container.querySelector("button")!; button.focus(); button.click() })
@@ -39,4 +39,17 @@ it("moves selected context into the desktop work area without losing the target"
   act(() => { window.innerWidth = 1440; listeners.forEach(cb => cb()) })
   expect(document.querySelector('[role="dialog"]')).toBeNull()
   expect(container.querySelector('aside[aria-label="Dataset"] input')?.getAttribute("value")).toBe("Existing target")
+})
+
+it("retains a pending review on close or Escape and permits dismissal after the request returns", async () => {
+  act(() => root.render(<Example pending />)); open()
+  const close = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(b => b.textContent === "Close")!
+  expect(close.disabled).toBe(true)
+  act(() => { close.click(); document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })) })
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+  act(() => root.render(<Example pending={false} />))
+  expect(close.disabled).toBe(false)
+  act(() => close.click())
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) })
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
 })
