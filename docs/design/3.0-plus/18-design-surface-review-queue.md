@@ -305,7 +305,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/metrics/page.tsx | DropdownMenu | 6 | 16 |
 | apps/web/app/models/[id]/page.tsx | — | 3 | 1 |
 | apps/web/app/models/page.tsx | Dialog | 12 | 1 |
-| apps/web/app/multi-agent-run/page.tsx | StartSwarmDialog | 4 | 1 |
+| apps/web/app/multi-agent-run/page.tsx | SelectionInspector, StartSwarmDialog | 4 | 1 |
 | apps/web/app/notifications/page.tsx | — | 8 | 1 |
 | apps/web/app/platform/cs-workspace/page.tsx | DropdownMenu | 15 | 1 |
 | apps/web/app/plays/[key]/page.tsx | — | 4 | 1 |
@@ -332,15 +332,15 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/sources/[id]/agents/page.tsx | — | 1 | 1 |
 | apps/web/app/sources/[id]/page.tsx | Dialog | 9 | 1 |
 | apps/web/app/sources/page.tsx | AddDataSourceModal, Sheet, SourceInspector | 8 | 16 |
-| apps/web/app/training/page.tsx | — | 44 | 1 |
+| apps/web/app/training/page.tsx | Dialog | 47 | 1 |
 | apps/web/app/welcome/page.tsx | — | 11 | 1 |
 | apps/web/app/workflows/[id]/builder/page.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, BuilderInspector, DebateViewDialog, Dialog, DropdownMenu, ScheduleEditorDialog, Sheet, WorkflowIntelligenceDrawer | 91 | 2 |
 | apps/web/app/workflows/[id]/page.tsx | — | 11 | 1 |
 | apps/web/app/workflows/[id]/schedules/page.tsx | ScheduleEditorDialog | 2 | 1 |
 | apps/web/app/workflows/page.tsx | DropdownMenu | 9 | 16 |
 | apps/web/components/activity/activity-trace-panel.tsx | — | 5 | 16 |
-| apps/web/components/agent-swarm/start-swarm-dialog.tsx | Dialog | 10 | 1 |
-| apps/web/components/agent-swarm/swarm-run-detail-panel.tsx | — | 4 | 1 |
+| apps/web/components/agent-swarm/start-swarm-dialog.tsx | Dialog | 11 | 1 |
+| apps/web/components/agent-swarm/swarm-run-detail-panel.tsx | — | 6 | 1 |
 | apps/web/components/agents/agent-knowledge-packs-editor.tsx | — | 1 | 1 |
 | apps/web/components/agents/agent-memory-row.tsx | — | 2 | 1 |
 | apps/web/components/agents/agent-policy-editor.tsx | Dialog | 5 | 3 |
@@ -446,11 +446,11 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/gravitre/model-selector.tsx | — | 5 | 3 |
 | apps/web/components/gravitre/notification-center.tsx | — | 5 | 174 |
 | apps/web/components/gravitre/onboarding-checklist.tsx | — | 4 | 174 |
-| apps/web/components/gravitre/open-gravitre-ai-button.tsx | — | 1 | 20 |
+| apps/web/components/gravitre/open-gravitre-ai-button.tsx | — | 1 | 19 |
 | apps/web/components/gravitre/operating/operating-primitives.tsx | — | 2 | 22 |
 | apps/web/components/gravitre/pre-action-card.tsx | — | 4 | 174 |
 | apps/web/components/gravitre/route-error.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/selection-inspector.tsx | Sheet | 0 | 2 |
+| apps/web/components/gravitre/selection-inspector.tsx | Sheet | 0 | 3 |
 | apps/web/components/gravitre/sidebar.tsx | — | 3 | 113 |
 | apps/web/components/gravitre/source-query-panel.tsx | — | 3 | 1 |
 | apps/web/components/gravitre/suggested-actions.tsx | Dialog | 9 | 174 |

@@ -552,3 +552,11 @@ Final local checks:
 Remaining implementation review proceeds to Training/multi-agent, Goals list, Marketplace/admin, Workflow/Builder/run detail and AI workspace states. Delegation administration and granular scope/override editing are outside this policy form. Native text knowledge creation and clearing existing policy limits remain unavailable in these contracts. Logo upload, Slack/email delivery, Finance/Compliance scope and billing E2E remain open.
 
 `IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`. Draft #298 is unmerged and is not production-deployed.
+
+### 2026-10-04 UTC — Training / multi-agent continuation
+
+Starting published head: `8da69b5db402a46874e0d484ed36d72322b74baa`. Training preparation, jobs, guidance and explicit assignment now have distinct journeys and truthful loading/evidence states. Multi-agent history/start/inspection now follows Operate/Create composition with compact selection sheets, editable work splits, retained failures, confirmed cancellation and full reported evidence. Existing APIs and the single runtime are preserved. See the dated scope table in `3.0-plus/19-design-led-review.md`.
+
+Final local validation: `TZ=UTC npx vitest run` — 1,294 tests passed across 208 files, including 19 new behavioral checks; changed-file ESLint — 0 errors / 0 warnings; full ESLint — 0 errors / 248 existing warnings; `npx tsc --noEmit` — exit 0; clean `npm run build` — exit 0; chat-surface, user-facing-status, intelligence-customer-surface and brand guards — PASS; `git diff --check` — PASS. Regenerated source inventory: 175 routes and 364 reachable control/disclosure source files. Rendered viewport/Figma and owner-live acceptance remain NOT RUN. Billing E2E has not been run by this continuation. No merge or production deployment is authorized by these local checks.
+
+`IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.

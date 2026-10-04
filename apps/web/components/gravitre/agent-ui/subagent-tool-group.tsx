@@ -6,7 +6,7 @@
  */
 
 import { cn } from "@/lib/utils"
-import { STATUS, TYPE } from "@/lib/design-system"
+import { TYPE } from "@/lib/design-system"
 import { Users } from "lucide-react"
 
 export function SubagentToolGroup({
@@ -21,7 +21,7 @@ export function SubagentToolGroup({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]",
+        "overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]",
         className,
       )}
       data-testid="subagent-tool-group"
@@ -29,7 +29,7 @@ export function SubagentToolGroup({
       <div
         className={cn(
           "flex h-8 items-center gap-1.5 border-b border-divide px-3",
-          STATUS.running,
+          "bg-[color:var(--g-surface-1)] text-muted-foreground",
           "rounded-none border-x-0 border-t-0",
         )}
       >

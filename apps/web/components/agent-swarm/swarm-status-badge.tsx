@@ -28,8 +28,15 @@ const SUBTASK_STATUS: Record<
   cancelled: { label: "Cancelled", className: STATUS.pending },
 }
 
-export function SwarmRunStatusBadge({ status }: { status: AgentSwarmRunStatus }) {
-  const meta = RUN_STATUS[status] ?? RUN_STATUS.pending
+export function SwarmRunStatusBadge({
+  status,
+}: {
+  status: AgentSwarmRunStatus
+}) {
+  const meta = RUN_STATUS[status] ?? {
+    label: "Not reported",
+    className: STATUS.idle,
+  }
   return (
     <Badge variant="outline" className={cn("font-normal", meta.className)}>
       {meta.label}
@@ -37,10 +44,20 @@ export function SwarmRunStatusBadge({ status }: { status: AgentSwarmRunStatus })
   )
 }
 
-export function SwarmSubtaskStatusBadge({ status }: { status: AgentSwarmSubtaskStatus }) {
-  const meta = SUBTASK_STATUS[status] ?? SUBTASK_STATUS.queued
+export function SwarmSubtaskStatusBadge({
+  status,
+}: {
+  status: AgentSwarmSubtaskStatus
+}) {
+  const meta = SUBTASK_STATUS[status] ?? {
+    label: "Not reported",
+    className: STATUS.idle,
+  }
   return (
-    <Badge variant="outline" className={cn("font-normal text-xs", meta.className)}>
+    <Badge
+      variant="outline"
+      className={cn("font-normal text-xs", meta.className)}
+    >
       {meta.label}
     </Badge>
   )

@@ -8,11 +8,11 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
 type TrainingOverviewProps = {
-  totalDatasets: number
-  readyDatasets: number
-  totalJobs: number
-  activeJobs: number
-  totalInstructions: number
+  totalDatasets: number | null
+  readyDatasets: number | null
+  totalJobs: number | null
+  activeJobs: number | null
+  totalInstructions: number | null
 }
 
 export function TrainingOverview({
@@ -26,23 +26,34 @@ export function TrainingOverview({
     <section className="space-y-4 border-b border-divide pb-6">
       <div>
         <p className={TYPE.eyebrow}>{SURFACE_COPY.training.badge}</p>
-        <h2 className={cn(TYPE.sectionTitle, "mt-1")}>{SURFACE_COPY.training.heroTitle}</h2>
+        <h2 className={cn(TYPE.sectionTitle, "mt-1")}>
+          {SURFACE_COPY.training.heroTitle}
+        </h2>
         <p className={cn(TYPE.bodyMuted, "mt-1 max-w-2xl")}>
-          Teach agents with examples, documents, and live feedback. Run a training job, then assign the model.
-          Starts from what{" "}
-          <Link href={APP_ROUTES.learning} className="underline-offset-4 hover:underline">
+          Teach agents with examples, documents, and live feedback. Run a
+          training job, then assign the model. Starts from what{" "}
+          <Link
+            href={APP_ROUTES.learning}
+            className="underline-offset-4 hover:underline"
+          >
             {SURFACE_COPY.learning.title}
           </Link>{" "}
           already detected. Finished models also appear in{" "}
-          <Link href={APP_ROUTES.models} className="underline-offset-4 hover:underline">
+          <Link
+            href={APP_ROUTES.models}
+            className="underline-offset-4 hover:underline"
+          >
             {SURFACE_COPY.models.title}
           </Link>
           .
         </p>
         <p className={cn(TYPE.meta, "mt-2")}>
-          {totalDatasets} datasets · {readyDatasets} ready ·{" "}
-          {activeJobs > 0 ? `${activeJobs} active jobs` : `${totalJobs} jobs`} · {totalInstructions}{" "}
-          instructions
+          {totalDatasets ?? "Not reported"} datasets ·{" "}
+          {readyDatasets ?? "Not reported"} ready ·{" "}
+          {activeJobs != null && activeJobs > 0
+            ? `${activeJobs} active jobs`
+            : `${totalJobs ?? "Not reported"} jobs`}{" "}
+          · {totalInstructions ?? "Not reported"} instructions
         </p>
       </div>
       <ol className="space-y-2">

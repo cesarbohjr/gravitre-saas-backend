@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
-import { ChevronDown, ChevronRight, Loader2, Network, Plus, Trash2 } from "lucide-react"
+import { Loader2, Plus, Trash2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -16,31 +16,45 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { agentSwarmApi, agentsApi, marketplaceApi } from "@/lib/api"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import {
   collectInstalledAgentIds,
   resolveSwarmAgentDefaults,
 } from "@/lib/resolve-default-agent"
+import { TYPE } from "@/lib/design-system"
+import { cn } from "@/lib/utils"
 import type { AgentSwarmDecisionMethod } from "@/types/api"
 
-type SubtaskDraft = { agentId: string; task: string }
-
-const DECISION_METHODS: { value: AgentSwarmDecisionMethod; label: string }[] = [
-  { value: "majority_vote", label: "Majority vote" },
-  { value: "unanimous", label: "Unanimous" },
-  { value: "weighted_vote", label: "Weighted vote" },
-  { value: "chair_decides", label: "Chair decides" },
+const METHODS: {
+  value: AgentSwarmDecisionMethod
+  label: string
+  hint: string
+}[] = [
+  {
+    value: "majority_vote",
+    label: "Majority vote",
+    hint: "Use the position supported by most council participants.",
+  },
+  {
+    value: "unanimous",
+    label: "Unanimous",
+    hint: "Seek agreement across all council participants.",
+  },
+  {
+    value: "weighted_vote",
+    label: "Weighted vote",
+    hint: "Weight reported council opinions by their confidence estimates.",
+  },
+  {
+    value: "chair_decides",
+    label: "Chair decides",
+    hint: "Use the chair's position when the council reports one.",
+  },
 ]
-
-const EMPTY_SUBTASK: SubtaskDraft = { agentId: "", task: "" }
+type Draft = { id: number; agentId: string; task: string }
+const selectClass =
+  "min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
 
 export function StartSwarmDialog({
   open,
@@ -49,282 +63,342 @@ export function StartSwarmDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onStarted: (swarmRunId: string) => void
+  onStarted: (id: string) => void
 }) {
   const [parentAgentId, setParentAgentId] = useState("")
   const [objective, setObjective] = useState("")
-  const [decisionMethod, setDecisionMethod] = useState<AgentSwarmDecisionMethod>("majority_vote")
-  const [subtasks, setSubtasks] = useState<SubtaskDraft[]>([{ ...EMPTY_SUBTASK }])
+  const [decisionMethod, setDecisionMethod] =
+    useState<AgentSwarmDecisionMethod>("majority_vote")
+  const [subtasks, setSubtasks] = useState<Draft[]>([
+    { id: 0, agentId: "", task: "" },
+  ])
   const [submitting, setSubmitting] = useState(false)
-  const [showAdvancedAgents, setShowAdvancedAgents] = useState(false)
-  const [agentsAutoResolved, setAgentsAutoResolved] = useState(false)
-  const autoResolvedRef = useRef(false)
-
-  const { data: agentsData, isLoading: loadingAgents } = useSWR(
-    open ? "agent-swarm/start/agents" : null,
-    () => agentsApi.list(),
+  const [error, setError] = useState<string | null>(null)
+  const lock = useRef(false)
+  const resolved = useRef(false)
+  const nextId = useRef(1)
+  const {
+    data: agentsData,
+    error: agentsError,
+    isLoading: loadingAgents,
+    mutate: retryAgents,
+  } = useSWR(open ? "agent-swarm/start/agents" : null, () => agentsApi.list())
+  const {
+    data: installsData,
+    error: installsError,
+    isLoading: loadingInstalls,
+    mutate: retryInstalls,
+  } = useSWR(open ? "agent-swarm/start/installs" : null, () =>
+    marketplaceApi.listInstalls({ status: "active", limit: 100 }),
   )
-  const { data: installsData } = useSWR(
-    open ? "agent-swarm/start/installs" : null,
-    () => marketplaceApi.listInstalls({ status: "active", limit: 100 }),
-  )
-
   const agents = useMemo(() => agentsData?.agents ?? [], [agentsData])
-  const installedAgentIds = useMemo(
+  const installedIds = useMemo(
     () => collectInstalledAgentIds(installsData?.installs ?? []),
-    [installsData?.installs],
+    [installsData],
   )
 
   useEffect(() => {
-    if (!open || autoResolvedRef.current || loadingAgents || agents.length === 0) return
-    const defaults = resolveSwarmAgentDefaults({ agents, installedAgentIds })
+    if (
+      !open ||
+      resolved.current ||
+      loadingAgents ||
+      loadingInstalls ||
+      !agents.length
+    )
+      return
+    const defaults = resolveSwarmAgentDefaults({
+      agents,
+      installedAgentIds: installedIds,
+    })
     if (!defaults) return
-    autoResolvedRef.current = true
+    resolved.current = true
     setParentAgentId(defaults.parentAgentId)
     setSubtasks(
       defaults.subtaskAgentIds.map((agentId) => ({
+        id: nextId.current++,
         agentId,
         task: "",
       })),
     )
-    setAgentsAutoResolved(true)
-    setShowAdvancedAgents(false)
-  }, [open, loadingAgents, agents, installedAgentIds])
+  }, [open, loadingAgents, loadingInstalls, agents, installedIds])
 
-  function reset() {
-    setParentAgentId("")
-    setObjective("")
-    setDecisionMethod("majority_vote")
-    setSubtasks([{ ...EMPTY_SUBTASK }])
-    setSubmitting(false)
-    setShowAdvancedAgents(false)
-    setAgentsAutoResolved(false)
-    autoResolvedRef.current = false
-  }
-
-  function handleOpenChange(next: boolean) {
-    if (!next) reset()
+  function close(next: boolean) {
+    if (lock.current) return
+    if (!next) {
+      setObjective("")
+      setParentAgentId("")
+      setDecisionMethod("majority_vote")
+      setSubtasks([{ id: nextId.current++, agentId: "", task: "" }])
+      setError(null)
+      resolved.current = false
+    }
     onOpenChange(next)
   }
-
-  const validSubtasks = subtasks.filter((s) => s.agentId && s.task.trim())
+  function update(id: number, patch: Partial<Draft>) {
+    resolved.current = true
+    setSubtasks((rows) =>
+      rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+    )
+  }
   const canSubmit =
-    Boolean(parentAgentId) &&
-    objective.trim().length > 0 &&
-    validSubtasks.length >= 1 &&
-    validSubtasks.length <= 10
-
-  function updateSubtask(index: number, patch: Partial<SubtaskDraft>) {
-    setSubtasks((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
-  }
-
-  function addSubtask() {
-    if (subtasks.length >= 10) return
-    setSubtasks((prev) => [...prev, { ...EMPTY_SUBTASK }])
-    setShowAdvancedAgents(true)
-  }
-
-  function removeSubtask(index: number) {
-    setSubtasks((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))
-  }
-
-  async function handleSubmit() {
-    if (!canSubmit) return
+    !loadingAgents &&
+    Boolean(agentsData) &&
+    agents.some((a) => a.id === parentAgentId) &&
+    Boolean(objective.trim()) &&
+    subtasks.length > 0 &&
+    subtasks.length <= 10 &&
+    subtasks.every(
+      (s) => agents.some((a) => a.id === s.agentId) && s.task.trim(),
+    )
+  async function submit() {
+    if (!canSubmit || lock.current) return
+    lock.current = true
     setSubmitting(true)
+    setError(null)
     try {
-      await ensureSelectedOrg(true)
+      const org = await ensureSelectedOrg(true)
+      if (!org)
+        throw new Error("Workspace membership is required to start a run.")
       const run = await agentSwarmApi.start({
         parentAgentId,
         objective: objective.trim(),
         decisionMethod,
-        subtasks: validSubtasks.map((s) => ({
-          agentId: s.agentId,
-          task: s.task.trim(),
+        subtasks: subtasks.map(({ agentId, task }) => ({
+          agentId,
+          task: task.trim(),
         })),
       })
       toast.success("Multi-agent run started")
+      lock.current = false
+      close(false)
       onStarted(run.id)
-      handleOpenChange(false)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to start multi-agent run")
+    } catch {
+      setError(
+        "Could not start this run. Your objective and subtasks are retained; try again.",
+      )
     } finally {
+      lock.current = false
       setSubmitting(false)
     }
   }
-
-  const parentAgent = agents.find((agent) => agent.id === parentAgentId)
-  const workerNames = subtasks
-    .map((s) => agents.find((agent) => agent.id === s.agentId)?.name)
-    .filter(Boolean)
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent
+        className="max-h-[90dvh] max-w-2xl overflow-y-auto"
+        data-composition="create"
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Network className="h-5 w-5 text-violet-500" />
-            Start multi-agent run
+          <p className={TYPE.eyebrow}>Coordinate / New run</p>
+          <DialogTitle className="font-[family-name:var(--font-space-grotesk)]">
+            Give each agent a clear part
           </DialogTitle>
           <DialogDescription>
-            Coordinate multiple agents on subtasks, then merge their results into one recommendation.
+            Set one objective, divide the work, then review the council’s
+            reported recommendation. Starting a run dispatches the subtasks.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {agentsAutoResolved && parentAgent ? (
-            <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-sm">
-              <p className="font-medium text-foreground">
-                Auto-selected from your packs · {parentAgent.name}
-                {workerNames.length > 0 ? ` + ${workerNames.length} worker${workerNames.length === 1 ? "" : "s"}` : ""}
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Add subtask prompts below. Change agents only if you need a different roster.
-              </p>
-            </div>
-          ) : null}
-
+        {loadingAgents ? (
+          <p role="status" className={TYPE.bodyMuted}>
+            Loading agents…
+          </p>
+        ) : null}
+        {agentsError ? (
+          <div role="alert" className="space-y-2 text-sm">
+            <p>Could not load agents.</p>
+            <Button
+              variant="outline"
+              className="min-h-11"
+              onClick={() => void retryAgents()}
+            >
+              Retry agents
+            </Button>
+          </div>
+        ) : null}
+        {agentsData && !agents.length && !agentsError ? (
+          <p className={TYPE.bodyMuted}>
+            Add an agent to your AI Team before starting a run.
+          </p>
+        ) : null}
+        {installsError ? (
+          <div className="text-sm text-muted-foreground">
+            <p>
+              Pack preferences are unavailable. You can choose workspace agents
+              below.
+            </p>
+            <Button
+              variant="ghost"
+              className="min-h-11"
+              onClick={() => void retryInstalls()}
+            >
+              Retry pack preferences
+            </Button>
+          </div>
+        ) : null}
+        <fieldset
+          disabled={submitting || loadingAgents || !agents.length}
+          className="min-w-0 space-y-5"
+        >
           <div className="space-y-2">
             <Label htmlFor="swarm-objective">Objective</Label>
             <Textarea
               id="swarm-objective"
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
-              placeholder="What should this multi-agent run accomplish?"
               rows={3}
-              autoFocus
+              placeholder="What outcome should these agents work toward?"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="swarm-decision">Decision method</Label>
-            <Select
-              value={decisionMethod}
-              onValueChange={(v) => setDecisionMethod(v as AgentSwarmDecisionMethod)}
-            >
-              <SelectTrigger id="swarm-decision">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DECISION_METHODS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="swarm-parent">Coordinator</Label>
+              <select
+                id="swarm-parent"
+                className={selectClass}
+                value={parentAgentId}
+                onChange={(e) => {
+                  resolved.current = true
+                  setParentAgentId(e.target.value)
+                }}
+              >
+                <option value="">Choose coordinator</option>
+                {agents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="swarm-decision">Decision method</Label>
+              <select
+                id="swarm-decision"
+                className={selectClass}
+                value={decisionMethod}
+                onChange={(e) =>
+                  setDecisionMethod(e.target.value as AgentSwarmDecisionMethod)
+                }
+              >
+                {METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Subtasks ({validSubtasks.length}/10)</Label>
-              <Button type="button" variant="ghost" size="sm" onClick={addSubtask} disabled={subtasks.length >= 10}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add
+          <p className={TYPE.meta}>
+            Roster suggestions use available workspace agents and pack
+            preferences. You can change every role.{" "}
+            {METHODS.find((m) => m.value === decisionMethod)?.hint} Council
+            confidence is an estimate, not proof of execution.
+          </p>
+          <section className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className={TYPE.sectionTitle}>
+                Work split{" "}
+                <span className={TYPE.meta}>{subtasks.length}/10</span>
+              </h3>
+              <Button
+                variant="ghost"
+                className="min-h-11"
+                disabled={subtasks.length >= 10}
+                onClick={() => {
+                  resolved.current = true
+                  setSubtasks((rows) => [
+                    ...rows,
+                    { id: nextId.current++, agentId: "", task: "" },
+                  ])
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Add subtask
               </Button>
             </div>
-            {subtasks.map((subtask, index) => (
-              <div key={index} className="rounded-lg border border-border p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Subtask {index + 1}</span>
-                  {subtasks.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => removeSubtask(index)}
-                      aria-label="Remove subtask"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+            {subtasks.map((s, index) => (
+              <div
+                key={s.id}
+                className="grid gap-3 border-t border-border py-3 sm:grid-cols-[2.5rem_minmax(0,1fr)]"
+              >
+                <span
+                  className={cn(
+                    TYPE.eyebrow,
+                    "pt-3 text-[color:var(--g-electric)]",
                   )}
-                </div>
-                {showAdvancedAgents || !agentsAutoResolved ? (
-                  <Select
-                    value={subtask.agentId}
-                    onValueChange={(v) => {
-                      updateSubtask(index, { agentId: v })
-                      setAgentsAutoResolved(false)
-                    }}
-                    disabled={loadingAgents}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Assign agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.name}
-                        </SelectItem>
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div className="min-w-0 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="sr-only" htmlFor={`swarm-worker-${s.id}`}>
+                      Agent for subtask {index + 1}
+                    </label>
+                    <select
+                      id={`swarm-worker-${s.id}`}
+                      className={selectClass}
+                      value={s.agentId}
+                      onChange={(e) =>
+                        update(s.id, { agentId: e.target.value })
+                      }
+                    >
+                      <option value="">Choose agent</option>
+                      {agents.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Agent: {agents.find((a) => a.id === subtask.agentId)?.name || "Auto-selected"}
-                  </p>
-                )}
-                <Input
-                  value={subtask.task}
-                  onChange={(e) => updateSubtask(index, { task: e.target.value })}
-                  placeholder="Task prompt for this agent"
-                />
+                    </select>
+                    <Button
+                      variant="ghost"
+                      className="min-h-11 min-w-11 shrink-0"
+                      aria-label={`Remove subtask ${index + 1}`}
+                      disabled={subtasks.length === 1}
+                      onClick={() =>
+                        setSubtasks((rows) =>
+                          rows.filter((row) => row.id !== s.id),
+                        )
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Input
+                    className="min-h-11"
+                    aria-label={`Task for subtask ${index + 1}`}
+                    value={s.task}
+                    onChange={(e) => update(s.id, { task: e.target.value })}
+                    placeholder="Describe this agent’s part"
+                  />
+                </div>
               </div>
             ))}
-          </div>
-
-          <div className="rounded-lg border border-border">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-secondary/40"
-              onClick={() => setShowAdvancedAgents((v) => !v)}
-            >
-              {showAdvancedAgents ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-              Advanced: choose agents
-            </button>
-            {showAdvancedAgents ? (
-              <div className="space-y-3 border-t border-border px-3 py-3">
-                <div className="space-y-2">
-                  <Label htmlFor="swarm-parent">Parent agent</Label>
-                  <Select
-                    value={parentAgentId}
-                    onValueChange={(v) => {
-                      setParentAgentId(v)
-                      setAgentsAutoResolved(false)
-                    }}
-                    disabled={loadingAgents}
-                  >
-                    <SelectTrigger id="swarm-parent">
-                      <SelectValue placeholder={loadingAgents ? "Loading agents…" : "Select coordinator agent"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Subtask agent dropdowns are shown above when advanced is open.
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
+            <p className={TYPE.meta}>
+              Complete every subtask or remove it before starting.
+            </p>
+          </section>
+        </fieldset>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>
+          <Button
+            variant="outline"
+            className="min-h-11"
+            disabled={submitting}
+            onClick={() => close(false)}
+          >
             Cancel
           </Button>
-          <Button onClick={() => void handleSubmit()} disabled={!canSubmit || submitting}>
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Start multi-agent run
+          <Button
+            className="min-h-11"
+            disabled={!canSubmit || submitting}
+            onClick={() => void submit()}
+          >
+            {submitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+            ) : null}
+            {submitting ? "Starting…" : "Start multi-agent run"}
           </Button>
         </DialogFooter>
       </DialogContent>
