@@ -634,3 +634,57 @@ Local checks on this tree: Vitest `TZ=UTC` **1,333 passed / 210 files**; changed
 Rendered: `http://localhost:3055/e2e/shots/home` opened product chrome under a Next overlay. Capture is not 1440/834/390 or Figma acceptance. `https://gravitre.app/login` is session-expired. `VISUAL_ACCEPTANCE = NOT_RUN`. `OWNER_LIVE_ACCEPTANCE = NOT_RUN`.
 
 `IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`. Draft PR #298 remains unmerged and is not production-deployed.
+
+## Release attempt — 2026-10-04 UTC (SHA `0f058867`)
+
+Published head inspected: `0f058867a8bb03ba8d5c96a621393308f249bcf3` (`fix(studio): preserve reference review through save and refresh failures`). Parent `79e03cb4`. Local branch matched `origin/feat/gravitre-3.0-extrovert-design`. No unpublished product commits were created; ChatGPT/connector commits were not rebuilt. Concurrent `origin/main` is `8c737d50c0a1f946db80d8b38fdf9355178cec41`.
+
+### GitHub CI on this SHA
+
+Run `37235861355` / Lighthouse `37235861364`. Inspected on the current SHA, not inferred from earlier heads.
+
+| Check | Result |
+| --- | --- |
+| Web (lint + typecheck + build) | PASS 4m54s |
+| Backend (pytest) | PASS 6m48s |
+| Integration Smoke Test | PASS 3m24s |
+| Shared runtime text/voice gate | PASS 3m9s |
+| Dependency audit | PASS 53s |
+| Lighthouse (home + pricing) | PASS 3m27s |
+| Vercel Preview | PASS `dpl_6JiTrwRxTcWmW9ZeVzQJnWEuHmnU` |
+| Billing E2E (Playwright) | SKIPPED (`workflow_dispatch` only). Skipped is not passed. |
+| Supabase Preview | SKIPPED |
+
+### Fixture visual on current-head `next start` (`PLAYWRIGHT_E2E=1`, port 3060)
+
+Headless Edge captures against `http://127.0.0.1:3060/e2e/shots/*`. These are Northwind fixtures, not owner-tenant evidence. Cross-checked against Figma file `OsDKeRy9HwfSKR3e9YyOFM` frames `10:5` Intelligence, `10:52` Agents, `10:101` Activity, `10:159` Builder, and foundation `17:2`.
+
+| Journey | 1440 | 834 | 390 | Notes |
+| --- | --- | --- | --- | --- |
+| Home (primary / Understand) | Rendered, no page overflow | Lanes use intended `overflow-x-auto`; At risk / Next require horizontal scroll | One-lane switcher + bottom nav; Ask field clear of dock | Honest KPI copy retained (“counts, not value”) |
+| Intelligence (primary / Understand) | Carbon map + evidence rails; 0 signals / 0 outcomes stay zero | Same family, no page overflow | Phone task-first; map below fold | Matches page-03 Understand composition; Figma specimen numbers were not substituted |
+| Marketplace (primary / Discover) | Outcome-first emerald pack + catalog | Same | Search-first; pack tiles above bottom nav | Fixture `$149` appears on desktop catalog rows; fixture-only, not owner-live |
+| Agents / Activity / Approvals / Workflows / Connectors | Rendered | Approvals readable; connector stat row clips the last tile | Decision queue + bottom nav; no floating AI overlap observed | Completed vs verified remain distinct on Activity |
+| Sources / Installed / Agent detail / Metrics / Builder | Rendered | Builder / installed rendered | Builder / installed rendered | Builder has no `h1`; canvas + carbon inspector present at 1440 |
+| AI workspace (primary / Create) | FAIL | FAIL | FAIL | Production-start shot navigates to Edge `ERR_CONNECTION_REFUSED` after patched fetch tries `/home` then `localhost:3000/login`. Dev `:3055` a11y snapshot earlier showed composer controls; a later 4s capture stayed on “Opening Gravitre AI…”. Not accepted. |
+
+Current-head Vercel preview marketing `/` rendered at desktop after share-link bypass (`gravitre-saas-backend-2bc5nujxd-gravitre-ai.vercel.app`). Production preview `/e2e/shots/*` correctly 404s. Cursor browser later blocked localhost (`chrome-error://chromewebdata/`); Playwright/Edge was used for the matrix.
+
+Keyboard/focus: connector-row sheet did not open in the automated pass; focus-return is **NOT_RUN**. Reduced-motion was requested on the 390 pass only; no motion-density comparison was captured. Pending dismissal on Approvals was not exercised against a live pending mutation.
+
+`VISUAL_ACCEPTANCE = PARTIAL`. Not PASS. Not MERGE_READY.
+
+### Owner-live
+
+`https://gravitre.app/login` presents the real sign-in wall. Available browser tabs were login / `session_expired`. No authorized owner session was present. Owner email/password was not used or invented. Fixture and `/e2e/shots` captures are not owner-live.
+
+`OWNER_LIVE_ACCEPTANCE = NOT_RUN / BLOCKED` — owner sign-in required.
+
+### Merge / deploy
+
+Not performed. Required GitHub checks on `0f058867` passed (Billing E2E still skipped). Release-blocking visual remaining: AI workspace current-head render. Release-blocking owner-live remaining: authentication. Draft PR #298 stays draft and unmerged. Production `https://gravitre.app` remains main `8c737d50` (`dpl_9rwp6DoadSSv1VvJumspez13Vifd`). No production smoke was run because this SHA was not deployed.
+
+Finance/Compliance packs remain unspecified product scope. Slack/email destination delivery and Billing E2E remain explicit unverified limitations.
+
+`IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`.
+
