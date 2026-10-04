@@ -3,7 +3,6 @@
 import React, { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
-import Image from "next/image"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { ModelSelector } from "@/components/gravitre/model-selector"
@@ -20,12 +19,9 @@ import {
 import { 
   Shield,
   Key,
-  Bell,
   Users,
-  Building2,
   Globe,
   Lock,
-  Mail,
   Webhook,
   Save,
   Eye,
@@ -33,7 +29,6 @@ import {
   Copy,
   Check,
   RefreshCw,
-  Upload,
   Loader2,
   X,
   GitBranch,
@@ -41,7 +36,6 @@ import {
   Info,
   Plus,
   Trash2,
-  DollarSign,
 } from "lucide-react"
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -51,148 +45,11 @@ import type { ApiKey, BillingUsageResponse, LiteSeatDepartment, MesonAddon, SSOC
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
+import { OrganizationSettings } from "@/components/settings/organization-settings"
+import { NotificationSettings } from "@/components/settings/notification-settings"
 import { SettingsShell, canAccessSettingsSection } from "@/components/settings/settings-shell"
-import { settingsHrefForSection, type SettingsSectionId } from "@/lib/settings-sections"
+import { SETTINGS_SECTIONS, settingsHrefForSection, type SettingsSectionId } from "@/lib/settings-sections"
 import { useOrgAdmin } from "@/lib/use-org-admin"
-
-function OrganizationSettings({
-  orgData,
-  onUpdate,
-  isAdmin,
-}: {
-  orgData?: Record<string, unknown>
-  onUpdate: () => Promise<void>
-  isAdmin: boolean
-}) {
-  const [isSaving, setIsSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [uploadDialog, setUploadDialog] = useState(false)
-  const [name, setName] = useState("")
-  const [slug, setSlug] = useState("")
-  const [domain, setDomain] = useState("")
-
-  useEffect(() => {
-    if (!orgData) return
-    const timer = setTimeout(() => {
-      setName(String(orgData.name ?? ""))
-      setSlug(String(orgData.slug ?? ""))
-      setDomain(String(orgData.primaryDomain ?? orgData.primary_domain ?? ""))
-    }, 0)
-    return () => clearTimeout(timer)
-  }, [orgData])
-
-  const handleSave = async () => {
-    setIsSaving(true)
-    try {
-      await settingsApi.updateOrg({
-        name,
-        slug,
-        primaryDomain: domain,
-      })
-      toast.success("Organization settings saved")
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      await onUpdate()
-    } catch (err) {
-      console.error("[v0] Failed to save org settings:", err)
-      toast.error("Failed to save settings")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Logo Section */}
-      <div>
-        <label className="text-xs font-medium text-muted-foreground">
-          Organization logo
-        </label>
-        <div className="mt-2 flex items-center gap-4">
-          <div className="flex h-16 w-32 items-center justify-center rounded-lg border border-border bg-secondary p-2">
-            <Image
-              src="/logo-white.svg"
-              alt="Organization Logo"
-              width={100}
-              height={40}
-              className="h-auto w-auto max-h-12"
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setUploadDialog(true)}>
-              <Upload className="h-3.5 w-3.5" />
-              Upload logo
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              PNG, SVG or JPG (max 2MB)
-            </p>
-          </div>
-        </div>
-      </div>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground">
-          Organization name
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={!isAdmin}
-          className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground">
-          Organization slug
-        </label>
-        <input
-          type="text"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          disabled={!isAdmin}
-          className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground">
-          Primary domain
-        </label>
-        <input
-          type="text"
-          value={domain}
-          onChange={(e) => setDomain(e.target.value)}
-          disabled={!isAdmin}
-          className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving || !isAdmin}>
-        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-        {saved ? "Saved!" : "Save Changes"}
-      </Button>
-
-      {/* Upload Dialog */}
-      <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload organization logo</DialogTitle>
-            <DialogDescription>Choose an image file to use as your organization logo.</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground mb-2">Drag and drop your logo here, or click to browse</p>
-              <Button variant="outline" size="sm">Choose file</Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUploadDialog(false)}>Cancel</Button>
-            <Button onClick={() => setUploadDialog(false)}>Upload</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
 
 function SecuritySettings() {
   const { user } = useAuth()
@@ -651,117 +508,6 @@ function ApiKeysSettings({ isAdmin }: { isAdmin: boolean }) {
           <span className="text-xs text-muted-foreground">Admin/Owner required</span>
         )}
       </div>
-    </div>
-  )
-}
-
-function NotificationSettings() {
-  const [slackDialog, setSlackDialog] = useState(false)
-  const [emailEnabled, setEmailEnabled] = useState(true)
-  const [recipients, setRecipients] = useState("ops@acme.com, alerts@acme.com")
-  const [isSaving, setIsSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  const handleSave = async () => {
-    setIsSaving(true)
-    try {
-      await settingsApi.update({
-        notifications: {
-          emailEnabled,
-          recipients,
-        },
-      })
-      setSaved(true)
-      toast.success("Notification settings saved")
-      setTimeout(() => setSaved(false), 2000)
-    } catch (err) {
-      console.error("[v0] Failed to save notifications:", err)
-      toast.error("Failed to save notification settings")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between border-b border-divide py-3">
-        <div className="flex items-center gap-3">
-          <Mail className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Email notifications</p>
-            <p className="text-xs text-muted-foreground">Receive alerts via email</p>
-          </div>
-        </div>
-        <input 
-          type="checkbox" 
-          checked={emailEnabled} 
-          onChange={(e) => setEmailEnabled(e.target.checked)}
-          className="h-4 w-4 rounded border-border" 
-        />
-      </div>
-      <div className="flex items-center justify-between border-b border-divide py-3">
-        <div className="flex items-center gap-3">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Slack notifications</p>
-            <p className="text-xs text-muted-foreground">Send alerts to Slack channel</p>
-          </div>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setSlackDialog(true)}>Configure</Button>
-      </div>
-      <div>
-        <label className="text-xs font-medium text-muted-foreground">
-          Alert recipients
-        </label>
-        <input
-          type="text"
-          value={recipients}
-          onChange={(e) => setRecipients(e.target.value)}
-          className="mt-2 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving}>
-        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-        {saved ? "Saved!" : "Save Changes"}
-      </Button>
-
-      {/* Slack Dialog */}
-      <Dialog open={slackDialog} onOpenChange={setSlackDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Configure Slack notifications</DialogTitle>
-            <DialogDescription>Connect your Slack workspace to receive alerts.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Webhook URL</label>
-              <Input placeholder="https://hooks.slack.com/services/..." className="bg-secondary border-border" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Channel</label>
-              <Input placeholder="#alerts" className="bg-secondary border-border" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Alert types</label>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" defaultChecked className="rounded" /> Workflow failures
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" defaultChecked className="rounded" /> Approval requests
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="rounded" /> Successful completions
-                </label>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSlackDialog(false)}>Cancel</Button>
-            <Button onClick={() => setSlackDialog(false)}>Save configuration</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
@@ -2003,7 +1749,7 @@ function SettingsContent() {
     }
   }, [searchParams, router])
 
-  const { data: orgData, mutate: mutateOrg } = useSWR(
+  const { data: orgData, error: orgError, isLoading: orgLoading, mutate: mutateOrg } = useSWR(
     user ? "/api/settings/organization" : null,
     apiFetcher,
     { revalidateOnFocus: false }
@@ -2057,11 +1803,19 @@ function SettingsContent() {
       )
     }
 
+    if (activeSection === "organization" || !SETTINGS_SECTIONS.some(section => section.id === activeSection)) {
+      if (orgLoading) return <p role="status" className="py-6 text-sm text-muted-foreground">Loading organization settings…</p>
+      if (orgError || !organization) return <div role="alert" className="space-y-3 py-4">
+        <p className="text-sm">Could not load organization settings. Try again before making changes.</p>
+        <Button variant="outline" className="min-h-11" onClick={() => void mutateOrg()}>Retry organization</Button>
+      </div>
+    }
     switch (activeSection) {
       case "organization":
         return (
           <OrganizationSettings
-            orgData={organization}
+            key={String(organization?.id ?? "organization")}
+            orgData={organization!}
             isAdmin={isAdmin}
             onUpdate={async () => {
               await mutateOrg()
@@ -2071,7 +1825,7 @@ function SettingsContent() {
       case "ai-models": return <AIModelsSettings isAdmin={isAdmin} />
       case "security": return <SecuritySettings />
       case "api-keys": return <ApiKeysSettings isAdmin={isAdmin} />
-      case "notifications": return <NotificationSettings />
+      case "notifications": return <NotificationSettings isAdmin={isAdmin} />
       case "team":
         return (
           <TeamSettings
@@ -2106,7 +1860,8 @@ function SettingsContent() {
       default:
         return (
           <OrganizationSettings
-            orgData={organization}
+            key={String(organization?.id ?? "organization")}
+            orgData={organization!}
             isAdmin={isAdmin}
             onUpdate={async () => {
               await mutateOrg()
