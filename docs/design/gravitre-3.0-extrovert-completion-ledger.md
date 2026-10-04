@@ -369,3 +369,20 @@ Workflows retains the existing phase controls, grid/table selection, search, fil
 Final local suite: **1,168 passed / 194 files**, including two new metric-truth/scope tests. Final production build and its TypeScript phase **PASS**. Changed-file lint **0 errors / 2 existing Workflow import warnings**; preceding full lint had 0 errors / 275 warnings. Chat/status/intelligence/brand guards and whitespace check **PASS**. The first incremental follow-up build encountered the same corrupt persisted Turbopack cache; final clean-cache build passed. A missing retained icon import was caught by TypeScript and restored before the final checks. No dependency/lockfile changes; restored MSP post and hero remain present.
 
 No new screenshot or owner acceptance. Existing browser block remains; no rendered geometry is claimed. IMPLEMENTATION_COMPLETE = NO; OWNER_LIVE_ACCEPTANCE = NOT_RUN; MERGE_READY = NO; CAUGHT_UP = NO. Final candidate GitHub CI remains a separate required check. No merge or production deployment.
+
+## Audit of ChatGPT connection/workflow claims — 2026-10-04 UTC
+
+Reviewed published head `ee683941` on draft PR #298. The claimed Connectors sheets, Sources compact rows/unknown status/actions, Approvals wrap + dock clearance, Workflows dual-view totals, and Sources/Analytics shot routes **are implemented on the branch**. GitHub Web, Shared runtime, Lighthouse, Dependency audit and Vercel preview **passed** on `ee683941`; Billing E2E stayed skipped. That is verified by automated checks, not visual or owner acceptance.
+
+Applicable gaps found and fixed on this follow-up (not a full-suite re-run of the claimed 1,168):
+
+| Gap | Fix |
+| --- | --- |
+| Desktop source inspector still sat under the inventory | Inspector now renders in the operations column at ≥1024px; tablet/phone keep the sheet |
+| Omitted tables/records/usage became `0` | `normalizeSource` keeps nulls; UI shows `Not reported`; actual zeros remain zeros |
+| Unknown status had no table indicator | Muted status dot for unknown |
+| Compact source rows could not deselect | Toggle matches the desktop table |
+| Sources category motion ignored reduced-motion | Same 180ms / no-motion treatment as Workflows |
+| Workflow table wrapper used `overflow-hidden` | `overflow-x-auto` so AdaptiveDataView can scroll at tablet widths |
+
+Focused tests: 11 passed across source, connector and workflow files. Visual/owner acceptance remain NOT_RUN. IMPLEMENTATION_COMPLETE = NO. MERGE_READY = NO. CAUGHT_UP = NO. Not merged. Not production deployed.

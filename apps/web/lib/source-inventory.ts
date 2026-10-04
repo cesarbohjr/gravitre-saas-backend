@@ -7,14 +7,24 @@ export interface Source {
   environment: "production" | "staging"
   lastSync: string
   lastSyncAt: number | null
-  tables: number
+  tables: number | null
+  recordCount: number | null
   records: string
   description: string
-  workflowsUsing: number
-  operatorsUsing: number
+  workflowsUsing: number | null
+  operatorsUsing: number | null
   /** 0-100 when the backend reports it; null otherwise (never estimated client-side). */
   health: number | null
   topTables?: string[]
+}
+
+function optionalFiniteNumber(...candidates: unknown[]): number | null {
+  for (const value of candidates) {
+    if (value == null || value === "") continue
+    const parsed = typeof value === "number" ? value : Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
 }
 
 function inferCategory(type: string): Source["category"] {
@@ -39,31 +49,40 @@ function formatRelativeSync(iso: string | null | undefined): string {
 }
 
 export function formatCompactCount(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "0"
+  if (!Number.isFinite(value) || value < 0) return "0"
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
   return String(value)
 }
 
+export function formatReportedCount(value: number | null): string {
+  return value == null ? "Not reported" : formatCompactCount(value)
+}
+
 export function normalizeSource(input: Record<string, unknown>): Source {
   const status = String(input.status ?? "unknown")
   const type = String(input.type ?? "Unknown")
-  const rawRecordCount = Number(
-    input.recordCount ?? input.record_count ?? input.recordsCount ?? input.records_count ?? 0
+  const rawRecordCount = optionalFiniteNumber(
+    input.recordCount,
+    input.record_count,
+    input.recordsCount,
+    input.records_count,
   )
-  const stringRecords = String(input.records ?? "")
+  const stringRecords = typeof input.records === "string" ? input.records : ""
   const parsedStringRecords = Number.parseFloat(stringRecords.replace(/[^\d.]/g, ""))
-  const recordsFromString = stringRecords.includes("M")
+  const recordsFromString = !stringRecords
+    ? null
+    : stringRecords.includes("M")
     ? parsedStringRecords * 1_000_000
     : stringRecords.includes("K")
     ? parsedStringRecords * 1_000
     : parsedStringRecords
   const effectiveRecordCount =
-    Number.isFinite(rawRecordCount) && rawRecordCount > 0
+    rawRecordCount != null && rawRecordCount >= 0
       ? rawRecordCount
       : Number.isFinite(recordsFromString)
       ? recordsFromString
-      : 0
+      : null
   const environment = String(input.environment ?? "production")
   const rawLastSync =
     (input.lastSync as string | null) ?? (input.last_sync as string | null) ?? (input.lastSyncAt as string | null)
@@ -83,11 +102,12 @@ export function normalizeSource(input: Record<string, unknown>): Source {
     environment: environment === "staging" ? "staging" : "production",
     lastSync: formatRelativeSync(rawLastSync),
     lastSyncAt: Number.isFinite(lastSyncMs) ? lastSyncMs : null,
-    tables: Number(input.tables ?? input.tablesCount ?? input.tables_count ?? 0),
-    records: formatCompactCount(effectiveRecordCount),
+    tables: optionalFiniteNumber(input.tables, input.tablesCount, input.tables_count),
+    recordCount: effectiveRecordCount,
+    records: formatReportedCount(effectiveRecordCount),
     description: String(input.description ?? `${type} data source`),
-    workflowsUsing: Number(input.workflowsUsing ?? input.workflows_using ?? 0),
-    operatorsUsing: Number(input.operatorsUsing ?? input.operators_using ?? 0),
+    workflowsUsing: optionalFiniteNumber(input.workflowsUsing, input.workflows_using),
+    operatorsUsing: optionalFiniteNumber(input.operatorsUsing, input.operators_using),
     health:
       input.health != null && Number.isFinite(Number(input.health)) ? Number(input.health) : null,
     topTables: Array.isArray(input.topTables) ? (input.topTables as string[]) : [],

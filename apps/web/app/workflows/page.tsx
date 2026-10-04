@@ -644,7 +644,7 @@ export default function WorkflowsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
                 transition={{ duration: reducedMotion ? 0 : 0.18 }}
-                className="overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
+                className="overflow-x-auto rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
               >
                 <DataTable
                   columns={columns}

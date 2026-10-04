@@ -29,6 +29,18 @@ it("does not infer a healthy connection when the backend omits or changes status
   expect(normalizeSource({ id: "known", status: "syncing" }).status).toBe("syncing")
   expect(normalizeSource({ id: "missing" }).health).toBeNull()
 })
+it("does not turn omitted inventory counts into zeros", () => {
+  const omitted = normalizeSource({ id: "missing" })
+  expect(omitted.tables).toBeNull()
+  expect(omitted.recordCount).toBeNull()
+  expect(omitted.records).toBe("Not reported")
+  expect(omitted.workflowsUsing).toBeNull()
+  expect(omitted.operatorsUsing).toBeNull()
+  const zero = normalizeSource({ id: "empty", tables: 0, recordCount: 0, workflowsUsing: 0, operatorsUsing: 0 })
+  expect(zero.tables).toBe(0)
+  expect(zero.recordCount).toBe(0)
+  expect(zero.records).toBe("0")
+})
 it("opens source context on tablet and retains full schema and workflow handoff", () => {
   act(() => root.render(<SourcesPage />))
   expect(document.querySelector('[role="dialog"]')).toBeNull()
@@ -51,6 +63,15 @@ it("keeps sync and delete bound to the selected source and confirms delete", asy
   await act(async () => button("Delete source").dispatchEvent(new MouseEvent("click", { bubbles: true })))
   expect(confirm).toHaveBeenCalled(); expect(mocks.remove).not.toHaveBeenCalled()
   confirm.mockRestore()
+})
+it("keeps the desktop inspector beside the inventory instead of under the table", () => {
+  Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1440 })
+  act(() => root.render(<SourcesPage />))
+  act(() => [...container.querySelectorAll('[data-testid="sources-table-view"] button')].at(0)!.dispatchEvent(new MouseEvent("click", { bubbles: true })))
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  const operations = container.querySelector('[aria-label="Source operations"]')!
+  expect(operations.textContent).toContain("service_requests")
+  expect(operations.querySelector('a[href="/sources/source-real"]')).not.toBeNull()
 })
 it("shows failed fetch with retry without fabricating empty inventory", () => {
   mocks.error = new Error("Inventory unavailable")

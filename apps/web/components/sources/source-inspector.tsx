@@ -6,7 +6,7 @@ import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { Button } from "@/components/ui/button"
 import { sourceTypeVendorKey } from "@/lib/brand-vendor"
 import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
-import type { Source } from "@/lib/source-inventory"
+import { formatReportedCount, type Source } from "@/lib/source-inventory"
 import { cn } from "@/lib/utils"
 
 function SourceHealthGauge({ health }: { health: number }) {
@@ -38,7 +38,7 @@ export function SourceInventoryRow({ source, selected, onSelect }: { source: Sou
       <span className="block break-words text-sm font-semibold text-foreground">{source.name}</span>
       <span className="block break-words text-xs text-muted-foreground">{source.type} · {source.environment}</span>
       <SourceStatus source={source} />
-      <span className="block text-xs tabular-nums text-muted-foreground">{source.tables} tables · {source.records} records · {source.workflowsUsing} workflows</span>
+      <span className="block text-xs tabular-nums text-muted-foreground">{formatReportedCount(source.tables)} tables · {source.records} records · {formatReportedCount(source.workflowsUsing)} workflows</span>
       <span className="block text-xs text-muted-foreground">Last sync: {source.lastSync}</span>
     </span>
   </button>
@@ -59,7 +59,7 @@ export function SourceInspector({ source, onSync, onDelete, isMutating }: {
     <SourceStatus source={source} />
     <p className="break-words text-sm text-muted-foreground">{source.description}</p>
     <dl className="grid grid-cols-2 gap-3 border-y border-divide py-3 text-sm">
-      {[['Tables', source.tables], ['Records', source.records], ['Workflows', source.workflowsUsing], ['Operators', source.operatorsUsing], ['Health', source.health == null ? 'Not reported' : `${source.health}%`], ['Last sync', source.lastSync]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium tabular-nums text-foreground">{value}</dd></div>)}
+      {[['Tables', formatReportedCount(source.tables)], ['Records', source.records], ['Workflows', formatReportedCount(source.workflowsUsing)], ['Operators', formatReportedCount(source.operatorsUsing)], ['Health', source.health == null ? 'Not reported' : `${source.health}%`], ['Last sync', source.lastSync]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium tabular-nums text-foreground">{value}</dd></div>)}
     </dl>
     <details className="rounded-md border border-divide">
       <summary className="min-h-11 cursor-pointer px-3 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Schema preview · {source.topTables?.length ?? 0} reported names</summary>

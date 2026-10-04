@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import useSWR from "swr"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { toast } from "sonner"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { SourceInspector, SourceInventoryRow } from "@/components/sources/source-inspector"
-import { normalizeSourcesResponse, formatCompactCount, type Source } from "@/lib/source-inventory"
+import { normalizeSourcesResponse, formatCompactCount, formatReportedCount, type Source } from "@/lib/source-inventory"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 
 /** Data fabric stages: connection → ingestion → schema → available to agents as evidence. */
@@ -32,8 +32,8 @@ const FABRIC_STAGE_MATCH: Record<FabricStage, (source: Source) => boolean> = {
   connected: (s) => s.status === "connected" || s.status === "syncing",
   ingesting: (s) => s.status === "syncing",
   attention: (s) => s.status === "error" || s.status === "disconnected",
-  schema: (s) => s.tables > 0,
-  grounding: (s) => s.workflowsUsing + s.operatorsUsing > 0,
+  schema: (s) => (s.tables ?? 0) > 0,
+  grounding: (s) => (s.workflowsUsing ?? 0) + (s.operatorsUsing ?? 0) > 0,
 }
 
 const categoryLabels = {
@@ -50,6 +50,7 @@ const SOURCES_DESCRIPTION = "Connected databases and warehouses your agents and 
 export default function SourcesPage() {
   const { user } = useAuth()
   const compactInspector = useIsMobile(1024)
+  const reducedMotion = useReducedMotion()
   const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null)
   const [expandedSource, setExpandedSource] = useState<string | null>(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
@@ -126,12 +127,8 @@ export default function SourcesPage() {
   const categories = Object.keys(groupedSources) as (keyof typeof categoryLabels)[]
   const connectedCount = sources.filter((s) => s.status === "connected" || s.status === "syncing").length
   const errorCount = sources.filter((s) => s.status === "error").length
-  const totalRecords = sources.reduce((acc, s) => {
-    const num = parseFloat(s.records.replace(/[KM]/g, ""))
-    const multiplier = s.records.includes("M") ? 1000000 : s.records.includes("K") ? 1000 : 1
-    return acc + (Number.isFinite(num) ? num * multiplier : 0)
-  }, 0)
-  const totalTables = sources.reduce((a, s) => a + s.tables, 0)
+  const totalRecords = sources.reduce((acc, s) => acc + (s.recordCount ?? 0), 0)
+  const totalTables = sources.reduce((a, s) => a + (s.tables ?? 0), 0)
 
   const needsAttention = sources.filter((s) => s.status === "error" || s.status === "disconnected")
   const recentIngestion = [...sources]
@@ -276,10 +273,10 @@ export default function SourcesPage() {
                 .map((category, catIndex) => (
                   <motion.section
                     key={category}
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ delay: catIndex * 0.04 }}
+                    exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
+                    transition={{ delay: reducedMotion ? 0 : catIndex * 0.04, duration: reducedMotion ? 0 : 0.18 }}
                   >
                     <div className="mb-2 flex items-baseline gap-3">
                       <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">{categoryLabels[category]}</h2>
@@ -328,7 +325,7 @@ export default function SourcesPage() {
                                           "inline-block h-1.5 w-1.5 rounded-full",
                                           source.status === "connected" && "bg-[color:var(--g-brand)]",
                                           source.status === "error" && "bg-destructive",
-                                          source.status === "disconnected" && "bg-muted-foreground/50",
+                                          (source.status === "disconnected" || source.status === "unknown") && "bg-muted-foreground/50",
                                         )}
                                         aria-hidden
                                       />
@@ -336,9 +333,9 @@ export default function SourcesPage() {
                                     {source.status === "unknown" ? "Status not reported" : source.status}
                                   </span>
                                 </td>
-                                <td className="px-3 py-2.5 text-right tabular-nums">{source.tables}</td>
+                                <td className="px-3 py-2.5 text-right tabular-nums">{formatReportedCount(source.tables)}</td>
                                 <td className="px-3 py-2.5 text-right tabular-nums">{source.records}</td>
-                                <td className="px-3 py-2.5 text-right tabular-nums">{source.workflowsUsing}</td>
+                                <td className="px-3 py-2.5 text-right tabular-nums">{formatReportedCount(source.workflowsUsing)}</td>
                                 <td className="px-3 py-2.5 text-muted-foreground">{source.lastSync}</td>
                               </tr>
                             )
@@ -348,19 +345,18 @@ export default function SourcesPage() {
                     </div>
                     <div className="divide-y divide-[color:var(--g-border-subtle)] rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] lg:hidden" data-testid="sources-compact-view">
                       {groupedSources[category].map((source) => (
-                        <SourceInventoryRow key={source.id} source={source} selected={expandedSource === source.id} onSelect={() => setExpandedSource(source.id)} />
+                        <SourceInventoryRow key={source.id} source={source} selected={expandedSource === source.id} onSelect={() => setExpandedSource(expandedSource === source.id ? null : source.id)} />
                       ))}
                     </div>
                   </motion.section>
                 ))}
             </AnimatePresence>
-            {selectedSource && !compactInspector ? (
-              <SourceInspector source={selectedSource} onSync={handleSync} onDelete={handleDelete} isMutating={mutatingSourceId === selectedSource.id} />
-            ) : null}
-
           </div>
 
           <aside className="space-y-7 lg:border-l lg:border-[color:var(--g-border-default)] lg:pl-6" aria-label="Source operations">
+            {selectedSource && !compactInspector ? (
+              <SourceInspector source={selectedSource} onSync={handleSync} onDelete={handleDelete} isMutating={mutatingSourceId === selectedSource.id} />
+            ) : null}
             <section data-testid="sources-needs-attention">
               <h2 className="text-[13px] font-semibold text-foreground">Needs attention</h2>
               {sources.length === 0 ? (
