@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { toast } from "sonner"
 import {
   agentKnowledgeApi,
+  ragAdminApi,
   sourcesApi,
   type AgentKnowledgeAssignment,
 } from "@/lib/api"
@@ -307,6 +308,65 @@ export function useAgentKnowledge(
     [agentId, mutateAssignments, mutateCapabilities],
   )
 
+  const createTextKnowledge = useCallback(
+    async (input: { title: string; text: string }) => {
+      const title = input.title.trim()
+      const text = input.text.trim()
+      if (!title || !text) {
+        toast.error("Enter a title and the knowledge text before saving.")
+        return false
+      }
+      if (mutationLock.current) return false
+      mutationLock.current = true
+      setAssigningKey("text")
+      try {
+        const source = await ragAdminApi.createSource({
+          title,
+          type: "manual",
+          agent_id: agentId,
+          metadata: { origin: "native_text" },
+        })
+        if (!source.id) {
+          throw new Error("The server did not return a knowledge source.")
+        }
+        const ingest = await ragAdminApi.ingestText({
+          sourceId: source.id,
+          title,
+          text,
+        })
+        if (!ingest.ingest_id) {
+          throw new Error("The source was created, but ingestion was not accepted.")
+        }
+        await agentKnowledgeApi.createAssignment(
+          agentId,
+          buildOrgSourceAssignmentPayload({ id: source.id, name: title }),
+        )
+        toast.success(
+          `${title} was accepted for ingestion and assigned to ${agentName}. Indexing is not complete until the ingest job finishes.`,
+        )
+        await Promise.allSettled([
+          mutateAssignments(),
+          mutateCapabilities(),
+          mutateOrgSources(),
+        ])
+        return true
+      } catch (error) {
+        toast.error(formatKnowledgeAssignError(error, title || "Text knowledge"))
+        return false
+      } finally {
+        setAssigningKey(null)
+        mutationLock.current = false
+      }
+    },
+    [
+      agentId,
+      agentName,
+      mutateAssignments,
+      mutateCapabilities,
+      mutateOrgSources,
+    ],
+  )
+
   return {
     assignments,
     assignmentsError,
@@ -330,6 +390,7 @@ export function useAgentKnowledge(
     agentDepartment,
     assignPack,
     assignOrgSource,
+    createTextKnowledge,
     removeAssignment,
     mutateAssignments,
     sourceIngestionById,

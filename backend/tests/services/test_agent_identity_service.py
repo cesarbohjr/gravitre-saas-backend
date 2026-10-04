@@ -17,6 +17,43 @@ from app.services.agent_identity_service import (
 from app.services.react_write_gate import block_react_write_execution
 
 
+def test_upsert_can_clear_daily_ceilings():
+    agent_id = "00000000-0000-4000-8000-000000000001"
+    existing = {
+        "id": "rec-1",
+        "org_id": "org-1",
+        "agent_id": agent_id,
+        "max_actions_per_day": 10,
+        "max_tokens_per_day": 100,
+        "max_spend_usd_per_day": 5.0,
+    }
+    updated = {**existing, "max_actions_per_day": None, "max_tokens_per_day": None, "max_spend_usd_per_day": None}
+    client = MagicMock()
+    client.table.return_value.update.return_value.eq.return_value.eq.return_value.execute.return_value.data = [updated]
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            "app.services.agent_identity_service.get_agent_identity_record",
+            lambda *_a, **_k: existing,
+        )
+        mp.setattr("app.services.agent_identity_service.write_audit_event", lambda *_a, **_k: None)
+        row = upsert_agent_identity_record(
+            client,
+            org_id="org-1",
+            agent_id=agent_id,
+            actor_id="user-1",
+            payload={
+                "maxActionsPerDay": None,
+                "maxTokensPerDay": None,
+                "maxSpendUsdPerDay": None,
+            },
+        )
+    update_payload = client.table.return_value.update.call_args[0][0]
+    assert update_payload["max_actions_per_day"] is None
+    assert update_payload["max_tokens_per_day"] is None
+    assert update_payload["max_spend_usd_per_day"] is None
+    assert row["max_actions_per_day"] is None
+
+
 def test_tool_matches_patterns_hubspot_wildcard():
     assert tool_matches_patterns(
         "hubspot_contacts_create",

@@ -465,13 +465,15 @@ def upsert_agent_identity_record(
         ("maxActionsPerDay", "max_actions_per_day"),
         ("maxTokensPerDay", "max_tokens_per_day"),
     ):
+        present = key in payload or col in payload
         val = payload.get(key) if key in payload else payload.get(col)
-        if val is not None:
-            row[col] = _optional_int(val)
+        if present:
+            row[col] = None if val is None else _optional_int(val)
     for key, col in (("maxSpendUsdPerDay", "max_spend_usd_per_day"),):
+        present = key in payload or col in payload
         val = payload.get(key) if key in payload else payload.get(col)
-        if val is not None:
-            row[col] = _optional_float(val)
+        if present:
+            row[col] = None if val is None else _optional_float(val)
     if "approvalRuleOverrides" in payload or "approval_rule_overrides" in payload:
         overrides = payload.get("approvalRuleOverrides") or payload.get("approval_rule_overrides") or {}
         row["approval_rule_overrides"] = dict(overrides) if isinstance(overrides, dict) else {}

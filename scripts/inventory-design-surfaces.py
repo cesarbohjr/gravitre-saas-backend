@@ -50,7 +50,7 @@ def closure(start):
         if path in found:
             continue
         found.add(path)
-        for spec in IMPORT.findall(path.read_text()):
+        for spec in IMPORT.findall(path.read_text(encoding="utf-8")):
             target = resolve_import(path, spec)
             if target and target not in found:
                 pending.append(target)
@@ -60,7 +60,7 @@ rows, ui = [], {}
 for path in sorted(p for p in (WEB / "app").rglob("page.*") if p.suffix in {".tsx", ".jsx", ".ts", ".js"}):
     parts = [part for part in path.parent.relative_to(WEB / "app").parts if not part.startswith("(")]
     route = "/" + "/".join(parts)
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     scope = "Product" if parts and parts[0] in FAMILIES else "Public/auth/support — classify"
     if parts and parts[0] in {"e2e", "dev", "test"}:
         scope = "Fixture/development"
@@ -89,7 +89,7 @@ for path in sorted(p for p in (WEB / "app").rglob("page.*") if p.suffix in {".ts
         ancestor = ancestor.parent
     surface_files = []
     for component in components:
-        text = component.read_text()
+        text = component.read_text(encoding="utf-8")
         surfaces = sorted(set(SURFACE.findall(text)))
         controls = len(CONTROL.findall(text))
         if surfaces or controls:

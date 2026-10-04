@@ -39,8 +39,11 @@ vi.mock("swr", () => ({
   }),
 }))
 vi.mock("@/lib/fetcher", () => ({ apiFetch: state.fetch, ApiError: Error }))
+const fromGoal = vi.hoisted(() => vi.fn())
+const push = vi.hoisted(() => vi.fn())
 vi.mock("@/lib/api", () => ({
   connectorsApi: { list: vi.fn() },
+  workflowsApi: { fromGoal },
   intelligenceApi: {
     engineSettings: vi.fn(),
     updateEngineSettings: state.settings,
@@ -67,7 +70,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/marketplace",
   useParams: () => ({ slug: "pack" }),
   useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push }),
 }))
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: { id: "user" } }),
@@ -268,13 +271,33 @@ it("saves a true zero outcome estimate and retains failed draft text", async () 
   await click("Save outcome")
   expect(save).toHaveBeenCalledWith({
     businessOutcome: "Close the loop",
-    useCase: undefined,
+    useCase: null,
     estimatedHoursSaved: 0,
   })
   expect(host.textContent).toContain("Outcome unavailable")
   expect((host.querySelector("textarea") as HTMLTextAreaElement).value).toBe(
     "Close the loop",
   )
+})
+it("sends explicit nulls when optional outcome fields are cleared", async () => {
+  const save = vi.fn().mockResolvedValue(undefined)
+  render(
+    <AssetOutcomeEditor
+      businessOutcome="Keep this"
+      useCase="Weekly review"
+      estimatedHoursSaved={4}
+      onSave={save}
+    />,
+  )
+  change("textarea", "")
+  change("#" + host.querySelector('label[for$="-use-case"]')!.getAttribute("for"), "")
+  change('input[type="number"]', "")
+  await click("Save outcome")
+  expect(save).toHaveBeenCalledWith({
+    businessOutcome: null,
+    useCase: null,
+    estimatedHoursSaved: null,
+  })
 })
 it("confirms the selected restore and keeps confirmed success when refresh fails", async () => {
   state.entries["marketplace-asset-versions:pack"] = {
@@ -341,7 +364,9 @@ it("goal planning uses actual connections, draft persistence and unreported tele
     .mockResolvedValueOnce(response({ goal: { id: "goal-real" } }))
     .mockResolvedValueOnce(
       response({
+        planId: "plan-real",
         goalPlan: {
+          id: "plan-real",
           proposedSteps: [{ id: "step-real", title: "Review balances" }],
           requiredConnectors: ["hubspot"],
           approvalGates: [{ phase: "pre-launch", required: false }],
@@ -357,15 +382,60 @@ it("goal planning uses actual connections, draft persistence and unreported tele
   expect(host.textContent).toContain("Review balances")
   expect(host.textContent).toContain("Not reported")
   expect(host.textContent).toContain("Not required by this proposal")
-  expect(host.textContent).not.toContain("Build workflow")
+  expect(host.textContent).toContain("Open workflow builder")
   expect(host.querySelector('a[href="/goals/goal-real"]')).not.toBeNull()
+})
+it("creates a persisted workflow from the saved proposal before opening builder", async () => {
+  fromGoal.mockResolvedValue({ id: "wf-real" })
+  state.entries["goals/create/connectors"] = { data: { connectors: [] } }
+  state.fetch
+    .mockResolvedValueOnce(response({ goal: { id: "goal-real" } }))
+    .mockResolvedValueOnce(
+      response({
+        planId: "plan-real",
+        goalPlan: { id: "plan-real", proposedSteps: [] },
+      }),
+    )
+  render(<GoalWorkflowWizard open onOpenChange={vi.fn()} />)
+  change("textarea", "Reduce overdue balances")
+  await click("Continue")
+  await click("Generate plan")
+  await click("Open workflow builder")
+  expect(fromGoal).toHaveBeenCalledWith(
+    expect.objectContaining({
+      goal: "Reduce overdue balances",
+      goalId: "goal-real",
+    }),
+  )
+  expect(push).toHaveBeenCalledWith("/workflows/wf-real/builder")
+})
+it("keeps the saved proposal when workflow creation is refused", async () => {
+  fromGoal.mockRejectedValue(new Error("Admin access required"))
+  state.entries["goals/create/connectors"] = { data: { connectors: [] } }
+  state.fetch
+    .mockResolvedValueOnce(response({ goal: { id: "goal-real" } }))
+    .mockResolvedValueOnce(
+      response({
+        planId: "plan-real",
+        goalPlan: { id: "plan-real", proposedSteps: [{ title: "Review" }] },
+      }),
+    )
+  render(<GoalWorkflowWizard open onOpenChange={vi.fn()} />)
+  change("textarea", "Reduce overdue balances")
+  await click("Continue")
+  await click("Generate plan")
+  await click("Open workflow builder")
+  expect(host.textContent).toContain("Admin access required")
+  expect(host.textContent).toContain("Review")
 })
 it("retries failed plan generation on the saved draft without creating another goal", async () => {
   state.fetch
     .mockResolvedValueOnce(response({ goal: { id: "goal-real" } }))
     .mockResolvedValueOnce(response({}, false))
     .mockResolvedValueOnce(response({ goal: { id: "goal-real" } }))
-    .mockResolvedValueOnce(response({ goalPlan: { proposedSteps: [] } }))
+    .mockResolvedValueOnce(
+      response({ planId: "plan-real", goalPlan: { id: "plan-real", proposedSteps: [] } }),
+    )
   render(<GoalWorkflowWizard open onOpenChange={vi.fn()} />)
   change("textarea", "Reduce overdue balances")
   await click("Continue")

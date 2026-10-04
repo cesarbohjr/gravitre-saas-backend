@@ -607,3 +607,30 @@ Final local checks: **1,328 tests / 210 files PASS**, full lint **0 errors / 238
 Current local browser attempt: `http://localhost:3055/workflows` rejected by cloud browser with `net::ERR_BLOCKED_BY_CLIENT`. No rendered acceptance or owner-live evidence. Draft #298 remains unmerged and not production-deployed. `IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
 
 Remaining: viewport/Figma and owner-tenant state/mutation acceptance across all reviewed surfaces; CI on the published SHA; resolution of any findings from that review. Goal proposal persistence/Builder input handoff and existing policy/field-clear/native-knowledge contract limits remain. Logo upload, Slack/email verification, Finance/Compliance product scope and Billing E2E remain open. This source pass does not establish exhaustive design completion or backend authorization.
+
+## Functional contracts and remaining surface stubs — 2026-10-04 UTC
+
+Parent: `c4da9768b0203778f1355b1ce88df7b75f1bedd9`. Later dated sections still supersede older remaining lists. This pass implements the remaining functional contracts that already had backend/storage/authorization paths, and removes two leftover integration stubs that simulated persistence.
+
+| Item | Implemented | Still required |
+| --- | --- | --- |
+| Goal proposal persistence | FastAPI `generate-plan` verifies the org-scoped goal and inserts `goal_plans`. The wizard refuses a session-only proposal. | Owner-live generate + progress refetch |
+| Goal → Builder | Wizard calls `POST /api/workflows/from-goal` and opens the returned workflow builder. Demo `/workflows/new/builder` is no longer used as the handoff. | Owner-live from-goal (admin), dry-run, approved execution |
+| Outcome field clearing | Cleared publisher estimates send `null` on the existing asset PATCH. Real zero still saves as `0`. | Owner-org refetch after clear |
+| Policy ceilings / scopes / delegation | Identity PUT writes explicit null ceilings. The dialog edits stored scopes, approval overrides and `canDelegate`, and uses existing grant/revoke routes. | Owner-admin authorization and live grant expiry |
+| Native text knowledge | Manual RAG source + text ingest + `rag_source` assignment. Queued ingest is not claimed as indexed. | Owner-admin ingest completion and retrieval |
+| Organization logo file upload | Existing POST/DELETE logo route wired with 2MB image validation, pending locks and returned URL. | Owner-org save/refetch and image geometry |
+| Integrations stubs | `/integrations/new` and `/integrations/[id]` redirect to `/connectors` / `/connectors/[id]`. Fabricated Slack secrets and setTimeout saves removed. | Real connector authorization journeys |
+| Finance / Compliance | Unchanged product-scope gaps. No catalog/runtime specification was present to implement. | Named product decision |
+| Slack/email delivery | Preference/connection remain separate from destination delivery. | Owner destination run |
+| Billing E2E | Still `workflow_dispatch` only on published SHA `c4da9768` (skipped). | Explicit run |
+
+Reviewed surfaces this pass: Goal wizard/list callers, organization settings, outcome editor, agent policy/delegation, knowledge add/write, integrations new/detail, workflow failure-predictions redirect, Settings profile (auth/account APIs retained). Settings billing and remaining nested voice/admin diagnostic contracts were not redesigned.
+
+GitHub checks on published `c4da9768` (inspected independently): Web pass, Backend pass, Integration Smoke pass, Shared runtime text/voice gate pass, Dependency audit pass, Lighthouse pass. Billing E2E skipped. Skipped is not passed.
+
+Local checks on this tree: Vitest `TZ=UTC` **1,333 passed / 210 files**; changed-file ESLint **0 errors / 4 existing unused-import warnings** in `lib/api.ts`; `tsc --noEmit` **exit 0** after adding `createTextKnowledge` to the knowledge shot harness. Regenerated static inventory: **176 routes / 364 control/disclosure files**. Identity ceiling-clear pytest **1 passed**. These are local checks, not GitHub CI on the follow-up SHA.
+
+Rendered: `http://localhost:3055/e2e/shots/home` opened product chrome under a Next overlay. Capture is not 1440/834/390 or Figma acceptance. `https://gravitre.app/login` is session-expired. `VISUAL_ACCEPTANCE = NOT_RUN`. `OWNER_LIVE_ACCEPTANCE = NOT_RUN`.
+
+`IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`. Draft PR #298 remains unmerged and is not production-deployed.

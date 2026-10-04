@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { ArrowLeft, ArrowRight, Loader2, RefreshCw } from "lucide-react"
 import { apiFetch } from "@/lib/fetcher"
-import { connectorsApi } from "@/lib/api"
+import { connectorsApi, workflowsApi } from "@/lib/api"
 import { CONNECTOR_CATALOG } from "@/lib/connectors"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
@@ -52,6 +53,7 @@ export function GoalWorkflowWizard({
   onBuildWorkflow?: (plan: Plan) => void
   onGoalSaved?: () => void
 }) {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [objective, setObjective] = useState("")
   const [category, setCategory] = useState("")
@@ -61,7 +63,8 @@ export function GoalWorkflowWizard({
   const [metric, setMetric] = useState("")
   const [systems, setSystems] = useState<string[]>([])
   const [plan, setPlan] = useState<Plan | null>(null)
-  const [busy, setBusy] = useState<"save" | "plan" | null>(null)
+  const [busy, setBusy] = useState<"save" | "plan" | "build" | null>(null)
+  const [planId, setPlanId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [goalId, setGoalId] = useState<string | null>(null)
   const persistedId = useRef<string | null>(null)
@@ -96,6 +99,7 @@ export function GoalWorkflowWizard({
       setMetric("")
       setSystems([])
       setPlan(null)
+      setPlanId(null)
       setError(null)
       setGoalId(null)
       persistedId.current = null
@@ -169,6 +173,19 @@ export function GoalWorkflowWizard({
           "Your goal is saved as a draft. Plan generation failed; your context is retained for retry.",
         )
       const payload = (await response.json()) as Record<string, unknown>
+      const savedPlanId =
+        typeof payload.planId === "string"
+          ? payload.planId
+          : typeof (payload.goalPlan as { id?: string } | undefined)?.id ===
+              "string"
+            ? (payload.goalPlan as { id: string }).id
+            : null
+      if (!savedPlanId) {
+        throw new Error(
+          "The planner responded but did not persist a proposal. Your goal remains saved; try generating again.",
+        )
+      }
+      setPlanId(savedPlanId)
       const source = (payload.goalPlan ?? payload) as Record<string, unknown>
       const steps = Array.isArray(source.proposedSteps)
         ? (source.proposedSteps as Record<string, unknown>[])
@@ -213,6 +230,47 @@ export function GoalWorkflowWizard({
         e instanceof Error
           ? e.message
           : "Could not complete this request. Try again.",
+      )
+    } finally {
+      lock.current = false
+      setBusy(null)
+    }
+  }
+  async function openBuilder() {
+    if (lock.current || !plan || !goalId) return
+    lock.current = true
+    setBusy("build")
+    setError(null)
+    try {
+      const result = await workflowsApi.fromGoal({
+        goal: objective.trim(),
+        department: department.trim() || undefined,
+        connectors: systems.length ? systems : undefined,
+        successMetric: metric.trim() || undefined,
+        approvalRequired: plan.approvalGates.some((gate) => gate.required === true),
+        orgContext: [
+          department.trim() ? `Department: ${department.trim()}` : "",
+          systems.length ? `Requested systems: ${systems.join(", ")}` : "",
+          metric.trim() ? `Success metric: ${metric.trim()}` : "",
+          planId ? `Persisted proposal: ${planId}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        goalId,
+      })
+      if (!result.id) {
+        throw new Error(
+          "The goal and proposal are saved, but the server did not return a workflow. Try opening the builder again.",
+        )
+      }
+      onBuildWorkflow?.(plan)
+      close(false)
+      router.push(`/workflows/${result.id}/builder`)
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not create a workflow from this proposal. The saved goal and plan remain.",
       )
     } finally {
       lock.current = false
@@ -407,9 +465,9 @@ export function GoalWorkflowWizard({
                     {plan.goalSummary}
                   </h3>
                   <p className={cn(TYPE.bodyMuted, "mt-2")}>
-                    The goal is saved as a draft. This generated proposal is
-                    shown in this session; generating it does not save a
-                    workflow or start execution.
+                    The goal and this proposal are saved. Opening the builder
+                    creates a real draft workflow from this objective. It does
+                    not start execution.
                   </p>
                 </div>
                 <dl className="grid grid-cols-2 gap-4 border-y border-border py-3 text-sm">
@@ -487,7 +545,9 @@ export function GoalWorkflowWizard({
               <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
               {busy === "plan"
                 ? "Waiting for the planner’s response…"
-                : "Saving goal…"}
+                : busy === "build"
+                  ? "Creating the workflow…"
+                  : "Saving goal…"}
             </p>
           ) : null}
           {error ? (
@@ -550,18 +610,16 @@ export function GoalWorkflowWizard({
                   <RefreshCw className="mr-1 size-4" />
                   Regenerate
                 </Button>
-                {onBuildWorkflow && plan ? (
+                {plan && goalId ? (
                   <Button
                     disabled={busy !== null}
-                    onClick={() => {
-                      onBuildWorkflow(plan)
-                      close(false)
-                    }}
+                    onClick={() => void openBuilder()}
                   >
                     Open workflow builder
                   </Button>
-                ) : goalId ? (
-                  <Button asChild>
+                ) : null}
+                {goalId ? (
+                  <Button asChild variant={plan ? "outline" : "default"}>
                     <Link
                       href={`/goals/${goalId}`}
                       aria-disabled={busy !== null}

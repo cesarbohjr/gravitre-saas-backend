@@ -19,9 +19,9 @@ export function AssetOutcomeEditor({
   estimatedHoursSaved?: number | null
   disabled?: boolean
   onSave: (payload: {
-    businessOutcome?: string
-    useCase?: string
-    estimatedHoursSaved?: number
+    businessOutcome?: string | null
+    useCase?: string | null
+    estimatedHoursSaved?: number | null
   }) => Promise<void>
 }) {
   const [outcome, setOutcome] = useState(businessOutcome ?? "")
@@ -49,12 +49,12 @@ export function AssetOutcomeEditor({
     setBusy(true)
     try {
       await onSave({
-        businessOutcome: outcome.trim() || undefined,
-        useCase: useCaseValue.trim() || undefined,
+        businessOutcome: outcome.trim() || null,
+        useCase: useCaseValue.trim() || null,
         estimatedHoursSaved:
           parsedHours != null && !Number.isNaN(parsedHours)
             ? parsedHours
-            : undefined,
+            : null,
       })
     } catch (err) {
       setError(
@@ -75,7 +75,8 @@ export function AssetOutcomeEditor({
       </summary>
       <div className="space-y-3 py-2">
         <p className="text-[11px] text-muted-foreground">
-          Publisher-provided estimates — not measured time-on-task.
+          Publisher-provided estimates — not measured time-on-task. Clearing a
+          field removes the stored value.
         </p>
         <div className="space-y-2">
           <label className="text-xs font-medium" htmlFor={`${fieldId}-outcome`}>

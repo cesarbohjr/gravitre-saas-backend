@@ -36,8 +36,18 @@ vi.mock("swr", () => ({
   mutate: state.mutate,
 }))
 vi.mock("@/lib/api", () => ({
-  agentsApi: { update: state.update, uploadAvatar: state.upload },
-  agentIdentityApi: { upsert: state.upsert, get: vi.fn() },
+  agentsApi: {
+    update: state.update,
+    uploadAvatar: state.upload,
+    list: vi.fn().mockResolvedValue({ agents: [] }),
+  },
+  agentIdentityApi: {
+    upsert: state.upsert,
+    get: vi.fn(),
+    listDelegations: vi.fn().mockResolvedValue({ grants: [] }),
+    createDelegation: vi.fn(),
+    revokeDelegation: vi.fn(),
+  },
   agentKnowledgeApi: {
     testRetrieval: state.retrieve,
     syncAssignment: state.sync,
@@ -247,7 +257,8 @@ it("preserves unrelated policy arrays and approval overrides when saving a zero 
   })
   expect(saved).toHaveBeenCalledWith(record)
 })
-it("does not promise that blank input clears an existing policy limit", async () => {
+it("sends null to clear an existing policy ceiling", async () => {
+  state.upsert.mockResolvedValue({ identity: { maxActionsPerDay: null } })
   act(() =>
     root.render(
       <AgentPolicyEditor
@@ -263,10 +274,26 @@ it("does not promise that blank input clears an existing policy limit", async ()
     "",
   )
   await act(async () => click("Save policy"))
-  expect(state.upsert).not.toHaveBeenCalled()
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain(
-    "cannot be cleared",
+  expect(state.upsert.mock.calls[0][1]).toMatchObject({
+    maxActionsPerDay: null,
+  })
+})
+it("opens native text knowledge creation instead of a disabled tile", () => {
+  act(() =>
+    root.render(
+      <AgentKnowledgeAddSheet
+        open
+        onOpenChange={vi.fn()}
+        onBrowseExpertPacks={vi.fn()}
+      />,
+    ),
   )
+  const button = [
+    ...document.querySelectorAll<HTMLButtonElement>("button"),
+  ].find((b) => b.textContent?.includes("Write knowledge"))!
+  act(() => button.click())
+  expect(document.body.textContent).toContain("Knowledge text")
+  expect(document.body.textContent).toContain("Save and assign")
 })
 it("does not present absent governance evidence as configured policy", () => {
   act(() => root.render(<AgentAutonomyPanel agentId="agent" />))

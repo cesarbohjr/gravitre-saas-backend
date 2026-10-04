@@ -128,6 +128,7 @@ export function AgentKnowledgeShotHarness() {
     loading: false,
     orgSourcesLoading: false,
     agentDepartment: "Sales",
+    createTextKnowledge: async () => false,
     assignPack: async (pack: PackAssignInput) => {
       setAssigningKey(`pack:${pack.id}`)
       await new Promise((r) => setTimeout(r, 120))

@@ -187,4 +187,21 @@ Rendered verification was attempted against the current local dev server at `htt
 
 `IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
 
-Remaining acceptance: the 1440/834/390 state matrix and Figma/page-03 comparison across the source-review queue; owner-live mutations including production execution, schedule occurrence, install/binding/credential flows, exports and AI text/voice continuity; required CI on the published SHA. Remaining implementation/product limits: session-only goal proposals are not passed into Builder inputs; field clearing, granular policy/delegation administration, native text knowledge and ceiling removal retain existing exposed-contract limitations; organization logo file upload, Slack/email delivery verification, Finance/Compliance scope and Billing E2E remain open. Further gaps found by rendered or live review must be resolved before completion is declared.
+Remaining acceptance: the 1440/834/390 state matrix and Figma/page-03 comparison across the source-review queue; owner-live mutations including production execution, schedule occurrence, install/binding/credential flows, exports and AI text/voice continuity; required CI on the published SHA. Further gaps found by rendered or live review must be resolved before completion is declared.
+
+## Functional contract continuation — 2026-10-04 UTC
+
+Starting published head `c4da9768`. These changes use existing APIs, tables and authorization. They do not invent prices, badges or Enable toggles.
+
+| Gap | Implemented contract | Evidence boundary |
+|---|---|---|
+| Goal proposals → Builder | `POST /api/goals/{id}/generate-plan` now inserts an org-scoped `goal_plans` row after verifying the goal. The wizard requires a returned `planId` before review. **Open workflow builder** calls `POST /api/workflows/from-goal` and opens `/workflows/{id}/builder`. Failed creation keeps the saved goal and proposal. | from-goal remains admin-gated. Creation is a draft workflow, not execution. Owner-live Goal → dry-run → approved execution is still required. |
+| Optional field clearing | Outcome metadata now PATCHes explicit `null` for cleared business outcome, use case and hours. Zero hours still save as `0`. | Publisher estimates remain estimates. Backend already assigned nulls when the field was present. |
+| Execution policy / delegation | Identity PUT now uses `exclude_unset` so explicit null ceilings are written. The policy dialog edits tool patterns, action kinds, data scopes, approval overrides and `canDelegate`, and grants/revokes through the existing delegation routes. | Frontend admin controls are not backend authorization proof. Grant success requires a returned grant. |
+| Native text knowledge | Write knowledge creates a `manual` RAG source, queues `POST /api/rag/ingest` with text, then assigns `rag_source`. Copy states ingestion is queued, not retrieval-ready. | Requires admin RAG routes. Indexing completion is a later ingest-job state. |
+| Organization logo upload | File control posts to the existing `/api/settings/organization/logo` route (2MB image, admin/owner). Remove uses DELETE. URL save still includes the current logo. | Image geometry and owner-org refetch remain live checks. |
+| Integrations stubs | `/integrations/new` redirects to `/connectors`. `/integrations/[id]` redirects to `/connectors/[id]`. The previous simulate-save pages with fabricated Slack secrets were removed. | Connector create/authorization journeys remain on `/connectors`. |
+
+Reviewed without claiming visual acceptance: workflow failure-predictions already redirects to Activity → Failures; Settings profile continues to use account/auth APIs rather than a local mock; Settings billing was not redesigned in this pass. Finance department and Compliance packs remain product-scope decisions. Slack/email destination delivery and Billing E2E remain unverified.
+
+A localhost fixture walk at `http://localhost:3055/e2e/shots/home` rendered product chrome under a Next overlay (`shots/layout.tsx`). That capture is not viewport or Figma acceptance. Production login remains session-expired.

@@ -231,6 +231,7 @@ class GoalWorkflowRequest(BaseModel):
     success_metric: str | None = Field(default=None, alias="successMetric")
     approval_required: bool = Field(default=True, alias="approvalRequired")
     org_context: str | None = Field(default=None, alias="orgContext")
+    goal_id: str | None = Field(default=None, alias="goalId")
 
 
 class WorkflowUpdateRequest(BaseModel):
@@ -4458,7 +4459,11 @@ async def create_workflow_from_goal(
         action="workflow.created.from_goal",
         resource_type="workflow",
         resource_id=workflow_id,
-        metadata={"environment": environment_name, "department": generated.department},
+        metadata={
+            "environment": environment_name,
+            "department": generated.department,
+            "goalId": request.goal_id,
+        },
     )
     return {"id": workflow_id, "workflow": generated.model_dump()}
 

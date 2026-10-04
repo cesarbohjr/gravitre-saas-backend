@@ -681,9 +681,6 @@ export default function WorkflowsPage() {
         <GoalWorkflowWizard
           open={goalWizardOpen}
           onOpenChange={setGoalWizardOpen}
-            onBuildWorkflow={() => {
-              router.push("/workflows/new/builder")
-            }}
         />
       </div>
     </AppShell>

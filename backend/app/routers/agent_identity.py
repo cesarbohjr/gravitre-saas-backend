@@ -112,7 +112,7 @@ async def put_agent_identity(
         org_id=org_id,
         agent_id=aid,
         actor_id=str(current_user["user_id"]),
-        payload=body.model_dump(by_alias=True, exclude_none=True),
+        payload=body.model_dump(by_alias=True, exclude_unset=True),
     )
     return {"identity": serialize_identity_record(row)}
 

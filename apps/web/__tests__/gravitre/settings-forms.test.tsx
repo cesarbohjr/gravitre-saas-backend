@@ -10,11 +10,11 @@ import { AIModelsSettings } from "@/components/settings/ai-models-settings"
 
 const mocks = vi.hoisted(() => ({
   response: { data: undefined as { notifications: { emailEnabled: boolean; slackEnabled: boolean; recipients: string[] } } | undefined, error: undefined as Error | undefined, isLoading: false },
-  mutate: vi.fn(), updateOrg: vi.fn(), update: vi.fn(), success: vi.fn(), error: vi.fn(), refresh: vi.fn(),
+  mutate: vi.fn(), updateOrg: vi.fn(), uploadOrgLogo: vi.fn(), removeOrgLogo: vi.fn(), update: vi.fn(), success: vi.fn(), error: vi.fn(), refresh: vi.fn(),
 }))
 vi.mock("swr", () => ({ default: () => ({ ...mocks.response, mutate: mocks.mutate }) }))
 vi.mock("@/lib/api", () => ({
-  settingsApi: { updateOrg: mocks.updateOrg, getMemoryEntityEmbeddings: vi.fn().mockResolvedValue({ memoryEntityEmbeddings: { enabled: false, connectors: [] } }), updateMemoryEntityEmbeddings: vi.fn() },
+  settingsApi: { updateOrg: mocks.updateOrg, uploadOrgLogo: mocks.uploadOrgLogo, removeOrgLogo: mocks.removeOrgLogo, getMemoryEntityEmbeddings: vi.fn().mockResolvedValue({ memoryEntityEmbeddings: { enabled: false, connectors: [] } }), updateMemoryEntityEmbeddings: vi.fn() },
   ssoApi: { getConfig: vi.fn().mockResolvedValue(null), saveConfig: vi.fn(), enable: vi.fn(), disable: vi.fn(), deleteConfig: vi.fn(), initLogin: vi.fn() },
 }))
 vi.mock("@/lib/fetcher", () => ({ apiFetch: mocks.update, fetcher: vi.fn() }))
@@ -96,6 +96,19 @@ it("keeps failed preference writes visible without claiming success", async () =
 it("blocks preference writes for non-admin members even when submitted directly", async () => {
   notification(false); await act(async () => submit())
   expect(mocks.update).not.toHaveBeenCalled(); expect(container.querySelector("fieldset")!.disabled).toBe(true)
+})
+it("uploads a logo file through the organization logo endpoint", async () => {
+  mocks.uploadOrgLogo.mockResolvedValue({ logoUrl: "data:image/png;base64,abc" })
+  org()
+  const input = container.querySelector<HTMLInputElement>("#organization-logo-file")!
+  const file = new File(["logo"], "logo.png", { type: "image/png" })
+  await act(async () => {
+    Object.defineProperty(input, "files", { value: [file], configurable: true })
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+  })
+  expect(mocks.uploadOrgLogo).toHaveBeenCalledWith(file)
+  expect(container.querySelector("img")?.getAttribute("src")).toBe("data:image/png;base64,abc")
+  expect(container.textContent).toContain("Changes saved")
 })
 it("keeps invalid logo edits from breaking the preview or reaching the save endpoint", async () => {
   org(); input("organization-logoUrl", "not a URL")
