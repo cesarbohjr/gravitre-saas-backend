@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { ApiError, fetcher as apiFetcher, PlanRequiredApiError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { sourceSyncFeedback } from "@/lib/source-evidence"
 import { sourcesApi } from "@/lib/api"
 import type { CreateSourceRequest } from "@/types/api"
 import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
@@ -70,8 +71,10 @@ export default function SourcesPage() {
   const handleSync = async (sourceId: string) => {
     try {
       setMutatingSourceId(sourceId)
-      await sourcesApi.sync(sourceId)
-      toast.success("Sync started")
+      const feedback = sourceSyncFeedback(await sourcesApi.sync(sourceId))
+      if (feedback.kind === "error") toast.error(feedback.message)
+      else if (feedback.kind === "success") toast.success(feedback.message)
+      else toast.message(feedback.message)
       await mutate()
     } catch (err) {
       console.error("[v0] Sync failed:", err)

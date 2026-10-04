@@ -9,6 +9,8 @@ import { toast } from "sonner"
 import type { AgentJob } from "@/hooks/use-async-job"
 
 const state = vi.hoisted(() => ({ query: "", data: undefined as unknown, error: undefined as unknown, mutate: vi.fn(), approve: vi.fn(), push: vi.fn() }))
+vi.mock("@/components/gravitre/ai-workspace-provider", () => ({ usePublishGravitreAISelection: vi.fn() }))
+vi.mock("@/components/intelligence/ask-gravitre-summon-button", () => ({ AskGravitreSummonButton: () => null }))
 vi.mock("swr", () => ({ default: () => ({ data: state.data, error: state.error, isLoading: false, mutate: state.mutate }) }))
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "goal" }), useSearchParams: () => new URLSearchParams(state.query) }))
 vi.mock("@/components/gravitre/app-shell", () => ({ AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }))

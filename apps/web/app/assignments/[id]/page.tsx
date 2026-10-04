@@ -5,6 +5,7 @@ import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import useSWR from "swr"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,
@@ -136,6 +137,7 @@ export default function AssignmentDetailPage({
   )
 
   const selectedItem = deliverables.find((d) => d.id === selectedDeliverable) ?? deliverables[0] ?? null
+  usePublishGravitreAISelection(job ? { kind: "assignment", id, label: selectedItem ? `${taskTitle} · ${selectedItem.title}` : taskTitle } : null)
   const readyCount = deliverables.filter((d) => d.status === "ready").length
   const approvedCount = approvedItems.length
   const jobError = job?.status === "failed" ? (job.error || handoff?.error || "The agent task failed.") : null

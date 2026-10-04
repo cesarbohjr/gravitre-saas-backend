@@ -770,7 +770,7 @@ function MarketplaceAssetsContent() {
               </div>
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-start gap-3 lg:justify-end">
-                  <AskGravitreSummonButton />
+                  <AskGravitreSummonButton label="Find an outcome" prompt="Help me find a suitable outcome pack and inspect its required systems, permissions and reported readiness." />
                   {isAdmin ? (
                     <Button asChild size="sm" variant="outline">
                       <Link href="/marketplace/capabilities">

@@ -1490,28 +1490,9 @@ function DebateViewDialog({
   const isDebating = node.state === "debating"
   const hasConsensus = node.state === "consensus"
 
-  // Mock debate data if not present
-  const contributions = debate?.contributions || agents.map((agent, idx) => ({
-    agentId: agent.id,
-    position: idx === 0 ? "Approve" : idx === 1 ? "Request more data" : "Approve with conditions",
-    confidence: 70 + ((idx * 13 + 7) % 25),
-    reasoning: `Based on the available evidence, I recommend this action because...`,
-    evidenceUsed: ["CRM data", "Previous node outputs"],
-    timestamp: new Date(),
-  }))
-
-  const disagreements = debate?.disagreements || (agents.length > 2 ? [{
-    agentIds: [agents[0]?.id, agents[1]?.id].filter(Boolean) as string[],
-    topic: "Data completeness requirement"
-  }] : [])
-
-  const timeline = debate?.timeline || [
-    { step: "Gathering evidence", status: "complete" as const },
-    { step: "Agents reviewing", status: "complete" as const },
-    { step: "Submitting positions", status: isDebating ? "active" as const : "complete" as const },
-    { step: "Resolving conflicts", status: hasConsensus ? "complete" as const : "pending" as const },
-    { step: "Final recommendation", status: hasConsensus ? "complete" as const : "pending" as const },
-  ]
+  const contributions = debate?.contributions ?? []
+  const disagreements = debate?.disagreements ?? []
+  const timeline = debate?.timeline ?? []
 
   const getAgentById = (id: string) => agents.find(a => a.id === id)
   const getAgentColor = (index: number) => {
@@ -1550,6 +1531,7 @@ function DebateViewDialog({
           {/* Debate Timeline */}
           <div className="px-1">
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Debate timeline</h4>
+            {!timeline.length ? <p className="text-sm text-muted-foreground">No debate timeline was reported.</p> : null}
             <div className="flex items-center gap-2">
               {timeline.map((step, idx) => (
                 <div key={idx} className="flex items-center gap-2 flex-1">
@@ -1584,6 +1566,7 @@ function DebateViewDialog({
           <div>
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Agent contributions</h4>
             <div className="grid gap-3">
+              {!contributions.length ? <p className="text-sm text-muted-foreground">No agent contributions were reported.</p> : null}
               {contributions.map((contribution, idx) => {
                 const agent = getAgentById(contribution.agentId) || agents[idx]
                 if (!agent) return null
@@ -1716,7 +1699,7 @@ function DebateViewDialog({
               onClick={onAcceptDecision}
             >
               <CheckCircle className="h-4 w-4" />
-              Accept recommendation
+              Finish review
             </Button>
             <Button 
               variant="outline" 
@@ -4075,6 +4058,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   // Handle run workflow with live run polling (STA-166)
   const handleRun = useCallback(async () => {
     if (persistenceLock.current || isLoadingGraph || loadError) return
+    if (!canPersist) {
+      toast.message("Save a workflow before running", { description: "Execution requires a persisted workflow ID. No work has been executed." })
+      return
+    }
     const finishExecution = (snapshot: RunMonitorSnapshot, runId: string) => {
       setIsExecuting(false)
       setIsRunning(false)
@@ -4269,116 +4256,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     return
   }
   
-  // Demo mode: local simulation for non-UUID workflows
-  setIsRunning(true)
-  setIsExecuting(true)
-  setExecutionStatus("running")
-  setExecutionStartTime(Date.now())
-  setExecutionStep(0)
-  setExecutionError(null)
-  
-  // Get ordered nodes for execution (simple ordering by x position)
-  const orderedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x)
-  
-  // Simulate execution through each node
-  for (let i = 0; i < orderedNodes.length; i++) {
-    const currentNode = orderedNodes[i]
-    setExecutionStep(i + 1)
-    
-    // Special handling for decision nodes - show evaluating state
-    if (currentNode.type === "decision") {
-      // Set to evaluating state with pulsing animation
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { ...n, state: "evaluating" as NodeState }
-            : n
-        )
-      )
-      
-      // Longer evaluation time for decision nodes (1.5-3 seconds)
-      const evaluationTime = 1500 + Math.random() * 1500
-      await new Promise((resolve) => setTimeout(resolve, evaluationTime))
-      
-      // Simulate AI decision reasoning
-      const outputPaths = currentNode.outputPaths || [
-        { id: "default", label: "Default path" }
-      ]
-      const randomPathIndex = Math.floor(Math.random() * outputPaths.length)
-      const chosenPath = outputPaths[randomPathIndex]
-      const confidence = Math.floor(75 + Math.random() * 25) // 75-100%
-      
-      // Generate reasoning
-      const reasoning: DecisionConfig["reasoning"] = {
-        summary: `Based on analysis of input data, the AI determined that "${chosenPath.label}" is the optimal path forward.`,
-        confidence,
-        chosenPath: chosenPath.label,
-        factors: [
-          "High engagement signals detected",
-          "Data quality score above threshold",
-          "Pattern matches historical successes"
-        ],
-        rejectedPaths: outputPaths
-          .filter(p => p.id !== chosenPath.id)
-          .map(p => p.label)
-      }
-      
-      // Update node with reasoning and set to success
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { 
-                ...n, 
-                state: "success" as NodeState,
-                decisionConfig: {
-                  ...n.decisionConfig,
-                  reasoning
-                }
-              }
-            : n
-        )
-      )
-      
-      // Show decision toast
-      toast.success(`AI Decision: ${chosenPath.label}`, {
-        description: `${currentNode.name} completed with ${confidence}% confidence`,
-        icon: <GitBranch className="h-4 w-4 text-success" />,
-      })
-      
-    } else {
-      // Standard node execution
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { ...n, state: "running" as NodeState }
-            : n
-        )
-      )
-      
-      // Simulate processing time (0.8-2 seconds per node)
-      const processingTime = 800 + Math.random() * 1200
-      await new Promise((resolve) => setTimeout(resolve, processingTime))
-      
-      // Set current node to success
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { ...n, state: "success" as NodeState }
-            : n
-        )
-      )
-    }
-  }
-  
-  // Execution completed
-  setIsExecuting(false)
-  setIsRunning(false)
-  setExecutionStatus("completed")
-  
-  toast.success("Workflow completed successfully", {
-    description: `Executed ${orderedNodes.length} steps in ${((Date.now() - (executionStartTime || Date.now())) / 1000).toFixed(1)}s`,
-  })
-  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router, executionStartTime])
+  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router])
   
   const handlePauseRun = useCallback(async () => {
     if (!lastRunId) return
@@ -6184,26 +6062,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             onOpenChange={setDebateDialogOpen}
             node={debateNode}
             onAcceptDecision={() => {
-              if (debateNode) {
-                handleUpdateNode({
-                  state: "success",
-                  councilConfig: {
-                    ...debateNode.councilConfig,
-                    finalDecision: {
-                      recommendation: debateNode.councilConfig?.finalDecision?.recommendation ?? "Decision accepted",
-                      method: debateNode.councilConfig?.finalDecision?.method ?? "consensus",
-                      confidence: debateNode.councilConfig?.finalDecision?.confidence ?? 100,
-                      keyReasons: debateNode.councilConfig?.finalDecision?.keyReasons ?? [],
-                      dissentingOpinions: debateNode.councilConfig?.finalDecision?.dissentingOpinions,
-                      executedAction: debateNode.councilConfig?.finalDecision?.recommendation
-                    }
-                  }
-                })
-                toast.success("Decision accepted", {
-                  description: "The council recommendation has been executed"
-                })
-              }
               setDebateDialogOpen(false)
+              toast.message("Recommendation reviewed", {
+                description: "Review does not execute an action. Run the persisted workflow to request execution.",
+              })
             }}
             onOverrideDecision={() => {
               toast.info("Override requested", {
@@ -6211,12 +6073,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               })
             }}
             onRequestMoreEvidence={() => {
-              if (debateNode) {
-                handleUpdateNode({ state: "debating" })
-                toast.info("Requesting more evidence", {
-                  description: "Agents are gathering additional data..."
-                })
-              }
+              if (lastRunId) router.push(`/runs/${lastRunId}`)
+              else toast.message("No run evidence yet", { description: "Run the persisted workflow to collect execution evidence." })
             }}
           />
         </div>

@@ -1049,7 +1049,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                             "flex items-center gap-2 rounded-[var(--np-radius-md)] border bg-[color:var(--g-surface-2)] px-3 py-2",
                             grammarKey === "failed" && "border-destructive/50",
                             grammarKey === "waiting" && "border-warning/50",
-                            grammarKey === "verified" && "border-[color:color-mix(in_srgb,#16a374_45%,transparent)]",
+                            ["completed", "approved", "verified"].includes(grammarKey) && "border-[color:var(--g-brand-border)]",
                             grammarKey === "running" && "border-info/40",
                             grammarKey === "pending" && "border-divide",
                           )}

@@ -33,6 +33,7 @@ export function NodusGraphNodeTile({
   label,
   sublabel,
   active = false,
+  working = false,
   selected = false,
   showLabel = true,
   reduced = false,
@@ -43,6 +44,8 @@ export function NodusGraphNodeTile({
   label: string
   sublabel?: string
   active?: boolean
+  /** Actual runtime activity; selection/emphasis alone never starts motion. */
+  working?: boolean
   selected?: boolean
   showLabel?: boolean
   reduced?: boolean
@@ -51,7 +54,7 @@ export function NodusGraphNodeTile({
 }) {
   const box = size === "sm" ? "h-11 w-11 sm:h-12 sm:w-12" : "h-12 w-12 sm:h-14 sm:w-14"
   const iconSize = size === "sm" ? "h-5 w-5" : "h-6 w-6"
-  const spin = active && !reduced
+  const spin = working && !reduced
 
   return (
     <div className={cn("flex max-w-[8.5rem] flex-col items-center gap-1.5", className)}>

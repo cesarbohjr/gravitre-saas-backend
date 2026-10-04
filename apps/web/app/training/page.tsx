@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { toast } from "sonner"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { Button } from "@/components/ui/button"
@@ -306,6 +307,9 @@ function TrainingPageContent() {
     () => instructionsData?.instructions ?? [],
     [instructionsData],
   )
+  const scopedDatasetId = recordDatasetId ?? trainDatasetId
+  const scopedDataset = datasets.find(dataset => dataset.id === scopedDatasetId)
+  usePublishGravitreAISelection(scopedDataset ? { kind: "training-dataset", id: scopedDataset.id, label: scopedDataset.name } : null)
   const trainingLoading = datasetsLoading || jobsLoading || instructionsLoading
 
   const workflowAgents = useMemo(
@@ -782,7 +786,7 @@ function TrainingPageContent() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2 [&_button]:min-h-11 [&_a]:min-h-11">
-              <AskGravitreSummonButton />
+              <AskGravitreSummonButton label={scopedDataset ? "Inspect this dataset" : "Plan training"} prompt={scopedDataset ? "Review the selected dataset’s grounding and preparation requirements. Distinguish reported readiness from missing evidence." : "Help me plan agent training using the available datasets and reported jobs."} />
               <Button variant="outline" size="sm" asChild>
                 <Link href={APP_ROUTES.builtInModels}>Built-in models</Link>
               </Button>
@@ -1577,6 +1581,11 @@ function TrainingPageContent() {
                               {job.error}
                             </p>
                           ) : null}
+                          <AskGravitreSummonButton
+                            selected={{ kind: "training-job", id: job.id, label: datasetLabel }}
+                            label="Explain this job"
+                            prompt="Explain this training job’s reported progress, errors and next useful action. Do not infer model readiness from completion alone."
+                          />
                           {(job.status === "queued" ||
                             job.status === "training") && (
                             <div className="mt-3 flex gap-2">

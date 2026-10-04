@@ -2086,7 +2086,7 @@ export const sourcesApi = {
   create: (data: CreateSourceRequest) => postJson<{ id: string; typeId?: string }>(apiUrl("/api/sources"), data),
   update: (id: string, data: Partial<Source>) => patchJson<Source>(apiUrl(`/api/sources/${id}`), data),
   delete: (id: string) => deleteRequest(apiUrl(`/api/sources/${id}`)),
-  sync: (id: string) => postJson<{ status: string; tables?: number; records?: number }>(apiUrl(`/api/sources/${id}/sync`), {}),
+  sync: (id: string) => postJson<{ success?: boolean; status: string; tables?: number; records?: number; error?: string | null }>(apiUrl(`/api/sources/${id}/sync`), {}),
   testConnection: (data: { typeId: string; config?: Record<string, unknown>; connectionString?: string }) =>
     postJson<DataSourceTestResponse>(apiUrl("/api/sources/test"), data),
   testExisting: (id: string) => postJson<DataSourceTestResponse>(apiUrl(`/api/sources/${id}/test`), {}),

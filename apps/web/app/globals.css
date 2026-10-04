@@ -637,7 +637,7 @@
   --graphite-700: #25292d;
   --porcelain-50: #f7f7f5;
   --bone-100: #efefeb;
-  --ink-950: #151618;
+  --ink-950: var(--g-carbon);
   /* Emerald implementation (Figma page 03) — later Carbon remaps must not invent a second green. */
   --signal-500: #00a878;
   --signal-600: #007f5f;
@@ -764,7 +764,7 @@
   --dots: #d6d6d0;
   --g-chrome: var(--bone-100);
   --g-chrome-hover: #e5e5df;
-  --g-frame: var(--carbon-900);
+  --g-frame: var(--g-carbon);
   --g-frame-rule: var(--graphite-700);
   --g-rail-bg: color-mix(in srgb, var(--g-bone) 88%, #ffffff);
   --g-workspace-radius: 8px;
@@ -794,13 +794,13 @@
   --g-graphic-glow: 0 0 #0000;
 
   --radius: 0.375rem;
-  --g-radius-control: 0.3125rem;
-  --g-radius-field: 0.3125rem;
+  --g-radius-control: 0.5rem;
+  --g-radius-field: 0.5rem;
   --g-radius-tile: 0.375rem;
   --g-radius-card: 0.5rem;
   --g-radius-panel: 0.5rem;
   --np-radius-sm: 4px;
-  --np-radius-md: 5px;
+  --np-radius-md: 8px;
   --np-radius-lg: 8px;
 
   --g-type-page: 1.75rem;
@@ -1766,3 +1766,12 @@ details[open] > .g-disclosure > :first-child::after {
 
 @keyframes g-node-route { 0% { transform: translateX(-110%); } 55% { transform: translateX(100%); } 100% { transform: translateX(220%); } }
 @media (prefers-reduced-motion: reduce) { [class*="g-node-route"] { animation: none !important; } }
+
+/* Targets apply to primitive controls in portals as well as page canvases. */
+@media (max-width: 767px), (pointer: coarse) {
+  [data-slot="button"], [data-slot="input"], [data-slot="select-trigger"] { min-height: 44px; }
+  [data-slot="button"]:has(> svg:only-child) { min-width: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="button"], [data-slot="dialog-content"], [data-slot="sheet-content"] { transition: none !important; }
+}

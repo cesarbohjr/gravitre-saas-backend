@@ -3,9 +3,11 @@
 import useSWR from "swr"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +25,7 @@ interface GoalProgressPayload {
 export default function GoalDetailPage() {
   const { id: goalId } = useParams<{ id: string }>()
   const { data, error, isLoading, mutate } = useSWR<GoalProgressPayload>(goalId ? `/api/goals/${goalId}/progress` : null, fetcher)
+  usePublishGravitreAISelection(data?.goal ? { kind: "goal", id: data.goal.id, label: data.goal.objective } : null)
   const reported = data?.completionPercentage
   const progress = typeof reported === "number" && Number.isFinite(reported) ? Math.min(100, Math.max(0, reported)) : null
   const milestones = data?.milestoneStatus
@@ -35,7 +38,7 @@ export default function GoalDetailPage() {
           title={data?.goal?.objective ?? (isLoading ? "Loading…" : error ? "Could not load goal" : "Goal")}
           description={data?.goal?.department ? `Department: ${data.goal.department}` : undefined}
           icon={<Target className="h-5 w-5" />}
-          actions={<Button variant="ghost" size="sm" asChild className="min-h-11 gap-2"><Link href="/goals"><ArrowLeft className="h-4 w-4" />Back to goals</Link></Button>}
+          actions={<div className="flex flex-wrap items-center gap-2"><AskGravitreSummonButton label="Review this goal" prompt="Review progress and reported milestones for this goal, and suggest the next useful action." /><Button variant="ghost" size="sm" asChild className="min-h-11 gap-2"><Link href="/goals"><ArrowLeft className="h-4 w-4" />Back to goals</Link></Button></div>}
         >
           {data?.goal ? <div className="flex flex-wrap gap-2 pt-1">
             {data.goal.status ? <Badge variant="outline" className="capitalize">{data.goal.status.replaceAll("_", " ")}</Badge> : null}

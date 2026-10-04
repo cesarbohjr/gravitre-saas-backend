@@ -287,12 +287,12 @@ function LaneAsk({ prompt, label }: { prompt: string; label: string }) {
       onClick={() =>
         summonWorkspace({ presentation: "compact", composerText: prompt, submit: false, selected: pageContext.selected })
       }
-      className="inline-flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--g-surface-1)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex min-h-11 items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--g-surface-1)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`Ask Gravitre about ${label.toLowerCase()}`}
       title={prompt}
     >
       <CornerDownRight className="size-3" aria-hidden />
-      Ask
+      Explain
     </button>
   )
 }
@@ -385,16 +385,15 @@ export function OperatingFlow({
     <div data-operating-flow="" className="flex flex-col">
       {/* Phones: one lane at a time, chosen from a lane switcher */}
       <div className="md:hidden">
-        <div role="tablist" aria-label="Operation lanes" className="flex overflow-x-auto border-b border-[color:var(--g-border-subtle)] px-2 scrollbar-none">
+        <div role="group" aria-label="Operation lanes" className="flex overflow-x-auto border-b border-[color:var(--g-border-subtle)] px-2 scrollbar-none">
           {lanes.map((lane) => (
             <button
               key={lane.id}
               type="button"
-              role="tab"
-              aria-selected={activeMobile === lane.id}
+              aria-pressed={activeMobile === lane.id}
               onClick={() => setMobileLane(lane.id)}
               className={cn(
-                "relative shrink-0 px-3 py-2.5 text-[13px] font-medium",
+                "relative min-h-11 shrink-0 px-3 py-2.5 text-[13px] font-medium",
                 activeMobile === lane.id
                   ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[color:var(--g-text-primary)]"
                   : "text-muted-foreground",
@@ -453,8 +452,9 @@ export function OperatingAskLine({ className }: { className?: string }) {
         value={text}
         onChange={(event) => setText(event.target.value)}
         placeholder="Ask about today’s operation…"
-        className="h-9 min-w-0 flex-1 rounded-[6px] border border-[color:var(--g-border-strong)] bg-background px-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[color:var(--g-text-primary)] focus:shadow-[0_0_0_1px_var(--g-text-primary)] focus:outline-none"
+        className="h-11 min-w-0 flex-1 rounded-[6px] border border-[color:var(--g-border-strong)] bg-background px-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[color:var(--g-text-primary)] focus:shadow-[0_0_0_1px_var(--g-text-primary)] focus:outline-none"
       />
+      <button type="submit" className="ml-2 min-h-11 rounded px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Open draft</button>
     </form>
   )
 }

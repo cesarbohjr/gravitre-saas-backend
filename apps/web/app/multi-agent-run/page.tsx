@@ -16,7 +16,9 @@ import { formatDistanceToNow } from "date-fns"
 import { motion, useReducedMotion } from "framer-motion"
 import { toast } from "sonner"
 import { ChevronRight, Network, Plus, RefreshCw } from "lucide-react"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { Button } from "@/components/ui/button"
 import { SelectionInspector } from "@/components/gravitre/selection-inspector"
 import { TYPE } from "@/lib/design-system"
@@ -153,6 +155,8 @@ function MultiAgentRunContent() {
     }
   }, [runs, selectRun])
 
+  const selectedRun = runs.find(run => run.id === selectedId)
+  usePublishGravitreAISelection(selectedRun ? { kind: "multi-agent-run", id: selectedRun.id, label: selectedRun.objective } : null)
   const stats = useMemo(() => {
     const active = runs.filter((r) => ACTIVE.has(r.status)).length
     const completed = runs.filter((r) => r.status === "completed").length
@@ -181,6 +185,7 @@ function MultiAgentRunContent() {
           className="border-0 px-0"
           actions={
             <>
+              {selectedRun ? <AskGravitreSummonButton label="Review coordinated work" prompt="Review the selected multi-agent run’s reported contributions, disagreements and final recommendation." /> : null}
               <Button
                 variant="outline"
                 size="sm"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
@@ -15,6 +15,10 @@ import { SourceQueryPanel } from "@/components/gravitre/source-query-panel"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { formatReportedCount as formatCount, reportedNumber, sourceSyncFeedback } from "@/lib/source-evidence"
 import { sourcesApi } from "@/lib/api"
 import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
 import { useAuth } from "@/lib/auth-context"
@@ -46,9 +50,9 @@ const statusVariants: Record<string, "success" | "warning" | "error" | "info" | 
 }
 
 function formatRelative(iso: string | undefined): string {
-  if (!iso) return "Never"
+  if (!iso) return "Not reported"
   const timestamp = new Date(iso)
-  if (Number.isNaN(timestamp.getTime())) return "Never"
+  if (Number.isNaN(timestamp.getTime())) return "Not reported"
   const diffMs = Date.now() - timestamp.getTime()
   const minutes = Math.max(0, Math.floor(diffMs / 60000))
   if (minutes < 1) return "Just now"
@@ -56,13 +60,6 @@ function formatRelative(iso: string | undefined): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   return `${Math.floor(hours / 24)}d ago`
-}
-
-function formatCount(value: number | undefined): string {
-  if (!value) return "0"
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
-  return String(value)
 }
 
 interface SchemaTable {
@@ -79,6 +76,10 @@ export default function SourceDetailPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const mutationLock = useRef(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [testSucceeded, setTestSucceeded] = useState(false)
   const [testMessage, setTestMessage] = useState<string | null>(null)
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -86,19 +87,23 @@ export default function SourceDetailPage() {
     apiFetcher,
     { revalidateOnFocus: false }
   )
-  const { data: schemaData } = useSWR(
+  const { data: schemaData, error: schemaError, isLoading: schemaLoading, mutate: mutateSchema } = useSWR(
     user && sourceId ? `/api/sources/${sourceId}/schema` : null,
     apiFetcher,
     { revalidateOnFocus: false }
   )
-  const { data: historyData, mutate: mutateHistory } = useSWR(
+  const { data: historyData, error: historyError, isLoading: historyLoading, mutate: mutateHistory } = useSWR(
     user && sourceId ? `/api/sources/${sourceId}/sync-history` : null,
     apiFetcher,
     { revalidateOnFocus: false }
   )
 
   const source = (data as { source?: Record<string, unknown> } | undefined)?.source
-  const schemaTables = ((schemaData as { tables?: SchemaTable[] } | undefined)?.tables ?? []) as SchemaTable[]
+  usePublishGravitreAISelection(source ? { kind: "source", id: sourceId, label: String(source.name ?? "Source") } : null)
+  const schemaTables = useMemo(() => {
+    const tables = (schemaData as { tables?: SchemaTable[] } | undefined)?.tables
+    return Array.isArray(tables) ? tables : []
+  }, [schemaData])
   const history = (historyData as { history?: Array<Record<string, unknown>> } | undefined)?.history ?? []
 
   const suggestions = useMemo(
@@ -111,40 +116,57 @@ export default function SourceDetailPage() {
   )
 
   const handleSync = async () => {
+    if (mutationLock.current) return
+    mutationLock.current = true
     try {
       setSyncing(true)
-      await sourcesApi.sync(sourceId)
-      toast.success("Sync completed")
-      await Promise.all([mutate(), mutateHistory()])
+      const feedback = sourceSyncFeedback(await sourcesApi.sync(sourceId))
+      if (feedback.kind === "error") toast.error(feedback.message)
+      else if (feedback.kind === "success") toast.success(feedback.message)
+      else toast.message(feedback.message)
+      await Promise.allSettled([mutate(), mutateHistory(), mutateSchema()])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sync failed")
     } finally {
+      mutationLock.current = false
       setSyncing(false)
     }
   }
 
   const handleTestConnection = async () => {
+    if (mutationLock.current) return
+    mutationLock.current = true
     try {
       setTestingConnection(true)
       setTestMessage(null)
+      setTestSucceeded(false)
       const result = await sourcesApi.testExisting(sourceId)
+      setTestSucceeded(result.success === true)
       setTestMessage(result.message ?? (result.success ? "Connection successful" : "Connection failed"))
       if (!result.success) toast.error(result.message ?? "Connection test failed")
     } catch (err) {
       setTestMessage(err instanceof Error ? err.message : "Connection test failed")
       toast.error("Connection test failed")
     } finally {
+      mutationLock.current = false
       setTestingConnection(false)
     }
   }
 
   const handleDelete = async () => {
+    if (mutationLock.current) return
+    mutationLock.current = true
+    setDeleting(true)
+    setDeleteError(null)
     try {
       await sourcesApi.delete(sourceId)
       toast.success("Source removed")
       router.push("/sources")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Delete failed")
+      setDeleteError(err instanceof Error ? err.message : "Delete failed")
+    } finally {
+      mutationLock.current = false
+      setDeleting(false)
     }
   }
 
@@ -158,32 +180,35 @@ export default function SourceDetailPage() {
     )
   }
 
-  if (error || !source) {
+  if (!source) {
     return (
       <AppShell title="Source">
         <div className="p-6">
           <button onClick={() => router.push("/sources")} className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to sources
           </button>
-          <p className="text-sm text-red-600 dark:text-red-400">{error instanceof Error ? error.message : "Source not found"}</p>
+          <WorkSectionErrorCard title="Source unavailable" message={error instanceof Error ? error.message : "This source was not returned."} onRetry={() => void mutate()} />
         </div>
       </AppShell>
     )
   }
 
   const name = String(source.name ?? "Source")
-  const status = String(source.status ?? "connected")
-  const environment = (String(source.environment ?? "production") === "staging" ? "staging" : "production") as
-    | "production"
-    | "staging"
+  const status = String(source.status ?? "Not reported")
+  const environment = source.environment === "staging" || source.environment === "production" ? source.environment : null
+  const busy = syncing || testingConnection || deleting
+  const records = source.recordCount ?? source.record_count
+  const lastSync = (source.lastSync ?? source.last_sync ?? source.lastSyncAt) as string | undefined
+  const tables = schemaData && Array.isArray((schemaData as { tables?: unknown }).tables) ? schemaTables.length : source.tables ?? source.tablesCount
+
 
   return (
     <AppShell title={name}>
-      <div>
+      <div data-composition="manage">
         <GravitrePageHeader
           eyebrow="Sources"
           title={name}
-          description={String(source.description ?? `${source.type} data source`)}
+          description={String(source.description ?? (source.type ? `${source.type} data source` : "Source lifecycle, grounding and dependent work"))}
           icon={<NucleoConnector className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
@@ -196,18 +221,19 @@ export default function SourceDetailPage() {
               <StatusBadge variant={statusVariants[status] ?? "muted"} dot>
                 {status}
               </StatusBadge>
-              <EnvironmentBadge environment={environment} />
+              {environment ? <EnvironmentBadge environment={environment} /> : <span className="text-xs text-muted-foreground">Environment not reported</span>}
+              <AskGravitreSummonButton label="Explain this source" prompt="Explain this source’s grounding, freshness and dependent work." />
               <Button
                 variant="outline"
                 size="sm"
                 className="h-9 gap-2"
                 onClick={() => void handleTestConnection()}
-                disabled={testingConnection}
+                disabled={busy}
               >
                 {testingConnection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
                 Test Connection
               </Button>
-              <Button size="sm" className="h-9 gap-2" onClick={() => void handleSync()} disabled={syncing}>
+              <Button size="sm" className="h-9 gap-2" onClick={() => void handleSync()} disabled={busy}>
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Sync Now
               </Button>
@@ -226,31 +252,28 @@ export default function SourceDetailPage() {
         </GravitrePageHeader>
 
         <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          {error ? <WorkSectionErrorCard title="Source refresh unavailable" message="Showing the last returned source. Retry to refresh its lifecycle and counts." onRetry={() => void mutate()} /> : null}
           <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
             <GravitreMetric label="Status" value={status} hint="Connection lifecycle" />
             <GravitreMetric
               label="Tables"
-              value={schemaTables.length || formatCount(Number(source.tables ?? 0))}
+              value={formatCount(tables)}
               hint="From schema when available"
             />
             <GravitreMetric
               label="Records"
-              value={formatCount(Number(source.recordCount ?? source.record_count ?? 0))}
+              value={formatCount(records)}
               hint="Reported row volume"
             />
             <GravitreMetric
               label="Last sync"
-              value={formatRelative(
-                (source.lastSync as string | undefined) ??
-                  (source.last_sync as string | undefined) ??
-                  (source.lastSyncAt as string | undefined),
-              )}
+              value={formatRelative(lastSync)}
               hint="Most recent sync"
             />
           </section>
 
           {testMessage ? (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-400">
+            <div role="status" className={cn("border-l-2 p-3 text-sm", testSucceeded ? "border-[color:var(--g-brand)] text-[color:var(--g-brand-active)]" : "border-destructive text-destructive")}>
               {testMessage}
             </div>
           ) : null}
@@ -267,7 +290,7 @@ export default function SourceDetailPage() {
                       ? `${String(source.connectionHost)}:${String(source.connectionPort ?? "")}`
                       : source.connectorId
                       ? `Connector ${String(source.connectorId).slice(0, 8)}…`
-                      : "Configured"}
+                      : "Not reported"}
                   </p>
                 </div>
                 <div>
@@ -278,21 +301,21 @@ export default function SourceDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Last sync</p>
-                  <p className="text-sm text-foreground mt-1">{formatRelative(String(source.lastSyncAt ?? ""))}</p>
+                  <p className="text-sm text-foreground mt-1">{formatRelative(lastSync)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Sync frequency</p>
                   <p className="text-sm text-foreground mt-1">
-                    Every {Math.round(Number(source.syncIntervalSeconds ?? 300) / 60)} minutes
+                    {reportedNumber(source.syncIntervalSeconds) == null ? "Not reported" : `Every ${Math.round(Number(source.syncIntervalSeconds) / 60)} minutes`}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Tables</p>
-                  <p className="text-sm text-foreground mt-1">{Number(source.tablesCount ?? 0)}</p>
+                  <p className="text-sm text-foreground mt-1">{formatCount(tables)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Total records</p>
-                  <p className="text-sm text-foreground mt-1">{formatCount(Number(source.recordCount ?? 0))}</p>
+                  <p className="text-sm text-foreground mt-1">{formatCount(records)}</p>
                 </div>
               </div>
             </div>
@@ -302,8 +325,9 @@ export default function SourceDetailPage() {
             <div className="rounded-lg border border-border bg-card p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-foreground">Schema preview</h2>
-                <span className="text-xs text-muted-foreground">{schemaTables.length} tables</span>
+                <span className="text-xs text-muted-foreground">{formatCount(tables)} tables</span>
               </div>
+              {schemaError ? <WorkSectionErrorCard title="Could not refresh schema" onRetry={() => void mutateSchema()} /> : null}
               <AdaptiveDataView className="border-0">
                 <table className="w-full text-xs">
                   <thead>
@@ -317,7 +341,7 @@ export default function SourceDetailPage() {
                     {schemaTables.length === 0 ? (
                       <tr>
                         <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
-                          Run sync to discover schema
+                          {schemaLoading ? "Loading schema…" : !Array.isArray((schemaData as { tables?: unknown } | undefined)?.tables) ? "Schema not reported" : "No schema tables returned"}
                         </td>
                       </tr>
                     ) : (
@@ -325,7 +349,7 @@ export default function SourceDetailPage() {
                         <tr key={`${table.schema ?? "public"}.${table.name}`} className="border-b border-border/50">
                           <td className="py-2 px-3 font-mono text-foreground">{table.name}</td>
                           <td className="py-2 px-3 text-muted-foreground">{table.schema ?? "—"}</td>
-                          <td className="py-2 px-3 text-muted-foreground">{table.columns?.length ?? 0}</td>
+                          <td className="py-2 px-3 text-muted-foreground">{table.columns?.length ?? "Not reported"}</td>
                         </tr>
                       ))
                     )}
@@ -337,8 +361,9 @@ export default function SourceDetailPage() {
             <div className="rounded-lg border border-border bg-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4">Sync history</h2>
               <div className="space-y-2">
+                {historyError ? <WorkSectionErrorCard title="Could not refresh sync history" onRetry={() => void mutateHistory()} /> : null}
                 {history.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No sync history yet.</p>
+                  <p className="text-xs text-muted-foreground">{historyLoading ? "Loading sync history…" : !Array.isArray((historyData as { history?: unknown } | undefined)?.history) ? "Sync history not reported" : "No sync history returned."}</p>
                 ) : (
                   history.map((item) => {
                     const ok = String(item.status) === "success"
@@ -353,7 +378,7 @@ export default function SourceDetailPage() {
                           <div>
                             <p className="text-xs text-foreground">
                               {ok
-                                ? `Synced ${formatCount(Number(item.records ?? 0))} records across ${Number(item.tables ?? 0)} tables`
+                                ? `Synced ${formatCount(item.records)} records across ${formatCount(item.tables)} tables`
                                 : String(item.error ?? "Sync failed")}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -361,7 +386,7 @@ export default function SourceDetailPage() {
                             </p>
                           </div>
                         </div>
-                        {item.durationMs ? (
+                        {reportedNumber(item.durationMs) != null ? (
                           <span className="text-xs text-muted-foreground">{Math.round(Number(item.durationMs) / 1000)}s</span>
                         ) : null}
                       </div>
@@ -386,11 +411,11 @@ export default function SourceDetailPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Tables</span>
-                  <span className="text-foreground">{Number(source.tablesCount ?? 0)}</span>
+                  <span className="text-foreground">{formatCount(tables)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Records</span>
-                  <span className="text-foreground">{formatCount(Number(source.recordCount ?? 0))}</span>
+                  <span className="text-foreground">{formatCount(records)}</span>
                 </div>
               </div>
             </div>
@@ -437,7 +462,7 @@ export default function SourceDetailPage() {
         </div>
       </div>
 
-      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+      <Dialog open={deleteModalOpen} onOpenChange={(open) => { if (!deleting) setDeleteModalOpen(open) }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove source</DialogTitle>
@@ -445,9 +470,10 @@ export default function SourceDetailPage() {
               This will disconnect {name} from Gravitre. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => void handleDelete()}>Remove source</Button>
+          {deleteError ? <p role="alert" className="text-sm text-destructive">{deleteError}</p> : null}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" disabled={deleting} onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+            <Button variant="destructive" disabled={busy} onClick={() => void handleDelete()}>{deleting ? "Removing…" : "Remove source"}</Button>
           </div>
         </DialogContent>
       </Dialog>

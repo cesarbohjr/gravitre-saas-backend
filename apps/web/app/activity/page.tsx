@@ -370,7 +370,7 @@ function ActivityPageInner() {
           icon={<NucleoActivity className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <AskGravitreSummonButton />
+              <AskGravitreSummonButton label="Explain this work" prompt="Explain the selected work’s reported state, evidence and next action. Do not assume completion means verification." />
               {tab === "all" || tab === "objects" ? (
                 <DataFreshness
                   updatedAt={

@@ -5,10 +5,12 @@ describe("phase 12 creative grammar", () => {
     const { grammarToneForStepStatus, GRAMMAR_BRAND, GRAMMAR_STEP_TONE } = await import(
       "@/components/gravitre/creative-grammar"
     )
-    expect(GRAMMAR_BRAND).toBe("#16a374")
+    expect(GRAMMAR_BRAND).toBe("#00a878")
     expect(grammarToneForStepStatus("awaiting_approval")).toBe("waiting")
     expect(grammarToneForStepStatus("running")).toBe("running")
-    expect(grammarToneForStepStatus("completed")).toBe("verified")
+    expect(grammarToneForStepStatus("completed")).toBe("completed")
+    expect(grammarToneForStepStatus("approved")).toBe("approved")
+    expect(grammarToneForStepStatus("verified")).toBe("verified")
     expect(grammarToneForStepStatus("failed")).toBe("failed")
     expect(GRAMMAR_STEP_TONE.waiting).toBe("warning")
   })

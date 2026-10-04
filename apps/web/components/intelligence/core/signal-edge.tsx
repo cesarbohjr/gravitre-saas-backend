@@ -5,10 +5,10 @@ import { motion } from "framer-motion"
 import type { IntelligenceCoreVisualState } from "@/lib/api"
 
 const STATE_MID: Partial<Record<IntelligenceCoreVisualState, string>> = {
-  "flow-inward": "var(--color-blue-500)",
-  trace: "var(--color-brand, #16a374)",
-  "pending-approval": "#d97706",
-  resolved: "var(--color-brand, #16a374)",
+  "flow-inward": "var(--g-electric)",
+  trace: "var(--g-emerald)",
+  "pending-approval": "var(--g-warmth)",
+  resolved: "var(--g-emerald)",
 }
 
 /**
@@ -36,6 +36,7 @@ export function SignalEdge({
   const gradId = `gv-core-edge-${uid}`
   const mid = STATE_MID[state] ?? null
   const active = mid != null
+  const routing = state === "flow-inward" || state === "trace"
   const lowConfidence = state === "low-confidence"
 
   return (
@@ -63,7 +64,7 @@ export function SignalEdge({
             strokeLinecap="round"
           />
           <defs>
-            {reduced ? (
+            {reduced || !routing ? (
               <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1={x1} y1={y1} x2={x2} y2={y2}>
                 <stop stopColor="var(--color-line, #EAEDF1)" />
                 <stop offset="0.5" stopColor={mid} />

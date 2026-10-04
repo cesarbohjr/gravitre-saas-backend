@@ -25,6 +25,7 @@ const state = vi.hoisted(() => ({
   aggregate: vi.fn(),
   org: vi.fn(),
 }))
+vi.mock("@/components/gravitre/ai-workspace-provider", () => ({ usePublishGravitreAISelection: vi.fn() }))
 vi.mock("swr", () => ({
   default: (key: string | null) => ({
     ...(key ? state.entries[key] : {}),

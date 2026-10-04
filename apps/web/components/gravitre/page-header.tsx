@@ -1,7 +1,7 @@
 "use client"
 
 import type { ComponentType } from "react"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
 
@@ -122,6 +122,7 @@ export function StatCard({
   variant = "default",
   className,
 }: StatCardProps) {
+  const reduced = useReducedMotion()
   // Semantic tokens rather than raw palette hues: the fixed `-400` value colors
   // were tuned for dark mode and failed contrast against a 10% tint in light
   // mode. The `--success`/`--warning`/`--info`/`--destructive` tokens already
@@ -138,7 +139,7 @@ export function StatCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={reduced ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         "rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] px-3 py-2.5",

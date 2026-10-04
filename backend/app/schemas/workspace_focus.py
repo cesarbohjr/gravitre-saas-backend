@@ -6,7 +6,7 @@ context system. Agent scope remains AssistantChatRequest.agent_id.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -23,24 +23,16 @@ WorkspaceObjectType = Literal[
     "company",
     "contact",
     "product",
+    "goal",
+    "source",
+    "assignment",
+    "training-dataset",
+    "training-job",
+    "multi-agent-run",
 ]
 
-ALLOWED_OBJECT_TYPES: frozenset[str] = frozenset(
-    (
-        "entity",
-        "agent",
-        "workflow",
-        "run",
-        "connector",
-        "relationship",
-        "department",
-        "signal",
-        "customer",
-        "company",
-        "contact",
-        "product",
-    )
-)
+ALLOWED_OBJECT_TYPES: frozenset[str] = frozenset(get_args(WorkspaceObjectType))
+
 
 ENTITY_STORE_TYPES: frozenset[str] = frozenset(
     ("entity", "customer", "company", "contact", "product")
