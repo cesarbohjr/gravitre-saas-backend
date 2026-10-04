@@ -12,6 +12,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
@@ -24,7 +25,7 @@ export default function AgentChatPage({
 }) {
   const { id: agentId } = use(params)
   const { user } = useAuth()
-  const { data: agent, isLoading: agentLoading } = useSWR(
+  const { data: agent, isLoading: agentLoading, error, mutate } = useSWR(
     user && agentId ? `agent/${agentId}` : null,
     () => agentsApi.get(agentId),
   )
@@ -63,9 +64,7 @@ export default function AgentChatPage({
     return (
       <AppShell title="Agent chat">
         <div className="p-6">
-          <p className="text-sm text-[color:var(--g-text-secondary)]">
-            Agent not found or you don&apos;t have access.
-          </p>
+          {error ? <WorkSectionErrorCard title="Could not load agent" error={error} onRetry={() => void mutate()} /> : <p className="text-sm text-[color:var(--g-text-secondary)]">Agent not found or you don&apos;t have access.</p>}
           <Link href="/agents" className="mt-3 inline-block text-sm font-medium text-[color:var(--g-brand)]">
             Back to AI Team
           </Link>
@@ -80,10 +79,11 @@ export default function AgentChatPage({
         className="flex min-h-0 flex-1 flex-col px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]"
         data-gravitre-agent-chat-scope={agent.id}
       >
+        {error ? <WorkSectionErrorCard title="Could not refresh agent" error={error} onRetry={() => void mutate()} /> : null}
         <p className="text-xs font-medium text-[color:var(--g-text-tertiary)]">
           Talking to this agent
         </p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[color:var(--g-text-primary)]">
+        <h1 className="mt-2 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tracking-tight text-[color:var(--g-text-primary)]">
           {agent.name}
         </h1>
         <p className="mt-1 max-w-xl text-sm text-[color:var(--g-text-secondary)]">
@@ -92,7 +92,7 @@ export default function AgentChatPage({
         </p>
         {canonicalPresentation === "minimized" ? (
           <div className="mt-4">
-            <Button type="button" onClick={() => restoreFromHelper()}>
+            <Button type="button" className="min-h-11" onClick={() => restoreFromHelper()}>
               Continue talking to {agent.name}
             </Button>
           </div>

@@ -3,11 +3,12 @@
 import { use, useMemo, useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Icon } from "@/lib/icons"
@@ -16,7 +17,7 @@ import { cn } from "@/lib/utils"
 import { STATUS } from "@/lib/design-system"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi, trainingApi } from "@/lib/api"
-import type { Agent, CustomInstruction } from "@/types/api"
+import type { CustomInstruction } from "@/types/api"
 import { useAgentKnowledge, type AgentKnowledgeTab } from "@/components/agents/knowledge/use-agent-knowledge"
 import { AgentKnowledgeSourcesTab } from "@/components/agents/knowledge/agent-knowledge-sources-tab"
 import { AgentKnowledgeExpertPacksTab } from "@/components/agents/knowledge/agent-knowledge-expert-packs-tab"
@@ -41,6 +42,7 @@ const TABS: { id: AgentKnowledgeTab; label: string }[] = [
 ]
 
 function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
+  const reduced = useReducedMotion()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -64,7 +66,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
     router.replace(`/agents/${agentId}/knowledge?tab=${tab}`, { scroll: false })
   }
 
-  const { data: agent, isLoading: agentLoading } = useSWR(
+  const { data: agent, isLoading: agentLoading, error: agentError, mutate: mutateAgent } = useSWR(
     user && agentId ? `agent/${agentId}` : null,
     () => agentsApi.get(agentId),
     { revalidateOnFocus: false },
@@ -72,10 +74,9 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
 
   const workspace = useAgentKnowledge(agentId, agent?.name ?? "Agent", agent?.department)
 
-  const { data: instructionsData, mutate: mutateInstructions } = useSWR(
+  const { data: instructionsData, mutate: mutateInstructions, error: instructionsError, isLoading: instructionsLoading } = useSWR(
     user ? `agent/${agentId}/instructions` : null,
     () => trainingApi.listInstructions(),
-    { fallbackData: { instructions: [] as CustomInstruction[] } },
   )
   const instructions = instructionsData?.instructions ?? []
 
@@ -88,6 +89,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
   }, [workspace.summary.healthLabel])
 
   async function handleToggleInstruction(instruction: CustomInstruction) {
+    if (mutatingId) return
     try {
       setMutatingId(instruction.id)
       await trainingApi.updateInstruction(instruction.id, { is_active: !instruction.is_active })
@@ -101,18 +103,18 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
   }
 
   async function confirmDelete() {
-    if (!itemToDelete) return
+    if (!itemToDelete || mutatingId) return
     try {
       setMutatingId(itemToDelete.id)
       await trainingApi.deleteInstruction(itemToDelete.id)
       toast.success("Instruction deleted")
+      setItemToDelete(null)
+      setDeleteDialogOpen(false)
       await mutateInstructions()
     } catch {
       toast.error("Failed to delete instruction")
     } finally {
       setMutatingId(null)
-      setItemToDelete(null)
-      setDeleteDialogOpen(false)
     }
   }
 
@@ -127,6 +129,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
   if (!agent) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        {agentError ? <WorkSectionErrorCard title="Could not load agent" error={agentError} onRetry={() => void mutateAgent()} /> : null}
         <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
         <Button asChild variant="outline" size="sm">
           <Link href="/agents">
@@ -146,10 +149,10 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
         icon={<NavDatabase className="h-5 w-5" />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" asChild>
+            <Button type="button" variant="outline" size="sm" className="min-h-11" asChild>
               <Link href="/sources">Manage library</Link>
             </Button>
-            <Button type="button" size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+            <Button type="button" size="sm" className="min-h-11 gap-1.5" onClick={() => setAddOpen(true)}>
               <Icon name="add" size="sm" />
               Add knowledge
             </Button>
@@ -157,7 +160,9 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
         }
       />
 
-      <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+      {agentError ? <WorkSectionErrorCard title="Could not refresh agent" error={agentError} onRetry={() => void mutateAgent()} /> : null}
+      {workspace.assignmentsError || workspace.capabilitiesError || workspace.orgSourcesError ? <WorkSectionErrorCard title="Could not refresh knowledge" error={workspace.assignmentsError || workspace.capabilitiesError || workspace.orgSourcesError} onRetry={() => void workspace.retry()} /> : null}
+      <section className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
         <GravitreMetric label="Sources" value={workspace.summary.sourceCount} hint="Assigned to this agent" />
         <GravitreMetric label="Indexed" value={workspace.summary.indexedLabel} hint="Connected knowledge surfaces" />
         <GravitreMetric
@@ -175,7 +180,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
             type="button"
             onClick={() => selectTab(tab.id)}
             className={cn(
-              "relative z-10 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-colors",
+              "relative z-10 min-h-11 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-colors",
               activeTab === tab.id ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -183,7 +188,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
               <motion.span
                 layoutId="agent-knowledge-tab"
                 className="absolute inset-0 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }}
               />
             ) : null}
             <span className="relative">{tab.label}</span>
@@ -194,10 +199,10 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
-          initial={{ opacity: 0, y: 8 }}
+          initial={reduced ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2 }}
+          exit={reduced ? undefined : { opacity: 0, y: -8 }}
+          transition={{ duration: reduced ? 0 : 0.2 }}
         >
           {activeTab === "sources" ? (
             <AgentKnowledgeSourcesTab workspace={workspace} agentId={agentId} agentName={agent.name} />
@@ -207,7 +212,8 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
           ) : null}
           {activeTab === "instructions" ? (
             <div className="space-y-3">
-              {instructions.length === 0 ? (
+              {instructionsError ? <WorkSectionErrorCard title="Could not refresh instructions" error={instructionsError} onRetry={() => void mutateInstructions()} /> : null}
+              {instructionsLoading ? <p className="text-sm text-muted-foreground">Loading instructions…</p> : !instructionsError && instructions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No custom instructions yet.{" "}
                   <Link href="/training" className="underline underline-offset-2">
@@ -219,7 +225,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
                 instructions.map((instruction) => (
                   <div
                     key={instruction.id}
-                    className="flex items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4"
+                    className="flex flex-wrap items-center gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -232,12 +238,13 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
                       </div>
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{instruction.content}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        disabled={mutatingId === instruction.id}
+                        className="min-h-11"
+                        disabled={Boolean(mutatingId)}
                         onClick={() => void handleToggleInstruction(instruction)}
                       >
                         {instruction.is_active ? "Deactivate" : "Activate"}
@@ -246,7 +253,8 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        disabled={mutatingId === instruction.id}
+                        className="min-h-11"
+                        disabled={Boolean(mutatingId)}
                         onClick={() => {
                           setItemToDelete({ id: instruction.id, name: instruction.name })
                           setDeleteDialogOpen(true)
@@ -270,7 +278,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
         onBrowseExpertPacks={() => selectTab("expert-packs")}
       />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={open => { if (!mutatingId) setDeleteDialogOpen(open) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete instruction?</AlertDialogTitle>
@@ -279,8 +287,8 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void confirmDelete()}>Delete</AlertDialogAction>
+            <AlertDialogCancel disabled={Boolean(mutatingId)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={Boolean(mutatingId)} onClick={event => { event.preventDefault(); void confirmDelete() }}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

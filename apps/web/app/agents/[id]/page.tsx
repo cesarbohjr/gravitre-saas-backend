@@ -3,7 +3,7 @@
 import { useState, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import useSWR from "swr"
 import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-card"
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
@@ -13,6 +13,7 @@ import {
   GravitreEmpty,
   GravitrePageHeader,
 } from "@/components/gravitre/nodus-product"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
@@ -20,7 +21,7 @@ import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
-import { agentsApi } from "@/lib/api"
+import { agentsApi, agentKnowledgeApi } from "@/lib/api"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
@@ -54,16 +55,12 @@ interface Agent {
     accent: string
   }
   stats: {
-    tasksCompleted: number
+    tasksCompleted: number | null
     successRate: number | null
     avgResponseTime: string
-    hoursActive: number
-    decisionsToday: number
-    approvalsNeeded: number
+    hoursActive: number | null
   }
-  systems: { name: string; status: "connected" | "warning" | "error"; icon: string }[]
-  skills: { name: string; level: number; color: string }[]
-  recentWork: { title: string; type: string; time: string; status: "completed" | "pending" | "failed"; confidence: number }[]
+  recentWork: { title: string; type: string; time: string }[]
 }
 
 function toProfileAgent(api: ApiAgent): Agent {
@@ -85,32 +82,17 @@ function toProfileAgent(api: ApiAgent): Agent {
       accent: "brand",
     },
     stats: {
-      tasksCompleted: api.stats?.tasksToday ?? 0,
+      tasksCompleted: api.stats?.tasksToday ?? null,
       successRate,
       avgResponseTime: String(api.stats?.avgResponseTime ?? "—"),
-      hoursActive: api.stats?.workflowsUsing ?? 0,
-      decisionsToday: api.stats?.tasksToday ?? 0,
-      approvalsNeeded: 0,
+      hoursActive: api.stats?.workflowsUsing ?? null,
     },
-    systems: (api.permissions ?? []).slice(0, 6).map((name) => ({
-      name,
-      status: "connected" as const,
-      icon: "link",
-    })),
-    skills: (api.capabilities || []).map((name) => ({
-      name: name.replace(/_/g, " "),
-      // Only show a numeric level when successRate exists — never invent a floor.
-      level: successRate != null ? Math.min(100, Math.max(0, Math.round(successRate))) : 0,
-      color: "brand",
-    })),
     recentWork: api.lastAction
       ? [
           {
             title: api.lastAction,
             type: "Task",
-            time: api.lastActionTime || "Recently",
-            status: "completed" as const,
-            confidence: successRate != null ? Math.round(successRate) : 0,
+            time: api.lastActionTime || "Not reported",
           },
         ]
       : [],
@@ -172,9 +154,10 @@ function PerformanceFact({ label, value }: { label: string; value: string }) {
 
 // Recent Work Item
 function WorkItem({ work, index }: { work: Agent["recentWork"][0]; index: number }) {
+  const reduced = useReducedMotion()
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={reduced ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       className="flex items-center gap-3 border-b border-[color:var(--g-border-subtle)] py-3"
@@ -193,10 +176,11 @@ function WorkItem({ work, index }: { work: Agent["recentWork"][0]; index: number
 }
 
 // System Connection
-function SystemBadge({ system, index }: { system: Agent["systems"][0]; index: number }) {
+function SystemBadge({ system, index }: { system: { name: string; icon: string }; index: number }) {
+  const reduced = useReducedMotion()
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={reduced ? false : { opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.1 }}
       className="flex items-center gap-2 rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] px-3 py-2"
@@ -213,6 +197,7 @@ export default function AgentProfilePage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
+  const reduced = useReducedMotion()
   const router = useRouter()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<
@@ -224,6 +209,11 @@ export default function AgentProfilePage({
     user && id ? `agent-profile/${id}` : null,
     () => agentsApi.get(id),
     { revalidateOnFocus: false },
+  )
+
+  const { data: capabilityProfile, error: capabilityError, mutate: mutateCapabilities } = useSWR(
+    user && id ? `agent/${id}/capabilities` : null,
+    () => agentKnowledgeApi.getCapabilities(id),
   )
 
   usePublishGravitreAISelection(
@@ -238,10 +228,11 @@ export default function AgentProfilePage({
     )
   }
 
-  if (!apiAgent || error) {
+  if (!apiAgent) {
     return (
       <AppShell title="Agent">
         <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
+          {error ? <WorkSectionErrorCard title="Could not load agent" error={error} onRetry={() => void mutateAgent()} /> : null}
           <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
           <Button asChild variant="outline" size="sm">
             <Link href="/agents">Back to AI Team</Link>
@@ -269,6 +260,7 @@ export default function AgentProfilePage({
             <div className="flex flex-wrap items-center gap-2">
               <AskGravitreSummonButton />
               <Button
+                className="min-h-11"
                 variant="ghost"
                 onClick={() => router.push(`/agents/${agent.id}/knowledge`)}
               >
@@ -276,13 +268,14 @@ export default function AgentProfilePage({
                 Knowledge
               </Button>
               <Button
+                className="min-h-11"
                 variant="outline"
                 onClick={() => router.push("/assignments/new?agent=" + agent.id)}
               >
                 <Icon name="add" size="sm" />
                 Assign work
               </Button>
-              <Button onClick={() => router.push(`/agents/${agent.id}/chat`)}>
+              <Button className="min-h-11" onClick={() => router.push(`/agents/${agent.id}/chat`)}>
                 <Icon name="chat" size="sm" />
                 Chat
               </Button>
@@ -301,12 +294,14 @@ export default function AgentProfilePage({
         </GravitrePageHeader>
 
         <div className="flex-1 px-[var(--np-page-pad-sm)] pb-8 pt-2 sm:px-[var(--np-page-pad)]">
+          {error ? <WorkSectionErrorCard title="Could not refresh agent" error={error} onRetry={() => void mutateAgent()} /> : null}
+          {capabilityError ? <WorkSectionErrorCard title="Could not refresh access profile" error={capabilityError} onRetry={() => void mutateCapabilities()} /> : null}
           <div className="mb-6 border-b border-[color:var(--g-border-subtle)] pb-5">
             <dl className="flex flex-wrap gap-x-8 gap-y-3">
               {apiAgent.stats?.totalRuns != null ? (
                 <PerformanceFact label="Total runs" value={apiAgent.stats.totalRuns.toLocaleString()} />
               ) : (
-                <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted.toLocaleString()} />
+                <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted?.toLocaleString() ?? "Not reported"} />
               )}
               <PerformanceFact
                 label="Success rate"
@@ -315,7 +310,7 @@ export default function AgentProfilePage({
               <PerformanceFact label="Avg response" value={agent.stats.avgResponseTime} />
               <PerformanceFact
                 label="Workflows using"
-                value={agent.stats.hoursActive > 0 ? agent.stats.hoursActive.toLocaleString() : "—"}
+                value={agent.stats.hoursActive?.toLocaleString() ?? "Not reported"}
               />
             </dl>
             <p className="mt-3 text-xs text-[color:var(--g-text-muted)]">
@@ -358,9 +353,9 @@ export default function AgentProfilePage({
             {activeTab === "overview" && (
               <motion.div
                 key="overview"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reduced ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={reduced ? undefined : { opacity: 0, y: -20 }}
                 data-agent-overview=""
                 className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]"
               >
@@ -371,20 +366,22 @@ export default function AgentProfilePage({
                   </div>
 
                   <AgentCapabilitiesCard
-                    capabilities={apiAgent.capabilities}
-                    permissions={apiAgent.permissions}
-                    systems={agent.systems.map((system) => system.name)}
+                    capabilities={capabilityProfile?.availableReadActions ?? apiAgent.capabilities}
+                    permissions={capabilityProfile?.availableWriteActions}
+                    systems={capabilityProfile?.allowedConnectors}
+                    memoryCount={capabilityProfile?.memoryCount}
+                    advisoryOnly={capabilityProfile?.canExecuteWithApproval === false}
                   />
 
                   <section aria-labelledby="agent-systems-heading" className="border-t border-[color:var(--g-border-default)] pt-3">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <h3 id="agent-systems-heading" className="text-[13px] font-semibold text-foreground">
-                        Connected systems
+                        Allowed connectors
                       </h3>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 gap-1 text-xs"
+                        className="min-h-11 gap-1 text-xs"
                         onClick={() => setActiveTab("skills")}
                       >
                         <Icon name="add" size="xs" />
@@ -392,12 +389,12 @@ export default function AgentProfilePage({
                       </Button>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {agent.systems.length > 0 ? (
-                        agent.systems.map((system, i) => (
-                          <SystemBadge key={system.name} system={system} index={i} />
+                      {(capabilityProfile?.allowedConnectors?.length ?? 0) > 0 ? (
+                        capabilityProfile?.allowedConnectors?.map((name, i) => (
+                          <SystemBadge key={name} system={{ name, icon: "link" }} index={i} />
                         ))
                       ) : (
-                        <p className="text-sm text-muted-foreground">No connected systems yet.</p>
+                        <p className="text-sm text-muted-foreground">Connector access not reported.</p>
                       )}
                     </div>
                   </section>
@@ -439,9 +436,9 @@ export default function AgentProfilePage({
             {activeTab === "personality" && (
               <motion.div
                 key="personality"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reduced ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={reduced ? undefined : { opacity: 0, y: -20 }}
                 className="max-w-5xl space-y-6"
               >
                 <div>
@@ -472,9 +469,9 @@ export default function AgentProfilePage({
             {activeTab === "skills" && (
               <motion.div
                 key="skills"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reduced ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={reduced ? undefined : { opacity: 0, y: -20 }}
                 className="max-w-3xl space-y-6"
               >
                 <AgentCapabilitiesEditorCard
@@ -487,9 +484,9 @@ export default function AgentProfilePage({
             {activeTab === "governance" && (
               <motion.div
                 key="governance"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reduced ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={reduced ? undefined : { opacity: 0, y: -20 }}
                 className="max-w-3xl space-y-6"
               >
                 <AgentAutonomyPanel agentId={agent.id} />
@@ -500,9 +497,9 @@ export default function AgentProfilePage({
             {activeTab === "history" && (
               <motion.div
                 key="history"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reduced ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                exit={reduced ? undefined : { opacity: 0, y: -20 }}
               >
                 <div className="space-y-3">
                   {agent.recentWork.length > 0 ? (

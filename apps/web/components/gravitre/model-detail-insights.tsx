@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import {
   Activity,
   Beaker,
@@ -23,10 +23,8 @@ import type { MlModelDetail } from "@/types/api"
 import {
   ML_LIFECYCLE_STEPS,
   ML_TRAINING_GUIDANCE,
-  inferenceSampleInputs,
   layerForModelType,
   lifecycleStepIndex,
-  lookupBaseModelOption,
   modelTypeMeta,
   stackLayerById,
   type BaseModelOption,
@@ -59,7 +57,7 @@ function formatDate(value?: string | null): string {
 }
 
 function formatBytes(bytes?: number | null): string {
-  if (bytes == null || bytes <= 0) return "—"
+  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return "Not reported"
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
@@ -69,6 +67,7 @@ interface ModelDetailInsightsProps {
   model: MlModelDetail
   baseModelOption?: BaseModelOption
   connectedDataSources: string[]
+  connectionsReported?: boolean
   canDeploy: boolean
   isDeploying: boolean
   onDeploy: () => void
@@ -85,6 +84,7 @@ export function ModelDetailInsights({
   model,
   baseModelOption,
   connectedDataSources,
+  connectionsReported = true,
   canDeploy,
   isDeploying,
   onDeploy,
@@ -96,6 +96,7 @@ export function ModelDetailInsights({
   onRunInference,
   onResetInferenceSample,
 }: ModelDetailInsightsProps) {
+  const reduced = useReducedMotion()
   const typeMeta = modelTypeMeta(model.modelType)
   const layer = stackLayerById(layerForModelType(model.modelType))
   const guidance = ML_TRAINING_GUIDANCE[model.modelType]
@@ -153,7 +154,7 @@ export function ModelDetailInsights({
   return (
     <div className="space-y-5" data-composition="understand">
       <motion.section
-        initial={{ opacity: 0, y: 8 }}
+        initial={reduced ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
         className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] sm:p-5"
@@ -183,13 +184,13 @@ export function ModelDetailInsights({
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
+            <Button className="min-h-11" variant="outline" size="sm" asChild>
               <Link href="/training">
                 <FlaskConical className="mr-1 h-4 w-4" />
                 Training
               </Link>
             </Button>
-            <Button size="sm" disabled={!canDeploy || isDeploying} onClick={onDeploy}>
+            <Button className="min-h-11" size="sm" disabled={!canDeploy || isDeploying} onClick={onDeploy}>
               <Rocket className="mr-1 h-4 w-4" />
               {isDeploying ? "Deploying…" : "Deploy latest"}
             </Button>
@@ -219,7 +220,7 @@ export function ModelDetailInsights({
               return (
                 <motion.div
                   key={step.id}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={reduced ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                   className={cn(
@@ -248,7 +249,7 @@ export function ModelDetailInsights({
       <div className="grid gap-4 lg:grid-cols-3">
         {layer ? (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={reduced ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
             className={cn(
@@ -335,7 +336,7 @@ export function ModelDetailInsights({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm">
-            {connectedDataSources.length > 0 ? (
+            {!connectionsReported ? <p className="text-xs text-muted-foreground">Connection evidence not reported.</p> : connectedDataSources.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {connectedDataSources.map((source) => (
                   <Badge key={source} variant="secondary" className="capitalize text-[10px]">
@@ -445,7 +446,7 @@ export function ModelDetailInsights({
                 return (
                   <motion.li
                     key={version.version}
-                    initial={{ opacity: 0, x: -8 }}
+                    initial={reduced ? false : { opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.04 }}
                     className={cn(
@@ -499,11 +500,10 @@ export function ModelDetailInsights({
           ) : (
             <>
               <p className="text-xs text-muted-foreground">
-                Sends a sample payload to{" "}
-                <code className="rounded bg-secondary/80 px-1 py-0.5 text-[11px]">POST /api/ml/models/{model.id}/predict</code>{" "}
-                via the production backend proxy.
+                Run this input against the deployed model. The returned response is shown below.
               </p>
               <Textarea
+                aria-label="Inference input JSON"
                 value={inferenceJson}
                 onChange={(e) => onInferenceJsonChange(e.target.value)}
                 rows={6}
@@ -511,15 +511,15 @@ export function ModelDetailInsights({
                 spellCheck={false}
               />
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={onResetInferenceSample}>
+                <Button className="min-h-11" size="sm" variant="outline" onClick={onResetInferenceSample}>
                   Reset sample
                 </Button>
-                <Button size="sm" disabled={isPredicting} onClick={onRunInference}>
+                <Button className="min-h-11" size="sm" disabled={isPredicting} onClick={onRunInference}>
                   {isPredicting ? "Running…" : "Run inference"}
                 </Button>
               </div>
               {predictError ? (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-600 dark:text-red-300">
+                <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
                   {predictError}
                 </div>
               ) : null}

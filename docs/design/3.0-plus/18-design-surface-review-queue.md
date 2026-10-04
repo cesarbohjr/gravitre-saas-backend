@@ -6,7 +6,7 @@ This inventory discovers routes and reachable local JSX controls/disclosures, in
 
 **Visual acceptance: NOT RUN.** A listed file is not an accepted surface. Read each route and its reachable UI, then record browser evidence at 1440 / 834 / 390 including empty, error, loading, selected, pending and permission states.
 
-Discovered 175 page routes and 362 reachable files containing controls or disclosures.
+Discovered 175 page routes and 363 reachable files containing controls or disclosures.
 
 | Route | Level | Scope | Proposed family | Redirect expression | UI files | Source |
 |---|---|---|---|---|---:|---|
@@ -43,7 +43,7 @@ Discovered 175 page routes and 362 reachable files containing controls or disclo
 | /agents/[id]/capabilities | Secondary/nested | Product | Manage | — | 65 | apps/web/app/agents/[id]/capabilities/page.tsx |
 | /agents/[id]/chat | Secondary/nested | Product | Manage | — | 64 | apps/web/app/agents/[id]/chat/page.tsx |
 | /agents/[id]/knowledge | Secondary/nested | Product | Manage | — | 68 | apps/web/app/agents/[id]/knowledge/page.tsx |
-| /agents/[id]/memory | Secondary/nested | Product | Manage | — | 64 | apps/web/app/agents/[id]/memory/page.tsx |
+| /agents/[id]/memory | Secondary/nested | Product | Manage | — | 65 | apps/web/app/agents/[id]/memory/page.tsx |
 | /agents/[id] | Secondary/nested | Product | Manage | — | 72 | apps/web/app/agents/[id]/page.tsx |
 | /agents/new | Secondary/nested | Product | Create | — | 70 | apps/web/app/agents/new/page.tsx |
 | /agents | Primary | Product | Manage | — | 77 | apps/web/app/agents/page.tsx |
@@ -218,7 +218,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/agents/[id]/capabilities/page.tsx | — | 2 | 1 |
 | apps/web/app/agents/[id]/chat/page.tsx | — | 1 | 16 |
 | apps/web/app/agents/[id]/knowledge/page.tsx | AgentKnowledgeAddSheet, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle | 6 | 1 |
-| apps/web/app/agents/[id]/memory/page.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Dialog, MemoryEditorDialog | 14 | 1 |
+| apps/web/app/agents/[id]/memory/page.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Dialog, MemoryEditorDialog | 12 | 1 |
 | apps/web/app/agents/[id]/page.tsx | — | 7 | 2 |
 | apps/web/app/agents/new/page.tsx | — | 10 | 1 |
 | apps/web/app/agents/page.tsx | AgentFleetInspectorBody, AgentPreviewSheet, Sheet | 9 | 16 |
@@ -234,7 +234,6 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/app/ai/help/control/page.tsx | — | 3 | 1 |
 | apps/web/app/approvals/page.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle | 7 | 16 |
 | apps/web/app/assignments/[id]/page.tsx | AssignmentApprovalDialog, Dialog, SelectionInspector | 9 | 1 |
-| apps/web/app/assignments/new/page.tsx | — | 13 | 1 |
 | apps/web/app/assignments/page.tsx | MissionInspector, NewAssignmentModal | 6 | 16 |
 | apps/web/app/audit/page.tsx | — | 12 | 1 |
 | apps/web/app/auth/callback/complete/page.tsx | — | 1 | 1 |
@@ -343,6 +342,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/agent-swarm/start-swarm-dialog.tsx | Dialog | 10 | 1 |
 | apps/web/components/agent-swarm/swarm-run-detail-panel.tsx | — | 4 | 1 |
 | apps/web/components/agents/agent-knowledge-packs-editor.tsx | — | 1 | 1 |
+| apps/web/components/agents/agent-memory-row.tsx | — | 2 | 1 |
 | apps/web/components/agents/agent-reference-folders-editor.tsx | — | 6 | 1 |
 | apps/web/components/agents/fleet-v4/agent-capability-overview.tsx | — | 2 | 16 |
 | apps/web/components/agents/fleet-v4/agent-fleet-inspector.tsx | — | 9 | 17 |
@@ -357,6 +357,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/agents/knowledge/agent-knowledge-retrieval-tab.tsx | — | 2 | 1 |
 | apps/web/components/agents/knowledge/agent-knowledge-shot-harness.tsx | — | 1 | 1 |
 | apps/web/components/agents/knowledge/agent-knowledge-sources-tab.tsx | — | 3 | 2 |
+| apps/web/components/assignments/assignment-create-workspace.tsx | — | 15 | 1 |
 | apps/web/components/assignments/assignment-detail-surfaces.tsx | Dialog | 12 | 1 |
 | apps/web/components/billing/trial-expired-banner.tsx | — | 2 | 113 |
 | apps/web/components/billing/upgrade-modal.tsx | Dialog | 3 | 113 |

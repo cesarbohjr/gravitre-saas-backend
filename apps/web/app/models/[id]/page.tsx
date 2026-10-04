@@ -43,7 +43,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
     () => mlModelsApi.get(id),
   )
 
-  const { data: connectorData } = useSWR(user ? "connectors-for-ml-detail" : null, () =>
+  const { data: connectorData, error: connectorError, isLoading: connectorsLoading, mutate: mutateConnectors } = useSWR(user ? "connectors-for-ml-detail" : null, () =>
     connectorsApi.list(),
   )
 
@@ -68,20 +68,20 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
 
   const [inferenceJson, setInferenceJson] = useState("[]")
 
+  const modelType = model?.modelType
   useEffect(() => {
-    if (model) {
-      setInferenceJson(JSON.stringify(inferenceSampleInputs(model.modelType), null, 2))
-    }
-  }, [model?.id, model?.modelType])
+    if (modelType) setInferenceJson(JSON.stringify(inferenceSampleInputs(modelType), null, 2))
+  }, [id, modelType])
 
   const canDeploy =
     model && (model.status === "ready" || model.status === "deployed") && model.currentVersion > 0
 
   async function handleDeploy() {
-    if (!model) return
+    if (!model || isDeploying) return
     setIsDeploying(true)
     try {
-      await mlModelsApi.deploy(id, model.currentVersion || undefined)
+      const result = await mlModelsApi.deploy(id, model.currentVersion || undefined)
+      if (!result.ok) throw new Error("The deployment was not accepted")
       toast.success("Deployment updated", {
         description: `Version ${model.currentVersion} is now active.`,
       })
@@ -94,14 +94,14 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function handleRunInference() {
-    if (!model) return
+    if (!model || isPredicting) return
     setIsPredicting(true)
     setPredictError(null)
     setPredictResult(null)
     try {
       const inputs = JSON.parse(inferenceJson) as Record<string, unknown>[]
-      if (!Array.isArray(inputs)) {
-        throw new Error("Payload must be a JSON array of input objects.")
+      if (!Array.isArray(inputs) || !inputs.length || inputs.some(input => !input || typeof input !== "object" || Array.isArray(input))) {
+        throw new Error("Payload must be a non-empty JSON array of input objects.")
       }
       const result = await mlModelsApi.predict(id, {
         inputs,
@@ -109,7 +109,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
       })
       setPredictResult(JSON.stringify(result, null, 2))
       toast.success("Inference completed", {
-        description: result.latencyMs ? `${Math.round(result.latencyMs)} ms` : undefined,
+        description: typeof result.latencyMs === "number" ? `${Math.round(result.latencyMs)} ms` : undefined,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : "Inference failed"
@@ -165,12 +165,15 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
         />
 
         <div className="mx-auto max-w-7xl space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]" data-composition="understand">
-          {isLoading ? (
+          {error && model ? <WorkSectionErrorCard title="Could not refresh model" error={error} onRetry={() => void mutate()} /> : null}
+          {connectorError ? <WorkSectionErrorCard title="Could not refresh connections" error={connectorError} onRetry={() => void mutateConnectors()} /> : null}
+          {connectorsLoading ? <p className="text-sm text-muted-foreground">Loading connection evidence…</p> : null}
+          {isLoading && !model ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full rounded-xl" />
               <Skeleton className="h-48 w-full rounded-xl" />
             </div>
-          ) : error ? (
+          ) : error && !model ? (
             <WorkSectionErrorCard
               title="Model unavailable"
               message={error instanceof Error ? error.message : "Unknown error"}
@@ -202,6 +205,7 @@ export default function ModelDetailPage({ params }: { params: Promise<{ id: stri
                 model={model}
                 baseModelOption={baseModelOption}
                 connectedDataSources={dataSources}
+                connectionsReported={Boolean(connectorData)}
                 canDeploy={Boolean(canDeploy)}
                 isDeploying={isDeploying}
                 onDeploy={() => void handleDeploy()}

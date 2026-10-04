@@ -111,6 +111,8 @@ export function AgentKnowledgeShotHarness() {
 
   const workspace = {
     assignments,
+    assignmentsError: undefined, capabilitiesError: undefined, orgSourcesError: undefined,
+    retry: async () => [undefined, undefined, undefined] as [{ assignments: AgentKnowledgeAssignment[] } | undefined, AgentCapabilityProfile | undefined, undefined],
     orgSources: SHOT_SOURCES,
     capabilities,
     summary: {

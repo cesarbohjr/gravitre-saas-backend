@@ -23,24 +23,25 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
   const {
     data: assignmentData,
     isLoading: assignmentsLoading,
+    error: assignmentsError,
     mutate: mutateAssignments,
   } = useSWR(agentId ? `agent/${agentId}/knowledge-assignments` : null, () =>
     agentKnowledgeApi.listAssignments(agentId),
   )
 
-  const { data: capabilities, isLoading: capabilitiesLoading } = useSWR(
+  const { data: capabilities, isLoading: capabilitiesLoading, error: capabilitiesError, mutate: mutateCapabilities } = useSWR(
     agentId ? `agent/${agentId}/capabilities` : null,
     () => agentKnowledgeApi.getCapabilities(agentId),
   )
 
-  const assignments = assignmentData?.assignments ?? []
+  const assignments = useMemo(() => assignmentData?.assignments ?? [], [assignmentData?.assignments])
 
-  const { data: orgSourcesData, isLoading: orgSourcesLoading, mutate: mutateOrgSources } = useSWR(
+  const { data: orgSourcesData, isLoading: orgSourcesLoading, error: orgSourcesError, mutate: mutateOrgSources } = useSWR(
     "org-rag-sources",
     () => sourcesApi.list(),
   )
 
-  const orgSources = orgSourcesData?.sources ?? []
+  const orgSources = useMemo(() => orgSourcesData?.sources ?? [], [orgSourcesData?.sources])
 
   const syncingSourceIds = useMemo(
     () =>
@@ -93,7 +94,7 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [mutateOrgSources, syncingSourceIds.join("|")])
+  }, [mutateOrgSources, syncingSourceIds])
 
   const sourceIngestionById = useMemo(() => {
     const map = new Map<string, SourceIngestionSnapshot>()
@@ -105,13 +106,12 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
       const status = String(source.status ?? "").toLowerCase()
       const historyRunning = String(latest?.status ?? "").toLowerCase() === "running"
       const indexing = status === "syncing" || status === "processing" || historyRunning
-      const records = typeof latest?.records === "number" ? latest.records : null
       map.set(id, {
         status: indexing ? "syncing" : String(source.status ?? ""),
-        documentCount: Number(source.document_count ?? 0) || undefined,
+        documentCount: typeof source.document_count === "number" ? source.document_count : undefined,
         lastSyncAt: source.last_sync_at ?? source.updated_at ?? latest?.createdAt ?? null,
         syncProgress:
-          indexing && records != null && records > 0 ? Math.min(95, Math.round(records / 10)) : null,
+          null,
       })
     }
     return map
@@ -149,12 +149,12 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
 
   const summary = useMemo(
     () => ({
-      sourceCount: assignments.filter((a) => a.enabled !== false).length,
+      sourceCount: assignmentData ? assignments.filter((a) => a.enabled !== false).length : "Not reported",
       indexedLabel:
         capabilities?.connectedKnowledgeSources?.length != null
           ? String(capabilities.connectedKnowledgeSources.length)
-          : "Not enough data",
-      healthLabel: capabilities?.freshnessStatus ?? "Not enough data",
+          : "Not reported",
+      healthLabel: capabilities?.freshnessStatus ?? "Not reported",
       lastSyncLabel: lastSyncedAt
         ? new Date(lastSyncedAt).toLocaleString(undefined, {
             month: "short",
@@ -164,7 +164,7 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
           })
         : "—",
     }),
-    [assignments, capabilities, lastSyncedAt],
+    [assignmentData, assignments, capabilities, lastSyncedAt],
   )
 
   const assignPack = useCallback(
@@ -240,6 +240,8 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
 
   return {
     assignments,
+    assignmentsError, capabilitiesError, orgSourcesError,
+    retry: () => Promise.all([mutateAssignments(), mutateCapabilities(), mutateOrgSources()]),
     orgSources,
     capabilities,
     summary,

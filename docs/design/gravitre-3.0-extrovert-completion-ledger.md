@@ -495,3 +495,30 @@ Automated checks: full Vitest with `TZ=UTC`: 1,240 passed / 204 files, including
 Regenerated surface queue: 175 page routes / 362 reachable control/disclosure source files. Detailed disposition remains in `docs/design/3.0-plus/19-design-led-review.md`. Assignment creation, Goals list, nested Agents/Models and the rest of the review queue remain open.
 
 No current rendered screenshots or owner-live execution evidence were added. `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `IMPLEMENTATION_COMPLETE = NO`; `MERGE_READY = NO`; `CAUGHT_UP = NO`. New GitHub CI is separate from local checks. Draft PR #298 remains unmerged and is not production-deployed.
+
+## Assignment creation and nested Agent/Model pass — 2026-10-04 UTC
+
+Parent: `a8f0ef097c48333061a1d0ed6fdbc89bc13bb9ae`. Details and remaining review scope are recorded in `3.0-plus/19-design-led-review.md`.
+
+- Assignment creation now uses a focused brief workspace, responsive step navigation, real connector inventory and explicit output/destination/approval preferences. Hard-coded connections and the misleading training gauge are removed. Existing submission/context API fields are preserved; submission opens the returned job immediately, blocks duplicates and retains failed review state.
+- Agent profile/capability access comes from the capability API rather than interpreting permission names as connections. Read/write groups remain distinct. Knowledge fetch/retry and instruction mutations retain cached data/failed confirmations; fabricated ingestion percentages are removed. Memory uses ruled evidence rows, visible touch actions, honest missing values and retained failed drafts/decisions. Agent chat remains the same canonical runtime.
+- Registry model detail preserves insights, lifecycle, versions and inference, with cached-data retry, independent connection state, inference validation and checked deployment `ok`. Built-in model aliases retain their evidence tabs while distinguishing absent models and missing readiness/samples/outcomes/policy. Real zero remains zero.
+- Static inventory regenerated: 175 routes / 363 reachable control/disclosure source files (108 product, 31 public/auth/support, 36 fixture/development routes). These counts do not mean manual or visual acceptance.
+
+Validation on the final local application tree:
+
+| Check | Result |
+| --- | --- |
+| Vitest (`TZ=UTC`) | 1,255 passed / 205 files, including 15 focused creation/nested tests |
+| Full ESLint | 0 errors / 255 existing warnings; final changed-file check 0 errors / 1 existing unused-disable warning |
+| Typecheck | Exit 0 |
+| Clean production build | Exit 0; emitted route table contains 440 route entries, including API routes |
+| Chat surface / status leak / Intelligence customer surface / brand | PASS |
+| `git diff --check` | PASS |
+| GitHub CI on the publication | Separate from local checks; inspect the published SHA |
+| Rendered viewport / Figma pixel acceptance | NOT_RUN |
+| Owner-live writes/delivery | NOT_RUN |
+
+No production or owner-tenant acceptance is inferred from these checks. Identity/personality/capability/governance configuration windows, knowledge add/expert-pack/retrieval journeys, Training/multi-agent and the broader route queue remain. Logo upload, Slack/email delivery, Finance/Compliance scope, billing E2E and backend authorization evidence remain unresolved. Draft #298 stays unmerged and is not production-deployed.
+
+`IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
