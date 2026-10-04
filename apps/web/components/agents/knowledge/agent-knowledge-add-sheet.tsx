@@ -1,23 +1,37 @@
 "use client"
 
 import Link from "next/link"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { FileArrowUp, Books, Sparkle, Plugs, Database } from "@phosphor-icons/react"
+import {
+  FileArrowUp,
+  Books,
+  Sparkle,
+  Plugs,
+  Database,
+} from "@phosphor-icons/react"
 
 export function AgentKnowledgeAddSheet({
   open,
   onOpenChange,
   onBrowseExpertPacks,
+  onBrowseSources,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onBrowseExpertPacks: () => void
+  onBrowseSources?: () => void
 }) {
   const tiles = [
     {
       icon: FileArrowUp,
-      title: "Upload files",
+      title: "Open upload library",
       description: "Add documents through the organization knowledge library.",
       href: "/sources",
       supported: true,
@@ -26,13 +40,17 @@ export function AgentKnowledgeAddSheet({
       icon: Database,
       title: "Existing library",
       description: "Assign organization sources already indexed in Gravitre.",
-      action: () => onOpenChange(false),
+      action: () => {
+        onOpenChange(false)
+        onBrowseSources?.()
+      },
       supported: true,
     },
     {
       icon: Sparkle,
       title: "Expert pack",
-      description: "Assign platform-curated intelligence without copying content.",
+      description:
+        "Assign platform-curated intelligence without copying content.",
       action: () => {
         onOpenChange(false)
         onBrowseExpertPacks()
@@ -41,41 +59,51 @@ export function AgentKnowledgeAddSheet({
     },
     {
       icon: Plugs,
-      title: "Connected app",
-      description: "Use connectors that expose a supported ingestion capability.",
+      title: "Configure a connected app",
+      description:
+        "Use connectors that expose a supported ingestion capability.",
       href: "/connectors",
       supported: true,
     },
     {
       icon: Books,
       title: "Write knowledge",
-      description: "Native text documents — not yet available in this environment.",
+      description:
+        "Native text documents — not yet available in this environment.",
       supported: false,
     },
   ]
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="max-h-[100dvh] overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Add knowledge</SheetTitle>
-          <SheetDescription>What would you like Gravitre to learn from?</SheetDescription>
+          <SheetDescription>
+            What would you like Gravitre to learn from?
+          </SheetDescription>
         </SheetHeader>
-        <div className="mt-4 grid gap-2">
+        <div className="mt-4 divide-y divide-[color:var(--g-border-subtle)]">
           {tiles.map((tile) => {
             const Icon = tile.icon
             const body = (
               <div
-                className={`flex items-start gap-3 rounded-[var(--np-radius-md)] border p-3 text-left transition-colors ${
+                className={`flex min-h-16 items-start gap-3 px-3 py-4 text-left transition-colors ${
                   tile.supported
-                    ? "border-divide hover:border-[color:var(--g-brand)]/30 hover:bg-[color:var(--g-surface-2)]"
-                    : "border-divide/60 opacity-60"
+                    ? "hover:bg-[color:var(--g-brand-soft)]"
+                    : "text-muted-foreground"
                 }`}
               >
-                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--g-brand)]" weight="duotone" aria-hidden />
+                <Icon
+                  className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--g-brand)]"
+                  weight="duotone"
+                  aria-hidden
+                />
                 <div>
                   <p className="text-sm font-medium">{tile.title}</p>
-                  <p className="text-xs text-[color:var(--g-text-muted)]">{tile.description}</p>
+                  <p className="text-xs text-[color:var(--g-text-muted)]">
+                    {tile.description}
+                  </p>
                 </div>
               </div>
             )
@@ -88,20 +116,34 @@ export function AgentKnowledgeAddSheet({
             }
             if (tile.href) {
               return (
-                <Link key={tile.title} href={tile.href} onClick={() => onOpenChange(false)}>
+                <Link
+                  key={tile.title}
+                  href={tile.href}
+                  onClick={() => onOpenChange(false)}
+                >
                   {body}
                 </Link>
               )
             }
             return (
-              <button key={tile.title} type="button" className="w-full" onClick={tile.action}>
+              <button
+                key={tile.title}
+                type="button"
+                className="min-h-11 w-full"
+                onClick={tile.action}
+              >
                 {body}
               </button>
             )
           })}
         </div>
         <div className="mt-4">
-          <Button type="button" variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 w-full"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
         </div>

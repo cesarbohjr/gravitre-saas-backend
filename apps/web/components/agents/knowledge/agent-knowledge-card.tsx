@@ -10,12 +10,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { Database, DotsThreeVertical, Plugs, Sparkle } from "@phosphor-icons/react"
+import {
+  Database,
+  DotsThreeVertical,
+  Plugs,
+  Sparkle,
+} from "@phosphor-icons/react"
 import type { AgentKnowledgeAssignment } from "@/lib/api"
-import { SourceIngestionIndicator, type SourceIngestionSnapshot } from "./source-ingestion-indicator"
+import {
+  SourceIngestionIndicator,
+  type SourceIngestionSnapshot,
+} from "./source-ingestion-indicator"
 
-function SourceTypeIcon({ sourceType, className }: { sourceType: string; className?: string }) {
-  const props = { className, weight: "duotone" as const, "aria-hidden": true as const }
+function SourceTypeIcon({
+  sourceType,
+  className,
+}: {
+  sourceType: string
+  className?: string
+}) {
+  const props = {
+    className,
+    weight: "duotone" as const,
+    "aria-hidden": true as const,
+  }
   if (sourceType === "knowledge_pack") return <Sparkle {...props} />
   if (sourceType === "rag_source") return <Database {...props} />
   return <Plugs {...props} />
@@ -23,9 +41,12 @@ function SourceTypeIcon({ sourceType, className }: { sourceType: string; classNa
 
 function statusBadge(status?: string) {
   const s = (status ?? "unknown").toLowerCase()
-  if (s === "fresh" || s === "ready") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-  if (s === "stale") return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-  if (s === "failed" || s === "expired") return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+  if (s === "fresh" || s === "ready")
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+  if (s === "stale")
+    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+  if (s === "failed" || s === "expired")
+    return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
   return "border-border bg-secondary text-muted-foreground"
 }
 
@@ -44,6 +65,7 @@ export function AgentKnowledgeCard({
   onSync,
   ingestion,
   detailHref,
+  catalog = false,
 }: {
   title: string
   description?: string
@@ -55,6 +77,7 @@ export function AgentKnowledgeCard({
   disabled?: boolean
   busy?: boolean
   ingestion?: SourceIngestionSnapshot
+  catalog?: boolean
   detailHref?: string
   onAssign?: () => void
   onRemove?: () => void
@@ -63,59 +86,103 @@ export function AgentKnowledgeCard({
   return (
     <article
       className={cn(
-        "group flex flex-col gap-3 rounded-[var(--np-radius-lg)] border p-4 shadow-[var(--np-shadow)] transition-all",
-        assigned
-          ? "border-emerald-500/30 bg-[color:var(--g-surface-1)]"
-          : recommended
-            ? "border-violet-500/20 bg-violet-500/[0.03]"
-            : "border-divide bg-[color:var(--g-surface-1)] hover:border-[color:var(--g-brand)]/25 hover:shadow-md",
+        catalog
+          ? "flex flex-col gap-3 rounded-xl border border-[color:var(--g-border-default)] bg-background p-5"
+          : "flex flex-col gap-3 border-b border-[color:var(--g-border-default)] py-4 sm:flex-row sm:items-start",
+        assigned && "border-[color:var(--g-brand-border)]",
+        recommended && "bg-[color:var(--g-brand-soft)]/30",
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
         <span
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--np-radius-md)]",
-            assigned ? "bg-emerald-500/10 text-emerald-600" : "bg-[color:var(--g-surface-2)] text-[color:var(--g-brand)]",
+            assigned
+              ? "bg-emerald-500/10 text-emerald-600"
+              : "bg-[color:var(--g-surface-2)] text-[color:var(--g-brand)]",
           )}
         >
           <SourceTypeIcon sourceType={sourceType} className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-[color:var(--g-text-primary)]">{title}</h3>
+            <h3 className="break-words text-sm font-semibold text-[color:var(--g-text-primary)]">
+              {title}
+            </h3>
             {assigned ? (
-              <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-normal text-emerald-700 dark:text-emerald-300">
+              <Badge
+                variant="outline"
+                className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-normal text-emerald-700 dark:text-emerald-300"
+              >
                 Assigned
               </Badge>
             ) : null}
             {recommended ? (
-              <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-[10px] font-normal">
+              <Badge
+                variant="outline"
+                className="border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] text-[10px] font-normal"
+              >
                 Recommended
               </Badge>
             ) : null}
             {status ? (
-              <Badge variant="outline" className={cn("text-[10px] font-normal capitalize", statusBadge(status))}>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] font-normal capitalize",
+                  statusBadge(status),
+                )}
+              >
                 {status}
               </Badge>
             ) : null}
           </div>
           {description ? (
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[color:var(--g-text-muted)]">{description}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[color:var(--g-text-muted)]">
+              {description}
+            </p>
           ) : null}
-          {meta ? <p className="mt-1 text-[10px] text-[color:var(--g-text-muted)]">{meta}</p> : null}
-          {ingestion ? <div className="mt-2"><SourceIngestionIndicator snapshot={ingestion} /></div> : null}
+          {meta ? (
+            <p className="mt-1 text-[10px] text-[color:var(--g-text-muted)]">
+              {meta}
+            </p>
+          ) : null}
+          {ingestion ? (
+            <div className="mt-2">
+              <SourceIngestionIndicator snapshot={ingestion} />
+            </div>
+          ) : null}
         </div>
         {(onRemove || onSync) && assigned ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="More actions">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="min-h-11 min-w-11"
+                disabled={busy}
+                aria-label={`Actions for ${title}`}
+              >
                 <DotsThreeVertical className="h-4 w-4" weight="bold" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {onSync ? <DropdownMenuItem onClick={onSync}>Sync now</DropdownMenuItem> : null}
+              {onSync ? (
+                <DropdownMenuItem
+                  className="min-h-11"
+                  disabled={busy}
+                  onClick={onSync}
+                >
+                  Sync now
+                </DropdownMenuItem>
+              ) : null}
               {onRemove ? (
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onRemove}>
+                <DropdownMenuItem
+                  disabled={busy}
+                  className="min-h-11 text-destructive focus:text-destructive"
+                  onClick={onRemove}
+                >
                   Remove from agent
                 </DropdownMenuItem>
               ) : null}
@@ -125,12 +192,24 @@ export function AgentKnowledgeCard({
       </div>
       <div className="flex flex-wrap gap-2">
         {!assigned && onAssign ? (
-          <Button type="button" size="sm" className="w-full sm:w-auto" disabled={disabled || busy} onClick={onAssign}>
+          <Button
+            type="button"
+            size="sm"
+            className="min-h-11 w-full sm:w-auto"
+            disabled={disabled || busy}
+            onClick={onAssign}
+          >
             {busy ? "Assigning…" : "+ Assign"}
           </Button>
         ) : null}
         {detailHref ? (
-          <Button type="button" size="sm" variant="outline" asChild>
+          <Button
+            className="min-h-11"
+            type="button"
+            size="sm"
+            variant="outline"
+            asChild
+          >
             <Link href={detailHref}>Manage agents</Link>
           </Button>
         ) : null}
@@ -161,7 +240,10 @@ export function AssignmentKnowledgeCard({
       title={assignment.label}
       description={assignment.sourceId}
       sourceType={assignment.sourceType}
-      status={assignment.freshnessStatus ?? (assignment.fromConfig ? "legacy" : "unknown")}
+      status={
+        assignment.freshnessStatus ??
+        (assignment.fromConfig ? "legacy" : "unknown")
+      }
       meta={
         assignment.lastSyncedAt
           ? `Last synced ${new Date(assignment.lastSyncedAt).toLocaleString()}`
@@ -173,7 +255,7 @@ export function AssignmentKnowledgeCard({
       detailHref={detailHref}
       assigned
       busy={busy}
-      onRemove={onRemove}
+      onRemove={assignment.fromConfig ? undefined : onRemove}
       onSync={onSync}
     />
   )
@@ -205,6 +287,7 @@ export function ExpertPackCard({
 }) {
   return (
     <AgentKnowledgeCard
+      catalog
       title={pack.label}
       description={recommendationReason}
       sourceType="knowledge_pack"

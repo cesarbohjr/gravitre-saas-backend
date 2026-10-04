@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -31,7 +31,17 @@ type AgentPersonalityEditorCardProps = {
   onSaved?: (agent: Agent) => void
 }
 
-export function AgentPersonalityEditorCard({ agent, onSaved }: AgentPersonalityEditorCardProps) {
+export function AgentPersonalityEditorCard(
+  props: AgentPersonalityEditorCardProps,
+) {
+  return <PersonalityForm key={props.agent.id} {...props} />
+}
+
+function PersonalityForm({
+  agent: incomingAgent,
+  onSaved,
+}: AgentPersonalityEditorCardProps) {
+  const [agent, setSavedAgent] = useState(incomingAgent)
   const { isLite } = useViewModeSafe()
   const { data: liteMembership } = useSWR<{
     is_lite?: boolean
@@ -47,39 +57,54 @@ export function AgentPersonalityEditorCard({ agent, onSaved }: AgentPersonalityE
   })
 
   const [voiceProfile, setVoiceProfile] = useState<AgentVoiceProfile>(
-    () => agent.voiceProfile ?? { tts_model: "eleven_flash_v2_5", turn_sensitivity: "normal", language: "en" },
+    () =>
+      agent.voiceProfile ?? {
+        tts_model: "eleven_flash_v2_5",
+        turn_sensitivity: "normal",
+        language: "en",
+      },
   )
-  const [responseStyle, setResponseStyle] = useState(
-    () => normalizeAgentResponseStyle(agent.responseStyle ?? DEFAULT_AGENT_RESPONSE_STYLE),
+  const [responseStyle, setResponseStyle] = useState(() =>
+    normalizeAgentResponseStyle(
+      agent.responseStyle ?? DEFAULT_AGENT_RESPONSE_STYLE,
+    ),
   )
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    setVoiceProfile(
-      agent.voiceProfile ?? { tts_model: "eleven_flash_v2_5", turn_sensitivity: "normal", language: "en" },
-    )
-    setResponseStyle(normalizeAgentResponseStyle(agent.responseStyle ?? DEFAULT_AGENT_RESPONSE_STYLE))
-  }, [agent.id, agent.voiceProfile, agent.responseStyle])
+  const [error, setError] = useState<string | null>(null)
+  const busy = useRef(false)
 
   const handleSave = async () => {
+    if (busy.current || !dirty) return
+    busy.current = true
+    setError(null)
     setSaving(true)
     try {
       const updated = await agentsApi.update(agent.id, {
         ...(showVoiceConfigure ? { voiceProfile } : {}),
         responseStyle,
       } as Partial<Agent>)
+      setSavedAgent(updated)
       toast.success("Personality saved")
-      await globalMutate("/api/agents")
-      await globalMutate(`agent-profile/${agent.id}`)
+      await Promise.allSettled([
+        globalMutate("/api/agents"),
+        globalMutate(`agent-profile/${agent.id}`),
+        globalMutate(`agent/${agent.id}`),
+        globalMutate(`agent/${agent.id}/capabilities`),
+      ])
       onSaved?.(updated)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save personality")
+      setError(
+        error instanceof Error ? error.message : "Failed to save personality",
+      )
     } finally {
       setSaving(false)
+      busy.current = false
     }
   }
 
-  const savedStyle = normalizeAgentResponseStyle(agent.responseStyle ?? DEFAULT_AGENT_RESPONSE_STYLE)
+  const savedStyle = normalizeAgentResponseStyle(
+    agent.responseStyle ?? DEFAULT_AGENT_RESPONSE_STYLE,
+  )
   const savedVoice = agent.voiceProfile ?? {
     tts_model: "eleven_flash_v2_5",
     turn_sensitivity: "normal",
@@ -87,25 +112,37 @@ export function AgentPersonalityEditorCard({ agent, onSaved }: AgentPersonalityE
   }
   const dirty =
     responseStyle !== savedStyle ||
-    (showVoiceConfigure && JSON.stringify(voiceProfile) !== JSON.stringify(savedVoice))
+    (showVoiceConfigure &&
+      JSON.stringify(voiceProfile) !== JSON.stringify(savedVoice))
 
   return (
     <div className="space-y-6">
-      <AgentPersonalitySection
-        voiceProfile={voiceProfile}
-        onVoiceProfileChange={setVoiceProfile}
-        responseStyle={responseStyle}
-        onResponseStyleChange={setResponseStyle}
-        department={agent.department}
-        showVoiceConfigure={showVoiceConfigure}
-      />
-      <div className="mt-6 flex items-center justify-end gap-3 border-t border-[color:var(--g-border-subtle)] pt-4">
-        <span aria-live="polite" className="mr-auto text-xs text-muted-foreground">
+      <fieldset disabled={saving} className="min-w-0">
+        <AgentPersonalitySection
+          voiceProfile={voiceProfile}
+          onVoiceProfileChange={setVoiceProfile}
+          responseStyle={responseStyle}
+          onResponseStyleChange={setResponseStyle}
+          department={agent.department}
+          showVoiceConfigure={showVoiceConfigure}
+        />
+      </fieldset>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-[color:var(--g-border-subtle)] pt-4">
+        <span
+          aria-live="polite"
+          className="mr-auto text-xs text-muted-foreground"
+        >
           {dirty ? "Unsaved changes" : "All changes saved"}
         </span>
         {dirty ? (
           <Button
             type="button"
+            className="min-h-11"
             variant="ghost"
             onClick={() => {
               setVoiceProfile(savedVoice)
@@ -116,7 +153,12 @@ export function AgentPersonalityEditorCard({ agent, onSaved }: AgentPersonalityE
             Discard
           </Button>
         ) : null}
-        <Button type="button" onClick={() => void handleSave()} disabled={saving || !dirty}>
+        <Button
+          className="min-h-11"
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saving || !dirty}
+        >
           {saving ? "Saving…" : "Save personality"}
         </Button>
       </div>
@@ -129,7 +171,17 @@ type AgentCapabilitiesEditorCardProps = {
   onSaved?: (agent: Agent) => void
 }
 
-export function AgentCapabilitiesEditorCard({ agent, onSaved }: AgentCapabilitiesEditorCardProps) {
+export function AgentCapabilitiesEditorCard(
+  props: AgentCapabilitiesEditorCardProps,
+) {
+  return <CapabilityForm key={props.agent.id} {...props} />
+}
+
+function CapabilityForm({
+  agent: incomingAgent,
+  onSaved,
+}: AgentCapabilitiesEditorCardProps) {
+  const [agent, setSavedAgent] = useState(incomingAgent)
   const initialCapabilityIds = useMemo(
     () => capabilityIdsFromNames(agent.capabilities ?? []),
     [agent.capabilities],
@@ -152,57 +204,138 @@ export function AgentCapabilitiesEditorCard({ agent, onSaved }: AgentCapabilitie
   const [systemIds, setSystemIds] = useState(initialSystems)
   const [guardrailIds, setGuardrailIds] = useState(initialGuardrails)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const busy = useRef(false)
   const dirty =
-    JSON.stringify([...capabilityIds].sort()) !== JSON.stringify([...initialCapabilityIds].sort()) ||
-    JSON.stringify([...customCapabilities].sort()) !== JSON.stringify([...initialCustom].sort()) ||
-    JSON.stringify([...systemIds].sort()) !== JSON.stringify([...initialSystems].sort()) ||
-    JSON.stringify([...guardrailIds].sort()) !== JSON.stringify([...initialGuardrails].sort())
-
-  useEffect(() => {
-    setCapabilityIds(capabilityIdsFromNames(agent.capabilities ?? []))
-    setCustomCapabilities(customCapabilityNames(agent.capabilities ?? []))
-    setSystemIds(systemIdsFromNames(agent.permissions ?? []))
-    setGuardrailIds(guardrailIdsFromNames(agent.guardrails ?? []))
-  }, [agent.id, agent.capabilities, agent.permissions, agent.guardrails])
+    JSON.stringify([...capabilityIds].sort()) !==
+      JSON.stringify([...initialCapabilityIds].sort()) ||
+    JSON.stringify([...customCapabilities].sort()) !==
+      JSON.stringify([...initialCustom].sort()) ||
+    JSON.stringify([...systemIds].sort()) !==
+      JSON.stringify([...initialSystems].sort()) ||
+    JSON.stringify([...guardrailIds].sort()) !==
+      JSON.stringify([...initialGuardrails].sort())
 
   const handleSave = async () => {
+    if (busy.current || !dirty) return
+    busy.current = true
+    setError(null)
     setSaving(true)
     try {
       const updated = await agentsApi.update(agent.id, {
         capabilities: capabilityNamesFromIds(capabilityIds, customCapabilities),
-        permissions: systemNamesFromIds(systemIds),
-        systems: systemNamesFromIds(systemIds),
-        guardrails: guardrailNamesFromIds(guardrailIds),
+        permissions: [
+          ...systemNamesFromIds(systemIds),
+          ...(agent.permissions ?? []).filter(
+            (name) => !systemIdsFromNames([name]).length,
+          ),
+        ],
+        systems: [
+          ...systemNamesFromIds(systemIds),
+          ...(agent.permissions ?? []).filter(
+            (name) => !systemIdsFromNames([name]).length,
+          ),
+        ],
+        guardrails: [
+          ...guardrailNamesFromIds(guardrailIds),
+          ...(agent.guardrails ?? []).filter(
+            (name) => !guardrailIdsFromNames([name]).length,
+          ),
+        ],
       } as Partial<Agent> & { systems?: string[] })
+      setSavedAgent(updated)
       toast.success("Capabilities saved")
-      await globalMutate("/api/agents")
-      await globalMutate(`agent-profile/${agent.id}`)
+      await Promise.allSettled([
+        globalMutate("/api/agents"),
+        globalMutate(`agent-profile/${agent.id}`),
+        globalMutate(`agent/${agent.id}`),
+        globalMutate(`agent/${agent.id}/capabilities`),
+      ])
       onSaved?.(updated)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save capabilities")
+      setError(
+        error instanceof Error ? error.message : "Failed to save capabilities",
+      )
     } finally {
       setSaving(false)
+      busy.current = false
     }
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card/50 p-6">
-      <AgentCapabilitiesEditor
-        capabilityIds={capabilityIds}
-        customCapabilities={customCapabilities}
-        systemIds={systemIds}
-        guardrailIds={guardrailIds}
-        onCapabilityIdsChange={setCapabilityIds}
-        onCustomCapabilitiesChange={setCustomCapabilities}
-        onSystemIdsChange={setSystemIds}
-        onGuardrailIdsChange={setGuardrailIds}
-        knowledgeHref={`/agents/${agent.id}/knowledge`}
-      />
-      <div className="flex items-center justify-end gap-3">
-        <span aria-live="polite" className="mr-auto text-xs text-muted-foreground">
+    <div className="space-y-6">
+      <fieldset disabled={saving} className="min-w-0">
+        <AgentCapabilitiesEditor
+          capabilityIds={capabilityIds}
+          customCapabilities={customCapabilities}
+          systemIds={systemIds}
+          guardrailIds={guardrailIds}
+          onCapabilityIdsChange={setCapabilityIds}
+          onCustomCapabilitiesChange={setCustomCapabilities}
+          onSystemIdsChange={setSystemIds}
+          onGuardrailIdsChange={setGuardrailIds}
+          knowledgeHref={`/agents/${agent.id}/knowledge`}
+        />
+      </fieldset>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {(agent.permissions ?? []).filter(
+        (name) => !systemIdsFromNames([name]).length,
+      ).length ? (
+        <p className="break-words text-xs text-muted-foreground">
+          Other connector labels retained:{" "}
+          {(agent.permissions ?? [])
+            .filter((name) => !systemIdsFromNames([name]).length)
+            .join(", ")}
+        </p>
+      ) : null}
+      {(agent.guardrails ?? []).filter(
+        (name) => !guardrailIdsFromNames([name]).length,
+      ).length ? (
+        <p className="break-words text-xs text-muted-foreground">
+          Other guardrails retained:{" "}
+          {(agent.guardrails ?? [])
+            .filter((name) => !guardrailIdsFromNames([name]).length)
+            .join(", ")}
+        </p>
+      ) : null}
+      <p className="text-xs text-muted-foreground">
+        Catalog selections are configuration labels. Existing non-catalog
+        connector and guardrail labels are preserved. Runtime authorization is
+        governed by workspace policy.
+      </p>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <span
+          aria-live="polite"
+          className="mr-auto text-xs text-muted-foreground"
+        >
           {dirty ? "Unsaved changes" : "All changes saved"}
         </span>
-        <Button type="button" onClick={() => void handleSave()} disabled={saving || !dirty}>
+        {dirty ? (
+          <Button
+            className="min-h-11"
+            variant="ghost"
+            disabled={saving}
+            onClick={() => {
+              setCapabilityIds(initialCapabilityIds)
+              setCustomCapabilities(initialCustom)
+              setSystemIds(initialSystems)
+              setGuardrailIds(initialGuardrails)
+              setError(null)
+            }}
+          >
+            Discard
+          </Button>
+        ) : null}
+        <Button
+          className="min-h-11"
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saving || !dirty}
+        >
           {saving ? "Saving…" : "Save capabilities"}
         </Button>
       </div>

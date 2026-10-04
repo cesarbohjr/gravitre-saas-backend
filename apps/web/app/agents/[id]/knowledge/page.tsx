@@ -276,6 +276,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
         open={addOpen}
         onOpenChange={setAddOpen}
         onBrowseExpertPacks={() => selectTab("expert-packs")}
+        onBrowseSources={() => selectTab("sources")}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={open => { if (!mutatingId) setDeleteDialogOpen(open) }}>

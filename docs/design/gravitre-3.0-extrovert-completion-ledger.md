@@ -522,3 +522,33 @@ Validation on the final local application tree:
 No production or owner-tenant acceptance is inferred from these checks. Identity/personality/capability/governance configuration windows, knowledge add/expert-pack/retrieval journeys, Training/multi-agent and the broader route queue remain. Logo upload, Slack/email delivery, Finance/Compliance scope, billing E2E and backend authorization evidence remain unresolved. Draft #298 stays unmerged and is not production-deployed.
 
 `IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
+
+## Deeper Agent configuration and knowledge journeys — 2026-10-04 UTC
+
+Parent: `8acd582924d31280c2bc7217ef4d99fdd13c01c4`. The dated surface-by-surface review is in `3.0-plus/19-design-led-review.md`.
+
+- Identity/photo actions preserve unrelated drafts, validate uploads, retain original department values, show API errors inline and prevent overlapping mutations/dismissal while pending. Photo persistence is explicitly immediate.
+- Personality/capability forms preserve drafts through background refresh, use native radio/pressed selection semantics, lock inputs during saves and preserve non-catalog connector/guardrail labels. Shared semantic selection tokens and touch targets replace ambiguous selection chrome.
+- Voice library, design, preview and custom save have retry, pending/error handling and retained takes. Audio stays pending during playback, can be stopped, and is cleaned up on completion/unmount. Stopped pending requests cannot start audio later. Creating a library voice is distinguished from persisting agent personality.
+- Governance has honest missing-data/retry behavior and an admin-gated policy dialog backed by the existing identity PUT API. Existing scope/delegation/override fields are preserved; zero ceilings survive validation. Backend code inspection confirms `require_admin` and agent/org assertion on that endpoint, without claiming owner-live authorization acceptance.
+- Knowledge add choices close before selecting Sources or Expert packs. Organization assignments use ruled rows, confirmation of agent-only removal, guarded sync success and access to sources beyond the first 24. Expert-pack discovery retains a distinct catalog composition and truthful recommendation/availability/error states. Retrieval retains previous evidence after failure and reports actual matches, scope, missing assignments, relevance and full excerpts.
+
+Final local checks:
+
+| Check | Result |
+| --- | --- |
+| Vitest (`TZ=UTC`) | 1,275 passed / 207 files; 20 focused configuration/knowledge/voice tests added |
+| Full ESLint | 0 errors / 255 existing warnings |
+| Final changed-file ESLint | 0 errors / 0 warnings |
+| Typecheck | Exit 0 |
+| Clean production build | Exit 0; 440 emitted route entries including APIs |
+| Chat surface / status leak / Intelligence customer surface / brand | PASS |
+| `git diff --check` | PASS |
+| Static inventory | 175 routes / 364 reachable control/disclosure source files; discovery is not acceptance |
+| GitHub CI | Separate publication checks, not inferred from local results |
+| Rendered/Figma viewport acceptance | NOT_RUN |
+| Owner-live writes / delivery | NOT_RUN |
+
+Remaining implementation review proceeds to Training/multi-agent, Goals list, Marketplace/admin, Workflow/Builder/run detail and AI workspace states. Delegation administration and granular scope/override editing are outside this policy form. Native text knowledge creation and clearing existing policy limits remain unavailable in these contracts. Logo upload, Slack/email delivery, Finance/Compliance scope and billing E2E remain open.
+
+`IMPLEMENTATION_COMPLETE = NO`; `VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `MERGE_READY = NO`; `CAUGHT_UP = NO`. Draft #298 is unmerged and is not production-deployed.

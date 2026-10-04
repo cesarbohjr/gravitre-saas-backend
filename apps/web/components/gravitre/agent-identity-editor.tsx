@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { mutate as globalMutate } from "swr"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -22,11 +22,7 @@ import {
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
-import {
-  AGENT_DEPARTMENT_OPTIONS,
-  normalizeAgentDepartment,
-  type AgentDepartment,
-} from "@/lib/agent-display"
+import { AGENT_DEPARTMENT_OPTIONS } from "@/lib/agent-display"
 import { agentsApi } from "@/lib/api"
 import type { Agent } from "@/types/api"
 import { LoadingIndicator } from "@/components/gravitre/gravitre-loader"
@@ -37,44 +33,55 @@ interface AgentIdentityEditorProps {
   agent: Agent
 }
 
-function departmentSelectValue(department: AgentDepartment): AgentDepartment {
-  if (AGENT_DEPARTMENT_OPTIONS.includes(department)) return department
-  if (department === "Support") return "Customer Success"
-  if (department === "HR") return "General"
-  return "Operations"
-}
-
 export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [name, setName] = useState(agent.name)
-  const [department, setDepartment] = useState<AgentDepartment>(
-    departmentSelectValue(normalizeAgentDepartment(agent.department)),
+  const [department, setDepartment] = useState(agent.department || "General")
+  const [icon, setIcon] = useState<AgentIconId>(
+    coerceAgentIcon(agent.icon, "bot"),
   )
-  const [icon, setIcon] = useState<AgentIconId>(coerceAgentIcon(agent.icon, "bot"))
   const [avatarColor, setAvatarColor] = useState<AgentAvatarColorId>(
     coerceAgentColor(agent.avatarColor, "bg-emerald-500"),
   )
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(agent.avatarUrl ?? null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    agent.avatarUrl ?? null,
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    setName(agent.name)
-    setDepartment(departmentSelectValue(normalizeAgentDepartment(agent.department)))
-    setIcon(coerceAgentIcon(agent.icon, "bot"))
-    setAvatarColor(coerceAgentColor(agent.avatarColor, "bg-emerald-500"))
-    setAvatarUrl(agent.avatarUrl ?? null)
-  }, [open, agent])
+  const [error, setError] = useState<string | null>(null)
+  const busyRef = useRef(false)
+  const busy = saving || uploading
+  function changeOpen(next: boolean) {
+    if (busyRef.current) return
+    if (next) {
+      setName(agent.name)
+      setDepartment(agent.department || "General")
+      setIcon(coerceAgentIcon(agent.icon, "bot"))
+      setAvatarColor(coerceAgentColor(agent.avatarColor, "bg-emerald-500"))
+      setAvatarUrl(agent.avatarUrl ?? null)
+      setError(null)
+    }
+    setOpen(next)
+  }
 
   const refreshCaches = async () => {
-    await globalMutate("/api/agents")
-    await globalMutate(`agent-profile/${agent.id}`)
-    await globalMutate(`agent/${agent.id}`)
+    await Promise.allSettled([
+      globalMutate("/api/agents"),
+      globalMutate(`agent-profile/${agent.id}`),
+      globalMutate(`agent/${agent.id}`),
+    ])
   }
 
   const handleUpload = async (file: File) => {
+    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+      setError("Choose an image no larger than 5MB")
+      return
+    }
+    if (busyRef.current) return
+    busyRef.current = true
+    setError(null)
     setUploading(true)
     try {
       const payload = await agentsApi.uploadAvatar(agent.id, file)
@@ -82,13 +89,19 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
       await refreshCaches()
       toast.success("Agent photo updated")
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to upload avatar")
+      setError(
+        error instanceof Error ? error.message : "Failed to upload avatar",
+      )
     } finally {
       setUploading(false)
+      busyRef.current = false
     }
   }
 
   const handleRemoveImage = async () => {
+    if (busyRef.current) return
+    busyRef.current = true
+    setError(null)
     setUploading(true)
     try {
       await agentsApi.removeAvatar(agent.id)
@@ -96,19 +109,25 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
       await refreshCaches()
       toast.success("Agent photo removed")
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to remove avatar")
+      setError(
+        error instanceof Error ? error.message : "Failed to remove avatar",
+      )
     } finally {
       setUploading(false)
+      busyRef.current = false
     }
   }
 
   const handleSave = async () => {
+    if (busyRef.current) return
     const trimmedName = name.trim()
     if (!trimmedName) {
-      toast.error("Agent name is required")
+      setError("Agent name is required")
       return
     }
 
+    busyRef.current = true
+    setError(null)
     setSaving(true)
     try {
       const personality = personalityFromAvatarColor(avatarColor)
@@ -123,34 +142,44 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
       toast.success("Agent identity updated")
       setOpen(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update agent")
+      setError(
+        error instanceof Error ? error.message : "Failed to update agent",
+      )
     } finally {
       setSaving(false)
+      busyRef.current = false
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="min-h-11 gap-2">
           <Pencil className="h-3.5 w-3.5" />
           Edit identity
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit agent identity</DialogTitle>
+          <DialogTitle className="font-[family-name:var(--font-space-grotesk)]">
+            Edit agent identity
+          </DialogTitle>
           <DialogDescription>
-            Name, department, icon, color, and optional photo are shared everywhere this agent appears.
+            Name, department, icon, color, and optional photo are shared
+            everywhere this agent appears.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <fieldset disabled={busy} className="min-w-0 space-y-4 py-2">
           <div className="space-y-2">
-            <label htmlFor="agent-identity-name" className="text-sm font-medium text-foreground">
+            <label
+              htmlFor="agent-identity-name"
+              className="text-sm font-medium text-foreground"
+            >
               Name
             </label>
             <Input
+              className="min-h-11"
               id="agent-identity-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -159,15 +188,25 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="agent-identity-department" className="text-sm font-medium text-foreground">
+            <label
+              htmlFor="agent-identity-department"
+              className="text-sm font-medium text-foreground"
+            >
               Department
             </label>
             <select
               id="agent-identity-department"
               value={department}
-              onChange={(event) => setDepartment(event.target.value as AgentDepartment)}
-              className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              onChange={(event) =>
+                setDepartment(
+                  event.target.value as NonNullable<Agent["department"]>,
+                )
+              }
+              className="min-h-11 w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             >
+              {!AGENT_DEPARTMENT_OPTIONS.some((dept) => dept === department) ? (
+                <option value={department}>{department}</option>
+              ) : null}
               {AGENT_DEPARTMENT_OPTIONS.map((dept) => (
                 <option key={dept} value={dept}>
                   {dept}
@@ -175,7 +214,8 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
               ))}
             </select>
             <p className="text-xs text-muted-foreground">
-              Controls which TEAM lane this agent belongs to on the Agents roster.
+              Controls which TEAM lane this agent belongs to on the Agents
+              roster.
             </p>
           </div>
 
@@ -186,9 +226,12 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
                 size="lg"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">Custom photo</p>
+                <p className="text-sm font-medium text-foreground">
+                  Custom photo
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Optional. Overrides icon+color when set. Max 5MB.
+                  Photos save immediately, including if you cancel the other
+                  edits. Max 5MB.
                 </p>
               </div>
             </div>
@@ -208,11 +251,15 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-2"
-                disabled={uploading}
+                className="min-h-11 gap-2"
+                disabled={busy}
                 onClick={() => fileInputRef.current?.click()}
               >
-                {uploading ? <LoadingIndicator size="xs" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                {uploading ? (
+                  <LoadingIndicator size="xs" />
+                ) : (
+                  <ImagePlus className="h-3.5 w-3.5" />
+                )}
                 {avatarUrl ? "Replace photo" : "Upload photo"}
               </Button>
               {avatarUrl ? (
@@ -220,8 +267,8 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="gap-2 text-destructive"
-                  disabled={uploading}
+                  className="min-h-11 gap-2 text-destructive"
+                  disabled={busy}
                   onClick={() => void handleRemoveImage()}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -241,16 +288,30 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
             />
           ) : (
             <p className="text-xs text-muted-foreground">
-              Icon and color pickers are hidden while a custom photo is active. Remove the photo to edit them.
+              Icon and color pickers are hidden while a custom photo is active.
+              Remove the photo to edit them.
             </p>
           )}
-        </div>
-
+        </fieldset>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+          <Button
+            variant="outline"
+            className="min-h-11"
+            onClick={() => changeOpen(false)}
+            disabled={busy}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || uploading}>
+          <Button
+            className="min-h-11"
+            onClick={handleSave}
+            disabled={busy || !name.trim()}
+          >
             {saving ? (
               <>
                 <LoadingIndicator size="xs" className="mr-2" />

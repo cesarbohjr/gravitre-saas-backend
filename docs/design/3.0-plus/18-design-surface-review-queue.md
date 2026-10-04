@@ -6,7 +6,7 @@ This inventory discovers routes and reachable local JSX controls/disclosures, in
 
 **Visual acceptance: NOT RUN.** A listed file is not an accepted surface. Read each route and its reachable UI, then record browser evidence at 1440 / 834 / 390 including empty, error, loading, selected, pending and permission states.
 
-Discovered 175 page routes and 363 reachable files containing controls or disclosures.
+Discovered 175 page routes and 364 reachable files containing controls or disclosures.
 
 | Route | Level | Scope | Proposed family | Redirect expression | UI files | Source |
 |---|---|---|---|---|---:|---|
@@ -44,7 +44,7 @@ Discovered 175 page routes and 363 reachable files containing controls or disclo
 | /agents/[id]/chat | Secondary/nested | Product | Manage | — | 64 | apps/web/app/agents/[id]/chat/page.tsx |
 | /agents/[id]/knowledge | Secondary/nested | Product | Manage | — | 68 | apps/web/app/agents/[id]/knowledge/page.tsx |
 | /agents/[id]/memory | Secondary/nested | Product | Manage | — | 65 | apps/web/app/agents/[id]/memory/page.tsx |
-| /agents/[id] | Secondary/nested | Product | Manage | — | 72 | apps/web/app/agents/[id]/page.tsx |
+| /agents/[id] | Secondary/nested | Product | Manage | — | 73 | apps/web/app/agents/[id]/page.tsx |
 | /agents/new | Secondary/nested | Product | Create | — | 70 | apps/web/app/agents/new/page.tsx |
 | /agents | Primary | Product | Manage | — | 77 | apps/web/app/agents/page.tsx |
 | /agents/swarm | Secondary/nested | Product | Manage | — | 52 | apps/web/app/agents/swarm/page.tsx |
@@ -64,7 +64,7 @@ Discovered 175 page routes and 363 reachable files containing controls or disclo
 | /deliverables | Primary | Product | Operate | /lite/deliverables | 52 | apps/web/app/deliverables/page.tsx |
 | /desktop/connect | Secondary/nested | Product | Manage | — | 53 | apps/web/app/desktop/connect/page.tsx |
 | /dev/ai-workspace-preview | Secondary/nested | Fixture/development | Review | — | 71 | apps/web/app/dev/ai-workspace-preview/page.tsx |
-| /dev/carbon-board | Secondary/nested | Fixture/development | Review | — | 55 | apps/web/app/dev/carbon-board/page.tsx |
+| /dev/carbon-board | Secondary/nested | Fixture/development | Review | — | 56 | apps/web/app/dev/carbon-board/page.tsx |
 | /dev/slice-0-foundation | Secondary/nested | Fixture/development | Review | — | 55 | apps/web/app/dev/slice-0-foundation/page.tsx |
 | /dev/slice-1-workspace | Secondary/nested | Fixture/development | Review | — | 53 | apps/web/app/dev/slice-1-workspace/page.tsx |
 | /e2e/chat-progress | Secondary/nested | Fixture/development | Review | — | 52 | apps/web/app/e2e/chat-progress/page.tsx |
@@ -72,7 +72,7 @@ Discovered 175 page routes and 363 reachable files containing controls or disclo
 | /e2e/shot-upload | Secondary/nested | Fixture/development | Review | — | 53 | apps/web/app/e2e/shot-upload/page.tsx |
 | /e2e/shots/activity | Secondary/nested | Fixture/development | Review | — | 128 | apps/web/app/e2e/shots/activity/page.tsx |
 | /e2e/shots/agent-chat | Secondary/nested | Fixture/development | Review | — | 128 | apps/web/app/e2e/shots/agent-chat/page.tsx |
-| /e2e/shots/agent-detail | Secondary/nested | Fixture/development | Review | — | 72 | apps/web/app/e2e/shots/agent-detail/page.tsx |
+| /e2e/shots/agent-detail | Secondary/nested | Fixture/development | Review | — | 73 | apps/web/app/e2e/shots/agent-detail/page.tsx |
 | /e2e/shots/agent-knowledge | Secondary/nested | Fixture/development | Review | — | 66 | apps/web/app/e2e/shots/agent-knowledge/page.tsx |
 | /e2e/shots/agents | Secondary/nested | Fixture/development | Review | — | 128 | apps/web/app/e2e/shots/agents/page.tsx |
 | /e2e/shots/agents-4 | Secondary/nested | Fixture/development | Review | — | 71 | apps/web/app/e2e/shots/agents-4/page.tsx |
@@ -343,6 +343,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/agent-swarm/swarm-run-detail-panel.tsx | — | 4 | 1 |
 | apps/web/components/agents/agent-knowledge-packs-editor.tsx | — | 1 | 1 |
 | apps/web/components/agents/agent-memory-row.tsx | — | 2 | 1 |
+| apps/web/components/agents/agent-policy-editor.tsx | Dialog | 5 | 3 |
 | apps/web/components/agents/agent-reference-folders-editor.tsx | — | 6 | 1 |
 | apps/web/components/agents/fleet-v4/agent-capability-overview.tsx | — | 2 | 16 |
 | apps/web/components/agents/fleet-v4/agent-fleet-inspector.tsx | — | 9 | 17 |
@@ -356,7 +357,7 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/agents/knowledge/agent-knowledge-card.tsx | DropdownMenu | 5 | 2 |
 | apps/web/components/agents/knowledge/agent-knowledge-retrieval-tab.tsx | — | 2 | 1 |
 | apps/web/components/agents/knowledge/agent-knowledge-shot-harness.tsx | — | 1 | 1 |
-| apps/web/components/agents/knowledge/agent-knowledge-sources-tab.tsx | — | 3 | 2 |
+| apps/web/components/agents/knowledge/agent-knowledge-sources-tab.tsx | AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle | 4 | 2 |
 | apps/web/components/assignments/assignment-create-workspace.tsx | — | 15 | 1 |
 | apps/web/components/assignments/assignment-detail-surfaces.tsx | Dialog | 12 | 1 |
 | apps/web/components/billing/trial-expired-banner.tsx | — | 2 | 113 |
@@ -393,10 +394,10 @@ Use this index to follow windows, inspectors, popovers, dialogs and action contr
 | apps/web/components/gravitre/agent-identity-governance-card.tsx | — | 5 | 2 |
 | apps/web/components/gravitre/agent-identity-picker.tsx | — | 2 | 20 |
 | apps/web/components/gravitre/agent-personality-section.tsx | — | 1 | 3 |
-| apps/web/components/gravitre/agent-profile-editors.tsx | — | 3 | 2 |
+| apps/web/components/gravitre/agent-profile-editors.tsx | — | 4 | 2 |
 | apps/web/components/gravitre/agent-ui/thinking-row.tsx | — | 1 | 174 |
 | apps/web/components/gravitre/agent-ui/tool-execution-group.tsx | — | 1 | 174 |
-| apps/web/components/gravitre/agent-voice-assignment.tsx | — | 10 | 4 |
+| apps/web/components/gravitre/agent-voice-assignment.tsx | — | 12 | 4 |
 | apps/web/components/gravitre/ai-context-indicator.tsx | — | 1 | 174 |
 | apps/web/components/gravitre/ai-floating-workspace.tsx | ChatWindowControls | 0 | 174 |
 | apps/web/components/gravitre/ai-insights-panel.tsx | Dialog | 12 | 174 |

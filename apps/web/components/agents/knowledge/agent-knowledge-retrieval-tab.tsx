@@ -1,104 +1,167 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Loader2, Search } from "lucide-react"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { agentKnowledgeApi } from "@/lib/api"
 
+type RetrievalResult = Awaited<
+  ReturnType<typeof agentKnowledgeApi.testRetrieval>
+>
 export function AgentKnowledgeRetrievalTab({ agentId }: { agentId: string }) {
-  const [testQuery, setTestQuery] = useState("")
+  return <RetrievalWorkspace key={agentId} agentId={agentId} />
+}
+function RetrievalWorkspace({ agentId }: { agentId: string }) {
+  const [query, setQuery] = useState("")
   const [testing, setTesting] = useState(false)
-  const [result, setResult] = useState<{
-    matchCount: number
-    sources: Array<Record<string, unknown>>
-    query: string
-  } | null>(null)
-
-  async function handleTest() {
-    const q = testQuery.trim()
-    if (!q) return
+  const [result, setResult] = useState<RetrievalResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const busy = useRef(false)
+  async function test() {
+    const q = query.trim()
+    if (!q || busy.current) return
+    busy.current = true
     setTesting(true)
+    setError(null)
     try {
-      const res = await agentKnowledgeApi.testRetrieval(agentId, q)
-      setResult({
-        matchCount: res.matchCount,
-        sources: res.sources ?? [],
-        query: q,
-      })
-      toast.success(`Retrieved ${res.matchCount} assigned match${res.matchCount === 1 ? "" : "es"}`)
-    } catch (error) {
-      console.error("[agent-knowledge] test retrieval failed:", error)
-      toast.error("Test retrieval failed")
-      setResult(null)
+      const response = await agentKnowledgeApi.testRetrieval(agentId, q)
+      setResult({ ...response, query: q })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Retrieval request failed")
     } finally {
+      busy.current = false
       setTesting(false)
     }
   }
-
+  const count =
+    result &&
+    typeof result.matchCount === "number" &&
+    Number.isFinite(result.matchCount) &&
+    result.matchCount >= 0
+      ? result.matchCount
+      : null
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-[color:var(--g-text-muted)]">
-        Test how this agent retrieves from assigned knowledge using the live retrieval pipeline — not mocked results.
-      </p>
-
-      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
-        <label htmlFor="retrieval-test" className="text-xs font-medium text-[color:var(--g-text-muted)]">
-          Test retrieval
+    <div className="max-w-4xl space-y-6" data-composition="understand">
+      <div>
+        <h2 className="font-[family-name:var(--font-space-grotesk)] text-xl font-medium">
+          Check the grounding
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Ask a question and inspect the evidence returned for this agent. A
+          retrieval result is evidence to review, rather than a measure of
+          overall agent performance.
+        </p>
+      </div>
+      <form
+        className="space-y-2 border-y border-[color:var(--g-border-default)] py-5"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void test()
+        }}
+      >
+        <label htmlFor="retrieval-test" className="text-sm font-medium">
+          Question to test
         </label>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <Input
             id="retrieval-test"
-            value={testQuery}
-            onChange={(e) => setTestQuery(e.target.value)}
-            placeholder="Ask something this agent should know…"
-            className="flex-1"
+            className="min-h-11 flex-1"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="What should this agent know?"
           />
-          <Button type="button" className="gap-2" disabled={testing || !testQuery.trim()} onClick={() => void handleTest()}>
-            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            Test retrieval
+          <Button
+            type="submit"
+            className="min-h-11 gap-2"
+            disabled={testing || !query.trim()}
+          >
+            {testing ? (
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+            ) : (
+              <Search className="size-4" />
+            )}
+            {testing ? "Testing…" : "Test retrieval"}
           </Button>
         </div>
-      </div>
-
+      </form>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}. Previous returned evidence remains below.
+        </p>
+      )}
       {result ? (
-        <section className="space-y-3">
-          <h2 className="text-xs font-medium text-[color:var(--g-text-muted)]">
-            Results for &ldquo;{result.query}&rdquo;
-          </h2>
-          {result.matchCount === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No retrieval telemetry yet for this query. Assign knowledge sources or use this agent in a workflow to
-              start measuring performance.
+        <section aria-label="Retrieval evidence" className="space-y-4">
+          <h3 className="break-words text-sm font-medium">
+            Results for “{result.query}”
+          </h3>
+          <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground">
+                Matches reported
+              </dt>
+              <dd>{count ?? "Not reported"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">
+                Assigned knowledge only
+              </dt>
+              <dd>
+                {result.usedAssignedOnly === true
+                  ? "Yes"
+                  : result.usedAssignedOnly === false
+                    ? "No"
+                    : "Not reported"}
+              </dd>
+            </div>
+          </dl>
+          {result.missingAssignments?.length ? (
+            <p className="break-words text-sm text-muted-foreground">
+              Missing assignments: {result.missingAssignments.join(", ")}
             </p>
-          ) : (
-            <ul className="space-y-2">
-              {result.sources.map((source, i) => (
-                <li
-                  key={i}
-                  className="rounded-md border border-divide bg-[color:var(--g-surface-2)]/50 px-3 py-2 text-sm"
-                >
-                  <p className="font-medium">{String(source.title ?? source.source ?? `Source ${i + 1}`)}</p>
-                  {source.score != null ? (
-                    <p className="text-xs tabular-nums text-[color:var(--g-text-muted)]">
-                      Relevance {Number(source.score).toFixed(3)}
-                    </p>
-                  ) : null}
-                  {source.content ? (
-                    <p className="mt-1 line-clamp-3 text-xs text-[color:var(--g-text-secondary)]">
+          ) : null}
+          {count === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No matches were returned for this question. Check assigned sources
+              or try a more specific question.
+            </p>
+          ) : null}
+          <ol className="divide-y border-y border-[color:var(--g-border-default)]">
+            {(result.sources ?? []).map((source, i) => (
+              <li key={i} className="space-y-2 py-4">
+                <h4 className="break-words text-sm font-medium">
+                  {String(source.title ?? source.source ?? `Source ${i + 1}`)}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Relevance:{" "}
+                  {typeof source.score === "number" &&
+                  Number.isFinite(source.score)
+                    ? source.score.toFixed(3)
+                    : "Not reported"}
+                </p>
+                {source.content ? (
+                  <details>
+                    <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm underline">
+                      Read returned excerpt
+                    </summary>
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
                       {String(source.content)}
                     </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
+                  </details>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Excerpt not reported.
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
         </section>
       ) : (
-        <div className="rounded-[var(--np-radius-lg)] border border-dashed border-divide px-6 py-8 text-center text-sm text-muted-foreground">
-          No retrieval telemetry yet. Test this agent or use it in a workflow to start measuring knowledge performance.
-        </div>
+        <p className="text-sm text-muted-foreground">
+          No retrieval test yet. Enter a question to inspect its returned
+          evidence.
+        </p>
       )}
     </div>
   )
