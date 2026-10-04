@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { fetcher } from "@/lib/fetcher"
 import { apiFetch } from "@/lib/fetcher"
+import { TYPE } from "@/lib/design-system"
 import { CheckCircle2, ShieldCheck } from "lucide-react"
 
 type Mode = "OBSERVE" | "RECOMMEND" | "ACT WITH APPROVAL" | "ACT WITHIN POLICY"
@@ -59,10 +60,10 @@ export function PlaySetup({ playKey, playVersion, readiness }: { playKey: string
   }
 
   return (
-    <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+    <section className="border-y border-divide py-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium tracking-wide text-muted-foreground">Operating mode</p>
+          <p className={TYPE.eyebrow}>Operating mode</p>
           <h2 className="mt-1 text-base font-semibold">Choose how much authority this Play has</h2>
           <p className="mt-1 text-sm text-muted-foreground">Authority increases only when the required data, workflows, approvals, and policy controls are ready.</p>
         </div>

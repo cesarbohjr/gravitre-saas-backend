@@ -43,22 +43,42 @@ import { useOrgAdmin } from "@/lib/use-org-admin"
 import { environmentsApi } from "@/lib/api"
 import { toast } from "sonner"
 
+function parseReportedCount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value.replace(/,/g, ""))
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function parseReportedText(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function sumReported(values: Array<number | null>): string {
+  if (values.every((value) => value == null)) return "Not reported"
+  return String(values.reduce<number>((total, value) => total + (value ?? 0), 0))
+}
+
 interface Environment {
   id: string
   name: string
   slug: string
   status: "active" | "inactive" | "degraded"
   isDefault: boolean
-  health: number
+  health: number | null
   resources: {
-    workflows: number
-    agents: number
-    connectors: number
-    sources: number
+    workflows: number | null
+    agents: number | null
+    connectors: number | null
+    sources: number | null
   }
-  apiUrl: string
-  createdAt: string
-  lastActivity: string
+  apiUrl: string | null
+  createdAt: string | null
+  lastActivity: string | null
   promotesTo?: string
   receivesFrom?: string
 }
@@ -78,22 +98,23 @@ function normalizeEnvironmentsResponse(payload: unknown): Environment[] {
       )
       const status: Environment["status"] =
         item.is_active === false || item.isActive === false ? "inactive" : "active"
+      const resources = (item.resources as Record<string, unknown> | undefined) ?? {}
       return {
         id: String(item.id ?? ""),
         name: name.charAt(0).toUpperCase() + name.slice(1),
         slug,
         status,
         isDefault,
-        health: 100,
+        health: parseReportedCount(item.health ?? item.health_score),
         resources: {
-          workflows: 0,
-          agents: 0,
-          connectors: 0,
-          sources: 0,
+          workflows: parseReportedCount(item.workflows ?? resources.workflows),
+          agents: parseReportedCount(item.agents ?? resources.agents),
+          connectors: parseReportedCount(item.connectors ?? resources.connectors),
+          sources: parseReportedCount(item.sources ?? resources.sources),
         },
-        apiUrl: `${window.location.origin}/api`,
-        createdAt: "Recently created",
-        lastActivity: "Just now",
+        apiUrl: parseReportedText(item.api_url ?? item.apiUrl),
+        createdAt: parseReportedText(item.created_at ?? item.createdAt),
+        lastActivity: parseReportedText(item.last_activity ?? item.lastActivity),
       } satisfies Environment
     })
     .filter((item) => item.id.length > 0)
@@ -101,12 +122,12 @@ function normalizeEnvironmentsResponse(payload: unknown): Environment[] {
 }
 
 // Health ring component
-function HealthRing({ health, size = 48 }: { health: number; size?: number }) {
+function HealthRing({ health, size = 48 }: { health: number | null; size?: number }) {
   const radius = (size - 6) / 2
   const circumference = 2 * Math.PI * radius
-  const offset = circumference - (health / 100) * circumference
+  const offset = health == null ? circumference : circumference - (health / 100) * circumference
   
-  const color = health >= 90 ? "stroke-[color:var(--g-emerald)]" : health >= 70 ? "stroke-amber-500" : "stroke-red-500"
+  const color = health == null ? "stroke-muted-foreground" : health >= 90 ? "stroke-[color:var(--g-emerald)]" : health >= 70 ? "stroke-amber-500" : "stroke-red-500"
   
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -132,7 +153,7 @@ function HealthRing({ health, size = 48 }: { health: number; size?: number }) {
         />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-foreground">
-        {health}%
+        {health == null ? "—" : `${health}%`}
       </span>
     </div>
   )
@@ -145,14 +166,14 @@ function ResourceIndicator({
   label 
 }: { 
   icon: ComponentType<{ className?: string }>
-  count: number
+  count: number | null
   label: string
 }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50">
       <Icon className="h-4 w-4 text-muted-foreground" />
       <div>
-        <span className="text-sm font-semibold text-foreground">{count}</span>
+        <span className="text-sm font-semibold text-foreground">{count == null ? "Not reported" : count}</span>
         <span className="text-xs text-muted-foreground ml-1">{label}</span>
       </div>
     </div>
@@ -177,6 +198,7 @@ function EnvironmentNode({
 
   const handleCopyUrl = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!environment.apiUrl) return
     navigator.clipboard.writeText(environment.apiUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -245,7 +267,7 @@ function EnvironmentNode({
           </StatusBadge>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Activity className="h-3 w-3" />
-            {environment.lastActivity}
+            {environment.lastActivity ?? "Not reported"}
           </span>
         </div>
       </div>
@@ -265,13 +287,14 @@ function EnvironmentNode({
         <p className="text-xs text-muted-foreground mb-2 font-medium">API Endpoint</p>
         <div className="flex items-center gap-2">
           <code className="flex-1 text-xs font-mono text-muted-foreground bg-secondary rounded-lg px-3 py-2 truncate">
-            {environment.apiUrl}
+            {environment.apiUrl ?? "Not reported"}
           </code>
           <Button 
             variant="ghost" 
             size="icon" 
             className="h-8 w-8 shrink-0"
             onClick={handleCopyUrl}
+            disabled={!environment.apiUrl}
             aria-label={copied ? "API endpoint copied" : "Copy API endpoint"}
           >
             {copied ? (
@@ -447,7 +470,7 @@ export default function EnvironmentsPage() {
               value={
                 isLoading
                   ? "—"
-                  : environments.reduce((a, e) => a + e.resources.workflows, 0)
+                  : sumReported(environments.map((item) => item.resources.workflows))
               }
               hint="Across environments"
               icon={<NucleoWorkflow className="h-4 w-4" />}
@@ -455,7 +478,7 @@ export default function EnvironmentsPage() {
             <GravitreMetric
               label="Total agents"
               value={
-                isLoading ? "—" : environments.reduce((a, e) => a + e.resources.agents, 0)
+                isLoading ? "—" : sumReported(environments.map((item) => item.resources.agents))
               }
               hint="Across environments"
               icon={<NucleoAgent className="h-4 w-4" />}

@@ -8,6 +8,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import { Button } from "@/components/ui/button"
 import { agentsApi, mlModelsApi, playsApi, trainingApi, workflowsApi } from "@/lib/api"
@@ -87,7 +88,7 @@ export function ModelStudioStage({
   const [externalReferenceError, setExternalReferenceError] = useState<string | null>(null)
   const [externalReferenceSaved, setExternalReferenceSaved] = useState<string | null>(null)
 
-  const { data: modelsData, isLoading: modelsLoading } = useSWR(
+  const { data: modelsData, isLoading: modelsLoading, error: modelsError, mutate: mutateModels } = useSWR(
     enabled &&
       (segment === "evaluate" ||
         segment === "deploy" ||
@@ -120,12 +121,12 @@ export function ModelStudioStage({
     () => playsApi.list(),
     { revalidateOnFocus: false },
   )
-  const { data: jobsData, isLoading: jobsLoading } = useSWR(
+  const { data: jobsData, isLoading: jobsLoading, error: jobsError, mutate: mutateJobs } = useSWR(
     enabled && (segment === "train" || segment === "runs") ? "training-jobs-studio" : null,
     () => trainingApi.listJobs(),
     { revalidateOnFocus: false },
   )
-  const { data: datasetsData, isLoading: datasetsLoading } = useSWR(
+  const { data: datasetsData, isLoading: datasetsLoading, error: datasetsError, mutate: mutateDatasets } = useSWR(
     enabled && segment === "train" ? "training-datasets-studio" : null,
     () => trainingApi.listDatasets(),
     { revalidateOnFocus: false },
@@ -258,6 +259,22 @@ export function ModelStudioStage({
 
   return (
     <div className="space-y-6">
+      {modelsError || jobsError || datasetsError ? (
+        <WorkSectionErrorCard
+          title="Could not load Model Studio"
+          message={
+            (modelsError instanceof Error && modelsError.message) ||
+            (jobsError instanceof Error && jobsError.message) ||
+            (datasetsError instanceof Error && datasetsError.message) ||
+            "One of the Model Studio lists did not return."
+          }
+          onRetry={() => {
+            void mutateModels()
+            void mutateJobs()
+            void mutateDatasets()
+          }}
+        />
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-[184px_minmax(0,1fr)]">
         <div className="space-y-3 lg:border-r lg:border-[color:var(--g-border-subtle)] lg:pr-4">
           <p className={cn(TYPE.meta)}>

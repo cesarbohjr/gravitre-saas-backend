@@ -131,7 +131,7 @@ function MultiAgentRunContent() {
   }
 
   return (
-    <div className="relative min-h-full">
+    <div className="relative min-h-full" data-composition="manage">
       <div className="relative z-10 mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <AgentsHubTabs active="multi-agent" />
         <GravitrePageHeader

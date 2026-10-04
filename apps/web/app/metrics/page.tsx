@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -62,16 +63,29 @@ type ThroughputDay = {
 
 const WEEKDAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-function normalizeWeeklyThroughput(payload: unknown): { days: ThroughputDay[]; target: number } {
-  const emptyDays = WEEKDAY_ORDER.map((day) => ({ day, records: 0, target: 0 }))
+function parseReportedNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    if (trimmed.endsWith("M")) {
+      const scaled = Number.parseFloat(trimmed.slice(0, -1))
+      return Number.isFinite(scaled) ? scaled * 1_000_000 : null
+    }
+    const parsed = Number.parseFloat(trimmed.replace(/,/g, ""))
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function normalizeWeeklyThroughput(payload: unknown): { days: ThroughputDay[] | null; target: number | null } {
   if (!payload || typeof payload !== "object") {
-    return { days: emptyDays, target: 0 }
+    return { days: null, target: null }
   }
   const model = payload as Record<string, unknown>
-  const target = parseNumber(model.target, 0)
+  const target = parseReportedNumber(model.target)
   const raw = Array.isArray(model.days) ? model.days : null
   if (!raw) {
-    return { days: emptyDays.map((entry) => ({ ...entry, target })), target }
+    return { days: null, target }
   }
   const byDay = new Map<string, ThroughputDay>()
   for (const item of raw) {
@@ -81,30 +95,30 @@ function normalizeWeeklyThroughput(payload: unknown): { days: ThroughputDay[]; t
     if (!day) continue
     byDay.set(day, {
       day,
-      records: parseNumber(row.records, 0),
-      target: parseNumber(row.target, target),
+      records: parseReportedNumber(row.records) ?? 0,
+      target: parseReportedNumber(row.target) ?? target ?? 0,
     })
   }
   return {
     days: WEEKDAY_ORDER.map(
-      (day) => byDay.get(day) ?? { day, records: 0, target }
+      (day) => byDay.get(day) ?? { day, records: 0, target: target ?? 0 }
     ),
     target,
   }
 }
 
 type MetricsOverview = {
-  totalRuns: number
-  successRate: number
-  recordsProcessed: number
-  avgLatency: number
-  activeConnectors: number
-  totalConnectors: number
+  totalRuns: number | null
+  successRate: number | null
+  recordsProcessed: number | null
+  avgLatency: number | null
+  activeConnectors: number | null
+  totalConnectors: number | null
   changes: {
-    totalRuns: number
-    successRate: number
-    recordsProcessed: number
-    avgLatency: number
+    totalRuns: number | null
+    successRate: number | null
+    recordsProcessed: number | null
+    avgLatency: number | null
   }
   trends: {
     totalRuns: number[]
@@ -134,53 +148,38 @@ function formatRecordsCount(count: number): string {
   return count.toLocaleString()
 }
 
-function normalizeOverview(payload: unknown): MetricsOverview {
-  const empty: MetricsOverview = {
-    totalRuns: 0,
-    successRate: 0,
-    recordsProcessed: 0,
-    avgLatency: 0,
-    activeConnectors: 0,
-    totalConnectors: 0,
-    changes: {
-      totalRuns: 0,
-      successRate: 0,
-      recordsProcessed: 0,
-      avgLatency: 0,
-    },
-    trends: {
-      totalRuns: [],
-      successRate: [],
-      recordsProcessed: [],
-      avgLatency: [],
-    },
-  }
-  if (!payload || typeof payload !== "object") return empty
+function formatMetricValue(
+  isLoading: boolean,
+  value: number | null | undefined,
+  format: (n: number) => string,
+): string {
+  if (value == null) return isLoading ? "—" : "Not reported"
+  return format(value)
+}
+
+function normalizeOverview(payload: unknown): MetricsOverview | null {
+  if (!payload || typeof payload !== "object") return null
   const model = payload as Record<string, unknown>
   return {
-    totalRuns: parseNumber(model.totalRuns, 0),
-    successRate: parseNumber(model.successRate, 0),
-    recordsProcessed: parseNumber(model.recordsProcessed, 0),
-    avgLatency: parseNumber(model.avgLatency, 0),
-    activeConnectors: parseNumber(model.activeConnectors, 0),
-    totalConnectors: parseNumber(model.totalConnectors, 0),
+    totalRuns: parseReportedNumber(model.totalRuns),
+    successRate: parseReportedNumber(model.successRate),
+    recordsProcessed: parseReportedNumber(model.recordsProcessed),
+    avgLatency: parseReportedNumber(model.avgLatency),
+    activeConnectors: parseReportedNumber(model.activeConnectors),
+    totalConnectors: parseReportedNumber(model.totalConnectors),
     changes: {
-      totalRuns: parseNumber(
+      totalRuns: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.totalRuns ?? model.totalRunsChange,
-        0
       ),
-      successRate: parseNumber(
+      successRate: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.successRate ?? model.successRateChange,
-        0
       ),
-      recordsProcessed: parseNumber(
+      recordsProcessed: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.recordsProcessed ??
           model.recordsProcessedChange,
-        0
       ),
-      avgLatency: parseNumber(
+      avgLatency: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.avgLatency ?? model.avgLatencyChange,
-        0
       ),
     },
     trends: {
@@ -454,13 +453,12 @@ export default function MetricsPage() {
     toast.success("Metrics refreshed")
   }
   
-  const { data: overviewData, isLoading, isValidating, mutate: mutateOverview } = useSWR<unknown>(
+  const { data: overviewData, error: overviewError, isLoading, isValidating, mutate: mutateOverview } = useSWR<unknown>(
     user ? ["metrics-overview", timeRange] : null,
     () => metricsApi.overview(timeRange),
     {
       revalidateOnFocus: false,
       refreshInterval: autoRefresh ? 15000 : 0,
-      onError: (err) => console.error("[v0] Metrics fetch error:", err),
     }
   )
   const { data: seriesData, mutate: mutateSeries } = useSWR(
@@ -570,43 +568,54 @@ export default function MetricsPage() {
 
         <div className="flex-1 overflow-auto">
           <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+            {overviewError ? (
+              <WorkSectionErrorCard
+                title="Could not load metrics"
+                message={overviewError instanceof Error ? overviewError.message : "Overview values were not reported."}
+                onRetry={() => void mutateOverview()}
+              />
+            ) : null}
             {/* Top Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
               <MetricCard
                 title="Total runs"
-                value={overview.totalRuns.toLocaleString()}
-                change={overview.changes?.totalRuns}
-                trend={overview.trends?.totalRuns}
+                value={formatMetricValue(isLoading, overview?.totalRuns, (n) => n.toLocaleString())}
+                change={overview?.changes?.totalRuns ?? undefined}
+                trend={overview?.trends?.totalRuns}
                 icon={Activity}
                 accentColor="blue"
               />
               <MetricCard
                 title="Success rate"
-                value={`${overview.successRate.toFixed(1)}%`}
-                change={overview.changes?.successRate}
-                trend={overview.trends?.successRate}
+                value={formatMetricValue(isLoading, overview?.successRate, (n) => `${n.toFixed(1)}%`)}
+                change={overview?.changes?.successRate ?? undefined}
+                trend={overview?.trends?.successRate}
                 icon={CheckCircle2}
                 accentColor="emerald"
               />
               <MetricCard
                 title="Records processed"
-                value={formatRecordsCount(overview.recordsProcessed)}
-                change={overview.changes?.recordsProcessed}
-                trend={overview.trends?.recordsProcessed}
+                value={formatMetricValue(isLoading, overview?.recordsProcessed, formatRecordsCount)}
+                change={overview?.changes?.recordsProcessed ?? undefined}
+                trend={overview?.trends?.recordsProcessed}
                 icon={Zap}
                 accentColor="blue"
               />
               <MetricCard
                 title="Avg latency"
-                value={`${Math.round(overview.avgLatency)}ms`}
-                change={overview.changes?.avgLatency}
-                trend={overview.trends?.avgLatency}
+                value={formatMetricValue(isLoading, overview?.avgLatency, (n) => `${Math.round(n)}ms`)}
+                change={overview?.changes?.avgLatency ?? undefined}
+                trend={overview?.trends?.avgLatency}
                 icon={Clock}
-                accentColor={overview.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
+                accentColor={overview?.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
               />
               <MetricCard
                 title="Active connectors"
-                value={`${overview.activeConnectors}/${overview.totalConnectors}`}
+                value={
+                  overview?.activeConnectors == null && overview?.totalConnectors == null
+                    ? isLoading ? "—" : "Not reported"
+                    : `${overview?.activeConnectors ?? "—" }/${overview?.totalConnectors ?? "—"}`
+                }
                 icon={Activity}
                 accentColor="blue"
               />
@@ -744,13 +753,16 @@ export default function MetricsPage() {
                   <h3 className="text-sm font-medium text-foreground">Weekly throughput</h3>
                 </div>
                 <div className="p-4">
+                  {!throughputData ? (
+                    <p className="py-10 text-sm text-muted-foreground">Weekly throughput is not reported for this range.</p>
+                  ) : (
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={throughputData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--g-border-subtle)" vertical={false} />
                       <XAxis dataKey="day" tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={<ChartTooltip />} />
-                      {throughputTarget > 0 && (
+                      {throughputTarget != null && throughputTarget > 0 && (
                         <ReferenceLine
                           y={throughputTarget}
                           stroke="var(--g-emerald)"
@@ -771,6 +783,7 @@ export default function MetricsPage() {
                       />
                     </BarChart>
                   </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </div>

@@ -107,13 +107,57 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   })
 
   it("settings preference chrome uses rows, not elevated cards", () => {
-    const src = readFileSync(resolve(webRoot, "app/settings/page.tsx"), "utf8")
-    expect(src).toMatch(/AI Operator/)
-    const operatorIdx = src.indexOf("AI Operator")
-    const operatorWindow = src.slice(Math.max(0, operatorIdx - 700), operatorIdx)
-    expect(operatorWindow).toMatch(/border-b border-divide py-3/)
-    expect(operatorWindow).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
-    expect(src).toMatch(/Enable/)
+    const page = readFileSync(resolve(webRoot, "app/settings/page.tsx"), "utf8")
+    expect(page).toMatch(/from \"@\/components\/settings\/organization-settings\"/)
+    expect(page).toMatch(/from \"@\/components\/settings\/notification-settings\"/)
+    expect(page).toMatch(/from \"@\/components\/settings\/security-settings\"/)
+    expect(page).toMatch(/from \"@\/components\/settings\/team-settings\"/)
+    expect(page).toMatch(/from \"@\/components\/settings\/api-keys-settings\"/)
+    expect(page).toMatch(/from \"@\/components\/settings\/webhooks-settings\"/)
+    expect(page).toMatch(/from \"@\/components\/settings\/ai-models-settings\"/)
+    expect(page).toMatch(/<OrganizationSettings/)
+    expect(page).toMatch(/<NotificationSettings/)
+    expect(page).toMatch(/<SecuritySettings/)
+    expect(page).toMatch(/<TeamSettings/)
+    expect(page).toMatch(/<ApiKeysSettings/)
+    expect(page).toMatch(/<WebhooksSettings/)
+    expect(page).toMatch(/<AIModelsSettings/)
+    expect(page).toMatch(/border-b border-divide py-3/)
+    expect(page).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
+    expect(page).not.toMatch(/AI Operator/)
+    expect(page).not.toMatch(/ModelSelector/)
+
+    const notifications = readFileSync(
+      resolve(webRoot, "components/settings/notification-settings.tsx"),
+      "utf8",
+    )
+    expect(notifications).toMatch(/aria-label="Email notifications"/)
+    expect(notifications).toMatch(/aria-label="Slack notifications"/)
+    expect(notifications).toMatch(/border-b border-divide py-3/)
+    expect(notifications).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
+
+    const security = readFileSync(
+      resolve(webRoot, "components/settings/security-settings.tsx"),
+      "utf8",
+    )
+    const ssoIdx = security.indexOf("Single sign-on")
+    expect(ssoIdx).toBeGreaterThan(0)
+    const ssoWindow = security.slice(Math.max(0, ssoIdx - 450), ssoIdx + 1800)
+    expect(ssoWindow).toMatch(/border-b border-divide py-3/)
+    expect(ssoWindow).toMatch(/ssoConfig\?\.is_enabled \? "Disable" : "Enable"/)
+    expect(ssoWindow).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
+    expect(security).toMatch(/Organization-wide 2FA enforcement is not available/)
+    expect(security).toMatch(/IP restriction is not available/)
+
+    const models = readFileSync(
+      resolve(webRoot, "components/settings/ai-models-settings.tsx"),
+      "utf8",
+    )
+    expect(models).toMatch(/<MemoryEntityEmbeddingsSettings/)
+    expect(models).toMatch(/no organization API for workspace default models/)
+    expect(models).not.toMatch(/AI Operator/)
+    expect(models).not.toMatch(/ModelSelector/)
+    expect(models).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
   })
 
   it("settings organizations are a list with inspector on selection", () => {

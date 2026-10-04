@@ -165,7 +165,7 @@ Pipeline-linked defaults are four (`revenue-operations-pack`, `marketing-operati
 | route | family | nested | current gap | files | verification | evidence | SHA | status | blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `/home` | Understand | KPI, time, drill-down | Already composed Understand; owner metrics not live-checked | `components/home/home-dashboard.tsx` | populated fixture + owner metrics | fixture pending this SHA; owner-live | `db2eea5e`+ | IMPLEMENTED ON BRANCH | OWNER_LIVE |
-| `/ai` | Create | composer, history, tools | Protected chat seams | `app/ai/page.tsx` | stream + persist | fixture `/e2e/shots/ai` exists; owner-live | prior | PARTIAL | auth + protected seams |
+| `/ai` | Create | composer, history, tools | Embedded exit + WM persist wired; stream/voice/approvals unchanged | `app/ai/_components/ai-workspace.tsx` | stream + persist + window modes | fixture `/e2e/shots/ai` exists; owner-live | this pass | IMPLEMENTED ON BRANCH | OWNER_LIVE + fixture visual this SHA |
 | `/agents` | Manage | list, inspector | Glow fallbacks removed earlier | `app/agents/page.tsx` | list/inspector | fixture `/e2e/shots/agents` exists; owner-live | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE + fixture visual this SHA |
 | `/agents/[id]` | Manage | tabs, autonomy | Stored avatar IDs untouched | `app/agents/[id]/page.tsx` | save persist | fixture `/e2e/shots/agent-detail` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
 | `/connectors` | Manage | catalog, instance | Connection status must stay real | `app/connectors/page.tsx` | reconnect | fixture `/e2e/shots/connectors` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
@@ -180,10 +180,13 @@ Pipeline-linked defaults are four (`revenue-operations-pack`, `marketing-operati
 | `/activity` | Operate | runs | Execution state | `app/activity/page.tsx` | run vs activity | fixture `/e2e/shots/activity` | prior | IMPLEMENTED ON BRANCH | OWNER_LIVE |
 | `/audit` | Configure | events | Real org events | `app/audit/page.tsx` | filters | owner-live | prior | PRIOR / UNVERIFIED | OWNER_LIVE |
 | `/notifications` | Operate | list | — | `app/notifications/page.tsx` | mark-read | owner-live | prior | PRIOR / UNVERIFIED | OWNER_LIVE |
-| `/settings/**` | Configure | billing, team, profile | Composition/token only | `app/settings/**` | save + entitlements | billing e2e not required on PR CI | prior | PRIOR / SUPPORTING | no billing behavior change |
-| `/plays` | Operate | play, results | Not invented this sprint | `app/plays/**` | real play data | owner-live | prior | PRIOR | — |
+| `/settings/**` | Configure | billing, team, profile | Extracted row chrome; IA test retargeted to real SSO/notifications/memory policy | `app/settings/**` + `components/settings/*` | save + entitlements | billing e2e not required on PR CI | this pass | IMPLEMENTED ON BRANCH | OWNER_LIVE; logo upload unavailable |
+| `/plays` | Operate | play, results | Row queue, empty state, honest missing approvals | `app/plays/**` | real play data | owner-live | this pass | IMPLEMENTED ON BRANCH | OWNER_LIVE + fixture visual |
 | `/admin/intelligence` | Understand | admin tabs | Glow remnants already empty; Understand composition present | `app/admin/intelligence/**` | admin-only | owner-live | this tree | IMPLEMENTED ON BRANCH | role gate + OWNER_LIVE |
-| `/training` | Create | onboarding training | Create composition present | `app/training/page.tsx` | — | owner-live | prior | PRIOR / UNVERIFIED | OWNER_LIVE |
+| `/training` | Create | onboarding training | Error card, loading/empty split, freshness on successful fetch, mobile nav clearance | `app/training/page.tsx` | — | owner-live | this pass | IMPLEMENTED ON BRANCH | OWNER_LIVE |
+| `/schedules` | Operate | calendar, list | Org page already operate; workflow schedules now tagged operate | `app/schedules/**`, `app/workflows/[id]/schedules/page.tsx` | cron persist | owner-live | this pass | IMPLEMENTED ON BRANCH | OWNER_LIVE; detail sheet still unused |
+| `/metrics` | Understand | charts, export | Omitted overview/throughput stay unreported; error/retry on overview | `app/metrics/page.tsx` | charts | fixture `/e2e/shots/metrics` | this pass | IMPLEMENTED ON BRANCH | OWNER_LIVE; visual overlay on stale local shot |
+| `/environments` | Manage | topology | Health, resource counts, API URL, timestamps no longer invented | `app/environments/page.tsx` | real env fields | owner-live | this pass | IMPLEMENTED ON BRANCH | OWNER_LIVE |
 | `/welcome` | Create | role pick | Decorative GridPattern removed | `app/welcome/page.tsx` | first-run | fixture not added | this tree | IMPLEMENTED ON BRANCH | — |
 | marketing `/*` | Discover | legacy features | Decorative purple rematched to Electric | `components/marketing/features/legacy-page.tsx` | visual | historical `77ca50ce` marketing shots | this tree | IMPLEMENTED ON BRANCH | re-shot this SHA |
 | `/multi-agent-run` | Manage | swarm | Decorative GridPattern + violet orb removed | `app/multi-agent-run/page.tsx` | execution states | owner-live | this tree | IMPLEMENTED ON BRANCH | OWNER_LIVE |
@@ -439,3 +442,28 @@ Base: `1cce2b48`. Organization and notification forms from that commit were kept
 | Lite seats / Meson addons | Loading/error/retry and admin copy. Existing department/addon/voice APIs unchanged. Meson prices still come from the API, not invented here. | Owner allocation/billing |
 
 Focused Settings tests: 21 passed. Typecheck exit 0. Visual/owner-live remain NOT_RUN. Model Studio, Plays, Training, Schedules, AI workspace, and fixture visual verification were not completed in this pass. IMPLEMENTATION_COMPLETE = NO. MERGE_READY = NO. CAUGHT_UP = NO.
+
+## Required CI restore + remaining design coverage — 2026-10-04 UTC
+
+Reviewed PR head was still `7e9832c6` after fetch. Required Web failed on `phase-3-product-ia.test.ts` expecting “AI Operator” in `app/settings/page.tsx`. Prompt3 failed `npm ci` because root `package-lock.json` still listed `shadcn@4.10.0` as a dependency while `package.json` declared `shadcn@^4.21.0` as a devDependency. That drift existed on `main`; this PR triggered Prompt3 by touching `settings-sections.ts`.
+
+| Area | Implemented | Disposition |
+| --- | --- | --- |
+| Settings IA test | Asserts extracted composition, notification rows, SSO Enable/Disable row chrome, honest AI Models (Memory embeddings, no ModelSelector / “AI Operator”) | Verified by automated checks |
+| Prompt3 lockfile | Regenerated root `package-lock.json` only; `shadcn@4.21.1` now satisfies `^4.21.0`. No other package.json range changes | Verified locally by `npm install --package-lock-only`; GitHub Prompt3 pending published SHA |
+| Plays | Operate rows, empty state, `TYPE.eyebrow`, no elevated `--np-shadow` cards; detail/setup/results flattened; missing required approvals render “Not reported” | Implemented on branch |
+| Metrics | Omitted overview/throughput stay unreported; overview SWR error/retry; charts retained | Implemented on branch |
+| Environments | Health, resource counts, API URL, created/last-activity no longer invented as 100 / 0 / “Just now” | Implemented on branch |
+| Training | `WorkSectionErrorCard`, loading vs empty, freshness on successful fetch, `pb-20` MobileBottomNav clearance | Implemented on branch |
+| Model Studio | List/job/dataset fetch error/retry; missing built-in sufficiency labeled “Not reported” | Implemented on branch; tablet sheet still not wired |
+| Schedules | Workflow schedules `data-composition="operate"`; `ScheduleDetailSheet` remains unused | Partial |
+| Multi-agent run | `data-composition="manage"` | Supporting |
+| AI workspace | Embedded `ChatWindowControls` `openAsFloat`; user expand/fullscreen/collapse/mobile mode changes go through `choosePresentationMode` | Implemented on branch; docked Playwright and owner stream remain unverified |
+
+Local checks on this working tree: Vitest **1215 passed / 200 files**; ESLint **0 errors / 271 existing warnings**; `tsc --noEmit` **0**; `pnpm build` **0** (371 routes); chat-surface, status-leak, intelligence-surface, brand, cognitive guards **PASS** (targeted pytest skipped). Billing E2E remains `workflow_dispatch` only — skipped is not passed.
+
+Visual: NOT_RUN for this SHA. `localhost:3055/e2e/shots/metrics` rendered a fixture overlay plus Next error chrome on a stale server; `/plays` then failed with `chrome-error://chromewebdata/`. Viewport matrix 1440/834/390 was not completed. Capture is not evidence for the published SHA. Owner-live: `https://gravitre.app/login` (session expired / no authorized owner session used). Isolated Conversation Smoke is not owner-tenant evidence.
+
+Kept explicit: organization logo file upload unavailable; Slack/email delivery unverified; Finance department and Compliance packs product-scope gaps; frontend permission ≠ backend authorization.
+
+IMPLEMENTATION_COMPLETE = NO. VISUAL_ACCEPTANCE = NOT_RUN. OWNER_LIVE_ACCEPTANCE = NOT_RUN. MERGE_READY = NO. CAUGHT_UP = NO. Draft PR #298 remains unmerged. No production deployment.

@@ -51,6 +51,14 @@ describe("Gravitre 3.0 chat surface", () => {
     expect(workspace).toContain("conversationsApi.bulkDelete")
   })
 
+  it("wires embedded exit controls and persists explicit window-mode changes", () => {
+    const workspace = source("app/ai/_components/ai-workspace.tsx")
+    expect(workspace).toContain('surface="embedded"')
+    expect(workspace).toContain("openAsFloat")
+    expect(workspace).toContain("choosePresentationMode")
+    expect(workspace).toContain("ChatWindowControls")
+  })
+
   it("applies Gravitre 3.0 window chrome to floating and expanded shells", () => {
     const float = source("components/gravitre/ai-floating-workspace.tsx")
     const shell = source("components/gravitre/ai-workspace-shell.tsx")

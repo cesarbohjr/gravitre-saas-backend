@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { fetcher } from "@/lib/fetcher"
+import { TYPE } from "@/lib/design-system"
 import { CheckCircle2, Clock3, ExternalLink, XCircle } from "lucide-react"
 
 type Outcome = {
@@ -35,9 +36,9 @@ export function PlayResults({ playKey }: { playKey: string }) {
   const { data } = useSWR<Response>(`/api/plays/${playKey}/outcomes`, fetcher, { refreshInterval: 30_000 })
   const rows = data?.outcomes ?? []
   return (
-    <section className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+    <section className="border-y border-divide py-5">
       <div>
-        <p className="text-xs font-medium tracking-wide text-muted-foreground">Results</p>
+        <p className={TYPE.eyebrow}>Results</p>
         <h2 className="mt-1 text-base font-semibold">Measured business outcomes</h2>
         <p className="mt-1 text-xs text-muted-foreground">A completed action is not counted as business impact until the source of record verifies the result.</p>
       </div>

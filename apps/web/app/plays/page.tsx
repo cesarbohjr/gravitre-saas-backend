@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetcher } from "@/lib/fetcher"
-import { PAGE_FRAME } from "@/lib/design-system"
+import { PAGE_FRAME, TYPE } from "@/lib/design-system"
 import { ArrowRight, PlayCircle } from "lucide-react"
+import { GravitreEmpty } from "@/components/gravitre/nodus-product"
 
 type PlayReadiness = {
   dependency_status?: string
@@ -59,7 +60,7 @@ export default function PlaysPage() {
 
   return (
     <AppShell>
-      <div className={PAGE_FRAME} data-composition="discover">
+      <div className={PAGE_FRAME} data-composition="operate">
         <GravitrePageHeader
           title="Plays"
           description="Turn business goals into coordinated action across your agents, data, and systems."
@@ -74,42 +75,46 @@ export default function PlaysPage() {
             onRetry={() => void mutate()}
           />
         ) : isLoading ? (
-          <div className="grid gap-4 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-64 rounded-[10px]" />)}
+          <div className="divide-y divide-divide border-y border-divide">
+            {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-24 w-full rounded-none" />)}
           </div>
+        ) : plays.length === 0 ? (
+          <GravitreEmpty
+            icon={<PlayCircle className="h-5 w-5" />}
+            title="No plays in this workspace"
+            hint="Plays appear here when the catalog returns them for your organization. Nothing is invented when the list is empty."
+          />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="divide-y divide-divide border-y border-divide">
             {plays.map(({ play, readiness, workflowBindingCount }) => {
               const state = readinessLabel(readiness)
               const connectorGroups = readiness.connector_groups ?? []
               const connectorReady = connectorGroups.filter((group) => group.ready).length
               return (
-                <article key={play.key} className="group flex min-h-64 flex-col rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-colors hover:border-[color:var(--g-emerald)]/25">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Outcome play</p>
-                      <h2 className="mt-1 text-lg font-semibold text-foreground">{play.name}</h2>
+                <article key={play.key} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className={TYPE.eyebrow}>Outcome play</p>
+                    <h2 className="mt-1 text-base font-semibold text-foreground">{play.name}</h2>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{play.objective}</p>
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                      <p>
+                        <span className="text-muted-foreground">Data connections </span>
+                        <span className="font-medium text-foreground">{connectorReady} of {connectorGroups.length} ready</span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Workflows </span>
+                        <span className="font-medium text-foreground">{workflowBindingCount} linked</span>
+                      </p>
                     </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                     <Badge variant="outline" className={readinessClasses(state.tone)}>{state.label}</Badge>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{play.objective}</p>
-                  <div className="mt-5 grid grid-cols-2 gap-3 border-y border-divide py-3 text-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Data connections</p>
-                      <p className="mt-1 font-medium text-foreground">{connectorReady} of {connectorGroups.length} ready</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Workflows</p>
-                      <p className="mt-1 font-medium text-foreground">{workflowBindingCount} linked</p>
-                    </div>
-                  </div>
-                  <div className="mt-auto flex items-center justify-between gap-2 pt-5">
                     {!readiness.observe_ready ? (
-                      <Button variant="outline" size="sm" asChild>
+                      <Button variant="outline" size="sm" className="min-h-11" asChild>
                         <Link href={setupHref(readiness)}>Finish setup</Link>
                       </Button>
                     ) : <span className="text-xs text-muted-foreground">Ready with your workspace</span>}
-                    <Button variant="ghost" size="sm" asChild>
+                    <Button variant="ghost" size="sm" className="min-h-11" asChild>
                       <Link href={`/plays/${play.key}`}>View play <ArrowRight className="size-4" /></Link>
                     </Button>
                   </div>

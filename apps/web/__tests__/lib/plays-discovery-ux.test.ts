@@ -28,6 +28,15 @@ describe("Plays discovery UX", () => {
     expect(page).toMatch(/href=\{setupHref\(readiness\)\}/)
   })
 
+  it("lists plays as operating rows without elevated cards", () => {
+    const page = read("app/plays/page.tsx")
+    expect(page).toMatch(/data-composition="operate"/)
+    expect(page).toMatch(/divide-y divide-divide border-y border-divide/)
+    expect(page).toMatch(/No plays in this workspace/)
+    expect(page).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
+    expect(page).not.toMatch(/lg:grid-cols-3/)
+  })
+
   it("routes missing setup to existing Gravitre surfaces", () => {
     const page = read("app/plays/page.tsx")
     const detail = read("app/plays/[key]/page.tsx")
