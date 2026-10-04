@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useId, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { NoResultsState } from "@/components/gravitre/empty-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
@@ -49,6 +49,8 @@ import {
   summarizeAuditLog,
 } from "@/lib/audit-summary"
 
+const EMPTY_LOGS: AuditLog[] = []
+
 function getRangeStart(range: string): string | undefined {
   const now = Date.now()
   if (range === "24h") return new Date(now - 24 * 60 * 60 * 1000).toISOString()
@@ -71,35 +73,37 @@ export default function AuditPage() {
   const [selectedEntityType, setSelectedEntityType] = useState<string>("all")
   const [selectedDateRange, setSelectedDateRange] = useState<string>("7d")
   const [offset, setOffset] = useState(0)
+  const [exporting, setExporting] = useState(false)
+  const exportInFlight = useRef(false)
   const limit = 50
 
   const fromDate = getRangeStart(selectedDateRange)
   const listKey = user
-    ? (["audit/list", selectedAction, selectedEntityType, selectedDateRange, offset] as const)
+    ? (["audit/list", user.id, selectedAction, selectedEntityType, selectedDateRange, offset] as const)
     : null
-  const summaryKey = user ? (["audit/summary", selectedDateRange] as const) : null
+  const summaryKey = user ? (["audit/summary", user.id, selectedDateRange] as const) : null
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     listKey,
-    () =>
-      auditApi.list({
+    async () => ({
+      ...await auditApi.list({
         action: selectedAction !== "all" ? selectedAction : undefined,
         entity_type: selectedEntityType !== "all" ? selectedEntityType : undefined,
         from: fromDate,
         limit,
         offset,
       }),
+      fetchedAt: Date.now(),
+    }),
     {
-      fallbackData: { logs: [] as AuditLog[], total: 0, hasMore: false },
       revalidateOnFocus: false,
     },
   )
-  const { data: summaryData } = useSWR(summaryKey, () => auditApi.summary(selectedDateRange), {
-    fallbackData: { byAction: {}, byUser: [], byEntityType: {} },
+  const { data: summaryData, error: summaryError, isLoading: summaryLoading, mutate: refreshSummary } = useSWR(summaryKey, () => auditApi.summary(selectedDateRange), {
     revalidateOnFocus: false,
   })
 
-  const logs = data?.logs ?? []
+  const logs = data?.logs ?? EMPTY_LOGS
 
   const filteredLogs = useMemo(() => {
     if (searchQuery) {
@@ -123,18 +127,19 @@ export default function AuditPage() {
   const actions = Object.keys(summaryData?.byAction ?? {}).sort()
   const entityTypes = Object.keys(summaryData?.byEntityType ?? {}).sort()
 
-  const isUpgradeRequired =
-    (error instanceof ApiError && error.status === 403) ||
-    (error instanceof Error && /upgrade|forbidden|unauthorized/i.test(error.message))
+  const isAccessDenied = error instanceof ApiError && (error.status === 401 || error.status === 403)
 
-  const auditErrorMessage = isUpgradeRequired
-    ? "Audit logs require a plan with audit access. Upgrade your plan or contact support."
+  const auditErrorMessage = isAccessDenied
+    ? "Audit access is unavailable. Check your session, organization permissions, and plan access."
     : "Failed to load audit logs. Check your connection and try again."
 
   const hasActiveFilters =
     searchQuery.trim() !== "" || selectedAction !== "all" || selectedEntityType !== "all"
 
   async function handleExport(format: "csv" | "json") {
+    if (exportInFlight.current) return
+    exportInFlight.current = true
+    setExporting(true)
     try {
       const response = await auditApi.export(format, fromDate)
       if (!response.ok) {
@@ -153,8 +158,13 @@ export default function AuditPage() {
     } catch (exportError) {
       console.error("[v0] Audit export failed:", exportError)
       toast.error("Failed to export audit logs")
+    } finally {
+      exportInFlight.current = false
+      setExporting(false)
     }
   }
+
+  if (!user) return <AppShell><p className="p-6 text-sm">Sign in to view your audit trail.</p></AppShell>
 
   return (
     <AppShell>
@@ -163,19 +173,21 @@ export default function AuditPage() {
           className="shrink-0"
           eyebrow="Governance"
           title="Audit trail"
+          family="operating"
           description="Who did what, when, and the outcome"
           icon={<NavFile className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <DataFreshness
-                updatedAt={data ? Date.now() : null}
+                updatedAt={data?.fetchedAt ?? null}
                 isRefreshing={isValidating}
-                onRefresh={() => void mutate()}
               />
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-2"
+                className="min-h-11 gap-2"
+                aria-label="Export audit CSV"
+                disabled={!user || exporting}
                 onClick={() => void handleExport("csv")}
               >
                 <FileText className="h-3.5 w-3.5" />
@@ -184,7 +196,9 @@ export default function AuditPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-2"
+                className="min-h-11 gap-2"
+                aria-label="Export audit JSON"
+                disabled={!user || exporting}
                 onClick={() => void handleExport("json")}
               >
                 <FileJson className="h-3.5 w-3.5" />
@@ -193,10 +207,12 @@ export default function AuditPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-2"
-                onClick={() => void mutate()}
+                className="min-h-11 gap-2"
+                aria-label="Refresh audit events"
+                disabled={isValidating}
+                onClick={() => { void mutate(); void refreshSummary() }}
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-3.5 w-3.5 ${isValidating ? "animate-spin motion-reduce:animate-none" : ""}`} />
                 <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
@@ -220,7 +236,7 @@ export default function AuditPage() {
                   setOffset(0)
                 }}
               >
-                <SelectTrigger className="h-8 w-[140px] border-divide bg-[color:var(--g-surface-1)] text-xs">
+                <SelectTrigger aria-label="Audit range" className="min-h-11 w-[140px] border-divide bg-[color:var(--g-surface-1)] text-xs">
                   <Calendar className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <SelectValue />
                 </SelectTrigger>
@@ -240,7 +256,7 @@ export default function AuditPage() {
                   setOffset(0)
                 }}
               >
-                <SelectTrigger className="h-8 w-[140px] border-divide bg-[color:var(--g-surface-1)] text-xs">
+                <SelectTrigger aria-label="Audit action" className="min-h-11 w-[140px] border-divide bg-[color:var(--g-surface-1)] text-xs">
                   <SelectValue placeholder="Action" />
                 </SelectTrigger>
                 <SelectContent>
@@ -262,7 +278,7 @@ export default function AuditPage() {
                   setOffset(0)
                 }}
               >
-                <SelectTrigger className="h-8 w-[140px] border-divide bg-[color:var(--g-surface-1)] text-xs">
+                <SelectTrigger aria-label="Audit entity" className="min-h-11 w-[140px] border-divide bg-[color:var(--g-surface-1)] text-xs">
                   <SelectValue placeholder="Entity type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,8 +295,9 @@ export default function AuditPage() {
             <div className="relative min-w-[180px] flex-1 sm:max-w-[220px]">
               <NucleoSearch className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search events..."
-                className="h-8 border-divide bg-[color:var(--g-surface-1)] pl-9 text-xs"
+                aria-label="Search loaded audit events"
+                placeholder="Search this page..."
+                className="min-h-11 border-divide bg-[color:var(--g-surface-1)] pl-9 text-xs"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -289,16 +306,16 @@ export default function AuditPage() {
         </GravitrePageHeader>
 
         {error && (
-          <div className="mx-[var(--np-page-pad-sm)] mt-3 flex items-center justify-between gap-2 rounded-[var(--np-radius-lg)] border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive sm:mx-[var(--np-page-pad)]">
-            <span className="flex items-center gap-2">
+          <div role="alert" className="mx-[var(--np-page-pad-sm)] mt-3 flex flex-wrap items-center justify-between gap-2 rounded-[var(--np-radius-lg)] border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive sm:mx-[var(--np-page-pad)]">
+            <span className="flex min-w-0 items-start gap-2">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               {auditErrorMessage}
             </span>
-            {!isUpgradeRequired && (
+            {!isAccessDenied && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1.5 text-destructive hover:text-destructive"
+                className="min-h-11 gap-1.5 text-destructive hover:text-destructive"
                 onClick={() => void mutate()}
               >
                 <RefreshCw className="h-3 w-3" />
@@ -309,23 +326,23 @@ export default function AuditPage() {
         )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] overflow-auto px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5">
-          <section className="grid shrink-0 grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+          <section aria-label="Audit summary" className="grid shrink-0 grid-cols-1 sm:grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
             <GravitreMetric
-              label="Logs"
-              value={isLoading ? "—" : (data?.total ?? 0)}
-              hint={isLoading ? "Loading" : "In selected range"}
+              label="Matching events"
+              value={isLoading ? "—" : error || !Number.isFinite(data?.total) ? "Not reported" : data?.total}
+              hint="Selected range, action and entity"
               icon={<Clock className="h-4 w-4" />}
             />
             <GravitreMetric
               label="Active users"
-              value={summaryData?.byUser?.length ?? 0}
+              value={summaryLoading ? "—" : summaryError || !Array.isArray(summaryData?.byUser) ? "Not reported" : summaryData.byUser.length}
               hint="In selected range"
               icon={<User className="h-4 w-4" />}
             />
             <GravitreMetric
               label="In view"
-              value={filteredLogs.length}
-              hint="After filters"
+              value={isLoading ? "—" : error || !data ? "Not reported" : filteredLogs.length}
+              hint="Matches on this loaded page"
               icon={<EntityIcon className="h-4 w-4" />}
             />
             <GravitreMetric
@@ -336,17 +353,17 @@ export default function AuditPage() {
             />
           </section>
 
-          <div className="mb-0 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {filteredLogs.length} event{filteredLogs.length === 1 ? "" : "s"}
-            </span>
-          </div>
+          <p className="text-xs text-muted-foreground">Search applies to the loaded page of up to 50 events. Exports cover the selected date range.</p>
+          {summaryError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+            <p>Could not load audit summary. Event results are separate.</p>
+            <Button variant="outline" className="min-h-11" onClick={() => void refreshSummary()}>Retry summary</Button>
+          </div>}
           {isLoading ? (
-            <div className="space-y-3">
+            <div role="status" aria-label="Loading audit events" className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex animate-pulse gap-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
+                  className="flex animate-pulse gap-4 motion-reduce:animate-none rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]"
                 >
                   <div className="h-10 w-10 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)]" />
                   <div className="flex-1 space-y-2">
@@ -358,7 +375,7 @@ export default function AuditPage() {
               ))}
             </div>
           ) : filteredLogs.length === 0 ? (
-            hasActiveFilters ? (
+            !error && (hasActiveFilters ? (
               <NoResultsState
                 onClear={() => {
                   setSearchQuery("")
@@ -370,29 +387,30 @@ export default function AuditPage() {
               <GravitreEmpty
                 icon={<NucleoSearch className="h-5 w-5" />}
                 title="No audit events yet"
-                hint="Activity across your workspace will be recorded here."
+                hint="No events were reported for the selected date range."
               />
-            )
+            ))
           ) : (
-            <div className="space-y-3">
-              {filteredLogs.map((log, index) => (
-                <AuditLogCard key={log.id} log={log} index={index} />
+            <div className="overflow-hidden rounded-xl border border-divide bg-[color:var(--g-surface-1)]">
+              {filteredLogs.map((log) => (
+                <AuditLogCard key={log.id} log={log} />
               ))}
             </div>
           )}
         </div>
 
-        {filteredLogs.length > 0 && (
+        {(offset > 0 || (data && (logs.length > 0 || data.hasMore))) && (
           <div className="shrink-0 border-t border-divide px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                Showing {filteredLogs.length} logs (offset {offset}) · total {data?.total ?? 0}
+                Page {Math.floor(offset / limit) + 1} · {isLoading ? "Loading events" : error ? "Results unavailable" : `${logs.length} loaded · ${filteredLogs.length} matching search`} · total {error || !Number.isFinite(data?.total) ? "Not reported" : data?.total}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-start gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={offset === 0}
+                  className="min-h-11"
+                  disabled={offset === 0 || isLoading || isValidating}
                   onClick={() => setOffset((current) => Math.max(0, current - limit))}
                 >
                   Previous
@@ -400,7 +418,8 @@ export default function AuditPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!data?.hasMore}
+                  className="min-h-11"
+                  disabled={!data?.hasMore || isLoading || isValidating || !!error}
                   onClick={() => setOffset((current) => current + limit)}
                 >
                   Next
@@ -414,7 +433,9 @@ export default function AuditPage() {
   )
 }
 
-function AuditLogCard({ log, index }: { log: AuditLog; index: number }) {
+function AuditLogCard({ log }: { log: AuditLog }) {
+  const reduceMotion = useReducedMotion()
+  const technicalId = useId()
   const [showTechnical, setShowTechnical] = useState(false)
   const category = categorizeAuditEvent({
     action: log.action,
@@ -428,20 +449,17 @@ function AuditLogCard({ log, index }: { log: AuditLog; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.03, 0.25) }}
-      className={cn(
-        "rounded-[var(--np-radius-lg)] border border-divide border-l-4 bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]",
-        category.edge,
-      )}
+      initial={reduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: reduceMotion ? 0 : 0.18 }}
+      className="min-w-0 border-b border-divide p-4 last:border-b-0 [overflow-wrap:anywhere]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex min-w-0 items-start gap-2">
             <span
               className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-[var(--np-radius-md)]",
+                "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--np-radius-md)]",
                 category.soft,
               )}
             >
@@ -480,12 +498,12 @@ function AuditLogCard({ log, index }: { log: AuditLog; index: number }) {
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <span className="inline-flex items-center gap-1 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] px-2 py-1">
+        <span className="inline-flex items-center gap-1 rounded-[var(--np-radius-md)] max-w-full bg-[color:var(--g-surface-2)] px-2 py-1">
           <EntityIcon className="h-3 w-3 text-muted-foreground" />
           <span className="text-foreground">{entityLabel}</span>
         </span>
         {log.user_email ? (
-          <span className="inline-flex items-center gap-1 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] px-2 py-1">
+          <span className="inline-flex items-center gap-1 rounded-[var(--np-radius-md)] max-w-full bg-[color:var(--g-surface-2)] px-2 py-1">
             <User className="h-3 w-3 text-muted-foreground" />
             <span className="text-foreground">{log.user_email}</span>
           </span>
@@ -496,14 +514,16 @@ function AuditLogCard({ log, index }: { log: AuditLog; index: number }) {
         <div className="mt-3">
           <button
             type="button"
+            aria-expanded={showTechnical}
+            aria-controls={technicalId}
             onClick={() => setShowTechnical((open) => !open)}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             {showTechnical ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             {showTechnical ? "Hide technical details" : "Show technical details"}
           </button>
           {showTechnical ? (
-            <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-2 text-[11px] text-muted-foreground">
+            <pre id={technicalId} className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-2 text-[11px] text-muted-foreground">
               {JSON.stringify(log.details, null, 2)}
             </pre>
           ) : null}

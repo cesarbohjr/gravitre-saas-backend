@@ -386,3 +386,21 @@ Applicable gaps found and fixed on this follow-up (not a full-suite re-run of th
 | Workflow table wrapper used `overflow-hidden` | `overflow-x-auto` so AdaptiveDataView can scroll at tablet widths |
 
 Focused tests: 11 passed across source, connector and workflow files. Visual/owner acceptance remain NOT_RUN. IMPLEMENTATION_COMPLETE = NO. MERGE_READY = NO. CAUGHT_UP = NO. Not merged. Not production deployed.
+
+## Notification inbox and audit continuation — 2026-10-04 UTC
+
+Base: Cursor follow-up `f86ca547d33ac6f33d0f3f8ec75b3eccc78b2bb7`. Its source count/desktop inspector, compact selection, unknown-status and reduced-motion fixes remain intact. This pass does not reinterpret the synchronize event as a failed CI run.
+
+Figma Operate specimen `10:101` was read with design context and its screenshot. Notifications and Audit adapt its quiet rows, short status text and open operating header; neither has a separate inspected pixel specimen. Shared Emerald tokens and responsive handoff rules are retained. This establishes implementation direction, not a rendered pixel match.
+
+| Surface | Changes on this candidate | Remaining evidence |
+| --- | --- | --- |
+| Notifications | Separate destination links from read/delete controls. Wrap titles/body/metadata on phones, keep controls visible on touch, and use 44px targets. Explicit Read/Unread text; type selection replaces ten wrapping pills. Loading, error/retry, cached error and true empty states are distinct. Missing unread counts/time remain unreported. Inbox-wide unread count is separate from the 200 loaded results and today within those results. | Phone/tablet/desktop screenshots, owner inbox/permissions, live bell propagation |
+| Notification mutations | Serialize rapid/repeated operations. Opening an already read row does not reduce unread count. Unread filters exclude newly read rows. Archive loaded removes only successful requests, retains failed rows, reports partial failure and subtracts only removed unread items. Successful archives do not zero unread outside the loaded batch. Read-all/delete and settings/destination routes retained. | Live persistence, cross-surface cache refresh and owner recovery walk |
+| Audit | Preserve event summaries, outcomes, actor/entity context, technical JSON and real CSV/JSON exports. Flat rows with wrapped phone content and accessible technical disclosure. Loading/errors do not become empty logs or zero summary users; summary failure has its own retry. Matching totals include range/action/entity; actor summary uses range only. Search/export scope disclosed. Pagination survives zero search matches and failed subsequent pages. Freshness attaches to successful fetch, not render. Export controls have mobile accessible labels, 44px targets and in-flight protection. Reduced motion removes entry translation/stagger. Access errors do not assert that upgrading is the only remedy. | Rendered geometry, real audit filters/export/authorization, owner freshness and recovery walk |
+
+Seventeen new component behavior tests cover these states/mutations. Focused suite **17/17 PASS**. Full suite with `TZ=UTC`: **1,187 passed / 196 files**. Initial shell-default run (`TZ=Asia/Tokyo`) had **1,185 pass / 2 failures** in unchanged chat recency/history tests that compare UTC fixtures against local calendar boundaries. Those nine tests passed under UTC; no chat code or timezone configuration was modified to mask the assumption.
+
+Clean-cache production build **PASS (exit 0)**, including TypeScript and all 371 static pages; final standalone TypeScript **PASS**. Full ESLint **0 errors / 273 existing warnings**; changed files **0 errors / 0 warnings**. Chat/status/intelligence/brand guards and whitespace check **PASS**. Cognitive guard **PASS**, with Python import smoke and targeted pytest explicitly skipped. No dependency, lockfile or build configuration changes.
+
+No new browser screenshot, live tenant verification or owner acceptance. Existing local browser/network restriction remains unresolved. Candidate GitHub CI is separate from local checks and must be inspected on the published commit. IMPLEMENTATION_COMPLETE = NO; VISUAL_ACCEPTANCE = NOT_RUN; OWNER_LIVE_ACCEPTANCE = NOT_RUN; MERGE_READY = NO; CAUGHT_UP = NO. Draft PR #298 remains unmerged. No production deployment.
