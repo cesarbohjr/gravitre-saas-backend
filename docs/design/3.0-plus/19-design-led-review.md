@@ -1,0 +1,61 @@
+# Design-led implementation review — 2026-10-04
+
+Starting head: `72caac273010d564aa1e93d16dbfb458c0099ddc`, draft PR #298.
+
+The user requested design leadership across primary, secondary and tertiary surfaces, with intentional variation rather than a repeated dashboard template. This record describes source inspection and implementation. It is not a completed visual audit.
+
+## Design authority and composition
+
+Re-read the creative integration, product UI grammar, interaction system and visual system documents. Retrieved high-fidelity Figma handoff `22:2` and its screenshot from file `OsDKeRy9HwfSKR3e9YyOFM`. Page-03 token provenance remains authoritative over older palette records. Figma describes foundation properties; these are not exported variable collections.
+
+| Family | Composition to protect | Primary → secondary → tertiary review path |
+|---|---|---|
+| Discover | Outcome-led editorial hierarchy, browsing and comparison | Marketplace/Plays → package or Play detail → install, setup, permissions and confirmation |
+| Understand | Evidence, relationships and functional visualization | Intelligence/Metrics → report/model/performance detail → attributes, filters, evidence and export |
+| Manage | Identity, capability and connection context | Agents/Connectors/Sources → selected entity → configuration, authorization, schema and deletion |
+| Operate | Scannable work, execution trace and actionable exceptions | Activity/Approvals/Assignments/Schedules/Lite → selected run/task/occurrence → decision, reschedule, delivery and confirmation |
+| Create | Focused task progression with contextual configuration | Builder/Model Studio/Training/Settings → configuration step → selectors, previews, save/error and cancellation |
+
+Shared tokens bind color, type, spacing, radius, elevation, focus and motion. They do not require the same arrangement on every page. Emerald indicates meaningful action/state; Electric supports analysis; Warmth supports attention. Space Grotesk display and Inter body remain the chosen typography. Keep chart libraries, evidence graphs, model attributes, KPI metrics and real capabilities.
+
+The depth sequence remains canvas → inline/work content → selected context → floating surface → modal disclosure. Repeated decorative elevated cards should not replace operating rows or evidence structures. Desktop can retain adjacent context; tablet uses sheets; phone discloses one task with one primary action.
+
+## Scope discovery
+
+Run `python3 scripts/inventory-design-surfaces.py` to regenerate [the surface queue](18-design-surface-review-queue.md). Current discovery: 175 page routes; 108 product/legacy-product entries, 31 public/auth/support entries, 36 fixture/development entries; 361 reachable source files containing controls or disclosure JSX.
+
+This inventory follows literal local imports and re-exports, includes ancestor layouts/templates/loading/error boundaries composed by Next, and records redirect expressions. Counts are source occurrences and static reachability, not visible controls or acceptance. Conditional tabs, permissions, computed imports, shared layouts and runtime-created controls still require a manual walkthrough. Existing route groups can produce duplicate route strings; source paths retain the distinction. Public, auth and fixture entries remain listed so they cannot silently disappear from scope.
+
+## Source findings resolved in this pass
+
+| Surface | Finding | Implemented behavior |
+|---|---|---|
+| Model Studio intent | Compact inspector stacked below the queue | Selection opens a tablet/phone sheet; desktop remains adjacent. Compact confirmation is inside the sheet, with a reopen action after dismissal. Continue closes disclosure before registration. |
+| Model Studio dataset preview | Metadata and target form occupied the compact list; provider/search failures could look empty | Compact preview sheet retains parent-owned purpose/target state; loading, search/provider retry and inspect retry are explicit. Restricted datasets remain non-selectable. No new materialization API. |
+| Model Studio reported values | Missing file count/progress became zero | Missing counts/progress remain unreported; actual zeros remain zero. Failed list loads do not simultaneously claim an empty registry. |
+| Schedules detail | Unused sheet duplicated partial actions, while the live dialog omitted compact presentation | Compact sheet wraps the existing occurrence-aware content and actions. Desktop dialog remains. One-time/recurring timing, timezone, projected occurrence, reschedule, workflow editor and delete confirmation retain the same APIs. Removed the unused duplicate implementation. |
+| Shared windows | Close targets below 44px; dialogs/confirmations lacked reduced-motion handling; sheet enter transition exceeded handoff UI range | Sheet/dialog close controls are 44px; all three overlay primitives honor reduced motion; sheet entry is 200ms. Selection inspector restores initiating control focus. |
+| Lite tasks | Card stack, crowded actions, unknown status dereference, duplicate cancellation and missing progress | Compact operating rows; actions reflow below content on phone; unknown status remains unreported; cancellation shows pending and disables repeats; progress uses reported values. |
+| Lite deliverables | Download action competed with long titles; fetch error looked empty | Ruled inventory rows with wrapping content, compact stacked download action, retry, pending download and reported file size. Existing download API retained. |
+| Lite Results | Missing metrics became zero; fetch error looked like no results | Error/retry, preserved real zero, missing metrics unreported, stacked phone KPIs and ruled workflow/task evidence sections. Methodology/provenance retained. |
+
+## Next review order
+
+These are queued review targets, not accepted surfaces or presumed defects.
+
+1. Assignments/new/detail and Goals/detail: execution trace, evidence, approval/edit/push windows, deliverable selection, long content, progress provenance, motion and mobile action clearance.
+2. Agents detail/chat/capabilities/knowledge/memory, model detail/built-ins, Training/multi-agent: capability identity, relation/evidence structure, tab state, validation and responsive inspectors.
+3. Marketplace asset detail, installed/private/saved/sandbox/submit/publisher/org/platform admin: outcome hierarchy followed by machinery, installation/permission/billing depth and actual authority enforcement.
+4. Workflows detail/builder/runs/failure prediction, Connectors/Sources nested pages and Integrations create/detail: contextual inspector selection, configuration windows, error recovery and real connections.
+5. Settings nested permissions/profile/voice/billing/admin, AI composer/history/dock/fullscreen/mobile and legacy aliases: route-specific layout, navigation continuity, pending/error/permission state, focus and persistence.
+6. Cross-surface visual comparison: primary and nested/disclosed states at 1440, 834 and 390; long names, missing fields, actual zero, loading, empty, cached error, permission denied, selected, streaming and pending mutation. Compare each family to its Figma target rather than forcing one page skeleton.
+
+For every control: verify its label, action scope, disabled/pending behavior, accessible focus, target size, permission truth, success/error feedback and actual endpoint/navigation. For every window: verify entry/exit, title/description, scroll containment, focus return, back/escape/cancel, unsaved state, overlay stacking and reduced motion. For every data visualization: retain legends/tooltips and reported/unknown distinction across widths.
+
+## Visual and live evidence limitations
+
+The cloud browser returned `net::ERR_BLOCKED_BY_CLIENT` for `http://localhost:3055/e2e/shots/metrics`. The published preview fixture URL redirected to Vercel login. Neither is current product-screen evidence. No authentication credentials or access protections were changed. Source inspection and jsdom breakpoint tests establish implementation behavior; they do not establish rendered geometry or pixel parity.
+
+`VISUAL_ACCEPTANCE = NOT_RUN`; `OWNER_LIVE_ACCEPTANCE = NOT_RUN`; `IMPLEMENTATION_COMPLETE = NO`; `MERGE_READY = NO`; `CAUGHT_UP = NO`.
+
+Owner-live saves, installs, exports and delivery remain unverified. Organization logo upload, Slack/email delivery, Finance department and Compliance pack scope remain open. Billing E2E skipped remains skipped. Frontend permission controls are not proof of backend authorization. Draft PR #298 remains unmerged and is not production-deployed.

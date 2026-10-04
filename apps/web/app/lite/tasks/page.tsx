@@ -5,19 +5,19 @@ import useSWR from "swr"
 import Link from "next/link"
 import { ListTodo } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { liteApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { LitePageShell } from "@/components/gravitre/lite-page-shell"
 import { HubTabs } from "@/components/gravitre/hub-tabs"
 
 const statusConfig = {
   pending: { label: "Pending", icon: "clock", className: "" },
-  processing: { label: "Processing", icon: "spinner", className: "animate-spin" },
+  processing: { label: "Processing", icon: "spinner", className: "animate-spin motion-reduce:animate-none" },
   completed: { label: "Completed", icon: "check", className: "" },
   failed: { label: "Failed", icon: "error", className: "" },
 }
@@ -34,20 +34,25 @@ const FILTER_TABS: { id: TaskFilter; label: string }[] = [
 
 export default function LiteTasksPage() {
   const { user, loading } = useAuth()
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [filter, setFilter] = useState<TaskFilter>("all")
-  const { data, isLoading, mutate } = useSWR(
+  const { data, isLoading, error, mutate } = useSWR(
     user ? ["lite-tasks", user.id, filter] : null,
     () => liteApi.listTasks(filter === "all" ? undefined : { status: filter }),
     { revalidateOnFocus: false, refreshInterval: 10000 },
   )
 
   const handleCancel = async (id: string) => {
+    if (cancellingId) return
+    setCancellingId(id)
     try {
       await liteApi.cancelTask(id)
       toast.success("Task cancelled")
       await mutate()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to cancel task")
+    } finally {
+      setCancellingId(null)
     }
   }
 
@@ -86,13 +91,14 @@ export default function LiteTasksPage() {
         />
       }
     >
-      <div className="space-y-3">
+      {error ? <WorkSectionErrorCard title="Could not load tasks" message={error instanceof Error ? error.message : "Try again to retrieve the latest data."} onRetry={() => void mutate()} /> : null}
+      <div className="divide-y divide-divide border-y border-divide">
         {tasks.map((task) => {
-          const status = statusConfig[task.status as keyof typeof statusConfig]
+          const status = statusConfig[task.status as keyof typeof statusConfig] ?? { label: "Not reported", icon: "clock", className: "" }
 
           return (
-            <Card key={task.id} className="group border-border/50 p-4 transition-all sm:p-5">
-              <div className="flex items-start gap-4">
+            <div key={task.id} className="group py-4">
+              <div className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[44px_minmax(0,1fr)_auto]">
                 <div
                   className={cn(
                     "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
@@ -148,40 +154,41 @@ export default function LiteTasksPage() {
 
                   {(task.status === "processing" || task.status === "pending") && (
                     <div className="mt-4">
-                      <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                      {task.progress != null ? <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                         <div
-                          className="h-full rounded-full bg-primary transition-all duration-500"
-                          style={{ width: `${task.progress}%` }}
+                          className="h-full rounded-full bg-primary transition-[width] duration-200 motion-reduce:transition-none"
+                          style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
                         />
                       </div>
+                      : null}
                       <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{task.progress}% complete</span>
+                        <span>{task.progress == null ? "Progress not reported" : `${task.progress}% complete`}</span>
                         {task.completed_at ? <span>Completed</span> : null}
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="shrink-0">
+                <div className="col-start-2 sm:col-start-3">
                   {task.status === "completed" && (
-                    <Button asChild size="sm" variant="outline">
+                    <Button asChild size="sm" variant="outline" className="min-h-11">
                       <Link href="/lite/deliverables">
                         Deliverables
                       </Link>
                     </Button>
                   )}
                   {(task.status === "processing" || task.status === "pending") && (
-                    <Button size="sm" variant="outline" onClick={() => handleCancel(task.id)}>
-                      Cancel
+                    <Button size="sm" variant="outline" className="min-h-11" disabled={Boolean(cancellingId)} onClick={() => handleCancel(task.id)}>
+                      {cancellingId === task.id ? "Cancelling…" : "Cancel"}
                     </Button>
                   )}
                 </div>
               </div>
-            </Card>
+            </div>
           )
         })}
-        {!tasks.length ? (
-          <Card className="p-8 text-center text-sm text-muted-foreground">No tasks yet.</Card>
+        {!error && !tasks.length ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">No tasks yet.</div>
         ) : null}
       </div>
     </LitePageShell>

@@ -10,6 +10,8 @@ import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
+import { SelectionInspector } from "@/components/gravitre/selection-inspector"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
 import { agentsApi, mlModelsApi, playsApi, trainingApi, workflowsApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -76,10 +78,13 @@ export function ModelStudioStage({
 }) {
   const router = useRouter()
   const [segment, setSegment] = useState<StudioSegment>("create")
+  const compactInspector = useIsMobile(1024)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const [intent, setIntent] = useState<StudioIntentId | null>(null)
   const [externalQuery, setExternalQuery] = useState("")
   const [externalSearchTerm, setExternalSearchTerm] = useState("")
   const [externalProvider, setExternalProvider] = useState("")
+  const [datasetInspectorOpen, setDatasetInspectorOpen] = useState(false)
   const [selectedExternalDatasetId, setSelectedExternalDatasetId] = useState("")
   const [externalPurpose, setExternalPurpose] = useState<ExternalDatasetPurpose>("training")
   const [externalTargetType, setExternalTargetType] = useState<ExternalDatasetTargetType>("model")
@@ -131,7 +136,7 @@ export function ModelStudioStage({
     () => trainingApi.listDatasets(),
     { revalidateOnFocus: false },
   )
-  const { data: externalProvidersData } = useSWR(
+  const { data: externalProvidersData, isLoading: providersLoading, error: providersError, mutate: mutateProviders } = useSWR(
     enabled && segment === "train" ? "external-dataset-providers-studio" : null,
     () => trainingApi.listExternalDatasetProviders(),
     { revalidateOnFocus: false },
@@ -141,7 +146,7 @@ export function ModelStudioStage({
   const externalProviderLabel =
     externalProviders.find((provider) => provider.id === externalProviderId)?.label ||
     "external provider"
-  const { data: externalSearchData, isLoading: externalSearchLoading } = useSWR(
+  const { data: externalSearchData, isLoading: externalSearchLoading, error: externalSearchError, mutate: mutateExternalSearch } = useSWR(
     enabled && segment === "train" && externalProviderId && externalSearchTerm
       ? ["external-dataset-search", externalProviderId, externalSearchTerm]
       : null,
@@ -151,6 +156,8 @@ export function ModelStudioStage({
   const {
     data: externalInspectData,
     isLoading: externalInspectLoading,
+    error: externalInspectError,
+    mutate: mutateExternalInspect,
   } = useSWR(
     enabled && segment === "train" && externalProviderId && selectedExternalDatasetId
       ? ["external-dataset-inspect", externalProviderId, selectedExternalDatasetId]
@@ -247,7 +254,7 @@ export function ModelStudioStage({
         metadata: { source: "model_studio" },
       })
       await mutateExternalReferences()
-      setExternalReferenceSaved("Dataset added to this model as a reusable provider reference.")
+      setExternalReferenceSaved("Dataset added to the selected target as a reusable provider reference.")
     } catch (error) {
       setExternalReferenceError(
         error instanceof Error ? error.message : "Could not add the dataset reference.",
@@ -290,10 +297,10 @@ export function ModelStudioStage({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSegment(item.id)}
+                  onClick={() => { setSegment(item.id); setInspectorOpen(false); setDatasetInspectorOpen(false) }}
                   aria-current={active ? "step" : undefined}
                   className={cn(
-                    "flex shrink-0 items-baseline gap-2 border-b-2 px-2 py-1.5 text-left text-sm lg:border-b-0 lg:border-l-2 lg:py-2",
+                    "flex min-h-11 shrink-0 items-baseline gap-2 border-b-2 px-2 py-1.5 text-left text-sm lg:border-b-0 lg:border-l-2 lg:py-2",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     active
                       ? "border-[color:var(--g-brand)] font-medium text-[color:var(--g-text-primary)]"
@@ -322,10 +329,10 @@ export function ModelStudioStage({
                       <li key={item.id}>
                         <button
                           type="button"
-                          onClick={() => setIntent(item.id)}
+                          onClick={() => { setIntent(item.id); setInspectorOpen(true) }}
                           aria-pressed={selected}
                           className={cn(
-                            "w-full px-3 py-2.5 text-left",
+                            "min-h-11 w-full px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                             selected
                               ? "bg-[color:var(--g-surface-2)]"
                               : "hover:bg-[color:var(--g-surface-2)]/50",
@@ -339,10 +346,14 @@ export function ModelStudioStage({
                   })}
                 </ul>
                 {intent ? (
-                  <div
-                    className="flex-1 border-t border-divide p-4 lg:border-t-0 lg:border-l"
-                    data-review-surface="studio-inspect"
+                  <SelectionInspector
+                    open={inspectorOpen}
+                    onOpenChange={setInspectorOpen}
+                    title={STUDIO_INTENTS.find((item) => item.id === intent)?.label ?? "Model intent"}
+                    description="Review the model's purpose before registering it."
+                    className="flex-1 border-l border-divide p-4"
                   >
+                    <div data-review-surface="studio-inspect">
                     <p className={TYPE.eyebrow}>Intent</p>
                     <p className="mt-1 text-sm font-medium text-foreground">
                       {STUDIO_INTENTS.find((item) => item.id === intent)?.label}
@@ -350,13 +361,23 @@ export function ModelStudioStage({
                     <p className={cn(TYPE.meta, "mt-1")}>
                       {STUDIO_INTENTS.find((item) => item.id === intent)?.description}
                     </p>
-                  </div>
+                    {compactInspector ? (
+                      <Button className="mt-6 min-h-11 w-full gap-1.5" onClick={() => { setInspectorOpen(false); startCreate() }}>
+                        Continue to register <ArrowRight className="h-4 w-4" aria-hidden />
+                      </Button>
+                    ) : null}
+                    </div>
+                  </SelectionInspector>
                 ) : (
                   <p className="sr-only">Select an intent — inspector stays closed until then.</p>
                 )}
               </div>
-              <Button onClick={startCreate} disabled={!intent} className="gap-1.5">
-                Continue to register
+              <Button
+                onClick={() => compactInspector ? setInspectorOpen(true) : startCreate()}
+                disabled={!intent}
+                className="min-h-11 gap-1.5"
+              >
+                {compactInspector ? "Review selected intent" : "Continue to register"}
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Button>
             </div>
@@ -375,7 +396,7 @@ export function ModelStudioStage({
                     </p>
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    {externalProviders.length > 0 ? externalProviders.map((p) => p.label).join(" · ") : "Loading providers…"}
+                    {externalProviders.length > 0 ? externalProviders.map((p) => p.label).join(" · ") : providersLoading ? "Loading providers…" : "No providers available"}
                   </span>
                 </div>
                 <form
@@ -392,11 +413,12 @@ export function ModelStudioStage({
                         setExternalProvider(event.target.value)
                         setExternalSearchTerm("")
                         setSelectedExternalDatasetId("")
+                        setDatasetInspectorOpen(false)
                         setExternalReferenceError(null)
                         setExternalReferenceSaved(null)
                       }}
                       aria-label="Dataset provider"
-                      className="border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                      className="min-h-11 border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                     >
                       {externalProviders.map((provider) => (
                         <option key={provider.id} value={provider.id}>
@@ -410,7 +432,7 @@ export function ModelStudioStage({
                     onChange={(event) => setExternalQuery(event.target.value)}
                     placeholder={`Search ${externalProviderLabel} datasets`}
                     aria-label="Search datasets"
-                    className="min-w-0 border border-divide bg-transparent px-3 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                    className="min-h-11 min-w-0 border border-divide bg-transparent px-3 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                   />
                   <Button
                     type="submit"
@@ -420,7 +442,13 @@ export function ModelStudioStage({
                     Search
                   </Button>
                 </form>
-                {externalSearchLoading ? (
+                {providersError || externalSearchError ? (
+                  <WorkSectionErrorCard
+                    title={providersError ? "Could not load dataset providers" : "Could not search datasets"}
+                    message="Try again to browse provider metadata."
+                    onRetry={() => { void mutateProviders(); void mutateExternalSearch() }}
+                  />
+                ) : externalSearchLoading ? (
                   <p className="px-3 pb-3 text-sm text-muted-foreground">Searching provider metadata…</p>
                 ) : externalSearchTerm && externalDatasets.length === 0 ? (
                   <p className="px-3 pb-3 text-sm text-muted-foreground">No matching datasets.</p>
@@ -437,6 +465,7 @@ export function ModelStudioStage({
                             aria-pressed={selected}
                             onClick={() => {
                               setSelectedExternalDatasetId(dataset.dataset_id)
+                              setDatasetInspectorOpen(true)
                               setExternalReferenceError(null)
                               setExternalReferenceSaved(null)
                             }}
@@ -468,8 +497,17 @@ export function ModelStudioStage({
                 ) : null}
 
                 {selectedExternalDatasetId ? (
-                  <div className="border-t border-divide px-3 py-3" data-review-surface="external-dataset-inspect">
-                    {externalInspectLoading ? (
+                  <SelectionInspector
+                    open={datasetInspectorOpen}
+                    onOpenChange={setDatasetInspectorOpen}
+                    title={selectedExternalDatasetId}
+                    description="Review provider metadata and choose where to use this dataset."
+                    className="border-t border-divide px-3 py-3"
+                  >
+                  <div data-review-surface="external-dataset-inspect">
+                    {externalInspectError ? (
+                      <WorkSectionErrorCard title="Could not load dataset preview" message="Retry before using this dataset." onRetry={() => void mutateExternalInspect()} />
+                    ) : externalInspectLoading ? (
                       <p className="text-sm text-muted-foreground">Loading dataset preview…</p>
                     ) : selectedExternalDataset ? (
                       <div className="space-y-3">
@@ -480,19 +518,19 @@ export function ModelStudioStage({
                               {selectedExternalDataset.description || "Dataset preview"}
                             </p>
                             <p className={cn(TYPE.meta, "mt-1")}>
-                              {selectedExternalDataset.fileCount ?? 0} files · provider: {externalProviderLabel}
+                              {selectedExternalDataset.fileCount == null ? "File count not reported" : `${selectedExternalDataset.fileCount} files`} · provider: {externalProviderLabel}
                             </p>
                           </div>
                           <span className="font-mono text-[10px] text-muted-foreground">PREVIEW</span>
                         </div>
 
-                        <div className="grid gap-2 md:grid-cols-3">
+                        <div className="grid gap-2 xl:grid-cols-3">
                           <label className="space-y-1">
                             <span className={TYPE.meta}>Purpose</span>
                             <select
                               value={externalPurpose}
                               onChange={(event) => setExternalPurpose(event.target.value as ExternalDatasetPurpose)}
-                              className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                              className="min-h-11 w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                             >
                               {EXTERNAL_DATASET_PURPOSES.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -509,7 +547,7 @@ export function ModelStudioStage({
                                 setExternalReferenceError(null)
                                 setExternalReferenceSaved(null)
                               }}
-                              className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                              className="min-h-11 w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                             >
                               {EXTERNAL_DATASET_TARGETS.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -525,14 +563,14 @@ export function ModelStudioStage({
                                 value={externalTargetId}
                                 onChange={(event) => setExternalTargetId(event.target.value)}
                                 placeholder="Existing evaluation ID"
-                                className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                                className="min-h-11 w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                               />
                             ) : (
                               <select
                                 value={externalTargetId}
                                 onChange={(event) => setExternalTargetId(event.target.value)}
                                 aria-label="Canonical dataset target"
-                                className="w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
+                                className="min-h-11 w-full border border-divide bg-transparent px-2 py-2 text-sm outline-none focus:border-[color:var(--g-brand)]"
                               >
                                 <option value="">Select an existing target</option>
                                 {externalTargetOptions.map((option) => (
@@ -547,6 +585,7 @@ export function ModelStudioStage({
                           <Button
                             type="button"
                             variant="outline"
+                            className="min-h-11"
                             disabled={!externalTargetId.trim() || externalReferenceSaving}
                             onClick={() => void saveExternalDatasetReference()}
                           >
@@ -567,6 +606,7 @@ export function ModelStudioStage({
                       <p className="text-sm text-muted-foreground">Dataset preview is unavailable.</p>
                     )}
                   </div>
+                  </SelectionInspector>
                 ) : null}
 
                 {externalReferences.length > 0 ? (
@@ -577,7 +617,7 @@ export function ModelStudioStage({
                   </div>
                 ) : null}
               </section>
-              {datasetsLoading ? (
+              {datasetsError && datasets.length === 0 ? null : datasetsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading datasets…</p>
               ) : datasets.length === 0 ? (
                 <EmptyState
@@ -611,7 +651,7 @@ export function ModelStudioStage({
 
           {segment === "evaluate" ? (
             <div className="space-y-3">
-              {modelsLoading ? (
+              {modelsError && models.length === 0 ? null : modelsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading models…</p>
               ) : evaluateModels.length === 0 ? (
                 <EmptyState
@@ -635,7 +675,7 @@ export function ModelStudioStage({
 
           {segment === "deploy" ? (
             <div className="space-y-3">
-              {modelsLoading ? (
+              {modelsError && models.length === 0 ? null : modelsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading models…</p>
               ) : deployModels.length === 0 ? (
                 <EmptyState
@@ -661,7 +701,7 @@ export function ModelStudioStage({
 
           {segment === "runs" ? (
             <div className="space-y-3">
-              {jobsLoading ? (
+              {jobsError && jobs.length === 0 ? null : jobsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading runs…</p>
               ) : jobs.length === 0 ? (
                 <EmptyState
@@ -675,7 +715,7 @@ export function ModelStudioStage({
                     <div key={job.id} className="border-b border-divide px-3 py-2 last:border-b-0">
                       <p className="text-sm font-medium">{job.dataset_name || job.model_base}</p>
                       <p className={TYPE.meta}>
-                        {status.phrase} · {Math.round(job.progress ?? 0)}%
+                        {status.phrase} · {job.progress == null ? "Progress not reported" : `${Math.round(job.progress)}%`}
                       </p>
                     </div>
                   )

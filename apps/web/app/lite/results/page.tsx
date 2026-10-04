@@ -3,7 +3,6 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { TrendingUp } from "lucide-react"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { liteApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -13,6 +12,7 @@ import {
   OPERATIONAL_SUCCESS_RATE_LABEL,
   OPERATIONAL_TASKS_COMPLETED_LABEL,
 } from "@/lib/outcome-labels"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { LitePageShell } from "@/components/gravitre/lite-page-shell"
 import { HubTabs } from "@/components/gravitre/hub-tabs"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
@@ -28,7 +28,7 @@ const RANGE_TABS: { id: RangeId; label: string }[] = [
 export default function LiteResultsPage() {
   const { user, loading } = useAuth()
   const [range, setRange] = useState<RangeId>("30d")
-  const { data, isLoading } = useSWR(
+  const { data, isLoading, error, mutate } = useSWR(
     user ? ["lite-results", user.id, range] : null,
     () => liteApi.getResults(range),
     { revalidateOnFocus: false, refreshInterval: 20000 },
@@ -61,24 +61,25 @@ export default function LiteResultsPage() {
         />
       }
     >
+      {error ? <WorkSectionErrorCard title="Could not load results" message={error instanceof Error ? error.message : "Try again to retrieve the latest data."} onRetry={() => void mutate()} /> : null}
       <OutcomeMethodologyCallout variant="operational" />
 
-      <section className="mb-4 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+      <section className="mb-4 grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
         <GravitreMetric
           label={OPERATIONAL_TASKS_COMPLETED_LABEL}
-          value={summary?.tasks_completed ?? 0}
+          value={summary?.tasks_completed ?? "Not reported"}
         />
         <GravitreMetric
           label={OPERATIONAL_SUCCESS_RATE_LABEL}
-          value={`${summary?.success_rate ?? 0}%`}
+          value={summary?.success_rate == null ? "Not reported" : `${summary.success_rate}%`}
         />
         <GravitreMetric
           label="Avg completion (hrs)"
-          value={summary?.avg_completion_time_hours ?? 0}
+          value={summary?.avg_completion_time_hours ?? "Not reported"}
         />
         <GravitreMetric
           label="Workflows used"
-          value={summary?.by_workflow.length ?? 0}
+          value={summary?.by_workflow?.length ?? "Not reported"}
         />
       </section>
 
@@ -88,19 +89,19 @@ export default function LiteResultsPage() {
         </h2>
         <MetricProvenanceBadge kind="operational" />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="mb-6 divide-y divide-divide border-y border-divide">
         {(summary?.by_workflow ?? []).map((item) => (
-          <Card key={item.workflow_name} className="border-border/50 p-4">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{item.workflow_name}</p>
+          <div key={item.workflow_name} className="py-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <p className="min-w-0 break-words font-medium">{item.workflow_name}</p>
               <Badge variant="outline">{item.count}</Badge>
             </div>
-          </Card>
+          </div>
         ))}
-        {!summary?.by_workflow?.length ? (
-          <Card className="p-6 text-sm text-muted-foreground md:col-span-2">
-            No workflow results in this range.
-          </Card>
+        {!error && !summary?.by_workflow?.length ? (
+          <div className="p-6 text-sm text-muted-foreground md:col-span-2">
+            {summary?.by_workflow == null ? "Workflow results not reported." : "No workflow results in this range."}
+          </div>
         ) : null}
       </div>
 
@@ -108,17 +109,17 @@ export default function LiteResultsPage() {
         <h2 className="mb-4 text-sm font-semibold text-muted-foreground">
           Recent tasks
         </h2>
-        <div className="space-y-2">
+        <div className="divide-y divide-divide border-y border-divide">
           {(data?.recent ?? []).map((task) => (
-            <Card key={task.id} className="border-border/50 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">{task.workflow_name}</p>
+            <div key={task.id} className="py-3">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <p className="min-w-0 break-words text-sm font-medium">{task.workflow_name}</p>
                 <Badge variant="outline">{task.status}</Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {task.input_summary || "No summary"}
               </p>
-            </Card>
+            </div>
           ))}
         </div>
       </div>

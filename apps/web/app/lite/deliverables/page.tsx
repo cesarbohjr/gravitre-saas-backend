@@ -4,18 +4,18 @@ import { useState } from "react"
 import useSWR from "swr"
 import { FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Icon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { liteApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { LitePageShell } from "@/components/gravitre/lite-page-shell"
 
 export default function LiteDeliverablesPage() {
   const { user, loading } = useAuth()
-  const { data, isLoading } = useSWR(
+  const { data, isLoading, error, mutate } = useSWR(
     user ? ["lite-deliverables", user.id] : null,
     () => liteApi.listDeliverables(),
     { revalidateOnFocus: false, refreshInterval: 15000 },
@@ -64,41 +64,42 @@ export default function LiteDeliverablesPage() {
       loading={loading || isLoading}
       loadingLabel="Loading deliverables"
     >
-      <div className="space-y-3">
+      {error ? <WorkSectionErrorCard title="Could not load deliverables" message={error instanceof Error ? error.message : "Try again to retrieve the latest data."} onRetry={() => void mutate()} /> : null}
+      <div className="divide-y divide-divide border-y border-divide">
         {deliverables.map((item) => (
-          <Card key={item.id} className="border-border/50 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-xs text-muted-foreground">{item.task_name || item.task_id}</p>
+          <div key={item.id} className="py-4">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="break-words font-medium">{item.name}</p>
+                <p className="break-words text-xs text-muted-foreground">{item.task_name || item.task_id}</p>
                 <div className="mt-1 flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
                     {item.type}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {Math.round(item.size_bytes / 1024)} KB
+                    {item.size_bytes == null ? "Size not reported" : `${Math.round(item.size_bytes / 1024)} KB`}
                   </span>
                 </div>
               </div>
               <Button
-                className="gap-2"
+                className="min-h-11 shrink-0 gap-2"
                 onClick={() => handleDownload(item.id, item.name)}
-                disabled={downloadingId === item.id}
+                disabled={Boolean(downloadingId)}
               >
                 <Icon
                   name="download"
                   size="sm"
-                  className={cn(downloadingId === item.id && "animate-pulse")}
+                  className={cn(downloadingId === item.id && "animate-pulse motion-reduce:animate-none")}
                 />
                 {downloadingId === item.id ? "Downloading..." : "Download"}
               </Button>
             </div>
-          </Card>
+          </div>
         ))}
-        {!deliverables.length ? (
-          <Card className="p-8 text-center text-sm text-muted-foreground">
+        {!error && !deliverables.length ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
             No deliverables yet.
-          </Card>
+          </div>
         ) : null}
       </div>
     </LitePageShell>
