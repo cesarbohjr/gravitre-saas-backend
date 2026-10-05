@@ -192,6 +192,14 @@ def build_pipecat_voice_task(
     # feature.
     context = LLMContext()
     speculative_coordinator = SpeculativeGenerationCoordinator() if use_flux else None
+    llm = GravitreCognitiveLLMService(
+        app_settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        agent=agent,
+        conversation_id=conversation_id,
+        speculative_coordinator=speculative_coordinator,
+    )
     speculative = SpeculativePrefetchProcessor(
         app_settings=settings,
         org_id=org_id,
@@ -200,14 +208,7 @@ def build_pipecat_voice_task(
         conversation_id=conversation_id,
         llm_context=context,
         speculative_coordinator=speculative_coordinator,
-    )
-    llm = GravitreCognitiveLLMService(
-        app_settings=settings,
-        org_id=org_id,
-        user_id=user_id,
-        agent=agent,
-        conversation_id=conversation_id,
-        speculative_coordinator=speculative_coordinator,
+        durable_context_provider=llm.speculative_durable_context,
     )
     tts = ElevenLabsTTSService(
         api_key=el_key,
