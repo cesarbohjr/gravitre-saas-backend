@@ -6,6 +6,11 @@ import AssignmentsPage from "@/app/assignments/page"
 import ConnectorsPage from "@/app/connectors/page"
 import HomePage from "@/app/home/page"
 import IntelligencePage from "@/app/intelligence/page"
+import IntelligencePerformancePage from "@/app/intelligence/performance/page"
+import IntelligencePredictivePage from "@/app/intelligence/predictive/page"
+import IntelligenceReportsPage from "@/app/intelligence/reports/page"
+import IntelligenceLearningPage from "@/app/intelligence/learning/page"
+import IntelligenceMemoryPage from "@/app/intelligence/memory/page"
 import MarketplaceAssetsPage from "@/app/marketplace/assets/page"
 import MarketplaceInstalledPage from "@/app/marketplace/installed/page"
 import SourcesPage from "@/app/sources/page"
@@ -35,6 +40,11 @@ export const SHOT_SURFACES = {
   connectors: ConnectorsPage,
   home: HomePage,
   "intelligence-field": IntelligencePage,
+  "intelligence-performance": IntelligencePerformancePage,
+  "intelligence-predictive": IntelligencePredictivePage,
+  "intelligence-reports": IntelligenceReportsPage,
+  "intelligence-learning": IntelligenceLearningPage,
+  "intelligence-memory": IntelligenceMemoryPage,
   marketplace: MarketplaceAssetsPage,
   "marketplace-installed": MarketplaceInstalledPage,
   workflows: WorkflowsPage,
