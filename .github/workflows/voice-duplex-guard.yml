@@ -1,12 +1,31 @@
 name: Voice duplex browser guard
 
-# Standing regression guard for live STT capture on chat surfaces.
-# Mutation-proven: removing the AudioContext resume in use-voice-duplex-session
-# fails this suite on data-capture-ctx-state.
+# Standing regression guard for live voice on chat surfaces, on both transports:
+# - HTTP duplex (legacy), with the Deepgram socket and /api/voice fetches mocked.
+# - Pipecat (production), where the browser talks to a local server running the
+#   production pipeline builder with scripted STT/TTS/LLM and an in-memory
+#   Supabase (backend/tests/e2e/pipecat_voice_harness_server.py). Auth, the
+#   production router and the real vendors are not exercised.
+# Mutation-proven: removing every AudioContext resume in the hook and
+# voice-playback-unlock fails both tests (no PCM reaches the socket).
 #
-# Schedule + dispatch only, matching the other standing checks in this program:
-# a main-push check that fails still blocks Railway "Wait for CI" and pins the tip.
+# Run on voice-affecting pull requests as well as the standing daily schedule.
+# A voice regression must be visible before merge, not discovered by tomorrow's cron.
 on:
+  pull_request:
+    paths:
+      - "apps/web/hooks/use-voice-duplex-session.ts"
+      - "apps/web/lib/voice-*.ts"
+      - "apps/web/lib/pipecat-voice-client.ts"
+      - "apps/web/app/e2e/voice-duplex/**"
+      - "apps/web/app/api/voice/**"
+      - "apps/web/lib/auth-context.tsx"
+      - "backend/app/services/pipecat_voice/**"
+      - "backend/tests/e2e/pipecat_voice_harness_server.py"
+      - "backend/tests/support/fake_supabase.py"
+      - "e2e/voice-duplex-browser.spec.ts"
+      - "playwright.voice.config.ts"
+      - ".github/workflows/voice-duplex-guard.yml"
   schedule:
     - cron: "0 7 * * *" # Daily 07:00 UTC
   workflow_dispatch:
@@ -31,6 +50,18 @@ jobs:
         with:
           node-version: 22
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies (Pipecat harness server)
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Install root + web dependencies
         run: |
           npm install
@@ -46,6 +77,8 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3021
           NEXT_PUBLIC_PLAYWRIGHT_E2E: "1"
           PLAYWRIGHT_E2E: "1"
+          PIPECAT_HARNESS_URL: http://127.0.0.1:8799
+          PIPECAT_HARNESS_PYTHON: python
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

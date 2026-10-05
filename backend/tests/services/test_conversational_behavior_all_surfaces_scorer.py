@@ -72,16 +72,14 @@ def test_reference_prior_still_scored_when_t1_was_not_clarify():
     assert score["reference_prior_timing"] == "scored_on_t2"
 
 
-def test_clarify_few_shots_cover_hiring_and_weekly_priorities():
-    text = build_module_d_unified_system_prompt(agent=None)
-    assert "help me improve our hiring process" in text.lower()
-    assert "help me plan next week's priorities" in text.lower()
-    assert "time-to-hire" in text.lower() or "candidate quality" in text.lower()
-    section = conversational_behavior_section()
-    assert "hiring process" in section.lower()
-    assert "next week's priorities" in section.lower() or "next week" in section.lower()
-    hr = expert_dialogue_prompt_section({"name": "HR Agent", "department": "hr"})
-    assert "hiring process" in hr.lower()
+def test_eval_prompts_are_not_embedded_as_live_few_shot_answers():
+    text = build_module_d_unified_system_prompt(agent=None).lower()
+    hr = expert_dialogue_prompt_section({"name": "HR Agent", "department": "hr"}).lower()
+    assert "help me improve our hiring process" not in text
+    assert "help me plan next week's priorities" not in text
+    assert "help me improve our hiring process" not in hr
+    # General conversational behavior guidance remains available without answer-key prompts.
+    assert conversational_behavior_section().strip()
 
 
 def test_hold_position_accepts_standing_default_wrong_move_transcript():

@@ -72,7 +72,7 @@ def test_multi_param_write_reaches_reasoning_typed_and_spoken() -> None:
 
 def test_seo_prefix_plus_google_ads_is_not_canned_clarify() -> None:
     """Mutation of the FAQ-class bug: prefix keyword + real job must fall through."""
-    assert ambiguous_open_clarify_reply(AMBIGUOUS_CLARIFY) is not None
+    assert ambiguous_open_clarify_reply(AMBIGUOUS_CLARIFY) is None
     assert ambiguous_open_clarify_reply(SEO_PLUS_GOOGLE_ADS) is None
     _assert_reaches_reasoning(SEO_PLUS_GOOGLE_ADS)
 
@@ -85,10 +85,8 @@ def test_venting_plus_google_ads_is_not_human_moment_canned() -> None:
     _assert_reaches_reasoning(VENTING_PLUS_GOOGLE_ADS)
 
 
-def test_narrow_ambiguous_open_still_clarifies() -> None:
-    reply = ambiguous_open_clarify_reply(AMBIGUOUS_CLARIFY)
-    assert reply is not None
-    assert "?" in reply
+def test_narrow_ambiguous_open_uses_reasoning_path() -> None:
+    assert ambiguous_open_clarify_reply(AMBIGUOUS_CLARIFY) is None
 
 
 def test_operator_task_forces_classical_defer_on_conversational_live_reply() -> None:

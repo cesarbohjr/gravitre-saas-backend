@@ -508,14 +508,15 @@ def _resolve_model(
 ) -> str:
     from app.config import MODEL_TIERS
 
-    # Spoken/simple conversational depth must not pay the task-tier model
-    # (gpt-5.4-mini) when ambiguous heuristics flip use_embed=True — that was
-    # the live simple-turn floor (~700ms–1.5s model TTFT) while depth already said
-    # conversational. Default pin: gpt-5.4-nano (VOICE_CONVERSATIONAL_MODEL).
-    # Write/full depth keeps UNIFIED_TURN_TASK_MODEL_TIER.
+    # Conversational depth may use a latency-optimized model only when explicitly
+    # configured. Do not silently pin production conversation quality to a nano
+    # model: absent an override, use the same standard model family as text.
     if str(reasoning_depth or "").strip().lower() == "conversational":
         pinned = str(getattr(settings, "voice_conversational_model", "") or "").strip()
-        return pinned or "gpt-5.4-nano"
+        if pinned:
+            return pinned
+        tier = MODEL_TIERS.get("medium") or MODEL_TIERS.get("high") or {}
+        return str(tier.get("openai") or "gpt-5.5")
 
     if task_shaped:
         tier_name = str(getattr(settings, "unified_turn_task_model_tier", "") or "").strip().lower()
@@ -524,9 +525,10 @@ def _resolve_model(
             model = str(tier.get("openai") or "").strip()
             if model:
                 return model
-    # Historical default for unified turn (social + unset task tier).
-    tier = MODEL_TIERS.get("standard") or MODEL_TIERS.get("fast") or {}
-    return str(tier.get("openai") or "gpt-4o-mini")
+    # Unified conversational/task reasoning must never fall through to a legacy
+    # mini model merely because a non-existent tier key was requested.
+    tier = MODEL_TIERS.get("medium") or MODEL_TIERS.get("high") or MODEL_TIERS.get("low") or {}
+    return str(tier.get("openai") or "gpt-5.5")
 
 
 def _resolve_unified_turn_model(

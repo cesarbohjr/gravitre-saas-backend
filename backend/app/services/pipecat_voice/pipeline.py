@@ -123,14 +123,22 @@ def build_pipecat_voice_task(
     stt_fallback_reason: str | None = None,
     keyterms: list[str] | None = None,
     keyterm_meta: dict[str, Any] | None = None,
+    stt_service: Any | None = None,
+    stt_service_info: dict[str, Any] | None = None,
+    tts_service: Any | None = None,
 ) -> tuple[PipelineTask, dict[str, Any]]:
     """Construct a PipelineTask for one authenticated browser WebSocket session.
 
     Returns (task, session_meta) so the router can advertise STT/TTS honesty on ready.
+
+    ``stt_service``/``stt_service_info`` and ``tts_service`` replace the
+    Deepgram and ElevenLabs providers. The production router never passes
+    them; the browser voice guard does, so it runs this exact pipeline without
+    vendor keys.
     """
     dg_key = (settings.deepgram_api_key or "").strip()
     el_key = (settings.elevenlabs_api_key or "").strip()
-    if not el_key:
+    if not el_key and tts_service is None:
         raise RuntimeError("ELEVENLABS_API_KEY required for Pipecat voice")
 
     voice_id, model = resolve_voice_and_tts_model(settings, agent=agent, voice_key=voice_key)
@@ -172,15 +180,18 @@ def build_pipecat_voice_task(
         ),
     )
 
-    stt, stt_info = build_pipecat_stt(
-        settings,
-        provider=stt_provider,
-        fallback_from=stt_fallback_from,
-        fallback_reason=stt_fallback_reason,
-        keyterms=keyterms,
-    )
-    if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
-        raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")
+    if stt_service is not None:
+        stt, stt_info = stt_service, dict(stt_service_info or {})
+    else:
+        stt, stt_info = build_pipecat_stt(
+            settings,
+            provider=stt_provider,
+            fallback_from=stt_fallback_from,
+            fallback_reason=stt_fallback_reason,
+            keyterms=keyterms,
+        )
+        if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
+            raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")
     use_flux = stt_info.get("stt_provider_key") == STT_FLUX
 
     # Voice-SLO follow-up (2026-09-05): shared LLMContext (so the speculative
@@ -192,15 +203,6 @@ def build_pipecat_voice_task(
     # feature.
     context = LLMContext()
     speculative_coordinator = SpeculativeGenerationCoordinator() if use_flux else None
-    speculative = SpeculativePrefetchProcessor(
-        app_settings=settings,
-        org_id=org_id,
-        user_id=user_id,
-        agent=agent if isinstance(agent, dict) else None,
-        conversation_id=conversation_id,
-        llm_context=context,
-        speculative_coordinator=speculative_coordinator,
-    )
     llm = GravitreCognitiveLLMService(
         app_settings=settings,
         org_id=org_id,
@@ -209,7 +211,17 @@ def build_pipecat_voice_task(
         conversation_id=conversation_id,
         speculative_coordinator=speculative_coordinator,
     )
-    tts = ElevenLabsTTSService(
+    speculative = SpeculativePrefetchProcessor(
+        app_settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        agent=agent if isinstance(agent, dict) else None,
+        conversation_id=conversation_id,
+        llm_context=context,
+        speculative_coordinator=speculative_coordinator,
+        durable_context_provider=llm.speculative_durable_context,
+    )
+    tts = tts_service if tts_service is not None else ElevenLabsTTSService(
         api_key=el_key,
         voice_id=voice_id,
         model=str(model),
@@ -240,6 +252,10 @@ def build_pipecat_voice_task(
         speculative_coordinator=speculative_coordinator,
         voice_session=voice_session,
     )
+
+    # Share active durable turn identity so mid-generation interruption can
+    # persist/update the exact current turn rather than targeting a prior row.
+    llm._interrupt_reporter = interrupt_reporter
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
     vad = None if use_flux else _optional_silero_vad()

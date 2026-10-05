@@ -5,14 +5,20 @@ import { mergeE2eProcessEnv } from "./e2e/load-env"
  * Standing guard for the voice duplex capture regression (suspended AudioContext
  * starved the ScriptProcessor, so "listening" sent zero PCM).
  *
- * Deliberately separate from playwright.config.ts: the harness mocks the
- * Deepgram socket and every /api/voice fetch, so booting the FastAPI backend
- * would add a failure mode the guard is not meant to police.
+ * Deliberately separate from playwright.config.ts. Two transports:
+ * - HTTP duplex: the harness mocks the Deepgram socket and every /api/voice fetch.
+ * - Pipecat (production): the browser talks to a local server that runs the
+ *   production Pipecat pipeline builder with scripted STT/TTS/LLM and an
+ *   in-memory Supabase (backend/tests/e2e/pipecat_voice_harness_server.py).
+ *   The full FastAPI app is not booted.
  */
 
 const e2eEnv = mergeE2eProcessEnv()
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3021"
 const webPort = new URL(baseURL).port || "3021"
+const pipecatHarnessURL = process.env.PIPECAT_HARNESS_URL ?? "http://127.0.0.1:8799"
+const pipecatHarnessPort = new URL(pipecatHarnessURL).port || "8799"
+const pipecatHarnessPython = process.env.PIPECAT_HARNESS_PYTHON ?? "python"
 
 export default defineConfig({
   testDir: "./e2e",
@@ -55,6 +61,13 @@ export default defineConfig({
               NEXT_PUBLIC_PLAYWRIGHT_E2E: "1",
               PLAYWRIGHT_E2E: "1",
             },
+          },
+          {
+            command: `${pipecatHarnessPython} -m tests.e2e.pipecat_voice_harness_server --port ${pipecatHarnessPort}`,
+            cwd: "backend",
+            url: `${pipecatHarnessURL}/health`,
+            timeout: 120_000,
+            env: { PYTHONPATH: "." },
           },
         ],
 })

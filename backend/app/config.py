@@ -785,11 +785,12 @@ class Settings(BaseSettings):
             "voice_context_overlap_v1",
         ),
     )
-    # Conversational spoken / reasoning_depth=conversational unified-turn model.
-    # Default gpt-5.4-nano (OpenAI latency/cost nano). Override via env; write/full
-    # depth still uses UNIFIED_TURN_TASK_MODEL_TIER / agent pin.
+    # Optional latency-optimized spoken conversational model. Empty by default:
+    # voice then inherits the standard conversational reasoning tier so text and
+    # voice do not diverge in quality accidentally. Set explicitly only after a
+    # measured quality/latency bake-off.
     voice_conversational_model: str = Field(
-        default="gpt-5.4-nano",
+        default="",
         validation_alias=AliasChoices(
             "VOICE_CONVERSATIONAL_MODEL",
             "voice_conversational_model",

@@ -184,6 +184,15 @@ export function useVoiceDuplexSession(options: Options) {
   const [micLevels, setMicLevels] = useState<MicLevelSnapshot | null>(null)
   const [micEffective, setMicEffective] = useState<MicEffectiveSettings | null>(null)
   const [micProfile, setMicProfile] = useState<string | null>(null)
+  // Read by emitMicDiagnostics through refs so its identity never changes. If it
+  // depended on this state, every level update would re-create teardownMic and
+  // re-run the unmount cleanup below, tearing down a live session.
+  const micLevelsRef = useRef<MicLevelSnapshot | null>(null)
+  const micEffectiveRef = useRef<MicEffectiveSettings | null>(null)
+  const micProfileRef = useRef<string | null>(null)
+  micLevelsRef.current = micLevels
+  micEffectiveRef.current = micEffective
+  micProfileRef.current = micProfile
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null)
 
   const optsRef = useRef(options)
@@ -407,7 +416,9 @@ export function useVoiceDuplexSession(options: Options) {
       const flags = phase1FlagsRef.current
       if (!flags.micTelemetry && event !== "echo_test") return
       if (event === "echo_test" && !phase2FlagsRef.current.echoTestMode) return
-      const levels = micProcessorRef.current?.getLastLevels() || micLevels
+      const levels = micProcessorRef.current?.getLastLevels() || micLevelsRef.current
+      const micEffective = micEffectiveRef.current
+      const micProfile = micProfileRef.current
       if (!levels && event === "periodic") return
       const echoLeak =
         event === "echo_test" ? echoLeakRef.current.reset() : undefined
@@ -424,7 +435,7 @@ export function useVoiceDuplexSession(options: Options) {
         event: event === "echo_test" ? "echo_test" : event,
       })
     },
-    [micEffective, micLevels, micProfile],
+    [],
   )
 
   const enqueuePcm = useCallback(
@@ -1333,12 +1344,20 @@ export function useVoiceDuplexSession(options: Options) {
           const fallbackText = String(msg.text || "").trim()
           const assistantText = assistantTextRef.current.trim() || fallbackText
           const turnId = String(msg.turn_id || "").trim() || null
+          const completedConversationId =
+            typeof msg.conversation_id === "string" && msg.conversation_id.trim()
+              ? msg.conversation_id.trim()
+              : optsRef.current.conversationId || null
+          if (completedConversationId && completedConversationId !== optsRef.current.conversationId) {
+            optsRef.current.conversationId = completedConversationId
+            optsRef.current.onConversationId?.(completedConversationId)
+          }
           turnIdRef.current = turnId
           pipecatTurnCompletionDispatchedRef.current = true
           optsRef.current.onTurnComplete?.({
             userText: lastUserFinalRef.current,
             assistantText,
-            conversationId: optsRef.current.conversationId || null,
+            conversationId: completedConversationId,
             turnId,
             cancelled: false,
             events: [],
@@ -1441,8 +1460,11 @@ export function useVoiceDuplexSession(options: Options) {
             echoLeakRef.current.observe(snapshot.rms)
           }
         },
+        // Pipecat owns acoustic interruption classification server-side.
+        // Do not let raw browser energy stop playback before Flux +
+        // BackchannelAwareUserTurnStartStrategy can distinguish "mm-hm" from
+        // a genuine interruption. Manual UI bargeIn() remains available.
         agentSpeaking: () => agentSpeakingRef.current,
-        onBargeIn: () => void bargeIn(),
       })
       processorRef.current = micProcessorRef.current.processor
     } catch (err) {
@@ -1631,16 +1653,22 @@ export function useVoiceDuplexSession(options: Options) {
     else void start()
   }, [start, stop])
 
+  const stopPlaybackRef = useRef(stopPlayback)
+  stopPlaybackRef.current = stopPlayback
+
+  // Unmount only. Through refs, with no deps: if this cleanup were keyed on the
+  // callbacks, any change in their identity would run it mid-session and kill
+  // the live mic and socket.
   useEffect(() => {
     return () => {
       // Unmount is deliberate: no retry, no toast on the way out.
       sessionWantedRef.current = false
       activeRef.current = false
       abortRef.current?.abort()
-      stopPlayback()
-      teardownMic()
+      stopPlaybackRef.current()
+      teardownMicRef.current?.()
     }
-  }, [stopPlayback, teardownMic])
+  }, [])
 
   return {
     presence,

@@ -6,6 +6,7 @@ Knowledge Fabric depth tiering, Module C honesty, and spoken register stay intac
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -71,6 +72,36 @@ class GravitreCognitiveLLMService(LLMService):
         # via pipeline.py so a speculative run started on probable-EOT can be
         # adopted here at confirmed end-of-turn instead of re-running the call.
         self._speculative_coordinator = speculative_coordinator
+        # P0 conversation parity: hydrate durable history once per voice socket.
+        # Pipecat still owns the live in-socket context; this seed bridges prior
+        # text/voice turns and reconnects without duplicating turns completed
+        # during the current socket.
+        self._durable_history_loaded = False
+        self._durable_history: list[dict[str, Any]] = []
+        self._durable_summary: str | None = None
+        self._durable_load_lock = asyncio.Lock()
+        self._interrupt_reporter: Any | None = None
+
+    async def _ensure_durable_context(self) -> None:
+        """Load the durable seed once per socket, off the event loop.
+
+        Both the speculative run and the confirmed turn can ask first; the lock
+        makes the second caller wait for the first load instead of repeating it.
+        """
+        if self._durable_history_loaded:
+            return
+        async with self._durable_load_lock:
+            if self._durable_history_loaded:
+                return
+            self._durable_history, self._durable_summary = await asyncio.to_thread(
+                self._load_durable_conversation_context
+            )
+            self._durable_history_loaded = True
+
+    async def speculative_durable_context(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
+        """Return the same durable seed/summary used by confirmed voice turns."""
+        await self._ensure_durable_context()
+        return list(self._durable_history), self._durable_summary, self._conversation_id
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -121,8 +152,20 @@ class GravitreCognitiveLLMService(LLMService):
         user_text, history = _messages_from_context(context)
         if not user_text:
             return
+        if self._interrupt_reporter is not None:
+            # A confirmed new user turn ends the interrupted one: let its
+            # bookkeeping finish and release the stop marker it armed, so this
+            # turn is not mistaken for a stopped one.
+            await self._interrupt_reporter.settle_barge_in()
+            if self._interrupt_reporter.conversation_id:
+                self._conversation_id = self._interrupt_reporter.conversation_id
+        await self._ensure_durable_context()
+        history = self._merge_durable_and_socket_history(self._durable_history, history)
         user_text = reconstitute_spoken_identity_fields(user_text)
-        if is_stop_requested(
+        if self._interrupt_reporter is not None:
+            self._interrupt_reporter.begin_turn(user_text)
+        if await asyncio.to_thread(
+            is_stop_requested,
             str(self._org_id or ""),
             self._conversation_id,
             settings=self._app_settings,
@@ -221,6 +264,7 @@ class GravitreCognitiveLLMService(LLMService):
                 query=user_text,
                 agent_id=str((self._agent or {}).get("id") or "") or None,
                 conversation_history=history or None,
+                history_summary=self._durable_summary,
                 conversation_id=self._conversation_id,
                 spoken_mode=True,
                 mode=resolve_voice_session_intelligence_mode(user_text),
@@ -364,6 +408,27 @@ class GravitreCognitiveLLMService(LLMService):
             tts_chunk_v2=chunk_tuning.v2_enabled,
         )
         if complete_event is not None:
+            durable_assistant_text = str(getattr(complete_event, "full_content", None) or "").strip()
+            if durable_assistant_text:
+                preassigned_assistant_id = str(getattr(complete_event, "message_id", None) or "") or None
+                if self._interrupt_reporter is not None:
+                    self._interrupt_reporter.mark_turn_persisted(
+                        conversation_id=self._conversation_id,
+                        assistant_message_id=preassigned_assistant_id,
+                    )
+                persisted_id, assistant_id = await asyncio.to_thread(
+                    self._persist_completed_voice_turn,
+                    user_text=user_text,
+                    assistant_text=durable_assistant_text,
+                    complete_event=complete_event,
+                )
+                if persisted_id:
+                    self._conversation_id = persisted_id
+                    if self._interrupt_reporter is not None:
+                        self._interrupt_reporter.mark_turn_persisted(
+                            conversation_id=persisted_id,
+                            assistant_message_id=assistant_id,
+                        )
             # The websocket stays open across many spoken turns. The browser therefore
             # cannot use socket close as a turn boundary. Emit an explicit completion
             # marker after the final assistant text has been flushed so the live UI can
@@ -373,6 +438,7 @@ class GravitreCognitiveLLMService(LLMService):
                     message={
                         "type": "assistant_turn.complete",
                         "turn_id": str(getattr(complete_event, "message_id", None) or ""),
+                        "conversation_id": self._conversation_id,
                         # Client text deltas remain the primary transcript because they
                         # include real narration; full_content is only a fallback when
                         # no delta survived to the browser.
@@ -400,6 +466,114 @@ class GravitreCognitiveLLMService(LLMService):
                     operator_task=True,
                     composed=True,
                 )
+
+    def _load_durable_conversation_context(self) -> tuple[list[dict[str, Any]], str | None]:
+        """Load the owned durable conversation before the first voice turn.
+
+        This is intentionally read-only and best-effort. A missing/invalid
+        conversation must never make Talk unavailable.
+        """
+        if not self._conversation_id:
+            return [], None
+        try:
+            from app.services.conversation_context_service import load_conversation_summary
+            from app.workflows.repository import get_supabase_client
+
+            client = get_supabase_client(self._app_settings)
+            owned = (
+                client.table("conversations")
+                .select("id,last_summary")
+                .eq("id", self._conversation_id)
+                .eq("org_id", self._org_id)
+                .eq("user_id", self._user_id)
+                .limit(1)
+                .execute()
+            )
+            if not getattr(owned, "data", None):
+                return [], None
+            summary = load_conversation_summary(
+                client,
+                conversation_id=self._conversation_id,
+                org_id=self._org_id,
+                user_id=self._user_id,
+            )
+            response = (
+                client.table("conversation_messages")
+                .select("role,content,created_at")
+                .eq("conversation_id", self._conversation_id)
+                .order("created_at", desc=True)
+                .limit(48)
+                .execute()
+            )
+            rows = list(getattr(response, "data", None) or [])
+            rows.reverse()
+            history = [
+                {"role": str(row.get("role") or ""), "content": str(row.get("content") or "")}
+                for row in rows
+                if str(row.get("role") or "") in {"user", "assistant"}
+                and str(row.get("content") or "").strip()
+            ]
+            return history, summary
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "pipecat_durable_history_load_failed org_id=%s conversation_id=%s error=%s",
+                self._org_id,
+                self._conversation_id,
+                str(exc),
+            )
+            return [], None
+
+    @staticmethod
+    def _merge_durable_and_socket_history(
+        durable: list[dict[str, Any]], socket_history: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Seed from durable history, then append only new in-socket messages."""
+        # Durable is a frozen pre-socket seed; socket_history contains only
+        # turns observed on this live socket. Preserve legitimate repeated turns.
+        return ([dict(message) for message in durable] + [dict(message) for message in socket_history])[-48:]
+
+    def _persist_completed_voice_turn(
+        self,
+        *,
+        user_text: str,
+        assistant_text: str,
+        complete_event: AssistantStreamComplete,
+    ) -> tuple[str | None, str | None]:
+        """Persist a completed voice turn through the same durable store as text."""
+        if not assistant_text.strip():
+            return None, None
+        try:
+            from app.routers.assistant import _persist_conversation_turn, _remember_completed_turn
+
+            persisted_id, assistant_id = _persist_conversation_turn(
+                self._app_settings,
+                org_id=self._org_id,
+                user_id=self._user_id,
+                conversation_id=self._conversation_id,
+                user_text=user_text,
+                assistant_text=assistant_text,
+                tool_results=list(getattr(complete_event, "tool_results", None) or []),
+                assistant_message_id=str(getattr(complete_event, "message_id", None) or "") or None,
+            )
+            if persisted_id:
+                _remember_completed_turn(
+                    settings=self._app_settings,
+                    org_id=self._org_id,
+                    conversation_id=persisted_id,
+                    user_text=user_text,
+                    assistant_text=assistant_text,
+                    tool_results=list(getattr(complete_event, "tool_results", None) or []),
+                    assistant_message_id=assistant_id,
+                )
+            return persisted_id, assistant_id
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "pipecat_voice_turn_persist_failed org_id=%s conversation_id=%s error=%s",
+                self._org_id,
+                self._conversation_id,
+                str(exc),
+            )
+            return None, None
 
     async def _flush_client_text(self, filt: SpokenMarkdownStreamFilter) -> None:
         """Release withheld transcript text before another writer emits.

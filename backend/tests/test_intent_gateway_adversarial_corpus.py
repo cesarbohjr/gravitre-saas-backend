@@ -52,11 +52,11 @@ FALLTHROUGH_CORPUS: tuple[tuple[str, str], ...] = (
     ("quoted_vendors_in_ads", QUOTED_VENDORS_IN_ADS),
     ("enterprise_where_in_ads", ENTERPRISE_WHERE_IN_ADS),
     ("frustrated_real_ask", FRUSTRATED_REAL_ASK),
+    ("ambiguous_seo_only", AMBIGUOUS_CLARIFY),
 )
 
 SHORTCUT_CORPUS: tuple[tuple[str, str, str], ...] = (
     ("settings_nav_faq", SETTINGS_NAV_FAQ, "ia_nav_faq"),
-    ("ambiguous_seo_only", AMBIGUOUS_CLARIFY, "ambiguous_open_clarify"),
 )
 
 
@@ -67,7 +67,9 @@ async def test_adversarial_operator_tasks_fall_through_text_and_voice(label: str
     spoken = await evaluate_intent_gateway(GatewayContext(message=message, spoken_mode=True, org_id="org"))
     assert typed.action == "fallthrough", f"{label} typed served {typed.candidate_id}"
     assert spoken.action == "fallthrough", f"{label} spoken served {spoken.candidate_id}"
-    assert typed.reason == spoken.reason == "operator_task_shaped"
+    assert typed.reason == spoken.reason
+    expected_reason = "below_threshold" if label == "ambiguous_seo_only" else "operator_task_shaped"
+    assert typed.reason == expected_reason
 
 
 @pytest.mark.parametrize("label,message,candidate_id", SHORTCUT_CORPUS)

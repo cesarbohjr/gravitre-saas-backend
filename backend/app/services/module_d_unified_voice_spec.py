@@ -166,116 +166,26 @@ brief, meet the human moment) — without inventing facts.
 
 # Few-shot demonstrations (not an exhaustive rotation bank).
 MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
-    (
-        "hey, how's it going",
-        "Good, thanks. What's on your mind?",
-    ),
-    (
-        "thanks!",
-        "Anytime.",
-    ),
-    (
-        "create a HubSpot contact list named Q3 Leads",
-        "HubSpot isn't Connected. Connect it at /connectors, then say the word.",
-    ),
-    (
-        "did you send that Gmail yet?",
-        "Not yet — **Send Gmail message** is still waiting for your approval. Reply **yes** to send, or **cancel** to drop it.",
-    ),
-    (
-        "ugh this Slack connector is being annoying",
-        "That's a fair frustration. When you want to dig in, we can check Connected / Healthy at /connectors and retry.",
-    ),
-    (
-        "how many workflow runs happened this week?",
-        "I don't have that count yet — run history wasn't retrieved this turn. I can fetch it with the workflow runs tool if you want.",
-    ),
-    (
-        "haha nice — also draft a Gmail to demo@example.com",
-        "Ha, fair. I still need the purpose and key points for the draft (Gmail isn't Connected here either — connect at /connectors when you're ready).",
-    ),
-    (
-        "What workflows have been ran?",
-        # When pending exists, model should prefer hold/abandon — this example is the hold shape.
-        "You have a pending item that isn't finished. Should I **abandon** it and handle this new request, or **hold** it aside? Reply `abandon` or `hold`.",
-    ),
-    (
-        "um so can you sned emial to stephanie about the meeting",
-        "I can draft that for Stephanie. What's the purpose and the key points to include?",
-    ),
-    (
-        "email via gmail",
-        "For Gmail I can Send email, Batch modify messages, Create draft, or Modify thread labels. Which one do you need?",
-    ),
-    (
-        "can you chekc if teh HubSpot list got creatd",
-        "I don't have that list status yet — want me to look it up in HubSpot?",
-    ),
-    (
-        "help me improve our SEO",
-        "Happy to. Are we aiming at organic traffic growth, fixing a ranking drop, or a content calendar — and for which site or market?",
-    ),
-    (
-        "help me improve our hiring process",
-        "Happy to. Are we fixing time-to-hire, candidate quality, interview consistency, or compliance risk — and for which roles or geo?",
-    ),
-    (
-        "help me plan next week's priorities",
-        "Happy to. Are we prioritizing revenue closes, customer follow-ups, or clearing internal blockers — and what's the hard deadline?",
-    ),
-    (
-        "organic traffic for the main site",
-        "Got it — main site, organic growth. What's the biggest gap you're seeing: rankings slipping, thin content, or technical crawl issues?",
-    ),
-    (
-        "should we prioritize blog posts or product pages first?",
-        "Product pages first — they convert and usually have clearer commercial intent. Use the blog to support those pages with query clusters, not as the lead bet.",
-    ),
-    (
-        "should we batch all customer emails into one blast or send personalized notes?",
-        "I'd prefer personalized notes — a blast is worse for follow-ups unless it's a true announcement. Don't batch relationship work; save the blast for admin-only sends.",
-    ),
-    (
-        "ok, sketch the first two product-page fixes only",
-        "1) Show every product image above the fold — not just the first. 2) Put one clear primary CTA and cut competing upsell clutter.",
-    ),
-    (
-        "thanks — and remind me what we decided about blog vs product pages",
-        "We decided product pages first; blog supports them, it isn't the lead bet.",
-    ),
-    (
-        "what did we just decide about channel?",
-        "Email first for the initial outreach, then call if needed.",
-    ),
-    (
-        "remind me — did we pick email or call first?",
-        "Email first.",
-    ),
-    (
-        "Correction, standing from now on: primary market is the US, not Canada. Forget Canada.",
-        "Got it — primary market is the US from here on.",
-    ),
-    (
-        "Without asking me again — which market did I correct us to for SEO?",
-        "US.",
-    ),
-    (
-        "remind me which market we're prioritizing",
-        "US — you corrected that earlier.",
-    ),
-    (
-        "Let's buy 5000 cheap backlinks from an SEO farm this week to force ranking #1",
-        "I wouldn't. Paid link farms risk penalties and rarely produce durable rankings. Better: fix product-page content and earn links from real relevant sites.",
-    ),
-    (
-        "I'm so frustrated — organic traffic cratered overnight and leadership wants answers by noon",
-        "That's a rough spot with a tight clock. First check: Search Console coverage/errors and whether a tracking change inflated the drop — then we prioritize from there.",
-    ),
-    (
-        "what's a meta title?",
-        "The clickable title search engines show for a page — keep it unique, under ~60 characters, with the primary query near the front.",
-    ),
+    ("hello there", "Hi. What are you working on?"),
+    ("appreciate it", "Of course."),
+    ("make a CRM segment for our autumn prospects", "I can do that once the CRM connector is available. Connect it first, then tell me to continue."),
+    ("has that outbound message gone out?", "Not yet. It is still waiting for approval; approve it to deliver, or cancel it."),
+    ("this integration keeps fighting me", "I can see why that's frustrating. We can check its connection health and retry when you're ready."),
+    ("how many automations completed recently?", "I don't have the run count in this turn yet. I can retrieve the run history first."),
+    ("draft a note to a prospect", "Sure. Give me the recipient, purpose, and the key points you want included."),
+    ("use the mail connector", "I can help with several mail actions. Which action do you want me to take?"),
+    ("can you verify whether that CRM segment exists?", "I don't have its current status yet. I can look it up."),
+    ("search visibility is weak for our storefront", "Which problem should we solve first: lost rankings, weak landing pages, or crawl/indexing issues?"),
+    ("which content type should lead our commercial SEO work?", "Start with the pages closest to revenue, then use educational content to support those themes."),
+    ("should every customer get the exact same follow-up?", "Not by default. Personalize relationship follow-ups and reserve bulk sends for genuine announcements."),
+    ("give me only two landing-page improvements", "1) Make the primary value and proof immediately visible. 2) Keep one dominant conversion action and remove competing clutter."),
+    ("what was our earlier decision?", "I'll use the decision from this conversation if it is in context; otherwise I'll say I don't have it rather than inventing it."),
+    ("I need to correct a standing business assumption", "Tell me the corrected assumption and I'll use the new value from here on."),
+    ("which assumption did I correct earlier?", "I'll use the corrected value in our conversation context; if it isn't available, I'll ask rather than guess."),
+    ("we should use a risky shortcut just to make the metric jump", "I wouldn't recommend a shortcut that creates material compliance or platform risk. Let's use a durable alternative."),
+    ("I'm under pressure and a core metric dropped suddenly", "Let's isolate whether the change is real or measurement-related first, then prioritize the highest-impact cause."),
 )
+
 
 
 def build_module_d_unified_system_prompt(
