@@ -63,7 +63,7 @@ export function SettingsShell({
         <div className="min-w-0 flex-1">
           <p className="mb-1 text-xs text-muted-foreground">Settings</p>
           {!hideHeader && <>
-            <h1 className={cn(TYPE.pageTitle, "font-[family-name:var(--font-space-grotesk)] text-2xl [overflow-wrap:anywhere]")}>{activeMeta?.title}</h1>
+            <h1 className={cn(TYPE.pageTitle, "[overflow-wrap:anywhere]")}>{activeMeta?.title}</h1>
             <p className={cn(TYPE.pageLead, "mt-1")}>{activeMeta?.description}</p>
           </>}
         </div>
@@ -75,7 +75,7 @@ export function SettingsShell({
       </div>
       <SheetContent side="left" className="w-[min(92vw,360px)] overflow-y-auto p-0 sm:max-w-[360px] data-[state=open]:duration-200 [&>button]:size-11">
         <SheetHeader className="pr-14">
-          <SheetTitle className="font-[family-name:var(--font-space-grotesk)]">Settings sections</SheetTitle>
+          <SheetTitle className="font-sans">Settings sections</SheetTitle>
           <SheetDescription>Choose the settings you want to manage.</SheetDescription>
         </SheetHeader>
         <nav aria-label="Settings section sheet" className="space-y-4 px-4 pb-6">
@@ -127,7 +127,7 @@ export function SettingsShell({
         >
           {showHeader ? (
             <div className="mb-6 hidden lg:block">
-              <h1 className={cn(TYPE.pageTitle, "mb-1 font-[family-name:var(--font-space-grotesk)]")}>{activeMeta?.title}</h1>
+              <h1 className={cn(TYPE.pageTitle, "mb-1")}>{activeMeta?.title}</h1>
               <p className={TYPE.pageLead}>{activeMeta?.description}</p>
             </div>
           ) : null}

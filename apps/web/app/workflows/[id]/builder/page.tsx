@@ -4501,7 +4501,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     className="group flex min-w-0 items-center gap-1.5 rounded-[5px] px-1.5 py-1 transition-colors hover:bg-[color:var(--g-chrome-hover)]"
                     title="Switch workflow"
                   >
-                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px] font-[family-name:var(--font-space-grotesk)]">
+                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px] font-sans">
                       {workflowMeta.name}
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />

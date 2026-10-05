@@ -316,7 +316,7 @@ function MetricCard({
           )}
         </div>
         
-        <p className="mb-1 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tabular-nums text-foreground">{value}</p>
+        <p className="mb-1 font-sans text-2xl font-medium tabular-nums text-foreground">{value}</p>
         {changeLabel ? <p className="text-xs text-muted-foreground">{changeLabel}</p> : null}
         
         {/* Mini sparkline */}

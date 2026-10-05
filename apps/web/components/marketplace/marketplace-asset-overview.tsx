@@ -12,7 +12,7 @@ export function MarketplaceAssetOverview({ asset, needsPurchase, isAdmin, action
     <header className="grid overflow-hidden rounded-[10px] lg:grid-cols-[minmax(0,1.5fr)_minmax(260px,1fr)]" data-testid="marketplace-asset-overview">
       <div className="min-w-0 bg-[color:var(--g-emerald-deep)] p-5 text-white sm:p-6">
         <p className="text-xs font-semibold text-[color:var(--g-emerald-mint)]">Explore / {asset.department || asset.assetType.replace(/_/g, " ")}</p>
-        <h1 className="mt-3 break-words font-[family-name:var(--font-space-grotesk)] text-[30px] font-medium leading-tight sm:text-[34px]">{asset.title}</h1>
+        <h1 className="mt-3 break-words font-sans text-xl font-medium leading-tight sm:text-2xl">{asset.title}</h1>
         {asset.businessOutcome ? <p className="mt-4 text-base leading-7">{asset.businessOutcome}</p> : null}
         {asset.description ? <p className="mt-3 text-sm leading-6 text-[color:var(--g-emerald-mint)]">{asset.description}</p> : null}
         {asset.useCase ? <dl className="mt-4 text-sm"><dt className="text-xs text-[color:var(--g-emerald-mint)]">Use case</dt><dd className="mt-1">{asset.useCase}</dd></dl> : null}

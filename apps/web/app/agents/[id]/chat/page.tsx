@@ -83,7 +83,7 @@ export default function AgentChatPage({
         <p className="text-xs font-medium text-[color:var(--g-text-tertiary)]">
           Talking to this agent
         </p>
-        <h1 className="mt-2 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tracking-tight text-[color:var(--g-text-primary)]">
+        <h1 className="mt-2 font-sans text-2xl font-medium tracking-tight text-[color:var(--g-text-primary)]">
           {agent.name}
         </h1>
         <p className="mt-1 max-w-xl text-sm text-[color:var(--g-text-secondary)]">

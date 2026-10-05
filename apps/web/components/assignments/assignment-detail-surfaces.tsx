@@ -49,7 +49,7 @@ export function ExecutionTimeline({ steps, currentProgress, jobStatus }: { steps
   return (
     <section aria-label="Execution progress" className="border-y border-divide py-4">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-medium">Execution trace</h2>
+        <h2 className="font-sans text-lg font-medium">Execution trace</h2>
         <span className="text-xs text-muted-foreground">{steps.length ? `${steps.filter(s => s.status === "completed").length} of ${steps.length} complete` : "No trace reported"} · {currentProgress == null ? "Progress not reported" : `Reported progress ${currentProgress}%`}</span>
       </div>
       {currentProgress != null ? <div role="progressbar" aria-label="Reported execution progress" aria-valuenow={currentProgress} aria-valuemin={0} aria-valuemax={100} className="mb-4 h-1 overflow-hidden bg-secondary">

@@ -44,7 +44,7 @@ function RetrievalWorkspace({ agentId }: { agentId: string }) {
   return (
     <div className="max-w-4xl space-y-6" data-composition="understand">
       <div>
-        <h2 className="font-[family-name:var(--font-space-grotesk)] text-xl font-medium">
+        <h2 className="font-sans text-xl font-medium">
           Check the grounding
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">

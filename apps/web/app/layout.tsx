@@ -5,7 +5,6 @@ import { RootProviders } from '@/components/root-providers'
 import { interDisplay } from '@/fonts/inter-display/inter'
 import { interDisplayMarketing } from '@/fonts/inter-display/inter-marketing'
 import { dmMono } from '@/fonts/dm-mono'
-import { spaceGrotesk } from '@/fonts/space-grotesk'
 import './globals.css'
 
 // Allow pinch-to-zoom for accessibility (low-vision users).
@@ -71,7 +70,7 @@ export default async function RootLayout({
   const isMarketing = (await headers()).get('x-gravitre-marketing') === '1'
   const htmlClassName = isMarketing
     ? interDisplayMarketing.variable
-    : `${interDisplay.variable} ${dmMono.variable} ${spaceGrotesk.variable}`
+    : `${interDisplay.variable} ${dmMono.variable}`
 
   return (
     <html lang="en" suppressHydrationWarning className={htmlClassName}>

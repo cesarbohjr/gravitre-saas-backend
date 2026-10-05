@@ -16,7 +16,7 @@ export function AgentCapabilityOverview({ agent, connectedSystems = [], onInspec
         <p className="text-xs font-semibold text-[color:var(--g-emerald-mint)]">{agent.departmentLabel} / {agent.role}</p>
         <div className="mt-4 flex items-center gap-3">
           <GravitreAgentIdentity icon={agent.icon} identityColor={agent.identityColor} size="md" />
-          <h2 className="min-w-0 break-words font-[family-name:var(--font-space-grotesk)] text-[29px] font-medium leading-tight">{agent.name}</h2>
+          <h2 className="min-w-0 break-words font-sans text-[29px] font-medium leading-tight">{agent.name}</h2>
         </div>
         <div className="mt-3 rounded-md bg-white px-2 py-1"><GravitreAgentStatus runtimeState={agent.runtimeState} configState={agent.configState} /></div>
         {agent.currentActivity ? <p className="mt-3 text-sm leading-6 text-[color:var(--g-emerald-mint)]">{agent.currentActivity}</p> : null}

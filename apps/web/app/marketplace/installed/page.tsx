@@ -141,7 +141,7 @@ function InstalledInspector({
     >
       <div>
         <p className="text-xs font-medium text-muted-foreground">Install</p>
-        <h2 className="mt-1 break-words font-[family-name:var(--font-space-grotesk)] text-xl font-medium text-foreground">
+        <h2 className="mt-1 break-words font-sans text-xl font-medium text-foreground">
           {asset?.title ?? "Installed asset"}
         </h2>
         <p className="mt-1 text-xs capitalize text-muted-foreground">
@@ -412,7 +412,7 @@ function InstalledContent() {
           >
             <SheetContent className="w-full overflow-y-auto bg-[color:var(--g-canvas)] sm:max-w-lg">
               <SheetHeader>
-                <SheetTitle className="font-[family-name:var(--font-space-grotesk)] text-2xl font-medium">
+                <SheetTitle className="font-sans text-2xl font-medium">
                   Installed capability
                 </SheetTitle>
                 <SheetDescription>
