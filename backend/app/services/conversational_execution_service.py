@@ -696,7 +696,8 @@ class ConversationalExecutionService:
                 },
             )
 
-        if result.outcome_verified or not result.success:\n            await self._record_learning_outcome(org_id, user_id, result, classification)
+        if result.outcome_verified or not result.success:
+            await self._record_learning_outcome(org_id, user_id, result, classification)
         return result
 
     async def _create_agent(
