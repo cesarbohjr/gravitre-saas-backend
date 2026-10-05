@@ -6,6 +6,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -127,12 +128,12 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
     )
   }
 
-  const slices = [
-    { label: "Active", value: counts.active, color: BRAND },
-    { label: "Executing", value: counts.processing, color: BRAND_SOFT },
-    { label: "Idle", value: counts.idle, color: MUTED },
-    { label: "Error", value: counts.error, color: WARNING },
-  ].filter((s) => s.value > 0)
+  const rows = [
+    { label: "Executing", value: counts.processing, color: BRAND },
+    { label: "Available", value: counts.active + counts.idle, color: MUTED },
+    { label: "Needs attention", value: counts.error, color: WARNING },
+  ]
+  const slices = rows.filter((s) => s.value > 0)
   const total = slices.reduce((sum, s) => sum + s.value, 0) || 1
   const circumference = 2 * Math.PI * 14
   let offset = 0
@@ -143,7 +144,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
         <h2 className={TYPE.sectionTitle}>Agents by status</h2>
         <Link
           href={APP_ROUTES.agents}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
+          className="-my-3 -mr-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
         >
           View agents
           <NucleoArrowRight className="h-3 w-3" />
@@ -179,12 +180,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
           </div>
         </div>
         <ul className="flex-1 space-y-2.5">
-          {[
-            { label: "Active", value: counts.active, color: BRAND },
-            { label: "Executing", value: counts.processing, color: BRAND_SOFT },
-            { label: "Idle", value: counts.idle, color: MUTED },
-            { label: "Error", value: counts.error, color: WARNING },
-          ].map((row) => (
+          {rows.map((row) => (
             <li key={row.label} className="flex items-center justify-between gap-3 text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <span className="h-2 w-2 rounded-full" style={{ background: row.color }} />
@@ -201,24 +197,28 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
 
 function RunsBreakdown({ data }: { data: HomeDashboardData }) {
   const trend = data.metrics.trends.totalRuns
-  const chartData =
-    trend.length > 0
-      ? trend.slice(-7).map((count, i) => ({
-          name: `D${i + 1}`,
-          completed: count,
-          fill: i % 2 === 0 ? BRAND : BRAND_SOFT,
-        }))
-      : []
+  const recent = trend.slice(-7)
+  const chartData = recent.map((count, i) => {
+    const isLatest = i === recent.length - 1
+    return {
+      name: isLatest ? "Latest" : `${recent.length - 1 - i} back`,
+      completed: count,
+      fill: isLatest ? BRAND : BRAND_SOFT,
+    }
+  })
 
   return (
     <GravitreSurface className="h-full">
       <div className="flex items-start justify-between gap-3">
-        <h2 className={TYPE.sectionTitle}>
-          Tasks breakdown
-        </h2>
+        <div className="flex flex-col gap-1">
+          <h2 className={TYPE.sectionTitle}>Run volume</h2>
+          {chartData.length > 0 ? (
+            <p className="text-sm text-muted-foreground">Oldest to latest interval in this range</p>
+          ) : null}
+        </div>
         <Link
           href={APP_ROUTES.runs}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
+          className="-my-3 -mr-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--brand)]"
         >
           View runs
           <NucleoArrowRight className="h-3 w-3" />
@@ -234,13 +234,13 @@ function RunsBreakdown({ data }: { data: HomeDashboardData }) {
       ) : (
         <div className="mt-3 h-40">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" barSize={14} margin={{ left: 0, right: 8 }}>
+            <BarChart data={chartData} layout="vertical" barSize={14} margin={{ left: 0, right: 36 }}>
               <XAxis type="number" hide domain={[0, "dataMax"]} />
               <YAxis
                 type="category"
                 dataKey="name"
-                width={36}
-                tick={{ fontSize: 11 }}
+                width={56}
+                tick={{ fontSize: 12, fill: MUTED }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -249,6 +249,7 @@ function RunsBreakdown({ data }: { data: HomeDashboardData }) {
                 {chartData.map((entry) => (
                   <Cell key={entry.name} fill={entry.fill} />
                 ))}
+                <LabelList dataKey="completed" position="right" fontSize={12} fill={MUTED} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>

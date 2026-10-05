@@ -15,7 +15,6 @@ import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
 import type { RoleQuickAction } from "@/lib/role-quick-actions"
 import { cn } from "@/lib/utils"
 
-const WORKING = new Set(["active", "processing", "running"])
 
 export type FlowLaneId = "changed" | "needs" | "running" | "risk" | "next"
 
@@ -120,7 +119,7 @@ export function buildFlowLanes(
       tone: "live",
     })
   }
-  for (const agent of data.agents.filter((a) => WORKING.has(String(a.status ?? "").toLowerCase())).slice(0, 6)) {
+  for (const agent of data.agents.filter((a) => workforceState(a.status) === "executing").slice(0, 6)) {
     running.push({
       id: `agent-${agent.id}`,
       title: agent.name,
