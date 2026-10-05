@@ -10,37 +10,69 @@ export { ASSIGNMENTS_REFRESH_KEY }
 
 const READABLE_KEYS = ["objective", "title", "goal", "task", "description", "prompt", "message", "summary", "query"]
 
+function pickReadableField(node: unknown): string | null {
+  if (typeof node === "string") {
+    const text = node.trim()
+    if (!text) return null
+    if (text.startsWith("{") || text.startsWith("[")) return extractReadableFromJson(text) ?? text
+    return text
+  }
+  if (Array.isArray(node)) {
+    for (const entry of node) {
+      const found = pickReadableField(entry)
+      if (found) return found
+    }
+    return null
+  }
+  if (node && typeof node === "object") {
+    const record = node as Record<string, unknown>
+    for (const key of READABLE_KEYS) {
+      const found = pickReadableField(record[key])
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function extractReadableFromJson(text: string): string | null {
+  try {
+    return pickReadableField(JSON.parse(text))
+  } catch {
+    return null
+  }
+}
+
+function handoffLabel(prefix: string): string | null {
+  const label = prefix
+    .replace(/\bJSON\b/gi, " ")
+    .replace(/\bhandoff\b/gi, " ")
+    .replace(/[:.\-–—]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  return label || null
+}
+
 /**
- * Job text sometimes arrives as a serialized payload. Show the human field
- * inside it rather than raw JSON; fall back to the text with markup stripped.
+ * Job text sometimes arrives as a serialized payload, including department
+ * handoff prefixes (`Sales handoff JSON:{...}`). Show the human field inside
+ * it rather than raw JSON; fall back to the text with markup stripped.
  */
 export function readableAssignmentText(value: string): string {
   const text = value.trim()
-  if (!text.startsWith("{") && !text.startsWith("[")) return text
-  try {
-    const parsed: unknown = JSON.parse(text)
-    const pick = (node: unknown): string | null => {
-      if (typeof node === "string") return node.trim() || null
-      if (Array.isArray(node)) {
-        for (const entry of node) {
-          const found = pick(entry)
-          if (found) return found
-        }
-        return null
+  if (!text) return "Agent task"
+  const jsonStart = text.search(/[\[{]/)
+  if (jsonStart >= 0) {
+    const found = extractReadableFromJson(text.slice(jsonStart))
+    if (found) {
+      const label = handoffLabel(text.slice(0, jsonStart))
+      if (label && !found.toLowerCase().startsWith(label.toLowerCase())) {
+        return `${label}: ${found}`
       }
-      if (node && typeof node === "object") {
-        const record = node as Record<string, unknown>
-        for (const key of READABLE_KEYS) {
-          const found = pick(record[key])
-          if (found) return found
-        }
-      }
-      return null
+      return found
     }
-    const found = pick(parsed)
-    if (found) return found
-  } catch {
-    /* not JSON — strip below */
+    if (jsonStart > 0) return text
+  } else {
+    return text
   }
   const stripped = text.replace(/[{}\[\]"]/g, " ").replace(/\s+/g, " ").trim()
   return stripped || "Agent task"

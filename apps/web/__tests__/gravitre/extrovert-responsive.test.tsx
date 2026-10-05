@@ -42,11 +42,29 @@ it("opens the saved agent ID and does not present permission tools as connected 
     act(() => root.render(<AgentCapabilityOverview agent={agent} onInspect={onInspect} />))
     expect(container.textContent).toContain("Not reported")
     expect(container.textContent).toContain("No systems listed")
+    expect(container.textContent).toContain("Operations")
+    expect(container.textContent).not.toContain("Operations / Operations")
     expect(container.textContent).not.toContain("Privileged tool")
     expect(container.querySelector("a")?.getAttribute("href")).toBe("/agents/saved-agent")
     act(() => container.querySelector("button")!.click())
     expect(onInspect).toHaveBeenCalledExactlyOnceWith("saved-agent")
     act(() => root.render(<AgentCapabilityOverview agent={agent} connectedSystems={["Service desk"]} onInspect={onInspect} />))
     expect(container.textContent).toContain("Service desk")
+  } finally { act(() => root.unmount()) }
+})
+
+it("does not repeat a department when the agent role is the same label", () => {
+  const agent: FleetAgent = {
+    id: "cs-agent", name: "Customer Success Agent", role: "Customer Success", department: "customer_success", departmentLabel: "Customer Success",
+    icon: "support", identityColor: "teal", configState: "enabled", runtimeState: "available", currentActivity: null,
+    tasksToday: 0, successRate: null, model: "-", lastActiveLabel: "Unknown", tools: [], workflows: [],
+  }
+  const container = document.createElement("div")
+  const root = createRoot(container)
+  try {
+    act(() => root.render(<AgentCapabilityOverview agent={agent} onInspect={vi.fn()} />))
+    expect(container.textContent).toContain("Customer Success")
+    expect(container.textContent).not.toContain("Customer Success / Customer Success")
+    expect(container.textContent).toContain("Not reported")
   } finally { act(() => root.unmount()) }
 })

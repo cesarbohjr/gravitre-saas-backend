@@ -7,13 +7,23 @@ import { GravitreAgentIdentity } from "./gravitre-agent-identity"
 import { GravitreAgentStatus } from "./gravitre-agent-status"
 import type { FleetAgent } from "./types"
 
+function agentScopeLabel(departmentLabel: string, role: string): string {
+  const parts = [departmentLabel, role].map((part) => part.trim()).filter(Boolean)
+  return parts.filter((part, index) => parts.findIndex((other) => other.toLowerCase() === part.toLowerCase()) === index).join(" / ")
+}
+
+function reportedModel(model: string): string {
+  const text = model.trim()
+  return !text || /^[—–-]+$/.test(text) ? "Not reported" : text
+}
+
 /** Figma 10:73 + 10:78, adapted to the real filtered roster and saved identity. */
 export function AgentCapabilityOverview({ agent, connectedSystems = [], onInspect }: { agent: FleetAgent; connectedSystems?: string[]; onInspect: (id: string) => void }) {
   const systems = connectedSystems
   return (
     <section aria-label={`${agent.name} overview`} className="mb-5 grid overflow-hidden rounded-xl md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]" data-testid="agent-capability-overview">
       <div className="flex min-w-0 flex-col items-start bg-[color:var(--g-emerald-deep)] p-5 text-white sm:p-6">
-        <p className="text-xs font-semibold text-[color:var(--g-emerald-mint)]">{agent.departmentLabel} / {agent.role}</p>
+        <p className="text-xs font-semibold text-[color:var(--g-emerald-mint)]">{agentScopeLabel(agent.departmentLabel, agent.role)}</p>
         <div className="mt-4 flex items-center gap-3">
           <GravitreAgentIdentity icon={agent.icon} identityColor={agent.identityColor} size="md" />
           <h2 className="min-w-0 break-words font-sans text-[29px] font-medium leading-tight">{agent.name}</h2>
@@ -25,7 +35,7 @@ export function AgentCapabilityOverview({ agent, connectedSystems = [], onInspec
       <div className="min-w-0 bg-[color:var(--g-surface-1)] p-5 sm:p-6">
         <h3 className="text-xs font-semibold text-[color:var(--g-emerald-deep)]">Capability context</h3>
         <dl className="mt-4 space-y-3 text-sm">
-          <div><dt className="text-xs text-muted-foreground">Model</dt><dd className="mt-1 break-words">{agent.model === "—" ? "Not reported" : agent.model}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Model</dt><dd className="mt-1 break-words">{reportedModel(agent.model)}</dd></div>
           <div><dt className="text-xs text-muted-foreground">Connected systems</dt><dd className="mt-1 break-words">{systems.length ? systems.join(" · ") : "No systems listed"}</dd></div>
           {agent.workflowCount != null ? <div><dt className="text-xs text-muted-foreground">Used in workflows</dt><dd className="mt-1 tabular-nums">{agent.workflowCount}</dd></div> : null}
         </dl>

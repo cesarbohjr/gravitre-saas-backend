@@ -15,4 +15,17 @@ describe("readableAssignmentText", () => {
     expect(readableAssignmentText('{"a": 1')).toBe("a : 1")
     expect(readableAssignmentText("{}")).toBe("Agent task")
   })
+
+  it("reads the summary from a department handoff title", () => {
+    expect(
+      readableAssignmentText(
+        'Sales handoff JSON:{"summary":"Objective is to find the best global shipping provider."}',
+      ),
+    ).toBe("Sales: Objective is to find the best global shipping provider.")
+    expect(
+      readableAssignmentText(
+        'CS handoff JSON:{"summary":"Request to review customer complaints from the last month."}',
+      ),
+    ).toBe("CS: Request to review customer complaints from the last month.")
+  })
 })
