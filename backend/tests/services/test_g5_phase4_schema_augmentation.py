@@ -20,7 +20,8 @@ def test_enrichment_sample_covers_f4_and_g1_vendors():
         "notion.pages.create",
     ):
         assert required in keys
-    assert 15 <= len(keys) <= 25
+    # The minimum protects the original sample; new provider actions may expand it.
+    assert len(keys) >= 15
 
 
 def test_enrichment_toggle_disables_suffix():
