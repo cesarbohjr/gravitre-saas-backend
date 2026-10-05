@@ -386,6 +386,12 @@ class GravitreCognitiveLLMService(LLMService):
         if complete_event is not None:
             durable_assistant_text = str(getattr(complete_event, "full_content", None) or "").strip()
             if durable_assistant_text:
+                preassigned_assistant_id = str(getattr(complete_event, "message_id", None) or "") or None
+                if self._interrupt_reporter is not None:
+                    self._interrupt_reporter.mark_turn_persisted(
+                        conversation_id=self._conversation_id,
+                        assistant_message_id=preassigned_assistant_id,
+                    )
                 persisted_id, assistant_id = await asyncio.to_thread(
                     self._persist_completed_voice_turn,
                     user_text=user_text,
