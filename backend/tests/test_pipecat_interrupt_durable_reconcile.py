@@ -63,6 +63,8 @@ async def test_interrupted_history_rewrites_latest_assistant_to_heard_prefix(mon
         user_id="user-1",
         conversation_id="conv-1",
     )
+    reporter.begin_turn("current user turn")
+    reporter.mark_turn_persisted(conversation_id="conv-1", assistant_message_id="msg-a")
     await reporter._persist_interrupted_assistant_text("I heard this part.")
 
     assert latest.updated == {"content": "I heard this part."}
@@ -87,5 +89,7 @@ async def test_interrupted_history_requires_owned_conversation(monkeypatch):
         user_id="user-1",
         conversation_id="conv-1",
     )
+    reporter.begin_turn("current user turn")
+    reporter.mark_turn_persisted(conversation_id="conv-1", assistant_message_id="msg-a")
     await reporter._persist_interrupted_assistant_text("prefix")
     assert owned.updated is None
