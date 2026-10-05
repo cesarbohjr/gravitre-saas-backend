@@ -217,11 +217,36 @@ def _finalize_run(
                 or f"Run finished with status {coerced_status}."
             )
         )
+        verified_step_refs = [
+            ref for ref in output_refs
+            if isinstance(ref, dict) and (
+                ref.get("verified") is True
+                or (
+                    isinstance(ref.get("verification"), dict)
+                    and ref["verification"].get("verified") is True
+                )
+            )
+        ]
+        consequential_steps = [
+            row for row in step_rows
+            if str(row.get("step_type") or row.get("type") or "").lower()
+            not in {"source", "trigger", "read", "compose"}
+        ]
+        workflow_verified = bool(
+            coerced_status == RUN_STATUS_COMPLETED
+            and (not consequential_steps or len(verified_step_refs) >= len(consequential_steps))
+        )
         finalize_meta: dict[str, Any] = {
             "path": "execution_engine_runtime",
             "environment": ctx.environment_name,
             "step_results": output_refs,
             "connector_output_refs": output_refs,
+            "verification": {
+                "verified": workflow_verified,
+                "verified_step_count": len(verified_step_refs),
+                "consequential_step_count": len(consequential_steps),
+                "method": "workflow_child_evidence",
+            },
         }
         if honesty_reason:
             finalize_meta["list_populate_honesty_reason"] = honesty_reason
