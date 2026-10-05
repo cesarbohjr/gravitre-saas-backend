@@ -7,6 +7,7 @@ full_draft plus optional client playback_offset_ms.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from pipecat.frames.frames import (
@@ -81,23 +82,26 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._active_assistant_message_id = assistant_message_id or None
 
     async def _persist_interrupted_assistant_text(self, reconciled_text: str) -> None:
-        """Replace the latest durable assistant turn with the heard prefix."""
+        """Persist the heard prefix without blocking the interruption transport."""
         if not self._settings or not self._org_id or not self._user_id:
             return
         try:
-            import asyncio
-
-            await asyncio.to_thread(
-                self._persist_interrupted_assistant_text_sync,
-                reconciled_text,
-            )
+            await asyncio.to_thread(self._persist_interrupted_assistant_text_sync, reconciled_text)
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "pipecat_interrupted_history_reconcile_failed org_id=%s conversation_id=%s error=%s",
-                self._org_id,
-                self._conversation_id,
-                str(exc),
+                self._org_id, self._conversation_id, str(exc),
             )
+
+    def _persist_interrupted_detached(self, reconciled_text: str) -> None:
+        """Schedule durable reconciliation after the stop frame is already moving."""
+        task = self.create_task(self._persist_interrupted_assistant_text(reconciled_text))
+        def _consume(done: asyncio.Task[Any]) -> None:
+            try:
+                done.result()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pipecat_interrupted_detached_persist_failed error=%s", str(exc))
+        task.add_done_callback(_consume)
 
     def _persist_interrupted_assistant_text_sync(self, reconciled_text: str) -> None:
         from app.workflows.repository import get_supabase_client
@@ -305,9 +309,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 # heard, not the unplayed draft tail. Rewrite only the most
                 # recent assistant message for this owned conversation; a
                 # failure is non-fatal to the live interruption path.
-                await self._persist_interrupted_assistant_text(
-                    reconciliation.reconciled_text
-                )
+                # Persistence must never delay barge-in audio stop. Schedule it
+                # only after the urgent client notification and InterruptionFrame
+                # have been pushed below.
                 if self._settings is not None and self._org_id:
                     from app.services.pipecat_voice.voice_latency_metrics import (
                         record_voice_barge_in_reconciliation,
@@ -332,6 +336,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 OutputTransportMessageUrgentFrame(message=payload),
                 direction,
             )
+            # Stop buffered output before any database/network reconciliation.
+            if not isinstance(frame, InterruptionFrame):
+            await self.push_frame(frame, direction)
+            if self._reconcile_enabled:
+                self._persist_interrupted_detached(str(payload.get("reconciled_text") or ""))
             # Clear so a follow-up turn starts clean.
             self._draft_llm = ""
             self._draft_client = ""
