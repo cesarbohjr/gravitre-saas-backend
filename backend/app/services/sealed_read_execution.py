@@ -71,6 +71,76 @@ def unwrap_report_payload(data: Any) -> dict[str, Any]:
     return data
 
 
+def bind_read_preflight(
+    ctx: ToolContext,
+    action: str,
+    params: dict[str, Any] | None = None,
+    *,
+    user_message: str = "",
+    task_state: dict[str, Any] | None = None,
+) -> tuple[ToolContext, dict[str, Any], NormalizedResult | None]:
+    """Compile + seal an F1 READ for a caller with no ReAct turn to do it.
+
+    invoke_tool refuses an F1 READ without a bound proof (PREFLIGHT_REQUIRED).
+    Workflow steps, outcome read-backs, reconciliation and ops probes compile
+    here instead. Params stay proposals; the provider gets the compiled ones.
+    A proof the caller already holds for this same read is kept. Returns the
+    context and params to invoke with, or a failed result when compile blocks.
+    Non-F1 actions pass through untouched.
+    """
+    params = dict(params or {})
+    if not is_f1_read_action(action):
+        return ctx, params, None
+    catalog = catalog_action_key(action)
+    held = getattr(ctx, "preflight_result", None)
+    if isinstance(held, PreflightResult) and held.ok and held.action_key == catalog:
+        return ctx, params, None
+    proof = preflight_read_action(
+        context={
+            "action_key": catalog,
+            "org_id": ctx.org_id,
+            "client": ctx.client,
+            "settings": ctx.settings,
+            "proposed_args": params,
+            "user_message": user_message,
+            "task_state": dict(task_state or {}),
+            "environment_name": ctx.environment_name,
+            "turn_id": getattr(ctx, "turn_id", None) or getattr(ctx, "conversation_id", None),
+            "plan_id": getattr(ctx, "plan_id", None),
+            "step_id": getattr(ctx, "step_id", None),
+            "capability_id": getattr(ctx, "capability_id", None),
+        },
+    )
+    if not proof.ok:
+        blocked = NormalizedResult(
+            success=False,
+            action=action,
+            error_code=proof.error_class,
+            error_message=proof.user_message(),
+        )
+        return ctx, params, blocked
+    return replace(ctx, preflight_result=proof), dict(proof.compiled_parameters), None
+
+
+def invoke_compiled_read(
+    ctx: ToolContext,
+    action: str,
+    params: dict[str, Any] | None = None,
+    *,
+    user_message: str = "",
+    task_state: dict[str, Any] | None = None,
+) -> NormalizedResult:
+    """invoke_tool that compiles an F1 READ first (see bind_read_preflight)."""
+    from app.services import tool_service
+
+    bound_ctx, bound_params, blocked = bind_read_preflight(
+        ctx, action, params, user_message=user_message, task_state=task_state
+    )
+    if blocked is not None:
+        return blocked
+    return tool_service.invoke_tool(bound_ctx, action, bound_params)
+
+
 def ensure_plan_read_step(
     plan: ExecutionPlan,
     *,

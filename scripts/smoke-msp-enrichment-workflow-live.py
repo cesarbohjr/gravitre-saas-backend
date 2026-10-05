@@ -59,11 +59,11 @@ def _load_env() -> None:
 
 
 def _safe_invoke(ctx, action: str, params: dict):
-    from app.services.tool_service import invoke_tool
+    from app.services.sealed_read_execution import invoke_compiled_read
     from app.services.tool_types import NormalizedResult
 
     try:
-        return invoke_tool(ctx, action, params)
+        return invoke_compiled_read(ctx, action, params)
     except Exception as exc:  # noqa: BLE001
         return NormalizedResult(
             success=False,

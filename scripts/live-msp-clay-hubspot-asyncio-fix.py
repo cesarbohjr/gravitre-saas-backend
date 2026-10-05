@@ -124,7 +124,8 @@ def main() -> int:
     from app.marketplace.seed_service import fetch_publisher_id, upsert_catalog_asset
     from app.marketplace.workflows.msp_enrichment_workflow import build_msp_enrichment_workflow_steps
     from app.marketplace.workflow_contract import resolve_step_agent_seeds
-    from app.services.tool_service import invoke_tool
+    # Compiles + seals F1 READs (e.g. hubspot.contacts.search); other actions pass through.
+    from app.services.sealed_read_execution import invoke_compiled_read as invoke_tool
     from app.services.tool_types import ToolContext
     from app.services.vertical_workflow_helper import ensure_active_workflow_version
     from app.workflows.constants import SCHEMA_VERSION

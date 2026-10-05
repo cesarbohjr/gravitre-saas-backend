@@ -85,7 +85,8 @@ def main() -> int:
         INSTALL_VARIABLES as MSP_ENRICHMENT_INSTALL_VARS,
         build_msp_enrichment_workflow_steps,
     )
-    from app.services.tool_service import invoke_tool
+    # Compiles + seals F1 READs (e.g. hubspot.contacts.search); other actions pass through.
+    from app.services.sealed_read_execution import invoke_compiled_read as invoke_tool
     from app.services.tool_types import ToolContext
     from app.workflows.binding_validation import validate_bindings
     from app.workflows.constants import SCHEMA_VERSION

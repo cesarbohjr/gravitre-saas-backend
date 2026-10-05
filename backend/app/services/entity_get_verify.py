@@ -185,7 +185,8 @@ def verify_entity_get(
     if not read_action:
         return _unverified("no_read_action_declared")
 
-    from app.services.tool_service import invoke_tool, list_registered_actions
+    from app.services.sealed_read_execution import invoke_compiled_read
+    from app.services.tool_service import list_registered_actions
 
     # invoke_tool resolves aliases itself, so this gate has to resolve the same way
     # or it rejects reads that would in fact execute (google_drive.files.get →
@@ -219,7 +220,7 @@ def verify_entity_get(
         for attempt, delay in enumerate(_SETTLE_BACKOFF_S):
             try:
                 attempted = True
-                out = invoke_tool(ctx, read_action, params)
+                out = invoke_compiled_read(ctx, read_action, params)
                 payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
                 if getattr(out, "success", False):
                     if read_confirms_entity_id(

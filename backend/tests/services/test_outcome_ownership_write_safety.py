@@ -149,7 +149,7 @@ def _lookup_ctx():
 def test_reconcile_finds_created_record_by_natural_key(monkeypatch) -> None:
     monkeypatch.setattr(recon, "_registered", lambda a: a if a.endswith(".search") else None)
     monkeypatch.setattr(
-        "app.services.tool_service.invoke_tool",
+        "app.services.sealed_read_execution.invoke_compiled_read",
         lambda ctx, action, params: SimpleNamespace(
             success=True, data={"results": [{"id": "42", "properties": {"email": "a@b.co"}}]}
         ),
@@ -167,7 +167,7 @@ def test_reconcile_finds_created_record_by_natural_key(monkeypatch) -> None:
 def test_reconcile_empty_filtered_search_proves_absence(monkeypatch) -> None:
     monkeypatch.setattr(recon, "_registered", lambda a: a if a.endswith(".search") else None)
     monkeypatch.setattr(
-        "app.services.tool_service.invoke_tool",
+        "app.services.sealed_read_execution.invoke_compiled_read",
         lambda ctx, action, params: SimpleNamespace(success=True, data={"results": []}),
     )
     out = recon.reconcile_uncertain_write(
@@ -179,7 +179,7 @@ def test_reconcile_empty_filtered_search_proves_absence(monkeypatch) -> None:
 def test_reconcile_unfiltered_page_without_record_is_not_proof(monkeypatch) -> None:
     monkeypatch.setattr(recon, "_registered", lambda a: a if a.endswith(".list") else None)
     monkeypatch.setattr(
-        "app.services.tool_service.invoke_tool",
+        "app.services.sealed_read_execution.invoke_compiled_read",
         lambda ctx, action, params: SimpleNamespace(
             success=True, data={"results": [{"id": "1", "email": "someone@else.co"}]}
         ),

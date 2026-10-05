@@ -128,7 +128,8 @@ def verify_field_assert(
         )
 
     from app.connectors.action_catalog.tool_aliases import resolve_registry_action
-    from app.services.tool_service import invoke_tool, list_registered_actions
+    from app.services.sealed_read_execution import invoke_compiled_read
+    from app.services.tool_service import list_registered_actions
 
     registered = set(list_registered_actions())
     if resolve_registry_action(read_action, registered) not in registered:
@@ -169,7 +170,7 @@ def verify_field_assert(
         for attempt, delay in enumerate(_SETTLE_BACKOFF_S):
             try:
                 attempted = True
-                out = invoke_tool(ctx, read_action, params)
+                out = invoke_compiled_read(ctx, read_action, params)
                 payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
                 if getattr(out, "success", False):
                     observed = find_stored_value(payload, assert_field)
