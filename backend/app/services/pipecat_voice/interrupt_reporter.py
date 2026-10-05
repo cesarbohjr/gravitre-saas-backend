@@ -65,6 +65,59 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._speculative_coordinator = speculative_coordinator
         self._voice_session = voice_session
 
+    async def _persist_interrupted_assistant_text(self, reconciled_text: str) -> None:
+        """Replace the latest durable assistant turn with the heard prefix."""
+        if not self._settings or not self._org_id or not self._user_id or not self._conversation_id:
+            return
+        try:
+            import asyncio
+
+            await asyncio.to_thread(
+                self._persist_interrupted_assistant_text_sync,
+                reconciled_text,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "pipecat_interrupted_history_reconcile_failed org_id=%s conversation_id=%s error=%s",
+                self._org_id,
+                self._conversation_id,
+                str(exc),
+            )
+
+    def _persist_interrupted_assistant_text_sync(self, reconciled_text: str) -> None:
+        from app.workflows.repository import get_supabase_client
+
+        client = get_supabase_client(self._settings)
+        owned = (
+            client.table("conversations")
+            .select("id")
+            .eq("id", self._conversation_id)
+            .eq("org_id", self._org_id)
+            .eq("user_id", self._user_id)
+            .limit(1)
+            .execute()
+        )
+        if not getattr(owned, "data", None):
+            return
+        latest = (
+            client.table("conversation_messages")
+            .select("id")
+            .eq("conversation_id", self._conversation_id)
+            .eq("role", "assistant")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = list(getattr(latest, "data", None) or [])
+        if not rows:
+            return
+        message_id = str(rows[0].get("id") or "")
+        if not message_id:
+            return
+        client.table("conversation_messages").update(
+            {"content": reconciled_text.strip()}
+        ).eq("id", message_id).eq("conversation_id", self._conversation_id).execute()
+
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         if isinstance(frame, InterruptionFrame):
             from app.services.pipecat_voice.voice_audio_origin import (
@@ -225,6 +278,13 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 payload["reconciled_text"] = reconciliation.reconciled_text[:2000]
                 payload["reconcile_played_audio"] = True
                 payload.update(reconcile_meta)
+                # P0 parity: durable history must reflect what the user actually
+                # heard, not the unplayed draft tail. Rewrite only the most
+                # recent assistant message for this owned conversation; a
+                # failure is non-fatal to the live interruption path.
+                await self._persist_interrupted_assistant_text(
+                    reconciliation.reconciled_text
+                )
                 if self._settings is not None and self._org_id:
                     from app.services.pipecat_voice.voice_latency_metrics import (
                         record_voice_barge_in_reconciliation,
