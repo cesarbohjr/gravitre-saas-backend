@@ -599,8 +599,8 @@ function CanvasNode({
           title="Delete step"
           className={cn(
             "absolute -right-2.5 -top-2.5 flex items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground transition-all hover:border-destructive hover:text-destructive",
-            // Larger on mobile (44px) for touch, smaller on desktop
-            "h-8 w-8 md:h-6 md:w-6",
+            // 32px visual circle; the pseudo-element extends the touch target to 44px below md
+            "h-8 w-8 md:h-6 md:w-6 before:absolute before:-inset-1.5 before:content-[''] md:before:inset-0",
             showControls ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
           )}
         >
@@ -832,7 +832,7 @@ function DecisionNode({
           }}
           aria-label="Delete step"
           title="Delete step"
-          className="absolute right-0 top-0 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground opacity-0 transition-opacity hover:border-destructive hover:text-destructive focus-visible:opacity-100 group-hover/node:opacity-100"
+          className="absolute right-0 top-0 z-20 flex h-6 w-6 before:absolute before:-inset-2.5 before:content-[''] md:before:inset-0 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground opacity-0 transition-opacity hover:border-destructive hover:text-destructive focus-visible:opacity-100 group-hover/node:opacity-100"
         >
           <X className="h-3 w-3" />
         </button>
@@ -1370,7 +1370,7 @@ function AgentCouncilNode({
             }}
             aria-label="Delete step"
             title="Delete step"
-            className="absolute -right-2.5 -top-2.5 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
+            className="absolute -right-2.5 -top-2.5 z-20 flex h-6 w-6 before:absolute before:-inset-2.5 before:content-[''] md:before:inset-0 items-center justify-center rounded-full border border-[color:var(--g-border-strong)] bg-card text-muted-foreground transition-colors hover:border-destructive hover:text-destructive"
           >
             <X className="h-3 w-3" />
           </button>
@@ -4713,6 +4713,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 <>
                   <ToolIcon className="h-4 w-4" />
                   <span className="sr-only lg:not-sr-only">{tool.label}</span>
+                  {tool.active ? (
+                    <span aria-hidden className="lg:hidden">{tool.label}</span>
+                  ) : null}
                   {tool.attention ? (
                     <span aria-hidden className="size-1.5 rounded-full bg-[color:var(--g-brand)]" />
                   ) : null}

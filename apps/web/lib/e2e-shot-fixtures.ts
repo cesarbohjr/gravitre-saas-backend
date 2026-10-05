@@ -1025,6 +1025,39 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // pathname matcher, but the page still gates the request on an org being
   // resolved from /api/organizations above.
   "/api/workflows": { workflows },
+  // Shape must match ScheduledItem in types/api.ts; one item per schedule phase.
+  "/api/schedules": {
+    items: [
+      { kind: "workflow", id: "sch_lead_triage", title: "Inbound lead triage", subtitle: "Every 15 minutes", status: "running", cron: "*/15 * * * *", timezone: "America/Chicago", scheduleType: "recurring", workflowId: "wf_lead_triage", startedAt: T(2), lastRunAt: T(17), nextRunAt: T(-13), progress: 60 },
+      { kind: "workflow", id: "sch_deal_desk", title: "Deal desk sync", subtitle: "Weekdays at 08:00", status: "enabled", cron: "0 8 * * 1-5", timezone: "America/New_York", scheduleType: "recurring", workflowId: "wf_deal_desk", lastRunAt: T(38), nextRunAt: T(-960) },
+      { kind: "workflow", id: "sch_support_routing", title: "Support escalation routing", subtitle: "Hourly", status: "failed", cron: "0 * * * *", timezone: "UTC", scheduleType: "recurring", workflowId: "wf_support_routing", lastRunAt: T(44), nextRunAt: T(-16) },
+      { kind: "workflow", id: "sch_invoice_recon", title: "Invoice reconciliation", subtitle: "Paused by operator", status: "disabled", cron: "30 6 * * *", timezone: "Europe/London", scheduleType: "recurring", workflowId: "wf_invoice_recon", lastRunAt: T(2880) },
+      { kind: "workflow", id: "sch_churn_digest", title: "Churn risk digest", subtitle: "Once", status: "scheduled", timezone: "America/Chicago", scheduleType: "once", workflowId: "wf_churn_digest", runAt: T(-2880), nextRunAt: T(-2880) },
+    ],
+  },
+  "/api/runs/run_support_4821": {
+    run: {
+      id: "run_support_4821",
+      workflow_id: "wf_support_routing",
+      workflow_name: "Support escalation routing",
+      status: "failed",
+      environment: "production",
+      triggered_by: "Schedule · hourly",
+      created_by: "dana.whitfield@northwind.example",
+      started_at: T(44),
+      completed_at: T(41),
+      duration_ms: 192000,
+      records_processed: 37,
+      error: "Zendesk returned 429 Too Many Requests while assigning ticket #88213.",
+    },
+    steps: [
+      { id: "stp_1", name: "Fetch open escalations", stepType: "source", status: "completed", orderIndex: 0, startedAt: T(44), completedAt: T(44), outputSnapshot: { tickets: 37 } },
+      { id: "stp_2", name: "Classify severity", stepType: "agent", status: "completed", orderIndex: 1, startedAt: T(44), completedAt: T(43), outputSnapshot: { p1: 3, p2: 11, p3: 23 } },
+      { id: "stp_3", name: "Approve P1 reassignment", stepType: "approval", status: "completed", orderIndex: 2, startedAt: T(43), completedAt: T(42), outputSnapshot: { decision: "approved", approver: "Dana Whitfield" } },
+      { id: "stp_4", name: "Assign tickets in Zendesk", stepType: "connector", status: "failed", orderIndex: 3, startedAt: T(42), completedAt: T(41), errorMessage: "429 Too Many Requests — rate limit resets in 60s.", isRetryable: true, outputSnapshot: { assigned: 29, remaining: 8 } },
+      { id: "stp_5", name: "Notify on-call channel", stepType: "task", status: "skipped", orderIndex: 4 },
+    ],
+  },
   // Capture-only agent jobs (AgentJob shape) spanning every execution phase.
   "/api/assignments": {
     jobs: [

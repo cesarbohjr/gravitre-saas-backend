@@ -56,6 +56,35 @@ export type RunObservabilityDto = {
   outcomeEvents: unknown[]
 }
 
+const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
+/**
+ * The observability join is assembled from several stores, so any of them can
+ * be absent. One missing array must not crash the whole run page.
+ */
+function normalizeObservability(raw: Partial<RunObservabilityDto> | null | undefined): RunObservabilityDto {
+  const value = raw ?? {}
+  return {
+    ...value,
+    runId: String(value.runId ?? ""),
+    contextSources: asArray(value.contextSources),
+    ragQueries: asArray(value.ragQueries),
+    toolsCalled: asArray(value.toolsCalled),
+    agentHandoffs: asArray(value.agentHandoffs),
+    actionsTaken: asArray(value.actionsTaken),
+    approvalsRequired: Boolean(value.approvalsRequired),
+    finalResult: value.finalResult ?? {},
+    replay: asArray(value.replay),
+    sources: value.sources ?? {},
+    auditEventCount: Number(value.auditEventCount ?? 0),
+    cognitiveTurns: asArray(value.cognitiveTurns),
+    outcomeEvents: asArray(value.outcomeEvents),
+  }
+}
+
+const observabilityFetcher = (url: string) =>
+  fetcher(url).then((raw) => normalizeObservability(raw as Partial<RunObservabilityDto>))
+
 function formatMs(ms?: number | null): string {
   if (ms == null || Number.isNaN(ms)) return "—"
   if (ms < 1000) return `${ms}ms`
@@ -85,7 +114,7 @@ function Stat({
 export function RunObservabilityConsole({ runId }: { runId: string }) {
   const { data, error, isLoading } = useSWR<RunObservabilityDto>(
     runId ? `/api/runs/${runId}/observability` : null,
-    fetcher,
+    observabilityFetcher,
     { revalidateOnFocus: false },
   )
 

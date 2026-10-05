@@ -11,6 +11,7 @@ import MarketplaceInstalledPage from "@/app/marketplace/installed/page"
 import SourcesPage from "@/app/sources/page"
 import MetricsPage from "@/app/metrics/page"
 import WorkflowsPage from "@/app/workflows/page"
+import SchedulesPage from "@/app/schedules/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
 
@@ -37,6 +38,7 @@ export const SHOT_SURFACES = {
   marketplace: MarketplaceAssetsPage,
   "marketplace-installed": MarketplaceInstalledPage,
   workflows: WorkflowsPage,
+  schedules: SchedulesPage,
   sources: SourcesPage,
   metrics: MetricsPage,
   proof: AiWorkspaceProofPage,

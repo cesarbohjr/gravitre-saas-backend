@@ -289,9 +289,16 @@ export function MobileAgenda({
                       </p>
                     )}
                     <div className="mt-2 flex items-center gap-2">
-                      <StatusBadge variant={statusVariant(occurrence.item.status)} dot>
-                        {statusLabel(occurrence.item.status)}
-                      </StatusBadge>
+                      {/* A projected slot has not run, so it must not inherit the schedule's last-run state. */}
+                      {!occurrence.projected ? (
+                        <StatusBadge variant={statusVariant(occurrence.item.status)} dot>
+                          {statusLabel(occurrence.item.status)}
+                        </StatusBadge>
+                      ) : !past ? (
+                        <StatusBadge variant="muted" dot>
+                          Upcoming
+                        </StatusBadge>
+                      ) : null}
                       {occurrence.item.isSample && (
                         <StatusBadge variant="muted">Sample</StatusBadge>
                       )}

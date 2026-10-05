@@ -663,7 +663,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={APP_ROUTES.activity}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-0"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to activity

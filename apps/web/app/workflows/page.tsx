@@ -16,7 +16,7 @@ import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { WorkflowFleetSummary } from "@/components/workflows/workflow-fleet-summary"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Activity, AlertTriangle, FileEdit } from "lucide-react"
+import { Blocks, Edit, LayoutGrid, Rows3, Target, Activity } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import {
@@ -359,7 +359,7 @@ export default function WorkflowsPage() {
               <AskGravitreSummonButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("gap-2", RADIUS.control)}>
+                  <Button variant="outline" size="sm" aria-label="Filter workflows" className={cn("h-11 min-w-11 gap-2 sm:h-8 sm:min-w-0", RADIUS.control)}>
                     <Icon name="filter" size="sm" />
                     <span className="hidden sm:inline">Filter</span>
                     {activeFiltersCount > 0 && (
@@ -452,7 +452,8 @@ export default function WorkflowsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setGoalWizardOpen(true)}
-                className={cn("gap-2", RADIUS.control)}
+                aria-label="Create from Goal"
+                className={cn("h-11 min-w-11 gap-2 sm:h-8 sm:min-w-0", RADIUS.control)}
               >
                 <Target className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Create from Goal</span>
@@ -461,14 +462,16 @@ export default function WorkflowsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setMesonWizardOpen(true)}
-                className={cn("gap-2", RADIUS.control)}
+                aria-label="Build with Meson"
+                className={cn("h-11 min-w-11 gap-2 sm:h-8 sm:min-w-0", RADIUS.control)}
               >
                 <Blocks className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Build with Meson</span>
               </Button>
-              <Button size="sm" className={cn("gap-2", RADIUS.control)} asChild>
+              <Button size="sm" className={cn("h-11 gap-2 px-4 sm:h-8 sm:px-3", RADIUS.control)} asChild>
                 <Link href="/workflows/new/builder">
                   <Icon name="add" size="sm" />
+                  <span className="sm:hidden">New</span>
                   <span className="hidden sm:inline">New workflow</span>
                 </Link>
               </Button>
@@ -498,21 +501,6 @@ export default function WorkflowsPage() {
         {/* List is the product; live counts live in Totals. */}
 
         <div className="relative z-10 flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6 scrollbar-on-hover">
-          {workflows.length > 0 && (
-            <div className="mb-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
-              {[
-                { label: "Running", value: runningCount, icon: Activity, detail: "Executing now" },
-                { label: "Active", value: activeCount, icon: TrendingUp, detail: "Enabled workflows" },
-                { label: "Attention", value: errorCount + pausedCount, icon: AlertTriangle, detail: "Failed or paused" },
-                { label: "Drafts", value: draftCount, icon: FileEdit, detail: "Not yet active" },
-              ].map((metric) => (
-                <div key={metric.label} className="group flex min-h-24 items-start justify-between rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 text-left">
-                  <div><p className="text-[11px] font-medium text-muted-foreground">{metric.label}</p><p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{Math.max(0, metric.value)}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>
-                  <metric.icon className="h-4 w-4 text-[color:var(--g-emerald-deep)] opacity-75 transition-opacity group-hover:opacity-100" />
-                </div>
-              ))}
-            </div>
-          )}
           {/* Error state with retry */}
           {error && (
             <ErrorState
