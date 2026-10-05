@@ -285,6 +285,25 @@ def job_pending_approval(job: dict[str, Any]) -> bool:
     return bool(result.get("requires_approval") or result.get("needs_human_input"))
 
 
+class DeliveryBlocked(ValueError):
+    """The job's server-side state does not allow this delivery action."""
+
+
+def delivery_block_reason(job: dict[str, Any]) -> str | None:
+    """Why this job's output may not be pushed, judged only from persisted state."""
+    result = _job_result(job)
+    status = job.get("status")
+    if result.get("approval_status") == "rejected":
+        return "This output was rejected and cannot be pushed."
+    if status == "failed":
+        return "This assignment failed, so there is no output to push."
+    if status != "completed":
+        return f"This output is not ready to push (status: {status or 'unknown'})."
+    if job_pending_approval(job):
+        return "Approve this output before pushing it."
+    return None
+
+
 def approve_job(
     client: Any,
     org_id: str,
@@ -313,7 +332,8 @@ def approve_job(
     # Backfill push fields for jobs completed before destination/content stamping existed.
     payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
     context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
-    result = _attach_delivery_fields(result, context=context)
+    # Approval records a decision only; it must not rewrite the reviewed output.
+    result = _attach_delivery_fields(result, context=context, humanize=False)
     upd = (
         client.table("agent_jobs")
         .update({"result": result, "updated_at": _now()})
@@ -387,6 +407,7 @@ def _attach_delivery_fields(
     result: dict[str, Any],
     *,
     context: dict[str, Any] | None = None,
+    humanize: bool = True,
 ) -> dict[str, Any]:
     """Ensure handoff results carry pushable content + destination for the UI."""
     from app.services.plain_english_formatter import format_plain_english
@@ -401,6 +422,7 @@ def _attach_delivery_fields(
     if content:
         result["report_content"] = content
         result["reportContent"] = content
+    if content and humanize:
         # Keep primary answer human-readable for assignment preview.
         if result.get("answer"):
             result["answer"] = format_plain_english(result.get("answer"), fallback=content)
@@ -471,6 +493,14 @@ def update_job_deliverable(
     if not trimmed:
         return None
     result = _job_result(job)
+    if result.get("approval_status") == "rejected" or job.get("status") != "completed":
+        raise DeliveryBlocked("Only a completed, non-rejected output can be edited.")
+    # Keep the agent's first answer so edits never erase what it returned.
+    if "original_answer" not in result:
+        result["original_answer"] = result.get("answer")
+    if result.get("approval_status") == "approved":
+        result["edited_after_approval"] = True
+    result["edited_at"] = _now()
     result["report_content"] = trimmed
     result["reportContent"] = trimmed
     result["answer"] = trimmed
@@ -499,6 +529,9 @@ def push_job_deliverable(
     job = get_job(client, org_id, job_id)
     if not job:
         raise ValueError("Job not found")
+    blocked = delivery_block_reason(job)
+    if blocked:
+        raise DeliveryBlocked(blocked)
     result = _job_result(job)
     content = _resolve_deliverable_content(result)
     if not content:

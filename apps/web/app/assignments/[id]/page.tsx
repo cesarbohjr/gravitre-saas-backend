@@ -10,15 +10,14 @@ import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspac
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreEmpty } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
 import { readableAssignmentText } from "@/lib/assignments-list"
-import { parseDeliverable } from "@/lib/assignment-deliverable"
+import { deliverableExport, parseDeliverable } from "@/lib/assignment-deliverable"
+import { DeliverableEditorDialog } from "@/components/assignments/deliverable-editor"
 import { formatAssignmentOutput } from "@/lib/plain-english"
 import type { AgentJob } from "@/hooks/use-async-job"
 import { parseHandoffResult, buildExecutionSteps, relativeTime } from "@/lib/agent-job-result"
@@ -117,7 +116,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const [approvalDismissed, setApprovalDismissed] = useState(false)
   const [isDecisionPending, setIsDecisionPending] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const [editDraft, setEditDraft] = useState("")
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isPushing, setIsPushing] = useState(false)
 
@@ -228,27 +226,18 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   }
 
   const handleEdit = () => {
-    if (!deliverable) return
-    // Edit the original payload so structured output keeps its shape.
-    setEditDraft(deliverable.originalJson ?? deliverable.original)
-    setEditOpen(true)
+    if (deliverable) setEditOpen(true)
   }
 
-  const handleSaveEdit = async () => {
+  // Errors are rethrown so the editor keeps the draft open and shows them inline.
+  const handleSaveEdit = async (content: string) => {
     if (isSavingEdit) return
-    const trimmed = editDraft.trim()
-    if (!trimmed) {
-      toast.error("Deliverable content cannot be empty")
-      return
-    }
     setIsSavingEdit(true)
     try {
-      const updated = await updateAssignmentDeliverable(id, trimmed)
+      const updated = await updateAssignmentDeliverable(id, content)
       await mutate(updated as AgentJob, { revalidate: true })
       setEditOpen(false)
       toast.success("Deliverable updated")
-    } catch (err) {
-      toast.error("Failed to save edits", { description: err instanceof Error ? err.message : "Please try again." })
     } finally {
       setIsSavingEdit(false)
     }
@@ -270,12 +259,12 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
 
   const handleExport = () => {
     if (!deliverable) return
-    const isJson = deliverable.originalJson != null
-    const blob = new Blob([deliverable.originalJson ?? deliverable.original], { type: isJson ? "application/json" : "text/plain" })
+    const exported = deliverableExport(deliverable)
+    const blob = new Blob([exported.body], { type: exported.mime })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `assignment-${id}.${isJson ? "json" : "txt"}`
+    anchor.download = `assignment-${id}.${exported.extension}`
     anchor.click()
     URL.revokeObjectURL(url)
   }
@@ -553,34 +542,16 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      <Dialog open={editOpen} onOpenChange={(open) => { if (!isSavingEdit) setEditOpen(open) }}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit deliverable</DialogTitle>
-            <DialogDescription>
-              {deliverable?.format === "structured"
-                ? "Edit the structured output. Keep it valid JSON so it stays readable."
-                : "Update the content before approval or push."}
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={editDraft}
-            onChange={(e) => setEditDraft(e.target.value)}
-            rows={14}
-            aria-label="Deliverable content"
-            disabled={isSavingEdit}
-            className="font-mono text-sm"
-          />
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" className="min-h-11" onClick={() => setEditOpen(false)} disabled={isSavingEdit}>
-              Cancel
-            </Button>
-            <Button className="min-h-11" onClick={() => void handleSaveEdit()} disabled={isSavingEdit || isPushing}>
-              {isSavingEdit ? "Saving…" : "Save changes"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {editOpen && deliverable ? (
+        <DeliverableEditorDialog
+          open
+          onOpenChange={setEditOpen}
+          parsed={deliverable}
+          approved={approvalStatus === "approved"}
+          isSaving={isSavingEdit}
+          onSave={handleSaveEdit}
+        />
+      ) : null}
     </DetailShell>
   )
 }

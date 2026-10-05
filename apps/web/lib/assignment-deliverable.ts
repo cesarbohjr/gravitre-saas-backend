@@ -35,6 +35,12 @@ export type ParsedDeliverable =
       fields: DeliverableField[]
       original: string
       originalJson: string
+      /** Parsed payload, used to build edits without dropping fields. */
+      value: unknown
+      /** Text before the JSON (e.g. `Sales handoff JSON:`), kept on save. */
+      prefix: string
+      /** True when the agent returned an object rather than a string. */
+      rawWasObject: boolean
     }
   | {
       format: "text"
@@ -164,7 +170,7 @@ function prefixToLabel(prefix: string): string | null {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-function buildStructured(value: unknown, original: string, prefix: string): ParsedDeliverable {
+function buildStructured(value: unknown, original: string, prefix: string, rawWasObject = false): ParsedDeliverable {
   const sections: DeliverableSection[] = []
   const fields: DeliverableField[] = []
 
@@ -198,6 +204,9 @@ function buildStructured(value: unknown, original: string, prefix: string): Pars
     fields,
     original,
     originalJson: JSON.stringify(value, null, 2),
+    value,
+    prefix,
+    rawWasObject,
   }
 }
 
@@ -209,12 +218,80 @@ export function parseDeliverable(raw: unknown): ParsedDeliverable {
     } catch {
       original = String(raw)
     }
-    return buildStructured(raw, original, "")
+    return buildStructured(raw, original, "", true)
   }
   const original = typeof raw === "string" ? raw : raw == null ? "" : String(raw)
   const extracted = extractJson(original)
   if (extracted) return buildStructured(extracted.value, original, extracted.prefix)
   return { format: "text", prefixLabel: null, sections: [], fields: [], original, originalJson: null }
+}
+
+/**
+ * Copy/Export body that matches what the agent returned. String payloads are
+ * byte-for-byte; object payloads are pretty-printed JSON of the same data.
+ */
+export function deliverableExport(parsed: ParsedDeliverable): { body: string; mime: string; extension: "json" | "txt" } {
+  if (parsed.format === "structured" && parsed.rawWasObject) {
+    return { body: parsed.originalJson, mime: "application/json", extension: "json" }
+  }
+  let isPureJson = false
+  try {
+    JSON.parse(parsed.original)
+    isPureJson = parsed.format === "structured"
+  } catch {
+    isPureJson = false
+  }
+  return isPureJson
+    ? { body: parsed.original, mime: "application/json", extension: "json" }
+    : { body: parsed.original, mime: "text/plain", extension: "txt" }
+}
+
+export type EditableField =
+  | { key: string; label: string; kind: "text"; text: string }
+  | { key: string; label: string; kind: "list"; text: string }
+  | { key: string; label: string; kind: "locked"; text: string }
+
+/** Top-level fields a person can edit as prose. Anything else stays locked and untouched. */
+export function toEditableFields(value: unknown): EditableField[] | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return Object.entries(value as Record<string, unknown>).map(([key, entry]): EditableField => {
+    const label = humanizeKey(key)
+    if (typeof entry === "string") return { key, label, kind: "text", text: entry }
+    if (Array.isArray(entry) && entry.every((item) => typeof item === "string" && !item.includes("\n"))) {
+      return { key, label, kind: "list", text: (entry as string[]).join("\n") }
+    }
+    return { key, label, kind: "locked", text: entry === undefined ? "" : JSON.stringify(entry, null, 2) }
+  })
+}
+
+/** Rebuild the payload from edited fields, keeping key order and every locked value. */
+export function applyEditableFields(value: Record<string, unknown>, fields: EditableField[]): Record<string, unknown> {
+  const byKey = new Map(fields.map((field) => [field.key, field]))
+  const next: Record<string, unknown> = {}
+  for (const [key, entry] of Object.entries(value)) {
+    const field = byKey.get(key)
+    if (!field || field.kind === "locked") next[key] = entry
+    else if (field.kind === "text") next[key] = field.text
+    else next[key] = field.text.split("\n").map((line) => line.trim()).filter(Boolean)
+  }
+  return next
+}
+
+/** Serialize an edited structured payload in the same shape the agent used (prefix kept). */
+export function serializeStructuredEdit(prefix: string, value: unknown): string {
+  const json = JSON.stringify(value, null, 2)
+  return prefix ? `${prefix} ${json}` : json
+}
+
+/** Parse a raw JSON edit; returns an error message instead of throwing. */
+export function parseRawJsonEdit(text: string): { ok: true; value: unknown } | { ok: false; error: string } {
+  try {
+    const value: unknown = JSON.parse(text)
+    if (!value || typeof value !== "object") return { ok: false, error: "Enter a JSON object or list." }
+    return { ok: true, value }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? `Invalid JSON: ${err.message}` : "Invalid JSON." }
+  }
 }
 
 /** One-line plain summary suitable for list rows and titles. */

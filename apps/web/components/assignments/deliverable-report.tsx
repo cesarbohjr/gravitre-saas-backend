@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import {
+  deliverableExport,
   toTextBlocks,
   type DeliverableSection,
   type DeliverableSectionKind,
@@ -149,7 +150,7 @@ function Disclosure({
 
 export function OriginalDataDisclosure({ parsed }: { parsed: ParsedDeliverable }) {
   const [copied, setCopied] = useState(false)
-  const body = parsed.originalJson ?? parsed.original
+  const body = deliverableExport(parsed).body
   if (!body.trim()) return null
   const copy = async () => {
     try {
@@ -165,7 +166,9 @@ export function OriginalDataDisclosure({ parsed }: { parsed: ParsedDeliverable }
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[12px] text-muted-foreground">
-            {parsed.format === "structured" ? "Formatted JSON exactly as returned by the agent." : "Unformatted text as returned."}
+            {parsed.format === "structured" && parsed.rawWasObject
+              ? "The data returned by the agent, as JSON."
+              : "Exactly as returned. Copy and Export use this text."}
           </p>
           <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 text-[12px]" onClick={() => void copy()}>
             <Icon name={copied ? "check" : "copy"} size="xs" />

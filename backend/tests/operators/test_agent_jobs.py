@@ -411,3 +411,93 @@ def test_push_job_deliverable_export_without_connector(monkeypatch):
     assert out["ok"] is True
     assert out["destination"] == "export"
     assert store["agent_jobs"][0]["result"]["push_status"] == "exported"
+
+
+def _single_job_client(row):
+    store = {"agent_jobs": [row]}
+
+    class _Client:
+        def table(self, name):
+            return _Query(store, name)
+
+    return _Client(), store
+
+
+@pytest.mark.parametrize(
+    ("status", "result", "fragment"),
+    [
+        ("completed", {"answer": "Plan", "requires_approval": True}, "Approve this output"),
+        ("cancelled", {"answer": "Plan", "approval_status": "rejected"}, "rejected"),
+        ("completed", {"answer": "Plan", "approval_status": "rejected"}, "rejected"),
+        ("failed", {"answer": "Plan"}, "failed"),
+        ("running", {"answer": "Plan"}, "not ready"),
+    ],
+)
+def test_push_refuses_without_server_side_prerequisites(monkeypatch, status, result, fragment):
+    row = {"id": "job-gate", "org_id": "org-1", "status": status, "payload": {}, "result": dict(result)}
+    client, store = _single_job_client(row)
+    monkeypatch.setattr(jobs, "get_job", lambda c, org, jid: store["agent_jobs"][0])
+    with pytest.raises(jobs.DeliveryBlocked) as exc:
+        jobs.push_job_deliverable(client, "org-1", "job-gate", user_id="u", settings=get_settings())
+    assert fragment.lower() in str(exc.value).lower()
+    assert "pushed_at" not in store["agent_jobs"][0]["result"]
+
+
+def test_push_allowed_when_no_approval_was_required(monkeypatch):
+    row = {"id": "job-free", "org_id": "org-1", "status": "completed", "payload": {}, "result": {"answer": "Plan"}}
+    client, store = _single_job_client(row)
+    monkeypatch.setattr(jobs, "get_job", lambda c, org, jid: store["agent_jobs"][0])
+    out = jobs.push_job_deliverable(client, "org-1", "job-free", user_id="u", settings=get_settings())
+    assert out["ok"] is True
+
+
+def test_approve_records_decision_without_rewriting_output(monkeypatch):
+    structured = {"summary": "Two accounts at risk", "risks": ["Churn"], "owner_note": None}
+    row = {
+        "id": "job-ap",
+        "org_id": "org-1",
+        "status": "completed",
+        "payload": {},
+        "result": {"answer": structured, "summary": "Raw summary", "requires_approval": True},
+    }
+    client, store = _single_job_client(row)
+    monkeypatch.setattr(jobs, "get_job", lambda c, org, jid: store["agent_jobs"][0])
+    monkeypatch.setattr(
+        "app.services.approval_record_service.finalize_contract_approval", lambda *a, **k: None
+    )
+    jobs.approve_job(client, "org-1", "job-ap", approver_id="u")
+    saved = store["agent_jobs"][0]
+    assert saved["result"]["approval_status"] == "approved"
+    assert saved["result"]["answer"] == structured
+    assert saved["result"]["summary"] == "Raw summary"
+    assert "pushed_at" not in saved["result"]
+    assert "push_status" not in saved["result"]
+
+
+def test_edit_keeps_original_answer_and_flags_post_approval_edit(monkeypatch):
+    original = {"summary": "First draft", "extra": 3}
+    row = {
+        "id": "job-ed",
+        "org_id": "org-1",
+        "status": "completed",
+        "payload": {},
+        "result": {"answer": original, "approval_status": "approved"},
+    }
+    client, store = _single_job_client(row)
+    monkeypatch.setattr(jobs, "get_job", lambda c, org, jid: store["agent_jobs"][0])
+    jobs.update_job_deliverable(client, "org-1", "job-ed", content='{"summary": "Second", "extra": 3}')
+    jobs.update_job_deliverable(client, "org-1", "job-ed", content='{"summary": "Third", "extra": 3}')
+    saved = store["agent_jobs"][0]["result"]
+    assert saved["original_answer"] == original
+    assert saved["answer"] == '{"summary": "Third", "extra": 3}'
+    assert saved["edited_after_approval"] is True
+
+
+@pytest.mark.parametrize("status", ["cancelled", "failed", "running"])
+def test_edit_refused_for_non_completed_jobs(monkeypatch, status):
+    row = {"id": "job-x", "org_id": "org-1", "status": status, "payload": {}, "result": {"answer": "a"}}
+    client, store = _single_job_client(row)
+    monkeypatch.setattr(jobs, "get_job", lambda c, org, jid: store["agent_jobs"][0])
+    with pytest.raises(jobs.DeliveryBlocked):
+        jobs.update_job_deliverable(client, "org-1", "job-x", content="new")
+    assert store["agent_jobs"][0]["result"] == {"answer": "a"}
