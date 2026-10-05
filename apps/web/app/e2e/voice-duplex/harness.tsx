@@ -79,6 +79,9 @@ export function VoiceDuplexHarness() {
     } as unknown as typeof WebSocket
 
     const origFetch = window.fetch.bind(window)
+    // apiFetch calls global fetch. In Next's browser bundle that is window.fetch,
+    // but install the mock before the user can click Start so no request escapes
+    // to the /api proxy/backend during this browser-only capture guard.
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(typeof input === "string" ? input : input instanceof URL ? input : input.url)
       if (url.includes("/api/voice/stt/live-token") || url.includes("/api/voice/stt/token")) {
