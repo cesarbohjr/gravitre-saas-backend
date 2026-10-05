@@ -498,15 +498,9 @@ class GravitreCognitiveLLMService(LLMService):
         durable: list[dict[str, Any]], socket_history: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """Seed from durable history, then append only new in-socket messages."""
-        merged = [dict(message) for message in durable]
-        overlap = 0
-        max_overlap = min(len(merged), len(socket_history))
-        for size in range(max_overlap, 0, -1):
-            if merged[-size:] == socket_history[:size]:
-                overlap = size
-                break
-        merged.extend(dict(message) for message in socket_history[overlap:])
-        return merged[-48:]
+        # Durable is a frozen pre-socket seed; socket_history contains only
+        # turns observed on this live socket. Preserve legitimate repeated turns.
+        return ([dict(message) for message in durable] + [dict(message) for message in socket_history])[-48:]
 
     def _persist_completed_voice_turn(
         self,
