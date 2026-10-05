@@ -75,7 +75,9 @@ class ExecutionResult:
     error_code: str | None = None
     # Wave 7 — calibrated uncertainty notes for verify/relay UI.
     assumption_notes: list[str] | None = None
-    # Outcome Ownership: provider/task success is distinct from verified completion.\n    outcome_verified: bool = False\n
+    # Outcome Ownership: provider/task success is distinct from verified completion.
+    outcome_verified: bool = False
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> ExecutionResult:
         data = dict(payload or {})
