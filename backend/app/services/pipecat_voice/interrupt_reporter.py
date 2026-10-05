@@ -337,7 +337,6 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 direction,
             )
             # Stop buffered output before any database/network reconciliation.
-            if not isinstance(frame, InterruptionFrame):
             await self.push_frame(frame, direction)
             if self._reconcile_enabled:
                 self._persist_interrupted_detached(str(payload.get("reconciled_text") or ""))
@@ -349,4 +348,5 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             if self._spoken_ledger is not None:
                 self._spoken_ledger.reset()
 
-        await self.push_frame(frame, direction)
+        if not isinstance(frame, InterruptionFrame):
+            await self.push_frame(frame, direction)
