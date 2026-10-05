@@ -4,9 +4,18 @@ name: Voice duplex browser guard
 # Mutation-proven: removing the AudioContext resume in use-voice-duplex-session
 # fails this suite on data-capture-ctx-state.
 #
-# Schedule + dispatch only, matching the other standing checks in this program:
-# a main-push check that fails still blocks Railway "Wait for CI" and pins the tip.
+# Run on voice-affecting pull requests as well as the standing daily schedule.
+# A voice regression must be visible before merge, not discovered by tomorrow's cron.
 on:
+  pull_request:
+    paths:
+      - "apps/web/hooks/use-voice-duplex-session.ts"
+      - "apps/web/lib/voice-*.ts"
+      - "apps/web/lib/pipecat-voice-client.ts"
+      - "apps/web/app/e2e/voice-duplex/**"
+      - "backend/app/services/pipecat_voice/**"
+      - "playwright.voice.config.ts"
+      - ".github/workflows/voice-duplex-guard.yml"
   schedule:
     - cron: "0 7 * * *" # Daily 07:00 UTC
   workflow_dispatch:
