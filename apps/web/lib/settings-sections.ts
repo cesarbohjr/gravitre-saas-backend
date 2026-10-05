@@ -58,6 +58,13 @@ export const SETTINGS_TIER_LABELS: Record<SettingsTier, string> = {
   admin: "Admin",
 }
 
+/** Who a change in this tier affects — shown beside every settings title. */
+export const SETTINGS_TIER_SCOPE: Record<SettingsTier, { label: string; detail: string }> = {
+  personal: { label: "Only you", detail: "Changes apply to your account only." },
+  organization: { label: "Whole organization", detail: "Changes apply to everyone in this workspace." },
+  admin: { label: "Admins only", detail: "Restricted to owners and admins. Every change is recorded in the audit log." },
+}
+
 export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "profile",

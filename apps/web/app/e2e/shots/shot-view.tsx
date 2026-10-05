@@ -21,6 +21,8 @@ import ModelsPage from "@/app/models/page"
 import TrainingPage from "@/app/training/page"
 import GoalsPage from "@/app/goals/page"
 import PlaysPage from "@/app/plays/page"
+import SettingsPage from "@/app/settings/page"
+import AuditPage from "@/app/audit/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
 
@@ -56,6 +58,8 @@ export const SHOT_SURFACES = {
   models: ModelsPage,
   goals: GoalsPage,
   plays: PlaysPage,
+  settings: SettingsPage,
+  audit: AuditPage,
   training: TrainingPage,
   sources: SourcesPage,
   metrics: MetricsPage,

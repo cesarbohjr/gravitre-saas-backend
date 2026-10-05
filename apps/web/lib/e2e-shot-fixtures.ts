@@ -1080,6 +1080,26 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   "/api/settings/dashboard-layout": {
     layout: null,
   },
+  // useOrgAdmin reads this first; without it the settings shell hides the Admin tier.
+  "/api/settings/lite-membership": { is_admin: true },
+  "/api/settings/organization": {
+    organization: {
+      id: DEMO_ORG_ID,
+      name: "Northwind Logistics",
+      slug: "northwind-logistics",
+      primaryDomain: "northwind.example",
+      logoUrl: "",
+    },
+  },
+  // Shape matches `User` in types/api.ts; TeamSettings keys rows on id.
+  "/api/settings/team": {
+    team: [
+      { id: "usr_dana", email: "dana@northwind.example", full_name: "Dana Whitfield", role: "owner", job_title: "COO", department: "Operations" },
+      { id: "usr_marcus", email: "marcus@northwind.example", full_name: "Marcus Oyelaran", role: "admin", job_title: "RevOps lead", department: "Revenue" },
+      { id: "usr_priya", email: "priya@northwind.example", full_name: "Priya Raman", role: "member", job_title: "Account executive", department: "Sales" },
+      { id: "usr_lena", email: "lena@northwind.example", full_name: "Lena Sato", role: "member", job_title: "Support manager", department: "Support" },
+    ],
+  },
   "/api/settings/agents-fleet": {
     prefs: null,
   },
