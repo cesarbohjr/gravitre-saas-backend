@@ -96,6 +96,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         conversation_id: str | None = None,
         llm_context: Any | None = None,
         speculative_coordinator: SpeculativeGenerationCoordinator | None = None,
+        durable_context_provider: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -113,6 +114,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         self._conversation_id = conversation_id
         self._llm_context = llm_context
         self._speculative_coordinator = speculative_coordinator
+        self._durable_context_provider = durable_context_provider
         self._last_speculative_text = ""
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -171,7 +173,14 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
 
             intelligence = get_agent_intelligence()
-            _, history = messages_from_context(self._llm_context) if self._llm_context else ("", [])
+            _, socket_history = messages_from_context(self._llm_context) if self._llm_context else ("", [])
+            history = socket_history
+            history_summary = None
+            conversation_id = self._conversation_id
+            if self._durable_context_provider is not None:
+                durable, history_summary, provider_conversation_id = self._durable_context_provider()
+                history = (list(durable or []) + list(socket_history or []))[-48:]
+                conversation_id = provider_conversation_id or conversation_id
             return intelligence.execute_task_streaming(
                 settings=self._app_settings,
                 org_id=self._org_id,
@@ -179,7 +188,8 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 query=query,
                 agent_id=str(self._agent.get("id") or "") or None,
                 conversation_history=history or None,
-                conversation_id=self._conversation_id,
+                history_summary=history_summary,
+                conversation_id=conversation_id,
                 spoken_mode=True,
                 mode=resolve_voice_session_intelligence_mode(query),
             )
