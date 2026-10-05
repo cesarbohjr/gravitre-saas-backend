@@ -168,3 +168,59 @@ Return:
 13. remaining work required before claiming parity with current ChatGPT/Claude.
 
 Do not give credit for documentation claims without code/evidence. Do not treat UNPROVEN as FAILED, and do not treat code/CI as production or human proof.
+
+
+## Second-review addendum — remediation after first Claude review
+
+Review the CURRENT PR #301 head, not any SHA quoted in older sections. The first independent review found concrete blockers and the branch was remediated in response.
+
+### Findings from first review that the second review must re-test
+
+1. **Mid-generation interruption corruption**
+   - First review found that an interrupted current turn could overwrite the previous assistant row because reconciliation targeted the latest assistant message.
+   - Remediation now shares active turn identity between the cognitive LLM and interrupt reporter. Completed turns return their persisted conversation/message IDs; mid-generation interruption persists the active user turn plus the actually heard/reconciled assistant prefix instead of selecting the latest historical assistant row.
+   - Falsify this under interruption before AssistantStreamComplete, after completion, during tool latency, and with a previous assistant message present. Verify tenant filters and ensure no unseen generated tail survives in durable state or summaries.
+
+2. **In-session durable/socket duplication**
+   - First review demonstrated that formatting differences, whitespace, or rewritten identity fields defeated exact-text overlap.
+   - Remediation stops appending completed socket turns back into the durable seed during the same live socket. Durable history is a socket-start/reconnect seed; live Pipecat context owns current-session turns.
+   - Re-test email rewrites, markdown differences, whitespace, reconnect overlap, and the 48-message cap.
+
+3. **Voice-first persistence / conversation ID**
+   - Completed voice turns may now create a durable conversation when the client begins without an ID; the returned ID is retained by the cognitive service and shared with interruption handling.
+   - Verify whether the browser/client receives and reuses that ID across reconnect and text↔voice transitions. Do not give credit merely because server state retains it.
+
+4. **Benchmark contamination**
+   - Exact canned regex answer maps were already removed. After the first review, eval-overlapping SEO/hiring/planning/meta-title examples were also removed from live few-shot/system prompt material and tests were changed to enforce absence/fallthrough.
+   - Search the entire runtime prompt composition path for held-out prompts, near-verbatim answer keys, test-only production branches, or equivalent leakage.
+
+5. **Duplex guard boundary**
+   - E2E mocks previously placed in production Next route handlers were removed. HTTP endpoint mocking is now at the Playwright boundary.
+   - The guard is still failing at CURRENT pre-review evidence: WebSocket never reaches open. The latest test instrumentation is intended to print presence/active/error/AudioContext state on failure. Treat this as an unresolved CI blocker unless a newer exact-head run proves otherwise.
+   - Also assess the larger architectural criticism: the current harness uses forceHttpDuplex and therefore does not constitute production Pipecat browser-path proof. Recommend the correct additional guard rather than treating legacy HTTP coverage as Pipecat proof.
+
+6. **Model routing / latency**
+   - Default conversational turns now resolve to the shared medium/high quality tier (currently gpt-5.5); task-shaped low-tier routing remains possible/configured.
+   - Verify actual runtime reachability of voice override and agent pins. No claim is made that gpt-5.5 voice latency is acceptable: production speech-end → first audible meaningful audio remains UNPROVEN.
+
+### CI evidence discipline for second review
+
+At the prior exact head `7ae1644e094aaf82f5493a4c9b9a85f2e3dd302e`:
+- Conversation parity contract: PASS.
+- Marketing Lighthouse: PASS.
+- Web lint/typecheck/build/unit suite: PASS.
+- Dependency audit: PASS.
+- Shared runtime text/voice gate: PASS.
+- Full backend pytest: FAIL with 2 obsolete expectation failures after 7,080 passes; subsequent commits update those expectations. Verify the CURRENT-head run rather than assuming resolution.
+- Voice duplex browser guard: FAIL because `data-ws-open` remained false for 15 seconds. The prior assertion still hid auxiliary state; subsequent instrumentation now throws the full harness state. Verify CURRENT-head evidence.
+
+### Required second-review verdict
+
+Return:
+1. whether each first-review blocker is FIXED / PARTIALLY FIXED / NOT FIXED / UNPROVEN;
+2. any new P0/P1/P2 defects introduced by remediation;
+3. exact code/test/workflow evidence;
+4. whether PR #301 is safe to merge to main for production acceptance testing;
+5. what remains impossible to establish until production deployment and owner-device testing.
+
+Do not merge the PR. Do not equate CI with production proof. Do not mark an unexecuted physical/browser production condition as failed; use UNPROVEN.
