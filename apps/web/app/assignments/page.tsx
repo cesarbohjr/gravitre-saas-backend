@@ -22,6 +22,7 @@ import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspac
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { LayoutGrid, Rows3 } from "lucide-react"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
+import { AssignmentQueue } from "@/components/assignments/assignment-queue"
 
 type Assignment = DemoAssignment
 type Phase = Assignment["status"]
@@ -33,7 +34,7 @@ const PHASES: Array<{ id: Phase; label: string; empty: string }> = [
   { id: "pending", label: "Queued", empty: "Nothing waiting to start." },
   { id: "running", label: "Executing", empty: "No agent is executing work." },
   { id: "needs_approval", label: "Needs your decision", empty: "No decisions waiting." },
-  { id: "completed", label: "Delivered", empty: "Nothing delivered yet." },
+  { id: "completed", label: "Completed", empty: "Nothing completed yet." },
   { id: "failed", label: "Blocked", empty: "Nothing blocked." },
 ]
 
@@ -61,8 +62,8 @@ function phaseColumnTemplate(byPhase: Map<Phase, Assignment[]>): string {
 }
 
 const VIEW_MODES = [
-  { id: "track" as const, label: "Track view", icon: LayoutGrid },
-  { id: "list" as const, label: "List view", icon: Rows3 },
+  { id: "list" as const, label: "Queue view", icon: Rows3 },
+  { id: "track" as const, label: "Board view", icon: LayoutGrid },
 ] as const
 
 function phaseLabel(status: Phase): string {
@@ -358,43 +359,6 @@ function MissionInspector({ assignment }: { assignment: Assignment | null }) {
   )
 }
 
-function MissionListRow({ assignment, onOpen }: { assignment: Assignment; onOpen: () => void }) {
-  const evidence = evidenceLine(assignment)
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="grid w-full grid-cols-1 gap-1 px-[var(--np-page-pad-sm)] py-3 text-left transition-colors hover:bg-[color:var(--g-surface-1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-[var(--np-page-pad)] md:grid-cols-[minmax(0,1fr)_160px_150px_110px] md:items-center md:gap-4"
-      >
-        <span className="min-w-0">
-          <span className="line-clamp-1 text-[13px] font-medium text-foreground">{assignment.title}</span>
-          {assignment.status === "failed" && assignment.blocker ? (
-            <span className="line-clamp-1 text-[11.5px] text-destructive">{assignment.blocker}</span>
-          ) : assignment.status === "needs_approval" ? (
-            <span className="line-clamp-1 text-[11.5px] text-foreground">
-              {assignment.approvalPrompt ?? "Waiting for your decision"}
-            </span>
-          ) : evidence ? (
-            <span className="line-clamp-1 text-[11.5px] text-muted-foreground">{evidence}</span>
-          ) : null}
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
-          <AgentMark name={assignment.agent.name} />
-          <span className="truncate">{assignment.agent.name}</span>
-        </span>
-        <span className="flex items-center gap-1.5 text-[12px] text-foreground">
-          <span aria-hidden className={cn("size-1.5 rounded-full", PHASE_DOT[assignment.status])} />
-          {phaseLabel(assignment.status)}
-        </span>
-        <span className="text-[12px] tabular-nums text-muted-foreground md:text-right">
-          {assignment.createdAt ? relativeTime(assignment.createdAt) : ""}
-        </span>
-      </button>
-    </li>
-  )
-}
-
 function TrackSkeleton() {
   return (
     <div className="grid flex-1 grid-cols-1 divide-x divide-[color:var(--g-border-subtle)] md:grid-cols-5">
@@ -413,8 +377,7 @@ export default function AssignmentsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [localAssignments, setLocalAssignments] = useState<Assignment[]>([])
-  const [viewMode, setViewMode] = useState<"track" | "list">("track")
-  const [mobilePhase, setMobilePhase] = useState<Phase | "all">("all")
+  const [viewMode, setViewMode] = useState<"track" | "list">("list")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [newAssignmentOpen, setNewAssignmentOpen] = useState(false)
 
@@ -478,10 +441,9 @@ export default function AssignmentsPage() {
     `${count("running")} executing`,
     `${count("needs_approval")} waiting on you`,
     count("failed") > 0 ? `${count("failed")} blocked` : null,
-    `${count("completed")} delivered`,
+    `${count("completed")} completed`,
   ].filter(Boolean)
   const statusTone = count("needs_approval") > 0 || count("failed") > 0 ? "attention" : count("running") > 0 ? "live" : "idle"
-  const mobileList = mobilePhase === "all" ? assignmentList : byPhase.get(mobilePhase) ?? []
 
   return (
     <AppShell title={SURFACE_COPY.pages.assignments.title} fillViewport>
@@ -537,7 +499,7 @@ export default function AssignmentsPage() {
                 <div>
                   <p className="text-[13px] font-medium text-foreground">No assignments yet</p>
                   <p className="text-xs text-muted-foreground">
-                    Give an agent an objective. It moves through these phases — queued, executing, your decision, delivered — with its evidence.
+                    Give an agent an objective. Its work appears here, with anything that needs your decision listed first.
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={openNewAssignment}>
@@ -546,40 +508,9 @@ export default function AssignmentsPage() {
                 </Button>
               </div>
             ) : null}
-            {/* Phones: phase filter + mission list */}
+            {/* Phones: the attention-ordered queue is the whole view */}
             <div className="flex min-h-0 flex-1 flex-col md:hidden">
-              <div role="tablist" aria-label="Filter by phase" className="flex overflow-x-auto border-b border-[color:var(--g-border-subtle)] px-2 scrollbar-none">
-                {([{ id: "all" as const, label: "All" }, ...PHASES] as Array<{ id: Phase | "all"; label: string }>).map((phase) => {
-                  const n = phase.id === "all" ? assignmentList.length : count(phase.id)
-                  return (
-                    <button
-                      key={phase.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={mobilePhase === phase.id}
-                      onClick={() => setMobilePhase(phase.id)}
-                      className={cn(
-                        "relative shrink-0 px-3 py-2.5 text-[13px] font-medium",
-                        mobilePhase === phase.id
-                          ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[color:var(--g-text-primary)]"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {phase.label}
-                      <span className="ml-1 tabular-nums text-muted-foreground">{n}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <ul className="min-h-0 flex-1 divide-y divide-[color:var(--g-border-subtle)] overflow-y-auto pb-24">
-                {mobileList.length === 0 ? (
-                  <li className="px-4 py-4 text-xs text-muted-foreground">Nothing in this phase.</li>
-                ) : (
-                  mobileList.map((assignment) => (
-                    <MissionListRow key={assignment.id} assignment={assignment} onOpen={() => openAssignment(assignment)} />
-                  ))
-                )}
-              </ul>
+              <AssignmentQueue assignments={assignmentList} selectedId={null} onActivate={openAssignment} />
             </div>
 
             {/* Tablet and desktop */}
@@ -601,19 +532,7 @@ export default function AssignmentsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-                  <div className="sticky top-0 z-10 hidden grid-cols-[minmax(0,1fr)_160px_150px_110px] gap-4 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] px-[var(--np-page-pad)] py-2 text-[11.5px] font-medium text-muted-foreground md:grid">
-                    <span>Objective</span>
-                    <span>Agent</span>
-                    <span>Phase</span>
-                    <span className="text-right">Created</span>
-                  </div>
-                  <ul className="divide-y divide-[color:var(--g-border-subtle)] pb-24">
-                    {assignmentList.map((assignment) => (
-                      <MissionListRow key={assignment.id} assignment={assignment} onOpen={() => activate(assignment)} />
-                    ))}
-                  </ul>
-                </div>
+                <AssignmentQueue assignments={assignmentList} selectedId={inspected?.id ?? null} onActivate={activate} />
               )}
               <aside
                 aria-label="Assignment inspector"
