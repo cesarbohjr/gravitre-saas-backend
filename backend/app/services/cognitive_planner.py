@@ -138,6 +138,57 @@ class CognitivePlanner:
         )
         if isinstance(enriched, dict) and "signal_scoring" in plan:
             enriched["signal_scoring"] = plan["signal_scoring"]
+
+        # Outcome Ownership compound-objective composition. Runtime callers may
+        # attach normalized resource descriptors to task_state; the planner
+        # composes them by capability instead of forcing the user to name tools.
+        objective = state.get("objective_contract") if isinstance(state.get("objective_contract"), dict) else {}
+        required = {
+            str(x).strip()
+            for x in (objective.get("required_capabilities") or [])
+            if str(x).strip()
+        }
+        raw_resources = state.get("capability_resources")
+        if required and isinstance(raw_resources, list):
+            try:
+                from app.services.objective_capability_composer import (
+                    CapabilityResource,
+                    compose_capability_resources,
+                )
+
+                resources = []
+                for raw in raw_resources:
+                    if not isinstance(raw, dict):
+                        continue
+                    resources.append(
+                        CapabilityResource(
+                            resource_id=str(raw.get("resource_id") or raw.get("id") or ""),
+                            kind=str(raw.get("kind") or ""),
+                            capabilities=frozenset(
+                                str(x).strip()
+                                for x in (raw.get("capabilities") or [])
+                                if str(x).strip()
+                            ),
+                            connected=bool(raw.get("connected", True)),
+                            writable=bool(raw.get("writable", False)),
+                            verified=bool(raw.get("verified", False)),
+                            priority=int(raw.get("priority") or 100),
+                        )
+                    )
+                composition = compose_capability_resources(
+                    required_capabilities=required,
+                    resources=[r for r in resources if r.resource_id],
+                    require_write=bool(objective.get("requires_write", False)),
+                )
+                enriched = dict(enriched)
+                enriched["capability_composition"] = composition
+                enriched["objective_contract"] = {
+                    "objective": objective.get("objective") or summary,
+                    "required_capabilities": sorted(required),
+                    "requires_write": bool(objective.get("requires_write", False)),
+                }
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("objective_capability_composition_skipped error=%s", exc)
         return enriched
 
 
