@@ -13,6 +13,7 @@ on:
       - "apps/web/lib/voice-*.ts"
       - "apps/web/lib/pipecat-voice-client.ts"
       - "apps/web/app/e2e/voice-duplex/**"
+      - "apps/web/app/api/voice/**"
       - "backend/app/services/pipecat_voice/**"
       - "playwright.voice.config.ts"
       - ".github/workflows/voice-duplex-guard.yml"
