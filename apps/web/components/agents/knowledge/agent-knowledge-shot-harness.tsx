@@ -201,7 +201,7 @@ export function AgentKnowledgeShotHarness() {
             key={tab.id}
             type="button"
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              "min-h-11 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:min-h-0",
               activeTab === tab.id
                 ? "bg-[color:var(--g-brand)]/10 text-[color:var(--g-brand)]"
                 : "text-muted-foreground hover:text-foreground",

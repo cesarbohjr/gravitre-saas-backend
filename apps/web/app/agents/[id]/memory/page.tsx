@@ -47,6 +47,17 @@ function formatDate(value?: string): string {
   return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
+function normalizeMemoryList(data: unknown): AgentMemory[] {
+  if (Array.isArray(data)) return data as AgentMemory[]
+  if (data && typeof data === "object") {
+    for (const key of ["memories", "items", "data"] as const) {
+      const list = (data as Record<string, unknown>)[key]
+      if (Array.isArray(list)) return list as AgentMemory[]
+    }
+  }
+  return []
+}
+
 function toDisplayMemory(memory: AgentMemory): DisplayMemory {
   return {
     id: memory.id,
@@ -187,7 +198,7 @@ export default function AgentMemoryPage({
   )
 
   const memories = useMemo(
-    () => (memoriesData || []).map(toDisplayMemory),
+    () => normalizeMemoryList(memoriesData).map(toDisplayMemory),
     [memoriesData],
   )
 
