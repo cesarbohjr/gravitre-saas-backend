@@ -70,7 +70,7 @@ export const TYPE = {
 export const HUB_TABS = {
   nav: "-mb-px flex items-end gap-x-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
   link:
-    "relative shrink-0 whitespace-nowrap pb-2.5 pt-1 font-sans text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-full",
+    "relative flex min-h-11 shrink-0 items-end whitespace-nowrap pb-2.5 pt-1 md:min-h-0 font-sans text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-full",
   active: "text-[color:var(--g-text-primary)] after:bg-[color:var(--g-text-primary)]",
   idle: "text-[color:var(--g-text-muted)] after:bg-transparent hover:text-[color:var(--g-text-primary)]",
 } as const

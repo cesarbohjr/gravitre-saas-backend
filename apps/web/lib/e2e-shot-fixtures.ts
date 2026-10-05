@@ -1088,6 +1088,31 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // pathname matcher, but the page still gates the request on an org being
   // resolved from /api/organizations above.
   "/api/workflows": { workflows },
+  "/api/ml/models": {
+    models: [
+      { id: "mdl_churn", name: "Churn risk scorer", description: "Flags accounts likely to churn in the next 60 days.", model_type: "classifier", status: "deployed", current_version: 3, deployed_version: 3, base_model: "gradient-boosted-trees", created_at: "2026-03-02T15:00:00Z", updated_at: "2026-05-08T09:30:00Z" },
+      { id: "mdl_lead_score", name: "Lead fit score", description: "Ranks inbound leads by fit with closed-won accounts.", model_type: "regressor", status: "training", current_version: 2, deployed_version: 1, created_at: "2026-04-11T12:00:00Z", updated_at: "2026-05-09T18:10:00Z" },
+      { id: "mdl_ticket_route", name: "Ticket router", description: null, model_type: "classifier", status: "draft", current_version: 0, created_at: "2026-05-07T10:00:00Z" },
+    ],
+  },
+  "/api/ml/models/mdl_churn": {
+    id: "mdl_churn",
+    name: "Churn risk scorer",
+    description: "Flags accounts likely to churn in the next 60 days.",
+    model_type: "classifier",
+    task_type: "binary_classification",
+    status: "deployed",
+    current_version: 3,
+    deployed_version: 3,
+    base_model: "gradient-boosted-trees",
+    created_at: "2026-03-02T15:00:00Z",
+    updated_at: "2026-05-08T09:30:00Z",
+    versions: [
+      { version: 3, metrics: { accuracy: 0.91, f1: 0.87, auc: 0.94 }, artifact_size_bytes: 4820000, created_at: "2026-05-08T09:30:00Z" },
+      { version: 2, metrics: { accuracy: 0.88, f1: 0.83, auc: 0.91 }, artifact_size_bytes: 4610000, created_at: "2026-04-15T14:00:00Z" },
+      { version: 1, metrics: { accuracy: 0.84, f1: 0.79 }, artifact_size_bytes: 4100000, created_at: "2026-03-02T15:00:00Z" },
+    ],
+  },
   // Shape must match ScheduledItem in types/api.ts; one item per schedule phase.
   "/api/schedules": {
     items: [

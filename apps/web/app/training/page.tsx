@@ -273,7 +273,7 @@ function TrainingPageContent() {
     isLoading: agentsFallbackLoading,
     mutate: mutateAgentsFallback,
   } = useSWR(
-    swrKey && workflowAgentsData?.agents.length === 0
+    swrKey && workflowAgentsData && (workflowAgentsData.agents ?? []).length === 0
       ? "training/agents-fallback"
       : null,
     async () => {

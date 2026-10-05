@@ -473,6 +473,9 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
               // flex rows, charts) from forcing the whole viewport wider than
               // the screen on mobile. Wide data views own their own x-scroll.
               "flex min-h-0 min-w-0 flex-1 flex-col",
+              // Auto margins beat align-stretch in a flex column, so a page root like
+              // `mx-auto max-w-7xl` would shrink to its content instead of filling up to its cap.
+              "[&>*]:w-full",
               locksDocumentScroll || fillViewport
                 ? cn(
                     "overflow-hidden",

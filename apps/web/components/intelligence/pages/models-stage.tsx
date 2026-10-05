@@ -56,7 +56,7 @@ export function ModelsStage({
               onClick={() => setView(item.id)}
               className={cn(
                 TYPE.meta,
-                "underline-offset-4",
+                "inline-flex min-h-11 items-center underline-offset-4 md:min-h-0",
                 view === item.id
                   ? "text-[color:var(--g-text-primary)] underline"
                   : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",

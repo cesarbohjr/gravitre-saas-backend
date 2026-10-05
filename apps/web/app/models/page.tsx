@@ -236,7 +236,7 @@ export default function ModelsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.models.title}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6" data-composition="understand">
+      <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6" data-composition="understand">
         <GravitrePageHeader
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}
@@ -277,7 +277,7 @@ export default function ModelsPage() {
                 type="button"
                 onClick={() => setModelsTab(item.id)}
                 className={cn(
-                  "text-xs underline-offset-4",
+                  "inline-flex min-h-11 items-center text-xs underline-offset-4 md:min-h-0",
                   modelsTab === item.id
                     ? "text-[color:var(--g-text-primary)] underline"
                     : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
