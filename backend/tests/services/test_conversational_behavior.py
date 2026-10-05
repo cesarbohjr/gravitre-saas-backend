@@ -34,7 +34,8 @@ def test_module_d_live_prompt_includes_conversational_behavior():
     text = build_module_d_unified_system_prompt(agent=agent)
     assert "## Conversational behavior" in text
     assert "Don't over-answer" in text or "over-answer" in text.lower()
-    assert "organic traffic for the main site" in text.lower()
+    assert "search visibility is weak for our storefront" in text.lower()
+    assert "organic traffic for the main site" not in text.lower()
     assert "Knowledge boundaries" in text or "anti-fabrication" in text.lower()
     # Distinct from register system — both present
     assert "Register 1" in text or "CONVERSATIONAL" in text
