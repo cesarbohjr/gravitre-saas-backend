@@ -43,7 +43,7 @@ jobs:
       - run: pip install -r requirements.txt pytest
       - name: Outcome Ownership held-out contract
         run: >
-          pytest -q
+          python -m pytest -q
           tests/services/test_outcome_ownership_benchmark.py
           tests/services/test_objective_capability_composer.py
           tests/services/test_outcome_ownership_agent_verification.py
