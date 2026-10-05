@@ -82,7 +82,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
 
     async def _persist_interrupted_assistant_text(self, reconciled_text: str) -> None:
         """Replace the latest durable assistant turn with the heard prefix."""
-        if not self._settings or not self._org_id or not self._user_id or not self._conversation_id:
+        if not self._settings or not self._org_id or not self._user_id:
             return
         try:
             import asyncio
@@ -103,17 +103,18 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         from app.workflows.repository import get_supabase_client
 
         client = get_supabase_client(self._settings)
-        owned = (
-            client.table("conversations")
-            .select("id")
-            .eq("id", self._conversation_id)
-            .eq("org_id", self._org_id)
-            .eq("user_id", self._user_id)
-            .limit(1)
-            .execute()
-        )
-        if not getattr(owned, "data", None):
-            return
+        if self._conversation_id:
+            owned = (
+                client.table("conversations")
+                .select("id")
+                .eq("id", self._conversation_id)
+                .eq("org_id", self._org_id)
+                .eq("user_id", self._user_id)
+                .limit(1)
+                .execute()
+            )
+            if not getattr(owned, "data", None):
+                return
         message_id = str(self._active_assistant_message_id or "").strip()
         if message_id:
             client.table("conversation_messages").update(
