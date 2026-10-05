@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -16,6 +17,12 @@ from app.services.entity_link_service import (
 from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
+
+# Pending-task states that mean this confirmation was already acted on.
+_ALREADY_RUN_STATUSES = frozenset({"executing", "executed", "verifying", "completed"})
+# An "executing" claim older than this belongs to a crashed worker; Gravitre-native
+# creates are cheap to redo, so the claim is released rather than stuck forever.
+_EXECUTING_LEASE_SECONDS = 600
 
 CONFIRM_PATTERN = re.compile(
     r"^\s*(yes|yeah|yep|y|confirm|confirmed|go ahead|proceed|create it|do it|"
@@ -75,6 +82,8 @@ class ExecutionResult:
     error_code: str | None = None
     # Wave 7 — calibrated uncertainty notes for verify/relay UI.
     assumption_notes: list[str] | None = None
+    # Outcome Ownership: provider/task success is distinct from verified completion.
+    outcome_verified: bool = False
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> ExecutionResult:
@@ -97,6 +106,94 @@ def _serialize_execution_result(result: ExecutionResult) -> dict[str, Any]:
     from app.services.artifact_registry_service import serialize_execution_result
 
     return serialize_execution_result(result)
+
+
+def _lease_expired(claimed_at: Any) -> bool:
+    try:
+        started = datetime.fromisoformat(str(claimed_at or "").replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    return (datetime.now(timezone.utc) - started).total_seconds() >= _EXECUTING_LEASE_SECONDS
+
+
+def _read_back_evidence(
+    reader: Any,
+    *,
+    read_action: str,
+    resource_id: str,
+    field: str,
+    expected: str,
+) -> dict[str, Any]:
+    """Re-read a Gravitre-native record the way connector writes are re-read."""
+    evidence: dict[str, Any] = {
+        "verified": False,
+        "method": "gravitre_read_back",
+        "read_action": read_action,
+        "resource_id": resource_id,
+        "entity_id": resource_id,
+        "field": field,
+        "expected": expected,
+        "follow_up_attempted": True,
+    }
+    try:
+        row = reader()
+    except Exception as exc:  # noqa: BLE001
+        evidence["detail"] = f"read_back_error:{type(exc).__name__}"
+        return evidence
+    if not isinstance(row, dict) or not row:
+        evidence["detail"] = "record_not_found"
+        return evidence
+    observed = str(row.get(field) or "").strip()
+    evidence["observed"] = observed
+    if str(row.get("id") or resource_id) != resource_id:
+        evidence["detail"] = "entity_id_mismatch"
+        return evidence
+    if expected and observed and observed.lower() != expected.strip().lower():
+        evidence["detail"] = "field_value_mismatch"
+        return evidence
+    evidence["verified"] = True
+    evidence["detail"] = "record_confirmed"
+    return evidence
+
+
+def _read_run_status(client: Any, org_id: str, run_id: str) -> str:
+    if not run_id or client is None:
+        return ""
+    try:
+        rows = (
+            client.table("workflow_runs")
+            .select("id,status")
+            .eq("id", run_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("workflow run read-back skipped run_id=%s err=%s", run_id, exc)
+        return ""
+    return str((rows[0] if rows else {}).get("status") or "").strip().lower()
+
+
+def _workflow_run_report(name: str, status: str) -> tuple[bool, bool, str]:
+    """(success, outcome_verified, user copy) for a workflow run's real status."""
+    if status in {"completed", "success"}:
+        return True, True, f"Workflow “{name}” finished, and every change it made is confirmed."
+    if status == "verification_inconclusive":
+        return (
+            True,
+            False,
+            f"Workflow “{name}” ran, but I could not confirm every change in the source systems. "
+            "Open the run to see which steps are unconfirmed.",
+        )
+    if status == "partial_success":
+        return True, False, f"Workflow “{name}” finished with some steps failing. Open the run to see which ones."
+    if status == "flagged_for_review":
+        return True, False, f"Workflow “{name}” finished, but its results were flagged for review."
+    if status in {"failed", "cancelled"}:
+        return False, False, f"Workflow “{name}” {status}. Open the run for details."
+    return True, False, f"Workflow “{name}” is running. Open Runs to follow it; I will not call it done until it finishes."
 
 
 class ConversationalExecutionService:
@@ -455,12 +552,13 @@ class ConversationalExecutionService:
                 link = ""
                 if execution.result_url:
                     link = f"\n\n[View in Gravitre]({execution.result_url})"
-                if task_type == "execute_workflow":
-                    done = f"Done — I started **{execution.title}**.\n\n{execution.body}{link}"
-                elif task_type == "run_agent_task":
-                    done = f"Done — **{execution.title}** finished.\n\n{execution.body}{link}"
+                if (execution.structured or {}).get("replayed"):
+                    done = f"{execution.body}{link}"
+                elif execution.outcome_verified:
+                    done = f"Done — **{execution.title}** is confirmed.\n\n{execution.body}{link}"
                 else:
-                    done = f"Done — I created **{execution.title}**.\n\n{execution.body}{link}"
+                    # The body already states exactly what is and is not confirmed.
+                    done = f"**{execution.title}**\n\n{execution.body}{link}"
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",
@@ -524,7 +622,88 @@ class ConversationalExecutionService:
             classification=classification or {},
         )
 
+    @staticmethod
+    def _replay_if_already_run(
+        pending: dict[str, Any], *, conversation_id: str
+    ) -> ExecutionResult | None:
+        status = str(pending.get("status") or "").strip().lower()
+        if status not in _ALREADY_RUN_STATUSES:
+            return None
+        if status == "executing" and _lease_expired(pending.get("claimed_at")):
+            return None
+        prior = pending.get("result") if isinstance(pending.get("result"), dict) else {}
+        url = f"/ai?c={conversation_id}" if conversation_id else "/ai"
+        if status == "executing":
+            return ExecutionResult(
+                success=False,
+                entity_type=str(pending.get("type") or "conversation"),
+                entity_id="",
+                result_url=url,
+                title="Already running",
+                body="That is already running. I will not start it a second time.",
+                error_code="WRITE_IN_FLIGHT",
+            )
+        if prior:
+            replayed = ExecutionResult.from_dict(prior)
+            return replace(
+                replayed,
+                body=(
+                    f"{replayed.body} (Already done earlier, so I did not run it again.)"
+                    if replayed.body
+                    else "This was already done, so I did not run it again."
+                ),
+                structured={**dict(replayed.structured or {}), "replayed": True},
+            )
+        return ExecutionResult(
+            success=True,
+            entity_type=str(pending.get("type") or "conversation"),
+            entity_id="",
+            result_url=url,
+            title="Already done",
+            body="This was already done, so I did not run it again.",
+            structured={"replayed": True},
+        )
+
+    @staticmethod
+    def _verification_evidence(result: ExecutionResult) -> dict[str, Any]:
+        structured = result.structured if isinstance(result.structured, dict) else {}
+        nested = structured.get("verification")
+        evidence = dict(nested) if isinstance(nested, dict) else {}
+        evidence.setdefault("verified", bool(result.outcome_verified))
+        if result.entity_id:
+            evidence.setdefault("entity_id", result.entity_id)
+        if result.entity_type:
+            evidence.setdefault("entity_type", result.entity_type)
+        return evidence
+
     def _finalize_task_outcome(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        user_id: str,
+        conversation_id: str,
+        result: ExecutionResult,
+    ) -> None:
+        # Fanout is best-effort: a notification/audit failure must never turn a
+        # created entity into a reported failure (or invite a duplicate retry).
+        try:
+            self._finalize_task_outcome_unsafe(
+                client,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "conversational outcome finalize skipped org_id=%s entity=%s error=%s",
+                org_id,
+                result.entity_type,
+                exc,
+            )
+
+    def _finalize_task_outcome_unsafe(
         self,
         client: Any,
         *,
@@ -535,14 +714,22 @@ class ConversationalExecutionService:
     ) -> None:
         from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
 
-        is_workflow_run = (
-            result.entity_type == "workflow_run" and bool(str(result.entity_id or "").strip())
-        )
-        run_id = str(result.entity_id).strip() if is_workflow_run else None
+        if result.entity_type == "workflow_run" and str(result.entity_id or "").strip():
+            # The workflow runtime owns that run's terminal fanout (run row, email,
+            # learning). Finalizing it again here would double-notify or overwrite
+            # the runtime's truthful status.
+            return
+        run_id = None
+        if not result.success:
+            status = "failed"
+        elif result.outcome_verified:
+            status = "completed"
+        else:
+            status = "verification_inconclusive"
         finalize_execution_outcome(
             client,
             org_id=org_id,
-            status="completed" if result.success else "failed",
+            status=status,
             source="assistant_chat",
             actor_id=user_id,
             run_id=run_id,
@@ -561,6 +748,11 @@ class ConversationalExecutionService:
             metadata={
                 "path": "conversational_execution",
                 "conversation_id": conversation_id,
+                "verification": self._verification_evidence(result),
+                "execution_lifecycle": "COMPLETED" if result.outcome_verified else (
+                    "EXECUTED_UNVERIFIED" if result.success else "FAILED"
+                ),
+                "requires_outcome_verification": True,
             },
         )
 
@@ -575,6 +767,29 @@ class ConversationalExecutionService:
         client: Any,
         classification: dict[str, Any],
     ) -> ExecutionResult:
+        task_state = await self._state.get_task_state(conversation_id, org_id, client=client)
+        pending = task_state.get("pending_task") if isinstance(task_state, dict) else None
+        pending = pending if isinstance(pending, dict) else {}
+        if str(pending.get("type") or task_type) == task_type:
+            replay = self._replay_if_already_run(pending, conversation_id=conversation_id)
+            if replay is not None:
+                return replay
+        # Claim before running so a second "yes" cannot create a second agent,
+        # workflow or run while this one is in flight.
+        await self._state.update_task_state(
+            conversation_id,
+            org_id,
+            {
+                "pending_task": {
+                    **pending,
+                    "type": task_type,
+                    "params": pending.get("params") or clarified,
+                    "status": "executing",
+                    "lifecycle": "EXECUTING",
+                    "claimed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        )
         try:
             if task_type == "create_agent":
                 result = await self._create_agent(org_id, user_id, clarified, client)
@@ -644,7 +859,14 @@ class ConversationalExecutionService:
                 conversation_id,
                 org_id,
                 {
-                    "pending_task": {"type": task_type, "status": "executed", "result": result.__dict__},
+                    # Always terminal ("executed"): the entity exists, so a later
+                    # "yes" must replay this result instead of creating another.
+                    "pending_task": {
+                        "type": task_type,
+                        "status": "executed",
+                        "lifecycle": "COMPLETED" if result.outcome_verified else "EXECUTED_UNVERIFIED",
+                        "result": result.__dict__,
+                    },
                     "completed_steps": [
                         {
                             "step_id": f"execute_{task_type}",
@@ -678,7 +900,8 @@ class ConversationalExecutionService:
                 },
             )
 
-        await self._record_learning_outcome(org_id, user_id, result, classification)
+        if result.outcome_verified or (not result.success and result.error_code != "OUTCOME_UNCERTAIN"):
+            await self._record_learning_outcome(org_id, user_id, result, classification)
         return result
 
     async def _create_agent(
@@ -735,15 +958,31 @@ class ConversationalExecutionService:
             metadata={"source": "conversational_execution", "name": name},
         )
         result_url = build_entity_url("agent", agent_id)
+        from app.operators.repository import get_operator
+
+        evidence = _read_back_evidence(
+            lambda: get_operator(client, org_id, agent_id),
+            read_action="operators.get",
+            resource_id=agent_id,
+            field="name",
+            expected=name,
+        )
+        verified = evidence["verified"]
         return ExecutionResult(
             success=True,
             entity_type="agent",
             entity_id=agent_id,
             result_url=result_url,
             title=name,
-            body=f"Created agent “{name}”" + (f" for {purpose}" if purpose else "") + ". Open the agent page to configure connectors and workflows.",
+            body=(
+                f"Created agent “{name}”" + (f" for {purpose}" if purpose else "") + ". Open the agent page to configure connectors and workflows."
+                if verified
+                else f"I asked Gravitre to create agent “{name}”, but I could not read it back yet. Check the Agents page before creating it again."
+            ),
             notification_type="agent_created",
             task_label=f"Created agent {name}",
+            structured={"verification": evidence},
+            outcome_verified=verified,
         )
 
     async def _create_workflow(
@@ -771,15 +1010,31 @@ class ConversationalExecutionService:
         workflow_id = str(output.get("id") or "")
         result_url = build_entity_url("workflow", workflow_id)
         name = str(output.get("name") or goal)
+        from app.workflows.repository import get_workflow_def
+
+        evidence = _read_back_evidence(
+            lambda: get_workflow_def(client, org_id, workflow_id) if workflow_id else None,
+            read_action="workflows.get",
+            resource_id=workflow_id,
+            field="name",
+            expected=name,
+        )
+        verified = evidence["verified"]
         return ExecutionResult(
             success=True,
             entity_type="workflow",
             entity_id=workflow_id,
             result_url=result_url,
             title=name,
-            body=f"Created draft workflow “{name}”. Open the builder to add steps and publish.",
+            body=(
+                f"Created draft workflow “{name}”. Open the builder to add steps and publish."
+                if verified
+                else f"I asked Gravitre to create workflow “{name}”, but I could not read it back yet. Check Workflows before creating it again."
+            ),
             notification_type="workflow_created",
             task_label=f"Created workflow {name}",
+            structured={"verification": evidence},
+            outcome_verified=verified,
         )
 
     async def _execute_workflow(
@@ -864,16 +1119,39 @@ class ConversationalExecutionService:
             },
         )
         result_url = build_entity_url("workflow_run", run_id) if run_id else build_entity_url("workflow", wf_id)
+        # The run row is the source of record: the runtime only writes "completed"
+        # after every consequential step is proven, so report what it says.
+        run_status = _read_run_status(client, org_id, run_id) or str(output.get("status") or "").lower()
+        success, verified, body = _workflow_run_report(wf_name, run_status)
         return ExecutionResult(
-            success=True,
+            success=success,
             entity_type="workflow_run",
             entity_id=run_id or wf_id,
             result_url=result_url,
             title=wf_name,
-            body=str(output.get("message") or f"Workflow run started for “{wf_name}”."),
+            body=body,
             notification_type="workflow_executed",
             task_label=f"Executed workflow {wf_name}",
-            structured={"runId": run_id, "workflowId": wf_id, "status": output.get("status")},
+            structured={
+                "runId": run_id,
+                "workflowId": wf_id,
+                "status": run_status or output.get("status"),
+                **(
+                    {
+                        "verification": {
+                            "verified": True,
+                            "method": "workflow_run_terminal",
+                            "read_action": "workflow_runs.get",
+                            "resource_id": run_id,
+                            "observed": run_status,
+                        }
+                    }
+                    if verified
+                    else {}
+                ),
+            },
+            outcome_verified=verified,
+            error_code=None if success else "workflow_run_failed",
         )
 
     async def _run_agent_task(
@@ -941,9 +1219,17 @@ class ConversationalExecutionService:
         )
         name = str(output.get("agentName") or agent_name)
         out_text = str(output.get("output") or "").strip()
-        body = out_text[:500] if out_text else f"Agent “{name}” completed the task."
+        outcome = output.get("outcome") if isinstance(output.get("outcome"), dict) else {}
+        verified = bool(output.get("outcomeVerified"))
+        outcome_status = str(outcome.get("status") or "")
+        body = out_text[:500] if out_text else f"Agent “{name}” finished the task."
+        if not verified and int(outcome.get("consequential") or 0):
+            body += (
+                f"\n\nNote: {int(outcome.get('verified') or 0)} of {int(outcome.get('consequential') or 0)} "
+                "changes it made are confirmed in the source system; I could not confirm the rest yet."
+            )
         return ExecutionResult(
-            success=True,
+            success=outcome_status != "failed",
             entity_type="agent",
             entity_id=resolved_id,
             result_url=build_entity_url("agent", resolved_id) if resolved_id else "/agents",
@@ -951,7 +1237,17 @@ class ConversationalExecutionService:
             body=body,
             notification_type="agent_task_completed",
             task_label=f"Ran agent {name}",
-            structured={"status": output.get("status"), "output": output.get("output")},
+            structured={
+                "status": output.get("status"),
+                "output": output.get("output"),
+                "outcome": outcome,
+                **(
+                    {"verification": {"verified": True, "method": "agent_outcome", "kind": "agent", **outcome}}
+                    if verified
+                    else {}
+                ),
+            },
+            outcome_verified=verified,
         )
 
     async def _record_learning_outcome(

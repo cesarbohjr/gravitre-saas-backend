@@ -164,6 +164,7 @@ def test_finalize_success_does_not_correlate_failure_alert() -> None:
             actor_id="11111111-1111-1111-1111-111111111111",
             run_id="22222222-2222-2222-2222-222222222222",
             verified_output={"summary": "ok", "result_url": "/runs/x"},
+            metadata={"verification": {"verified": True, "method": "read_back"}},
         )
 
     assert result.notification_event == "run_completed"
@@ -215,3 +216,47 @@ def test_assistant_chat_without_run_still_notifies() -> None:
     emit_notification.assert_called_once()
     assert result.notification_event == "run_failed"
     assert emit_notification.call_args.kwargs["event_type"] == "run_failed"
+
+
+def test_completed_without_verification_is_coerced_inconclusive() -> None:
+    client = _Client()
+    with (
+        patch("app.workflows.repository.update_run"),
+        patch("app.workflows.repository.emit_execute_completed"),
+        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+    ):
+        result = finalize_execution_outcome(
+            client,
+            org_id="org-1",
+            status="completed",
+            source="api",
+            actor_id="11111111-1111-1111-1111-111111111111",
+            run_id="22222222-2222-2222-2222-222222222222",
+            verified_output={"summary": "provider accepted", "result_url": "/runs/x"},
+            metadata={"invoke_action": "hubspot.contacts.create"},
+        )
+
+    assert result.status == "verification_inconclusive"
+    assert result.notification_event == "run_verification_inconclusive"
+    assert emit_notification.call_args.kwargs["event_type"] == "run_verification_inconclusive"
+
+
+def test_completed_with_explicit_verification_remains_completed() -> None:
+    client = _Client()
+    with (
+        patch("app.workflows.repository.update_run"),
+        patch("app.workflows.repository.emit_execute_completed"),
+        patch("app.services.notification_emitter.emit_notification"),
+    ):
+        result = finalize_execution_outcome(
+            client,
+            org_id="org-1",
+            status="completed",
+            source="api",
+            actor_id="11111111-1111-1111-1111-111111111111",
+            run_id="22222222-2222-2222-2222-222222222222",
+            verified_output={"summary": "read back", "result_url": "/runs/x"},
+            metadata={"verification": {"verified": True, "method": "provider_read_back"}},
+        )
+
+    assert result.status == "completed"

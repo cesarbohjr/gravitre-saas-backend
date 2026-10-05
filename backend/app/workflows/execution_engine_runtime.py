@@ -35,18 +35,18 @@ from app.workflows.constants import (
     STEP_STATUS_FAILED,
     STEP_STATUS_SKIPPED,
 )
-from app.workflows.execution_engine import (
-    ExecutionGraph,
-    GraphValidationError,
-    _APPROVAL_NODE_TYPES,
-    _CHECKPOINT_KEY,
-    _PASSTHROUGH_NODE_TYPES,
-    _edges_as_dicts,
-    _upstream_outputs,
-    build_execution_graph,
-    topological_batches,
-    validate_execution_graph,
-)
+from app.workflows import graph_model as _graph
+from app.workflows.graph_model import ExecutionGraph, GraphValidationError
+from app.workflows.step_outcome import rollup_summary as _rollup_summary
+from app.workflows.step_outcome import snapshot_dict as _snapshot_dict
+from app.workflows.step_outcome import status_from_rollup as _status_from_rollup
+from app.workflows.step_outcome import step_outcome_rollup as _step_outcome_rollup
+
+_APPROVAL_NODE_TYPES = frozenset({"approval", "human_approval"})
+_CHECKPOINT_KEY = "_graph_execution"
+_PASSTHROUGH_NODE_TYPES = frozenset({"source", "trigger"})
+
+
 from app.workflows.registry import StepContext, get_handler
 from app.workflows.repository import (
     create_step,
@@ -78,7 +78,7 @@ class _GraphRunContext:
     org_id: str
     user_id: str
     run_id: str
-    graph: ExecutionGraph
+    graph: "ExecutionGraph"
     edge_dicts: list[dict[str, Any]]
     parameters: dict[str, Any]
     client: Any
@@ -112,6 +112,104 @@ def _is_approval_node(node: dict[str, Any]) -> bool:
     return node_type in _APPROVAL_NODE_TYPES or bool(node.get("has_approval_gate"))
 
 
+def _recovery_kind(step_type: str, config: dict[str, Any]) -> str:
+    """Classify a step for recovery by catalog identity, not action-name substrings."""
+    from app.services.outcome_verification import (
+        DELEGATING_STEP_TYPES,
+        MUTATING_STEP_TYPES,
+        is_write_action,
+        step_action,
+    )
+
+    lowered = str(step_type or "").lower()
+    if lowered in MUTATING_STEP_TYPES:
+        return "write"
+    if lowered in DELEGATING_STEP_TYPES or "agent" in lowered:
+        return "agent_delegation"
+    action = step_action({"config": config})
+    if action and is_write_action(action):
+        return "write"
+    if "workflow" in lowered:
+        return "workflow"
+    return "read"
+
+
+def _is_ambiguous_failure(exc: Exception) -> bool:
+    """The call may have reached the provider; its effect is unknown."""
+    code = str(getattr(exc, "code", "") or "").lower()
+    if code in {"outcome_uncertain", "connector_timeout"}:
+        return True
+    return isinstance(exc, (TimeoutError, ConnectionError))
+
+
+def _recovery_decision_for_failure(
+    *,
+    step_type: str,
+    config: dict[str, Any],
+    error_code: str | None,
+    exc: Exception,
+    retries_used: int,
+    retry_budget: int,
+):
+    from app.services.outcome_recovery_policy import decide_recovery
+
+    kind = _recovery_kind(step_type, config)
+    # A timeout/connection break after a mutating request leaves the provider
+    # effect unknown. Never blindly replay it; reconcile source state first.
+    uncertain = kind in {"write", "workflow", "agent_delegation"} and _is_ambiguous_failure(exc)
+    return decide_recovery(
+        kind=kind,
+        error_code=error_code,
+        outcome_uncertain=uncertain,
+        retries_used=retries_used,
+        retry_budget=retry_budget,
+        alternate_capability_available=bool(config.get("alternate_capability_available")),
+    )
+
+
+def _reconcile_step(
+    ctx: "_GraphRunContext",
+    *,
+    step_type: str,
+    config: dict[str, Any],
+    exc: Exception,
+):
+    """Settle an ambiguous write against the source of record (never raises)."""
+    from app.services.outcome_reconciliation import ReconciliationResult, reconcile_uncertain_write
+    from app.services.outcome_verification import step_action
+    from app.services.tool_service import tool_context_from_step
+
+    details = getattr(exc, "details", None) if isinstance(getattr(exc, "details", None), dict) else {}
+    action = str(details.get("action") or step_action({"config": config}) or "")
+    args = (
+        safe_normalize_stored_dict(details, key="params")
+        if isinstance(details.get("params"), dict)
+        else safe_normalize_stored_dict(config, key="params")
+    )
+    if not action:
+        return ReconciliationResult("unknown", "no_action_to_reconcile")
+    try:
+        step_ctx = StepContext(
+            settings=ctx.settings,
+            org_id=ctx.org_id,
+            user_id=ctx.user_id,
+            run_id=ctx.run_id,
+            environment_name=ctx.environment_name,
+            step_id="reconcile",
+            step_type=step_type,
+            step_index=0,
+            config=config,
+            parameters=ctx.parameters,
+            step_outputs={},
+            client=ctx.client,
+            is_dry_run=False,
+        )
+        return reconcile_uncertain_write(ctx=tool_context_from_step(step_ctx), invoke_action=action, args=args)
+    except Exception as rec_exc:  # noqa: BLE001
+        logger.info("workflow step reconcile failed run_id=%s err=%s", ctx.run_id, rec_exc)
+        return ReconciliationResult("unknown", f"reconcile_error:{type(rec_exc).__name__}")
+
+
 def _build_execution_log(
     *,
     node_id: str,
@@ -139,6 +237,11 @@ def _build_execution_log(
     return json.dumps(payload, default=str)[:8000]
 
 
+_EMAIL_STATUSES = frozenset(
+    {RUN_STATUS_COMPLETED, "verification_inconclusive", "partial_success", "flagged_for_review"}
+)
+
+
 def _finalize_run(
     ctx: _GraphRunContext,
     *,
@@ -159,30 +262,20 @@ def _finalize_run(
 
     if is_terminal_run_status(final_status):
         wf_name = "Workflow"
-        email_context = None
-        channel_hints = {"bell": True, "email": False}
-        if final_status == RUN_STATUS_COMPLETED:
-            channel_hints = {"bell": True, "email": True}
-            try:
-                if workflow_id:
-                    wf_row = (
-                        ctx.client.table("workflow_defs")
-                        .select("name")
-                        .eq("org_id", ctx.org_id)
-                        .eq("id", workflow_id)
-                        .limit(1)
-                        .execute()
-                    )
-                    if wf_row.data:
-                        wf_name = str(wf_row.data[0].get("name") or wf_name)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("workflow name lookup skipped run_id=%s error=%s", ctx.run_id, exc)
-            email_context = {
-                "kind": "workflow_completion",
-                "run_id": ctx.run_id,
-                "workflow_name": wf_name,
-                "final_status": final_status,
-            }
+        try:
+            if workflow_id:
+                wf_row = (
+                    ctx.client.table("workflow_defs")
+                    .select("name")
+                    .eq("org_id", ctx.org_id)
+                    .eq("id", workflow_id)
+                    .limit(1)
+                    .execute()
+                )
+                if wf_row.data:
+                    wf_name = str(wf_row.data[0].get("name") or wf_name)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("workflow name lookup skipped run_id=%s error=%s", ctx.run_id, exc)
 
         outcome_source = "canvas" if (ctx.parameters or {}).get("source") == "canvas" else "api"
         from app.services.connector_output_refs import (
@@ -203,12 +296,19 @@ def _finalize_run(
             workflow_name=str(params.get("workflow_name") or wf_name or "") or None,
             workflow_slug=str(params.get("workflow_slug") or "") or None,
         )
+        # Per-step identity: each consequential step (catalog write, send, post,
+        # delegated agent) must carry its own source-of-record evidence. A count
+        # of "verified refs" cannot stand in for which step was proven.
+        outcome = _step_outcome_rollup(step_rows)
+        coerced_status = _status_from_rollup(coerced_status, outcome)
+        workflow_verified = bool(coerced_status == RUN_STATUS_COMPLETED and outcome.unverified == 0)
 
         finalize_summary = (
             run_error_message
             if coerced_status == RUN_STATUS_FAILED
             else (
                 honesty_reason
+                or _rollup_summary(outcome, coerced_status)
                 or "; ".join(
                     str(ref.get("summary"))
                     for ref in output_refs
@@ -217,16 +317,35 @@ def _finalize_run(
                 or f"Run finished with status {coerced_status}."
             )
         )
+        email_context = None
+        channel_hints = {"bell": True, "email": False}
+        if coerced_status in _EMAIL_STATUSES:
+            channel_hints = {"bell": True, "email": True}
+            email_context = {
+                "kind": "workflow_completion",
+                "run_id": ctx.run_id,
+                "workflow_name": wf_name,
+                "final_status": coerced_status,
+            }
         finalize_meta: dict[str, Any] = {
             "path": "execution_engine_runtime",
             "environment": ctx.environment_name,
             "step_results": output_refs,
             "connector_output_refs": output_refs,
+            "outcome_rollup": outcome.as_dict(),
+            "requires_outcome_verification": outcome.consequential > 0,
+            "verification": {
+                "verified": workflow_verified,
+                "method": "workflow_step_rollup",
+                "verified_step_count": outcome.verified,
+                "consequential_step_count": outcome.consequential,
+                "unverified_step_count": outcome.unverified,
+            },
         }
         if honesty_reason:
             finalize_meta["list_populate_honesty_reason"] = honesty_reason
             finalize_meta["outcome_honesty_reason"] = honesty_reason
-        finalize_execution_outcome(
+        finalized = finalize_execution_outcome(
             ctx.client,
             org_id=ctx.org_id,
             status=coerced_status,
@@ -250,6 +369,8 @@ def _finalize_run(
             email_context=email_context,
             metadata=finalize_meta,
         )
+        # The finalizer's gates have the last word on what was fanned out.
+        coerced_status = str(getattr(finalized, "status", None) or coerced_status)
         final_status = coerced_status
         if final_status == RUN_STATUS_COMPLETED:
             try:
@@ -277,20 +398,26 @@ def _finalize_run(
                 params = run_meta.get("parameters") if isinstance(run_meta.get("parameters"), dict) else {}
                 agent_id = str(params.get("agent_id") or params.get("agentId") or "")
                 if wf_id and agent_id:
-                    insight = f"Run {ctx.run_id} finished with status {final_status}."
-                    if errors:
-                        insight += f" Errors: {'; '.join(errors[:3])}"
-                    create_agent_memory(
-                        ctx.settings,
-                        ctx.client,
-                        ctx.org_id,
-                        agent_id,
-                        user_id=ctx.user_id or None,
-                        content=f"Workflow {wf_id} outcome={final_status}: {insight}",
-                        category="pattern",
-                        provenance="outcome_learning",
-                        confidence=70,
-                    )
+                    # Positive procedural learning must be backed by verified outcome
+                    # evidence. Failed runs may still be retained as failure evidence;
+                    # an executed-but-unverified run must never train a "successful"
+                    # procedure merely because its graph reached a terminal node.
+                    may_learn = final_status == RUN_STATUS_FAILED or workflow_verified
+                    if may_learn:
+                        insight = f"Run {ctx.run_id} finished with status {final_status}."
+                        if errors:
+                            insight += f" Errors: {'; '.join(errors[:3])}"
+                        create_agent_memory(
+                            ctx.settings,
+                            ctx.client,
+                            ctx.org_id,
+                            agent_id,
+                            user_id=ctx.user_id or None,
+                            content=f"Workflow {wf_id} outcome={final_status}: {insight}",
+                            category="pattern",
+                            provenance="outcome_learning",
+                            confidence=70 if workflow_verified else 55,
+                        )
             except Exception as exc:  # noqa: BLE001
                 logger.debug(
                     "workflow_outcome_learning_skipped org_id=%s run_id=%s error=%s",
@@ -325,7 +452,7 @@ def _save_graph_checkpoint(
         "skipped_nodes": ctx.skipped_nodes,
         "approval_context": approval_context or {},
         "nodes": list(ctx.graph.nodes_by_id.values()),
-        "edges": _edges_as_dicts(ctx.graph.edges),
+        "edges": _graph._edges_as_dicts(ctx.graph.edges),
     }
     if pause_reason:
         checkpoint["pause_reason"] = pause_reason
@@ -365,7 +492,7 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     policy = _node_policy(node)
 
     if _is_approval_node(node):
-        upstream = _upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
+        upstream = _graph._upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
         node_metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
         approval_context = {
             "node_id": node_id,
@@ -421,7 +548,7 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     if isinstance(step_def.get("metadata"), dict):
         config["metadata"] = step_def["metadata"]
 
-    upstream = _upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
+    upstream = _graph._upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
     merged_parameters = {
         **ctx.parameters,
         "upstream_outputs": upstream,
@@ -587,7 +714,15 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
             last_exc = exc
             if policy["on_failure"] == "skip":
                 break
-            if attempts < max_attempts:
+            recovery = _recovery_decision_for_failure(
+                step_type=step_type,
+                config=config,
+                error_code="rate_limited",
+                exc=exc,
+                retries_used=attempts,
+                retry_budget=max_attempts,
+            )
+            if attempts < max_attempts and recovery.may_retry:
                 time.sleep(policy["retry_backoff_ms"] / 1000.0)
                 continue
             return _handle_node_failure(
@@ -598,7 +733,15 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
             last_exc = exc
             if policy["on_failure"] == "skip":
                 break
-            if attempts < max_attempts:
+            recovery = _recovery_decision_for_failure(
+                step_type=step_type,
+                config=config,
+                error_code="validation_error",
+                exc=exc,
+                retries_used=attempts,
+                retry_budget=max_attempts,
+            )
+            if attempts < max_attempts and recovery.may_retry:
                 time.sleep(policy["retry_backoff_ms"] / 1000.0)
                 continue
             return _handle_node_failure(
@@ -609,9 +752,65 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
             last_exc = exc
             if policy["on_failure"] == "skip":
                 break
-            if attempts < max_attempts:
+            recovery = _recovery_decision_for_failure(
+                step_type=step_type,
+                config=config,
+                error_code="timeout" if isinstance(exc, TimeoutError) else "step_failed",
+                exc=exc,
+                retries_used=attempts,
+                retry_budget=max_attempts,
+            )
+            if attempts < max_attempts and recovery.may_retry:
                 time.sleep(policy["retry_backoff_ms"] / 1000.0)
                 continue
+            if recovery.requires_reconciliation:
+                recon = _reconcile_step(ctx, step_type=step_type, config=config, exc=exc)
+                if recon.state == "applied":
+                    # The change is in the source of record: the step succeeded.
+                    output = {
+                        "reconciled": True,
+                        "invoke_action": (recon.evidence or {}).get("action") or config.get("action"),
+                        "resource_id": recon.resource_id,
+                        "verification": {**dict(recon.evidence or {}), "method": "reconcile_lookup"}
+                        if not (recon.evidence or {}).get("method")
+                        else dict(recon.evidence),
+                        "outcome_verified": True,
+                        "upstream_outputs": upstream,
+                    }
+                    with ctx.lock:
+                        ctx.node_outputs[node_id] = output
+                    update_step(
+                        client=ctx.client,
+                        step_uuid=step_uuid,
+                        status=STEP_STATUS_COMPLETED,
+                        input_snapshot={"upstream_outputs": upstream, "config": config},
+                        output_snapshot=output,
+                        completed_at=datetime.now(timezone.utc).isoformat(),
+                    )
+                    emit_execute_step_completed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, step_index, step_id)
+                    return _NodeRunResult(node_id, step_index + 1)
+                if recon.state == "not_applied" and attempts < max_attempts:
+                    # Proven absent: one more attempt cannot duplicate it.
+                    time.sleep(policy["retry_backoff_ms"] / 1000.0)
+                    continue
+                config = {
+                    **config,
+                    "outcome_recovery": {
+                        "action": recovery.action,
+                        "reason": recovery.reason,
+                        "requires_reconciliation": recon.state != "not_applied",
+                        "reconciliation": recon.as_dict(),
+                    },
+                }
+                if recon.state == "unknown":
+                    return _handle_node_failure(
+                        ctx, node_id, step_uuid, step_started, step_index, step_id, step_type, upstream, config,
+                        "outcome_uncertain",
+                        "The connected system did not confirm this change, and Gravitre could not tell "
+                        "whether it was applied. It was not retried, to avoid a duplicate.",
+                        exc,
+                        policy=policy,
+                    )
             from app.services.canvas_write_gate import (
                 CANVAS_WRITE_AUTHORITY_BLOCKED,
                 user_facing_message_from_write_authority_error,
@@ -720,7 +919,8 @@ def _handle_node_failure(
         client=ctx.client,
         step_uuid=step_uuid,
         status=STEP_STATUS_FAILED,
-        input_snapshot={"upstream_outputs": upstream},
+        # Keep the step's config so a later retry can reconcile the exact request.
+        input_snapshot={"upstream_outputs": upstream, "config": config},
         error_code=code,
         error_message=message,
         is_retryable=code == ERROR_CODE_RAG_UNAVAILABLE,
@@ -854,9 +1054,9 @@ def _graph_from_run(run: dict[str, Any]) -> tuple[ExecutionGraph, list[list[str]
                 "This chat orchestration run has no executable graph for Retry step. "
                 "Re-run the plan from Chat instead."
             )
-    graph = build_execution_graph(nodes, edges)
-    validate_execution_graph(graph)
-    return graph, topological_batches(graph)
+    graph = _graph.build_execution_graph(nodes, edges)
+    _graph.validate_execution_graph(graph)
+    return graph, _graph.topological_batches(graph)
 
 
 def _run_graph_batches(
@@ -942,9 +1142,9 @@ def execute_workflow_graph(
 ) -> tuple[str, list[dict], list[str], bool]:
     """Execute a builder graph in topological batches with upstream context."""
     del steps_exist  # reserved for resume/idempotency
-    graph = build_execution_graph(nodes, edges)
-    validate_execution_graph(graph)
-    batches = topological_batches(graph)
+    graph = _graph.build_execution_graph(nodes, edges)
+    _graph.validate_execution_graph(graph)
+    batches = _graph.topological_batches(graph)
 
     ctx = _GraphRunContext(
         settings=settings,
@@ -952,7 +1152,7 @@ def execute_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_graph._edges_as_dicts(graph.edges),
         parameters=dict(parameters or {}),
         client=client,
         environment_name=environment_name,
@@ -1110,8 +1310,8 @@ def resolve_approval_batch_and_resume(
 
     nodes = checkpoint.get("nodes") or (run.get("definition_snapshot") or {}).get("graph", {}).get("nodes") or []
     edges = checkpoint.get("edges") or (run.get("definition_snapshot") or {}).get("graph", {}).get("edges") or []
-    graph = build_execution_graph(nodes, edges)
-    batches = topological_batches(graph)
+    graph = _graph.build_execution_graph(nodes, edges)
+    batches = _graph.topological_batches(graph)
     batch_index = int(checkpoint.get("batch_index") or 0)
     approval_context = safe_normalize_stored_dict(checkpoint, key='approval_context') or safe_normalize_stored_dict(params, key='approval_context')
     on_reject = str(approval_context.get("on_reject") or "fail_workflow")
@@ -1145,7 +1345,7 @@ def resolve_approval_batch_and_resume(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_graph._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1208,8 +1408,8 @@ def resume_workflow_graph(
 
     nodes = checkpoint.get("nodes") or (run.get("definition_snapshot") or {}).get("graph", {}).get("nodes") or []
     edges = checkpoint.get("edges") or (run.get("definition_snapshot") or {}).get("graph", {}).get("edges") or []
-    graph = build_execution_graph(nodes, edges)
-    batches = topological_batches(graph)
+    graph = _graph.build_execution_graph(nodes, edges)
+    batches = _graph.topological_batches(graph)
     batch_index = int(checkpoint.get("batch_index") or 0)
 
     approval_context = safe_normalize_stored_dict(checkpoint, key='approval_context') or safe_normalize_stored_dict(params, key='approval_context')
@@ -1222,7 +1422,7 @@ def resume_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_graph._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1317,7 +1517,7 @@ def resume_paused_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_graph._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1347,6 +1547,55 @@ def resume_paused_workflow_graph(
     )
 
 
+_RETRYABLE_RUN_STATUSES = frozenset(
+    {RUN_STATUS_FAILED, RUN_STATUS_PAUSED, "partial_success", "verification_inconclusive"}
+)
+
+
+def _require_absent_before_retry(
+    settings: Settings,
+    org_id: str,
+    user_id: str,
+    run_id: str,
+    run: dict[str, Any],
+    target: dict[str, Any],
+    client: Any,
+    environment_name: str,
+) -> None:
+    """An ambiguous write may only be re-run once the source shows it is absent."""
+    from types import SimpleNamespace
+
+    from app.services.tool_types import ToolOutcomeUncertainError
+
+    snapshot = _snapshot_dict(target.get("input_snapshot"))
+    config = snapshot.get("config") if isinstance(snapshot.get("config"), dict) else {}
+    shim = SimpleNamespace(
+        settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        run_id=run_id,
+        environment_name=environment_name,
+        parameters=safe_normalize_stored_dict(run, key="parameters"),
+        client=client,
+    )
+    recon = _reconcile_step(
+        shim,
+        step_type=str(target.get("step_type") or ""),
+        config=config,
+        exc=ToolOutcomeUncertainError("retry requested"),
+    )
+    if recon.state == "not_applied":
+        return
+    if recon.state == "applied":
+        raise GraphValidationError(
+            "This step's change is already in the connected system, so retrying it would create a duplicate."
+        )
+    raise GraphValidationError(
+        "Gravitre cannot yet confirm whether this step's change was applied. "
+        "Check the connected system first; retrying now could create a duplicate."
+    )
+
+
 def retry_workflow_step(
     settings: Settings,
     org_id: str,
@@ -1361,7 +1610,7 @@ def retry_workflow_step(
     run = get_run_with_steps(client, org_id, run_id, environment_name)
     if not run:
         raise GraphValidationError("Run not found")
-    if str(run.get("status") or "") not in {RUN_STATUS_FAILED, RUN_STATUS_PAUSED}:
+    if str(run.get("status") or "") not in _RETRYABLE_RUN_STATUSES:
         raise GraphValidationError(f"Run cannot retry step in status={run.get('status')}")
 
     steps = list(run.get("steps") or [])
@@ -1370,6 +1619,8 @@ def retry_workflow_step(
         raise GraphValidationError("Step not found")
     if str(target.get("status") or "") != STEP_STATUS_FAILED and not target.get("is_retryable"):
         raise GraphValidationError("Step is not retryable")
+    if str(target.get("error_code") or "").lower() == "outcome_uncertain":
+        _require_absent_before_retry(settings, org_id, user_id, run_id, run, target, client, environment_name)
 
     node_id = str(target.get("step_id") or "")
     if not node_id:
@@ -1394,7 +1645,7 @@ def retry_workflow_step(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_graph._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,

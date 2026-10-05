@@ -73,6 +73,17 @@ def delegation_observation(
     latency_ms: int | None = None,
 ) -> ExecutionObservation:
     success = not result.get("error")
+    from app.services.outcome_verification import evidence_is_verified, outcome_from_tool_calls
+
+    # execution_verified means "a tool ran"; it is never completion proof.
+    if isinstance(result.get("tool_calls"), list):
+        child_verified = outcome_from_tool_calls(result["tool_calls"]).status == "completed" and (
+            result.get("outcome_verified") is not False
+        )
+    else:
+        child_verified = result.get("outcome_verified") is True or evidence_is_verified(result)
+    # A delegated agent finishing its computation is not proof that any requested
+    # external effect occurred. Parent completion consumes this explicit bit.
     return ExecutionObservation(
         observation_id=str(uuid4()),
         step_id=parent_step_id,
@@ -84,6 +95,12 @@ def delegation_observation(
             "parent_plan_id": parent_plan_id,
             "agent_result": dict(result),
             "child_terminal_status": child_plan.terminal_status,
+            "verified": child_verified,
+            **(
+                {"verification": {"verified": True, "method": "delegated_outcome", "kind": "agent"}}
+                if child_verified
+                else {}
+            ),
         },
         error=str(result.get("error") or "") or None,
         source="agent_delegation",

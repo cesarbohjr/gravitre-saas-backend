@@ -68,6 +68,39 @@ def _vendor_url_from_execution(result: ExecutionResult) -> str | None:
     return None
 
 
+def _step_mark(row: dict[str, Any]) -> str:
+    if not row.get("success"):
+        return "?" if str(row.get("error_code") or "").upper() == "OUTCOME_UNCERTAIN" else "✗"
+    structured = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+    verification = structured.get("verification")
+    if isinstance(verification, dict) and verification.get("verified") is False:
+        return "○"  # ran, not yet confirmed in the source system
+    return "✓"
+
+
+def _orchestration_title(terminal: str, successes: int, total: int) -> str:
+    label = {
+        "completed": "Orchestration complete",
+        "partial_success": "Orchestration partly complete",
+        "verification_inconclusive": "Orchestration ran, changes unconfirmed",
+    }.get(terminal, "Orchestration failed")
+    return f"{label} ({successes}/{total} steps succeeded)"
+
+
+def _orchestration_headline(terminal: str, successes: int, total: int, outcome: Any) -> str:
+    if terminal == "completed":
+        proof = f", {outcome.verified} change(s) confirmed" if outcome.consequential else ""
+        return f"**Orchestration complete** ({successes}/{total} steps succeeded{proof})."
+    if terminal == "verification_inconclusive":
+        return (
+            f"**Orchestration ran, but I could not confirm every change** "
+            f"({outcome.verified} of {outcome.consequential} confirmed in the source systems)."
+        )
+    if terminal == "partial_success":
+        return f"**Orchestration partly complete** ({successes}/{total} steps succeeded)."
+    return f"**Orchestration failed** ({successes}/{total} steps succeeded)."
+
+
 def _step_result_row(step: Any, result: ExecutionResult) -> dict[str, Any]:
     vendor_url = _vendor_url_from_execution(result)
     return {
@@ -75,6 +108,8 @@ def _step_result_row(step: Any, result: ExecutionResult) -> dict[str, Any]:
         "label": step.label,
         "invoke_action": step.plan.invoke_action if getattr(step, "plan", None) else "",
         "success": result.success,
+        "error_code": result.error_code,
+        "outcome_verified": bool(getattr(result, "outcome_verified", False)),
         "summary": result.body,
         "url": vendor_url,
         "external_url": vendor_url,
@@ -1965,10 +2000,18 @@ class ChatOrchestrationService:
     ) -> dict[str, Any]:
         step_results = list(params.get("step_results") or [])
         successes = sum(1 for row in step_results if row.get("success"))
-        run_ok = orchestration_run_fully_completed(step_results)
+        from app.services.chat_orchestration_runs import orchestration_outcome, orchestration_terminal_status
+
+        # Steps succeeding is not the objective completing: writes need proof and
+        # any failed step makes the run partial, never "complete".
+        terminal = orchestration_terminal_status(step_results)
+        outcome = orchestration_outcome(step_results)
+        run_ok = terminal == "completed" and orchestration_run_fully_completed(step_results)
+        if terminal == "completed" and not run_ok:
+            terminal = "failed"
         lines = []
         for row in step_results:
-            mark = "✓" if row.get("success") else "○"
+            mark = _step_mark(row)
             lines.append(f"- {mark} {row.get('label')}: {row.get('summary')}")
         summary_body = "\n".join(lines) if lines else "Orchestration finished."
         run_id = str(params.get("orchestration_run_id") or "") or None
@@ -1993,9 +2036,19 @@ class ChatOrchestrationService:
                 org_id=org_id,
                 run_id=run_id,
                 success=run_ok,
+                status=terminal,
                 summary=summary_body,
                 user_id=user_id,
                 conversation_id=conversation_id,
+                metadata={
+                    "outcome_rollup": outcome.as_dict(),
+                    "requires_outcome_verification": outcome.consequential > 0,
+                    **(
+                        {"verification": {"verified": True, "method": "orchestration_step_rollup", **outcome.as_dict()}}
+                        if terminal == "completed" and outcome.consequential
+                        else {}
+                    ),
+                },
             )
         else:
             # Orphan path: no run_id and no steps to create one — still fan out.
@@ -2004,7 +2057,7 @@ class ChatOrchestrationService:
             finalize_execution_outcome(
                 client,
                 org_id=org_id,
-                status="completed" if run_ok else "failed",
+                status=terminal,
                 source="chat_orch",
                 actor_id=user_id,
                 persist_run=False,
@@ -2015,15 +2068,18 @@ class ChatOrchestrationService:
                     entity_type="conversation",
                     entity_id=conversation_id,
                 ),
-                notification_title=(
-                    f"Orchestration complete ({successes}/{len(step_results)} steps)"
-                    if run_ok
-                    else f"Orchestration failed ({successes}/{len(step_results)} steps succeeded)"
-                ),
+                notification_title=_orchestration_title(terminal, successes, len(step_results)),
                 notification_body=summary_body[:500],
                 metadata={
                     "path": "chat_orchestration_orphan",
                     "conversation_id": conversation_id,
+                    "outcome_rollup": outcome.as_dict(),
+                    "requires_outcome_verification": outcome.consequential > 0,
+                    **(
+                        {"verification": {"verified": True, "method": "orchestration_step_rollup", **outcome.as_dict()}}
+                        if terminal == "completed" and outcome.consequential
+                        else {}
+                    ),
                 },
             )
         primary_url = resolve_orchestration_result_url(
@@ -2039,18 +2095,11 @@ class ChatOrchestrationService:
             entity_id=run_id or conversation_id,
             result_url=primary_url,
             external_url=external_url,
-            title=(
-                f"Orchestration complete ({successes}/{len(step_results)} steps)"
-                if run_ok
-                else f"Orchestration failed ({successes}/{len(step_results)} steps succeeded)"
-            ),
+            title=_orchestration_title(terminal, successes, len(step_results)),
             body=summary_body,
             notification_type="task_completed" if run_ok else "run_failed",
-            task_label=(
-                "Multi-step orchestration complete"
-                if run_ok
-                else "Multi-step orchestration failed"
-            ),
+            task_label=_orchestration_title(terminal, successes, len(step_results)).split(" (")[0],
+            outcome_verified=run_ok,
             structured={
                 "runId": run_id,
                 "conversationId": conversation_id,
@@ -2058,6 +2107,8 @@ class ChatOrchestrationService:
                 "external_url": external_url,
                 "step_results": step_results,
                 "source": "chat_orchestration",
+                "terminal_status": terminal,
+                "outcome_rollup": outcome.as_dict(),
             },
         )
         try:
@@ -2067,6 +2118,7 @@ class ChatOrchestrationService:
                 org_id=org_id,
                 goal=str(params.get("goal") or "orchestration"),
                 steps=list(params.get("steps") or []),
+                # Only a verified, fully completed objective is a reusable success.
                 success=run_ok,
                 run_id=run_id,
             )
@@ -2080,7 +2132,7 @@ class ChatOrchestrationService:
                 "current_plan": None,
                 "pending_task": {
                     "type": "connector_orchestration",
-                    "status": "completed" if run_ok else "failed",
+                    "status": terminal,
                     "result": serialize_execution_result(result),
                 },
                 "pending_steps": [],
@@ -2099,11 +2151,7 @@ class ChatOrchestrationService:
         )
         # Always keep orchestration headline + per-step body (enrich formats single-action copy).
         means = (turn.get("post_action_experience") or {}).get("whatThisMeans") or ""
-        headline = (
-            f"**Orchestration complete** ({successes}/{len(step_results)} steps succeeded)."
-            if run_ok
-            else f"**Orchestration failed** ({successes}/{len(step_results)} steps succeeded)."
-        )
+        headline = _orchestration_headline(terminal, successes, len(step_results), outcome)
         turn["message"] = (
             f"{headline}\n\n{summary_body}"
             + (f"\n\n_What this means:_ {means}" if means else "")

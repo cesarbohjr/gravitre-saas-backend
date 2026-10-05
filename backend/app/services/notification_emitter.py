@@ -359,6 +359,7 @@ def _send_email_if_configured(
                 job_id=str(ctx.get("job_id") or ""),
                 task_title=str(ctx.get("task_title") or title),
                 requires_approval=bool(ctx.get("requires_approval")),
+                final_status=str(ctx.get("final_status") or "completed"),
             )
             return
         if kind == "marketplace_install":

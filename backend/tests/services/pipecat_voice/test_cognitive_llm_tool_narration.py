@@ -186,7 +186,7 @@ class TestPhase3HonestWriteStateSpeechEndToEnd:
     def test_write_call_speaks_executing_then_confirmed_with_real_detail(self) -> None:
         events = [
             _tool_start("c1", "moveDealStage"),
-            _tool_output("c1", {"success": True, "stage": "Negotiation"}),
+            _tool_output("c1", {"success": True, "stage": "Negotiation", "verification": {"verified": True, "method": "entity_get", "read_action": "crm.deals.get"}}),
         ]
         _, tts = _drive(events)
 

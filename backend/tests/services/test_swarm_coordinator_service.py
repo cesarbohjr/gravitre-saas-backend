@@ -428,8 +428,12 @@ def test_cancel_swarm_run(mock_audit, mock_interrupt):
 def test_swarm_execution_verified_requires_successful_tool_calls():
     scoped = [{"connectorType": "hubspot", "action": "search_contacts"}]
     assert _swarm_execution_verified(scoped, []) is False
-    assert _swarm_execution_verified(scoped, [{"result": {"success": True}}]) is True
-    assert _swarm_execution_verified([], [{"result": {"success": True}}]) is False
+    read = {"result": {"success": True, "action": "hubspot.contacts.search"}}
+    assert _swarm_execution_verified(scoped, [read]) is True
+    assert _swarm_execution_verified([], [read]) is False
+    # An unproven write is execution, not verification.
+    write = {"result": {"success": True, "action": "hubspot.contacts.update"}}
+    assert _swarm_execution_verified(scoped, [read, write]) is False
 
 
 def test_swarm_run_execution_verified_all_scoped_subtasks():

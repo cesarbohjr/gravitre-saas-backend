@@ -18,6 +18,71 @@ from app.services.tool_types import ToolContext, ToolError, ToolNotFoundError
 
 logger = get_logger(__name__)
 
+
+_UNCERTAIN_CODES = frozenset({"outcome_uncertain", "connector_timeout"})
+
+
+def _uncertain_write_payload(*, tool: str, action: str, detail: str) -> dict[str, Any]:
+    """Uniform result for a write whose provider-side effect is unknown."""
+    integration = action.split(".", 1)[0] if "." in action else "the connected system"
+    return {
+        "success": False,
+        "tool": tool,
+        "action": action,
+        "error": (
+            f"{integration} did not confirm this change before the connection ended ({detail}). "
+            "It may already have been applied, so I will check the source record before retrying."
+        ),
+        "error_code": "outcome_uncertain",
+        "outcome_uncertain": True,
+        "requires_reconciliation": True,
+    }
+
+
+async def _settle_write_payload(
+    ctx: ToolContext,
+    *,
+    tool: str,
+    action: str,
+    params: dict[str, Any],
+    payload: dict[str, Any],
+    verify: bool,
+) -> dict[str, Any]:
+    """Outcome Ownership post-processing shared by every registry invoke path.
+
+    * an ambiguous write failure is reported as outcome_uncertain, never as a
+      plain retryable failure;
+    * a successful write (when ``verify``) carries source-of-record evidence so
+      agents, ReAct plans and voice can tell executed from verified.
+    """
+    from app.services.outcome_verification import is_write_action, verify_write_now
+
+    if not is_write_action(action):
+        return payload
+    if not payload.get("success"):
+        if str(payload.get("error_code") or "") in _UNCERTAIN_CODES:
+            return _uncertain_write_payload(
+                tool=tool, action=action, detail=str(payload.get("error") or "timeout")[:160]
+            )
+        return payload
+    if not verify:
+        return payload
+    data = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    evidence = await asyncio.to_thread(
+        verify_write_now,
+        invoke_action=action,
+        result_data=data,
+        request_params=params,
+        ctx=ctx,
+        client=getattr(ctx, "client", None),
+        org_id=getattr(ctx, "org_id", None),
+        settings=getattr(ctx, "settings", None),
+        # Interactive turns get one source read, not the F6 settle backoff; an
+        # eventually-consistent write reads as unconfirmed rather than stalling.
+        settle=False,
+    )
+    return {**payload, "verification": evidence.as_dict(), "outcome_verified": evidence.verified}
+
 ParamMapper = Callable[[dict[str, Any]], dict[str, Any]]
 
 from app.connectors.constants import is_connector_usable
@@ -1147,14 +1212,36 @@ class ToolRegistry:
                     asyncio.to_thread(invoke_tool, ctx, invoke_action, invoke_params),
                     timeout=timeout_s,
                 )
+            except asyncio.TimeoutError:
+                return await _settle_write_payload(
+                    ctx,
+                    tool=tool_name,
+                    action=invoke_action,
+                    params=invoke_params,
+                    payload={
+                        "success": False,
+                        "tool": tool_name,
+                        "action": invoke_action,
+                        "error": f"no response within {timeout_s}s",
+                        "error_code": "connector_timeout",
+                    },
+                    verify=False,
+                )
             except ToolError as exc:
-                return {
-                    "success": False,
-                    "tool": tool_name,
-                    "action": invoke_action,
-                    "error": str(exc),
-                    "error_code": exc.code,
-                }
+                return await _settle_write_payload(
+                    ctx,
+                    tool=tool_name,
+                    action=invoke_action,
+                    params=invoke_params,
+                    payload={
+                        "success": False,
+                        "tool": tool_name,
+                        "action": invoke_action,
+                        "error": str(exc),
+                        "error_code": exc.code,
+                    },
+                    verify=False,
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.exception(
                     "capability_tool_execute_failed tool=%s action=%s",
@@ -1163,21 +1250,35 @@ class ToolRegistry:
                 )
                 return {"success": False, "tool": tool_name, "error": str(exc)}
             if result.success:
-                return {
-                    "success": True,
+                return await _settle_write_payload(
+                    ctx,
+                    tool=tool_name,
+                    action=invoke_action,
+                    params=invoke_params,
+                    payload={
+                        "success": True,
+                        "tool": tool_name,
+                        "action": invoke_action,
+                        "capability_id": resolution.capability_id,
+                        "resolved_vendor": resolution.resolved_vendor,
+                        "result": result.data,
+                    },
+                    verify=True,
+                )
+            return await _settle_write_payload(
+                ctx,
+                tool=tool_name,
+                action=invoke_action,
+                params=invoke_params,
+                payload={
+                    "success": False,
                     "tool": tool_name,
                     "action": invoke_action,
-                    "capability_id": resolution.capability_id,
-                    "resolved_vendor": resolution.resolved_vendor,
-                    "result": result.data,
-                }
-            return {
-                "success": False,
-                "tool": tool_name,
-                "action": invoke_action,
-                "error": result.error_message or "Tool execution failed",
-                "error_code": result.error_code,
-            }
+                    "error": result.error_message or "Tool execution failed",
+                    "error_code": result.error_code,
+                },
+                verify=False,
+            )
 
         if not spec:
             return {"success": False, "error": f"Unknown tool: {tool_name}", "tool": tool_name}
@@ -1369,27 +1470,41 @@ class ToolRegistry:
 
             cache = get_cache_service(ctx.settings)
             await cache.record_event("connector_timeout")
-            return {
-                "success": False,
-                "tool": tool_name,
-                "action": invoke_action,
-                "error": (
-                    f"{spec.integration} did not respond within {timeout_s}s. "
-                    "Partial results may omit this connected system."
-                ),
-                "error_code": "connector_timeout",
-                "partial": True,
-            }
+            return await _settle_write_payload(
+                ctx,
+                tool=tool_name,
+                action=invoke_action,
+                params=invoke_params,
+                payload={
+                    "success": False,
+                    "tool": tool_name,
+                    "action": invoke_action,
+                    "error": (
+                        f"{spec.integration} did not respond within {timeout_s}s. "
+                        "Partial results may omit this connected system."
+                    ),
+                    "error_code": "connector_timeout",
+                    "partial": True,
+                },
+                verify=False,
+            )
         except ToolNotFoundError as exc:
             return {"success": False, "tool": tool_name, "error": str(exc)}
         except ToolError as exc:
-            return {
-                "success": False,
-                "tool": tool_name,
-                "action": invoke_action,
-                "error": str(exc),
-                "error_code": exc.code,
-            }
+            return await _settle_write_payload(
+                ctx,
+                tool=tool_name,
+                action=invoke_action,
+                params=invoke_params,
+                payload={
+                    "success": False,
+                    "tool": tool_name,
+                    "action": invoke_action,
+                    "error": str(exc),
+                    "error_code": exc.code,
+                },
+                verify=False,
+            )
         except Exception as exc:
             logger.exception(
                 "tool_registry_execute_failed tool=%s action=%s",
@@ -1408,14 +1523,24 @@ class ToolRegistry:
             }
             if is_read_invoke_action(invoke_action):
                 set_cached_read_result(ctx.org_id, invoke_action, invoke_params, payload)
-            return payload
-        return {
-            "success": False,
-            "tool": tool_name,
-            "action": invoke_action,
-            "error": result.error_message or "Tool invocation failed",
-            "error_code": result.error_code,
-        }
+                return payload
+            return await _settle_write_payload(
+                ctx, tool=tool_name, action=invoke_action, params=invoke_params, payload=payload, verify=True
+            )
+        return await _settle_write_payload(
+            ctx,
+            tool=tool_name,
+            action=invoke_action,
+            params=invoke_params,
+            payload={
+                "success": False,
+                "tool": tool_name,
+                "action": invoke_action,
+                "error": result.error_message or "Tool invocation failed",
+                "error_code": result.error_code,
+            },
+            verify=False,
+        )
 
     async def execute_invoke_action(
         self,
@@ -1424,8 +1549,14 @@ class ToolRegistry:
         invoke_action: str,
         args: dict[str, Any] | None = None,
         tool_name: str | None = None,
+        verify_writes: bool = False,
     ) -> dict[str, Any]:
-        """Execute an exact catalog action — never re-resolve from tool_name."""
+        """Execute an exact catalog action — never re-resolve from tool_name.
+
+        ``verify_writes`` runs the declared source-of-record check inline and
+        attaches evidence; callers that schedule verification themselves (the
+        single-action chat path) leave it off.
+        """
         from app.services.approval_action_binding import APPROVAL_ACTION_MISMATCH
         from app.services.read_action_result_cache import (
             get_cached_read_result,
@@ -1472,27 +1603,41 @@ class ToolRegistry:
             cache = get_cache_service(ctx.settings)
             await cache.record_event("connector_timeout")
             integration = action.split(".", 1)[0] if "." in action else "connector"
-            return {
-                "success": False,
-                "tool": telemetry_tool,
-                "action": action,
-                "error": (
-                    f"{integration} did not respond within {timeout_s}s. "
-                    "Partial results may omit this connected system."
-                ),
-                "error_code": "connector_timeout",
-                "partial": True,
-            }
+            return await _settle_write_payload(
+                ctx,
+                tool=telemetry_tool,
+                action=action,
+                params=invoke_params,
+                payload={
+                    "success": False,
+                    "tool": telemetry_tool,
+                    "action": action,
+                    "error": (
+                        f"{integration} did not respond within {timeout_s}s. "
+                        "Partial results may omit this connected system."
+                    ),
+                    "error_code": "connector_timeout",
+                    "partial": True,
+                },
+                verify=False,
+            )
         except ToolNotFoundError as exc:
             return {"success": False, "tool": telemetry_tool, "action": action, "error": str(exc)}
         except ToolError as exc:
-            return {
-                "success": False,
-                "tool": telemetry_tool,
-                "action": action,
-                "error": str(exc),
-                "error_code": exc.code,
-            }
+            return await _settle_write_payload(
+                ctx,
+                tool=telemetry_tool,
+                action=action,
+                params=invoke_params,
+                payload={
+                    "success": False,
+                    "tool": telemetry_tool,
+                    "action": action,
+                    "error": str(exc),
+                    "error_code": exc.code,
+                },
+                verify=False,
+            )
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 "tool_registry_execute_invoke_failed tool=%s action=%s",
@@ -1511,14 +1656,24 @@ class ToolRegistry:
             }
             if is_read_invoke_action(action):
                 set_cached_read_result(ctx.org_id, action, invoke_params, payload)
-            return payload
-        return {
-            "success": False,
-            "tool": telemetry_tool,
-            "action": action,
-            "error": result.error_message or "Tool invocation failed",
-            "error_code": result.error_code,
-        }
+                return payload
+            return await _settle_write_payload(
+                ctx, tool=telemetry_tool, action=action, params=invoke_params, payload=payload, verify=verify_writes
+            )
+        return await _settle_write_payload(
+            ctx,
+            tool=telemetry_tool,
+            action=action,
+            params=invoke_params,
+            payload={
+                "success": False,
+                "tool": telemetry_tool,
+                "action": action,
+                "error": result.error_message or "Tool invocation failed",
+                "error_code": result.error_code,
+            },
+            verify=False,
+        )
 
     async def _execute_assistant_platform_tool(
         self,

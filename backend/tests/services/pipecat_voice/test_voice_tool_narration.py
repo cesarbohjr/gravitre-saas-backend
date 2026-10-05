@@ -131,8 +131,15 @@ class TestPhase3ExecutingSpeech:
 
 class TestPhase3ConfirmedSpeech:
     def test_write_success_with_real_stage_field_is_narrated_honestly(self) -> None:
-        out = narrate_tool_completed("moveDealStage", {"success": True, "stage": "Negotiation"})
+        out = narrate_tool_completed(
+            "moveDealStage", {"success": True, "stage": "Negotiation", "verification": {"verified": True, "method": "entity_get", "read_action": "crm.deals.get"}}
+        )
         assert out == "Done — I moved it to Negotiation."
+
+    def test_write_acceptance_without_proof_is_never_called_done(self) -> None:
+        out = narrate_tool_completed("moveDealStage", {"success": True, "stage": "Negotiation"})
+        assert out is not None and "done" not in out.lower()
+        assert "confirming" in out
 
     def test_write_success_with_no_specific_field_gets_generic_honest_confirmation(self) -> None:
         """MUTATION PROOF: with no real field to read back, the sentence must
@@ -140,7 +147,7 @@ class TestPhase3ConfirmedSpeech:
         specific-sounding detail ('Done, I moved Acme to Negotiation') that
         was never actually in the tool's own output.
         """
-        out = narrate_tool_completed("updateDealStage", {"success": True})
+        out = narrate_tool_completed("updateDealStage", {"success": True, "verification": {"verified": True, "method": "entity_get", "read_action": "crm.deals.get"}})
         assert out == "Done, that went through."
 
     def test_write_success_is_never_claimed_before_a_real_returned_observation(self) -> None:

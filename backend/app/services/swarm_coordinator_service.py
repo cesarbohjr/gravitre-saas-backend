@@ -196,7 +196,17 @@ def _swarm_execution_verified(scoped_tools: Any, tool_calls: list[dict[str, Any]
         return False
     if not tool_calls:
         return False
-    return any((call.get("result") or {}).get("success") for call in tool_calls)
+    # Provider/tool success is execution evidence, not verification. Require the
+    # child tool result to carry the canonical verification contract.
+    from app.services.outcome_verification import child_from_tool_call, outcome_from_tool_calls
+
+    children = [child_from_tool_call(call) for call in tool_calls]
+    if not any(child["success"] for child in children):
+        return False
+    # A call that cannot be classified (no catalog action) cannot vouch for itself.
+    if any(child["success"] and not child["action"] for child in children):
+        return False
+    return outcome_from_tool_calls(tool_calls).status == "completed"
 
 
 def _swarm_run_execution_verified(subtasks: list[dict[str, Any]]) -> bool:
@@ -722,7 +732,11 @@ async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict
             scoped_tools=scoped_list,
         )
 
-    execution_verified = agent_result.execution_verified
+    # Tool success is not completion: a subtask counts as verified only when every
+    # write it made is proven against the source of record.
+    execution_verified = bool(getattr(agent_result, "outcome_verified", False)) and bool(
+        agent_result.tool_call_count
+    )
     finding = (agent_result.answer or agent_result.summary or "").strip()
     if not finding:
         finding = "Completed subtask analysis."
@@ -737,6 +751,8 @@ async def run_swarm_subtask_job(settings: Settings, job: dict[str, Any]) -> dict
         "confidence": confidence,
         "scopedTools": scoped_list,
         "executionVerified": execution_verified,
+        "outcomeVerified": bool(getattr(agent_result, "outcome_verified", False)),
+        "outcome": dict(getattr(agent_result, "outcome", None) or {}),
         "executionMode": agent_result.execution_mode,
         "toolsAvailable": agent_result.tools_available,
         "toolCallCount": agent_result.tool_call_count,

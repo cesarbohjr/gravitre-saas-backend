@@ -256,6 +256,47 @@ def orchestration_run_fully_completed(step_results: list[dict[str, Any]] | None)
     return any(bool(row.get("success")) for row in rows)
 
 
+_ORCHESTRATION_TITLES = {
+    "completed": "Orchestration run completed",
+    "partial_success": "Orchestration run partly completed",
+    "verification_inconclusive": "Orchestration run finished, changes unconfirmed",
+    "flagged_for_review": "Orchestration run flagged for review",
+}
+
+
+def orchestration_outcome(step_results: list[dict[str, Any]] | None):
+    """Rollup over orchestration steps: writes need proof, any failure is partial."""
+    from app.services.outcome_verification import is_write_action, rollup
+
+    children = []
+    for row in step_results or []:
+        if not isinstance(row, dict) or row.get("skipped"):
+            continue
+        structured = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+        action = str(row.get("invoke_action") or "")
+        uncertain = (
+            str(row.get("error_code") or "").upper() == "OUTCOME_UNCERTAIN"
+            or structured.get("outcome") == "uncertain"
+        )
+        child: dict[str, Any] = {
+            "consequential": bool(action and is_write_action(action)) or uncertain,
+            "success": bool(row.get("success")),
+            "outcome_uncertain": uncertain,
+        }
+        if isinstance(structured.get("verification"), dict):
+            child["verification"] = structured["verification"]
+        children.append(child)
+    return rollup(children)
+
+
+def orchestration_terminal_status(step_results: list[dict[str, Any]] | None) -> str:
+    """completed | verification_inconclusive | partial_success | failed."""
+    rows = [r for r in (step_results or []) if isinstance(r, dict) and not r.get("skipped")]
+    if not rows:
+        return "failed"
+    return orchestration_outcome(rows).status
+
+
 def _orchestration_outcome_metadata(
     *,
     conversation_id: str | None = None,
@@ -347,12 +388,17 @@ def finalize_orchestration_run(
     user_id: str | None = None,
     conversation_id: str | None = None,
     metadata: dict[str, Any] | None = None,
+    status: str | None = None,
 ) -> None:
-    """Mark a chat orchestration run completed or failed via finalize_execution_outcome()."""
+    """Finalize a chat orchestration run via finalize_execution_outcome().
+
+    ``status`` (from :func:`orchestration_terminal_status`) carries partial and
+    unverified outcomes; ``success`` alone is kept for older callers.
+    """
     if not run_id:
         return
-    status = "completed" if success else "failed"
-    error_summary = None if success else (summary or "Orchestration failed")
+    status = status or ("completed" if success else "failed")
+    error_summary = None if status == "completed" else (summary or "Orchestration failed")
     outcome_meta = _orchestration_outcome_metadata(
         conversation_id=conversation_id,
         path="chat_orchestration",
@@ -376,9 +422,7 @@ def finalize_orchestration_run(
                 entity_id=run_id,
                 integration=(metadata or {}).get("integration"),
             ),
-            notification_title=(
-                "Orchestration run completed" if success else "Orchestration run failed"
-            ),
+            notification_title=_ORCHESTRATION_TITLES.get(status, "Orchestration run failed"),
             notification_body=(summary or error_summary or "")[:2000] or None,
             metadata=outcome_meta,
         )

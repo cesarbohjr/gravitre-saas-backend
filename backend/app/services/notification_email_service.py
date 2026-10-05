@@ -607,6 +607,12 @@ def _simple_completion_email(
     return subject, html_body
 
 
+# Terminal statuses that are not failures for preference routing.
+_NON_FAILED_STATUSES = frozenset(
+    {"completed", "verification_inconclusive", "partial_success", "flagged_for_review"}
+)
+
+
 def send_workflow_completion_email(
     client: Any,
     settings: Settings,
@@ -619,7 +625,8 @@ def send_workflow_completion_email(
 ) -> bool:
     if not settings.notification_email_enabled:
         return False
-    pref_type = "run_completed" if final_status == "completed" else "run_failed"
+    status = str(final_status or "").strip().lower()
+    pref_type = "run_completed" if status in _NON_FAILED_STATUSES else "run_failed"
     if not email_notifications_enabled(client, org_id, user_id, pref_type):
         return False
     to_addr = resolve_user_email(client, org_id, user_id)
@@ -627,10 +634,29 @@ def send_workflow_completion_email(
         return False
     brand = load_org_email_branding(client, org_id, settings)
     view_url = f"{brand.app_base_url}/runs/{run_id}"
-    if final_status == "completed":
-        summary = f"Workflow “{workflow_name}” finished successfully."
+    if status == "completed":
+        summary = f"Workflow “{workflow_name}” finished, and its changes are confirmed in the source systems."
         headline = "Workflow completed"
         prefix = "Workflow complete"
+    elif status == "verification_inconclusive":
+        summary = (
+            f"Workflow “{workflow_name}” ran, but Gravitre could not confirm every change in the "
+            "source systems. Review the run to see which steps are unconfirmed."
+        )
+        headline = "Workflow ran, changes unconfirmed"
+        prefix = "Workflow needs a check"
+    elif status == "partial_success":
+        summary = f"Workflow “{workflow_name}” finished with some steps failing. Review the run for details."
+        headline = "Workflow partly completed"
+        prefix = "Workflow partly completed"
+    elif status == "flagged_for_review":
+        summary = f"Workflow “{workflow_name}” finished, but its results were flagged for review."
+        headline = "Workflow flagged for review"
+        prefix = "Workflow flagged"
+    elif status == "cancelled":
+        summary = f"Workflow “{workflow_name}” was cancelled."
+        headline = "Workflow cancelled"
+        prefix = "Workflow cancelled"
     else:
         summary = f"Workflow “{workflow_name}” failed. Review the run for step-level errors."
         headline = "Workflow failed"
@@ -662,6 +688,7 @@ def send_assignment_completion_email(
     job_id: str,
     task_title: str,
     requires_approval: bool,
+    final_status: str = "completed",
 ) -> bool:
     if not settings.notification_email_enabled:
         return False
@@ -676,8 +703,21 @@ def send_assignment_completion_email(
         summary = f"Assignment “{task_title}” is ready for your review and approval."
         headline = "Assignment needs approval"
     else:
-        summary = f"Assignment “{task_title}” completed successfully."
-        headline = "Assignment completed"
+        status = str(final_status or "completed").strip().lower()
+        summary, headline = {
+            "completed": (f"Assignment “{task_title}” completed, and its changes are confirmed.", "Assignment completed"),
+            "verification_inconclusive": (
+                f"Assignment “{task_title}” finished, but Gravitre could not confirm every change it made. "
+                "Open it to review.",
+                "Assignment finished, changes unconfirmed",
+            ),
+            "partial_success": (
+                f"Assignment “{task_title}” finished with some steps failing. Open it to review.",
+                "Assignment partly completed",
+            ),
+            "flagged_for_review": (f"Assignment “{task_title}” was flagged for review.", "Assignment flagged"),
+            "cancelled": (f"Assignment “{task_title}” was cancelled.", "Assignment cancelled"),
+        }.get(status, (f"Assignment “{task_title}” failed. Open it for details.", "Assignment failed"))
     subject, html_body = _simple_completion_email(
         brand,
         subject_prefix="Assignment update",
