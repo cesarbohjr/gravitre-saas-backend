@@ -81,7 +81,7 @@ export function VoiceDuplexHarness() {
     const origFetch = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(typeof input === "string" ? input : input instanceof URL ? input : input.url)
-      if (url.includes("/api/voice/stt/live-token")) {
+      if (url.includes("/api/voice/stt/live-token") || url.includes("/api/voice/stt/token")) {
         return new Response(
           JSON.stringify({
             ws_url: "wss://api.deepgram.com/v1/listen?model=nova-2",
