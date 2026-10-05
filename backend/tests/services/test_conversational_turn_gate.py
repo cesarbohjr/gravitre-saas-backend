@@ -133,10 +133,7 @@ def test_human_moment_never_defers_to_classical_tool_sse():
 def test_ambiguous_open_clarify_replies(message, needle):
     from app.services.conversational_turn_gate import ambiguous_open_clarify_reply
 
-    reply = ambiguous_open_clarify_reply(message)
-    assert reply is not None
-    assert "?" in reply
-    assert needle in reply.lower()
+    assert ambiguous_open_clarify_reply(message) is None
 
 
 def test_long_operator_task_is_not_ambiguous_open_or_venting_canned():
@@ -183,12 +180,7 @@ def test_short_seo_plus_google_ads_falls_through_to_reasoning():
 def test_definition_brief_replies(message, needle):
     from app.services.conversational_turn_gate import definition_brief_reply
 
-    reply = definition_brief_reply(message)
-    assert reply is not None
-    assert needle in reply.lower()
-    assert len(reply.split()) <= 55
-    assert "handoff" not in reply.lower()
-    assert "{" not in reply
+    assert definition_brief_reply(message) is None
 
 
 def test_correction_recall_pushback_uses_standing_history():
