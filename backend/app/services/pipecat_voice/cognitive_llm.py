@@ -79,6 +79,7 @@ class GravitreCognitiveLLMService(LLMService):
         self._durable_history_loaded = False
         self._durable_history: list[dict[str, Any]] = []
         self._durable_summary: str | None = None
+        self._interrupt_reporter: Any | None = None
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -129,6 +130,8 @@ class GravitreCognitiveLLMService(LLMService):
         user_text, history = _messages_from_context(context)
         if not user_text:
             return
+        if self._interrupt_reporter is not None and self._interrupt_reporter.conversation_id:
+            self._conversation_id = self._interrupt_reporter.conversation_id
         if not self._durable_history_loaded:
             self._durable_history, self._durable_summary = await asyncio.to_thread(
                 self._load_durable_conversation_context
@@ -136,6 +139,8 @@ class GravitreCognitiveLLMService(LLMService):
             self._durable_history_loaded = True
         history = self._merge_durable_and_socket_history(self._durable_history, history)
         user_text = reconstitute_spoken_identity_fields(user_text)
+        if self._interrupt_reporter is not None:
+            self._interrupt_reporter.begin_turn(user_text)
         if is_stop_requested(
             str(self._org_id or ""),
             self._conversation_id,
@@ -381,12 +386,19 @@ class GravitreCognitiveLLMService(LLMService):
         if complete_event is not None:
             durable_assistant_text = str(getattr(complete_event, "full_content", None) or "").strip()
             if durable_assistant_text:
-                await asyncio.to_thread(
+                persisted_id, assistant_id = await asyncio.to_thread(
                     self._persist_completed_voice_turn,
                     user_text=user_text,
                     assistant_text=durable_assistant_text,
                     complete_event=complete_event,
                 )
+                if persisted_id:
+                    self._conversation_id = persisted_id
+                    if self._interrupt_reporter is not None:
+                        self._interrupt_reporter.mark_turn_persisted(
+                            conversation_id=persisted_id,
+                            assistant_message_id=assistant_id,
+                        )
             # The websocket stays open across many spoken turns. The browser therefore
             # cannot use socket close as a turn boundary. Emit an explicit completion
             # marker after the final assistant text has been flushed so the live UI can
@@ -396,6 +408,7 @@ class GravitreCognitiveLLMService(LLMService):
                     message={
                         "type": "assistant_turn.complete",
                         "turn_id": str(getattr(complete_event, "message_id", None) or ""),
+                        "conversation_id": self._conversation_id,
                         # Client text deltas remain the primary transcript because they
                         # include real narration; full_content is only a fallback when
                         # no delta survived to the browser.
@@ -501,10 +514,10 @@ class GravitreCognitiveLLMService(LLMService):
         user_text: str,
         assistant_text: str,
         complete_event: AssistantStreamComplete,
-    ) -> None:
+    ) -> tuple[str | None, str | None]:
         """Persist a completed voice turn through the same durable store as text."""
-        if not self._conversation_id or not assistant_text.strip():
-            return
+        if not assistant_text.strip():
+            return None, None
         try:
             from app.routers.assistant import _persist_conversation_turn, _remember_completed_turn
 
