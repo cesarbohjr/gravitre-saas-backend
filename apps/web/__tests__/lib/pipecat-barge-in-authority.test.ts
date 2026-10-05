@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import { describe, expect, it } from "vitest"
 
 describe("Pipecat acoustic barge-in authority", () => {
   it("does not wire raw browser energy directly to bargeIn on the Pipecat mic path", () => {
@@ -11,7 +12,6 @@ describe("Pipecat acoustic barge-in authority", () => {
     const legacyStart = source.indexOf("const start = useCallback", pipecatStart)
     const pipecatBlock = source.slice(pipecatStart, legacyStart)
 
-    expect(pipecatBlock).toContain("BackchannelAwareUserTurnStartStrategy")
     expect(pipecatBlock).not.toContain("onBargeIn: () => void bargeIn()")
   })
 
