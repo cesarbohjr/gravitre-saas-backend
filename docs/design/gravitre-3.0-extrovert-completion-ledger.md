@@ -688,3 +688,91 @@ Finance/Compliance packs remain unspecified product scope. Slack/email destinati
 
 `IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`.
 
+## Recapture on `105630a0` — 2026-10-04 Vancouver
+
+Fetched `105630a01ddfa46eb2502b7447ab750d8ad12dc1` on `feat/gravitre-3.0-extrovert-design`. Evidence commit `c8bbef64` remains in history and is not rewritten. Concurrent correction: tablet lane reflow + AI fixture-auth host. Local rebuild used `NEXT_PUBLIC_PLAYWRIGHT_E2E=1` / `PLAYWRIGHT_E2E=1`, then `next start` on port 3061. Captures are current-head fixtures, not owner-live.
+
+### GitHub CI on this SHA
+
+Run `37247359495` / Lighthouse `37247359645`. Inspected on `105630a0`, not inferred from `0f058867`.
+
+| Check | Result |
+| --- | --- |
+| Web (lint + typecheck + build) | PASS 4m42s |
+| Backend (pytest) | PASS 8m16s |
+| Integration Smoke Test | PASS 3m9s |
+| Shared runtime text/voice gate | PASS 2m53s |
+| Dependency audit | PASS 58s |
+| Lighthouse (home + pricing) | PASS 4m47s |
+| Vercel Preview | PASS `dpl_8QvqFZmdWP311Pca6pL1oSQdskGV` |
+| Billing E2E | SKIPPED. Skipped is not passed. |
+
+### Requested recaptures
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Home 834 no clipping | PASS | Two-column Changed/Needs you and Running/At risk, Next full-width. Lane boxes all inside 834. Page `overflowX=false`. Viewport PNG `.tmp-release-visual/105630a0/home-834.png` |
+| AI 1440/834/390 stay in fixture auth | PASS | URL remains `/e2e/shots/ai`. No `ERR_CONNECTION_REFUSED` |
+| Exactly one AI runtime | PASS (DOM) | One `[data-ai-workspace-capture]` host. Composer/h1 exist once. Viewport PNGs show only the placeholder; the live landing sits below the first 900px (`h1` at y=1027). Full-page PNG `ai-1440-late.png` shows one “What do you want to get done?” surface |
+| Focus return | NOT_RUN / FAIL | Approvals Decide left fixture auth (`localhost:3000` refused). Connectors sheet opened and Escape closed it; focus landed on a script node, not the row |
+| Pending dismissal | NOT_RUN | No pending inspector on these fixture routes. Connector Close was enabled (`pending` not set) |
+| Reduced motion | PARTIAL | `prefers-reduced-motion: reduce` was true on `ai-1440-reduced`; `document.body` animation was `none`. No map/node motion comparison captured |
+
+`VISUAL_ACCEPTANCE = PARTIAL`. Home 834 clipping is resolved on this SHA. AI no longer navigates out of fixture auth, but the summoned workspace is not in the first viewport. Keyboard/pending remain unverified.
+
+### Owner-live
+
+`https://gravitre.app/home` still redirects to `/login`. No authorized owner session is available.
+
+`OWNER_LIVE_ACCEPTANCE = NOT_RUN / BLOCKED`
+
+### Merge / deploy
+
+Not performed. Required GitHub checks on `105630a0` passed (Billing E2E skipped). Release-blocking owner-live remains blocked. Draft #298 stays unmerged. Production `https://gravitre.app` remains main `8c737d50`. No production smoke.
+
+`IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`.
+
+## Recapture on `105630a0` — 2026-10-04 Vancouver
+
+Fetched `105630a01ddfa46eb2502b7447ab750d8ad12dc1` on `feat/gravitre-3.0-extrovert-design`. Evidence commit `c8bbef64` remains in history and is not rewritten. Concurrent correction: tablet lane reflow + AI fixture-auth host. Local rebuild used `NEXT_PUBLIC_PLAYWRIGHT_E2E=1` / `PLAYWRIGHT_E2E=1`, then `next start` on port 3061. Captures are current-head fixtures, not owner-live.
+
+### GitHub CI on this SHA
+
+Run `37247359495` / Lighthouse `37247359645`. Inspected on `105630a0`, not inferred from `0f058867`.
+
+| Check | Result |
+| --- | --- |
+| Web (lint + typecheck + build) | PASS 4m42s |
+| Backend (pytest) | PASS 8m16s |
+| Integration Smoke Test | PASS 3m9s |
+| Shared runtime text/voice gate | PASS 2m53s |
+| Dependency audit | PASS 58s |
+| Lighthouse (home + pricing) | PASS 4m47s |
+| Vercel Preview | PASS `dpl_8QvqFZmdWP311Pca6pL1oSQdskGV` |
+| Billing E2E | SKIPPED. Skipped is not passed. |
+
+### Requested recaptures
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Home 834 no clipping | PASS | Two-column Changed/Needs you and Running/At risk, Next full-width. Lane boxes all inside 834. Page `overflowX=false`. Viewport PNG `.tmp-release-visual/105630a0/home-834.png` |
+| AI 1440/834/390 stay in fixture auth | PASS | URL remains `/e2e/shots/ai`. No `ERR_CONNECTION_REFUSED` |
+| Exactly one AI runtime | PASS (DOM) | One `[data-ai-workspace-capture]` host. Composer/h1 exist once. Viewport PNGs show only the placeholder; the live landing sits below the first 900px (`h1` at y=1027). Full-page PNG `ai-1440-late.png` shows one “What do you want to get done?” surface |
+| Focus return | NOT_RUN / FAIL | Approvals Decide left fixture auth (`localhost:3000` refused). Connectors sheet opened and Escape closed it; focus landed on a script node, not the row |
+| Pending dismissal | NOT_RUN | No pending inspector on these fixture routes. Connector Close was enabled (`pending` not set) |
+| Reduced motion | PARTIAL | `prefers-reduced-motion: reduce` was true on `ai-1440-reduced`; `document.body` animation was `none`. No map/node motion comparison captured |
+
+`VISUAL_ACCEPTANCE = PARTIAL`. Home 834 clipping is resolved on this SHA. AI no longer navigates out of fixture auth, but the summoned workspace is not in the first viewport. Keyboard/pending remain unverified.
+
+### Owner-live
+
+`https://gravitre.app/home` still redirects to `/login`. No authorized owner session is available.
+
+`OWNER_LIVE_ACCEPTANCE = NOT_RUN / BLOCKED`
+
+### Merge / deploy
+
+Not performed. Required GitHub checks on `105630a0` passed (Billing E2E skipped). Release-blocking owner-live remains blocked. Draft #298 stays unmerged. Production `https://gravitre.app` remains main `8c737d50`. No production smoke.
+
+`IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`.
+
