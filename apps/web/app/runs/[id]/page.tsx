@@ -1,6 +1,7 @@
 "use client"
 
-import { use, useEffect, useMemo, useState } from "react"
+import { use, useEffect, useMemo, useRef, useState } from "react"
+import { reportedCount } from "@/lib/workflow-evidence"
 import useSWR from "swr"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -65,7 +66,7 @@ interface RunView {
   environment: "production" | "staging" | string
   triggeredBy: string
   duration: string
-  recordsProcessed: number
+  recordsProcessed: number | null
   stepsCompleted: number
   stepsTotal: number
   errorMessage?: string
@@ -77,7 +78,7 @@ interface RunView {
 }
 
 function formatDurationMs(ms: number | null | undefined): string {
-  if (ms == null || Number.isNaN(ms)) return "-"
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "Not reported"
   if (ms < 1000) return `${ms}ms`
   const seconds = Math.round(ms / 1000)
   if (seconds < 60) return `${seconds}s`
@@ -87,12 +88,8 @@ function formatDurationMs(ms: number | null | undefined): string {
 }
 
 function formatTimestamp(value: string | null | undefined): string {
-  if (!value) return "-"
-  try {
-    return new Date(value).toLocaleString()
-  } catch {
-    return value
-  }
+  if (!value || !Number.isFinite(Date.parse(value))) return "Not reported"
+  return new Date(value).toLocaleString()
 }
 
 function normalizeStepStatus(status: string): StepStatus {
@@ -157,11 +154,11 @@ function normalizeRunDetail(payload: RunDetailResponse, runId: string): { run: R
       id: String(rawRun.id ?? runId),
       workflowId: String(rawRun.workflowId ?? rawRun.workflow_id ?? ""),
       workflowName: String(rawRun.workflowName ?? rawRun.workflow_name ?? goal ?? "Workflow run"),
-      status: String(rawRun.status ?? "pending") as RunStatus,
-      environment: String(rawRun.environment ?? "staging"),
+      status: String(rawRun.status ?? "Not reported") as RunStatus,
+      environment: String(rawRun.environment ?? "Not reported"),
       triggeredBy: String(rawRun.triggeredBy ?? rawRun.triggered_by ?? "Unknown"),
       duration: formatDurationMs(durationMs),
-      recordsProcessed: Number(rawRun.recordsProcessed ?? rawRun.records_processed ?? 0),
+      recordsProcessed: reportedCount(rawRun.recordsProcessed ?? rawRun.records_processed),
       stepsCompleted,
       stepsTotal: steps.length,
       errorMessage: String(rawRun.errorMessage ?? rawRun.error ?? rawRun.error_message ?? "") || undefined,
@@ -252,7 +249,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           environment: "staging",
           triggeredBy: "-",
           duration: "-",
-          recordsProcessed: 0,
+          recordsProcessed: null,
           stepsCompleted: 0,
           stepsTotal: 0,
           startedAt: "-",
@@ -307,23 +304,28 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   const recordedActions = collectRunActions(steps)
   const recordedOutput = lastCompletedStepSummary(steps)
 
+  const mutationLock = useRef(false)
+
   async function handlePause() {
     if (!isAdmin) {
       toast.error("Admin access required to pause runs")
       return
     }
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsPausing(true)
     try {
       const result = await runsApi.pause(id)
       toast.success(interruptRequestedMessage("pause", { appliedEagerly: result.appliedEagerly }), {
         description: interruptRequestedDescription({ appliedEagerly: result.appliedEagerly }),
       })
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Pause failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsPausing(false)
     }
   }
@@ -333,55 +335,65 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       toast.error("Admin access required to cancel runs")
       return
     }
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsCancelling(true)
     try {
       const result = await runsApi.cancel(id)
       toast.success(interruptRequestedMessage("cancel", { appliedEagerly: result.appliedEagerly }), {
         description: interruptRequestedDescription({ appliedEagerly: result.appliedEagerly }),
       })
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Cancel failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsCancelling(false)
     }
   }
 
   const handleRetry = async () => {
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsRetryingStep(true)
     try {
       const result = await runsApi.retry(id)
       const newRunId = typeof result?.run_id === "string" ? result.run_id : null
-      toast.success("New run started", {
-        description: newRunId ? `Opened run ${newRunId.slice(0, 8)}…` : "A fresh execution was created.",
+      if (!newRunId) throw new Error("No new run ID was returned. Check run history before retrying.")
+      toast.success("Execution retry requested", {
+        description: `Returned run ${newRunId.slice(0, 8)}…`,
       })
       if (newRunId && newRunId !== id) {
         window.location.assign(`/runs/${newRunId}`)
         return
       }
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Retry failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsRetryingStep(false)
     }
   }
 
   const handleRetryStep = async (stepId: string) => {
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsRetryingStep(true)
     try {
       await runsApi.retryStep(id, stepId)
       toast.success("Step retry started", { description: "Re-running from the failed step." })
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Step retry failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsRetryingStep(false)
     }
   }
@@ -391,16 +403,19 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       toast.error("Admin access required to resume this run")
       return
     }
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsResuming(true)
     try {
       await runsApi.resumePaused(id)
       toast.success("Run resumed", { description: "Continuing from the pause checkpoint." })
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Resume failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsResuming(false)
     }
   }
@@ -411,16 +426,19 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   }
 
   const handleConfirmRollback = async () => {
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsRollingBack(true)
     setRollbackError(null)
     try {
       await runsApi.rollback(id)
       setShowRollbackConfirm(false)
       toast.success("Rollback initiated")
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       setRollbackError(err instanceof Error ? err.message : "Failed to initiate rollback. Please try again.")
     } finally {
+      mutationLock.current = false
       setIsRollingBack(false)
     }
   }
@@ -430,6 +448,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       toast.error("Admin access required to run compensations")
       return
     }
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsCompensating(true)
     try {
       const summary = await runsApi.compensate(id)
@@ -437,12 +457,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       toast.success("Compensation run finished", {
         description: `${summary.compensated} compensated · ${summary.failed} failed`,
       })
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Compensation failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsCompensating(false)
     }
   }
@@ -452,16 +473,19 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       toast.error("Admin access required to resume this run")
       return
     }
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsResolvingApproval(true)
     try {
       await workflowsApi.resumeRun(id, { decision })
       toast.success(decision === "approved" ? "Approval recorded — run resumed" : "Run rejected")
-      await Promise.all([mutate(), mutateApprovalBatch()])
+      await Promise.allSettled([mutate(), mutateApprovalBatch()])
     } catch (err) {
       toast.error("Could not resolve approval", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsResolvingApproval(false)
     }
   }
@@ -473,6 +497,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       toast.error("Admin access required to resume this run")
       return
     }
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsResolvingApproval(true)
     try {
       const result = await workflowsApi.decideApprovalBatch(id, {
@@ -483,16 +509,17 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         })),
         resume: true,
       })
-      const resumed = Boolean(result.status)
+      const resumed = ["running", "completed"].includes(result.status ?? "")
       toast.success(
-        resumed ? "Batch decisions applied — run resumed" : "Batch decisions saved",
+        resumed ? "Batch decisions applied — run resumed" : "Batch decisions submitted",
       )
-      await Promise.all([mutate(), mutateApprovalBatch()])
+      await Promise.allSettled([mutate(), mutateApprovalBatch()])
     } catch (err) {
       toast.error("Could not submit batch approval", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsResolvingApproval(false)
     }
   }
@@ -502,6 +529,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       toast.error("Admin access required to approve execute runs")
       return
     }
+    if (mutationLock.current) return
+    mutationLock.current = true
     setIsResolvingApproval(true)
     try {
       if (decision === "approved") {
@@ -511,17 +540,19 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         await approvalsApi.reject(id)
         toast.success("Run rejected")
       }
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Approval action failed", {
         description: err instanceof Error ? err.message : "Please try again.",
       })
     } finally {
+      mutationLock.current = false
       setIsResolvingApproval(false)
     }
   }
 
   const handleCancelRollback = () => {
+    if (mutationLock.current) return
     setShowRollbackConfirm(false)
     setRollbackError(null)
   }
@@ -642,9 +673,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             <StatusBadge variant={statusVariants[run.status] ?? "error"} dot>
               {run.status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
             </StatusBadge>
-            <EnvironmentBadge
-              environment={run.environment === "production" ? "production" : "staging"}
-            />
+            {["production", "staging"].includes(run.environment) ? <EnvironmentBadge environment={run.environment === "production" ? "production" : "staging"} /> : <span className="text-xs text-muted-foreground">Environment not reported</span>}
             <span className="text-xs text-muted-foreground">{headerTitle}</span>
           </div>
         </GravitrePageHeader>
@@ -736,14 +765,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 <div
                   className={
                     run.status === "failed"
-                      ? "h-full rounded-full bg-[color:var(--status-failed)] transition-all"
+                      ? "h-full rounded-full bg-[color:var(--status-failed)] transition-all motion-reduce:transition-none"
                       : run.status === "cancelled"
-                        ? "h-full rounded-full bg-muted-foreground transition-all"
+                        ? "h-full rounded-full bg-muted-foreground transition-all motion-reduce:transition-none"
                         : run.status === "running" || run.status === "verifying"
-                          ? "h-full rounded-full bg-[color:var(--status-running)] transition-all"
+                          ? "h-full rounded-full bg-[color:var(--status-running)] transition-all motion-reduce:transition-none"
                           : run.status === "verification_inconclusive"
-                            ? "h-full rounded-full bg-warning transition-all"
-                            : "h-full rounded-full bg-[color:var(--status-verified)] transition-all"
+                            ? "h-full rounded-full bg-warning transition-all motion-reduce:transition-none"
+                            : "h-full rounded-full bg-[color:var(--status-verified)] transition-all motion-reduce:transition-none"
                   }
                   style={{
                     width: `${Math.min(
@@ -755,8 +784,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               </div>
               {run.status === "running" && run.stepsCompleted === 0 ? (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Waiting for the first step to finish. If this stays stuck, use Cancel — status
-                  updates immediately so you can start a new run.
+                  Waiting for the first step to finish. Cancellation may take effect before the next step; check the returned run status before retrying.
                 </p>
               ) : null}
             </GravitreSurface>
@@ -771,7 +799,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
             <GravitreMetric label="Duration" value={run.duration} icon={<Clock className="h-4 w-4" />} />
             <GravitreMetric
               label="Records processed"
-              value={run.recordsProcessed.toLocaleString()}
+              value={run.recordsProcessed?.toLocaleString() ?? "Not reported"}
               icon={<CheckCircle className="h-4 w-4" />}
             />
             <GravitreMetric
@@ -1021,7 +1049,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                             "flex items-center gap-2 rounded-[var(--np-radius-md)] border bg-[color:var(--g-surface-2)] px-3 py-2",
                             grammarKey === "failed" && "border-destructive/50",
                             grammarKey === "waiting" && "border-warning/50",
-                            grammarKey === "verified" && "border-[color:color-mix(in_srgb,#16a374_45%,transparent)]",
+                            ["completed", "approved", "verified"].includes(grammarKey) && "border-[color:var(--g-brand-border)]",
                             grammarKey === "running" && "border-info/40",
                             grammarKey === "pending" && "border-divide",
                           )}

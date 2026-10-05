@@ -55,7 +55,7 @@ function StepIcon({ type, status }: { type: string; status: string }) {
     case "trigger":
       return <GitBranch className={`h-4 w-4 text-blue-500 ${iconClass}`} />
     case "agent":
-      return <Bot className={`h-4 w-4 text-purple-500 ${iconClass}`} />
+      return <Bot className={`h-4 w-4 text-[color:var(--g-electric)] ${iconClass}`} />
     case "connector":
       return <Database className={`h-4 w-4 text-amber-500 ${iconClass}`} />
     case "action":
@@ -126,8 +126,8 @@ export function WorkflowDemo() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
-            <GitBranch className="h-4 w-4 text-purple-600" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:var(--g-emerald-pale)]">
+            <GitBranch className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
           </div>
           <div>
             <span className="font-medium text-sm text-foreground">Lead Qualification Workflow</span>

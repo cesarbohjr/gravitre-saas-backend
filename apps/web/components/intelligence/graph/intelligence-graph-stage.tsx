@@ -12,7 +12,6 @@ import type { Agent } from "@/types/api"
 import { CoreHubNode } from "@/components/intelligence/core/core-hub-node"
 import { DepartmentNode } from "@/components/intelligence/core/department-node"
 import { SignalEdge } from "@/components/intelligence/core/signal-edge"
-import { ConnectorsAtmosphere } from "@/components/gravitre/connectors-atmosphere"
 import { MapSatelliteNode } from "@/components/intelligence/map/map-satellite-node"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
 import {
@@ -431,7 +430,7 @@ export function IntelligenceGraphStage({
         onPointerUp={interaction.endDrag}
         onPointerLeave={interaction.endDrag}
         className={cn(
-          "relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-card shadow-[var(--np-shadow)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+          "dark relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-carbon)] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
           isFullscreen && "min-h-[100vh] rounded-none border-0",
           !showCanvas && "hidden",
         )}
@@ -439,7 +438,7 @@ export function IntelligenceGraphStage({
         aria-label={`Interactive Gravitre intelligence map — ${lens} lens`}
       >
         <div data-pan-surface="true" className="absolute inset-0 z-0">
-          <ConnectorsAtmosphere />
+          <div className="absolute inset-0 bg-[color:var(--g-carbon)]" />
         </div>
 
         <p className={cn(TYPE.meta, "absolute left-3 top-2 z-20 max-w-[70%] truncate opacity-80")}>

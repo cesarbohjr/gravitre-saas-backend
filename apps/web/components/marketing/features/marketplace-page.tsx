@@ -89,7 +89,7 @@ const ASSETS: Asset[] = [
     description: "Ticket triage, support knowledge, and an optional SLA escalation workflow.",
     availability: "Included",
     icon: NucleoAgent,
-    tone: "text-violet-600 bg-violet-100",
+    tone: "text-[color:var(--g-electric)] bg-[color:var(--g-emerald-pale)]",
   },
   {
     name: "Marketing Operations Pack",

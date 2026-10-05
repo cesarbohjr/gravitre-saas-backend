@@ -10,8 +10,14 @@ import {
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
-import { LEGACY_COLOR_TO_IDENTITY, LEGACY_ICON_TO_ROLE } from "@/lib/agent-identity-bridge"
-import { IDENTITY_COLOR_TOKENS, ROLE_ICON_REGISTRY } from "@/components/agents/fleet-v4/identity-tokens"
+import {
+  LEGACY_COLOR_TO_IDENTITY,
+  LEGACY_ICON_TO_ROLE,
+} from "@/lib/agent-identity-bridge"
+import {
+  IDENTITY_COLOR_TOKENS,
+  ROLE_ICON_REGISTRY,
+} from "@/components/agents/fleet-v4/identity-tokens"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 
 interface AgentIdentityPickerProps {
@@ -52,9 +58,12 @@ export function AgentIdentityPicker({
           showStatusDot={false}
         />
         <div>
-          <p className="text-sm font-medium text-foreground">Agent appearance</p>
+          <p className="text-sm font-medium text-foreground">
+            Agent appearance
+          </p>
           <p className="text-xs text-muted-foreground">
-            Choose an icon and color so teammates can recognize this agent at a glance.
+            Choose an icon and color so teammates can recognize this agent at a
+            glance.
           </p>
         </div>
       </div>
@@ -72,7 +81,7 @@ export function AgentIdentityPicker({
                 type="button"
                 onClick={() => onIconChange(option.id)}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-[var(--np-radius-md)] border px-2 py-2 text-[10px] transition",
+                  "flex min-h-11 flex-col items-center gap-1 rounded-[var(--np-radius-md)] border px-2 py-2 text-[10px] transition",
                   selected
                     ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/40 text-foreground"
                     : "border-divide bg-[color:var(--g-surface-1)] text-muted-foreground hover:border-[color:var(--g-brand-border)]",
@@ -93,14 +102,15 @@ export function AgentIdentityPicker({
         <div className="flex flex-wrap gap-2">
           {AGENT_COLOR_OPTIONS.map((option) => {
             const selected = avatarColor === option.id
-            const soft = IDENTITY_COLOR_TOKENS[LEGACY_COLOR_TO_IDENTITY[option.id]]
+            const soft =
+              IDENTITY_COLOR_TOKENS[LEGACY_COLOR_TO_IDENTITY[option.id]]
             return (
               <button
                 key={option.id}
                 type="button"
                 onClick={() => onColorChange(option.id)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition",
+                  "flex min-h-11 items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition",
                   selected
                     ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/30 text-foreground"
                     : "border-divide text-muted-foreground hover:bg-[color:var(--g-surface-2)]",
@@ -108,7 +118,11 @@ export function AgentIdentityPicker({
                 aria-pressed={selected}
               >
                 <span
-                  className={cn("h-4 w-4 rounded-sm border", soft.surfaceClass, soft.borderClass)}
+                  className={cn(
+                    "h-4 w-4 rounded-sm border",
+                    soft.surfaceClass,
+                    soft.borderClass,
+                  )}
                   aria-hidden
                 />
                 {option.label}
@@ -121,7 +135,11 @@ export function AgentIdentityPicker({
   )
 }
 
-export function useSuggestedAgentIdentity(name: string, purpose?: string, department?: string) {
+export function useSuggestedAgentIdentity(
+  name: string,
+  purpose?: string,
+  department?: string,
+) {
   const icon = suggestAgentIcon(name, purpose, null, department)
   const avatarColor = suggestAgentColor(icon, name, department)
   return { icon, avatarColor }

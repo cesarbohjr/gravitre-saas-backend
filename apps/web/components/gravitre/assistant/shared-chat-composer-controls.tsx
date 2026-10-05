@@ -420,10 +420,12 @@ export function SharedChatComposerControls({
         {waveformButton}
 
         <textarea
+          aria-label="Message Gravitre"
           ref={inputRef}
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return
             if (event.key === "Enter" && !event.shiftKey) {
               void unlockVoicePlayback()
             }
@@ -450,7 +452,7 @@ export function SharedChatComposerControls({
             <Button
               type="button"
               size="icon"
-              className="mb-0.5 h-8 w-8 shrink-0 rounded-full bg-[color:var(--status-pending)] text-background hover:opacity-90"
+              className="mb-0.5 h-11 w-11 shrink-0 rounded-full bg-[color:var(--status-pending)] text-background hover:opacity-90"
               aria-label="Stop"
               onClick={() => {
                 if (isListening) toggleListening()
@@ -465,7 +467,7 @@ export function SharedChatComposerControls({
               size="icon"
               disabled={disabled || !canSubmit}
               className={cn(
-                "mb-0.5 h-8 w-8 shrink-0 rounded-full",
+                "mb-0.5 h-11 w-11 shrink-0 rounded-full",
                 canSubmit && !disabled
                   ? "bg-[color:var(--g-brand)] text-white hover:bg-[color:var(--g-brand-hover)]"
                   : "disabled:opacity-40",

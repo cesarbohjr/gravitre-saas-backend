@@ -59,8 +59,12 @@ export function AgentCapabilitiesEditor({
     const next = draftCapability.trim()
     if (!next) return
     const exists =
-      resolvedCapabilityNames.some((name) => name.toLowerCase() === next.toLowerCase()) ||
-      AGENT_CAPABILITY_OPTIONS.some((option) => option.name.toLowerCase() === next.toLowerCase())
+      resolvedCapabilityNames.some(
+        (name) => name.toLowerCase() === next.toLowerCase(),
+      ) ||
+      AGENT_CAPABILITY_OPTIONS.some(
+        (option) => option.name.toLowerCase() === next.toLowerCase(),
+      )
     if (exists) {
       setDraftCapability("")
       return
@@ -73,9 +77,12 @@ export function AgentCapabilitiesEditor({
     <div className={cn("space-y-8", className)}>
       <section className="space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Capabilities</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            Capabilities
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            What this agent can do. Add catalog skills or your own capability labels.
+            Describe this agent’s intended skills. Labels do not grant runtime
+            access.
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -86,19 +93,26 @@ export function AgentCapabilitiesEditor({
               <button
                 key={cap.id}
                 type="button"
-                onClick={() => onCapabilityIdsChange(toggleId(capabilityIds, cap.id))}
+                aria-pressed={selected}
+                onClick={() =>
+                  onCapabilityIdsChange(toggleId(capabilityIds, cap.id))
+                }
                 className={cn(
-                  "flex items-start gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
+                  "flex min-h-11 items-start gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
                   selected
-                    ? "border-foreground/40 bg-card"
+                    ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)]"
                     : "border-border bg-secondary/40 hover:border-foreground/20",
                 )}
               >
                 <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">{cap.name}</span>
-                    {selected ? <Check className="h-3.5 w-3.5 text-foreground" /> : null}
+                    <span className="text-sm font-medium text-foreground">
+                      {cap.name}
+                    </span>
+                    {selected ? (
+                      <Check className="h-3.5 w-3.5 text-foreground" />
+                    ) : null}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-muted-foreground">
                     {cap.description}
@@ -116,9 +130,12 @@ export function AgentCapabilitiesEditor({
                 key={name}
                 type="button"
                 onClick={() =>
-                  onCustomCapabilitiesChange(customCapabilities.filter((item) => item !== name))
+                  onCustomCapabilitiesChange(
+                    customCapabilities.filter((item) => item !== name),
+                  )
                 }
-                className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-foreground"
+                aria-label={`Remove ${name}`}
+                className="min-h-11 break-words rounded-full border border-border bg-card px-2.5 py-1 text-xs text-foreground"
                 title="Remove custom capability"
               >
                 {name} ×
@@ -127,8 +144,9 @@ export function AgentCapabilitiesEditor({
           </div>
         ) : null}
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
+            aria-label="Custom capability"
             type="text"
             value={draftCapability}
             onChange={(event) => setDraftCapability(event.target.value)}
@@ -139,9 +157,16 @@ export function AgentCapabilitiesEditor({
               }
             }}
             placeholder="Add a custom capability…"
-            className="h-9 flex-1 rounded-md border border-border bg-secondary px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-secondary px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-          <Button type="button" variant="outline" size="sm" className="h-9 gap-1" onClick={addCustomCapability}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!draftCapability.trim()}
+            className="min-h-11 gap-1"
+            onClick={addCustomCapability}
+          >
             <Plus className="h-3.5 w-3.5" />
             Add
           </Button>
@@ -150,19 +175,26 @@ export function AgentCapabilitiesEditor({
         {knowledgeHref ? (
           <p className="text-xs text-muted-foreground">
             Knowledge sources (folders, docs, instructions) are managed on{" "}
-            <Link href={knowledgeHref} className="underline underline-offset-2 hover:text-foreground">
+            <Link
+              href={knowledgeHref}
+              className="underline underline-offset-2 hover:text-foreground"
+            >
               the Knowledge page
             </Link>
-            . Enable “Use knowledge” above so the agent is expected to ground in them.
+            . Enable “Use knowledge” above so the agent is expected to ground in
+            them.
           </p>
         ) : null}
       </section>
 
       <section className="space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Connectors / apps</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            Connectors / apps
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Systems this agent is allowed to use. Live connector setup still happens under Integrations.
+            Systems this agent is allowed to use. Live connector setup still
+            happens under Integrations.
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -172,19 +204,28 @@ export function AgentCapabilitiesEditor({
               <button
                 key={system.id}
                 type="button"
-                onClick={() => onSystemIdsChange(toggleId(systemIds, system.id))}
+                aria-pressed={selected}
+                onClick={() =>
+                  onSystemIdsChange(toggleId(systemIds, system.id))
+                }
                 className={cn(
-                  "flex items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors",
+                  "flex min-h-11 items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors",
                   selected
-                    ? "border-foreground/40 bg-card"
+                    ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)]"
                     : "border-border bg-secondary/40 hover:border-foreground/20",
                 )}
               >
                 <span>
-                  <span className="block text-sm font-medium text-foreground">{system.name}</span>
-                  <span className="text-[11px] text-muted-foreground">{system.type}</span>
+                  <span className="block text-sm font-medium text-foreground">
+                    {system.name}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {system.type}
+                  </span>
                 </span>
-                {selected ? <Check className="h-3.5 w-3.5 text-foreground" /> : null}
+                {selected ? (
+                  <Check className="h-3.5 w-3.5 text-foreground" />
+                ) : null}
               </button>
             )
           })}
@@ -193,9 +234,12 @@ export function AgentCapabilitiesEditor({
 
       <section className="space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Actions / approval gates</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            Actions / approval gates
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Safety limits for writes, deletes, and rate of action.
+            Configuration labels for intended limits. Effective enforcement is
+            shown under Governance.
           </p>
         </div>
         <div className="space-y-2">
@@ -205,11 +249,14 @@ export function AgentCapabilitiesEditor({
               <button
                 key={guard.id}
                 type="button"
-                onClick={() => onGuardrailIdsChange(toggleId(guardrailIds, guard.id))}
+                aria-pressed={selected}
+                onClick={() =>
+                  onGuardrailIdsChange(toggleId(guardrailIds, guard.id))
+                }
                 className={cn(
-                  "flex w-full items-start justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                  "flex min-h-11 w-full items-start justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
                   selected
-                    ? "border-foreground/40 bg-card"
+                    ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)]"
                     : "border-border bg-secondary/40 hover:border-foreground/20",
                 )}
               >
@@ -226,14 +273,16 @@ export function AgentCapabilitiesEditor({
                     {guard.description}
                   </span>
                 </span>
-                {selected ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" /> : null}
+                {selected ? (
+                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />
+                ) : null}
               </button>
             )
           })}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Selected apps: {systemNamesFromIds(systemIds).join(", ") || "none"} · Gates:{" "}
-          {guardrailNamesFromIds(guardrailIds).join(", ") || "none"}
+          Selected apps: {systemNamesFromIds(systemIds).join(", ") || "none"} ·
+          Gates: {guardrailNamesFromIds(guardrailIds).join(", ") || "none"}
         </p>
       </section>
     </div>

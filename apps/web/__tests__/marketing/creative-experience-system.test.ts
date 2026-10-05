@@ -15,8 +15,8 @@ import { NETWORK_SCENARIOS } from "@/components/marketing/system/department-netw
 
 describe("creative experience tokens", () => {
   it("pins brand green exactly", () => {
-    expect(CREATIVE_BRAND).toBe("#16a374")
-    expect(CREATIVE_TOKENS.brand).toBe("#16a374")
+    expect(CREATIVE_BRAND).toBe("#00a878")
+    expect(CREATIVE_TOKENS.brand).toBe("#00a878")
   })
 })
 
@@ -229,7 +229,7 @@ describe("phase 7 governed execution storyboard", () => {
 describe("phase 7 hardening", () => {
   it("exports creative scene fallback and brand token", async () => {
     const { CREATIVE_BRAND, CreativeSceneFallback } = await import("@/components/marketing/creative")
-    expect(CREATIVE_BRAND).toBe("#16a374")
+    expect(CREATIVE_BRAND).toBe("#00a878")
     expect(CreativeSceneFallback).toBeTypeOf("function")
   })
 })

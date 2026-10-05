@@ -74,7 +74,7 @@ export default function SchedulesPage() {
 
   return (
     <AppShell title="Schedules">
-      <div className={PAGE_FRAME}>
+      <div className={PAGE_FRAME} data-composition="operate">
         {/* Shared PageHeader rather than a bespoke title block, so the type
             scale, icon tile and action row match every other hub page. */}
         <GravitrePageHeader

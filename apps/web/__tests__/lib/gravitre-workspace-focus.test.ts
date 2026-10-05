@@ -17,4 +17,11 @@ describe("buildWorkspaceFocusPayload", () => {
     expect(payload?.selection?.label).toBe("Acme Corporation")
     expect(payload?.route).toBe("/intelligence")
   })
+  it.each(["goal", "source", "assignment", "training-dataset", "training-job", "multi-agent-run"])("carries %s identity without its content", (kind) => {
+    const payload = buildWorkspaceFocusPayload({
+      surface: "ai_chat", route: "/training",
+      selected: { kind, id: "selected-id", label: "  " + "x".repeat(220) + "  " },
+    })
+    expect(payload?.selection).toEqual({ object_type: kind, object_id: "selected-id", label: "x".repeat(200) })
+  })
 })

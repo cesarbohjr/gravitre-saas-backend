@@ -23,15 +23,15 @@
 export const TYPE = {
   /** The single <h1> on a page — Nodus product scale (~20–24px), not marketing H1. */
   pageTitle:
-    "font-sans text-[30px] leading-[1.08] font-semibold tracking-[-0.025em] text-[color:var(--g-text-primary)]",
+    "font-[family-name:var(--font-space-grotesk)] text-[30px] leading-[1.08] font-semibold tracking-[-0.025em] text-[color:var(--g-text-primary)]",
   /** Title of an immersive or expert workspace (builder, studio). */
   workspaceTitle:
-    "font-sans text-xl font-semibold tracking-[-0.015em] text-[color:var(--g-text-primary)]",
+    "font-[family-name:var(--font-space-grotesk)] text-xl font-semibold tracking-[-0.015em] text-[color:var(--g-text-primary)]",
   /** Supporting sentence under a page title. */
   pageLead: "font-sans text-sm text-pretty text-[color:var(--g-text-muted)]",
   /** Section heading inside a page (<h2>). */
   sectionTitle:
-    "font-sans text-[21px] leading-[1.2] font-semibold tracking-[-0.018em] text-[color:var(--g-text-primary)]",
+    "font-[family-name:var(--font-space-grotesk)] text-[21px] leading-[1.2] font-semibold tracking-[-0.018em] text-[color:var(--g-text-primary)]",
   /** IDs, versions, schemas, timestamps, environment metadata. */
   mono: "font-mono text-xs font-medium tabular-nums text-[color:var(--g-text-muted)]",
   /** Card / list-item heading (<h3>) / widget title. */
@@ -215,18 +215,18 @@ export const RADIUS = {
  * Durations stay short enough to feel like feedback rather than animation;
  * every consumer must still honour `useMotionPrefs()` / `useReducedMotion()`.
  *
- * Scale: micro 150 · ui/base 250 · major 400 · slow 600 (seconds for Framer).
+ * Scale: micro 150 · ui/base 200 · major 320 · slow 600 (seconds for Framer).
  */
 export const MOTION = {
   /** Hover / press / exit micro interactions (150ms). */
   micro: 0.15,
   /** Alias of micro — prefer `micro` in new code. */
   fast: 0.15,
-  /** Standard UI enter/exit (250ms). */
+  /** Standard UI enter/exit (200ms). */
   ui: 0.2,
   /** Alias of ui — existing hub consumers; keep in sync with `ui`. */
   base: 0.2,
-  /** Major surface / route transitions (400ms). */
+  /** Major surface / route transitions (320ms). */
   major: 0.32,
   /** Emphasis / slow reveals (600ms). */
   slow: 0.6,
@@ -320,7 +320,7 @@ export const STATUS_DOT: Record<StatusTone, string> = {
 export const HIGHLIGHT = {
   brand: "text-[color:var(--g-brand-active)]",
   signal: "text-[color:var(--info)]",
-  intelligence: "text-[color:var(--g-intelligence-bright)]",
+  intelligence: "text-[color:var(--g-electric)]",
   warning: "text-[color:var(--warning)]",
   danger: "text-destructive",
   neutral: "text-[color:var(--g-text-secondary)]",
@@ -405,7 +405,7 @@ export const DATA_VIZ = {
   primary: "var(--g-emerald)",
   verified: "var(--g-emerald-deep)",
   selected: "var(--g-emerald)",
-  secondary: "var(--g-signal)",
+  secondary: "var(--g-electric)",
   attention: "var(--g-warmth)",
   grid: "var(--g-border-subtle)",
   tooltip: "var(--g-carbon)",

@@ -2,7 +2,8 @@
 
 import { useState, use, useMemo } from "react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
+import { MemoryCard, type DisplayMemory } from "@/components/agents/agent-memory-row"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -38,28 +39,11 @@ import {
 
 type MemoryCategory = AgentMemory["category"]
 
-interface DisplayMemory {
-  id: string
-  content: string
-  category: MemoryCategory
-  source: string
-  confidence: number
-  createdAt: string
-  usageCount: number
-  editable: boolean
-}
-
-const categoryConfig = {
-  fact: { label: "Fact", icon: "database", color: "blue", glow: "shadow-blue-500/20" },
-  preference: { label: "Preference", icon: "heart", color: "rose", glow: "shadow-destructive/20" },
-  pattern: { label: "Pattern", icon: "sparkles", color: "signal", glow: "shadow-[var(--g-glow-signal)]" },
-  rule: { label: "Rule", icon: "shield", color: "amber", glow: "shadow-warning/20" },
-}
 
 function formatDate(value?: string): string {
-  if (!value) return "Recently"
+  if (!value) return "Not reported"
   const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return "Recently"
+  if (Number.isNaN(parsed.getTime())) return "Not reported"
   return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
@@ -68,129 +52,14 @@ function toDisplayMemory(memory: AgentMemory): DisplayMemory {
     id: memory.id,
     content: memory.content,
     category: memory.category,
-    source: memory.source || memory.provenance || "Manual entry",
-    confidence: Math.round(memory.confidence),
+    source: memory.source || memory.provenance || "Not reported",
+    confidence: typeof memory.confidence === "number" && Number.isFinite(memory.confidence) && memory.confidence >= 0 && memory.confidence <= 100 ? Math.round(memory.confidence) : null,
     createdAt: formatDate(memory.createdAt),
-    usageCount: memory.usageCount,
+    usageCount: typeof memory.usageCount === "number" && Number.isFinite(memory.usageCount) && memory.usageCount >= 0 ? memory.usageCount : null,
     editable: memory.editable,
   }
 }
 
-function MemoryCard({ memory, index, onEdit, onDelete }: {
-  memory: DisplayMemory
-  index: number
-  onEdit: (m: DisplayMemory) => void
-  onDelete: (id: string) => void
-}) {
-  const category = categoryConfig[memory.category]
-  const [isHovered, setIsHovered] = useState(false)
-
-  const colorClasses: Record<string, { bg: string; border: string; text: string; ring: string }> = {
-    blue: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-600 dark:text-blue-400", ring: "ring-blue-500/20" },
-    rose: { bg: "bg-destructive/10", border: "border-destructive/30", text: "text-destructive", ring: "ring-destructive/20" },
-    signal: { bg: "bg-[color:var(--g-signal-surface)]", border: "border-[color:var(--g-signal)]/30", text: "text-[color:var(--g-signal)]", ring: "ring-[color:var(--g-signal)]/20" },
-    amber: { bg: "bg-warning/10", border: "border-warning/30", text: "text-warning", ring: "ring-warning/20" },
-  }
-
-  const colors = colorClasses[category.color]
-  const confidenceStroke =
-    memory.confidence >= 90
-      ? "var(--g-brand)"
-      : memory.confidence >= 70
-        ? "var(--warning)"
-        : "var(--destructive)"
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      className={cn(
-        "group relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)] transition-colors",
-        "hover:bg-[color:var(--g-surface-2)]",
-      )}
-    >
-      <motion.div
-        className={cn(
-          "absolute inset-0 rounded-[var(--np-radius-lg)] opacity-0 transition-opacity",
-          colors.ring, "ring-2"
-        )}
-        animate={{ opacity: isHovered ? 1 : 0 }}
-      />
-
-      <div className="flex items-start justify-between mb-3">
-        <div className={cn(
-          "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-          colors.bg, colors.text
-        )}>
-          <Icon name={category.icon as IconName} size="xs" />
-          {category.label}
-        </div>
-
-        <div className="relative h-10 w-10">
-          <svg className="h-10 w-10 -rotate-90">
-            <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeWidth="3" className="text-[color:var(--g-surface-2)]" />
-            <motion.circle
-              cx="20"
-              cy="20"
-              r="16"
-              fill="none"
-              stroke={confidenceStroke}
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray={100}
-              initial={{ strokeDashoffset: 100 }}
-              animate={{ strokeDashoffset: 100 - memory.confidence }}
-              transition={{ duration: 1, delay: index * 0.05 }}
-            />
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground">
-            {memory.confidence}
-          </span>
-        </div>
-      </div>
-
-      <p className="text-sm text-foreground leading-relaxed mb-4 pr-4">{memory.content}</p>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Icon name="link" size="xs" />
-            <span>{memory.source}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Icon name="activity" size="xs" />
-            <span>Used {memory.usageCount}x</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Icon name="clock" size="xs" />
-            <span>{memory.createdAt}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {memory.editable ? (
-            <>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onEdit(memory)}>
-                <Icon name="edit" size="sm" className="text-muted-foreground" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => onDelete(memory.id)}>
-                <Icon name="trash" size="sm" />
-              </Button>
-            </>
-          ) : (
-            <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-warning/10 text-warning text-[10px] font-medium">
-              <Icon name="lock" size="xs" />
-              Protected
-            </span>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  )
-}
 
 function MemoryEditorDialog({
   open,
@@ -220,13 +89,14 @@ function MemoryEditorDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) resetFromInitial() }}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(next) => { if (saving) return; onOpenChange(next); if (!next) resetFromInitial() }}>
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit memory" : "Add memory"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <textarea
+            aria-label="Memory content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What should this agent remember?"
@@ -275,10 +145,12 @@ function MemoryEditorDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
           <Button
-            disabled={saving || !content.trim()}
+            disabled={saving || !content.trim() || !Number.isFinite(confidence) || confidence < 0 || confidence > 100}
             onClick={async () => {
-              await onSave({ content: content.trim(), category, source: source.trim(), confidence, editable })
-              onOpenChange(false)
+              try {
+                await onSave({ content: content.trim(), category, source: source.trim(), confidence, editable })
+                onOpenChange(false)
+              } catch { /* Keep the draft open after an API failure. */ }
             }}
           >
             {saving ? "Saving..." : initial ? "Save changes" : "Add memory"}
@@ -309,10 +181,9 @@ export default function AgentMemoryPage({
   )
   const agent = agentData as Agent | undefined
 
-  const { data: memoriesData, mutate, isLoading } = useSWR(
+  const { data: memoriesData, mutate, isLoading, error } = useSWR(
     user && id ? `agent/${id}/memories` : null,
     () => agentsApi.listMemories(id),
-    { fallbackData: [] as AgentMemory[] },
   )
 
   const memories = useMemo(
@@ -329,9 +200,9 @@ export default function AgentMemoryPage({
   const stats = useMemo(() => ({
     total: memories.length,
     avgConfidence: memories.length
-      ? Math.round(memories.reduce((sum, m) => sum + m.confidence, 0) / memories.length)
-      : 0,
-    totalUsage: memories.reduce((sum, m) => sum + m.usageCount, 0),
+      ? Math.round(memories.filter(m => m.confidence != null).reduce((sum, m) => sum + m.confidence!, 0) / memories.filter(m => m.confidence != null).length)
+      : null,
+    totalUsage: memories.some(m => m.usageCount == null) ? null : memories.reduce((sum, m) => sum + m.usageCount!, 0),
     protected: memories.filter((m) => !m.editable).length,
   }), [memories])
 
@@ -350,6 +221,7 @@ export default function AgentMemoryPage({
     confidence: number
     editable: boolean
   }) => {
+    if (saving) return
     try {
       setSaving(true)
       if (editingMemory) {
@@ -383,18 +255,18 @@ export default function AgentMemoryPage({
   }
 
   const handleDelete = async () => {
-    if (!deleteTarget) return
+    if (!deleteTarget || saving) return
     try {
       setSaving(true)
       await agentsApi.deleteMemory(id, deleteTarget.id)
       toast.success("Memory deleted")
+      setDeleteTarget(null)
       await mutate()
     } catch (error) {
       console.error("[memory] delete failed:", error)
       toast.error("Failed to delete memory")
     } finally {
       setSaving(false)
-      setDeleteTarget(null)
     }
   }
 
@@ -408,11 +280,11 @@ export default function AgentMemoryPage({
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" asChild>
+              <Button variant="outline" className="min-h-11" asChild>
                 <Link href={`/agents/${id}`}>Back to profile</Link>
               </Button>
               <Button
-                className="gap-2"
+                className="min-h-11 gap-2"
                 onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
               >
                 <Icon name="add" size="sm" />
@@ -422,12 +294,12 @@ export default function AgentMemoryPage({
           }
         />
 
-        <div className="flex-1 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
-          <section className="mb-6 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric label="Total memories" value={stats.total} />
-            <GravitreMetric label="Avg confidence" value={`${stats.avgConfidence}%`} />
-            <GravitreMetric label="Total usage" value={stats.totalUsage} />
-            <GravitreMetric label="Protected rules" value={stats.protected} />
+        <div data-composition="manage" className="flex-1 pb-28 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <section className="mb-6 grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
+            <GravitreMetric label="Total memories" value={memoriesData ? stats.total : "Not reported"} />
+            <GravitreMetric label="Avg confidence" value={stats.avgConfidence != null && Number.isFinite(stats.avgConfidence) ? `${stats.avgConfidence}%` : "Not reported"} />
+            <GravitreMetric label="Total usage" value={memoriesData ? stats.totalUsage ?? "Not reported" : "Not reported"} />
+            <GravitreMetric label="Protected rules" value={memoriesData ? stats.protected : "Not reported"} />
           </section>
 
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -443,7 +315,7 @@ export default function AgentMemoryPage({
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
-                    "flex items-center gap-2 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-all",
+                    "flex min-h-11 items-center gap-2 rounded-[var(--np-radius-md)] px-4 py-2 text-sm font-medium transition-all",
                     activeCategory === cat.id
                       ? "bg-[color:var(--g-surface-1)] text-foreground shadow-[var(--np-shadow)]"
                       : "text-muted-foreground hover:text-foreground"
@@ -465,6 +337,7 @@ export default function AgentMemoryPage({
               <Icon name="search" size="sm" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
+                aria-label="Search memories"
                 placeholder="Search memories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -473,35 +346,19 @@ export default function AgentMemoryPage({
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading memories...</div>
-          ) : (
-            <AnimatePresence mode="popLayout">
-              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {filteredMemories.map((memory, i) => (
-                  <MemoryCard
-                    key={memory.id}
-                    memory={memory}
-                    index={i}
-                    onEdit={(m) => { setEditingMemory(m); setEditorOpen(true) }}
-                    onDelete={(memoryId) => {
-                      const target = memories.find((m) => m.id === memoryId)
-                      if (target) setDeleteTarget(target)
-                    }}
-                  />
-                ))}
-              </motion.div>
-            </AnimatePresence>
-          )}
+          {error ? <WorkSectionErrorCard title="Could not refresh memories" error={error} onRetry={() => void mutate()} /> : null}
+          {isLoading && !memoriesData ? <p className="py-12 text-sm text-muted-foreground">Loading memories…</p> : <div className="border-t border-[color:var(--g-border-default)]">
+            {filteredMemories.map(memory => <MemoryCard key={memory.id} memory={memory} onEdit={m => { setEditingMemory(m); setEditorOpen(true) }} onDelete={memoryId => { const target = memories.find(m => m.id === memoryId); if (target) setDeleteTarget(target) }} />)}
+          </div>}
 
-          {!isLoading && filteredMemories.length === 0 && (
+          {!isLoading && !error && filteredMemories.length === 0 && (
             <GravitreEmpty
               icon={<Icon name="search" size="sm" />}
               title="No memories found"
               hint="Try adjusting your search or add a new memory"
               action={
                 <Button
-                  className="gap-2"
+                  className="min-h-11 gap-2"
                   onClick={() => { setEditingMemory(null); setEditorOpen(true) }}
                 >
                   <Icon name="add" size="sm" />
@@ -514,7 +371,7 @@ export default function AgentMemoryPage({
       </div>
 
       <MemoryEditorDialog
-        key={editingMemory?.id || "new"}
+        key={`${editingMemory?.id || "new"}-${editorOpen}`}
         open={editorOpen}
         onOpenChange={setEditorOpen}
         initial={editingMemory}
@@ -522,7 +379,7 @@ export default function AgentMemoryPage({
         saving={saving}
       />
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && !saving && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete memory?</AlertDialogTitle>
@@ -532,7 +389,7 @@ export default function AgentMemoryPage({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={saving}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={event => { event.preventDefault(); void handleDelete() }} disabled={saving}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

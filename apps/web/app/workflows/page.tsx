@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import useSWR from "swr"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
 import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
@@ -13,12 +13,10 @@ import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { DataTable } from "@/components/gravitre/data-table"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
-import { 
-  AnimatedCounter,
-} from "@/components/gravitre/premium-effects"
+import { WorkflowFleetSummary } from "@/components/workflows/workflow-fleet-summary"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Zap, Activity, AlertTriangle, FileEdit } from "lucide-react"
+import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Activity, AlertTriangle, FileEdit } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import {
@@ -216,6 +214,8 @@ type WorkflowStatsPayload = {
 
 export default function WorkflowsPage() {
   const router = useRouter()
+  const reducedMotion = useReducedMotion()
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null)
   const { user } = useAuth()
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
   const [viewMode, setViewMode] = useState<"grid" | "table">("table")
@@ -237,6 +237,7 @@ export default function WorkflowsPage() {
     {
       revalidateOnFocus: false,
       revalidateOnMount: true,
+      onSuccess: () => setLastFetchedAt(Date.now()),
       onError: (err) => {
         console.error("[v0] Workflows fetch error:", err)
       },
@@ -252,9 +253,9 @@ export default function WorkflowsPage() {
 
   const workflows = normalizeWorkflowsResponse(data)
   const footerSuccessRate =
-    typeof statsData?.overallSuccessRate === "number" ? statsData.overallSuccessRate : null
+    typeof statsData?.overallSuccessRate === "number" && Number.isFinite(statsData.overallSuccessRate) ? statsData.overallSuccessRate : null
   const footerRunsThisWeek =
-    typeof statsData?.totalRunsThisWeek === "number" ? statsData.totalRunsThisWeek : 0
+    typeof statsData?.totalRunsThisWeek === "number" && Number.isFinite(statsData.totalRunsThisWeek) ? statsData.totalRunsThisWeek : null
   const activeCount = workflows.filter((w) => w.status === "active").length
   const pausedCount = workflows.filter((w) => w.status === "paused").length
   const runningCount = workflows.filter((w) => w.isRunning).length
@@ -335,8 +336,7 @@ export default function WorkflowsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.workflows.title}>
-      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]" data-composition="manage">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_18%_0%,var(--g-emerald-pale),transparent_58%)] opacity-80" />
+      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]" data-composition="operate">
         {/* Header */}
         <div className="relative z-10 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/88 backdrop-blur-sm">
           <GravitrePageHeader
@@ -476,7 +476,7 @@ export default function WorkflowsPage() {
           }
           />
           <div className="px-4 pb-4 md:px-6">
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--g-emerald-deep)]">
+            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-[color:var(--g-emerald-deep)]">
               <Activity className="h-3.5 w-3.5" /> Operating state
             </div>
           <PhaseBand
@@ -588,7 +588,7 @@ export default function WorkflowsPage() {
               {filteredWorkflows.length} of {workflows.length} workflow{workflows.length === 1 ? "" : "s"}
             </span>
             <DataFreshness
-              updatedAt={data ? Date.now() : null}
+              updatedAt={lastFetchedAt}
               isRefreshing={isValidating}
               onRefresh={() => mutate()}
             />
@@ -610,18 +610,18 @@ export default function WorkflowsPage() {
             {viewMode === "grid" ? (
               <motion.div
                 key="grid"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, type: "spring", stiffness: 100 }}
+                exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
+                transition={{ duration: reducedMotion ? 0 : 0.18 }}
               >
                 <WorkflowGrid>
-                  {filteredWorkflows.map((workflow, index) => (
+                  {filteredWorkflows.map((workflow) => (
                     <motion.div
                       key={workflow.id}
-                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      initial={false}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
+                      transition={{ duration: reducedMotion ? 0 : 0.18 }}
                     >
                       <WorkflowCard
                         {...workflow}
@@ -636,47 +636,15 @@ export default function WorkflowsPage() {
                   ))}
                 </WorkflowGrid>
                 
-                {/* Summary footer */}
-                <motion.div 
-                  className="mt-8 flex items-center justify-center gap-8 py-4"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
-                      <TrendingUp className="h-4 w-4 text-success" />
-                    </div>
-                    <span>
-                      {footerSuccessRate === null ? (
-                        "— overall success rate (no runs yet)"
-                      ) : (
-                        <>
-                          <AnimatedCounter value={Math.round(footerSuccessRate)} duration={1} />% overall
-                          success rate
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  <div className="w-px h-6 bg-border" />
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-info/10">
-                      <Zap className="h-4 w-4 text-info" />
-                    </div>
-                    <span>
-                      <AnimatedCounter value={footerRunsThisWeek} duration={1.5} /> runs this week
-                    </span>
-                  </div>
-                </motion.div>
               </motion.div>
             ) : (
               <motion.div
                 key="table"
-                initial={{ opacity: 0, y: 20 }}
+                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
+                exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
+                transition={{ duration: reducedMotion ? 0 : 0.18 }}
+                className="overflow-x-auto rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
               >
                 <DataTable
                   columns={columns}
@@ -687,6 +655,7 @@ export default function WorkflowsPage() {
             )}
           </AnimatePresence>
           )}
+          <WorkflowFleetSummary successRate={footerSuccessRate} weeklyRuns={footerRunsThisWeek} />
           </>
           )}
         </div>
@@ -712,9 +681,6 @@ export default function WorkflowsPage() {
         <GoalWorkflowWizard
           open={goalWizardOpen}
           onOpenChange={setGoalWizardOpen}
-            onBuildWorkflow={() => {
-              router.push("/workflows/new/builder")
-            }}
         />
       </div>
     </AppShell>

@@ -79,7 +79,7 @@ export function ChatWindowControls({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className={cn(TOUCH_ICON_BUTTON, "h-9 w-9 sm:h-8 sm:w-8")}
+                className={cn(TOUCH_ICON_BUTTON, "h-11 w-11")}
                 aria-label={label}
                 data-chat-window-control={id}
                 onClick={onClick}

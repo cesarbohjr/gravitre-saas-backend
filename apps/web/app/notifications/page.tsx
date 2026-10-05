@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import useSWR from "swr"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
@@ -13,11 +13,11 @@ import {
   Check,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
   Clock,
   Trash2,
   MailOpen,
   Settings,
+  Archive,
   UserPlus,
   AtSign,
   Rocket,
@@ -58,14 +58,14 @@ const typeConfig = {
   },
   mention: {
     icon: AtSign,
-    color: "text-blue-500",
-    bg: "bg-blue-500/10",
+    color: "text-[color:var(--g-signal)]",
+    bg: "bg-[color:var(--g-signal-surface)]",
     label: "Mention",
   },
   team_invite: {
     icon: UserPlus,
-    color: "text-cyan-500",
-    bg: "bg-cyan-500/10",
+    color: "text-[color:var(--g-brand)]",
+    bg: "bg-[color:var(--g-brand-soft)]",
     label: "Team invite",
   },
   system: {
@@ -96,7 +96,7 @@ const typeConfig = {
 
 function formatRelativeTime(timestamp: string): string {
   const date = new Date(timestamp)
-  if (Number.isNaN(date.getTime())) return "Just now"
+  if (Number.isNaN(date.getTime())) return "Time not reported"
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60000)
@@ -112,111 +112,105 @@ function formatRelativeTime(timestamp: string): string {
 
 export default function NotificationsPage() {
   const { user } = useAuth()
-  const mounted = true
+  const reduceMotion = useReducedMotion()
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
   const [typeFilter, setTypeFilter] = useState<NotificationType | null>(null)
+  const [pending, setPending] = useState(false)
+  const operationInFlight = useRef(false)
 
-  const { data, isLoading, mutate } = useSWR(
-    user ? ["notifications:list", filter] : null,
+  const { data, error, isLoading, mutate } = useSWR(
+    user ? ["notifications:list", user.id, filter] : null,
     () => notificationsApi.list({ unread_only: filter === "unread", limit: 200, offset: 0 })
   )
-
   const notifications: ApiNotification[] = data?.notifications ?? []
-
   const filteredNotifications = notifications.filter((n) => {
     if (filter === "read" && !n.is_read) return false
-    if (typeFilter && n.type !== typeFilter) return false
-    return true
+    if (filter === "unread" && n.is_read) return false
+    return !typeFilter || n.type === typeFilter
   })
-
-  const unreadCount = data?.unread_count ?? notifications.filter((n) => !n.is_read).length
+  const unreadCount = typeof data?.unread_count === "number" && Number.isFinite(data.unread_count)
+    ? data.unread_count : null
   const todayCount = notifications.filter((n) => {
-    const today = new Date()
     const createdAt = new Date(n.created_at)
-    return !Number.isNaN(createdAt.getTime()) && createdAt.toDateString() === today.toDateString()
+    return createdAt.toDateString() === new Date().toDateString()
   }).length
+  const metricUnavailable = isLoading ? "—" : "Not reported"
 
-  const markAsRead = async (id: string) => {
+  // Serialize inbox mutations, including rapid repeated clicks before React renders.
+  const perform = async (operation: () => Promise<void>) => {
+    if (operationInFlight.current) return
+    operationInFlight.current = true
+    setPending(true)
     try {
+      await operation()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update notifications")
+    } finally {
+      operationInFlight.current = false
+      setPending(false)
+    }
+  }
+  const markAsRead = (id: string) => {
+    if (error || !notifications.some((n) => n.id === id && !n.is_read)) return
+    return perform(async () => {
       await notificationsApi.markRead(id)
       await mutate((prev) => {
         if (!prev) return prev
+        const wasUnread = prev.notifications.some((n) => n.id === id && !n.is_read)
         return {
           ...prev,
-          unread_count: Math.max(prev.unread_count - 1, 0),
-          notifications: prev.notifications.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+          unread_count: wasUnread ? Math.max(prev.unread_count - 1, 0) : prev.unread_count,
+          notifications: prev.notifications.map((n) => n.id === id ? { ...n, is_read: true } : n),
         }
       }, { revalidate: false })
-    } catch (error) {
-      console.error("Failed to mark as read", error)
-      toast.error(error instanceof Error ? error.message : "Failed to mark as read")
-    }
+    })
   }
-
-  const markAllAsRead = async () => {
-    try {
-      await notificationsApi.markAllRead()
-      await mutate((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          unread_count: 0,
-          notifications: prev.notifications.map((n) => ({ ...n, is_read: true })),
-        }
-      }, { revalidate: false })
-      toast.success("All notifications marked as read")
-    } catch (error) {
-      console.error("Failed to mark all as read", error)
-      toast.error(error instanceof Error ? error.message : "Failed to mark all as read")
-    }
-  }
-
-  const deleteNotification = async (id: string) => {
-    try {
-      await notificationsApi.delete(id)
-      await mutate((prev) => {
-        if (!prev) return prev
-        const deleted = prev.notifications.find((n) => n.id === id)
-        return {
-          ...prev,
-          unread_count: deleted && !deleted.is_read ? Math.max(prev.unread_count - 1, 0) : prev.unread_count,
-          notifications: prev.notifications.filter((n) => n.id !== id),
-        }
-      }, { revalidate: false })
-    } catch (error) {
-      console.error("Failed to delete notification", error)
-      toast.error(error instanceof Error ? error.message : "Failed to delete notification")
-    }
-  }
-
-  const clearAll = async () => {
-    if (notifications.length === 0) return
-    try {
-      const ids = notifications.map((n) => n.id)
-      await Promise.allSettled(ids.map((id) => notificationsApi.archive(id)))
-      await mutate((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          unread_count: 0,
-          notifications: [],
-        }
-      }, { revalidate: false })
-      toast.success("Notifications archived")
-    } catch (error) {
-      console.error("Failed to archive notifications", error)
-      toast.error(error instanceof Error ? error.message : "Failed to archive notifications")
-    }
-  }
+  const markAllAsRead = () => perform(async () => {
+    await notificationsApi.markAllRead()
+    await mutate((prev) => prev ? {
+      ...prev, unread_count: 0,
+      notifications: prev.notifications.map((n) => ({ ...n, is_read: true })),
+    } : prev, { revalidate: false })
+    toast.success("All notifications marked as read")
+  })
+  const deleteNotification = (id: string) => perform(async () => {
+    await notificationsApi.delete(id)
+    await mutate((prev) => {
+      if (!prev) return prev
+      const deleted = prev.notifications.find((n) => n.id === id)
+      return {
+        ...prev,
+        unread_count: deleted && !deleted.is_read ? Math.max(prev.unread_count - 1, 0) : prev.unread_count,
+        notifications: prev.notifications.filter((n) => n.id !== id),
+      }
+    }, { revalidate: false })
+  })
+  const archiveLoaded = () => perform(async () => {
+    const ids = notifications.map((n) => n.id)
+    const results = await Promise.allSettled(ids.map((id) => notificationsApi.archive(id)))
+    const archived = new Set(ids.filter((_, index) => results[index].status === "fulfilled"))
+    await mutate((prev) => {
+      if (!prev) return prev
+      const removedUnread = prev.notifications.filter((n) => archived.has(n.id) && !n.is_read).length
+      return {
+        ...prev,
+        unread_count: Math.max(prev.unread_count - removedUnread, 0),
+        notifications: prev.notifications.filter((n) => !archived.has(n.id)),
+      }
+    }, { revalidate: false })
+    const failed = ids.length - archived.size
+    if (failed) toast.error(`${failed} notification${failed === 1 ? "" : "s"} could not be archived. Try again.`)
+    else toast.success("Loaded notifications archived")
+  })
 
   if (!user) {
     return (
       <AppShell title="Notifications">
-        <div className="flex items-center justify-center h-full p-8">
-          <div className="text-center">
+        <div className="flex h-full items-center justify-center p-8 text-center">
+          <div>
             <Building2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
             <p className="text-sm font-medium">Sign in required</p>
-            <p className="text-xs text-muted-foreground mt-1">Sign in to view your notifications.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Sign in to view your notifications.</p>
           </div>
         </div>
       </AppShell>
@@ -225,212 +219,99 @@ export default function NotificationsPage() {
 
   return (
     <AppShell title="Notifications">
-      <div className="flex flex-col h-full" data-composition="operate">
+      <div className="flex h-full min-h-0 flex-col" data-composition="operate">
         <GravitrePageHeader
           title="Notifications"
-          description="Stay updated on your workflows and deliverables"
+          description="Review updates, open the work, and resolve what needs your attention."
+          family="operating"
           icon={<Bell className="h-5 w-5" />}
-          actions={
-            <>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="gap-2"
-                onClick={markAllAsRead}
-                disabled={unreadCount === 0}
-              >
-                <MailOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Mark all read</span>
-              </Button>
-              <Button asChild variant="outline" size="sm" className="gap-2">
-                <Link href="/settings?section=notifications">
-                  <Settings className="h-4 w-4" />
-                  <span className="hidden sm:inline">Settings</span>
-                </Link>
-              </Button>
-            </>
-          }
+          actions={<>
+            <Button variant="outline" className="min-h-11 gap-2" onClick={markAllAsRead}
+              disabled={pending || isLoading || !!error || unreadCount === null || unreadCount === 0}>
+              <MailOpen className="h-4 w-4" />Mark all read
+            </Button>
+            <Button asChild variant="ghost" className="min-h-11 gap-2">
+              <Link href="/settings?section=notifications"><Settings className="h-4 w-4" />Settings</Link>
+            </Button>
+          </>}
         >
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
-            <GravitreMetric
-              label="Unread"
-              value={unreadCount}
-              warning={unreadCount > 0}
-            />
-            <GravitreMetric label="Today" value={todayCount} />
-            <GravitreMetric label="Total" value={notifications.length} />
+          <section aria-label="Inbox summary" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <GravitreMetric label="Unread" value={error ? "Not reported" : unreadCount ?? metricUnavailable}
+              hint="Across your inbox" warning={!error && (unreadCount ?? 0) > 0} />
+            <GravitreMetric label="Today in loaded results" value={data && !error ? todayCount : metricUnavailable} />
+            <GravitreMetric label="Loaded notifications" value={data && !error ? notifications.length : metricUnavailable} />
           </section>
         </GravitrePageHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Filters */}
-          <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50 border border-border/50">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 sm:px-6">
+          <div className="flex flex-wrap items-center gap-3 py-3">
+            <div role="group" aria-label="Read status" className="flex rounded-lg border border-border bg-card p-1">
               {(["all", "unread", "read"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize",
-                    filter === f
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
+                <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} disabled={pending}
+                  className={cn("min-h-11 rounded-md px-3 text-sm font-medium capitalize transition-colors disabled:opacity-50 motion-reduce:transition-none",
+                    filter === f ? "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)]" : "text-muted-foreground hover:text-foreground")}>
                   {f}
-                  {f === "unread" && unreadCount > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
-                      {unreadCount}
-                    </Badge>
-                  )}
+                  {f === "unread" && !error && (unreadCount ?? 0) > 0 && <Badge variant="secondary" className="ml-1.5">{unreadCount}</Badge>}
                 </button>
               ))}
             </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {(Object.keys(typeConfig) as NotificationType[]).map((type) => {
-                const config = typeConfig[type]
-                return (
-                <button
-                  key={type}
-                  onClick={() => setTypeFilter(typeFilter === type ? null : type)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors border",
-                    typeFilter === type
-                      ? `${config.bg} ${config.color} border-current`
-                      : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/20"
-                  )}
-                >
-                  <config.icon className="h-3 w-3" />
-                  {config.label}
-                </button>
-                )
-              })}
-            </div>
-
-            {notifications.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="ml-auto gap-1.5 text-muted-foreground hover:text-destructive"
-                onClick={clearAll}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Clear all
-              </Button>
-            )}
+            <label className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
+              Type
+              <select aria-label="Notification type" value={typeFilter ?? "all"} disabled={pending}
+                onChange={(event) => setTypeFilter(event.target.value === "all" ? null : event.target.value as NotificationType)}
+                className="min-h-11 max-w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground">
+                <option value="all">All types</option>
+                {(Object.keys(typeConfig) as NotificationType[]).map((type) => <option key={type} value={type}>{typeConfig[type].label}</option>)}
+              </select>
+            </label>
+            {notifications.length > 0 && <Button variant="ghost" className="min-h-11 gap-2 sm:ml-auto"
+              disabled={pending || !!error} onClick={archiveLoaded}><Archive className="h-4 w-4" />Archive loaded</Button>}
           </div>
-
-          {/* Notification List */}
-          <div className="flex-1 overflow-y-auto scrollbar-on-hover">
-            {isLoading && (
-              <div className="px-4 py-6 text-sm text-muted-foreground">Loading notifications...</div>
-            )}
-            {filteredNotifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full py-16">
-                <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
-                  <Bell className="w-7 h-7 text-muted-foreground/50" />
-                </div>
-                <p className="text-sm font-medium text-foreground mb-1">No notifications</p>
-                <p className="text-xs text-muted-foreground">
-                  {filter !== "all" ? "Try changing your filters" : "You're all caught up!"}
-                </p>
-              </div>
-            ) : (
-              <AnimatePresence mode="popLayout">
-                {filteredNotifications.map((notification, index) => {
-                  const config = typeConfig[notification.type]
+          <p className="mb-3 text-xs text-muted-foreground">Showing up to 200 recent notifications. Type and read filters apply to loaded results; unread count covers your inbox.</p>
+          {error && <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-card p-4">
+            <p className="text-sm">Could not load notifications. {data ? "Showing previously loaded updates." : "Try again to see your inbox."}</p>
+            <Button variant="outline" className="min-h-11" onClick={() => void mutate()} disabled={pending}>Retry</Button>
+          </div>}
+          <div aria-label="Notifications" aria-busy={isLoading || pending} className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card">
+            {isLoading ? <p role="status" className="p-6 text-sm text-muted-foreground">Loading notifications...</p>
+              : filteredNotifications.length === 0 ? (!error && <div className="px-4 py-16 text-center">
+                <Bell className="mx-auto mb-4 h-7 w-7 text-muted-foreground" />
+                <p className="text-sm font-medium">{filter !== "all" || typeFilter ? "No matching notifications" : "No notifications"}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{filter !== "all" || typeFilter ? "Try changing your filters." : "Your recent inbox is empty."}</p>
+              </div>) : <AnimatePresence initial={false}>
+                {filteredNotifications.map((notification) => {
+                  const config = typeConfig[notification.type] ?? typeConfig.system
                   const Icon = config.icon
-
-                  return (
-                    <motion.div
-                      key={notification.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: mounted ? 0 : index * 0.05 }}
-                      className={cn(
-                        "relative border-b border-border/50 transition-colors hover:bg-secondary/30 group",
-                        !notification.is_read && "bg-primary/5"
-                      )}
-                    >
-                      {/* Unread indicator */}
-                      {!notification.is_read && (
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500" />
-                      )}
-
-                      <Link 
-                        href={notification.url || "/notifications"}
-                        onClick={() => void markAsRead(notification.id)}
-                        className="block px-4 py-4 pl-6"
-                      >
-                        <div className="flex gap-4">
-                          {/* Icon */}
-                          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", config.bg)}>
-                            <Icon className={cn("w-5 h-5", config.color)} />
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className={cn(
-                                  "text-sm font-medium",
-                                  notification.is_read ? "text-muted-foreground" : "text-foreground"
-                                )}>
-                                  {notification.title}
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-0.5">
-                                  {notification.body}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {formatRelativeTime(notification.created_at)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Actions — always visible on touch; fade-in on hover/focus for pointer users */}
-                          <div className="flex items-start gap-1 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                            {!notification.is_read && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                aria-label="Mark as read"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  void markAsRead(notification.id)
-                                }}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:text-destructive"
-                              aria-label="Delete notification"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                void deleteNotification(notification.id)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                  return <motion.article key={notification.id} data-notification-id={notification.id}
+                    initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }}
+                    exit={reduceMotion ? undefined : { opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }}
+                    className={cn("flex flex-col gap-2 border-b border-border p-4 last:border-b-0 sm:flex-row sm:items-start sm:gap-4",
+                      !notification.is_read && "bg-[color:var(--g-brand-soft)]/30")}>
+                    <Link href={notification.url || "/notifications"} onClick={() => void markAsRead(notification.id)}
+                      className="flex min-w-0 flex-1 gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--g-brand)]">
+                      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", config.bg)}><Icon className={cn("h-5 w-5", config.color)} /></div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>{config.label}</span><span className={!notification.is_read ? "font-medium text-[color:var(--g-brand-active)]" : undefined}>{notification.is_read ? "Read" : "Unread"}</span>
+                          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{formatRelativeTime(notification.created_at)}</span>
                         </div>
-                      </Link>
-                    </motion.div>
-                  )
+                        <p className="break-words text-sm font-medium [overflow-wrap:anywhere]">{notification.title}</p>
+                        <p className="mt-1 break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{notification.body}</p>
+                      </div>
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-1 pl-[52px] sm:pl-0">
+                      {!notification.is_read && <Button variant="ghost" className="min-h-11 min-w-11 gap-1.5 px-2"
+                        aria-label={`Mark as read: ${notification.title}`} disabled={pending || !!error} onClick={() => void markAsRead(notification.id)}>
+                        <Check className="h-4 w-4" /><span className="sm:sr-only">Mark read</span>
+                      </Button>}
+                      <Button variant="ghost" className="min-h-11 min-w-11 gap-1.5 px-2 hover:text-destructive"
+                        aria-label={`Delete notification: ${notification.title}`} disabled={pending || !!error} onClick={() => void deleteNotification(notification.id)}>
+                        <Trash2 className="h-4 w-4" /><span className="sm:sr-only">Delete</span>
+                      </Button>
+                    </div>
+                  </motion.article>
                 })}
-              </AnimatePresence>
-            )}
+              </AnimatePresence>}
           </div>
         </div>
       </div>

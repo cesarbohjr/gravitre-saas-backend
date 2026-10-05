@@ -7,9 +7,10 @@ import { useParams } from "next/navigation"
 import { ArrowLeft, ChartLineUp, Cpu, Play } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
+import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
@@ -34,16 +35,16 @@ export default function ModelProfilePage() {
   const guide = getBuiltInModelGuide(modelName)
   const [training, setTraining] = useState(false)
 
-  const { data: catalogData, error } = useSWR(user ? "intelligence/models/catalog" : null, () =>
+  const { data: catalogData, error, isLoading, mutate: mutateCatalog } = useSWR(user ? "intelligence/models/catalog" : null, () =>
     intelligenceApi.modelCatalog(),
   )
-  const { data: readiness } = useSWR(user ? "intelligence/training-readiness" : null, () =>
+  const { data: readiness, error: readinessError, mutate: mutateReadiness } = useSWR(user ? "intelligence/training-readiness" : null, () =>
     intelligenceApi.trainingReadiness(),
   )
-  const { data: evaluations } = useSWR(user ? ["intelligence/evaluations", 30] : null, () =>
+  const { data: evaluations, error: evaluationError, mutate: mutateEvaluations } = useSWR(user ? ["intelligence/evaluations", 30] : null, () =>
     intelligenceApi.intelligenceEvaluations({ periodDays: 30 }),
   )
-  const { data: outcomes } = useSWR(user ? ["intelligence/outcomes", 30] : null, () =>
+  const { data: outcomes, error: outcomeError, mutate: mutateOutcomes } = useSWR(user ? ["intelligence/outcomes", 30] : null, () =>
     intelligenceApi.outcomes({ periodDays: 30 }),
   )
 
@@ -55,9 +56,11 @@ export default function ModelProfilePage() {
     )
   }
 
-  const catalogEntry = (catalogData?.catalog?.[modelName] ?? {}) as Record<string, unknown>
+  if (isLoading && !catalogData) return <AppShell title="Model profile"><p className="p-6 text-sm text-muted-foreground">Loading model evidence…</p></AppShell>
+  const rawCatalogEntry = catalogData?.catalog?.[modelName]
+  const catalogEntry = (rawCatalogEntry ?? {}) as Record<string, unknown>
   const statusEntry = catalogData?.orgTrainingStatus?.[modelName]
-  if (!catalogEntry && !statusEntry && catalogData) {
+  if (!rawCatalogEntry && !statusEntry && catalogData) {
     return (
       <AppShell title="Model profile">
         <EmptyState title="Model not found" description={`${modelName} is not in the org catalog.`} />
@@ -65,10 +68,10 @@ export default function ModelProfilePage() {
     )
   }
 
-  if (error) {
+  if (error && !catalogData) {
     return (
       <AppShell title="Model profile">
-        <ErrorState title="Unable to load model" description="Please try again." />
+        <WorkSectionErrorCard title="Unable to load model" error={error} onRetry={() => void mutateCatalog()} />
       </AppShell>
     )
   }
@@ -76,16 +79,17 @@ export default function ModelProfilePage() {
   // Module C / STA-331: prefer runtime_status (artifact load) over catalog TRAINED.
   const status = readString(
     statusEntry?.runtime_status,
-    readString(statusEntry?.catalog_status, readString(catalogEntry.status, "PLANNED")),
+    readString(statusEntry?.catalog_status, readString(catalogEntry.status, "Not reported")),
   )
   const isPlanned = status.toUpperCase() === "PLANNED" || status.toUpperCase() === "DISABLED"
   const readinessEntry = ((readiness?.by_model as Record<string, Record<string, unknown>> | undefined) ?? {})[
     modelName
   ]
-  const signalsAvailable = readNumber(readinessEntry?.signals_available, 0)
-  const minRequired = readNumber(readinessEntry?.min_required, 1)
-  const readinessStatus = readString(readinessEntry?.status, "insufficient_data")
-  const progress = isPlanned ? null : Math.min(100, Math.round((signalsAvailable / Math.max(minRequired, 1)) * 100))
+  const signalsAvailable = readNumber(readinessEntry?.signals_available, NaN)
+  const minRequired = readNumber(readinessEntry?.min_required, NaN)
+  const readinessStatus = readString(readinessEntry?.status, "Not reported")
+  const hasGate = Number.isFinite(signalsAvailable) && signalsAvailable >= 0 && Number.isFinite(minRequired) && minRequired > 0
+  const progress = isPlanned || !hasGate ? null : Math.min(100, Math.round((signalsAvailable / minRequired) * 100))
   const activationRequirement = readString(
     catalogEntry.min_data,
     readString(statusEntry?.activation, "See catalog requirements"),
@@ -101,10 +105,11 @@ export default function ModelProfilePage() {
     outcomeScore == null || Number.isNaN(Number(outcomeScore)) ? "—" : formatScore(Number(outcomeScore))
 
   async function handleTrain() {
+    if (training) return
     setTraining(true)
     try {
       const result = await mlAdminApi.trainModel(modelName)
-      if (result.trained) toast.success(`Training queued for ${guide.label}`)
+      if (result.trained) { toast.success(`Training request accepted for ${guide.label}`); void mutateReadiness(); void mutateCatalog() }
       else toast.message(result.message || result.reason || "Training not started")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Training request failed")
@@ -143,7 +148,7 @@ export default function ModelProfilePage() {
           }
         : {
             question: "howWell",
-            answer: `Outcome score ${outcomeScoreDisplay} across ${recentEvents.length} measured event${recentEvents.length === 1 ? "" : "s"} in the last 30 days.`,
+            answer: outcomes ? `Outcome score ${outcomeScoreDisplay} across ${recentEvents.length} measured event${recentEvents.length === 1 ? "" : "s"} in the last 30 days.` : `Outcome score ${outcomeScoreDisplay}. Linked outcome events have not been reported.`,
           },
     useCases.length > 0
       ? {
@@ -173,7 +178,7 @@ export default function ModelProfilePage() {
           icon={<Cpu className="h-5 w-5" weight="duotone" aria-hidden />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
+              <Button className="min-h-11" variant="ghost" size="sm" asChild>
                 <Link href={APP_ROUTES.builtInModels}>
                   <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
                   Back
@@ -181,7 +186,7 @@ export default function ModelProfilePage() {
               </Button>
               <ModelStatusBadge status={status} showDetail={false} />
               {!isPlanned && readinessStatus === "ready" ? (
-                <Button size="sm" onClick={handleTrain} disabled={training}>
+                <Button className="min-h-11" size="sm" onClick={handleTrain} disabled={training}>
                   <Play className="mr-2 h-4 w-4" weight="fill" aria-hidden />
                   {training ? "Queuing…" : "Retrain now"}
                 </Button>
@@ -192,16 +197,20 @@ export default function ModelProfilePage() {
           <p className="font-mono text-xs text-muted-foreground">{modelName}</p>
         </GravitrePageHeader>
 
-        <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+        <div data-composition="understand" className="space-y-6 px-[var(--np-page-pad-sm)] pb-28 pt-6 sm:px-[var(--np-page-pad)]">
+          {error ? <WorkSectionErrorCard title="Could not refresh catalog" error={error} onRetry={() => void mutateCatalog()} /> : null}
+          {readinessError ? <WorkSectionErrorCard title="Readiness unavailable" error={readinessError} onRetry={() => void mutateReadiness()} /> : null}
+          {evaluationError ? <WorkSectionErrorCard title="Evaluations unavailable" error={evaluationError} onRetry={() => void mutateEvaluations()} /> : null}
+          {outcomeError ? <WorkSectionErrorCard title="Outcomes unavailable" error={outcomeError} onRetry={() => void mutateOutcomes()} /> : null}
           <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
             <GravitreMetric
               label="Readiness"
-              value={progress == null ? "—" : `${progress}%`}
+              value={progress == null ? "Not reported" : `${progress}%`}
               hint={isPlanned ? "Not trainable yet" : readinessStatus.replace(/_/g, " ")}
             />
             <GravitreMetric
               label="Signals"
-              value={isPlanned ? "—" : `${signalsAvailable} / ${minRequired}`}
+              value={isPlanned || !hasGate ? "Not reported" : `${signalsAvailable} / ${minRequired}`}
               hint="Examples toward training gate"
             />
             <GravitreMetric label="Outcome score" value={outcomeScoreDisplay} hint="Org score when measured" />
@@ -221,11 +230,11 @@ export default function ModelProfilePage() {
           ) : null}
 
           <Tabs defaultValue="overview">
-            <TabsList className="flex w-full flex-wrap justify-start">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
-              <TabsTrigger value="readiness">Training readiness</TabsTrigger>
-              <TabsTrigger value="impact">Business impact</TabsTrigger>
+            <TabsList className="flex h-auto w-full flex-wrap justify-start">
+              <TabsTrigger className="min-h-11" value="overview">Overview</TabsTrigger>
+              <TabsTrigger className="min-h-11" value="performance">Performance</TabsTrigger>
+              <TabsTrigger className="min-h-11" value="readiness">Training readiness</TabsTrigger>
+              <TabsTrigger className="min-h-11" value="impact">Business impact</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-6 space-y-4">
@@ -254,10 +263,10 @@ export default function ModelProfilePage() {
                     connecting sources and using the product so signals grow past the gate.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" asChild>
+                    <Button className="min-h-11" size="sm" variant="outline" asChild>
                       <Link href={APP_ROUTES.models}>Add custom models</Link>
                     </Button>
-                    <Button size="sm" variant="ghost" asChild>
+                    <Button className="min-h-11" size="sm" variant="ghost" asChild>
                       <Link href={APP_ROUTES.training}>Training</Link>
                     </Button>
                   </div>
@@ -270,7 +279,7 @@ export default function ModelProfilePage() {
                 />
                 <GravitreMetric
                   label="Advisory only"
-                  value={statusEntry?.advisory_only ? "Yes — recommends, doesn’t auto-act" : "No"}
+                  value={statusEntry?.advisory_only === true ? "Yes — recommends, doesn’t auto-act" : statusEntry?.advisory_only === false ? "No" : "Not reported"}
                 />
                 <GravitreMetric
                   label="Fallback when untrained"
@@ -303,7 +312,7 @@ export default function ModelProfilePage() {
               ) : (
                 <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
                   <GravitreMetric label="Evaluation status" value={readString(modelPerformance.status, "—")} />
-                  <GravitreMetric label="Samples" value={readNumber(modelPerformance.samples, 0)} />
+                  <GravitreMetric label="Samples" value={Number.isFinite(readNumber(modelPerformance.samples, NaN)) ? readNumber(modelPerformance.samples, NaN) : "Not reported"} />
                   <GravitreMetric
                     label="Recommendation approval"
                     value={formatPercent(evaluations?.recommendation_approval_rate as number | null)}
@@ -315,7 +324,7 @@ export default function ModelProfilePage() {
             <TabsContent value="readiness" className="mt-6 space-y-4">
               {progress == null ? (
                 <p className="text-sm text-muted-foreground">
-                  This model isn’t trainable for your org yet — it’s on the platform roadmap or disabled.
+                  {isPlanned ? "This model is planned or disabled for your organization." : "Training readiness has not been reported."}
                 </p>
               ) : (
                 <>
@@ -331,17 +340,17 @@ export default function ModelProfilePage() {
 
             <TabsContent value="impact" className="mt-6 space-y-4">
               <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
-                <GravitreMetric label="Linked outcome events" value={recentEvents.length} />
+                <GravitreMetric label="Linked outcome events" value={outcomes ? recentEvents.length : "Not reported"} />
                 <GravitreMetric
-                  label="Avg confidence"
-                  value={formatScore(readNumber(outcomes?.avg_confidence, NaN) || null)}
+                  label="Org avg confidence"
+                  value={formatScore(Number.isFinite(readNumber(outcomes?.avg_confidence, NaN)) ? readNumber(outcomes?.avg_confidence, NaN) : null)}
                 />
                 <GravitreMetric
                   label="Departments"
                   value={(catalogEntry.use_cases as string[] | undefined)?.length ?? "—"}
                 />
               </section>
-              {recentEvents.length === 0 ? (
+              {!outcomes ? <p className="text-sm text-muted-foreground">Outcome evidence not reported.</p> : recentEvents.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No outcome events linked to this model in the selected period.
                 </p>

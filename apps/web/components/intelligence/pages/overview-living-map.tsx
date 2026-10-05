@@ -205,7 +205,7 @@ export function OverviewLivingMap({
       {isMobile ? (
         <div
           className="flex gap-1 rounded-md border border-[color:var(--g-border-subtle)] p-0.5"
-          role="tablist"
+          role="group"
           aria-label="Intelligence mobile panels"
           data-testid="intel-mobile-panels"
         >
@@ -213,10 +213,9 @@ export function OverviewLivingMap({
             <button
               key={panel}
               type="button"
-              role="tab"
-              aria-selected={mobilePanel === panel}
+              aria-pressed={mobilePanel === panel}
               className={cn(
-                "flex-1 rounded px-3 py-1.5 text-xs font-semibold capitalize",
+                "min-h-11 flex-1 rounded px-3 py-1.5 text-xs font-semibold capitalize",
                 mobilePanel === panel
                   ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence-bright)]"
                   : "text-[color:var(--g-text-muted)]",
@@ -229,7 +228,7 @@ export function OverviewLivingMap({
         </div>
       ) : null}
 
-      <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Intelligence map lenses">
+      <div className="flex gap-1 overflow-x-auto pb-1" role="group" aria-label="Intelligence map lenses">
         {INTELLIGENCE_MAP_LENSES.map((lens) => {
           const active = activeLens === lens.id
           const stat = lensMetrics[lens.id]
@@ -237,8 +236,7 @@ export function OverviewLivingMap({
             <button
               key={lens.id}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-pressed={active}
               title={lens.description}
               onClick={() => {
                 onLensChange(lens.id)
@@ -246,7 +244,7 @@ export function OverviewLivingMap({
                 setMatrixCellKey(null)
               }}
               className={cn(
-                "shrink-0 rounded-md px-3 py-1.5 text-left transition-colors",
+                "min-h-11 shrink-0 rounded-md px-3 py-1.5 text-left transition-colors",
                 active
                   ? "bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence-bright)]"
                   : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-2)]",

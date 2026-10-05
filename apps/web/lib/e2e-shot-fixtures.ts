@@ -14,6 +14,7 @@
  */
 
 import shotActionCatalog from "./e2e-shot-action-catalog.json"
+import { MARKETPLACE_SHOT_FIXTURES } from "./e2e-shot-marketplace-fixtures"
 
 const DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
@@ -919,6 +920,28 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // Home dashboard (/home + /e2e/shots/home) — camelCase overview + AI OS fields
   // that normalizeMetricsOverview / normalizeAiOsStatus expect. Honest fixture
   // counts only; no invented product claims.
+  // Screenshot-only inventory: mixed connection states, complete schema disclosure.
+  "/api/sources": {
+    sources: [
+      { id: "src_warehouse", name: "Northwind operations warehouse", type: "postgres", category: "sql", status: "connected", environment: "production", lastSync: AGO(12), tables: 16, recordCount: 12400, workflowsUsing: 3, operatorsUsing: 2, health: 98, topTables: ["accounts", "service_requests", "invoices", "contract_renewals", "workflow_events"] },
+      { id: "src_ingesting", name: "Service event archive", type: "mongodb", category: "nosql", status: "syncing", environment: "staging", lastSync: AGO(3), tables: 4, recordCount: 1800, workflowsUsing: 1, operatorsUsing: 1 },
+      { id: "src_attention", name: "Finance reporting warehouse", type: "snowflake", category: "warehouse", status: "error", environment: "production", lastSync: AGO(180), tables: 8, recordCount: 6400, workflowsUsing: 2, operatorsUsing: 1, description: "Connection requires review before the next ingestion." },
+    ],
+  },
+  "/api/metrics/runs": {
+    runVolume: [
+      { time: "08:00", completed: 42, failed: 2 }, { time: "09:00", completed: 58, failed: 1 },
+      { time: "10:00", completed: 76, failed: 3 }, { time: "11:00", completed: 63, failed: 2 },
+      { time: "12:00", completed: 89, failed: 1 }, { time: "13:00", completed: 72, failed: 2 },
+    ],
+    latencyDistribution: [{ time: "08:00", p50: 240, p95: 420, p99: 700 }, { time: "09:00", p50: 260, p95: 510, p99: 780 }, { time: "10:00", p50: 280, p95: 620, p99: 980 }, { time: "11:00", p50: 250, p95: 460, p99: 730 }],
+    latencySpikeTime: "10:00",
+  },
+  "/api/metrics/insights": { insights: [] },
+  "/api/metrics/weekly-throughput": {
+    target: 2400,
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => ({ day, records: [1800, 2200, 2600, 2100, 2800, 1500, 1200][index], target: 2400 })),
+  },
   "/api/metrics/overview": {
     totalWorkflows: 12,
     activeWorkflows: 8,
@@ -1442,4 +1465,6 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     qualityFlags: [],
     suggestedQuestions: [],
   },
+
+  ...MARKETPLACE_SHOT_FIXTURES,
 }

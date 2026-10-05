@@ -33,7 +33,7 @@ function dataSufficiencyProgress(
   }
   const byModel = (readiness?.by_model as Record<string, Record<string, unknown>> | undefined) ?? {}
   const entry = byModel[modelName]
-  if (!entry) return { value: null, label: "Tracking starts after first signals", available: 0, required: 0 }
+  if (!entry) return { value: null, label: "Not reported", available: 0, required: 0 }
   const available = readNumber(entry.signals_available, 0)
   const required = readNumber(entry.min_required, 1)
   return {

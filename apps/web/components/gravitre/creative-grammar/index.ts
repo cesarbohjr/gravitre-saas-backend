@@ -11,6 +11,8 @@ export const GRAMMAR_STEP_TONE = {
   pending: "muted",
   running: "info",
   waiting: "warning",
+  completed: "success",
+  approved: "success",
   verified: "success",
   failed: "destructive",
 } as const
@@ -26,7 +28,9 @@ export function grammarToneForStepStatus(
     case "running":
       return "running"
     case "completed":
+      return "completed"
     case "approved":
+      return "approved"
     case "verified":
       return "verified"
     case "failed":

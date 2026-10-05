@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, type ReactNode } from "react"
+import { useMemo, useRef, type MouseEvent, type ReactNode, type ComponentProps } from "react"
 import useSWR from "swr"
 import { ArrowRight, Bot, ExternalLink, RefreshCw, Settings, ShieldCheck, Wifi } from "lucide-react"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
@@ -22,6 +22,8 @@ import {
   type CapabilitySnapshot,
 } from "@/lib/capabilities"
 import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 
 /** Structural subset of the Connectors page model; only fields the backend really sends. */
 export interface OperatingConnector {
@@ -278,7 +280,7 @@ export function ConnectorOperatingRow({
   agents?: ConnectorAgentRef[]
   selected: boolean
   attention: boolean
-  onSelect: () => void
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void
   menu?: ReactNode
 }) {
   const a = connector.availability
@@ -298,7 +300,7 @@ export function ConnectorOperatingRow({
         type="button"
         onClick={onSelect}
         aria-pressed={selected}
-        className="flex min-w-0 items-center gap-3 text-left after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"
+        className="flex min-h-11 min-w-0 items-center gap-3 text-left after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"
       >
         <ProviderLogo provider={connector.vendorKey || connector.type} label={connector.type} size="lg" decorative />
         <span className="min-w-0">
@@ -351,7 +353,7 @@ export function ConnectorOperatingRow({
         <span className="relative z-[1] ml-auto flex items-center gap-1 lg:ml-0">
           <Link
             href={`/connectors/${connector.id}`}
-            className="inline-flex items-center gap-0.5 rounded px-1.5 py-1 text-[12px] font-medium text-foreground hover:bg-[color:var(--g-surface-2)]"
+            className="inline-flex min-h-11 items-center gap-0.5 rounded px-1.5 py-1 text-[12px] font-medium text-foreground hover:bg-[color:var(--g-surface-2)]"
           >
             Details
             <ArrowRight className="h-3 w-3" aria-hidden />
@@ -388,7 +390,7 @@ export function ConnectorAttentionList({
             stateLabel={item.connector.status === "error" ? "Error" : "Blocked"}
             className="px-3"
             action={
-              <Button size="sm" variant="outline" className="h-7 gap-1 text-[12px]" onClick={() => onAction(item)}>
+              <Button size="sm" variant="outline" className="min-h-11 gap-1 text-[12px] lg:min-h-7" onClick={() => onAction(item)}>
                 {item.actionLabel}
                 <ArrowRight className="h-3 w-3" aria-hidden />
               </Button>
@@ -602,24 +604,24 @@ export function ConnectorInspector({
         footer={
           <div className="flex flex-wrap gap-1.5">
             {onReconnect ? (
-              <Button size="sm" className="h-7 gap-1 text-[12px]" onClick={onReconnect}>
+              <Button size="sm" className="min-h-11 gap-1 text-[12px] lg:min-h-7" onClick={onReconnect}>
                 <ExternalLink className="h-3 w-3" aria-hidden />
                 Reconnect
               </Button>
             ) : null}
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-[12px]" onClick={onConfigure}>
+            <Button size="sm" variant="outline" className="min-h-11 gap-1 text-[12px] lg:min-h-7" onClick={onConfigure}>
               <Settings className="h-3 w-3" aria-hidden />
               Configure
             </Button>
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-[12px]" onClick={onTest}>
+            <Button size="sm" variant="outline" className="min-h-11 gap-1 text-[12px] lg:min-h-7" onClick={onTest}>
               <Wifi className="h-3 w-3" aria-hidden />
               Test
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 gap-1 text-[12px]" onClick={onSync}>
+            <Button size="sm" variant="ghost" className="min-h-11 gap-1 text-[12px] lg:min-h-7" onClick={onSync}>
               <RefreshCw className="h-3 w-3" aria-hidden />
               Sync
             </Button>
-            <Button size="sm" variant="ghost" className="ml-auto h-7 text-[12px]" onClick={onClose}>
+            <Button size="sm" variant="ghost" className="ml-auto min-h-11 text-[12px] lg:min-h-7" onClick={onClose}>
               Close
             </Button>
           </div>
@@ -747,5 +749,31 @@ function ActionGroup({ label, actions }: { label: string; actions: ConnectorActi
         ) : null}
       </ul>
     </div>
+  )
+}
+
+/** Selection emerges as context on desktop and a focused task sheet below 1024px. */
+export function ResponsiveConnectorInspector({ returnFocusTarget, ...props }: ComponentProps<typeof ConnectorInspector> & { returnFocusTarget?: HTMLElement | null }) {
+  const transferFocus = useRef(false)
+  const compact = useIsMobile(1024)
+  if (!compact) return <ConnectorInspector {...props} />
+  return (
+    <Sheet open onOpenChange={(open) => { if (!open) props.onClose() }}>
+      <SheetContent
+        className="w-full overflow-y-auto pb-[env(safe-area-inset-bottom)] sm:max-w-[540px]"
+        onCloseAutoFocus={event => {
+          if (transferFocus.current) { event.preventDefault(); return }
+          if (returnFocusTarget?.isConnected) { event.preventDefault(); returnFocusTarget.focus() }
+        }}
+      >
+        <SheetHeader className="pr-14">
+          <SheetTitle className="font-[family-name:var(--font-space-grotesk)]">{props.connector.name}</SheetTitle>
+          <SheetDescription>Inspect authorization, capabilities and agent dependencies.</SheetDescription>
+        </SheetHeader>
+        <div className="px-4 pb-6">
+          <ConnectorInspector {...props} onConfigure={() => { transferFocus.current = true; props.onClose(); props.onConfigure() }} onReconnect={props.onReconnect ? () => { transferFocus.current = true; props.onClose(); props.onReconnect?.() } : undefined} />
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }

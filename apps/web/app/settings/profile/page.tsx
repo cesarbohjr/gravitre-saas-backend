@@ -9,7 +9,6 @@ import {
   Save,
   Check,
   Loader2,
-  Upload,
   ArrowLeft,
   User,
   Mail,
@@ -19,7 +18,6 @@ import {
     Shield,
   Clock,
   Activity,
-  Zap,
   Camera,
   X,
   ImagePlus
@@ -68,7 +66,6 @@ export default function ProfilePage() {
   const hasProfilePhoto = Boolean(account.avatarUrl)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const mounted = true
   const [activeField, setActiveField] = useState<string | null>(null)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -79,7 +76,7 @@ export default function ProfilePage() {
   const [isRevokingAll, setIsRevokingAll] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: sessionsData, mutate: mutateSessions } = useSWR<AuthSessionsResponse>(
+  const { data: sessionsData, error: sessionsError, isLoading: sessionsLoading, mutate: mutateSessions } = useSWR<AuthSessionsResponse>(
     user ? "/api/auth/sessions" : null,
     apiFetcher
   )
@@ -212,15 +209,6 @@ export default function ProfilePage() {
     }
   }
 
-  // Activity stats
-  const activityStats = [
-    // Three unrelated metrics, so the categorical --chart-* ramp rather than
-    // health tones (an amber session count doesn't mean anything is wrong).
-    { label: "Workflows created", value: "47", icon: Zap, color: "text-chart-2" },
-    { label: "Approvals made", value: "156", icon: Check, color: "text-chart-1" },
-    { label: "Active sessions", value: "3", icon: Activity, color: "text-chart-3" },
-  ]
-
   if (loading) {
     return (
       <AppShell title="Settings">
@@ -301,8 +289,7 @@ export default function ProfilePage() {
               <Link 
                 href="/settings" 
                 className={cn(
-                  "inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-all duration-300 group",
-                  mounted ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+                  "inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 group"
                 )}
               >
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
@@ -311,12 +298,10 @@ export default function ProfilePage() {
 
               {/* Profile Card */}
               <div className={cn(
-                "flex flex-col md:flex-row items-start md:items-center gap-6 transition-all duration-500 delay-100",
-                mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                "flex flex-col md:flex-row items-start md:items-center gap-6"
               )}>
                 {/* Avatar with upload functionality */}
                 <div className="relative group">
-                  <div className="absolute -inset-1 rounded-full bg-primary opacity-0 blur transition-all duration-500 group-hover:opacity-60" />
                   <button 
                     type="button"
                     onClick={() => setShowAvatarModal(true)}
@@ -334,7 +319,7 @@ export default function ProfilePage() {
                     onClick={() => setShowAvatarModal(true)}
                     aria-hidden="true"
                     tabIndex={-1}
-                    className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg opacity-0 transition-all duration-300 hover:scale-110 hover:bg-primary/90 group-hover:opacity-100"
+                    className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg opacity-0 hover:scale-110 hover:bg-primary/90 group-hover:opacity-100"
                   >
                     <Camera className="h-4 w-4" />
                   </button>
@@ -400,64 +385,22 @@ export default function ProfilePage() {
         </div>
 
         {/* Main Content */}
-        <div className="px-6 py-8 lg:px-8">
+        <div data-composition="configure" className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Activity Stats */}
-              <div className={cn(
-                "lg:col-span-1 space-y-4 transition-all duration-500 delay-200",
-                mounted ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-8"
-              )}>
-                <h2 className="text-xs font-medium text-muted-foreground">
-                  Activity overview
-                </h2>
-                {activityStats.map((stat, i) => (
-                  <div 
-                    key={stat.label}
-                    className={cn(
-                      "group relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-4 transition-all duration-300 hover:border-border/80 hover:shadow-lg hover:shadow-black/5",
-                      mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                    )}
-                    style={{ transitionDelay: `${300 + i * 100}ms` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/[0.02] group-hover:to-black/[0.04] transition-colors" />
-                    <div className="relative flex items-center gap-3">
-                      <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg bg-secondary", stat.color)}>
-                        <stat.icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
-                        <p className="text-xs text-muted-foreground">{stat.label}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Meson Insights Card */}
-                {/* Profile insight tile — mineral shell only; no live Meson % claim. */}
-                <div className={cn(
-                  "relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)] transition-all duration-500 delay-500",
-                  mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                )}>
-                  <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-[color:var(--g-brand-soft)] blur-2xl -translate-y-1/2 translate-x-1/2" />
-                  <div className="relative">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Activity className="h-4 w-4 text-[color:var(--g-brand)]" />
-                      <span className="text-xs font-medium text-[color:var(--g-brand)]">
-                        Meson insight
-                      </span>
-                    </div>
-                    <p className="text-sm text-[color:var(--g-text-muted)] leading-relaxed">
-                      Meson activity isn&apos;t shown on your profile yet.
-                    </p>
-                  </div>
+              <aside className="lg:col-span-1 space-y-4" aria-label="Profile scope">
+                <h2 className={TYPE.sectionTitle}>Your identity</h2>
+                <p className="text-sm text-muted-foreground">Your name and profile photo identify you across the workspace. Access and permissions belong to your workspace role.</p>
+                <div className="border-y border-divide py-4">
+                  <p className={TYPE.eyebrow}>Your active sessions</p>
+                  <p className="mt-2 text-2xl font-semibold tabular-nums">{Array.isArray(sessionsData?.sessions) ? sessionsData.sessions.length : sessionsLoading ? "Loading…" : "Not reported"}</p>
+                  <a href="#profile-sessions" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">Review devices and revoke sessions</a>
                 </div>
-              </div>
+              </aside>
 
               {/* Right Column - Edit Form */}
               <div className={cn(
-                "lg:col-span-2 space-y-8 transition-all duration-500 delay-300",
-                mounted ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"
+                "lg:col-span-2 space-y-8"
               )}>
                 {/* Personal Information */}
                 <section>
@@ -566,7 +509,7 @@ export default function ProfilePage() {
                       value={profile.timezone}
                       onChange={(e) => handleChange("timezone", e.target.value)}
                       aria-label="Timezone"
-                      className="mt-2 w-full h-11 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] px-4 text-sm text-foreground transition-all duration-200 hover:border-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none"
+                      className="mt-2 w-full h-11 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] px-4 text-sm text-foreground hover:border-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none"
                     >
                       <option value="America/Los_Angeles">Pacific Time (PT)</option>
                       <option value="America/Denver">Mountain Time (MT)</option>
@@ -595,7 +538,7 @@ export default function ProfilePage() {
                       onFocus={() => setActiveField("bio")}
                       onBlur={() => setActiveField(null)}
                       className={cn(
-                        "w-full h-32 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] px-4 py-3 text-sm text-foreground resize-none transition-all duration-300 outline-none",
+                        "w-full h-32 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] px-4 py-3 text-sm text-foreground resize-none outline-none",
                         activeField === "bio" 
                           ? "border-ring ring-2 ring-ring/20 shadow-lg shadow-primary/10" 
                           : "border-border hover:border-muted-foreground/50"
@@ -654,7 +597,7 @@ export default function ProfilePage() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                         <Activity className="h-4 w-4 text-primary" />
                       </div>
-                      <h2 className="text-sm font-semibold text-foreground">Active sessions</h2>
+                      <h2 id="profile-sessions" className="text-sm font-semibold text-foreground">Active sessions</h2>
                     </div>
                     <Button variant="outline" onClick={() => void handleRevokeAllSessions()} disabled={isRevokingAll} className="gap-2">
                       {isRevokingAll && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -662,6 +605,8 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                   <div className="space-y-3">
+                    {sessionsError ? <div role="alert" className="text-sm text-destructive">Could not load sessions. <Button variant="ghost" onClick={() => void mutateSessions()}>Retry</Button></div> : null}
+                    {sessionsLoading && !sessionsData ? <p className="text-sm text-muted-foreground">Loading sessions…</p> : null}
                     {(sessionsData?.sessions ?? []).map((session) => (
                       <div key={session.id} className="flex items-center justify-between rounded-[var(--np-radius-md)] border border-divide p-3">
                         <div>
@@ -681,7 +626,7 @@ export default function ProfilePage() {
                         )}
                       </div>
                     ))}
-                    {(sessionsData?.sessions ?? []).length === 0 && (
+                    {Array.isArray(sessionsData?.sessions) && !sessionsError && sessionsData.sessions.length === 0 && (
                       <p className="text-xs text-muted-foreground">No active sessions found.</p>
                     )}
                   </div>
@@ -723,7 +668,7 @@ function InputField({
         {label}
       </label>
       <div className={cn(
-        "mt-2 relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] transition-all duration-300",
+        "mt-2 relative rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)]",
         isActive 
           ? "border-ring ring-2 ring-ring/20 shadow-lg shadow-primary/10" 
           : "border-border hover:border-muted-foreground/50"

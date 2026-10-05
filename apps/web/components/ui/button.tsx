@@ -22,7 +22,7 @@ const buttonVariants = cva(
         default:
           'bg-foreground text-background hover:bg-foreground/85',
         brand:
-          'bg-primary text-primary-foreground hover:bg-primary/85',
+          'bg-[color:var(--g-brand-active)] text-white hover:bg-[color:var(--g-brand-hover)]',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/40',
         outline:

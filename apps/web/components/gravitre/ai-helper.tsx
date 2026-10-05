@@ -167,6 +167,10 @@ export function GravitreAIHelper() {
           className={cn(
             "dark fixed left-5 z-40 flex touch-none cursor-grab items-center gap-2.5 rounded-[8px] border border-[color:var(--g-frame-rule)] text-foreground",
             "max-md:bottom-[calc(56px+env(safe-area-inset-bottom)+12px)] md:bottom-5",
+            // Pack actions occupy the space directly above mobile navigation.
+            // Match only while that bar is mounted, without shifting other routes.
+            "max-md:[:root:has([data-gravitre-mobile-action-dock])_&]:bottom-[calc(56px+env(safe-area-inset-bottom)+76px)]",
+            "max-lg:[:root:has([data-testid=approval-mobile-actions])_&]:bottom-[calc(56px+env(safe-area-inset-bottom)+84px)]",
             onBuilder
               ? "md:left-[calc(var(--np-sidebar-rail)+12px)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]"
               : cn(

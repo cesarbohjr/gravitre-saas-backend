@@ -101,7 +101,7 @@ export function GravitrePageHeader({
             {eyebrow ? <p className={TYPE.eyebrow}>{eyebrow}</p> : null}
             <h1
               className={cn(
-                "font-sans font-semibold text-[color:var(--g-text-primary)]",
+                "font-[family-name:var(--font-space-grotesk)] font-medium text-[color:var(--g-text-primary)]",
                 operating
                   ? "text-[28px] leading-[1.08] tracking-[-0.03em] sm:text-[34px]"
                   : "text-[24px] leading-[1.12] tracking-[-0.025em] sm:text-[28px]",
@@ -122,14 +122,11 @@ export function GravitrePageHeader({
   )
 }
 
-/** Pulsing live dot + text for operating status lines. */
+/** Stable status dot; activity belongs in the run path, not ambient chrome. */
 export function LiveStatus({ children, tone = "live" }: { children: ReactNode; tone?: "live" | "idle" | "attention" }) {
   return (
     <span className="inline-flex items-start gap-2">
       <span className="relative mt-[0.5lh] flex h-2 w-2 shrink-0 -translate-y-1/2" aria-hidden>
-        {tone === "live" ? (
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--g-brand)] opacity-40 motion-reduce:animate-none" />
-        ) : null}
         <span
           className={cn(
             "relative inline-flex h-2 w-2 rounded-full",

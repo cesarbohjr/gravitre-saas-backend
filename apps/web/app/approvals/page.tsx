@@ -546,7 +546,7 @@ function DetailPanel({
       {/* Header */}
       <div className="border-b border-border p-4 sm:p-6">
         {onBack ? (
-          <Button variant="ghost" size="sm" className="mb-3 -ml-2 lg:hidden" onClick={onBack}>
+          <Button variant="ghost" size="sm" className="mb-3 -ml-2 min-h-11 lg:hidden" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to queue
           </Button>
@@ -562,7 +562,7 @@ function DetailPanel({
             )} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base sm:text-lg font-semibold text-foreground mb-1">
+            <h2 className="break-words font-[family-name:var(--font-space-grotesk)] text-xl font-medium text-foreground mb-1 sm:text-2xl">
               {approval.title}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
@@ -627,27 +627,27 @@ function DetailPanel({
             Request details
           </h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-border/50">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
               <span className="text-sm text-muted-foreground">Status</span>
               <StatusChip status={approval.status}>
                 {formatStatusLabel(approval.status)}
               </StatusChip>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-border/50">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
               <span className="text-sm text-muted-foreground">Entity</span>
               <span className="text-sm font-medium text-foreground font-mono">{approval.context.entity}</span>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-border/50">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
               <span className="text-sm text-muted-foreground">Action</span>
               <span className="text-sm font-medium text-foreground">{approval.context.action}</span>
             </div>
             {approval.context.impact && (
-              <div className="flex items-center justify-between py-2 border-b border-border/50">
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
                 <span className="text-sm text-muted-foreground">Impact</span>
                 <span className="text-sm font-medium text-foreground">{approval.context.impact}</span>
               </div>
             )}
-            <div className="flex items-center justify-between py-2 border-b border-border/50">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
               <span className="text-sm text-muted-foreground">Environment</span>
               <EnvironmentBadge environment={approval.environment} />
             </div>
@@ -908,7 +908,7 @@ function ApprovalsContent() {
 
   return (
     <>
-      <div className="flex flex-col lg:flex-row h-full pb-28 lg:pb-0" data-composition="operate">
+      <div className="flex flex-col lg:flex-row h-full pb-[calc(12rem+env(safe-area-inset-bottom))] lg:pb-0" data-composition="operate">
         {/* Left: Queue */}
         <div className={cn(
           "flex w-full flex-col border-divide",
@@ -1013,7 +1013,7 @@ function ApprovalsContent() {
       </div>
 
       {selectedApproval?.status === "pending" ? (
-        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-divide bg-[color:var(--g-surface-1)]/95 p-3 backdrop-blur lg:hidden">
+        <div data-testid="approval-mobile-actions" data-gravitre-mobile-action-dock className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-divide bg-[color:var(--g-surface-1)]/95 p-3 backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-lg items-center gap-2">
             <Button
               className="h-11 flex-1 cursor-pointer"

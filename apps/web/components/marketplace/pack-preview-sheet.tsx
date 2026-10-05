@@ -10,8 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { PackContentsPreview } from "@/components/marketplace/marketplace-asset-commerce"
-import { ProviderLogo } from "@/components/gravitre/provider-logo"
+import { ConnectorChecklist, PackContentsPreview, assetRequiresPurchase } from "@/components/marketplace/marketplace-asset-commerce"
 import type { MarketplaceAssetSummary } from "@/types/api"
 
 export function PackPreviewSheet({
@@ -29,19 +28,21 @@ export function PackPreviewSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+      <SheetContent className="w-full overflow-y-auto bg-[color:var(--g-canvas)] sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>{asset.title}</SheetTitle>
+          <p className="text-xs font-semibold text-[color:var(--g-emerald-deep)]">Explore / {asset.department || "Pack preview"}</p>
+          <SheetTitle className="pr-5 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium">{asset.title}</SheetTitle>
           <SheetDescription>{asset.description}</SheetDescription>
         </SheetHeader>
 
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {asset.businessOutcome ? <p className="rounded-[10px] bg-[color:var(--g-emerald-pale)] p-4 text-sm leading-6 text-[color:var(--g-carbon)]">{asset.businessOutcome}</p> : null}
           {asset.installed ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
               Installed
             </span>
-          ) : asset.connectorsReady ? (
+          ) : asset.canInstall && !assetRequiresPurchase(asset) ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               <Plug className="h-3.5 w-3.5" aria-hidden />
               Ready to install
@@ -49,42 +50,26 @@ export function PackPreviewSheet({
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
               <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-              {asset.requiredConnectorsConnected}/{asset.requiredConnectorsTotal} apps connected
+              {assetRequiresPurchase(asset) ? "Purchase required" : asset.connectorsReady ? "Review install requirements" : `${asset.requiredConnectorsConnected}/${asset.requiredConnectorsTotal} required apps connected`}
             </span>
           )}
 
           {asset.packItems?.length ? (
             <div>
               <p className="mb-2 text-sm font-medium text-foreground">Included in this pack</p>
-              <PackContentsPreview items={asset.packItems} compact />
+              <PackContentsPreview items={asset.packItems} compact linkChildren />
             </div>
           ) : null}
 
           {asset.connectorChecklist?.length ? (
-            <div>
-              <p className="mb-2 text-sm font-medium text-foreground">Required connectors</p>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                {asset.connectorChecklist.map((connector) => (
-                  <li key={connector.connectorType ?? connector.label} className="flex items-center gap-2">
-                    <ProviderLogo
-                      provider={connector.connectorType ?? connector.label}
-                      label={connector.label}
-                      size="sm"
-                      decorative
-                      className="shrink-0"
-                    />
-                    <span className="truncate">{connector.label ?? connector.connectorType?.replace(/_/g, " ")}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <div className="rounded-[10px] bg-[color:var(--g-surface-1)] p-4"><ConnectorChecklist items={asset.connectorChecklist} /></div>
           ) : null}
 
           <div className="flex flex-wrap gap-2 pt-2">
-            <Button asChild>
-              <Link href={detailHref}>{asset.installed ? "Manage pack" : "Install pack"}</Link>
+            <Button asChild className="min-h-11">
+              <Link href={detailHref}>{asset.installed ? "Manage pack" : "View pack"}</Link>
             </Button>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>
               Close
             </Button>
           </div>

@@ -111,6 +111,8 @@ export function AgentKnowledgeShotHarness() {
 
   const workspace = {
     assignments,
+    assignmentsError: undefined, capabilitiesError: undefined, orgSourcesError: undefined,
+    retry: async () => [undefined, undefined, undefined] as [{ assignments: AgentKnowledgeAssignment[] } | undefined, AgentCapabilityProfile | undefined, undefined],
     orgSources: SHOT_SOURCES,
     capabilities,
     summary: {
@@ -126,6 +128,7 @@ export function AgentKnowledgeShotHarness() {
     loading: false,
     orgSourcesLoading: false,
     agentDepartment: "Sales",
+    createTextKnowledge: async () => false,
     assignPack: async (pack: PackAssignInput) => {
       setAssigningKey(`pack:${pack.id}`)
       await new Promise((r) => setTimeout(r, 120))

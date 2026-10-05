@@ -30,6 +30,8 @@ import {
 } from "@/components/gravitre/nodus-product"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
+import { ExtrovertSummary } from "@/components/gravitre/extrovert-summary"
+import { summarizeActivityView } from "@/lib/activity-view-summary"
 import { ListSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { FailureAlertsPanel } from "@/components/workflows/failure-alerts-panel"
@@ -298,6 +300,7 @@ function ActivityPageInner() {
   }
 
   const currentRows = tab === "objects" ? workObjects : outcomes
+  const viewSummary = summarizeActivityView(currentRows)
   // Drives the empty state: "no matches, widen your filters" is a very
   // different message from "nothing has run yet", and conflating them makes a
   // filtered-out list look like a broken product.
@@ -358,15 +361,16 @@ function ActivityPageInner() {
           there is no vertical budget for split panes, so the page scrolls
           normally and the panes stack. */}
       <div className="relative flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden" data-composition="operate">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_18%_0%,var(--g-emerald-pale),transparent_60%)] opacity-70" />
+
         <GravitrePageHeader
-          className="relative z-10 shrink-0 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/88 backdrop-blur-sm"
+          className="relative z-10 shrink-0 bg-[color:var(--g-canvas)]"
+          eyebrow="Operate / Work in motion"
           title="Activity"
           description="Work in motion. Outcomes, exceptions and evidence—without the noise."
           icon={<NucleoActivity className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <AskGravitreSummonButton />
+              <AskGravitreSummonButton label="Explain this work" prompt="Explain the selected work’s reported state, evidence and next action. Do not assume completion means verification." />
               {tab === "all" || tab === "objects" ? (
                 <DataFreshness
                   updatedAt={
@@ -415,6 +419,17 @@ function ActivityPageInner() {
             })}
           </div>
         </GravitrePageHeader>
+        {tab !== "failures" ? (
+          <div className="shrink-0 px-[var(--np-page-pad-sm)] pb-4 sm:px-[var(--np-page-pad)]">
+            <ExtrovertSummary label="Activity counts in current view" items={[
+              { label: "Running", value: isPanelLoading || panelError ? null : viewSummary.running },
+              { label: "Needs approval", value: isPanelLoading || panelError ? null : viewSummary.approval, tone: "attention" },
+              { label: "Completed", value: isPanelLoading || panelError ? null : viewSummary.completed },
+              { label: "Verified", value: isPanelLoading || panelError ? null : viewSummary.verified, tone: "brand" },
+            ]} />
+            <p className="mt-2 text-xs text-muted-foreground">Counts reflect loaded results and current filters.</p>
+          </div>
+        ) : null}
 
         <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5 lg:overflow-hidden">
 

@@ -116,7 +116,7 @@ export default function IntelligenceMemoryPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div>
+      <div className="bg-[color:var(--g-canvas)]" data-composition="understand">
         <GravitrePageHeader
           eyebrow="Intelligence"
           title={copy.title}

@@ -153,7 +153,7 @@ export function EvidenceRail({
   onSelectRelated?: (nodeId: string) => void
   onOpenDetails?: () => void
   onClear?: () => void
-  totalEvents: number
+  totalEvents: number | null
   avgConfidence: number | null | undefined
   entityCount: number | null
   relationshipCount: number | null
@@ -243,7 +243,7 @@ export function EvidenceRail({
         <RailHeading id="evidence-measured">Measured · 7 days</RailHeading>
         <dl className="divide-y divide-[color:var(--g-border-subtle)]">
           {[
-            { label: "Outcome events", value: String(totalEvents) },
+            { label: "Outcome events", value: totalEvents == null ? "Not reported" : String(totalEvents) },
             { label: "Avg confidence", value: avgConfidence != null ? `${Math.round(avgConfidence * 100)}%` : "—" },
             { label: "Known entities", value: entityCount != null ? String(entityCount) : "—" },
             { label: "Relationships", value: relationshipCount != null ? String(relationshipCount) : "—" },

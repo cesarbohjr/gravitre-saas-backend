@@ -16,6 +16,12 @@ export type WorkspaceFocusObjectType =
   | "company"
   | "contact"
   | "product"
+  | "goal"
+  | "source"
+  | "assignment"
+  | "training-dataset"
+  | "training-job"
+  | "multi-agent-run"
 
 export type WorkspaceFocusSelection = {
   object_type: string
@@ -42,7 +48,7 @@ export function buildWorkspaceFocusPayload(args: {
       ? {
           object_type: selected.kind,
           object_id: selected.id,
-          label: selected.label?.trim() || null,
+          label: selected.label?.trim().slice(0, 200) || null,
         }
       : undefined
   if (!route && !selection) return undefined

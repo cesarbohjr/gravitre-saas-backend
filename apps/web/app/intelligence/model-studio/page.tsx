@@ -23,12 +23,12 @@ export default function ModelStudioPage() {
 
   return (
     <AppShell title="Model Studio">
-      <div className={PAGE_FRAME}>
+      <div className={PAGE_FRAME} data-composition="create">
         <GravitrePageHeader
           title="Model Studio"
           description="Create, train, evaluate, and deploy models for your business, and review every run."
           icon={<NucleoIntelligence className="h-5 w-5" />}
-          actions={<AskGravitreSummonButton />}
+          actions={<AskGravitreSummonButton label="Plan model work" prompt="Help me choose the purpose, preparation and evidence needed for model work. Keep registration, training, evaluation and deployment distinct." />}
         />
         <IntelligenceShell activeTab="model-studio" loadState="READY">
           <ModelStudioStage enabled={Boolean(user)} />

@@ -505,9 +505,6 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
       <GoalWorkflowWizard
         open={goalWizardOpen}
         onOpenChange={setGoalWizardOpen}
-        onBuildWorkflow={() => {
-          router.push("/workflows/new/builder")
-        }}
       />
       <UpgradeModal
         open={upgradeModalOpen}

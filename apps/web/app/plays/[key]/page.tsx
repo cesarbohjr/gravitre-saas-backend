@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetcher } from "@/lib/fetcher"
+import { TYPE } from "@/lib/design-system"
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, PlayCircle } from "lucide-react"
 import { PlaySetup } from "@/components/plays/play-setup"
 import { PlayRunControl } from "@/components/plays/play-run-control"
@@ -63,38 +64,37 @@ export default function PlayDetailPage() {
             <WorkSectionErrorCard title="Could not load play" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
           ) : isLoading || !data ? <Skeleton className="h-72 rounded-[10px]" /> : (
             <>
-              <section className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
+              <section className="border-b border-divide py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-medium text-[color:var(--g-emerald-deep)]">Readiness</p>
+                    <p className={TYPE.eyebrow}>Readiness</p>
                     <h2 className="mt-1 text-base font-semibold">{data.readiness.observe_ready ? "Ready with your workspace" : "Finish setup to use this play"}</h2>
                   </div>
                   {data.readiness.observe_ready ? <CheckCircle2 className="size-5 text-success" /> : <CircleAlert className="size-5 text-warning" />}
                 </div>
                 {(data.readiness.blockers?.length ?? 0) > 0 ? (
                   <ul className="mt-4 space-y-2">
-                    {data.readiness.blockers!.map((blocker) => <li key={blocker} className="rounded-[8px] border border-divide px-3 py-2 text-sm text-muted-foreground">{blocker}</li>)}
+                    {data.readiness.blockers!.map((blocker) => <li key={blocker} className="border-b border-divide py-2 text-sm text-muted-foreground last:border-0">{blocker}</li>)}
                   </ul>
                 ) : null}
                 {!data.readiness.observe_ready ? (
-                  <div className="mt-4 flex gap-2">
-                    <Button size="sm" asChild><Link href="/connectors">Connect data <ArrowRight className="size-4" /></Link></Button>
-                    <Button size="sm" variant="outline" asChild><Link href="/workflows">Review workflows</Link></Button>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button size="sm" className="min-h-11" asChild><Link href="/connectors">Connect data <ArrowRight className="size-4" /></Link></Button>
+                    <Button size="sm" variant="outline" className="min-h-11" asChild><Link href="/workflows">Review workflows</Link></Button>
                   </div>
                 ) : null}
               </section>
 
-              <section className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]">
-                <p className="text-xs font-medium text-muted-foreground">Operating path</p>
-                <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <section className="border-b border-divide py-4">
+                <p className={TYPE.eyebrow}>Operating path</p>
+                <ol className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
                   {["Detect", "Understand", "Decide", "Approve", "Act", "Measure"].map((stage, index) => (
-                    <div key={stage} className="rounded-[8px] border border-divide p-3">
-                      <p className="text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>
-                      <p className="mt-1 text-sm font-medium">{stage}</p>
-                    </div>
+                    <li key={stage} className="text-foreground">
+                      <span className="font-mono text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</span> {stage}
+                    </li>
                   ))}
-                </div>
-                <p className="mt-4 text-xs text-muted-foreground">This Play coordinates existing Gravitre capabilities. Workflows remain the execution authority, and verified business results require source-of-record evidence.</p>
+                </ol>
+                <p className="mt-3 text-xs text-muted-foreground">This Play coordinates existing Gravitre capabilities. Workflows remain the execution authority, and verified business results require source-of-record evidence.</p>
               </section>
 
               <PlaySetup playKey={data.play.key} playVersion={data.play.version} readiness={data.readiness} />
@@ -103,14 +103,14 @@ export default function PlayDetailPage() {
 
               <PlayResults playKey={data.play.key} />
 
-              <section className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5">
-                  <p className="text-xs text-muted-foreground">Linked workflows</p>
+              <section className="grid gap-4 border-t border-divide py-4 sm:grid-cols-2">
+                <div>
+                  <p className={TYPE.eyebrow}>Linked workflows</p>
                   <p className="mt-1 text-2xl font-semibold">{data.workflowBindingCount}</p>
-                  <Button className="mt-4" variant="ghost" size="sm" asChild><Link href="/workflows">View workflows <ArrowRight className="size-4" /></Link></Button>
+                  <Button className="mt-4 min-h-11" variant="ghost" size="sm" asChild><Link href="/workflows">View workflows <ArrowRight className="size-4" /></Link></Button>
                 </div>
-                <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5">
-                  <p className="text-xs text-muted-foreground">Current operating capability</p>
+                <div>
+                  <p className={TYPE.eyebrow}>Current operating capability</p>
                   <p className="mt-1 text-lg font-semibold">{mode(data.readiness)}</p>
                   <p className="mt-2 text-xs text-muted-foreground">This reflects current readiness. Saved authority can never exceed these validated controls.</p>
                 </div>

@@ -22,7 +22,7 @@ export const enterpriseAiGovernancePost: BlogPost = {
   displayDate: "March 8, 2026",
   readTime: "12 min read",
   heroImage: "",
-  heroGradient: "from-indigo-50 via-muted/50 to-primary/10",
+  heroGradient: "from-[color:var(--g-emerald-pale)] via-[color:var(--g-bone)] to-muted/40",
   heroAlt: "Layered diagram representing enterprise AI governance controls.",
   keywords: [
     "enterprise AI governance",

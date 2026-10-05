@@ -1,5 +1,6 @@
 "use client"
 
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
@@ -8,12 +9,12 @@ import { cn } from "@/lib/utils"
 import { SectionCard } from "./shared"
 
 function pct(rate: number | undefined): string {
-  if (rate == null || Number.isNaN(rate)) return "—"
+  if (rate == null || !Number.isFinite(rate)) return "Not reported"
   return `${Math.round(rate * 100)}%`
 }
 
 export function ConnectorOpsCard() {
-  const { data, isLoading, error } = useSWR(
+  const { data, isLoading, error, mutate } = useSWR(
     "admin/intelligence/connector-writes",
     () => intelligenceApi.connectorWrites({ periodDays: 7 }),
     { revalidateOnFocus: false },
@@ -29,15 +30,14 @@ export function ConnectorOpsCard() {
       description="Connected tool performance over the last 7 days: requests, successes, and failures."
       action={
         <Badge variant={hasSpike ? "destructive" : "secondary"} className="font-normal">
-          {hasSpike ? `${spikes.length} spike${spikes.length === 1 ? "" : "s"}` : "Healthy"}
+          {hasSpike ? `${spikes.length} spike${spikes.length === 1 ? "" : "s"}` : error ? "Unavailable" : isLoading ? "Loading…" : data?.hasSpike === false && rows.length > 0 ? "No spikes reported" : "Not reported"}
         </Badge>
       }
     >
-      {isLoading ? (
+      {error ? <WorkSectionErrorCard error={error} onRetry={() => void mutate()} /> : null}
+      {isLoading && !data ? (
         <p className="text-sm text-muted-foreground">Loading connector activity…</p>
-      ) : error ? (
-        <p className="text-sm text-muted-foreground">Unable to load connector activity. Try refreshing.</p>
-      ) : (
+      ) : data ? (
         <div className="space-y-4">
           {hasSpike ? (
             <div
@@ -64,7 +64,7 @@ export function ConnectorOpsCard() {
           {rows.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Plugs className="h-4 w-4" weight="duotone" aria-hidden />
-              No connector tool calls in this period.
+              {Array.isArray(data?.rows) ? "No connector tool calls in this period." : "Connector activity not reported."}
             </div>
           ) : (
             <div className="overflow-x-auto rounded-[8px] border border-divide">
@@ -109,7 +109,7 @@ export function ConnectorOpsCard() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </SectionCard>
   )
 }

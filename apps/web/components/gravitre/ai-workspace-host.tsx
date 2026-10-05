@@ -21,7 +21,7 @@ function isWorkspaceArmPath(pathname: string): boolean {
   return /^\/agents\/[^/]+\/chat\/?$/.test(path)
 }
 
-export function GravitreAIWorkspaceHost() {
+export function GravitreAIWorkspaceHost({ fixtureBoundary = false }: { fixtureBoundary?: boolean } = {}) {
   const { floatWorkspaceOpen, pageContext } = useGravitreAIWorkspace()
   const [armed, setArmed] = useState(false)
 
@@ -32,6 +32,9 @@ export function GravitreAIWorkspaceHost() {
     }
   }, [floatWorkspaceOpen, pageContext.pathname])
 
+  const captureRoute = process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1" && pageContext.pathname.startsWith("/e2e/shots/")
+  // Fixture auth lives below the root host. Only its scoped host may render here.
+  if (captureRoute && !fixtureBoundary) return null
   if (!GRAVITRE_AI_FLOAT_ENABLED || !armed) return null
 
   return (

@@ -10,9 +10,13 @@ import {
 export function AskGravitreSummonButton({
   selected,
   className,
+  label = "Ask Gravitre",
+  prompt,
 }: {
   selected?: GravitreAISelectedEntity | null
   className?: string
+  label?: string
+  prompt?: string
 }) {
   const { summonWorkspace, pageContext } = useGravitreAIWorkspace()
 
@@ -21,7 +25,7 @@ export function AskGravitreSummonButton({
       type="button"
       data-ask-gravitre-summon=""
       className={cn(
-        "h-8 shrink-0 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]",
+        "min-h-11 shrink-0 rounded px-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]",
         className,
       )}
       onClick={() =>
@@ -29,10 +33,12 @@ export function AskGravitreSummonButton({
           presentation: "compact",
           selected: selected ?? pageContext.selected,
           agentScope: null,
+          composerText: prompt,
+          submit: false,
         })
       }
     >
-      Ask Gravitre
+      {label}
     </button>
   )
 }

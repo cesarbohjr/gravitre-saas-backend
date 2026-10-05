@@ -80,7 +80,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
               ${isProcessing 
                 ? "bg-gradient-to-br from-blue-500 to-blue-600" 
                 : isListening
-                  ? "bg-gradient-to-br from-violet-500 to-purple-600"
+                  ? "bg-[color:var(--g-electric)]"
                   : "bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-blue-500/20"
               }
             `}
@@ -121,7 +121,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
           {/* Listening indicator ring */}
           {isListening && (
             <motion.div
-              className="absolute inset-0 rounded-xl border-2 border-violet-400"
+              className="absolute inset-0 rounded-xl border-2 border-[color:var(--g-electric)]"
               animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0, 0.8] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             />

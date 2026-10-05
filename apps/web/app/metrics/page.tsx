@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -20,7 +21,6 @@ import {
   TrendingUp, 
   TrendingDown, 
   AlertCircle,
-  Sparkles,
   Activity,
   Zap,
   Clock,
@@ -63,16 +63,29 @@ type ThroughputDay = {
 
 const WEEKDAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-function normalizeWeeklyThroughput(payload: unknown): { days: ThroughputDay[]; target: number } {
-  const emptyDays = WEEKDAY_ORDER.map((day) => ({ day, records: 0, target: 0 }))
+function parseReportedNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    if (trimmed.endsWith("M")) {
+      const scaled = Number.parseFloat(trimmed.slice(0, -1))
+      return Number.isFinite(scaled) ? scaled * 1_000_000 : null
+    }
+    const parsed = Number.parseFloat(trimmed.replace(/,/g, ""))
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function normalizeWeeklyThroughput(payload: unknown): { days: ThroughputDay[] | null; target: number | null } {
   if (!payload || typeof payload !== "object") {
-    return { days: emptyDays, target: 0 }
+    return { days: null, target: null }
   }
   const model = payload as Record<string, unknown>
-  const target = parseNumber(model.target, 0)
+  const target = parseReportedNumber(model.target)
   const raw = Array.isArray(model.days) ? model.days : null
   if (!raw) {
-    return { days: emptyDays.map((entry) => ({ ...entry, target })), target }
+    return { days: null, target }
   }
   const byDay = new Map<string, ThroughputDay>()
   for (const item of raw) {
@@ -82,30 +95,30 @@ function normalizeWeeklyThroughput(payload: unknown): { days: ThroughputDay[]; t
     if (!day) continue
     byDay.set(day, {
       day,
-      records: parseNumber(row.records, 0),
-      target: parseNumber(row.target, target),
+      records: parseReportedNumber(row.records) ?? 0,
+      target: parseReportedNumber(row.target) ?? target ?? 0,
     })
   }
   return {
     days: WEEKDAY_ORDER.map(
-      (day) => byDay.get(day) ?? { day, records: 0, target }
+      (day) => byDay.get(day) ?? { day, records: 0, target: target ?? 0 }
     ),
     target,
   }
 }
 
 type MetricsOverview = {
-  totalRuns: number
-  successRate: number
-  recordsProcessed: number
-  avgLatency: number
-  activeConnectors: number
-  totalConnectors: number
+  totalRuns: number | null
+  successRate: number | null
+  recordsProcessed: number | null
+  avgLatency: number | null
+  activeConnectors: number | null
+  totalConnectors: number | null
   changes: {
-    totalRuns: number
-    successRate: number
-    recordsProcessed: number
-    avgLatency: number
+    totalRuns: number | null
+    successRate: number | null
+    recordsProcessed: number | null
+    avgLatency: number | null
   }
   trends: {
     totalRuns: number[]
@@ -135,53 +148,38 @@ function formatRecordsCount(count: number): string {
   return count.toLocaleString()
 }
 
-function normalizeOverview(payload: unknown): MetricsOverview {
-  const empty: MetricsOverview = {
-    totalRuns: 0,
-    successRate: 0,
-    recordsProcessed: 0,
-    avgLatency: 0,
-    activeConnectors: 0,
-    totalConnectors: 0,
-    changes: {
-      totalRuns: 0,
-      successRate: 0,
-      recordsProcessed: 0,
-      avgLatency: 0,
-    },
-    trends: {
-      totalRuns: [],
-      successRate: [],
-      recordsProcessed: [],
-      avgLatency: [],
-    },
-  }
-  if (!payload || typeof payload !== "object") return empty
+function formatMetricValue(
+  isLoading: boolean,
+  value: number | null | undefined,
+  format: (n: number) => string,
+): string {
+  if (value == null) return isLoading ? "—" : "Not reported"
+  return format(value)
+}
+
+function normalizeOverview(payload: unknown): MetricsOverview | null {
+  if (!payload || typeof payload !== "object") return null
   const model = payload as Record<string, unknown>
   return {
-    totalRuns: parseNumber(model.totalRuns, 0),
-    successRate: parseNumber(model.successRate, 0),
-    recordsProcessed: parseNumber(model.recordsProcessed, 0),
-    avgLatency: parseNumber(model.avgLatency, 0),
-    activeConnectors: parseNumber(model.activeConnectors, 0),
-    totalConnectors: parseNumber(model.totalConnectors, 0),
+    totalRuns: parseReportedNumber(model.totalRuns),
+    successRate: parseReportedNumber(model.successRate),
+    recordsProcessed: parseReportedNumber(model.recordsProcessed),
+    avgLatency: parseReportedNumber(model.avgLatency),
+    activeConnectors: parseReportedNumber(model.activeConnectors),
+    totalConnectors: parseReportedNumber(model.totalConnectors),
     changes: {
-      totalRuns: parseNumber(
+      totalRuns: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.totalRuns ?? model.totalRunsChange,
-        0
       ),
-      successRate: parseNumber(
+      successRate: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.successRate ?? model.successRateChange,
-        0
       ),
-      recordsProcessed: parseNumber(
+      recordsProcessed: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.recordsProcessed ??
           model.recordsProcessedChange,
-        0
       ),
-      avgLatency: parseNumber(
+      avgLatency: parseReportedNumber(
         (model.changes as Record<string, unknown> | undefined)?.avgLatency ?? model.avgLatencyChange,
-        0
       ),
     },
     trends: {
@@ -289,33 +287,24 @@ function MetricCard({
   accentColor?: "blue" | "emerald" | "amber" | "red"
 }) {
   const isPositive = change === undefined ? null : change >= 0
-  const colorClasses = {
-    blue: "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400",
-    emerald: "from-emerald-500/20 to-emerald-500/5 text-emerald-700 dark:text-emerald-400",
-    amber: "from-amber-500/20 to-amber-500/5 text-amber-700 dark:text-amber-400",
-    red: "from-red-500/20 to-red-500/5 text-red-600 dark:text-red-400",
+  const gradientId = `metric-${useId().replace(/:/g, "")}`
+  const accents = {
+    blue: { color: "var(--g-electric)", surface: "bg-[color:color-mix(in_srgb,var(--g-electric)_5%,white)]" },
+    emerald: { color: "var(--g-emerald)", surface: "bg-[color:var(--g-emerald-pale)]" },
+    amber: { color: "var(--g-warmth)", surface: "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,white)]" },
+    red: { color: "var(--g-danger)", surface: "bg-[color:color-mix(in_srgb,var(--g-danger)_6%,white)]" },
   }
+  const accent = accents[accentColor]
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]"
+      className={cn("relative overflow-hidden rounded-[10px] border border-divide", accent.surface)}
     >
-      {/* Background gradient */}
-      <div className={cn(
-        "absolute inset-0 bg-gradient-to-br opacity-30",
-        colorClasses[accentColor]
-      )} />
-      
       <div className="relative p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-lg",
-            `bg-${accentColor}-500/10`
-          )}>
-            <Icon className={cn("h-5 w-5", colorClasses[accentColor].split(" ").pop())} />
-          </div>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <p className="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground"><Icon className="size-4 shrink-0" style={{ color: accent.color }} aria-hidden />{title}</p>
           {change !== undefined && (
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium",
@@ -327,8 +316,8 @@ function MetricCard({
           )}
         </div>
         
-        <p className="text-2xl font-semibold text-foreground mb-1">{value}</p>
-        <p className="text-xs text-muted-foreground">{title}</p>
+        <p className="mb-1 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tabular-nums text-foreground">{value}</p>
+        {changeLabel ? <p className="text-xs text-muted-foreground">{changeLabel}</p> : null}
         
         {/* Mini sparkline */}
         {trend && (
@@ -336,17 +325,17 @@ function MetricCard({
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trend.map((v, i) => ({ v }))}>
                 <defs>
-                  <linearGradient id={`spark-${accentColor}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={`var(--${accentColor}-500)`} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={`var(--${accentColor}-500)`} stopOpacity={0} />
+                  <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={accent.color} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={accent.color} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <Area
                   type="monotone"
                   dataKey="v"
-                  stroke={`oklch(0.65 0.18 ${accentColor === 'emerald' ? 145 : accentColor === 'amber' ? 75 : accentColor === 'red' ? 25 : 250})`}
+                  stroke={accent.color}
                   strokeWidth={1.5}
-                  fill={`url(#spark-${accentColor})`}
+                  fill={`url(#${gradientId})`}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -363,7 +352,7 @@ function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: (
   const config = {
     anomaly: { icon: AlertTriangle, color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
     trend: { icon: TrendingUp, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-    optimization: { icon: Sparkles, color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    optimization: { icon: Activity, color: "text-[color:var(--g-emerald-deep)]", bg: "bg-[color:var(--g-emerald-pale)]", border: "border-[color:var(--g-emerald)]/25" },
   }
   const cfg = config[insight.type as keyof typeof config]
   const Icon = cfg.icon
@@ -405,16 +394,15 @@ function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: (
   )
 }
 
-// Custom tooltip with glow effect
-function GlowTooltip({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) {
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: unknown[]; label?: string }) {
   if (!active || !payload?.length) return null
   
   return (
-    <div className="rounded-lg border border-border bg-card/95 backdrop-blur-sm px-3 py-2 shadow-lg">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+    <div role="tooltip" className="rounded-lg border border-white/10 bg-[color:var(--g-carbon)] px-3 py-2 text-white shadow-lg">
+      <p className="mb-1 text-xs text-white/70">{label}</p>
       {(payload as { name: string; value: number; color: string }[]).map((entry, i) => (
-        <p key={i} className="text-xs font-medium" style={{ color: entry.color }}>
-          {entry.name}: {entry.value.toLocaleString()}
+        <p key={i} className="flex items-center gap-2 text-xs font-medium">
+          <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: entry.color }} aria-hidden />{entry.name}: {entry.value.toLocaleString()}
         </p>
       ))}
     </div>
@@ -465,13 +453,12 @@ export default function MetricsPage() {
     toast.success("Metrics refreshed")
   }
   
-  const { data: overviewData, isLoading, isValidating, mutate: mutateOverview } = useSWR<unknown>(
+  const { data: overviewData, error: overviewError, isLoading, isValidating, mutate: mutateOverview } = useSWR<unknown>(
     user ? ["metrics-overview", timeRange] : null,
     () => metricsApi.overview(timeRange),
     {
       revalidateOnFocus: false,
       refreshInterval: autoRefresh ? 15000 : 0,
-      onError: (err) => console.error("[v0] Metrics fetch error:", err),
     }
   )
   const { data: seriesData, mutate: mutateSeries } = useSWR(
@@ -509,7 +496,7 @@ export default function MetricsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.pages.metrics.title}>
-      <div className="flex flex-col h-full">
+      <div className="flex h-full flex-col bg-[color:var(--g-canvas)]" data-composition="understand">
         <GravitrePageHeader
           eyebrow="Intelligence · Operational health"
           title={SURFACE_COPY.pages.metrics.headline}
@@ -581,43 +568,54 @@ export default function MetricsPage() {
 
         <div className="flex-1 overflow-auto">
           <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+            {overviewError ? (
+              <WorkSectionErrorCard
+                title="Could not load metrics"
+                message={overviewError instanceof Error ? overviewError.message : "Overview values were not reported."}
+                onRetry={() => void mutateOverview()}
+              />
+            ) : null}
             {/* Top Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
               <MetricCard
                 title="Total runs"
-                value={overview.totalRuns.toLocaleString()}
-                change={overview.changes?.totalRuns}
-                trend={overview.trends?.totalRuns}
+                value={formatMetricValue(isLoading, overview?.totalRuns, (n) => n.toLocaleString())}
+                change={overview?.changes?.totalRuns ?? undefined}
+                trend={overview?.trends?.totalRuns}
                 icon={Activity}
                 accentColor="blue"
               />
               <MetricCard
                 title="Success rate"
-                value={`${overview.successRate.toFixed(1)}%`}
-                change={overview.changes?.successRate}
-                trend={overview.trends?.successRate}
+                value={formatMetricValue(isLoading, overview?.successRate, (n) => `${n.toFixed(1)}%`)}
+                change={overview?.changes?.successRate ?? undefined}
+                trend={overview?.trends?.successRate}
                 icon={CheckCircle2}
                 accentColor="emerald"
               />
               <MetricCard
                 title="Records processed"
-                value={formatRecordsCount(overview.recordsProcessed)}
-                change={overview.changes?.recordsProcessed}
-                trend={overview.trends?.recordsProcessed}
+                value={formatMetricValue(isLoading, overview?.recordsProcessed, formatRecordsCount)}
+                change={overview?.changes?.recordsProcessed ?? undefined}
+                trend={overview?.trends?.recordsProcessed}
                 icon={Zap}
                 accentColor="blue"
               />
               <MetricCard
                 title="Avg latency"
-                value={`${Math.round(overview.avgLatency)}ms`}
-                change={overview.changes?.avgLatency}
-                trend={overview.trends?.avgLatency}
+                value={formatMetricValue(isLoading, overview?.avgLatency, (n) => `${Math.round(n)}ms`)}
+                change={overview?.changes?.avgLatency ?? undefined}
+                trend={overview?.trends?.avgLatency}
                 icon={Clock}
-                accentColor={overview.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
+                accentColor={overview?.changes?.avgLatency && overview.changes.avgLatency > 0 ? "amber" : "emerald"}
               />
               <MetricCard
                 title="Active connectors"
-                value={`${overview.activeConnectors}/${overview.totalConnectors}`}
+                value={
+                  overview?.activeConnectors == null && overview?.totalConnectors == null
+                    ? isLoading ? "—" : "Not reported"
+                    : `${overview?.activeConnectors ?? "—" }/${overview?.totalConnectors ?? "—"}`
+                }
                 icon={Activity}
                 accentColor="blue"
               />
@@ -645,23 +643,23 @@ export default function MetricsPage() {
                     <AreaChart data={runData}>
                       <defs>
                         <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="oklch(0.65 0.18 145)" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="oklch(0.65 0.18 145)" stopOpacity={0} />
+                          <stop offset="5%" stopColor="var(--g-emerald)" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="var(--g-emerald)" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0} />
+                          <stop offset="5%" stopColor="var(--g-danger)" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="var(--g-danger)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
-                      <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<GlowTooltip />} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--g-border-subtle)" vertical={false} />
+                      <XAxis dataKey="time" tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<ChartTooltip />} />
                       <Area
                         type="monotone"
                         dataKey="completed"
                         name="Completed"
-                        stroke="oklch(0.65 0.18 145)"
+                        stroke="var(--g-emerald)"
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorCompleted)"
@@ -670,7 +668,7 @@ export default function MetricsPage() {
                         type="monotone"
                         dataKey="failed"
                         name="Failed"
-                        stroke="oklch(0.55 0.22 25)"
+                        stroke="var(--g-danger)"
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#colorFailed)"
@@ -683,7 +681,7 @@ export default function MetricsPage() {
               {/* Meson Insights Panel */}
               <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)]">
                 <div className="flex items-center gap-2 border-b border-divide px-4 py-3">
-                  <Sparkles className="h-4 w-4 text-[color:var(--g-brand)]" />
+                  <NucleoIntelligence className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
                   <h3 className="text-sm font-medium text-foreground">Meson insights</h3>
                 </div>
                 <div className="p-3 space-y-2 max-h-[280px] overflow-auto">
@@ -716,20 +714,20 @@ export default function MetricsPage() {
                     <LineChart data={latencyData}>
                       <defs>
                         <linearGradient id="latencyGlow" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="oklch(0.65 0.2 250)" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="oklch(0.65 0.2 250)" stopOpacity={0} />
+                          <stop offset="0%" stopColor="var(--g-electric)" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="var(--g-electric)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
-                      <XAxis dataKey="time" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<GlowTooltip />} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--g-border-subtle)" vertical={false} />
+                      <XAxis dataKey="time" tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<ChartTooltip />} />
                       {latencySpikeTime ? (
-                        <ReferenceLine x={latencySpikeTime} stroke="oklch(0.75 0.15 75)" strokeDasharray="3 3" />
+                        <ReferenceLine x={latencySpikeTime} stroke="var(--g-warmth)" strokeDasharray="3 3" />
                       ) : null}
-                      <Line type="monotone" dataKey="p50" name="P50" stroke="oklch(0.65 0.2 250)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="p95" name="P95" stroke="oklch(0.75 0.15 75)" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="p99" name="P99" stroke="oklch(0.55 0.22 25)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p50" name="P50" stroke="var(--g-electric)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p95" name="P95" stroke="var(--g-warmth)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="p99" name="P99" stroke="var(--g-danger)" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                   <div className="flex items-center justify-center gap-6 mt-3">
@@ -755,20 +753,23 @@ export default function MetricsPage() {
                   <h3 className="text-sm font-medium text-foreground">Weekly throughput</h3>
                 </div>
                 <div className="p-4">
+                  {!throughputData ? (
+                    <p className="py-10 text-sm text-muted-foreground">Weekly throughput is not reported for this range.</p>
+                  ) : (
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={throughputData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.20 0.01 250)" vertical={false} />
-                      <XAxis dataKey="day" tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "oklch(0.60 0 0)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip content={<GlowTooltip />} />
-                      {throughputTarget > 0 && (
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--g-border-subtle)" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--g-text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip content={<ChartTooltip />} />
+                      {throughputTarget != null && throughputTarget > 0 && (
                         <ReferenceLine
                           y={throughputTarget}
-                          stroke="oklch(0.65 0.18 145)"
+                          stroke="var(--g-emerald)"
                           strokeDasharray="5 5"
                           label={{
                             value: "Target",
-                            fill: "oklch(0.65 0.18 145)",
+                            fill: "var(--g-emerald)",
                             fontSize: 10,
                             position: "right",
                           }}
@@ -777,11 +778,12 @@ export default function MetricsPage() {
                       <Bar 
                         dataKey="records" 
                         name="Records"
-                        fill="oklch(0.65 0.2 250)" 
+                        fill="var(--g-electric)"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
                   </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </div>

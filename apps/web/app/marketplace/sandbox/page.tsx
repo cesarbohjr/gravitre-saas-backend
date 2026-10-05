@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { MarketplaceDecisionDialog } from "@/components/marketplace/marketplace-decision-dialog"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
@@ -11,51 +13,74 @@ import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { setSelectedOrgInStorage } from "@/lib/org-context"
-import { FlaskConical, Loader2, ArrowRight, RefreshCw, ArrowLeft, Play } from "lucide-react"
+import {
+  FlaskConical,
+  Loader2,
+  ArrowRight,
+  RefreshCw,
+  ArrowLeft,
+  Play,
+} from "lucide-react"
 import { toast } from "sonner"
-import type { MarketplaceSandboxDemoResult, MarketplaceSandboxStatus } from "@/types/api"
+import type {
+  MarketplaceSandboxDemoResult,
+  MarketplaceSandboxStatus,
+} from "@/types/api"
 
 export default function MarketplaceSandboxPage() {
   const { user } = useAuth()
+  const lock = useRef(false)
+  const [resetOpen, setResetOpen] = useState(false)
   const [isWorking, setIsWorking] = useState(false)
-  const [demoResult, setDemoResult] = useState<MarketplaceSandboxDemoResult | null>(null)
+  const [demoResult, setDemoResult] =
+    useState<MarketplaceSandboxDemoResult | null>(null)
 
-  const { data, mutate, isLoading } = useSWR<MarketplaceSandboxStatus>(
+  const { data, error, mutate, isLoading } = useSWR<MarketplaceSandboxStatus>(
     user ? "/api/marketplace/sandbox" : null,
-    fetcher
+    fetcher,
   )
 
   const handleProvision = async () => {
+    if (lock.current || !user || !data) return
+    lock.current = true
     setIsWorking(true)
     try {
       const result = await marketplaceApi.provisionSandbox()
       toast.success(result.created ? "Sandbox created" : "Sandbox ready", {
         description: result.sandboxOrgName,
       })
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
       toast.error("Could not provision sandbox", {
         description: err instanceof Error ? err.message : "Try again",
       })
     } finally {
+      lock.current = false
       setIsWorking(false)
     }
   }
 
   const handleReset = async () => {
+    if (lock.current || !user || !data) return
+    lock.current = true
     setIsWorking(true)
     try {
       await marketplaceApi.resetSandbox()
-      toast.success("Sandbox reset", { description: "Demo agents and connectors re-seeded." })
-      await mutate()
+      toast.success("Sandbox reset", {
+        description: "Demo agents and connectors re-seeded.",
+      })
+      await Promise.allSettled([mutate()])
     } catch (err) {
-      toast.error("Reset failed", { description: err instanceof Error ? err.message : "Try again" })
+      throw err
     } finally {
+      lock.current = false
       setIsWorking(false)
     }
   }
 
   const handleRunDemo = async () => {
+    if (lock.current || !user || !data) return
+    lock.current = true
     setIsWorking(true)
     try {
       const result = await marketplaceApi.runSandboxDemo()
@@ -66,7 +91,8 @@ export default function MarketplaceSandboxPage() {
         })
       } else {
         toast.error("Demo invoke failed", {
-          description: result.errorMessage ?? "Check connector and agent permissions.",
+          description:
+            result.errorMessage ?? "Check connector and agent permissions.",
         })
       }
     } catch (err) {
@@ -74,20 +100,31 @@ export default function MarketplaceSandboxPage() {
         description: err instanceof Error ? err.message : "Try again",
       })
     } finally {
+      lock.current = false
       setIsWorking(false)
     }
   }
 
   const openSandbox = () => {
     if (!data?.sandboxOrgId || !data.sandboxOrgName) return
-    setSelectedOrgInStorage({ id: data.sandboxOrgId, name: data.sandboxOrgName })
-    toast.success("Switched to sandbox org", { description: data.sandboxOrgName })
+    setSelectedOrgInStorage({
+      id: data.sandboxOrgId,
+      name: data.sandboxOrgName,
+    })
+    toast.success("Switched to sandbox org", {
+      description: data.sandboxOrgName,
+    })
+    // Reload organization-scoped clients after changing the selected organization.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/connectors")
   }
 
   return (
     <AppShell title="Partner sandbox">
-      <div className="bg-[color:var(--g-canvas)]">
+      <div
+        className="bg-[color:var(--g-canvas)] pb-24 [&_[data-slot=button]]:min-h-11 [&_input]:min-h-11"
+        data-composition="operate"
+      >
         <GravitrePageHeader
           eyebrow="Marketplace · Sandbox"
           title="Partner connector sandbox"
@@ -109,108 +146,176 @@ export default function MarketplaceSandboxPage() {
         />
 
         <div className="mx-auto max-w-2xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
-        {isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading sandbox status...
-          </div>
-        ) : data?.provisioned ? (
-          <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-            <div>
-              <p className="text-sm font-medium">{data.sandboxOrgName}</p>
-              <p className="text-xs text-muted-foreground mt-1">Org ID: {data.sandboxOrgId}</p>
-              {data.seededAt && (
-                <p className="text-xs text-muted-foreground">Last seeded: {new Date(data.seededAt).toLocaleString()}</p>
+          {error ? (
+            <WorkSectionErrorCard
+              title="Could not refresh sandbox status"
+              onRetry={() => void mutate()}
+            />
+          ) : null}
+          {isLoading && !data ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading sandbox status...
+            </div>
+          ) : !data ? null : data.provisioned ? (
+            <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+              <div>
+                <p className="text-sm font-medium">{data.sandboxOrgName}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Org ID: {data.sandboxOrgId}
+                </p>
+                {data.seededAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Last seeded: {new Date(data.seededAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {data.welcomeMessage}
+              </p>
+              <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
+                <li>Integration QA Agent with Acme Tools permissions</li>
+                <li>Pre-connected Acme Tools connector (demo API key)</li>
+                <li>Partner connector smoke test workflow</li>
+              </ul>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  disabled={isWorking}
+                  onClick={openSandbox}
+                  className="gap-2"
+                >
+                  Open sandbox
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleRunDemo()}
+                  disabled={isWorking}
+                  className="gap-2"
+                >
+                  {isWorking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                  Run marketplace demo
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setResetOpen(true)}
+                  disabled={isWorking}
+                  className="gap-2"
+                >
+                  {isWorking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Reset demo data
+                </Button>
+              </div>
+
+              {demoResult && (
+                <div className="rounded-md border border-border bg-muted/30 p-4 space-y-4 mt-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {demoResult.success
+                        ? "Demo invoke succeeded"
+                        : "Demo invoke failed"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {demoResult.agentName} → {demoResult.connectorName} ·{" "}
+                      {demoResult.action}
+                    </p>
+                  </div>
+
+                  {demoResult.success && demoResult.tickets.length > 0 && (
+                    <ul className="text-xs space-y-1">
+                      {demoResult.tickets.map((ticket) => (
+                        <li
+                          key={String(ticket.id)}
+                          className="text-muted-foreground"
+                        >
+                          #{String(ticket.id)} —{" "}
+                          {String(ticket.subject ?? "Ticket")}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {demoResult.auditTrail.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Audit trail
+                      </p>
+                      <AdaptiveDataView className="rounded border border-border">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left px-3 py-2 font-medium">
+                                Action
+                              </th>
+                              <th className="text-left px-3 py-2 font-medium">
+                                Time
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {demoResult.auditTrail.map((entry) => (
+                              <tr
+                                key={entry.id}
+                                className="border-t border-border"
+                              >
+                                <td className="px-3 py-2 font-mono">
+                                  {entry.action}
+                                </td>
+                                <td className="px-3 py-2 text-muted-foreground">
+                                  {entry.createdAt
+                                    ? new Date(entry.createdAt).toLocaleString()
+                                    : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </AdaptiveDataView>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">{data.welcomeMessage}</p>
-            <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
-              <li>Integration QA Agent with Acme Tools permissions</li>
-              <li>Pre-connected Acme Tools connector (demo API key)</li>
-              <li>Partner connector smoke test workflow</li>
-            </ul>
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button onClick={openSandbox} className="gap-2">
-                Open sandbox
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+          ) : (
+            <div className="rounded-lg border border-dashed border-border bg-card/50 p-8 text-center space-y-4">
+              <p className="text-sm text-muted-foreground">
+                No sandbox yet for this workspace. Provisioning creates a
+                separate org — your production data stays untouched.
+              </p>
               <Button
-                variant="secondary"
-                onClick={() => void handleRunDemo()}
+                onClick={() => void handleProvision()}
                 disabled={isWorking}
                 className="gap-2"
               >
-                {isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                Run marketplace demo
-              </Button>
-              <Button variant="outline" onClick={() => void handleReset()} disabled={isWorking} className="gap-2">
-                {isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Reset demo data
+                {isWorking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FlaskConical className="h-4 w-4" />
+                )}
+                Provision partner sandbox
               </Button>
             </div>
-
-            {demoResult && (
-              <div className="rounded-md border border-border bg-muted/30 p-4 space-y-4 mt-2">
-                <div>
-                  <p className="text-sm font-medium">
-                    {demoResult.success ? "Demo invoke succeeded" : "Demo invoke failed"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {demoResult.agentName} → {demoResult.connectorName} · {demoResult.action}
-                  </p>
-                </div>
-
-                {demoResult.success && demoResult.tickets.length > 0 && (
-                  <ul className="text-xs space-y-1">
-                    {demoResult.tickets.map((ticket) => (
-                      <li key={String(ticket.id)} className="text-muted-foreground">
-                        #{String(ticket.id)} — {String(ticket.subject ?? "Ticket")}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {demoResult.auditTrail.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Audit trail</p>
-                    <AdaptiveDataView className="rounded border border-border">
-                      <table className="w-full text-xs">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left px-3 py-2 font-medium">Action</th>
-                            <th className="text-left px-3 py-2 font-medium">Time</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {demoResult.auditTrail.map((entry) => (
-                            <tr key={entry.id} className="border-t border-border">
-                              <td className="px-3 py-2 font-mono">{entry.action}</td>
-                              <td className="px-3 py-2 text-muted-foreground">
-                                {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </AdaptiveDataView>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border bg-card/50 p-8 text-center space-y-4">
-            <p className="text-sm text-muted-foreground">
-              No sandbox yet for this workspace. Provisioning creates a separate org — your production data stays untouched.
-            </p>
-            <Button onClick={() => void handleProvision()} disabled={isWorking} className="gap-2">
-              {isWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
-              Provision partner sandbox
-            </Button>
-          </div>
-        )}
+          )}
         </div>
       </div>
+      {resetOpen ? (
+        <MarketplaceDecisionDialog
+          title="Reset sandbox demo data?"
+          description="This re-seeds the sandbox agents and connectors. Review any sandbox work you need to keep before continuing."
+          actionLabel="Confirm sandbox reset"
+          destructive
+          onCancel={() => setResetOpen(false)}
+          onConfirm={handleReset}
+        />
+      ) : null}
     </AppShell>
   )
 }

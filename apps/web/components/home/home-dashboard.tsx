@@ -20,7 +20,6 @@ import {
 import { LiveStatus } from "@/components/gravitre/nodus-product/page-header"
 import { dashboardStatusLine } from "@/components/home/dashboard-operating"
 import { OperatingAskLine, OperatingFlow } from "@/components/home/operating-flow"
-import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
@@ -128,7 +127,7 @@ export function HomeDashboard({
   }
 
   return (
-    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-[color:var(--g-canvas)]" data-composition="operate">
+    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-[color:var(--g-canvas)]" data-composition="understand">
       {/* Operating command strip — identity, live state, AI command line, range and layout controls */}
       <div
         data-dashboard-command-strip=""
@@ -142,7 +141,6 @@ export function HomeDashboard({
         </div>
         <OperatingAskLine className="min-w-0 flex-1 lg:max-w-[560px]" />
         <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
-          <AskGravitreSummonButton />
           <Select value={globalRange} onValueChange={(v) => setRange(v as DashboardRange)}>
             <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Dashboard date range">
               <SelectValue />

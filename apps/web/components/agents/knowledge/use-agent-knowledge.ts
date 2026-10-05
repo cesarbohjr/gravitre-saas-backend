@@ -1,9 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
-import { agentKnowledgeApi, sourcesApi, type AgentKnowledgeAssignment } from "@/lib/api"
+import {
+  agentKnowledgeApi,
+  ragAdminApi,
+  sourcesApi,
+  type AgentKnowledgeAssignment,
+} from "@/lib/api"
 import type { SourceSyncHistoryItem } from "@/types/api"
 import type { SourceIngestionSnapshot } from "./source-ingestion-indicator"
 import {
@@ -14,33 +19,55 @@ import {
   type PackAssignInput,
 } from "@/lib/agent-knowledge-assign"
 
-export type AgentKnowledgeTab = "sources" | "expert-packs" | "instructions" | "retrieval"
+export type AgentKnowledgeTab =
+  | "sources"
+  | "expert-packs"
+  | "instructions"
+  | "retrieval"
 
-export function useAgentKnowledge(agentId: string, agentName: string, agentDepartment?: string | null) {
+export function useAgentKnowledge(
+  agentId: string,
+  agentName: string,
+  agentDepartment?: string | null,
+) {
+  const mutationLock = useRef(false)
   const [assigningKey, setAssigningKey] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   const {
     data: assignmentData,
     isLoading: assignmentsLoading,
+    error: assignmentsError,
     mutate: mutateAssignments,
   } = useSWR(agentId ? `agent/${agentId}/knowledge-assignments` : null, () =>
     agentKnowledgeApi.listAssignments(agentId),
   )
 
-  const { data: capabilities, isLoading: capabilitiesLoading } = useSWR(
-    agentId ? `agent/${agentId}/capabilities` : null,
-    () => agentKnowledgeApi.getCapabilities(agentId),
+  const {
+    data: capabilities,
+    isLoading: capabilitiesLoading,
+    error: capabilitiesError,
+    mutate: mutateCapabilities,
+  } = useSWR(agentId ? `agent/${agentId}/capabilities` : null, () =>
+    agentKnowledgeApi.getCapabilities(agentId),
   )
 
-  const assignments = assignmentData?.assignments ?? []
-
-  const { data: orgSourcesData, isLoading: orgSourcesLoading, mutate: mutateOrgSources } = useSWR(
-    "org-rag-sources",
-    () => sourcesApi.list(),
+  const assignments = useMemo(
+    () => assignmentData?.assignments ?? [],
+    [assignmentData?.assignments],
   )
 
-  const orgSources = orgSourcesData?.sources ?? []
+  const {
+    data: orgSourcesData,
+    isLoading: orgSourcesLoading,
+    error: orgSourcesError,
+    mutate: mutateOrgSources,
+  } = useSWR("org-rag-sources", () => sourcesApi.list())
+
+  const orgSources = useMemo(
+    () => orgSourcesData?.sources ?? [],
+    [orgSourcesData?.sources],
+  )
 
   const syncingSourceIds = useMemo(
     () =>
@@ -54,14 +81,20 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
     [orgSources],
   )
 
-  useSWR(syncingSourceIds.length > 0 ? "org-rag-sources-sync-poll" : null, () => sourcesApi.list(), {
-    refreshInterval: 5000,
-    onSuccess: () => {
-      void mutateOrgSources()
+  useSWR(
+    syncingSourceIds.length > 0 ? "org-rag-sources-sync-poll" : null,
+    () => sourcesApi.list(),
+    {
+      refreshInterval: 5000,
+      onSuccess: () => {
+        void mutateOrgSources()
+      },
     },
-  })
+  )
 
-  const [syncHistoryById, setSyncHistoryById] = useState<Map<string, SourceSyncHistoryItem[]>>(new Map())
+  const [syncHistoryById, setSyncHistoryById] = useState<
+    Map<string, SourceSyncHistoryItem[]>
+  >(new Map())
 
   useEffect(() => {
     if (syncingSourceIds.length === 0) {
@@ -83,7 +116,9 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
         }),
       )
       if (cancelled) return
-      setSyncHistoryById(new Map(entries as Array<[string, SourceSyncHistoryItem[]]>))
+      setSyncHistoryById(
+        new Map(entries as Array<[string, SourceSyncHistoryItem[]]>),
+      )
       await mutateOrgSources()
     }
 
@@ -93,7 +128,7 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [mutateOrgSources, syncingSourceIds.join("|")])
+  }, [mutateOrgSources, syncingSourceIds])
 
   const sourceIngestionById = useMemo(() => {
     const map = new Map<string, SourceIngestionSnapshot>()
@@ -103,15 +138,19 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
       const history = syncHistoryById.get(id) ?? []
       const latest = history[0]
       const status = String(source.status ?? "").toLowerCase()
-      const historyRunning = String(latest?.status ?? "").toLowerCase() === "running"
-      const indexing = status === "syncing" || status === "processing" || historyRunning
-      const records = typeof latest?.records === "number" ? latest.records : null
+      const historyRunning =
+        String(latest?.status ?? "").toLowerCase() === "running"
+      const indexing =
+        status === "syncing" || status === "processing" || historyRunning
       map.set(id, {
         status: indexing ? "syncing" : String(source.status ?? ""),
-        documentCount: Number(source.document_count ?? 0) || undefined,
-        lastSyncAt: source.last_sync_at ?? source.updated_at ?? latest?.createdAt ?? null,
-        syncProgress:
-          indexing && records != null && records > 0 ? Math.min(95, Math.round(records / 10)) : null,
+        documentCount:
+          typeof source.document_count === "number"
+            ? source.document_count
+            : undefined,
+        lastSyncAt:
+          source.last_sync_at ?? source.updated_at ?? latest?.createdAt ?? null,
+        syncProgress: null,
       })
     }
     return map
@@ -149,12 +188,14 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
 
   const summary = useMemo(
     () => ({
-      sourceCount: assignments.filter((a) => a.enabled !== false).length,
+      sourceCount: assignmentData
+        ? assignments.filter((a) => a.enabled !== false).length
+        : "Not reported",
       indexedLabel:
         capabilities?.connectedKnowledgeSources?.length != null
           ? String(capabilities.connectedKnowledgeSources.length)
-          : "Not enough data",
-      healthLabel: capabilities?.freshnessStatus ?? "Not enough data",
+          : "Not reported",
+      healthLabel: capabilities?.freshnessStatus ?? "Not reported",
       lastSyncLabel: lastSyncedAt
         ? new Date(lastSyncedAt).toLocaleString(undefined, {
             month: "short",
@@ -164,7 +205,7 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
           })
         : "—",
     }),
-    [assignments, capabilities, lastSyncedAt],
+    [assignmentData, assignments, capabilities, lastSyncedAt],
   )
 
   const assignPack = useCallback(
@@ -174,11 +215,16 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
         toast.info(`${pack.name} is already assigned`)
         return true
       }
+      if (mutationLock.current) return false
+      mutationLock.current = true
       setAssigningKey(key)
       try {
-        await agentKnowledgeApi.createAssignment(agentId, buildPackAssignmentPayload(pack))
+        await agentKnowledgeApi.createAssignment(
+          agentId,
+          buildPackAssignmentPayload(pack),
+        )
         toast.success(`${pack.name} assigned to ${agentName}`)
-        await mutateAssignments()
+        await Promise.allSettled([mutateAssignments(), mutateCapabilities()])
         return true
       } catch (error) {
         console.error("[agent-knowledge] assign pack failed:", error)
@@ -186,9 +232,16 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
         return false
       } finally {
         setAssigningKey(null)
+        mutationLock.current = false
       }
     },
-    [agentId, agentName, assignedPackIds, mutateAssignments],
+    [
+      agentId,
+      agentName,
+      assignedPackIds,
+      mutateAssignments,
+      mutateCapabilities,
+    ],
   )
 
   const assignOrgSource = useCallback(
@@ -198,11 +251,16 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
         toast.info(`${source.name} is already assigned`)
         return true
       }
+      if (mutationLock.current) return false
+      mutationLock.current = true
       setAssigningKey(key)
       try {
-        await agentKnowledgeApi.createAssignment(agentId, buildOrgSourceAssignmentPayload(source))
+        await agentKnowledgeApi.createAssignment(
+          agentId,
+          buildOrgSourceAssignmentPayload(source),
+        )
         toast.success(`${source.name} assigned to ${agentName}`)
-        await mutateAssignments()
+        await Promise.allSettled([mutateAssignments(), mutateCapabilities()])
         return true
       } catch (error) {
         console.error("[agent-knowledge] assign source failed:", error)
@@ -210,22 +268,33 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
         return false
       } finally {
         setAssigningKey(null)
+        mutationLock.current = false
       }
     },
-    [agentId, agentName, assignedSourceIds, mutateAssignments],
+    [
+      agentId,
+      agentName,
+      assignedSourceIds,
+      mutateAssignments,
+      mutateCapabilities,
+    ],
   )
 
   const removeAssignment = useCallback(
     async (assignment: AgentKnowledgeAssignment) => {
       if (!assignment.id || assignment.fromConfig) {
-        toast.error("Legacy config-only sources must be re-assigned through the new flow.")
+        toast.error(
+          "Legacy config-only sources must be re-assigned through the new flow.",
+        )
         return false
       }
+      if (mutationLock.current) return false
+      mutationLock.current = true
       setRemovingId(assignment.id)
       try {
         await agentKnowledgeApi.deleteAssignment(agentId, assignment.id)
         toast.success(`${assignment.label} removed from this agent`)
-        await mutateAssignments()
+        await Promise.allSettled([mutateAssignments(), mutateCapabilities()])
         return true
       } catch (error) {
         console.error("[agent-knowledge] remove failed:", error)
@@ -233,13 +302,82 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
         return false
       } finally {
         setRemovingId(null)
+        mutationLock.current = false
       }
     },
-    [agentId, mutateAssignments],
+    [agentId, mutateAssignments, mutateCapabilities],
+  )
+
+  const createTextKnowledge = useCallback(
+    async (input: { title: string; text: string }) => {
+      const title = input.title.trim()
+      const text = input.text.trim()
+      if (!title || !text) {
+        toast.error("Enter a title and the knowledge text before saving.")
+        return false
+      }
+      if (mutationLock.current) return false
+      mutationLock.current = true
+      setAssigningKey("text")
+      try {
+        const source = await ragAdminApi.createSource({
+          title,
+          type: "manual",
+          agent_id: agentId,
+          metadata: { origin: "native_text" },
+        })
+        if (!source.id) {
+          throw new Error("The server did not return a knowledge source.")
+        }
+        const ingest = await ragAdminApi.ingestText({
+          sourceId: source.id,
+          title,
+          text,
+        })
+        if (!ingest.ingest_id) {
+          throw new Error("The source was created, but ingestion was not accepted.")
+        }
+        await agentKnowledgeApi.createAssignment(
+          agentId,
+          buildOrgSourceAssignmentPayload({ id: source.id, name: title }),
+        )
+        toast.success(
+          `${title} was accepted for ingestion and assigned to ${agentName}. Indexing is not complete until the ingest job finishes.`,
+        )
+        await Promise.allSettled([
+          mutateAssignments(),
+          mutateCapabilities(),
+          mutateOrgSources(),
+        ])
+        return true
+      } catch (error) {
+        toast.error(formatKnowledgeAssignError(error, title || "Text knowledge"))
+        return false
+      } finally {
+        setAssigningKey(null)
+        mutationLock.current = false
+      }
+    },
+    [
+      agentId,
+      agentName,
+      mutateAssignments,
+      mutateCapabilities,
+      mutateOrgSources,
+    ],
   )
 
   return {
     assignments,
+    assignmentsError,
+    capabilitiesError,
+    orgSourcesError,
+    retry: () =>
+      Promise.all([
+        mutateAssignments(),
+        mutateCapabilities(),
+        mutateOrgSources(),
+      ]),
     orgSources,
     capabilities,
     summary,
@@ -252,6 +390,7 @@ export function useAgentKnowledge(agentId: string, agentName: string, agentDepar
     agentDepartment,
     assignPack,
     assignOrgSource,
+    createTextKnowledge,
     removeAssignment,
     mutateAssignments,
     sourceIngestionById,

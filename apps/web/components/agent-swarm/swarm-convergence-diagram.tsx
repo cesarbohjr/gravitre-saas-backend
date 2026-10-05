@@ -1,6 +1,5 @@
 "use client"
 
-import { motion, useReducedMotion } from "framer-motion"
 import { Target, Bot, Layers } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -21,7 +20,6 @@ export function SwarmConvergenceDiagram({
   variant?: Variant
   className?: string
 }) {
-  const reduced = useReducedMotion()
   const compact = variant === "panel"
 
   // Three parallel agent lanes between the source objective and the aggregate.
@@ -32,7 +30,7 @@ export function SwarmConvergenceDiagram({
   const xAgents = W / 2
   const xResult = W - 30
 
-  const dash = reduced ? undefined : { strokeDasharray: "4 5" }
+  const dash = { strokeDasharray: "4 5" }
 
   return (
     <div className={cn("mx-auto w-full max-w-[320px]", className)}>
@@ -59,29 +57,18 @@ export function SwarmConvergenceDiagram({
               fill="none"
               {...dash}
             />
-            {!reduced && (
-              <motion.circle
-                r={2.5}
-                className="text-primary"
-                fill="currentColor"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 1, 1, 0] }}
-                transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.4, ease: "easeInOut" }}
-              >
-                <animateMotion
-                  dur="2.4s"
-                  repeatCount="indefinite"
-                  begin={`${i * 0.4}s`}
-                  path={`M${xSource + 14},${H / 2} C${(xSource + xAgents) / 2},${H / 2} ${(xSource + xAgents) / 2},${y} ${xAgents},${y} C${(xAgents + xResult) / 2},${y} ${(xAgents + xResult) / 2},${H / 2} ${xResult - 14},${H / 2}`}
-                />
-              </motion.circle>
-            )}
           </g>
         ))}
 
         {/* Source objective node */}
         <g>
-          <circle cx={xSource} cy={H / 2} r={13} className="fill-primary/10 stroke-primary" strokeWidth={1.5} />
+          <circle
+            cx={xSource}
+            cy={H / 2}
+            r={13}
+            className="fill-primary/10 stroke-primary"
+            strokeWidth={1.5}
+          />
           <foreignObject x={xSource - 8} y={H / 2 - 8} width={16} height={16}>
             <Target className="h-4 w-4 text-primary" />
           </foreignObject>
@@ -90,7 +77,13 @@ export function SwarmConvergenceDiagram({
         {/* Parallel agent nodes */}
         {laneYs.map((y, i) => (
           <g key={`a-${i}`}>
-            <circle cx={xAgents} cy={y} r={12} className="fill-info/10 stroke-info" strokeWidth={1.5} />
+            <circle
+              cx={xAgents}
+              cy={y}
+              r={12}
+              className="fill-info/10 stroke-info"
+              strokeWidth={1.5}
+            />
             <foreignObject x={xAgents - 7} y={y - 7} width={14} height={14}>
               <Bot className="h-3.5 w-3.5 text-info" />
             </foreignObject>
@@ -99,7 +92,13 @@ export function SwarmConvergenceDiagram({
 
         {/* Aggregate / council result node */}
         <g>
-          <circle cx={xResult} cy={H / 2} r={13} className="fill-success/10 stroke-success" strokeWidth={1.5} />
+          <circle
+            cx={xResult}
+            cy={H / 2}
+            r={13}
+            className="fill-success/10 stroke-success"
+            strokeWidth={1.5}
+          />
           <foreignObject x={xResult - 8} y={H / 2 - 8} width={16} height={16}>
             <Layers className="h-4 w-4 text-success" />
           </foreignObject>

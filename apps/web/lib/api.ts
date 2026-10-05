@@ -460,6 +460,25 @@ export const agentIdentityApi = {
     putJson<{ identity: AgentIdentityRecord }>(apiUrl(`/api/agents/${agentId}/identity`), data),
   listDelegations: (agentId: string) =>
     fetcher<{ grants: Array<Record<string, unknown>> }>(apiUrl(`/api/agents/${agentId}/delegations`)),
+  createDelegation: (
+    agentId: string,
+    data: {
+      grantorAgentId?: string
+      granteeAgentId?: string
+      granteeUserId?: string
+      delegatedPermissions?: Record<string, unknown>
+      reason?: string
+      expiresInMinutes?: number
+    },
+  ) =>
+    postJson<{ grant: Record<string, unknown> }>(
+      apiUrl(`/api/agents/${agentId}/delegations`),
+      data,
+    ),
+  revokeDelegation: (agentId: string, grantId: string) =>
+    deleteJson<{ grant: Record<string, unknown> }>(
+      apiUrl(`/api/agents/${agentId}/delegations/${grantId}`),
+    ),
 }
 
 export interface AgentKnowledgeAssignment {
@@ -776,6 +795,19 @@ export const workflowsApi = {
     return payload as Workflow
   },
   create: (data: CreateWorkflowRequest) => postJson<Workflow>(apiUrl("/api/workflows"), data),
+  fromGoal: (data: {
+    goal: string
+    department?: string
+    connectors?: string[]
+    successMetric?: string
+    approvalRequired?: boolean
+    orgContext?: string
+    goalId?: string
+  }) =>
+    postJson<{ id: string; workflow?: Record<string, unknown> }>(
+      apiUrl("/api/workflows/from-goal"),
+      data,
+    ),
   update: (id: string, data: UpdateWorkflowRequest) =>
     patchJson<Workflow>(apiUrl(`/api/workflows/${id}`), data),
   delete: (id: string) => deleteRequest(apiUrl(`/api/workflows/${id}`)),
@@ -1292,9 +1324,9 @@ export const marketplaceApi = {
       department?: string
       tags?: string[]
       config?: Record<string, unknown>
-      businessOutcome?: string
-      useCase?: string
-      estimatedHoursSaved?: number
+      businessOutcome?: string | null
+      useCase?: string | null
+      estimatedHoursSaved?: number | null
       pricingType?: "free" | "paid" | "subscription"
       priceCents?: number
       currency?: string
@@ -2054,7 +2086,7 @@ export const sourcesApi = {
   create: (data: CreateSourceRequest) => postJson<{ id: string; typeId?: string }>(apiUrl("/api/sources"), data),
   update: (id: string, data: Partial<Source>) => patchJson<Source>(apiUrl(`/api/sources/${id}`), data),
   delete: (id: string) => deleteRequest(apiUrl(`/api/sources/${id}`)),
-  sync: (id: string) => postJson<{ status: string; tables?: number; records?: number }>(apiUrl(`/api/sources/${id}/sync`), {}),
+  sync: (id: string) => postJson<{ success?: boolean; status: string; tables?: number; records?: number; error?: string | null }>(apiUrl(`/api/sources/${id}/sync`), {}),
   testConnection: (data: { typeId: string; config?: Record<string, unknown>; connectionString?: string }) =>
     postJson<DataSourceTestResponse>(apiUrl("/api/sources/test"), data),
   testExisting: (id: string) => postJson<DataSourceTestResponse>(apiUrl(`/api/sources/${id}/test`), {}),
@@ -3481,6 +3513,28 @@ export const settingsApi = {
   getOrg: () => fetcher<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization")),
   updateOrg: (data: Record<string, unknown>) =>
     patchJson<{ organization: Record<string, unknown> }>(apiUrl("/api/settings/organization"), data),
+  uploadOrgLogo: async (file: File) => {
+    const form = new FormData()
+    form.append("logo", file)
+    const response = await apiFetch(apiUrl("/api/settings/organization/logo"), {
+      method: "POST",
+      body: form,
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(
+        extractApiErrorMessage(error) || `Logo upload failed: ${response.status}`,
+      )
+    }
+    return response.json() as Promise<{
+      organization?: Record<string, unknown>
+      logoUrl?: string | null
+    }>
+  },
+  removeOrgLogo: () =>
+    deleteJson<{ organization?: Record<string, unknown>; logoUrl: null }>(
+      apiUrl("/api/settings/organization/logo"),
+    ),
   
   // Team
   listTeamMembers: () => fetcher<{ team: User[] }>(apiUrl("/api/settings/team")),
@@ -3914,6 +3968,32 @@ export const knowledgeSyncApi = {
 
 // ============ RAG admin ingest (STA-279) ============
 export const ragAdminApi = {
+  createSource: (data: {
+    title: string
+    type: string
+    metadata?: Record<string, unknown>
+    agent_id?: string
+  }) =>
+    postJson<{ id: string; title: string; type: string; metadata?: Record<string, unknown> }>(
+      apiUrl("/api/rag/sources"),
+      data,
+    ),
+  ingestText: (data: {
+    sourceId: string
+    title?: string
+    text: string
+    metadata?: Record<string, unknown>
+  }) =>
+    postJson<{
+      ingest_id: string
+      source_id: string
+      status: string
+    }>(apiUrl("/api/rag/ingest"), {
+      source_id: data.sourceId,
+      title: data.title,
+      text: data.text,
+      metadata: data.metadata,
+    }),
   ingestFile: async (params: {
     sourceId: string
     file: File

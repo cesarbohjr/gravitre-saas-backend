@@ -135,7 +135,7 @@ export function MemoryPromotionTab({ enabled }: { enabled: boolean }) {
   }
 
   return (
-    <TabStateGate isLoading={isLoading && !candidatesData} error={error} onRetry={() => mutate()}>
+    <TabStateGate hasData={Boolean(candidatesData)} isLoading={isLoading && !candidatesData} error={error} onRetry={() => mutate()}>
       <div className="space-y-6">
         <SectionCard
           title="Memories to share"

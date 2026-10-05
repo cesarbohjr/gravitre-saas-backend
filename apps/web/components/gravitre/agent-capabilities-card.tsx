@@ -20,8 +20,8 @@ export function AgentCapabilitiesCard({
   advisoryOnly = false,
   className,
 }: AgentCapabilitiesCardProps) {
-  const reads = capabilities.length > 0 ? capabilities : permissions
-  const writes = permissions.filter((entry) => !reads.includes(entry))
+  const reads = capabilities
+  const writes = permissions
 
   return (
     <section className={cn("space-y-3", className)} aria-labelledby="agent-capabilities-heading">
@@ -62,7 +62,7 @@ export function AgentCapabilitiesCard({
         <CapabilityBlock
           icon={Brain}
           title="Memory"
-          items={typeof memoryCount === "number" ? [`${memoryCount} stored memories`] : []}
+          items={typeof memoryCount === "number" && Number.isFinite(memoryCount) && memoryCount >= 0 ? [`${memoryCount} stored memories`] : []}
           empty="Not reported until the agent has run"
         />
       </div>
@@ -90,7 +90,7 @@ function CapabilityBlock({
       {items.length > 0 ? (
         <ul className="space-y-1 text-sm text-foreground">
           {items.map((item) => (
-            <li key={item} className="text-pretty">
+            <li key={item} className="break-words text-pretty">
               {item}
             </li>
           ))}

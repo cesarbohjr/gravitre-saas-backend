@@ -39,7 +39,7 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
 
   return (
     <AppShell title="Schedules">
-      <div className={PAGE_FRAME}>
+      <div className={PAGE_FRAME} data-composition="operate">
         <Link
           href={`/workflows/${id}`}
           className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

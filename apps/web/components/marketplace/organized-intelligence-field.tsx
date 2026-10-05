@@ -46,9 +46,9 @@ export function OrganizedIntelligenceField({ className }: { className?: string }
             transition={reduced ? { duration: 0 } : { duration: .28, delay: .22 + i * .08 }}
             style={{ transformOrigin: `${node.x}px ${node.y}px` }}
           >
-            <circle cx={node.x} cy={node.y} r="15" fill="#101816" stroke={node.tone === "blue" ? "#315CFF" : node.tone === "emerald" ? "#00A878" : "rgba(207,247,232,.45)"} strokeWidth="1.5" />
-            <circle cx={node.x} cy={node.y} r="3.5" fill={node.tone === "blue" ? "#315CFF" : "#00A878"} />
-            <text x={node.x} y={node.y + 27} textAnchor="middle" fill="rgba(245,243,236,.72)" fontSize="9" fontWeight="600">{node.label}</text>
+            <circle cx={node.x} cy={node.y} r="15" fill="var(--g-carbon)" stroke={node.tone === "blue" ? "var(--g-electric)" : node.tone === "emerald" ? "var(--g-emerald)" : "rgba(207,247,232,.45)"} strokeWidth="1.5" />
+            <circle cx={node.x} cy={node.y} r="3.5" fill={node.tone === "blue" ? "var(--g-electric)" : "var(--g-emerald)"} />
+            <text x={node.x} y={node.y + 27} textAnchor="middle" fill="color-mix(in srgb, var(--g-bone) 72%, transparent)" fontSize="9" fontWeight="600">{node.label}</text>
           </motion.g>
         ))}
       </svg>

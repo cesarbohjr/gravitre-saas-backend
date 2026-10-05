@@ -230,6 +230,13 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "enterprise",
   "federation",
   "environments",
+  "team",
+  "security",
+  "api-keys",
+  "webhooks",
+  "lite-seats",
+  "meson-addons",
+  "ai-models",
 ])
 
 export function settingsHrefForSection(section: SettingsSectionId): string {

@@ -62,6 +62,7 @@ import {
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
 import { useAiFullPageSlot } from "@/components/gravitre/ai-full-page-slot"
+import { ChatWindowControls } from "@/components/gravitre/chat-window-controls"
 import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
 import { GravitreAIWorkspaceShellBridge } from "@/app/ai/_components/ai-workspace-shell-bridge"
 import { GravitreAIMobileSheetBridge } from "@/app/ai/_components/ai-mobile-sheet-bridge"
@@ -239,6 +240,7 @@ export function AiWorkspace({
   const {
     presentationMode,
     setPresentationMode,
+    choosePresentationMode,
     floatWorkspaceOpen,
     setFloatWorkspaceOpen,
     minimizeToHelper,
@@ -2364,7 +2366,7 @@ export function AiWorkspace({
         <GravitreAIMobileSheetBridge
           mode={mobileMode}
           presence={presence}
-          onModeChange={(mode) => setPresentationMode(mode)}
+          onModeChange={(mode) => choosePresentationMode(mode)}
           onClose={closeToHelper}
           messages={messages}
           showWaiting={showWaitingForReply && !conversationLoading}
@@ -2422,9 +2424,9 @@ export function AiWorkspace({
           key="gravitre-ai-shell"
           mode={presentationMode}
           presence={presence}
-          onMinimizeToFloat={() => setPresentationMode("float")}
-          onEnterFullscreen={() => setPresentationMode("fullscreen")}
-          onExitFullscreen={() => setPresentationMode("expanded")}
+          onMinimizeToFloat={() => choosePresentationMode("float")}
+          onEnterFullscreen={() => choosePresentationMode("fullscreen")}
+          onExitFullscreen={() => choosePresentationMode("expanded")}
           onClose={closeToHelper}
           leftCollapsed={shellLeftCollapsed}
           onToggleLeft={() => setShellLeftCollapsed((v) => !v)}
@@ -2507,8 +2509,8 @@ export function AiWorkspace({
         key="gravitre-ai-float"
         presence={presence}
         onClose={closeToHelper}
-        onExpand={() => setPresentationMode("expanded")}
-        onEnterFullscreen={() => setPresentationMode("fullscreen")}
+        onExpand={() => choosePresentationMode("expanded")}
+        onEnterFullscreen={() => choosePresentationMode("fullscreen")}
         messages={messages}
         showWaiting={showWaitingForReply && !conversationLoading}
         isStreaming={isStreaming || isChatBusy}
@@ -2612,6 +2614,15 @@ export function AiWorkspace({
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
+              <ChatWindowControls
+                surface="embedded"
+                handlers={{
+                  openAsFloat: () => {
+                    choosePresentationMode("float")
+                    setFloatWorkspaceOpen(true)
+                  },
+                }}
+              />
               {/* Desktop chrome */}
               <ChatThemePicker
                 value={chatBackground}

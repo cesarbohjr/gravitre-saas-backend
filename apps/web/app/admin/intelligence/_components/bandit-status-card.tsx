@@ -1,5 +1,6 @@
 "use client"
 
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { intelligenceApi } from "@/lib/api"
@@ -24,30 +25,30 @@ type ClusterSegmentRow = {
 }
 
 export function BanditStatusCard({ enabled }: { enabled: boolean }) {
-  const { data, isLoading, error } = useSWR(enabled ? "admin/intelligence/bandit-status" : null, () =>
+  const { data, isLoading, error, mutate } = useSWR(enabled ? "admin/intelligence/bandit-status" : null, () =>
     intelligenceApi.banditStatus(),
   )
   if (!enabled) return null
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <SectionCard title={SURFACE_COPY.learningAdmin.banditTitle} description="Loading strategy performance…">
         <p className="text-sm text-muted-foreground">Fetching which answer strategies are winning…</p>
       </SectionCard>
     )
   }
-  if (error) {
+  if (error && !data) {
     return (
       <SectionCard title={SURFACE_COPY.learningAdmin.banditTitle} description="Unable to load strategy status.">
-        <p className="text-sm text-muted-foreground">Try refreshing the page.</p>
+        <WorkSectionErrorCard error={error} onRetry={() => void mutate()} />
       </SectionCard>
     )
   }
   const summary = (data?.summary as Record<string, unknown>) || {}
-  const recordCount = Number(summary.record_count ?? summary.recordCount ?? 0)
+  const recordCount = typeof (summary.record_count ?? summary.recordCount) === "number" ? Number(summary.record_count ?? summary.recordCount) : null
   const top = (summary.top_strategies as StrategyRow[]) || []
   const clusterSegments = (summary.cluster_segments as ClusterSegmentRow[]) || []
   const scopeNote = String(data?.scope_note || data?.scopeNote || "")
-  const phaseStatus = String(data?.phase_e_status || "complete")
+  const phaseStatus = String(data?.phase_e_status || "Not reported")
   return (
     <SectionCard
       title={SURFACE_COPY.learningAdmin.banditTitle}
@@ -58,7 +59,8 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
         </Badge>
       }
     >
-      {recordCount === 0 ? (
+      {error ? <WorkSectionErrorCard error={error} onRetry={() => void mutate()} /> : null}
+      {recordCount === null && top.length === 0 ? <NotYetPopulated>Strategy sample counts not reported.</NotYetPopulated> : recordCount === 0 ? (
         <NotYetPopulated>
           No strategy results yet. Win rates appear once agents produce enough measured outcomes.
         </NotYetPopulated>
@@ -80,8 +82,8 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
                 {top.slice(0, 6).map((row) => (
                   <tr key={row.strategy_key} className="border-b border-border/40 last:border-0">
                     <td className="px-3 py-2 text-sm">{snakeToTitle(row.strategy_key)}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.win ?? 0}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.loss ?? 0}</td>
+                    <td className="px-3 py-2 tabular-nums">{row.win ?? "Not reported"}</td>
+                    <td className="px-3 py-2 tabular-nums">{row.loss ?? "Not reported"}</td>
                     <td className="px-3 py-2 tabular-nums">
                       {row.win_rate != null ? `${Math.round(row.win_rate * 100)}%` : "—"}
                     </td>
@@ -114,7 +116,7 @@ export function BanditStatusCard({ enabled }: { enabled: boolean }) {
                         {row.segment_prefix ? snakeToTitle(row.segment_prefix) : "Theme"}
                       </td>
                       <td className="px-3 py-2 text-sm">{snakeToTitle(row.top_strategy_key)}</td>
-                      <td className="px-3 py-2 tabular-nums">{row.decided_samples ?? 0}</td>
+                      <td className="px-3 py-2 tabular-nums">{row.decided_samples ?? "Not reported"}</td>
                       <td className="px-3 py-2 tabular-nums">
                         {row.ucb_score != null ? row.ucb_score.toFixed(2) : "—"}
                       </td>

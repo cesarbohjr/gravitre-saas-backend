@@ -1490,28 +1490,9 @@ function DebateViewDialog({
   const isDebating = node.state === "debating"
   const hasConsensus = node.state === "consensus"
 
-  // Mock debate data if not present
-  const contributions = debate?.contributions || agents.map((agent, idx) => ({
-    agentId: agent.id,
-    position: idx === 0 ? "Approve" : idx === 1 ? "Request more data" : "Approve with conditions",
-    confidence: 70 + ((idx * 13 + 7) % 25),
-    reasoning: `Based on the available evidence, I recommend this action because...`,
-    evidenceUsed: ["CRM data", "Previous node outputs"],
-    timestamp: new Date(),
-  }))
-
-  const disagreements = debate?.disagreements || (agents.length > 2 ? [{
-    agentIds: [agents[0]?.id, agents[1]?.id].filter(Boolean) as string[],
-    topic: "Data completeness requirement"
-  }] : [])
-
-  const timeline = debate?.timeline || [
-    { step: "Gathering evidence", status: "complete" as const },
-    { step: "Agents reviewing", status: "complete" as const },
-    { step: "Submitting positions", status: isDebating ? "active" as const : "complete" as const },
-    { step: "Resolving conflicts", status: hasConsensus ? "complete" as const : "pending" as const },
-    { step: "Final recommendation", status: hasConsensus ? "complete" as const : "pending" as const },
-  ]
+  const contributions = debate?.contributions ?? []
+  const disagreements = debate?.disagreements ?? []
+  const timeline = debate?.timeline ?? []
 
   const getAgentById = (id: string) => agents.find(a => a.id === id)
   const getAgentColor = (index: number) => {
@@ -1550,6 +1531,7 @@ function DebateViewDialog({
           {/* Debate Timeline */}
           <div className="px-1">
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Debate timeline</h4>
+            {!timeline.length ? <p className="text-sm text-muted-foreground">No debate timeline was reported.</p> : null}
             <div className="flex items-center gap-2">
               {timeline.map((step, idx) => (
                 <div key={idx} className="flex items-center gap-2 flex-1">
@@ -1584,6 +1566,7 @@ function DebateViewDialog({
           <div>
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Agent contributions</h4>
             <div className="grid gap-3">
+              {!contributions.length ? <p className="text-sm text-muted-foreground">No agent contributions were reported.</p> : null}
               {contributions.map((contribution, idx) => {
                 const agent = getAgentById(contribution.agentId) || agents[idx]
                 if (!agent) return null
@@ -1716,7 +1699,7 @@ function DebateViewDialog({
               onClick={onAcceptDecision}
             >
               <CheckCircle className="h-4 w-4" />
-              Accept recommendation
+              Finish review
             </Button>
             <Button 
               variant="outline" 
@@ -2969,7 +2952,7 @@ function ConfigPanel({
 
   return (
     <Sheet open={!!node} onOpenChange={() => onClose()}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
+      <SheetContent className="w-full max-w-full sm:w-[540px] sm:max-w-[540px] overflow-y-auto px-6">
         {content}
       </SheetContent>
     </Sheet>
@@ -3069,7 +3052,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>("configure")
   const [mesonAttention, setMesonAttention] = useState(false)
   const mesonPanelOpen = inspectorMode === "meson"
-  const isNarrowViewport = useIsMobile()
+  const isNarrowViewport = useIsMobile(1024)
   const prevNodeCountRef = useRef(0)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
   const [intelligenceInitialTab, setIntelligenceInitialTab] = useState<"simulate" | "risk" | "dryrun">("simulate")
@@ -3124,6 +3107,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const debateNode = nodes.find(n => n.id === debateNodeId) || null
   
   // Saving and running state
+  const persistenceLock = useRef(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   // G1: live blocking-issue count to disable Save/Publish + drive warnings.
@@ -3176,9 +3160,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           setWorkflowMeta(result.meta)
           setSettingsName(result.meta.name)
           setSettingsDescription(result.meta.description || "")
-          if (result.nodes.length > 0) {
-            setNodes(result.nodes)
-          }
+          setNodes(result.nodes)
         }
       } catch (err) {
         console.error("[WorkflowBuilder] Failed to load graph:", err)
@@ -4008,6 +3990,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       return
     }
 
+    if (persistenceLock.current || isLoadingGraph || loadError) return
+    persistenceLock.current = true
     setIsSaving(true)
     try {
       const result = await saveBuilderGraph(id, nodes, {
@@ -4024,9 +4008,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         description: err instanceof Error ? err.message : "Could not save workflow"
       })
     } finally {
+      persistenceLock.current = false
       setIsSaving(false)
     }
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
+  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
   const handlePreview = useCallback(async () => {
     if (!canPersist) {
       toast.info("Demo mode", {
@@ -4045,6 +4030,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       return
     }
 
+    if (persistenceLock.current || isLoadingGraph || loadError) return
+    persistenceLock.current = true
     setIsSaving(true)
     try {
       await saveBuilderGraph(id, nodes, {
@@ -4063,12 +4050,18 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         description: err instanceof Error ? err.message : "Could not save workflow before preview",
       })
     } finally {
+      persistenceLock.current = false
       setIsSaving(false)
     }
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
+  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, connectorBlockingIssues])
 
   // Handle run workflow with live run polling (STA-166)
   const handleRun = useCallback(async () => {
+    if (persistenceLock.current || isLoadingGraph || loadError) return
+    if (!canPersist) {
+      toast.message("Save a workflow before running", { description: "Execution requires a persisted workflow ID. No work has been executed." })
+      return
+    }
     const finishExecution = (snapshot: RunMonitorSnapshot, runId: string) => {
       setIsExecuting(false)
       setIsRunning(false)
@@ -4134,6 +4127,14 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         })
         return
       }
+      if (!["completed", "success", "succeeded"].includes(status)) {
+        setExecutionStatus("waiting")
+        toast.message("Execution status needs review", {
+          description: `Reported status: ${snapshot.status || "Not reported"}`,
+          action: { label: "View run", onClick: () => router.push(`/runs/${runId}`) },
+        })
+        return
+      }
       setExecutionStatus("completed")
       toast.success("Workflow executed successfully", {
         description: `Run ID: ${runId}`,
@@ -4146,6 +4147,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
     // For UUID workflows, save first then execute via API
     if (canPersist) {
+    persistenceLock.current = true
     setIsRunning(true)
     let saved = false
     try {
@@ -4248,120 +4250,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             }
           : undefined,
       })
+    } finally {
+      persistenceLock.current = false
     }
     return
   }
   
-  // Demo mode: local simulation for non-UUID workflows
-  setIsRunning(true)
-  setIsExecuting(true)
-  setExecutionStatus("running")
-  setExecutionStartTime(Date.now())
-  setExecutionStep(0)
-  setExecutionError(null)
-  
-  // Get ordered nodes for execution (simple ordering by x position)
-  const orderedNodes = [...nodes].sort((a, b) => a.position.x - b.position.x)
-  
-  // Simulate execution through each node
-  for (let i = 0; i < orderedNodes.length; i++) {
-    const currentNode = orderedNodes[i]
-    setExecutionStep(i + 1)
-    
-    // Special handling for decision nodes - show evaluating state
-    if (currentNode.type === "decision") {
-      // Set to evaluating state with pulsing animation
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { ...n, state: "evaluating" as NodeState }
-            : n
-        )
-      )
-      
-      // Longer evaluation time for decision nodes (1.5-3 seconds)
-      const evaluationTime = 1500 + Math.random() * 1500
-      await new Promise((resolve) => setTimeout(resolve, evaluationTime))
-      
-      // Simulate AI decision reasoning
-      const outputPaths = currentNode.outputPaths || [
-        { id: "default", label: "Default path" }
-      ]
-      const randomPathIndex = Math.floor(Math.random() * outputPaths.length)
-      const chosenPath = outputPaths[randomPathIndex]
-      const confidence = Math.floor(75 + Math.random() * 25) // 75-100%
-      
-      // Generate reasoning
-      const reasoning: DecisionConfig["reasoning"] = {
-        summary: `Based on analysis of input data, the AI determined that "${chosenPath.label}" is the optimal path forward.`,
-        confidence,
-        chosenPath: chosenPath.label,
-        factors: [
-          "High engagement signals detected",
-          "Data quality score above threshold",
-          "Pattern matches historical successes"
-        ],
-        rejectedPaths: outputPaths
-          .filter(p => p.id !== chosenPath.id)
-          .map(p => p.label)
-      }
-      
-      // Update node with reasoning and set to success
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { 
-                ...n, 
-                state: "success" as NodeState,
-                decisionConfig: {
-                  ...n.decisionConfig,
-                  reasoning
-                }
-              }
-            : n
-        )
-      )
-      
-      // Show decision toast
-      toast.success(`AI Decision: ${chosenPath.label}`, {
-        description: `${currentNode.name} completed with ${confidence}% confidence`,
-        icon: <GitBranch className="h-4 w-4 text-success" />,
-      })
-      
-    } else {
-      // Standard node execution
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { ...n, state: "running" as NodeState }
-            : n
-        )
-      )
-      
-      // Simulate processing time (0.8-2 seconds per node)
-      const processingTime = 800 + Math.random() * 1200
-      await new Promise((resolve) => setTimeout(resolve, processingTime))
-      
-      // Set current node to success
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === currentNode.id
-            ? { ...n, state: "success" as NodeState }
-            : n
-        )
-      )
-    }
-  }
-  
-  // Execution completed
-  setIsExecuting(false)
-  setIsRunning(false)
-  setExecutionStatus("completed")
-  
-  toast.success("Workflow completed successfully", {
-    description: `Executed ${orderedNodes.length} steps in ${((Date.now() - (executionStartTime || Date.now())) / 1000).toFixed(1)}s`,
-  })
-  }, [canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router, executionStartTime])
+  }, [isLoadingGraph, loadError, canPersist, id, nodes, settingsName, settingsDescription, workflowMeta.name, workflowMeta.description, router])
   
   const handlePauseRun = useCallback(async () => {
     if (!lastRunId) return
@@ -4606,7 +4501,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     className="group flex min-w-0 items-center gap-1.5 rounded-[5px] px-1.5 py-1 transition-colors hover:bg-[color:var(--g-chrome-hover)]"
                     title="Switch workflow"
                   >
-                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px]">
+                    <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground max-w-[150px] sm:max-w-[240px] xl:max-w-[320px] font-[family-name:var(--font-space-grotesk)]">
                       {workflowMeta.name}
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
@@ -4678,7 +4573,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               size="sm"
               className="h-8 gap-2"
               onClick={handleSave}
-              disabled={isSaving || isLoadingGraph || isRunning || connectorBlockingIssues.length > 0}
+              disabled={isSaving || isLoadingGraph || Boolean(loadError) || isRunning || connectorBlockingIssues.length > 0}
               aria-busy={isSaving}
               title={
                 connectorBlockingIssues.length > 0
@@ -4703,7 +4598,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               size="sm"
               className="h-8 gap-2"
               onClick={handleRun}
-              disabled={isRunning || isLoadingGraph || isSaving}
+              disabled={isRunning || isLoadingGraph || Boolean(loadError) || isSaving}
               aria-busy={isRunning}
             >
               {isRunning ? (
@@ -4860,12 +4755,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         </div>
 
         {/* Main content */}
-        <div className="flex flex-1 min-h-0 flex-col md:flex-row md:bg-[color:var(--g-chrome)]">
+        <div className="flex flex-1 min-h-0 flex-col lg:flex-row lg:bg-[color:var(--g-chrome)]">
           <BuilderNav workflowId={id} />
           {/* Left library panel - conditionally shown */}
           {libraryPanelOpen && (
           <div 
-            className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-card flex flex-col max-h-[40vh] md:max-h-none overflow-hidden relative animate-in slide-in-from-left-2 duration-200"
+            className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-border bg-card flex flex-col max-h-[40vh] lg:max-h-none overflow-hidden relative animate-in slide-in-from-left-2 duration-200"
             onMouseEnter={resetPanelTimer}
             onClick={resetPanelTimer}
           >
@@ -6123,8 +6018,32 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             ) : null}
           </BuilderInspector>
 
-          {/* Below md the inspector folds into sheets so configuration and Meson stay reachable. */}
+          {/* Below lg the inspector folds into sheets so configuration and Meson stay reachable. */}
           {isNarrowViewport ? renderConfigPanel(false) : null}
+          {isNarrowViewport ? (
+            <Sheet open={inspectorMode === "trace"} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
+              <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 overflow-y-auto p-0">
+                <SheetHeader className="border-b border-border px-4 py-3">
+                  <SheetTitle className="text-[15px]">Run trace</SheetTitle>
+                  <SheetDescription className="text-xs">Execution progress and evidence for this workflow.</SheetDescription>
+                </SheetHeader>
+                <BuilderRunTrace
+                  status={executionStatus}
+                  step={executionStep}
+                  total={nodes.length}
+                  elapsedSeconds={executionElapsed}
+                  error={executionError}
+                  lastRunId={lastRunId}
+                  traceOverlay={traceOverlay}
+                  onToggleTraceOverlay={() => setTraceOverlay((on) => !on)}
+                  onSelectNode={(nodeId) => { setSelectedNodeId(nodeId); changeInspectorMode("configure") }}
+                  nodes={[...nodes]
+                    .sort((x, y) => x.position.x - y.position.x || x.position.y - y.position.y)
+                    .map((n) => ({ id: n.id, name: n.name, typeLabel: getNodeTypeConfig(n.type).label, state: n.state, stepError: n.stepError }))}
+                />
+              </SheetContent>
+            </Sheet>
+          ) : null}
           {isNarrowViewport ? (
             <Sheet open={mesonPanelOpen} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
               <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 p-0">
@@ -6143,26 +6062,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             onOpenChange={setDebateDialogOpen}
             node={debateNode}
             onAcceptDecision={() => {
-              if (debateNode) {
-                handleUpdateNode({
-                  state: "success",
-                  councilConfig: {
-                    ...debateNode.councilConfig,
-                    finalDecision: {
-                      recommendation: debateNode.councilConfig?.finalDecision?.recommendation ?? "Decision accepted",
-                      method: debateNode.councilConfig?.finalDecision?.method ?? "consensus",
-                      confidence: debateNode.councilConfig?.finalDecision?.confidence ?? 100,
-                      keyReasons: debateNode.councilConfig?.finalDecision?.keyReasons ?? [],
-                      dissentingOpinions: debateNode.councilConfig?.finalDecision?.dissentingOpinions,
-                      executedAction: debateNode.councilConfig?.finalDecision?.recommendation
-                    }
-                  }
-                })
-                toast.success("Decision accepted", {
-                  description: "The council recommendation has been executed"
-                })
-              }
               setDebateDialogOpen(false)
+              toast.message("Recommendation reviewed", {
+                description: "Review does not execute an action. Run the persisted workflow to request execution.",
+              })
             }}
             onOverrideDecision={() => {
               toast.info("Override requested", {
@@ -6170,12 +6073,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               })
             }}
             onRequestMoreEvidence={() => {
-              if (debateNode) {
-                handleUpdateNode({ state: "debating" })
-                toast.info("Requesting more evidence", {
-                  description: "Agents are gathering additional data..."
-                })
-              }
+              if (lastRunId) router.push(`/runs/${lastRunId}`)
+              else toast.message("No run evidence yet", { description: "Run the persisted workflow to collect execution evidence." })
             }}
           />
         </div>

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
@@ -17,7 +18,10 @@ import { ArrowLeft, Loader2, Lock, Play, Square } from "lucide-react"
 import { toast } from "sonner"
 import type { PrivateConnectorBundle } from "@/types/api"
 
-const STATUS_VARIANT: Record<string, "success" | "error" | "warning" | "muted"> = {
+const STATUS_VARIANT: Record<
+  string,
+  "success" | "error" | "warning" | "muted"
+> = {
   draft: "warning",
   active: "success",
   disabled: "muted",
@@ -56,18 +60,22 @@ export default function MarketplacePrivatePage() {
   const [handlersSource, setHandlersSource] = useState(DEFAULT_HANDLERS)
   const [publicKeyPem, setPublicKeyPem] = useState("")
   const [signature, setSignature] = useState("")
+  const lock = useRef(false)
+  const [failure, setFailure] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
 
-  const { data, mutate, isLoading } = useSWR<{ bundles: PrivateConnectorBundle[] }>(
-    user ? "/api/marketplace/private-bundles" : null,
-    fetcher
-  )
+  const { data, error, mutate, isLoading } = useSWR<{
+    bundles: PrivateConnectorBundle[]
+  }>(user ? "/api/marketplace/private-bundles" : null, fetcher)
 
   const handleUpload = async () => {
+    if (lock.current || !user) return
     let manifest: Record<string, unknown>
     try {
       manifest = JSON.parse(manifestText) as Record<string, unknown>
+      if (!manifest || Array.isArray(manifest) || typeof manifest !== "object")
+        throw new Error("Manifest must be a JSON object")
     } catch {
       toast.error("Invalid manifest JSON")
       return
@@ -77,6 +85,8 @@ export default function MarketplacePrivatePage() {
       return
     }
 
+    lock.current = true
+    setFailure(null)
     setIsUploading(true)
     try {
       await marketplaceApi.uploadPrivateBundle({
@@ -86,31 +96,46 @@ export default function MarketplacePrivatePage() {
         signingPublicKeyPem: publicKeyPem.trim(),
         signature: signature.trim(),
       })
-      toast.success("Private bundle uploaded", { description: "Activate when ready (admin)." })
-      await mutate()
-    } catch (err) {
-      toast.error("Upload failed", {
-        description: err instanceof Error ? err.message : "Check signature and security scan",
+      toast.success("Private bundle uploaded", {
+        description: "Activate when ready (admin).",
       })
+      await Promise.allSettled([mutate()])
+    } catch (err) {
+      setFailure(
+        err instanceof Error
+          ? err.message
+          : "The request failed. Your inputs are retained for retry.",
+      )
     } finally {
+      lock.current = false
       setIsUploading(false)
     }
   }
 
-  const runBundleAction = async (bundleId: string, action: "activate" | "disable") => {
+  const runBundleAction = async (
+    bundleId: string,
+    action: "activate" | "disable",
+  ) => {
+    if (lock.current || !isAdmin) return
+    lock.current = true
     setActionId(bundleId)
     try {
       if (action === "activate") {
         await marketplaceApi.activatePrivateBundle(bundleId)
-        toast.success("Bundle activated", { description: "Runs in isolated sandbox via invoke_tool" })
+        toast.success("Bundle activated", {
+          description: "The server accepted activation for your organization.",
+        })
       } else {
         await marketplaceApi.disablePrivateBundle(bundleId)
         toast.success("Bundle disabled")
       }
-      await mutate()
+      await Promise.allSettled([mutate()])
     } catch (err) {
-      toast.error("Action failed", { description: err instanceof Error ? err.message : "Try again" })
+      toast.error("Action failed", {
+        description: err instanceof Error ? err.message : "Try again",
+      })
     } finally {
+      lock.current = false
       setActionId(null)
     }
   }
@@ -119,11 +144,14 @@ export default function MarketplacePrivatePage() {
 
   return (
     <AppShell title="Private connectors">
-      <div className="bg-[color:var(--g-canvas)]">
+      <div
+        className="bg-[color:var(--g-canvas)] pb-24 [&_[data-slot=button]]:min-h-11 [&_input]:min-h-11"
+        data-composition="operate"
+      >
         <GravitrePageHeader
           eyebrow="Enterprise · org-scoped"
           title="Private connector runtime"
-          description="Upload signed connector bundles that run in an isolated worker sandbox. See docs/integration/private-connector-runtime.md."
+          description="Upload a signed bundle, inspect its reported status and activate it for your organization when ready."
           icon={<Lock className="h-5 w-5" />}
           actions={
             <Button variant="outline" size="sm" asChild>
@@ -136,97 +164,152 @@ export default function MarketplacePrivatePage() {
         />
 
         <div className="mx-auto max-w-4xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
-        <section className="rounded-lg border border-border bg-card p-5 space-y-4">
-          <h2 className="text-sm font-medium">Upload signed bundle</h2>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" />
-          <Textarea
-            value={manifestText}
-            onChange={(e) => setManifestText(e.target.value)}
-            className="font-mono text-xs min-h-[200px] bg-secondary/40"
-            spellCheck={false}
-          />
-          <Textarea
-            value={handlersSource}
-            onChange={(e) => setHandlersSource(e.target.value)}
-            className="font-mono text-xs min-h-[140px] bg-secondary/40"
-            spellCheck={false}
-          />
-          <Textarea
-            value={publicKeyPem}
-            onChange={(e) => setPublicKeyPem(e.target.value)}
-            placeholder="-----BEGIN PUBLIC KEY-----"
-            className="font-mono text-xs min-h-[100px] bg-secondary/40"
-            spellCheck={false}
-          />
-          <Input
-            value={signature}
-            onChange={(e) => setSignature(e.target.value)}
-            placeholder="Base64 Ed25519 signature"
-          />
-          <Button onClick={() => void handleUpload()} disabled={isUploading}>
-            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Upload bundle"}
-          </Button>
-        </section>
-
-        <section className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="px-5 py-3 border-b border-border">
-            <h2 className="text-sm font-medium">Your org bundles</h2>
-          </div>
-          {isLoading && <p className="px-5 py-6 text-sm text-muted-foreground">Loading...</p>}
-          {!isLoading && bundles.length === 0 && (
-            <p className="px-5 py-6 text-sm text-muted-foreground">No private bundles yet.</p>
-          )}
-          <ul className="divide-y divide-border">
-            {bundles.map((bundle) => (
-              <li key={bundle.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium">{bundle.name}</p>
-                    <StatusBadge variant={STATUS_VARIANT[bundle.status] ?? "muted"}>{bundle.status}</StatusBadge>
-                    {bundle.runtime && (
-                      <span className="text-xs text-muted-foreground">runtime: {bundle.runtime}</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {bundle.vendor} · v{bundle.version} · cert {bundle.certificationStatus ?? "—"}
-                  </p>
-                </div>
-                {isAdmin && (
-                  <div className="flex gap-2">
-                    {bundle.status !== "active" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5"
-                        disabled={actionId === bundle.id}
-                        onClick={() => void runBundleAction(bundle.id, "activate")}
-                      >
-                        {actionId === bundle.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Play className="h-3.5 w-3.5" />
-                        )}
-                        Activate
-                      </Button>
-                    )}
-                    {bundle.status === "active" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5"
-                        disabled={actionId === bundle.id}
-                        onClick={() => void runBundleAction(bundle.id, "disable")}
-                      >
-                        <Square className="h-3.5 w-3.5" />
-                        Disable
-                      </Button>
-                    )}
-                  </div>
+          <section className="border-y border-border py-5 space-y-4">
+            <fieldset
+              disabled={isUploading || Boolean(actionId)}
+              className="min-w-0 space-y-4"
+            >
+              <h2 className="text-sm font-medium">Upload signed bundle</h2>
+              <label htmlFor="private-name" className="text-sm">
+                Bundle name
+              </label>
+              <Input
+                id="private-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Display name"
+              />
+              <Textarea
+                value={manifestText}
+                onChange={(e) => setManifestText(e.target.value)}
+                className="font-mono text-xs min-h-[200px] bg-secondary/40"
+                spellCheck={false}
+              />
+              <Textarea
+                value={handlersSource}
+                onChange={(e) => setHandlersSource(e.target.value)}
+                className="font-mono text-xs min-h-[140px] bg-secondary/40"
+                spellCheck={false}
+              />
+              <Textarea
+                value={publicKeyPem}
+                onChange={(e) => setPublicKeyPem(e.target.value)}
+                placeholder="-----BEGIN PUBLIC KEY-----"
+                className="font-mono text-xs min-h-[100px] bg-secondary/40"
+                spellCheck={false}
+              />
+              <label htmlFor="private-signature" className="text-sm">
+                Bundle signature
+              </label>
+              <Input
+                id="private-signature"
+                value={signature}
+                onChange={(e) => setSignature(e.target.value)}
+                placeholder="Base64 Ed25519 signature"
+              />
+              {failure ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {failure}
+                </p>
+              ) : null}
+              <Button
+                onClick={() => void handleUpload()}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Upload bundle"
                 )}
-              </li>
-            ))}
-          </ul>
-        </section>
+              </Button>
+            </fieldset>
+          </section>
+
+          <section className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="px-5 py-3 border-b border-border">
+              <h2 className="text-sm font-medium">Your org bundles</h2>
+            </div>
+            {error ? (
+              <WorkSectionErrorCard
+                title="Could not refresh private bundles"
+                onRetry={() => void mutate()}
+              />
+            ) : null}
+            {isLoading && !data && (
+              <p className="px-5 py-6 text-sm text-muted-foreground">
+                Loading...
+              </p>
+            )}
+            {data && !isLoading && bundles.length === 0 && (
+              <p className="px-5 py-6 text-sm text-muted-foreground">
+                No private bundles yet.
+              </p>
+            )}
+            <ul className="divide-y divide-border">
+              {bundles.map((bundle) => (
+                <li
+                  key={bundle.id}
+                  className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium">{bundle.name}</p>
+                      <StatusBadge
+                        variant={STATUS_VARIANT[bundle.status] ?? "muted"}
+                      >
+                        {bundle.status}
+                      </StatusBadge>
+                      {bundle.runtime && (
+                        <span className="text-xs text-muted-foreground">
+                          runtime: {bundle.runtime}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {bundle.vendor} · v{bundle.version} · cert{" "}
+                      {bundle.certificationStatus ?? "—"}
+                    </p>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-2">
+                      {bundle.status !== "active" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          disabled={Boolean(actionId) || isUploading}
+                          onClick={() =>
+                            void runBundleAction(bundle.id, "activate")
+                          }
+                        >
+                          {actionId === bundle.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5" />
+                          )}
+                          Activate
+                        </Button>
+                      )}
+                      {bundle.status === "active" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          disabled={Boolean(actionId) || isUploading}
+                          onClick={() =>
+                            void runBundleAction(bundle.id, "disable")
+                          }
+                        >
+                          <Square className="h-3.5 w-3.5" />
+                          Disable
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
       </div>
     </AppShell>

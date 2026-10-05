@@ -64,7 +64,7 @@ function SearchResultCard({ result }: { result: SearchResult }) {
         {result.entity_type === "run" ? (
           <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         ) : result.entity_type === "agent" ? (
-          <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+          <Bot className="h-4 w-4 text-[color:var(--g-electric)]" />
         ) : result.entity_type === "connector" ? (
           <Link2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
         ) : result.entity_type === "workflow" ? (

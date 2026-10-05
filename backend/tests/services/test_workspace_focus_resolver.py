@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.schemas.workspace_focus import WorkspaceFocus
 from app.services.workspace_focus_resolver import (
     RESOLUTION_INVALID_TYPE,
@@ -20,6 +22,7 @@ class _Query:
     def __init__(self, rows: list[dict]) -> None:
         self._rows = list(rows)
         self._eq: dict[str, object] = {}
+        self._null: set[str] = set()
 
     def select(self, *_args: object, **_kwargs: object) -> _Query:
         return self
@@ -28,7 +31,9 @@ class _Query:
         self._eq[key] = value
         return self
 
-    def is_(self, *_args: object, **_kwargs: object) -> _Query:
+    def is_(self, key: str, value: object) -> _Query:
+        if value == "null":
+            self._null.add(key)
         return self
 
     def limit(self, _n: int) -> _Query:
@@ -38,6 +43,8 @@ class _Query:
         rows = self._rows
         for key, value in self._eq.items():
             rows = [row for row in rows if row.get(key) == value]
+        for key in self._null:
+            rows = [row for row in rows if row.get(key) is None]
         return _Result(rows)
 
 
@@ -130,3 +137,37 @@ def test_plain_route_without_selection_is_valid() -> None:
     resolved = resolve_workspace_focus(org_id="org-a", client=_Client({}), focus=focus)
     assert resolved["resolution"] == RESOLUTION_NONE
     assert resolved["route"] == "/home"
+
+
+@pytest.mark.parametrize("object_type,table,name_key", [
+    ("goal", "goals", "objective"),
+    ("source", "rag_sources", "name"),
+    ("assignment", "agent_jobs", "kind"),
+    ("training-dataset", "training_datasets", "name"),
+    ("training-job", "training_jobs", "model_base"),
+    ("multi-agent-run", "agent_swarm_runs", "objective"),
+])
+def test_deep_work_selection_is_org_scoped_and_minimal(object_type, table, name_key):
+    focus = WorkspaceFocus.model_validate({"selection": {"object_type": object_type, "object_id": "work", "label": "Browser claim"}})
+    client = _Client({table: [
+        {"id": "work", "org_id": "org-b", name_key: "Other tenant", "environment": "production"},
+        {"id": "work", "org_id": "org-a", name_key: "Stored identity", "status": "queued", "environment": "production", "secret": "never disclose"},
+    ]})
+    result = resolve_workspace_focus(org_id="org-a", client=client, focus=focus)
+    assert result["resolution"] == RESOLUTION_RESOLVED
+    assert result["canonical"]["name"] == "Stored identity"
+    assert "secret" not in result["canonical"]
+    assert "Stored identity" in format_workspace_focus_compiler_block(result)
+    other_org = resolve_workspace_focus(org_id="org-c", client=client, focus=focus)
+    assert other_org["resolution"] == RESOLUTION_UNRESOLVED
+
+
+def test_source_focus_excludes_deleted_and_other_environment_rows():
+    focus = WorkspaceFocus.model_validate({"selection": {"object_type": "source", "object_id": "work"}})
+    for row in [
+        {"environment": "staging", "deleted_at": None},
+        {"environment": "production", "deleted_at": "2026-10-04"},
+    ]:
+        client = _Client({"rag_sources": [{"id": "work", "org_id": "org-a", "name": "Unavailable", **row}]})
+        result = resolve_workspace_focus(org_id="org-a", client=client, focus=focus)
+        assert result["resolution"] == RESOLUTION_UNRESOLVED

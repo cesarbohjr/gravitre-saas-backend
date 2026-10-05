@@ -129,7 +129,7 @@ export function BuilderInspector({
       aria-label="Inspector"
       data-review-surface="builder-inspector"
       data-inspector-mode={mode}
-      className="hidden min-h-0 shrink-0 flex-col border-l border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] dark:border-[color:var(--graphite-700)] md:flex md:w-[300px] xl:w-[340px]"
+      className="dark hidden min-h-0 shrink-0 flex-col border-l border-[color:var(--g-border-subtle)] bg-[color:var(--g-carbon)] text-foreground lg:flex lg:w-[300px] xl:w-[340px]"
     >
       <div role="tablist" aria-label="Inspector mode" className="flex h-10 shrink-0 items-stretch gap-4 border-b border-[color:var(--g-border-subtle)] px-4">
         {INSPECTOR_TABS.map((tab) => {
@@ -158,7 +158,7 @@ export function BuilderInspector({
                   aria-hidden
                   className={cn(
                     "size-1.5 rounded-full",
-                    tab.id === "trace" ? "bg-[color:var(--g-electric)] motion-safe:animate-pulse" : "bg-[color:var(--g-emerald)]",
+                    tab.id === "trace" ? "bg-[color:var(--g-electric)]" : "bg-[color:var(--g-emerald)]",
                   )}
                 />
               ) : null}

@@ -13,7 +13,7 @@ import { intelligenceApi } from "@/lib/api"
 import { canonicalAgentsToMapAgents } from "@/lib/intelligence/canonical-agents"
 import { ApiError } from "@/lib/fetcher"
 import { ensureSelectedOrg } from "@/lib/org-context"
-import { readNumber } from "@/lib/intelligence/helpers"
+import { reportedNumber } from "@/lib/source-evidence"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { SimulationCard } from "@/components/intelligence/simulation-card"
 import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
@@ -59,7 +59,7 @@ import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-fo
 import { relationsForSelection, selectionForMapNode } from "@/lib/intelligence/selection-relations"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { ExtrovertSummary } from "@/components/gravitre/extrovert-summary"
 
 const ADVANCED_LINK_GROUPS = [
   {
@@ -416,7 +416,7 @@ function IntelligenceCenterInner() {
   }
 
   const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
-  const totalEvents = readNumber(summary.total_events, 0)
+  const totalEvents = reportedNumber(summary.total_events)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
   const journeyStep: 0 | 1 | 2 = !askSelected ? 0 : askSelected.kind === "relationship" ? 2 : 1
   return (
@@ -424,18 +424,24 @@ function IntelligenceCenterInner() {
       <div className="relative bg-[color:var(--g-canvas)]" data-composition="understand">
         <IntelligenceSectionRedirect />
 
-        {/* Investigation toolbar — identity, hub sections, freshness and journey in one line */}
+        <header className="px-4 pt-6 md:px-5">
+          <p className={TYPE.eyebrow}>Understand / Evidence before answers</p>
+          <h1 className="mt-2 font-[family-name:var(--font-space-grotesk)] text-[30px] font-medium leading-tight text-foreground sm:text-[32px]">{copy.title}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">What is changing across the business?</p>
+          <div className="py-5">
+            <ExtrovertSummary label="Intelligence snapshot summary" items={[
+              { label: "Signals in view", value: signalsLoading ? null : signals.length },
+              { label: "Known entities", value: canonicalMetrics?.knowledge?.knownEntities ?? null },
+              { label: "Known relationships", value: canonicalMetrics?.knowledge?.knownRelationships ?? null, tone: "brand" },
+              { label: "Recorded outcomes", value: outcomes ? totalEvents : null },
+            ]} />
+          </div>
+        </header>
+        {/* Investigation tools retain freshness, lenses, journey, and evidence. */}
         <div
           data-investigation-toolbar=""
           className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-3 md:px-5"
         >
-          <h1 className={cn(TYPE.sectionTitle, "flex items-center gap-2 pb-2.5")}>
-            <NucleoIntelligence className="h-4 w-4" aria-hidden />
-            {copy.title}
-            <span className="sr-only">
-              — how your agents, systems, and knowledge connect. Select anything on the field to see the evidence.
-            </span>
-          </h1>
           <IntelligenceHubTabs active="overview" className="min-w-0 flex-1" />
           <div className="flex items-center gap-4 pb-2">
             <IntelligenceFreshnessBar
@@ -451,11 +457,13 @@ function IntelligenceCenterInner() {
 
         {/* Field-primary: the field owns the first viewport; insight and evidence rails are edge-attached */}
         <section className="relative border-b border-divide">
-          <div className="relative z-10 grid md:grid-cols-2 xl:h-[calc(100dvh-6.75rem)] xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
+          <div className="relative z-10 grid md:grid-cols-2 xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
             <aside
               aria-label="Insight"
-              className="order-2 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 md:border-r xl:order-1 xl:overflow-y-auto xl:border-t-0"
+              className="order-3 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-4 py-4 md:border-r xl:order-1 xl:overflow-y-auto xl:border-t-0"
             >
+              <details open={railInspects || undefined}>
+                <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium xl:hidden">Signals and learnings</summary>
               <InsightRail
                 signals={signals}
                 signalsLoading={signalsLoading}
@@ -465,6 +473,7 @@ function IntelligenceCenterInner() {
                   setActiveLens("predicts")
                 }}
               />
+              </details>
             </aside>
             <div className="order-1 min-w-0 px-3 py-3 md:col-span-2 md:px-4 xl:order-2 xl:col-span-1 xl:overflow-y-auto">
             <IntelligenceShell
@@ -519,19 +528,22 @@ function IntelligenceCenterInner() {
             </div>
             <aside
               aria-label="Evidence"
-              className="order-3 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-4 py-4 xl:overflow-y-auto xl:border-l xl:border-t-0"
+              className="order-2 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-4 py-4 xl:order-3 xl:overflow-y-auto xl:border-l xl:border-t-0"
             >
+              <details open={railInspects || undefined}>
+                <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium xl:hidden">{askSelected ? `Evidence for ${askSelected.label}` : "Inspect evidence and measured outcomes"}</summary>
               <EvidenceRail
                 selected={askSelected}
                 relations={selectionRelations}
                 onSelectRelated={selectRelatedNode}
-                onOpenDetails={railInspects ? () => setInspectorOpen(true) : undefined}
+                onOpenDetails={() => setInspectorOpen(true)}
                 onClear={() => setMapSelection(null)}
                 totalEvents={totalEvents}
                 avgConfidence={avgConfidence}
                 entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}
                 relationshipCount={canonicalMetrics?.knowledge?.knownRelationships ?? null}
               />
+              </details>
             </aside>
           </div>
         </section>

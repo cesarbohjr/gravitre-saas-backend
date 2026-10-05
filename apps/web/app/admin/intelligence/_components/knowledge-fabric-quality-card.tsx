@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,7 +26,7 @@ import { SectionCard } from "./shared"
 import { cn } from "@/lib/utils"
 import { RADIUS } from "@/lib/design-system"
 
-type HealthTone = "ready" | "watch" | "thin"
+type HealthTone = "ready" | "watch" | "thin" | "unknown"
 
 const PAGE_SIZE = 6
 
@@ -34,7 +35,8 @@ function packHealth(pack: KnowledgeFabricPackQuality): {
   label: string
   summary: string
 } {
-  const gaps = pack.gaps?.length ?? 0
+  if (!Array.isArray(pack.gaps) || !Number.isFinite(pack.topic_coverage_pct) || !Number.isFinite(pack.license_verified_pct)) return { tone: "unknown", label: "Not reported", summary: "Coverage or license evidence is incomplete." }
+  const gaps = pack.gaps.length
   const topic = pack.topic_coverage_pct ?? 0
   const license = pack.license_verified_pct ?? 0
   const isTool = knowledgePackKind(pack.pack_id) === "tool"
@@ -106,7 +108,7 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
         {/* Soft pill only on important status (Ready / Watch / Needs attention) */}
         <Badge
           variant={
-            health.tone === "ready" ? "status" : health.tone === "thin" ? "destructive" : "warning"
+            health.tone === "unknown" ? "outline" : health.tone === "ready" ? "status" : health.tone === "thin" ? "destructive" : "warning"
           }
           className="font-semibold hover:opacity-100"
         >
@@ -124,7 +126,7 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
         <div>
           <dt className="text-xs text-muted-foreground">Trusted sources</dt>
           <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[color:var(--g-text-primary)]">
-            {pack.authoritative_source_count}/{pack.primary_source_count}
+            {pack.authoritative_source_count ?? "Not reported"}/{pack.primary_source_count ?? "Not reported"}
           </dd>
         </div>
         <div>
@@ -136,7 +138,7 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
         <div>
           <dt className="text-xs text-muted-foreground">Knowledge pieces</dt>
           <dd className="mt-0.5 text-sm font-semibold tabular-nums text-[color:var(--g-text-primary)]">
-            {pack.chunk_count}
+            {pack.chunk_count ?? "Not reported"}
           </dd>
         </div>
       </dl>
@@ -155,7 +157,7 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-3 border-t border-border/50 pt-3 text-sm text-muted-foreground">No named gaps.</p>
+        <p className="mt-3 border-t border-border/50 pt-3 text-sm text-muted-foreground">{Array.isArray(pack.gaps) ? "No named gaps." : "Gap evidence not reported."}</p>
       )}
     </article>
   )
@@ -167,7 +169,7 @@ export function KnowledgeFabricQualityCard() {
   const [department, setDepartment] = useState<string>("all")
   const [page, setPage] = useState(0)
 
-  const { data, isLoading, error } = useSWR(
+  const { data, isLoading, error, mutate } = useSWR(
     "knowledge-fabric/admin/quality",
     () => intelligenceApi.knowledgeFabricQuality(),
     { revalidateOnFocus: false },
@@ -188,7 +190,7 @@ export function KnowledgeFabricQualityCard() {
   }, [packs])
 
   const filtered = useMemo(() => {
-    const order: Record<HealthTone, number> = { thin: 0, watch: 1, ready: 2 }
+    const order: Record<HealthTone, number> = { thin: 0, unknown: 1, watch: 2, ready: 3 }
     return [...packs]
       .filter((p) => {
         const k = knowledgePackKind(p.pack_id)
@@ -208,7 +210,7 @@ export function KnowledgeFabricQualityCard() {
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount - 1)
   const pageItems = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
-  const attention = filtered.filter((p) => packHealth(p).tone !== "ready").length
+  const attention = filtered.filter((p) => ["thin", "watch"].includes(packHealth(p).tone)).length
 
   return (
     <SectionCard
@@ -219,18 +221,15 @@ export function KnowledgeFabricQualityCard() {
           <Badge variant={attention > 0 ? "warning" : "outline"} className="font-normal">
             {attention > 0
               ? `${attention} need${attention === 1 ? "s" : ""} attention`
-              : "Looking ready"}
+              : filtered.some((p) => packHealth(p).tone === "unknown") ? "Evidence incomplete" : "Looking ready"}
           </Badge>
         ) : null
       }
     >
-      {isLoading ? (
+      {error ? <WorkSectionErrorCard error={error} onRetry={() => void mutate()} /> : null}
+      {isLoading && !data ? (
         <p className="text-sm text-muted-foreground">Loading knowledge readiness…</p>
-      ) : error ? (
-        <p className="text-sm text-muted-foreground">
-          Knowledge readiness unavailable. Refresh or check admin access.
-        </p>
-      ) : packs.length === 0 ? (
+      ) : !data ? null : packs.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Books className="h-4 w-4" weight="duotone" aria-hidden />
           No knowledge packs measured yet.

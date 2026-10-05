@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useMotionPrefs } from "@/lib/animations"
 import {
@@ -44,12 +44,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Conversation } from "@/types/api"
 import { groupConversationsByRecency } from "@/lib/conversation-history-groups"
 import {
@@ -69,6 +64,7 @@ import {
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr)
+  if (!Number.isFinite(date.getTime()) || date.getTime() > Date.now()) return "Not reported"
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60000)
@@ -137,6 +133,8 @@ export function ConversationSidebar({
   searchQuery?: string
   onSearchQueryChange?: (query: string) => void
 }) {
+  const deletionLock = useRef(false)
+  const renameCommitted = useRef(false)
   const [searchOpen, setSearchOpen] = useState(Boolean(searchQuery.trim()))
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery)
   const [dateFilter, setDateFilter] = useState<HistoryDateFilter>(readStoredHistoryDateFilter)
@@ -173,7 +171,7 @@ export function ConversationSidebar({
 
   const grouped = useMemo(() => groupConversationsByRecency(filtered), [filtered])
 
-  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length
+  const allSelected = filtered.length > 0 && filtered.every((row) => selectedIds.has(row.id))
   const bulkOpen = selectedIds.size > 0
 
   const clearSelection = () => {
@@ -190,7 +188,14 @@ export function ConversationSidebar({
   }
 
   const toggleSelectAll = () => {
-    setSelectedIds((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((c) => c.id))))
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      for (const row of filtered) {
+        if (allSelected) next.delete(row.id)
+        else next.add(row.id)
+      }
+      return next
+    })
   }
 
   const handleRowClick = (id: string) => {
@@ -199,7 +204,8 @@ export function ConversationSidebar({
   }
 
   const confirmDelete = async () => {
-    if (!conversationToDelete || isDeleting) return
+    if (!conversationToDelete || deletionLock.current) return
+    deletionLock.current = true
     setIsDeleting(true)
     try {
       await onDelete(conversationToDelete)
@@ -213,12 +219,14 @@ export function ConversationSidebar({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete conversation")
     } finally {
+      deletionLock.current = false
       setIsDeleting(false)
     }
   }
 
   const confirmBulkDelete = async () => {
-    if (isBulkDeleting || selectedIds.size === 0) return
+    if (deletionLock.current || selectedIds.size === 0) return
+    deletionLock.current = true
     setIsBulkDeleting(true)
     try {
       await onBulkDelete(Array.from(selectedIds))
@@ -227,6 +235,7 @@ export function ConversationSidebar({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete conversations")
     } finally {
+      deletionLock.current = false
       setIsBulkDeleting(false)
     }
   }
@@ -236,24 +245,38 @@ export function ConversationSidebar({
     clearSelection()
   }
 
-  const shareLink = (id: string) => {
-    const url = `${window.location.origin}/ai?c=${id}`
-    void navigator.clipboard.writeText(url)
+  const shareLink = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/ai?c=${encodeURIComponent(id)}`,
+      )
+      toast.success("Conversation link copied", {
+        description: "Access still requires workspace permission.",
+      })
+    } catch {
+      toast.error("Could not copy the link. Check browser clipboard permissions.")
+    }
   }
 
   return (
     <>
       {/* Mobile-only scrim. The single open/close toggle lives in the chat
           header; tapping the scrim or the in-sidebar close button dismisses it. */}
-      {isOpen && <div className="fixed inset-0 z-30 bg-black/40 md:hidden backdrop-blur-sm" onClick={onToggle} />}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden backdrop-blur-sm"
+          onClick={onToggle}
+        />
+      )}
 
       <aside
         aria-hidden={!isOpen}
+        inert={!isOpen}
         className={cn(
           // Keep closed panels fully inert: a prior regression left a ghost
           // "Select items" drawer visible when the Activity rail opened because
           // closed state only used w-0/translate without opacity/pointer-events.
-          "fixed inset-y-0 left-0 z-50 flex h-full w-72 min-h-0 min-w-0 flex-col isolate overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform,opacity,border-color] duration-300 ease-in-out md:static",
+          "fixed inset-y-0 left-0 z-50 flex h-full w-72 min-h-0 min-w-0 flex-col isolate overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform,opacity,border-color] duration-200 ease-in-out motion-reduce:transition-none md:static",
           isOpen
             ? "translate-x-0 opacity-100"
             : "-translate-x-full max-md:pointer-events-none opacity-100 md:translate-x-0 md:w-0 md:max-w-0 md:border-0 md:opacity-0 md:pointer-events-none",
@@ -263,11 +286,19 @@ export function ConversationSidebar({
         <div className="flex min-h-14 flex-col justify-center gap-2 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-3 py-2">
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-sm font-semibold text-[color:var(--g-text-primary)]">History</span>
+              <span className="truncate text-sm font-semibold text-[color:var(--g-text-primary)]">
+                History
+              </span>
               <div className="flex shrink-0 items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-[color:var(--g-text-muted)]" onClick={onNew} aria-label="New conversation">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 text-[color:var(--g-text-muted)]"
+                      onClick={onNew}
+                      aria-label="New conversation"
+                    >
                       <MessageSquarePlus className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -276,7 +307,7 @@ export function ConversationSidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 text-[color:var(--g-text-muted)] md:hidden"
+                  className="h-11 w-11 text-[color:var(--g-text-muted)] md:hidden"
                   onClick={onToggle}
                   aria-label="Close conversation history"
                 >
@@ -293,8 +324,9 @@ export function ConversationSidebar({
                     aria-checked={allSelected}
                     aria-label={allSelected ? "Clear selection" : "Select all conversations"}
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
-                      allSelected && "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
+                      allSelected &&
+                        "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
                     )}
                     onClick={toggleSelectAll}
                   >
@@ -305,7 +337,13 @@ export function ConversationSidebar({
               <div className="flex shrink-0 items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-[color:var(--g-text-muted)]" onClick={() => setSearchOpen((v) => !v)} aria-label="Search conversations">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 text-[color:var(--g-text-muted)]"
+                      onClick={() => setSearchOpen((v) => !v)}
+                      aria-label="Search conversations"
+                    >
                       <Search className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -319,8 +357,10 @@ export function ConversationSidebar({
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "h-9 w-9",
-                            dateFilter === "all" ? "text-[color:var(--g-text-muted)]" : "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+                            "h-11 w-11",
+                            dateFilter === "all"
+                              ? "text-[color:var(--g-text-muted)]"
+                              : "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
                           )}
                           aria-label="Filter conversations"
                         >
@@ -356,8 +396,10 @@ export function ConversationSidebar({
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "h-9 w-9",
-                            sort === "newest" ? "text-[color:var(--g-text-muted)]" : "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
+                            "h-11 w-11",
+                            sort === "newest"
+                              ? "text-[color:var(--g-text-muted)]"
+                              : "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]",
                           )}
                           aria-label="Sort conversations"
                         >
@@ -467,9 +509,7 @@ export function ConversationSidebar({
         {/* List — viewport child must be block (not Radix table) so short lists
             stay top-aligned under bucket labels instead of looking clipped. */}
         <ScrollArea className="min-h-0 flex-1 overflow-hidden [&_[data-slot=scroll-area-viewport]>div]:!block [&_[data-slot=scroll-area-viewport]>div]:!min-h-0">
-          {isLoading ? (
-            <ConversationListSkeleton />
-          ) : loadError ? (
+          {loadError ? (
             <WorkSectionErrorCard
               title="Couldn't load history"
               message="We couldn't fetch your conversations. Check your connection and try again."
@@ -477,7 +517,10 @@ export function ConversationSidebar({
               onRetry={onRetry}
               className="mx-3 my-6 border-destructive/30 bg-destructive/10"
             />
-          ) : filtered.length === 0 ? (
+          ) : null}
+          {isLoading && conversations.length === 0 ? (
+            <ConversationListSkeleton />
+          ) : loadError && conversations.length === 0 ? null : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <MessageCircle className="h-5 w-5 text-muted-foreground" />
@@ -515,7 +558,11 @@ export function ConversationSidebar({
                             initial={reduced ? { opacity: 0 } : { opacity: 0, x: -12 }}
                             animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
                             exit={reduced ? { opacity: 0 } : { opacity: 0, x: -12, height: 0 }}
-                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 420,
+                              damping: 34,
+                            }}
                             className={cn(
                               "relative group flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-[var(--np-radius-md)] px-2 py-1.5 transition-colors",
                               isActive
@@ -531,7 +578,11 @@ export function ConversationSidebar({
                               <motion.span
                                 layoutId="conversation-active-rail"
                                 className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-[color:var(--g-brand)]"
-                                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 500,
+                                  damping: 40,
+                                }}
                               />
                             )}
 
@@ -539,17 +590,22 @@ export function ConversationSidebar({
                               type="button"
                               role="checkbox"
                               aria-checked={isSelected}
-                              aria-label={isSelected ? "Deselect conversation" : "Select conversation"}
+                              aria-label={
+                                isSelected ? "Deselect conversation" : "Select conversation"
+                              }
                               className={cn(
-                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
-                                isSelected && "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
+                                "flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
+                                isSelected &&
+                                  "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
                               )}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 toggleSelected(conv.id)
                               }}
                             >
-                              {isSelected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+                              {isSelected ? (
+                                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                              ) : null}
                             </button>
 
                             {!isSelected && conv.pinned_at ? (
@@ -559,34 +615,47 @@ export function ConversationSidebar({
                             <div className="min-w-0 flex-1 overflow-hidden pr-1">
                               {isRenaming ? (
                                 <Input
+                                  aria-label="Conversation title"
                                   value={renameValue}
                                   onChange={(e) => setRenameValue(e.target.value)}
                                   className="h-7 text-xs"
                                   autoFocus
                                   onClick={(e) => e.stopPropagation()}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
+                                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                                      e.preventDefault()
+                                      renameCommitted.current = true
                                       onRename(conv.id, renameValue.trim() || conv.title)
                                       setRenamingId(null)
                                     }
-                                    if (e.key === "Escape") setRenamingId(null)
+                                    if (e.key === "Escape") {
+                                      renameCommitted.current = true
+                                      setRenamingId(null)
+                                    }
                                   }}
                                   onBlur={() => {
-                                    if (renameValue.trim()) onRename(conv.id, renameValue.trim())
+                                    if (!renameCommitted.current && renameValue.trim())
+                                      onRename(conv.id, renameValue.trim())
                                     setRenamingId(null)
                                   }}
                                 />
                               ) : (
                                 <div className="flex min-w-0 items-center gap-2">
-                                  <p
+                                  <button
+                                    type="button"
+                                    aria-current={isActive ? "page" : undefined}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      onSelect(conv.id)
+                                    }}
                                     title={conv.title || "New conversation"}
                                     className={cn(
-                                      "min-w-0 flex-1 truncate text-sm leading-snug text-sidebar-foreground",
+                                      "min-h-11 min-w-0 flex-1 truncate text-left text-sm leading-snug text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-[color:var(--g-brand)]",
                                       isActive && "font-medium",
                                     )}
                                   >
                                     {conv.title || "New conversation"}
-                                  </p>
+                                  </button>
                                   <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
                                     {formatRelativeTime(conv.updated_at)}
                                   </span>
@@ -600,7 +669,7 @@ export function ConversationSidebar({
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     onClick={(e) => e.stopPropagation()}
-                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-100 hover:bg-sidebar-accent hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 data-[state=open]:opacity-100"
+                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-100 hover:bg-sidebar-accent hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100 data-[state=open]:opacity-100"
                                     aria-label="Conversation options"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
@@ -609,6 +678,7 @@ export function ConversationSidebar({
                                 <DropdownMenuContent align="end" className="w-44">
                                   <DropdownMenuItem
                                     onClick={() => {
+                                      renameCommitted.current = false
                                       setRenamingId(conv.id)
                                       setRenameValue(conv.title || "")
                                     }}
@@ -626,18 +696,18 @@ export function ConversationSidebar({
                                           <Pin className="h-3.5 w-3.5 mr-2" /> Pin
                                         </DropdownMenuItem>
                                       )}
-                                  {isConversationArchived(conv)
-                                    ? onUnarchive && (
-                                        <DropdownMenuItem onClick={() => onUnarchive(conv.id)}>
-                                          <ArchiveRestore className="h-3.5 w-3.5 mr-2" /> Unarchive
-                                        </DropdownMenuItem>
-                                      )
-                                    : (
-                                        <DropdownMenuItem onClick={() => onArchive(conv.id)}>
-                                          <Archive className="h-3.5 w-3.5 mr-2" /> Archive
-                                        </DropdownMenuItem>
-                                      )}
-                                  <DropdownMenuItem onClick={() => shareLink(conv.id)}>
+                                  {isConversationArchived(conv) ? (
+                                    onUnarchive && (
+                                      <DropdownMenuItem onClick={() => onUnarchive(conv.id)}>
+                                        <ArchiveRestore className="h-3.5 w-3.5 mr-2" /> Unarchive
+                                      </DropdownMenuItem>
+                                    )
+                                  ) : (
+                                    <DropdownMenuItem onClick={() => onArchive(conv.id)}>
+                                      <Archive className="h-3.5 w-3.5 mr-2" /> Archive
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => void shareLink(conv.id)}>
                                     <Share2 className="h-3.5 w-3.5 mr-2" /> Copy link
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
@@ -665,7 +735,12 @@ export function ConversationSidebar({
         </ScrollArea>
       </aside>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!deletionLock.current) setDeleteDialogOpen(open)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
@@ -689,14 +764,21 @@ export function ConversationSidebar({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!deletionLock.current) setBulkDeleteOpen(open)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {selectedIds.size} conversation{selectedIds.size === 1 ? "" : "s"}?
+              Delete {selectedIds.size} conversation
+              {selectedIds.size === 1 ? "" : "s"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The selected conversations and their messages will be permanently removed. This cannot be undone.
+              The selected conversations and their messages will be permanently removed. This cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

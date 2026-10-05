@@ -1,7 +1,6 @@
 "use client"
 
 import type { CSSProperties } from "react"
-import { motion } from "framer-motion"
 import type { IntelligenceCoreDepartment } from "@/lib/api"
 import { MAP_KIND_NUCLEO, NodusGraphNodeTile } from "@/components/intelligence/graph/nodus-graph-node"
 import { formatDepartmentLabel } from "./types"
@@ -35,11 +34,9 @@ export function DepartmentNode({
   const Icon = MAP_KIND_NUCLEO.department
 
   return (
-    <motion.div
+    <div
       className={cn(!embedded && "absolute -translate-x-1/2 -translate-y-1/2")}
       style={style}
-      animate={!reduced ? { y: [0, -3, 0] } : { y: 0 }}
-      transition={!reduced ? { duration: 3.6, repeat: Infinity, ease: "easeInOut" } : undefined}
     >
       <NodusGraphNodeTile
         icon={Icon}
@@ -50,8 +47,9 @@ export function DepartmentNode({
             : STATE_COPY[department.state]
         }
         active={isActive}
+        working={isActive}
         reduced={reduced}
       />
-    </motion.div>
+    </div>
   )
 }

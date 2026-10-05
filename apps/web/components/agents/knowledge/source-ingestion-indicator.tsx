@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 export type SourceIngestionSnapshot = {
@@ -20,6 +20,7 @@ function customerStatus(status?: string): string {
 }
 
 export function SourceIngestionIndicator({ snapshot }: { snapshot: SourceIngestionSnapshot }) {
+  const reduced = useReducedMotion()
   const status = (snapshot.status ?? "").toLowerCase()
   const indexing = status === "syncing" || status === "processing"
   const failed = status === "error" || status === "failed"
@@ -56,17 +57,17 @@ export function SourceIngestionIndicator({ snapshot }: { snapshot: SourceIngesti
             <div className="h-1.5 overflow-hidden rounded-full bg-muted/60">
               <motion.div
                 className="h-full rounded-full bg-violet-500/80"
-                initial={{ width: 0 }}
+                initial={reduced ? false : { width: 0 }}
                 animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: reduced ? 0 : 0.2 }}
               />
             </div>
           ) : (
             <div className="h-1.5 overflow-hidden rounded-full bg-muted/60">
               <motion.div
                 className="h-full w-1/3 rounded-full bg-violet-500/70"
-                animate={{ x: ["-100%", "300%"] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+                animate={reduced ? undefined : { x: ["-100%", "300%"] }}
+                transition={reduced ? { duration: 0 } : { duration: 1.4, repeat: Infinity, ease: "linear" }}
               />
             </div>
           )}

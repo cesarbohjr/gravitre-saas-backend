@@ -130,6 +130,32 @@ def _resolve_in_org(
     object_id: str,
     environment_name: str,
 ) -> dict[str, Any] | None:
+    # Resolve only identity/state from existing stores, never credentials or content.
+    scoped_stores = {
+        "goal": ("goals", "id,objective,status", "objective"),
+        "source": ("rag_sources", "id,name,type,status", "name"),
+        "assignment": ("agent_jobs", "id,kind,status", "kind"),
+        "training-dataset": ("training_datasets", "id,name,type,status", "name"),
+        "training-job": ("training_jobs", "id,model_base,status", "model_base"),
+        "multi-agent-run": ("agent_swarm_runs", "id,objective,status", "objective"),
+    }
+    if object_type in scoped_stores:
+        table, fields, name_key = scoped_stores[object_type]
+        query = client.table(table).select(fields).eq("id", object_id).eq("org_id", org_id)
+        if object_type == "source":
+            query = query.eq("environment", environment_name).is_("deleted_at", "null")
+        rows = query.limit(1).execute().data or []
+        if not rows:
+            return None
+        row = rows[0]
+        return {
+            "object_type": object_type,
+            "object_id": str(row.get("id") or object_id),
+            "name": _safe_str(row.get(name_key)),
+            "store": table,
+            "status": _safe_str(row.get("status"), 64) or None,
+        }
+
     if object_type == "agent":
         from app.operators.agent_intelligence import resolve_agent_record
 

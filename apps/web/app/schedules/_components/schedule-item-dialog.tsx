@@ -25,6 +25,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { ScheduleDetailSheet } from "./detail-sheet"
+import { SheetContent } from "@/components/ui/sheet"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import {
   ScheduleEditorDialog,
@@ -61,6 +64,9 @@ export function ScheduleItemDialog({
   onUpdated?: () => void
   workflowOptions?: Array<{ id: string; name: string }>
 }) {
+  const compact = useIsMobile(1024)
+  const DetailRoot = compact ? ScheduleDetailSheet : Dialog
+  const DetailContent = compact ? SheetContent : DialogContent
   const item = occurrence?.item ?? null
   const ids = useMemo(() => (item ? parseScheduledItemIds(item) : {}), [item])
   const editHref = item ? scheduleEditHref(item, ids) : null
@@ -138,11 +144,11 @@ export function ScheduleItemDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+      <DetailRoot open={open} onOpenChange={onOpenChange}>
+        <DetailContent className={compact ? "w-full gap-0 overflow-y-auto p-0 pb-[env(safe-area-inset-bottom)] sm:max-w-[540px]" : "max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto p-0 sm:max-w-md"}>
           {item && occurrence ? (
             <>
-              <DialogHeader className="space-y-3 border-b border-border px-6 py-5 text-left">
+              <DialogHeader className="space-y-3 border-b border-border px-6 py-5 pr-16 text-left">
                 <div className="flex flex-wrap items-center gap-2">
                   <KindBadge kind={item.kind} />
                   <StatusBadge variant={statusVariant(item.status)} dot>
@@ -154,9 +160,7 @@ export function ScheduleItemDialog({
                   {item.isSample ? <StatusBadge variant="muted">Sample</StatusBadge> : null}
                 </div>
                 <DialogTitle className="text-balance text-lg">{item.title}</DialogTitle>
-                {item.subtitle ? (
-                  <DialogDescription className="text-pretty">{item.subtitle}</DialogDescription>
-                ) : null}
+                <DialogDescription className="text-pretty">{item.subtitle || "Review this occurrence, reschedule it, or open its configuration."}</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-5 px-6 py-5">
@@ -177,7 +181,7 @@ export function ScheduleItemDialog({
                     <p className="mb-1 text-xs font-medium text-muted-foreground">
                       Recurrence
                     </p>
-                    <p className="font-mono text-sm text-foreground">{item.cron}</p>
+                    <p className="break-all font-mono text-sm text-foreground">{item.cron}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{describeCron(item.cron)}</p>
                     {item.timezone ? (
                       <p className="mt-1 text-xs text-muted-foreground">Timezone: {item.timezone}</p>
@@ -228,7 +232,7 @@ export function ScheduleItemDialog({
                         : "Pick a new date and time for this item."}
                     </p>
                     <Button
-                      className="w-full gap-2"
+                      className="min-h-11 w-full gap-2"
                       onClick={() => void handleMove()}
                       disabled={isMoving || !targetDate}
                     >
@@ -246,14 +250,14 @@ export function ScheduleItemDialog({
                   {canEditWorkflowSchedule ? (
                     <Button
                       variant="outline"
-                      className="w-full gap-2"
+                      className="min-h-11 w-full gap-2"
                       onClick={() => setEditorOpen(true)}
                     >
                       <Pencil className="h-4 w-4" />
                       Edit schedule
                     </Button>
                   ) : editHref ? (
-                    <Button asChild variant="outline" className="w-full gap-2">
+                    <Button asChild variant="outline" className="min-h-11 w-full gap-2">
                       <Link href={editHref}>
                         {scheduleEditLabel(item)}
                         <ArrowUpRight className="h-4 w-4" />
@@ -263,7 +267,7 @@ export function ScheduleItemDialog({
                   {canDelete ? (
                     <Button
                       variant="destructive"
-                      className="w-full gap-2"
+                      className="min-h-11 w-full gap-2"
                       onClick={() => setDeleteOpen(true)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -280,8 +284,8 @@ export function ScheduleItemDialog({
               </DialogFooter>
             </>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </DetailContent>
+      </DetailRoot>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

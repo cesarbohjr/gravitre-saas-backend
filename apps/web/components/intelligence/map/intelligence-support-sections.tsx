@@ -72,7 +72,7 @@ export function BusinessImpactCompact({
   avgConfidence,
   className,
 }: {
-  totalEvents: number
+  totalEvents: number | null
   avgConfidence: number | null | undefined
   className?: string
 }) {
@@ -87,7 +87,7 @@ export function BusinessImpactCompact({
       <div className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
         <GravitreMetric
           label="Outcome events"
-          value={totalEvents}
+          value={totalEvents ?? "Not reported"}
           hint="Last 7 days"
           icon={<NucleoIntelligence className="h-4 w-4" />}
         />
