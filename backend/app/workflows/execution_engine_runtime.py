@@ -35,18 +35,23 @@ from app.workflows.constants import (
     STEP_STATUS_FAILED,
     STEP_STATUS_SKIPPED,
 )
-from app.workflows.execution_engine import (
-    ExecutionGraph,
-    GraphValidationError,
-    _APPROVAL_NODE_TYPES,
-    _CHECKPOINT_KEY,
-    _PASSTHROUGH_NODE_TYPES,
-    _edges_as_dicts,
-    _upstream_outputs,
-    build_execution_graph,
-    topological_batches,
-    validate_execution_graph,
-)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.workflows.execution_engine import ExecutionGraph
+
+_APPROVAL_NODE_TYPES = frozenset({"approval", "human_approval"})
+_CHECKPOINT_KEY = "_graph_execution"
+_PASSTHROUGH_NODE_TYPES = frozenset({"source", "trigger"})
+
+
+def _engine_symbols():
+    # execution_engine re-exports this runtime's public entry points. Import its
+    # graph helpers lazily so importing this module directly cannot create the
+    # execution_engine <-> execution_engine_runtime cycle.
+    from app.workflows import execution_engine as engine
+
+    return engine
 from app.workflows.registry import StepContext, get_handler
 from app.workflows.repository import (
     create_step,
@@ -78,7 +83,7 @@ class _GraphRunContext:
     org_id: str
     user_id: str
     run_id: str
-    graph: ExecutionGraph
+    graph: "ExecutionGraph"
     edge_dicts: list[dict[str, Any]]
     parameters: dict[str, Any]
     client: Any
@@ -403,7 +408,7 @@ def _save_graph_checkpoint(
         "skipped_nodes": ctx.skipped_nodes,
         "approval_context": approval_context or {},
         "nodes": list(ctx.graph.nodes_by_id.values()),
-        "edges": _edges_as_dicts(ctx.graph.edges),
+        "edges": _engine_symbols()._edges_as_dicts(ctx.graph.edges),
     }
     if pause_reason:
         checkpoint["pause_reason"] = pause_reason
@@ -443,7 +448,7 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     policy = _node_policy(node)
 
     if _is_approval_node(node):
-        upstream = _upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
+        upstream = _engine_symbols()._upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
         node_metadata = node.get("metadata") if isinstance(node.get("metadata"), dict) else {}
         approval_context = {
             "node_id": node_id,
@@ -499,7 +504,7 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     if isinstance(step_def.get("metadata"), dict):
         config["metadata"] = step_def["metadata"]
 
-    upstream = _upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
+    upstream = _engine_symbols()._upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
     merged_parameters = {
         **ctx.parameters,
         "upstream_outputs": upstream,
@@ -965,9 +970,9 @@ def _graph_from_run(run: dict[str, Any]) -> tuple[ExecutionGraph, list[list[str]
                 "This chat orchestration run has no executable graph for Retry step. "
                 "Re-run the plan from Chat instead."
             )
-    graph = build_execution_graph(nodes, edges)
-    validate_execution_graph(graph)
-    return graph, topological_batches(graph)
+    graph = _engine_symbols().build_execution_graph(nodes, edges)
+    _engine_symbols().validate_execution_graph(graph)
+    return graph, _engine_symbols().topological_batches(graph)
 
 
 def _run_graph_batches(
@@ -1053,9 +1058,9 @@ def execute_workflow_graph(
 ) -> tuple[str, list[dict], list[str], bool]:
     """Execute a builder graph in topological batches with upstream context."""
     del steps_exist  # reserved for resume/idempotency
-    graph = build_execution_graph(nodes, edges)
-    validate_execution_graph(graph)
-    batches = topological_batches(graph)
+    graph = _engine_symbols().build_execution_graph(nodes, edges)
+    _engine_symbols().validate_execution_graph(graph)
+    batches = _engine_symbols().topological_batches(graph)
 
     ctx = _GraphRunContext(
         settings=settings,
@@ -1063,7 +1068,7 @@ def execute_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_engine_symbols()._edges_as_dicts(graph.edges),
         parameters=dict(parameters or {}),
         client=client,
         environment_name=environment_name,
@@ -1221,8 +1226,8 @@ def resolve_approval_batch_and_resume(
 
     nodes = checkpoint.get("nodes") or (run.get("definition_snapshot") or {}).get("graph", {}).get("nodes") or []
     edges = checkpoint.get("edges") or (run.get("definition_snapshot") or {}).get("graph", {}).get("edges") or []
-    graph = build_execution_graph(nodes, edges)
-    batches = topological_batches(graph)
+    graph = _engine_symbols().build_execution_graph(nodes, edges)
+    batches = _engine_symbols().topological_batches(graph)
     batch_index = int(checkpoint.get("batch_index") or 0)
     approval_context = safe_normalize_stored_dict(checkpoint, key='approval_context') or safe_normalize_stored_dict(params, key='approval_context')
     on_reject = str(approval_context.get("on_reject") or "fail_workflow")
@@ -1256,7 +1261,7 @@ def resolve_approval_batch_and_resume(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_engine_symbols()._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1319,8 +1324,8 @@ def resume_workflow_graph(
 
     nodes = checkpoint.get("nodes") or (run.get("definition_snapshot") or {}).get("graph", {}).get("nodes") or []
     edges = checkpoint.get("edges") or (run.get("definition_snapshot") or {}).get("graph", {}).get("edges") or []
-    graph = build_execution_graph(nodes, edges)
-    batches = topological_batches(graph)
+    graph = _engine_symbols().build_execution_graph(nodes, edges)
+    batches = _engine_symbols().topological_batches(graph)
     batch_index = int(checkpoint.get("batch_index") or 0)
 
     approval_context = safe_normalize_stored_dict(checkpoint, key='approval_context') or safe_normalize_stored_dict(params, key='approval_context')
@@ -1333,7 +1338,7 @@ def resume_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_engine_symbols()._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1428,7 +1433,7 @@ def resume_paused_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_engine_symbols()._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1505,7 +1510,7 @@ def retry_workflow_step(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_edges_as_dicts(graph.edges),
+        edge_dicts=_engine_symbols()._edges_as_dicts(graph.edges),
         parameters=params,
         client=client,
         environment_name=environment_name,
