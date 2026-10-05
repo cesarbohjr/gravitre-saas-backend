@@ -12,9 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Target } from "lucide-react"
+import { GoalProgressSummary, MilestoneTrack } from "@/components/goals/goal-progress"
 import { fetcher } from "@/lib/fetcher"
-import { TYPE } from "@/lib/design-system"
-import { cn } from "@/lib/utils"
 
 interface GoalProgressPayload {
   goal: { id: string; objective: string; status?: string; category?: string | null; department?: string | null }
@@ -48,23 +47,10 @@ export default function GoalDetailPage() {
         <div className="space-y-6 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
           {error ? <WorkSectionErrorCard title={data ? "Could not refresh goal" : "Could not load goal"} message={data ? "Showing the last retrieved goal. Retry for the current state." : error instanceof Error ? error.message : "Try again to retrieve this goal."} onRetry={() => void mutate()} /> : null}
           {isLoading && !data ? <Skeleton className="h-48 w-full" /> : data ? <>
-            <section aria-labelledby="goal-progress-heading" className="grid gap-4 border-y border-divide py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-              <div className="min-w-0">
-                <h2 id="goal-progress-heading" className={TYPE.eyebrow}>Goal progress</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{progress == null ? "No progress measurement was returned for this goal." : "Progress reported by the goal service."}</p>
-                {progress != null ? <div role="progressbar" aria-label="Goal progress" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="mt-4 h-1.5 overflow-hidden bg-secondary"><div className="h-full bg-[color:var(--g-brand)] transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${progress}%` }} /></div> : null}
-              </div>
-              <p className="font-sans text-3xl font-medium tabular-nums text-[color:var(--g-text-primary)]">{progress == null ? "Not reported" : `${progress}%`}</p>
-            </section>
+            <GoalProgressSummary progress={progress} milestones={milestones ?? null} />
             <section aria-labelledby="goal-milestones-heading">
               <h2 id="goal-milestones-heading" className="font-sans text-xl font-medium">Plan milestones</h2>
-              {milestones == null ? <p className="mt-4 text-sm text-muted-foreground">Milestones not reported.</p> : milestones.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No milestones have been added to this goal.</p> : <ol className="mt-4 divide-y divide-divide border-y border-divide">
-                {milestones.map((milestone, index) => <li key={milestone.id} className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 py-4 sm:grid-cols-[32px_minmax(0,1fr)_auto]">
-                  <span aria-hidden className="pt-0.5 font-mono text-xs tabular-nums text-muted-foreground">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="min-w-0 break-words text-sm font-medium">{milestone.title}</span>
-                  <Badge variant="outline" className={cn("col-start-2 w-fit capitalize sm:col-start-3", milestone.status === "completed" ? "border-[color:var(--g-brand)] text-[color:var(--g-brand-active)]" : milestone.status === "in_progress" ? "border-[color:var(--g-electric)] text-[color:var(--g-electric)]" : "text-muted-foreground")}>{milestone.status?.replaceAll("_", " ") || "Not reported"}</Badge>
-                </li>)}
-              </ol>}
+              {milestones == null ? <p className="mt-4 text-sm text-muted-foreground">Milestones not reported.</p> : milestones.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No milestones have been added to this goal.</p> : <MilestoneTrack milestones={milestones} />}
             </section>
           </> : !error && !isLoading ? <p className="text-sm text-muted-foreground">Goal details not reported.</p> : null}
         </div>

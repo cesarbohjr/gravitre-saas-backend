@@ -19,6 +19,8 @@ import WorkflowsPage from "@/app/workflows/page"
 import SchedulesPage from "@/app/schedules/page"
 import ModelsPage from "@/app/models/page"
 import TrainingPage from "@/app/training/page"
+import GoalsPage from "@/app/goals/page"
+import PlaysPage from "@/app/plays/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
 
@@ -52,6 +54,8 @@ export const SHOT_SURFACES = {
   workflows: WorkflowsPage,
   schedules: SchedulesPage,
   models: ModelsPage,
+  goals: GoalsPage,
+  plays: PlaysPage,
   training: TrainingPage,
   sources: SourcesPage,
   metrics: MetricsPage,

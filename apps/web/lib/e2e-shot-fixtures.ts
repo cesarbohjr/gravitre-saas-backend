@@ -1087,6 +1087,191 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // Requested as /api/workflows?org_id=… — the query string is ignored by the
   // pathname matcher, but the page still gates the request on an org being
   // resolved from /api/organizations above.
+  "/api/goals": {
+    goals: [
+      {
+        id: "goal_pipeline",
+        objective: "Recover $1.2M of stalled Q3 pipeline",
+        category: "revenue",
+        priority: "high",
+        department: "Sales",
+        status: "active",
+        connectedSystems: ["HubSpot", "Salesforce", "Slack"],
+        successMetrics: { primary: "Stalled deals re-engaged within 14 days" },
+        createdAt: T(60 * 24 * 6),
+      },
+      {
+        id: "goal_churn",
+        objective: "Cut first-90-day churn below 4%",
+        category: "retention",
+        priority: "high",
+        department: "Customer Success",
+        status: "active",
+        connectedSystems: ["Zendesk", "Stripe"],
+        successMetrics: { primary: "90-day logo churn" },
+        createdAt: T(60 * 24 * 12),
+      },
+      {
+        id: "goal_close",
+        objective: "Close the books two days faster each month",
+        category: "finance",
+        priority: "medium",
+        department: "Finance",
+        status: "paused",
+        connectedSystems: ["QuickBooks"],
+        createdAt: T(60 * 24 * 20),
+      },
+      {
+        id: "goal_onboard",
+        objective: "Automate new-hire IT provisioning",
+        category: "operations",
+        priority: "low",
+        department: "IT",
+        status: "draft",
+        createdAt: T(60 * 24 * 2),
+      },
+    ],
+  },
+  "/api/goals/goal_pipeline/progress": {
+    goal: {
+      id: "goal_pipeline",
+      objective: "Recover $1.2M of stalled Q3 pipeline",
+      status: "active",
+      category: "revenue",
+      department: "Sales",
+    },
+    completionPercentage: 58,
+    milestoneStatus: [
+      { id: "m1", title: "Identify deals with no activity in 21+ days", status: "completed" },
+      { id: "m2", title: "Draft re-engagement sequences per deal stage", status: "completed" },
+      { id: "m3", title: "Route high-value deals to account owners for approval", status: "in_progress" },
+      { id: "m4", title: "Send approved outreach and log replies to Salesforce", status: "pending" },
+      { id: "m5", title: "Measure recovered pipeline against the $1.2M target", status: "pending" },
+    ],
+  },
+  "/api/plays": {
+    count: 3,
+    plays: [
+      {
+        play: {
+          key: "pipeline_recovery",
+          name: "Stalled pipeline recovery",
+          objective: "Find deals that have gone quiet, draft the right follow-up, and route it to the owner for approval.",
+          version: "1.3.0",
+        },
+        readiness: {
+          dependency_status: "ready",
+          observe_ready: true,
+          recommend_ready: true,
+          act_with_approval_ready: true,
+          act_within_policy_ready: false,
+          blockers: [],
+          connector_groups: [{ ready: true }, { ready: true }],
+        },
+        workflowBindingCount: 3,
+      },
+      {
+        play: {
+          key: "churn_early_warning",
+          name: "Churn early warning",
+          objective: "Watch support and billing signals for at-risk accounts and recommend a save plan.",
+          version: "0.9.2",
+        },
+        readiness: {
+          observe_ready: true,
+          recommend_ready: true,
+          act_with_approval_ready: false,
+          blockers: [],
+          connector_groups: [{ ready: true }, { ready: true }, { ready: false }],
+        },
+        workflowBindingCount: 1,
+      },
+      {
+        play: {
+          key: "invoice_collections",
+          name: "Invoice collections",
+          objective: "Chase overdue invoices with polite, escalating reminders and flag disputes for a person.",
+          version: "1.0.0",
+        },
+        readiness: {
+          observe_ready: false,
+          blockers: ["Connect an accounting connector such as QuickBooks or Xero"],
+          connector_groups: [{ ready: false }],
+        },
+        workflowBindingCount: 0,
+      },
+    ],
+  },
+  "/api/plays/pipeline_recovery/readiness": {
+    play: {
+      key: "pipeline_recovery",
+      name: "Stalled pipeline recovery",
+      objective: "Find deals that have gone quiet, draft the right follow-up, and route it to the owner for approval.",
+      version: "1.3.0",
+    },
+    readiness: {
+      observe_ready: true,
+      recommend_ready: true,
+      act_with_approval_ready: true,
+      act_within_policy_ready: false,
+      blockers: [],
+      connector_groups: [{ ready: true }, { ready: true }],
+    },
+    workflowBindings: [],
+    workflowBindingCount: 3,
+  },
+  "/api/plays/pipeline_recovery/installation": {
+    installation: {
+      id: "inst_pipeline",
+      goalId: "goal_pipeline",
+      operatingMode: "ACT WITH APPROVAL",
+      status: "ready",
+    },
+  },
+  "/api/plays/pipeline_recovery/outcomes": {
+    truthRule: "Verified success requires source-of-record evidence.",
+    outcomes: [
+      {
+        id: "out_recovered",
+        measurement_status: "measured",
+        created_at: T(60 * 26),
+        metadata: {
+          verification_state: "VERIFIED SUCCESS",
+          metric_key: "pipeline_recovered",
+          delta_value: 184000,
+          currency: "USD",
+          verified: true,
+        },
+      },
+      {
+        id: "out_reply_rate",
+        measurement_status: "pending",
+        created_at: T(60 * 4),
+        metadata: { verification_state: "INCONCLUSIVE", metric_key: "reply_rate" },
+      },
+    ],
+  },
+  "/api/plays/pipeline_recovery/outcomes/out_recovered/evidence": {
+    playKey: "pipeline_recovery",
+    evidence: {
+      metric: {
+        key: "pipeline_recovered",
+        baseline: 0,
+        result: 184000,
+        delta: 184000,
+        currency: "USD",
+        measuredAt: T(60 * 26),
+      },
+      play: { key: "pipeline_recovery", runId: "prn_7f21c9", installationId: "inst_pipeline" },
+      workflow: { id: "wf_reengage", runId: "run_reengage_1182" },
+      governance: { approvalStatus: "approved", requiredApprovals: 1 },
+      sourceRecords: [
+        { system: "salesforce", record_type: "Opportunity", record_id: "0068c00001AbCdE" },
+        { system: "salesforce", record_type: "Opportunity", record_id: "0068c00001FgHiJ" },
+      ],
+      verification: { state: "Verified success", method: "Source-of-record diff", verified: true, confidence: 0.94 },
+    },
+  },
   "/api/workflows": { workflows },
   "/api/ml/models": {
     models: [

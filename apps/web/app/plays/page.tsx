@@ -12,12 +12,14 @@ import { fetcher } from "@/lib/fetcher"
 import { PAGE_FRAME, TYPE } from "@/lib/design-system"
 import { ArrowRight, PlayCircle } from "lucide-react"
 import { GravitreEmpty } from "@/components/gravitre/nodus-product"
+import { AuthorityLadder } from "@/components/plays/authority-ladder"
 
 type PlayReadiness = {
   dependency_status?: string
   observe_ready?: boolean
   recommend_ready?: boolean
   act_with_approval_ready?: boolean
+  act_within_policy_ready?: boolean
   blockers?: string[]
   connector_groups?: Array<{ ready?: boolean }>
 }
@@ -91,12 +93,19 @@ export default function PlaysPage() {
               const connectorGroups = readiness.connector_groups ?? []
               const connectorReady = connectorGroups.filter((group) => group.ready).length
               return (
-                <article key={play.key} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className={TYPE.eyebrow}>Outcome play</p>
-                    <h2 className="mt-1 text-base font-semibold text-foreground">{play.name}</h2>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{play.objective}</p>
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                <article key={play.key} className="group relative flex flex-col gap-4 py-5 md:flex-row md:items-start md:gap-8">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className={TYPE.eyebrow}>Outcome play</p>
+                      {state.tone !== "ready" ? <Badge variant="outline" className={readinessClasses(state.tone)}>{state.label}</Badge> : null}
+                    </div>
+                    <h2 className="text-base font-semibold text-foreground text-balance">
+                      <Link href={`/plays/${play.key}`} className="rounded-sm after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        {play.name}
+                      </Link>
+                    </h2>
+                    <p className="text-sm leading-6 text-muted-foreground text-pretty">{play.objective}</p>
+                    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
                       <p>
                         <span className="text-muted-foreground">Data connections </span>
                         <span className="font-medium text-foreground">{connectorReady} of {connectorGroups.length} ready</span>
@@ -107,16 +116,20 @@ export default function PlaysPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
-                    <Badge variant="outline" className={readinessClasses(state.tone)}>{state.label}</Badge>
-                    {!readiness.observe_ready ? (
-                      <Button variant="outline" size="sm" className="min-h-11" asChild>
-                        <Link href={setupHref(readiness)}>Finish setup</Link>
+                  <div className="flex flex-col gap-3 md:w-72 md:shrink-0">
+                    <AuthorityLadder readiness={readiness} />
+                    <div className="relative z-10 flex flex-wrap items-center gap-2">
+                      {!readiness.observe_ready ? (
+                        <Button variant="outline" size="sm" className="min-h-11" asChild>
+                          <Link href={setupHref(readiness)}>Finish setup</Link>
+                        </Button>
+                      ) : null}
+                      <Button variant="ghost" size="sm" className="min-h-11 gap-1.5 px-2 text-foreground" asChild>
+                        <Link href={`/plays/${play.key}`} aria-label={`View ${play.name}`}>
+                          View play <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+                        </Link>
                       </Button>
-                    ) : <span className="text-xs text-muted-foreground">Ready with your workspace</span>}
-                    <Button variant="ghost" size="sm" className="min-h-11" asChild>
-                      <Link href={`/plays/${play.key}`}>View play <ArrowRight className="size-4" /></Link>
-                    </Button>
+                    </div>
                   </div>
                 </article>
               )
