@@ -528,13 +528,6 @@ class GravitreCognitiveLLMService(LLMService):
                     tool_results=list(getattr(complete_event, "tool_results", None) or []),
                     assistant_message_id=assistant_id,
                 )
-                self._durable_history = self._merge_durable_and_socket_history(
-                    self._durable_history,
-                    [
-                        {"role": "user", "content": user_text},
-                        {"role": "assistant", "content": assistant_text},
-                    ],
-                )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "pipecat_voice_turn_persist_failed org_id=%s conversation_id=%s error=%s",
