@@ -48,4 +48,5 @@ jobs:
           tests/services/test_objective_capability_composer.py
           tests/services/test_outcome_ownership_agent_verification.py
           tests/services/test_outcome_ownership_planner_composition.py
+          tests/services/test_outcome_ownership_learning_contamination.py
           tests/workflows/test_outcome_ownership_recovery_runtime.py
