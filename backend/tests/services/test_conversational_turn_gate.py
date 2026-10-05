@@ -183,7 +183,8 @@ def test_definition_brief_replies(message, needle):
     assert definition_brief_reply(message) is None
 
 
-def test_correction_recall_pushback_uses_standing_history():
+def test_correction_recall_pushback_is_retired():
+    """Recall + pushback must come from the reasoning path, not a canned bank."""
     from app.services.conversational_turn_gate import correction_recall_pushback_reply
 
     history = [
@@ -202,11 +203,7 @@ def test_correction_recall_pushback_uses_standing_history():
         "buy 5000 cheap backlinks from a farm this week?",
         history,
     )
-    assert reply is not None
-    assert "US" in reply
-    assert "canada" not in reply.lower()
-    assert "don't" in reply.lower() or "do not" in reply.lower()
-    assert "backlink" in reply.lower() or "farm" in reply.lower()
+    assert reply is None
 
 
 def test_capability_snapshot_uses_connected_list():
