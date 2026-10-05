@@ -32,8 +32,9 @@ export function GravitreAIWorkspaceHost({ fixtureBoundary = false }: { fixtureBo
     }
   }, [floatWorkspaceOpen, pageContext.pathname])
 
-  const captureRoute = process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1" && pageContext.pathname.startsWith("/e2e/shots/")
-  // Fixture auth lives below the root host. Only its scoped host may render here.
+  // Capture routes always mount their own fixture-scoped host; gating on the
+  // e2e env flag let the root host render a second window in plain dev.
+  const captureRoute = pageContext.pathname.startsWith("/e2e/shots/")
   if (captureRoute && !fixtureBoundary) return null
   if (!GRAVITRE_AI_FLOAT_ENABLED || !armed) return null
 

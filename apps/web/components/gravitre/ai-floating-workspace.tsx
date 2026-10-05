@@ -302,7 +302,7 @@ export function GravitreFloatingWorkspace({
         className={cn(
           WINDOW_CHROME.header,
           "justify-between gap-2",
-          !docked && "cursor-grab active:cursor-grabbing",
+          !docked && "cursor-grab select-none active:cursor-grabbing",
         )}
       >
         <div className="flex min-w-0 items-center gap-2">
