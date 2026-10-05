@@ -1103,6 +1103,27 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   "/api/settings/agents-fleet": {
     prefs: null,
   },
+  // Shapes match AuditListResponse / AuditSummary in types/api.ts.
+  "/api/audit/summary": {
+    byAction: { approve: 2, reject: 1, execute: 1, update: 1, invite: 1 },
+    byUser: [
+      { user_id: "usr_dana", user_name: "Dana Whitfield", count: 3 },
+      { user_id: "usr_marcus", user_name: "Marcus Oyelaran", count: 2 },
+    ],
+    byEntityType: { approval: 3, workflow: 1, settings: 1, user: 1 },
+  },
+  "/api/audit": {
+    total: 6,
+    hasMore: false,
+    logs: [
+      { id: "aud_1", action: "approve", entity_type: "approval", entity_id: "apr_renewal", entity_name: "Acme renewal discount", user_id: "usr_dana", user_name: "Dana Whitfield", created_at: AGO(12), details: { description: "Approved a 12% renewal discount for Acme before it was written to HubSpot.", outcome: "approved", destination: "HubSpot" } },
+      { id: "aud_2", action: "execute", entity_type: "workflow", entity_id: "wf_invoice", entity_name: "Overdue invoice follow-up", agent_id: "agt_collections", agent_name: "Collections agent", created_at: AGO(38), details: { description: "Sent 4 reminder emails for invoices over 30 days.", outcome: "completed" } },
+      { id: "aud_3", action: "reject", entity_type: "approval", entity_id: "apr_bulk", entity_name: "Bulk contact deletion", user_id: "usr_marcus", user_name: "Marcus Oyelaran", created_at: AGO(95), details: { description: "Rejected deleting 212 contacts; the list included active customers.", outcome: "rejected" } },
+      { id: "aud_4", action: "update", entity_type: "settings", entity_id: "set_sso", entity_name: "SSO enforcement", user_id: "usr_dana", user_name: "Dana Whitfield", created_at: AGO(240), details: { description: "Required SSO for all members.", outcome: "applied" } },
+      { id: "aud_5", action: "approve", entity_type: "approval", entity_id: "apr_ticket", entity_name: "Escalate priority ticket", user_id: "usr_marcus", user_name: "Marcus Oyelaran", created_at: AGO(410), details: { description: "Approved escalating ticket #4821 to the on-call manager.", outcome: "approved" } },
+      { id: "aud_6", action: "invite", entity_type: "user", entity_id: "usr_lena", entity_name: "Lena Sato", user_id: "usr_dana", user_name: "Dana Whitfield", created_at: AGO(1440), details: { description: "Invited Lena Sato as a member.", outcome: "sent" } },
+    ],
+  },
 
   // Requested as /api/workflows?org_id=… — the query string is ignored by the
   // pathname matcher, but the page still gates the request on an org being
