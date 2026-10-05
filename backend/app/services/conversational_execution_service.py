@@ -526,6 +526,16 @@ class ConversationalExecutionService:
             classification=classification or {},
         )
 
+    @staticmethod
+    def _verification_evidence(result: ExecutionResult) -> dict[str, Any]:
+        evidence = dict(result.verification or {})
+        evidence.setdefault("verified", bool(result.outcome_verified))
+        if result.entity_id:
+            evidence.setdefault("entity_id", result.entity_id)
+        if result.entity_type:
+            evidence.setdefault("entity_type", result.entity_type)
+        return evidence
+
     def _finalize_task_outcome(
         self,
         client: Any,
@@ -563,6 +573,10 @@ class ConversationalExecutionService:
             metadata={
                 "path": "conversational_execution",
                 "conversation_id": conversation_id,
+                "verification": self._verification_evidence(result),
+                "execution_lifecycle": "COMPLETED" if result.outcome_verified else (
+                    "EXECUTED_UNVERIFIED" if result.success else "FAILED"
+                ),
             },
         )
 
