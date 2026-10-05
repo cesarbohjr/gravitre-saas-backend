@@ -1606,6 +1606,41 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     ],
   },
+  "/api/conversations/cv_lead_triage/messages": {
+    has_more: false,
+    messages: [
+      {
+        id: "m1",
+        conversation_id: "cv_lead_triage",
+        role: "user",
+        content: "Why did the Salesforce write in Lead Triage get blocked this morning?",
+        created_at: AGO(64),
+      },
+      {
+        id: "m2",
+        conversation_id: "cv_lead_triage",
+        role: "assistant",
+        content:
+          "The 08:12 run of **Lead Triage** stopped at step 4, *Update Opportunity*, before writing anything.\n\n- **Cause:** the connected Salesforce user `ops-integration@northwind.com` has read-only access on Opportunity.\n- **Impact:** 14 leads were scored but not routed. No records were changed.\n- **Since:** the permission set was edited yesterday at 17:40.\n\nI can draft a request to restore edit access, or re-run the 14 leads once access is back.",
+        created_at: AGO(63),
+      },
+      {
+        id: "m3",
+        conversation_id: "cv_lead_triage",
+        role: "user",
+        content: "Draft the access request and queue the re-run for after it is approved.",
+        created_at: AGO(20),
+      },
+      {
+        id: "m4",
+        conversation_id: "cv_lead_triage",
+        role: "assistant",
+        content:
+          "Done. Two things are waiting on you:\n\n1. **Access request** to the Salesforce admin, restoring *Edit* on Opportunity for the integration user.\n2. **Re-run of 14 leads** in Lead Triage, held until the request is approved.\n\nNothing will write to Salesforce until you approve both.",
+        created_at: AGO(12),
+      },
+    ],
+  },
   "/api/assistant/business-signals": { signals: [], collected_at: AGO(5) },
   "/api/assistant/advisor-brief": {},
 

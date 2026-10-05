@@ -121,16 +121,24 @@ export function AiStartingState({
   composer?: ReactNode
 }) {
   const { starters, selected, origin, pending, stage } = useAiStarters(4, onInputChange, inputRef)
+  const where = selected?.label ?? origin
 
   return (
-    <div
-      className="mx-auto grid w-full max-w-[1080px] gap-8 px-2 pb-6 pt-[6vh] lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-12"
-      data-gravitre-ai-start=""
-    >
+    <div className="mx-auto flex w-full max-w-[760px] flex-col px-2 pb-6 pt-[6vh]" data-gravitre-ai-start="">
       <div className="min-w-0">
-        <p className="mb-4 flex items-center gap-2 text-[13px] font-medium text-[color:var(--g-text-primary)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--g-brand)]" aria-hidden />
-          Gravitre AI · Objective
+        <p className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-[color:var(--g-text-muted)]">
+          <span className="inline-flex min-w-0 items-center gap-2 text-[color:var(--g-text-primary)]">
+            <span className="size-1.5 shrink-0 rounded-full bg-[color:var(--g-brand)]" aria-hidden />
+            <span className="truncate">{where ? `Working with ${where}` : "Across your workspace"}</span>
+          </span>
+          {pending > 0 ? (
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="size-3.5 text-[color:var(--g-signal)]" aria-hidden />
+              <span>
+                <span className="tabular-nums">{pending}</span> waiting for your approval
+              </span>
+            </span>
+          ) : null}
         </p>
         <h2 className="text-balance text-[26px] font-semibold leading-[1.1] tracking-[-0.03em] text-[color:var(--g-text-primary)] sm:text-[32px]">
           What do you want to get done?
@@ -164,44 +172,23 @@ export function AiStartingState({
             </li>
           ))}
         </ul>
-      </div>
 
-      <aside className="min-w-0 space-y-6 lg:border-l lg:border-[color:var(--g-border-subtle)] lg:pl-8" aria-label="How requests run">
-        {selected || origin || pending > 0 ? (
-          <section aria-label="Context" className="space-y-2 text-[13px]">
-            <h3 className="text-[12px] font-semibold text-[color:var(--g-text-primary)]">Context</h3>
-            {origin ? <p className="text-[color:var(--g-text-muted)]">From {origin}</p> : null}
-            {selected ? (
-              <p className="border-l-2 border-[color:var(--g-intelligence)] pl-2 font-medium text-[color:var(--g-text-primary)]">
-                {selected.label}
-              </p>
-            ) : null}
-            {pending > 0 ? (
-              <p className="inline-flex items-center gap-1.5 font-medium text-[color:var(--g-text-primary)]">
-                <ShieldCheck className="size-3.5 text-[color:var(--g-signal)]" aria-hidden />
-                <span className="tabular-nums">{pending}</span> waiting for approval
-              </p>
-            ) : null}
-          </section>
-        ) : null}
-        <section className="space-y-3">
-          <h3 className="text-[12px] font-semibold text-[color:var(--g-text-primary)]">How a request runs</h3>
-          <ol className="relative space-y-3">
-            {MISSION_STAGE_ORDER.map((stage, index) => (
-              <li key={stage.id} className="relative flex gap-3">
-                {index < MISSION_STAGE_ORDER.length - 1 ? (
-                  <span aria-hidden className="absolute left-[4.5px] top-3 h-[calc(100%+2px)] w-px bg-[color:var(--g-border-default)]" />
-                ) : null}
-                <span aria-hidden className="relative z-10 mt-1 size-2.5 shrink-0 rounded-full border border-[color:var(--g-border-strong)] bg-background" />
-                <span className="min-w-0">
-                  <span className="block text-[12.5px] font-semibold text-[color:var(--g-text-primary)]">{stage.label}</span>
-                  <span className="block text-[12px] leading-snug text-[color:var(--g-text-muted)]">{stage.explain}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </aside>
+        <ol
+          aria-label="How a request runs"
+          className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[color:var(--g-text-muted)]"
+        >
+          {MISSION_STAGE_ORDER.map((stage, index) => (
+            <li key={stage.id} className="inline-flex items-center gap-2" title={stage.explain}>
+              {index > 0 ? (
+                <span aria-hidden className="h-px w-3 bg-[color:var(--g-border-strong)]" />
+              ) : null}
+              <span className={stage.id === "approval" ? "font-medium text-[color:var(--g-text-primary)]" : undefined}>
+                {stage.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   )
 }

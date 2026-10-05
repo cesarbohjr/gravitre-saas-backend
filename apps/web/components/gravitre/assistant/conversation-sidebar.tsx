@@ -172,6 +172,7 @@ export function ConversationSidebar({
   const grouped = useMemo(() => groupConversationsByRecency(filtered), [filtered])
 
   const allSelected = filtered.length > 0 && filtered.every((row) => selectedIds.has(row.id))
+  const selectionActive = selectedIds.size > 0
   const bulkOpen = selectedIds.size > 0
 
   const clearSelection = () => {
@@ -317,20 +318,25 @@ export function ConversationSidebar({
             </div>
             <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
-                {filtered.length > 0 ? (
+                {filtered.length > 0 && selectionActive ? (
                   <button
                     type="button"
                     role="checkbox"
                     aria-checked={allSelected}
                     aria-label={allSelected ? "Clear selection" : "Select all conversations"}
-                    className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
-                      allSelected &&
-                        "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
-                    )}
+                    className="group/check flex h-8 shrink-0 items-center gap-2 rounded-[var(--np-radius-sm)] pl-1 pr-2 text-xs font-medium text-[color:var(--g-text-secondary)] hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={toggleSelectAll}
                   >
-                    {allSelected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "flex size-4 items-center justify-center rounded-[4px] border border-[color:var(--g-border-strong)]",
+                        allSelected && "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-primary-foreground",
+                      )}
+                    >
+                      {allSelected ? <Check className="size-3" strokeWidth={3} /> : null}
+                    </span>
+                    <span className="tabular-nums">{selectedIds.size} selected</span>
                   </button>
                 ) : null}
               </div>
@@ -594,18 +600,23 @@ export function ConversationSidebar({
                                 isSelected ? "Deselect conversation" : "Select conversation"
                               }
                               className={cn(
-                                "flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)]",
-                                isSelected &&
-                                  "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white",
+                                "flex size-7 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                !selectionActive && "md:opacity-0 md:group-hover:opacity-100",
                               )}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 toggleSelected(conv.id)
                               }}
                             >
-                              {isSelected ? (
-                                <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                              ) : null}
+                              <span
+                                aria-hidden
+                                className={cn(
+                                  "flex size-4 items-center justify-center rounded-[4px] border border-[color:var(--g-border-strong)] bg-background",
+                                  isSelected && "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-primary-foreground",
+                                )}
+                              >
+                                {isSelected ? <Check className="size-3" strokeWidth={3} /> : null}
+                              </span>
                             </button>
 
                             {!isSelected && conv.pinned_at ? (
