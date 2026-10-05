@@ -166,11 +166,27 @@ def finalize_react_execution_plan(
         else:
             plan = mark_plan_terminal(plan, "blocked")
     elif runtime.observations and all(o.success for o in runtime.observations):
-        plan = mark_plan_terminal(plan, "completed")
+        consequential = [
+            step for step in plan.steps
+            if step.kind in {"write", "workflow", "agent_delegation"}
+        ]
+        verified_steps = {
+            o.step_id for o in runtime.observations
+            if bool((o.structured or {}).get("verified"))
+        }
+        if consequential and not all(step.step_id in verified_steps for step in consequential):
+            plan = mark_plan_terminal(plan, "verification_inconclusive")
+        else:
+            plan = mark_plan_terminal(plan, "completed")
     elif runtime.observations:
         plan = mark_plan_terminal(plan, "partial")
     elif answer.strip():
-        plan = mark_plan_terminal(plan, "completed")
+        # An answer can complete an answer-only plan, but it cannot prove an
+        # external side effect. Consequential plans require observations.
+        consequential = any(
+            step.kind in {"write", "workflow", "agent_delegation"} for step in plan.steps
+        )
+        plan = mark_plan_terminal(plan, "verification_inconclusive" if consequential else "completed")
     else:
         plan = mark_plan_terminal(plan, "failed")
     plan.execution_strategy = "REACT"
