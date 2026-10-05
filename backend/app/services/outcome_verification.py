@@ -363,14 +363,14 @@ def _assert_requested_fields(
     try:
         from app.services.entity_get_verify import id_param_candidates
         from app.services.field_assert_verify import find_stored_value
-        from app.services.tool_service import invoke_tool
+        from app.services.sealed_read_execution import invoke_compiled_read
 
         connector_id = getattr(ctx, "connector_id", None)
         for param_name in id_param_candidates(evidence.read_action):
             params: dict[str, Any] = {param_name: evidence.resource_id}
             if connector_id:
                 params["connector_id"] = connector_id
-            out = invoke_tool(ctx, evidence.read_action, params)
+            out = invoke_compiled_read(ctx, evidence.read_action, params)
             if not getattr(out, "success", False):
                 continue
             payload = out.data if isinstance(getattr(out, "data", None), dict) else {}

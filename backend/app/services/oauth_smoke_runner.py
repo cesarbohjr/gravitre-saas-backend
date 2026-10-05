@@ -11,7 +11,8 @@ from typing import Any, Callable, Literal
 
 from app.connectors.connection_health import resolve_connector_auth_status
 from app.connectors.repository import get_connector_by_type, list_connectors
-from app.services.tool_service import invoke_tool, list_registered_actions
+from app.services.sealed_read_execution import invoke_compiled_read
+from app.services.tool_service import list_registered_actions
 from app.services.tool_types import NormalizedResult, ToolContext, ToolError, ToolValidationError
 
 SmokeStatus = Literal[
@@ -697,7 +698,7 @@ def run_smoke_action(
     result.request_payload = params
 
     try:
-        normalized = invoke_tool(ctx, plan.action_id, params)
+        normalized = invoke_compiled_read(ctx, plan.action_id, params)
     except ToolValidationError as exc:
         status, fix = classify_failure(error_code=exc.code, error_message=str(exc))
         result.status = status

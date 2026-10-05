@@ -530,7 +530,9 @@ def enrich_from_page_context(
             sf_params["email"] = email
         if company:
             sf_params["company"] = company
-        result = invoke_tool(ctx, "salesforce.leads.search", sf_params)
+        from app.services.sealed_read_execution import invoke_compiled_read
+
+        result = invoke_compiled_read(ctx, "salesforce.leads.search", sf_params)
         matches.append(
             {
                 "action": "salesforce.leads.search",

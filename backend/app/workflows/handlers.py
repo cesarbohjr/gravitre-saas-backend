@@ -146,6 +146,7 @@ def _invoke_canvas_registered_tool(
     task_state: dict[str, Any] | None = None,
 ):
     from app.services.canvas_write_gate import bind_f1_write_hmac_context
+    from app.services.sealed_read_execution import bind_read_preflight
 
     tool_ctx, bound = bind_f1_write_hmac_context(
         tool_ctx=tool_context_from_step(context),
@@ -154,6 +155,11 @@ def _invoke_canvas_registered_tool(
         intent_text=intent_text,
         task_state=task_state,
     )
+    tool_ctx, bound, blocked = bind_read_preflight(
+        tool_ctx, action, bound, user_message=intent_text, task_state=task_state
+    )
+    if blocked is not None:
+        return blocked
     return invoke_tool(tool_ctx, action, bound)
 
 

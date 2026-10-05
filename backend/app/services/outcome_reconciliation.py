@@ -173,7 +173,7 @@ def _reconcile_by_lookup(
     natural: tuple[str, str],
 ) -> ReconciliationResult:
     from app.services.entity_get_verify import _dict_nodes, extract_entity_id
-    from app.services.tool_service import invoke_tool
+    from app.services.sealed_read_execution import invoke_compiled_read
 
     key, value = natural
     connector_id = getattr(ctx, "connector_id", None)
@@ -185,7 +185,7 @@ def _reconcile_by_lookup(
         for params in param_sets:
             if connector_id:
                 params = {**params, "connector_id": connector_id}
-            out = invoke_tool(ctx, lookup, params)
+            out = invoke_compiled_read(ctx, lookup, params)
             if not getattr(out, "success", False):
                 continue
             payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
