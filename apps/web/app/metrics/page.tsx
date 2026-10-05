@@ -560,7 +560,7 @@ export default function MetricsPage() {
         >
           <a
             href="/intelligence"
-            className="inline-block text-xs text-primary underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center text-sm text-primary underline-offset-4 hover:underline"
           >
             Back to Intelligence hub
           </a>

@@ -109,7 +109,7 @@ export function MobileAgenda({
               type="button"
               onClick={() => goToWeek(-1)}
               aria-label="Previous week"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors active:bg-muted"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors active:bg-muted"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -117,7 +117,7 @@ export function MobileAgenda({
               type="button"
               onClick={() => goToWeek(1)}
               aria-label="Next week"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors active:bg-muted"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors active:bg-muted"
             >
               <ChevronRight className="h-5 w-5" />
             </button>

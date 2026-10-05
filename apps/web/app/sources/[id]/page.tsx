@@ -184,7 +184,7 @@ export default function SourceDetailPage() {
     return (
       <AppShell title="Source">
         <div className="p-6">
-          <button onClick={() => router.push("/sources")} className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <button onClick={() => router.push("/sources")} className="mb-4 flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to sources
           </button>
           <WorkSectionErrorCard title="Source unavailable" message={error instanceof Error ? error.message : "This source was not returned."} onRetry={() => void mutate()} />
