@@ -49,6 +49,10 @@ def decide_recovery(
         return RecoveryDecision("blocked", False, False, "transient_retry_budget_exhausted")
     if alternate_capability_available:
         return RecoveryDecision("replan", False, False, "alternate_eligible_capability")
+    if retries_used < retry_budget:
+        # A definite failure (the provider rejected the call, or a read failed)
+        # left no side effect, so the step's own retry policy still applies.
+        return RecoveryDecision("retry", True, False, "bounded_retry_definite_failure")
     return RecoveryDecision("failed", False, False, "bounded_recovery_exhausted")
 
 

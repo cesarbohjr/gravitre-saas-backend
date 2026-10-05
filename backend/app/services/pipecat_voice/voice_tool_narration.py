@@ -200,6 +200,8 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
     """
     if not isinstance(output, dict):
         return None
+    if output.get("outcome_uncertain") is True or str(output.get("error_code") or "") == "outcome_uncertain":
+        return "I didn't get a confirmation for that change, so I won't retry it until I've checked whether it went through."
     if output.get("success") is False or output.get("error"):
         err = str(output.get("error") or output.get("message") or "").strip()
         if not err:
@@ -218,6 +220,11 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
         # CONFIRMED — Phase 3. Only ever reached from a real, returned
         # tool-output-available observation reporting success=True; never
         # spoken speculatively (see module docstring's HARD CONSTRAINT).
+        from app.services.outcome_verification import evidence_is_verified
+
+        if not evidence_is_verified(output):
+            # Provider acceptance only: say exactly that, never "done".
+            return "That change was accepted. I'm still confirming it took effect."
         for key in _CONFIRMED_DETAIL_KEYS:
             val = output.get(key)
             if isinstance(val, str) and val.strip():

@@ -84,9 +84,27 @@ class ReactPlanRuntime:
             latency_ms=elapsed_ms,
             plan_id=self.plan.plan_id,
         )
+        self._classify_dynamic_step(step_id, str(observation.get("action") or ""))
         self.observations.append(obs)
         self.plan = apply_observations_to_plan(self.plan, self.observations)
         return obs
+
+    def _classify_dynamic_step(self, step_id: str, action: str) -> None:
+        """A dynamic ReAct step that turned out to be a catalog write needs proof."""
+        if not action:
+            return
+        from app.services.outcome_verification import is_write_action
+
+        if not is_write_action(action):
+            return
+        from dataclasses import replace
+
+        self.plan.steps = [
+            replace(step, kind="write", action_key=action)
+            if step.step_id == step_id and (step.meta or {}).get("dynamic") and step.kind == "read"
+            else step
+            for step in self.plan.steps
+        ]
 
 
 def prepare_react_execution_plan(

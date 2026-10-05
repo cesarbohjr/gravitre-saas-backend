@@ -856,6 +856,15 @@ async def _notify_operator_job_finished(
     task = str(payload.get("task") or job.get("kind") or "operator task").strip()
     job_status = str(job.get("status") or "").strip().lower()
     terminal_status = "completed" if job_status == "completed" else "failed"
+    # A finished job is not a finished objective: the agent's own write rollup
+    # decides whether its changes are proven (completed), partial or unproven.
+    outcome = result.get("outcome") if isinstance(result.get("outcome"), dict) else {}
+    if terminal_status == "completed" and outcome.get("status") in {
+        "partial_success",
+        "verification_inconclusive",
+        "failed",
+    }:
+        terminal_status = str(outcome["status"])
     run_id = str(
         payload.get("workflow_run_id")
         or payload.get("run_id")
@@ -917,9 +926,7 @@ async def _notify_operator_job_finished(
             entity_type="workflow_run" if run_id else "agent_job",
             entity_id=run_id or str(job.get("id") or ""),
         ),
-        notification_title=(
-            "Operator task completed" if terminal_status == "completed" else "Operator task failed"
-        ),
+        notification_title=_assignment_notification_title(terminal_status),
         notification_body=f"Finished: {task[:160]}. Open Gravitre to review the result.",
         channel_hints={"bell": True, "email": True},
         email_context={
@@ -927,13 +934,24 @@ async def _notify_operator_job_finished(
             "job_id": str(job.get("id") or ""),
             "task_title": task[:120] or "Assignment",
             "requires_approval": bool(result.get("requires_approval")),
+            "final_status": terminal_status,
         },
         metadata={
             "path": "agent_job",
             "job_id": str(job.get("id") or ""),
             "job_kind": job.get("kind"),
+            "outcome_rollup": outcome or None,
+            "requires_outcome_verification": int(outcome.get("consequential") or 0) > 0,
         },
     )
+
+
+def _assignment_notification_title(status: str) -> str:
+    return {
+        "completed": "Operator task completed",
+        "partial_success": "Operator task partly completed",
+        "verification_inconclusive": "Operator task finished, changes unconfirmed",
+    }.get(status, "Operator task failed")
 
 
 from app.services.swarm_coordinator_service import run_swarm_subtask_job

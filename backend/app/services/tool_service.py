@@ -189,6 +189,7 @@ from app.services.tool_types import (
     ToolContext,
     ToolError,
     ToolNotFoundError,
+    ToolOutcomeUncertainError,
     ToolPermissionDeniedError,
     ToolRateLimitedError,
     ToolValidationError,
@@ -226,6 +227,40 @@ _TRANSPORT_HINTS = (
     "network is unreachable",
     "eof occurred",
 )
+
+
+# Failures that happen before a request leaves the host: replaying them cannot
+# duplicate a side effect.
+_PRE_SEND_HINTS = ("connection refused", "network is unreachable", "name or service not known")
+
+
+def is_ambiguous_delivery_failure(exc: BaseException, tool_exc: ToolError | None = None) -> bool:
+    """True when a request may have reached the provider before failing.
+
+    A timeout or a dropped connection after send leaves the vendor-side effect
+    unknown. For a write that means: do not retry, reconcile first.
+    """
+    import httpx
+
+    if isinstance(exc, ToolOutcomeUncertainError):
+        return True
+    msg = str(exc).lower()
+    if any(h in msg for h in _PRE_SEND_HINTS) or isinstance(exc, httpx.ConnectError):
+        return False
+    if (tool_exc is not None and tool_exc.code == "statement_timeout") or _is_statement_timeout(exc):
+        # Postgres rolled the statement back: nothing was applied.
+        return False
+    if tool_exc is not None and tool_exc.code == "connector_timeout":
+        return True
+    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError, TimeoutError)):
+        return True
+    return any(h in msg for h in _TIMEOUT_HINTS) or any(h in msg for h in _TRANSPORT_HINTS)
+
+
+def _is_write_invoke(action: str) -> bool:
+    from app.services.outcome_verification import is_write_action
+
+    return is_write_action(action)
 
 
 def _is_statement_timeout(exc: Exception) -> bool:
@@ -4921,6 +4956,23 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         except Exception as exc:
             tool_exc = _classify_error(exc)
             last_error = tool_exc
+            if (
+                not isinstance(tool_exc, ToolRateLimitedError)
+                and _is_write_invoke(action)
+                and is_ambiguous_delivery_failure(exc, tool_exc)
+            ):
+                # Outcome Ownership: the provider may already have applied this
+                # write. Replaying it can duplicate the side effect, so stop and
+                # hand the caller an uncertain outcome to reconcile.
+                last_error = ToolOutcomeUncertainError(
+                    f"{action} may have been applied before the connection failed: {exc}",
+                    details={
+                        "requires_reconciliation": True,
+                        "underlying_code": tool_exc.code,
+                        "attempt": attempt + 1,
+                    },
+                )
+                break
             retryable = isinstance(tool_exc, ToolRateLimitedError) or (
                 not isinstance(tool_exc, (ToolValidationError, ToolAuthExpiredError, ToolNotFoundError))
                 and attempt < attempts - 1

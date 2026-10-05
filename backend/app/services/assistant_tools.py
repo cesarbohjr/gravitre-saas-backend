@@ -647,6 +647,8 @@ async def tool_run_agent_task(
             "status": output.get("status"),
             "output": output.get("output"),
             "reactTraceSteps": len(output.get("react_trace") or []),
+            "outcomeVerified": bool(output.get("outcome_verified")),
+            "outcome": output.get("outcome") if isinstance(output.get("outcome"), dict) else {},
         }
     except Exception as exc:  # noqa: BLE001
         logger.warning(

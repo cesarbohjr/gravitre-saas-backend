@@ -31,7 +31,9 @@ def test_compound_plan_does_not_complete_on_child_success_without_verification()
             ExecutionObservation("agent", "agent", True, "returned output", {}),
         ],
     )
-    assert plan.terminal_status == "running"
+    # Every step ran but two consequential ones lack proof: an honest terminal
+    # state, not a perpetual "running" that the stall detector reports as stuck.
+    assert plan.terminal_status == "verification_inconclusive"
     assert next(s for s in plan.steps if s.step_id == "crm").status == "running"
     assert next(s for s in plan.steps if s.step_id == "agent").status == "running"
 
@@ -41,9 +43,35 @@ def test_compound_plan_completes_when_all_consequential_children_verified() -> N
         _plan(),
         [
             ExecutionObservation("research", "web", True, "found", {"verified": True}),
-            ExecutionObservation("crm", "hubspot", True, "read back", {"verified": True, "id": "1"}),
-            ExecutionObservation("agent", "agent", True, "artifact verified", {"verified": True}),
+            ExecutionObservation(
+                "crm",
+                "hubspot",
+                True,
+                "read back",
+                {"id": "1", "verification": {"verified": True, "method": "entity_get"}},
+            ),
+            ExecutionObservation(
+                "agent",
+                "agent",
+                True,
+                "artifact verified",
+                {"verification": {"verified": True, "method": "delegated_outcome"}},
+            ),
         ],
     )
     assert plan.terminal_status == "completed"
     assert all(s.status == "completed" for s in plan.steps)
+
+
+def test_bare_verified_flag_cannot_complete_a_write_step() -> None:
+    plan = apply_observations_to_plan(
+        _plan(),
+        [
+            ExecutionObservation("research", "web", True, "found", {}),
+            ExecutionObservation("crm", "hubspot", True, "accepted", {"verified": True}),
+            ExecutionObservation(
+                "agent", "agent", True, "ok", {"verification": {"verified": True, "method": "delegated_outcome"}}
+            ),
+        ],
+    )
+    assert plan.terminal_status == "verification_inconclusive"

@@ -101,12 +101,65 @@ _REFUSAL_CLAIM = re.compile(
     r"won['’]t create|cannot create|can['’]t create|will not (?:create|run|execute))\b",
     re.I,
 )
-_SUCCESS_CLAIM = re.compile(
-    r"\b(?:done|completed|complete|finished|is confirmed|I (?:have )?created|"
-    r"successfully (?:created|updated|sent|posted|completed)|all set|it's done|"
-    r"it is done|has been (?:created|updated|sent|completed))\b",
+# Lifecycle alignment (failed / rejected / awaiting approval): only unmistakable
+# claims, so ordinary prose such as "completed deals" is never rewritten.
+_SUCCESS_CLAIM = re.compile(r"\b(?:is confirmed|I created|successfully created|all set|it's done)\b", re.I)
+
+# Completion paraphrases, checked only on turns that carry a consequential action.
+_COMPLETION_CLAIM = re.compile(
+    r"\b(?:done|completed|complete|finished|is confirmed|I(?:'ve| have)? (?:created|updated|sent|posted|added)|"
+    r"successfully (?:created|updated|sent|posted|completed|added)|all set|it's done|"
+    r"it is done|went through|has been (?:created|updated|sent|completed|added|posted))\b",
     re.I,
 )
+# A claim word governed by one of these is not a completion claim
+# ("not done yet", "once it's complete", "will be finished").
+_CLAIM_NEGATION = re.compile(
+    r"(?:\bnot\b|n't\b|\bnever\b|\bonce\b|\bwhen\b|\buntil\b|\bafter\b|\bbefore\b|\bwill\b|"
+    r"\bif\b|\bwhether\b|\byet to\b|\bto be\b|\bnot yet\b)[^.!?]{0,24}$",
+    re.I,
+)
+_ACTION_PENDING_TYPES = frozenset(
+    {
+        "connector_action",
+        "connector_orchestration",
+        "create_agent",
+        "create_workflow",
+        "execute_workflow",
+        "run_agent_task",
+    }
+)
+
+
+def has_completion_claim(text: str | None) -> bool:
+    """True when text asserts that something finished (negation/future aware)."""
+    body = text or ""
+    for match in _COMPLETION_CLAIM.finditer(body):
+        lead = body[max(0, match.start() - 40) : match.start()]
+        if _CLAIM_NEGATION.search(lead):
+            continue
+        return True
+    return False
+
+
+def envelope_has_consequential_action(envelope: dict[str, Any] | None) -> bool:
+    """Only turns that executed (or staged) a write can make a false completion claim."""
+    env = envelope if isinstance(envelope, dict) else {}
+    data = env.get("data") if isinstance(env.get("data"), dict) else {}
+    if env.get("canonical_lifecycle") or data.get("canonical_lifecycle"):
+        return True
+    from app.services.outcome_verification import is_write_action
+
+    for container in (env, data):
+        if "execution_verified" in container:
+            return True
+        action = container.get("invoke_action") or container.get("action")
+        if isinstance(action, str) and "." in action and is_write_action(action):
+            return True
+        pending = container.get("pending_task")
+        if isinstance(pending, dict) and str(pending.get("type") or "") in _ACTION_PENDING_TYPES:
+            return True
+    return False
 
 _CODE_AS_MESSAGE = re.compile(r"^[a-z][a-z0-9_]{2,}$")
 
@@ -145,12 +198,15 @@ def align_composed_text_to_lifecycle(
     if verified and success and _REFUSAL_CLAIM.search(cleaned):
         if fallback and not _REFUSAL_CLAIM.search(fallback):
             return fallback
+    # A lifecycle stage means this turn is about an action, so paraphrased
+    # completion claims are checked too; without one only unmistakable claims are.
+    claims_done = has_completion_claim(cleaned) if stage else bool(_SUCCESS_CLAIM.search(cleaned))
     if stage in {"FAILED", "REJECTED", "CANCELLED"} or success is False:
-        if _SUCCESS_CLAIM.search(cleaned) and fallback:
+        if claims_done and fallback:
             return fallback
-    if stage == "AWAITING_APPROVAL" and _SUCCESS_CLAIM.search(cleaned) and fallback:
+    if stage in {"AWAITING_APPROVAL", "EXECUTED_UNVERIFIED", "VERIFYING"} and claims_done and fallback:
         return fallback
-    if stage == "OUTCOME_UNCERTAIN" and (_SUCCESS_CLAIM.search(cleaned) or _REFUSAL_CLAIM.search(cleaned)):
+    if stage == "OUTCOME_UNCERTAIN" and (claims_done or _REFUSAL_CLAIM.search(cleaned)):
         if fallback:
             return fallback
     return cleaned or (text or "")
@@ -715,11 +771,15 @@ async def compose_user_reply(
         # Outcome Ownership: completion language is a class of claims, not only
         # the literal "Done.". A model may paraphrase success, so mechanically
         # bound every completion-shaped claim to verified execution evidence.
-        if _SUCCESS_CLAIM.search(text) and not envelope_allows_completion_claim(env):
+        if (
+            envelope_has_consequential_action(env)
+            and has_completion_claim(text)
+            and not envelope_allows_completion_claim(env)
+        ):
             text = (
                 (draft or "").strip()
-                if draft and not _SUCCESS_CLAIM.search(draft) and not looks_like_raw_backend(draft)
-                else "The action was executed, but I have not verified the requested outcome yet."
+                if draft and not has_completion_claim(draft) and not looks_like_raw_backend(draft)
+                else "The action ran, but I have not confirmed the result in the source system yet."
             )
     from app.services.provider_result_grounding import apply_provider_result_grounding
 

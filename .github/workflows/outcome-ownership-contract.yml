@@ -4,12 +4,23 @@ on:
   pull_request:
     paths:
       - "backend/app/services/execution_outcome.py"
-      - "backend/app/services/outcome_completion_gate.py"
-      - "backend/app/services/outcome_recovery_policy.py"
+      - "backend/app/services/outcome_*.py"
       - "backend/app/services/objective_capability_composer.py"
       - "backend/app/services/agent_delegation_strategy.py"
       - "backend/app/services/swarm_coordinator_service.py"
-      - "backend/app/workflows/execution_engine_runtime.py"
+      - "backend/app/services/chat_connector_execution_service.py"
+      - "backend/app/services/chat_orchestration_*.py"
+      - "backend/app/services/conversational_execution_service.py"
+      - "backend/app/services/execution_plan_service.py"
+      - "backend/app/services/react_execution_strategy.py"
+      - "backend/app/services/response_composer.py"
+      - "backend/app/services/notification_email_service.py"
+      - "backend/app/services/tool_registry.py"
+      - "backend/app/services/tool_service.py"
+      - "backend/app/services/pipecat_voice/voice_tool_narration.py"
+      - "backend/app/operators/agent_intelligence.py"
+      - "backend/app/operators/agent_jobs.py"
+      - "backend/app/workflows/**"
       - "backend/tests/services/test_outcome_ownership_*.py"
       - "backend/tests/workflows/test_outcome_ownership_*.py"
       - ".github/workflows/outcome-ownership-contract.yml"
@@ -17,12 +28,23 @@ on:
     branches: [main]
     paths:
       - "backend/app/services/execution_outcome.py"
-      - "backend/app/services/outcome_completion_gate.py"
-      - "backend/app/services/outcome_recovery_policy.py"
+      - "backend/app/services/outcome_*.py"
       - "backend/app/services/objective_capability_composer.py"
       - "backend/app/services/agent_delegation_strategy.py"
       - "backend/app/services/swarm_coordinator_service.py"
-      - "backend/app/workflows/execution_engine_runtime.py"
+      - "backend/app/services/chat_connector_execution_service.py"
+      - "backend/app/services/chat_orchestration_*.py"
+      - "backend/app/services/conversational_execution_service.py"
+      - "backend/app/services/execution_plan_service.py"
+      - "backend/app/services/react_execution_strategy.py"
+      - "backend/app/services/response_composer.py"
+      - "backend/app/services/notification_email_service.py"
+      - "backend/app/services/tool_registry.py"
+      - "backend/app/services/tool_service.py"
+      - "backend/app/services/pipecat_voice/voice_tool_narration.py"
+      - "backend/app/operators/agent_intelligence.py"
+      - "backend/app/operators/agent_jobs.py"
+      - "backend/app/workflows/**"
       - "backend/tests/services/test_outcome_ownership_*.py"
       - "backend/tests/workflows/test_outcome_ownership_*.py"
       - ".github/workflows/outcome-ownership-contract.yml"
@@ -30,6 +52,7 @@ on:
 jobs:
   outcome-ownership:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -41,12 +64,8 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt pytest
-      - name: Outcome Ownership held-out contract
+      - name: Outcome Ownership contract (every outcome-ownership suite)
         run: >
           python -m pytest -q
-          tests/services/test_outcome_ownership_benchmark.py
           tests/services/test_objective_capability_composer.py
-          tests/services/test_outcome_ownership_agent_verification.py
-          tests/services/test_outcome_ownership_planner_composition.py
-          tests/services/test_outcome_ownership_learning_contamination.py
-          tests/workflows/test_outcome_ownership_recovery_runtime.py
+          $(ls tests/services/test_outcome_ownership_*.py tests/workflows/test_outcome_ownership_*.py)

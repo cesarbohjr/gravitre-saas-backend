@@ -169,7 +169,7 @@ class CognitivePlanner:
                                 for x in (raw.get("capabilities") or [])
                                 if str(x).strip()
                             ),
-                            connected=bool(raw.get("connected", True)),
+                            connected=raw.get("connected") is True,
                             writable=bool(raw.get("writable", False)),
                             verified=bool(raw.get("verified", False)),
                             priority=int(raw.get("priority") or 100),
@@ -179,6 +179,11 @@ class CognitivePlanner:
                     required_capabilities=required,
                     resources=[r for r in resources if r.resource_id],
                     require_write=bool(objective.get("requires_write", False)),
+                    write_capabilities={
+                        str(x).strip()
+                        for x in (objective.get("write_capabilities") or [])
+                        if str(x).strip()
+                    },
                 )
                 enriched = dict(enriched)
                 enriched["capability_composition"] = composition
