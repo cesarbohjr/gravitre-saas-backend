@@ -207,3 +207,28 @@ Added an objective-first resource composer supporting connectors, agents, workfl
 4. Run focused tests and full exact-head CI; fix all regressions.
 5. Re-run internal adversarial audit against the final diff.
 6. Only then hand the implementation + evidence packet to Claude for independent peer review.
+
+
+## Final internal adversarial audit — pre-peer-review pass
+
+Status: **implementation substantially complete; exact-head CI is the remaining internal gate.**
+
+### Adversarial invariants checked
+
+- **Provider success ≠ outcome completion.** Canonical finalization and Composer language require verification evidence before a user-facing Done claim.
+- **Approval ≠ execution.** Approval remains authorization only and cannot satisfy completion.
+- **Workflow terminal node ≠ verified business effect.** Consequential child evidence must propagate verification.
+- **Agent completion ≠ parent verification.** Delegated-agent observations propagate verification only when the child carries explicit verified evidence.
+- **Swarm tool success ≠ verified execution.** Successful calls require an explicit verification contract before `executionVerified`.
+- **Uncertain mutation ≠ safe retry.** Timeout/connection ambiguity on writes/workflows/agent delegation routes to reconciliation before retry.
+- **Compound objective ≠ single connector.** Objective-first composition can select connectors, agents, workflows, Plays, knowledge, datasets, and internet resources and exposes missing capabilities.
+- **Execution success ≠ positive learning.** Tool/workflow execution events do not bias future plans as business wins; unverified successful workflow runs are not promoted into procedural agent memory.
+- **Missing evidence ≠ optimistic completion.** Missing capability or verification remains explicit and blocks the strongest completion claim.
+
+### Regression found and repaired during this pass
+
+The first dedicated Outcome Ownership workflow failed before tests because the repository requirements do not install `pytest`. The workflow now explicitly installs `pytest`. A malformed literal newline insertion in `ExecutionResult` was also repaired before this final pass.
+
+### Internal disposition
+
+No known P0 false-completion path remains in the audited surfaces. Do **not** mark merge-ready until the exact-head Outcome Ownership contract and repository CI both complete successfully. After exact-head green, freeze implementation and send this PR, audit, test matrix, and CI evidence to Claude for independent peer review. Any Claude P0/P1 finding reopens implementation; otherwise proceed to merge/deployment/live owner acceptance as separate evidence gates.
