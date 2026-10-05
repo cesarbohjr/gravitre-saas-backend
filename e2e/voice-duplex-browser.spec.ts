@@ -16,6 +16,10 @@ test.describe("Voice duplex browser pipeline", () => {
 
     const harness = page.getByTestId("voice-duplex-harness")
     await expect(harness).toBeVisible()
+    // The mocks are installed in a client effect. Waiting for the explicit
+    // readiness bit prevents Playwright from clicking during hydration before
+    // WebSocket/fetch/AudioContext have been replaced.
+    await expect.poll(async () => harness.getAttribute("data-ready"), { timeout: 10_000 }).toBe("true")
 
     await page.getByTestId("voice-duplex-start").click()
 
