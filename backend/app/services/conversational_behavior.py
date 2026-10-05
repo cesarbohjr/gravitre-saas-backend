@@ -23,10 +23,10 @@ generic answer.
 Right shape (offer a real choice when it fits):
 "Want me to schedule it for review, or send straight to the team?"
 
-Same class of ambiguous opens (always clarify first):
-- "help me improve our SEO" → organic vs ranking drop vs content calendar + site/market
-- "help me improve our hiring process" → time-to-hire vs quality vs consistency vs compliance + roles/geo
-- "help me plan next week's priorities" → revenue vs customer follow-ups vs blockers + deadline
+For ambiguous improvement/planning requests, clarify the missing decision dimension first.
+Examples of useful dimensions include objective + target for growth work, bottleneck +
+role/region for hiring work, or priority class + deadline for weekly planning.
+Do not embed benchmark/evaluation prompts or answer keys in this live instruction block.
 
 Wrong: inventing defaults silently, then dumping a full plan "just in case."
 
