@@ -8,6 +8,7 @@ from uuid import uuid4
 import httpx
 
 from app.config import get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.ml.base import ModelMetrics, ModelStatus, ModelType, ModelVersion, TrainedModel
 from app.workflows.repository import get_supabase_client
@@ -215,13 +216,17 @@ class ModelRegistry:
         model_type: ModelType | None = None,
         status: ModelStatus | None = None,
     ) -> list[TrainedModel]:
-        client = self._get_client()
-        query = client.table("trained_models").select("*").eq("org_id", org_id)
-        if model_type:
-            query = query.eq("model_type", model_type.value)
-        if status:
-            query = query.eq("status", status.value)
-        result = query.order("updated_at", desc=True).execute()
+        def _select() -> Any:
+            query = self._get_client().table("trained_models").select("*").eq("org_id", org_id)
+            if model_type:
+                query = query.eq("model_type", model_type.value)
+            if status:
+                query = query.eq("status", status.value)
+            return query.order("updated_at", desc=True).execute()
+
+        # Runs on every assistant turn (task classifier), so the read stays off
+        # the event loop.
+        result = await run_io(_select)
         models: list[TrainedModel] = []
         for data in (result.data or []):
             models.append(
@@ -245,13 +250,17 @@ class ModelRegistry:
         return models
 
     async def load_model_artifact(self, model_id: str, version: int | None = None) -> bytes:
-        client = self._get_client()
-        result = client.table("trained_models").select("deployed_version, current_version").eq("id", model_id).execute()
+        client = await run_io(self._get_client)
+        result = await run_io(
+            client.table("trained_models").select("deployed_version, current_version").eq("id", model_id).execute
+        )
         if not result.data:
             raise ValueError(f"Model {model_id} not found")
         model_data = result.data[0]
         load_version = version or model_data["deployed_version"] or model_data["current_version"]
-        version_result = client.table("model_versions").select("artifact_url").eq("model_id", model_id).eq("version", load_version).execute()
+        version_result = await run_io(
+            client.table("model_versions").select("artifact_url").eq("model_id", model_id).eq("version", load_version).execute
+        )
         if not version_result.data:
             raise ValueError(f"Version {load_version} not found")
         artifact_url = version_result.data[0]["artifact_url"]
