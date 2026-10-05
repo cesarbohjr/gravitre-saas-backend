@@ -141,3 +141,17 @@ Model Studio continuation validation:
 - Intelligence customer surface, chat surface and whitespace guards: **PASS**.
 - Independent GitHub jobs on parent **79e03cb4**: Web, Backend, Integration Smoke, runtime, dependency audit and Lighthouse **pass**; Billing E2E **skipped**. Inspect the next SHA separately.
 - **VISUAL_ACCEPTANCE = NOT_RUN; OWNER_LIVE_ACCEPTANCE = NOT_RUN; IMPLEMENTATION_COMPLETE = NO; MERGE_READY = NO**. No merge/deployment.
+
+
+## Cursor visual-blocker continuation — 2026-10-04 Vancouver
+
+Based on Cursor's evidence commit `c8bbef64`, product head `0f058867`. Cursor reports current-head fixture coverage at 1440/834/390, with Home 834px clipping the At risk/Next lanes and AI capture failing after the imported `/ai` compatibility page navigated out of fixture auth. This is Cursor-reported partial visual evidence, not a fresh visual acceptance claim by this continuation.
+
+Implemented two targeted corrections:
+
+- Home's five minimum-width columns now apply at wide desktop only. Tablet uses two readable columns with Next as a full-width launch row; the next breakpoint uses three columns. Phone lane selection and the wide desktop template remain. Recapture 834px before declaring the clipping resolved visually.
+- The AI fixture enters the canonical host in place, without the product `/ai` → `/home` redirect. ShotSurface provides the canonical host inside ShotAuthProvider. The outer host is suppressed only on enabled `/e2e/shots/` routes, preventing duplicate runtime mounts or rendering outside fixture auth. A two-case DOM test establishes one runtime under fixture identity and unchanged ordinary-route host mounting. Product authentication/redirect behavior is not bypassed or claimed owner-verified.
+
+Local validation: **1,354 tests / 213 files passed**; typecheck/build **exit 0**; changed-file lint **0 errors / 0 warnings**; chat drift and whitespace **pass**. These checks do not establish screenshot geometry or real-owner AI behavior.
+
+Cursor next: fetch the published correction, restart/rebuild with NEXT_PUBLIC_PLAYWRIGHT_E2E=1, recapture Home 834px and AI at 1440/834/390 on that SHA. Verify one runtime, named workspace, keyboard focus return, pending dismissal and reduced motion. Record the exact SHA/state/capture. Obtain an authorized owner session separately, then complete the original owner-live gates and current-SHA CI before merge/deploy. **MERGE_READY = NO** pending those gates; no merge or deployment performed here.

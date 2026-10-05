@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type FormEvent } from "react"
+import { useMemo, useState, type CSSProperties, type FormEvent } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { ArrowRight, CornerDownRight } from "lucide-react"
@@ -413,11 +413,11 @@ export function OperatingFlow({
           ))}
       </div>
 
-      {/* Tablet and desktop: the full flow, lanes side by side */}
+      {/* Tablet: readable rows; desktop: the full flow side by side. */}
       <div
         data-flow-height="content"
-        className="hidden min-h-[168px] grid-rows-1 divide-x divide-[color:var(--g-border-subtle)] overflow-x-auto border-b border-[color:var(--g-border-subtle)] md:grid"
-        style={{ gridTemplateColumns: flowColumnTemplate(lanes, laneLoading) }}
+        className="hidden min-h-[168px] border-b border-[color:var(--g-border-subtle)] md:grid md:grid-cols-2 md:[&>section]:border-b md:[&>section]:border-[color:var(--g-border-subtle)] md:[&>section:last-child]:col-span-2 lg:grid-cols-3 lg:[&>section:last-child]:col-span-1 xl:grid-rows-1 xl:divide-x xl:divide-[color:var(--g-border-subtle)] xl:overflow-x-auto xl:[grid-template-columns:var(--g-flow-columns)] xl:[&>section]:border-b-0"
+        style={{ "--g-flow-columns": flowColumnTemplate(lanes, laneLoading) } as CSSProperties}
       >
         {lanes.map((lane) => (
           <Lane key={lane.id} lane={lane} loading={laneLoading(lane.id)} />
