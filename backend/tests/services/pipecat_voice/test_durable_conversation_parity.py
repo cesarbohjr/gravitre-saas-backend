@@ -30,18 +30,23 @@ def test_durable_history_precedes_new_socket_history() -> None:
     assert merged[-1]["content"].endswith("$10k budget remains.")
 
 
-def test_reconnect_overlap_does_not_duplicate_persisted_turns() -> None:
+def test_socket_history_is_appended_without_collapsing_repeated_turns() -> None:
     durable = [
         {"role": "user", "content": "Use the second option."},
         {"role": "assistant", "content": "We'll use option two."},
     ]
-    # A newly-created Pipecat context may already contain the durable tail.
-    socket = durable + [{"role": "user", "content": "Continue from there."}]
+    # Pipecat's context is created empty in pipeline.py; it contains only live
+    # socket turns. A repeated utterance is legitimate conversation, not overlap.
+    socket = [
+        {"role": "user", "content": "Use the second option."},
+        {"role": "assistant", "content": "We'll use option two."},
+        {"role": "user", "content": "Continue from there."},
+    ]
 
     merged = _service()._merge_durable_and_socket_history(durable, socket)
 
-    assert merged == socket
-    assert sum(m["content"] == "Use the second option." for m in merged) == 1
+    assert merged == durable + socket
+    assert sum(m["content"] == "Use the second option." for m in merged) == 2
 
 
 def test_cross_modal_history_is_capped_without_losing_recent_context() -> None:
