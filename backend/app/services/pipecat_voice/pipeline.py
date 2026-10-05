@@ -241,6 +241,10 @@ def build_pipecat_voice_task(
         voice_session=voice_session,
     )
 
+    # Share active durable turn identity so mid-generation interruption can
+    # persist/update the exact current turn rather than targeting a prior row.
+    llm._interrupt_reporter = interrupt_reporter
+
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
     vad = None if use_flux else _optional_silero_vad()
     user_params_kwargs: dict[str, Any] = {"vad_analyzer": vad}
