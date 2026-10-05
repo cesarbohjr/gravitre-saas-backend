@@ -128,3 +128,22 @@ def test_managed_service_desk_action_fails_when_connection_identity_missing(
 
     with pytest.raises(ToolAuthExpiredError):
         _freshservice_tickets_get(_ctx(), {"ticket_id": 42})
+
+
+@pytest.mark.parametrize('field,value', [('org_id','other-org'),('environment','staging'),('status','pending_auth')])
+@patch("app.services.managed_service_desk_tools.proxy_request")
+@patch("app.services.managed_service_desk_tools.get_connector_by_type")
+def test_managed_executor_rejects_wrong_scope_or_inactive(get_by_type,proxy,field,value):
+    from app.services.tool_types import ToolValidationError
+    row = _connector(); row[field] = value
+    get_by_type.return_value = row
+    with pytest.raises((ToolValidationError,ToolAuthExpiredError)):
+        _freshservice_tickets_list(_ctx(),{})
+    proxy.assert_not_called()
+
+
+@pytest.mark.parametrize('ticket_id',['../users','42/activities','0','https://example.com',True])
+def test_managed_ticket_path_cannot_be_injected(ticket_id):
+    from app.services.tool_types import ToolValidationError
+    with pytest.raises(ToolValidationError):
+        _freshservice_tickets_get(_ctx(),{'ticket_id':ticket_id})

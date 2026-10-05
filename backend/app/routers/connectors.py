@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import httpx
 from datetime import datetime, timezone
 from typing import Annotated, Any
 from uuid import UUID
@@ -794,6 +795,12 @@ async def test_connector_route(
     data = row.data[0]
     vendor = normalize_vendor(data.get("vendor") or "")
     connector_env = data.get("environment") or environment_name
+    from app.connectors.nango_registry import get_nango_connector_spec
+    if get_nango_connector_spec(vendor):
+        from app.connectors.managed_health import managed_auth_status
+        auth = managed_auth_status(client, org_id, str(connector_id), settings,
+                                   environment_name=environment_name, validate_remote=True)
+        return {"success": auth == "connected", "message": "Managed authorization verified" if auth == "connected" else "Reconnect or complete managed connector setup"}
     if vendor == "hubspot":
         token, err = ensure_hubspot_access_token(
             client,
@@ -1351,7 +1358,7 @@ async def _delete_connector_impl(
     client = create_client(settings.supabase_url, settings.supabase_service_role_key)
     existing = (
         client.table("connectors")
-        .select("id, name, environment")
+        .select("id, name, environment, config, vendor, type")
         .eq("org_id", org_id)
         .eq("id", str(connector_id))
         .is_("deleted_at", "null")
@@ -1386,6 +1393,19 @@ async def _delete_connector_impl(
     except Exception:  # noqa: BLE001
         # workflow_nodes may be absent in some environments; do not block connector removal.
         pass
+
+    config = row.get("config") if isinstance(row.get("config"), dict) else {}
+    if config.get("auth_provider") == "managed" and config.get("managed_connection_id"):
+        from app.connectors.nango_client import delete_managed_connection
+        from app.connectors.nango_registry import get_nango_connector_spec
+        spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""))
+        if spec is None or config.get("managed_integration_id") != spec.integration_id:
+            raise HTTPException(status_code=400, detail="Managed integration mismatch")
+        try:
+            delete_managed_connection(settings, connection_id=str(config["managed_connection_id"]),
+                                      integration_id=spec.integration_id)
+        except (httpx.HTTPError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Managed account removal failed; connector was retained for retry") from exc
 
     deleted_at = datetime.now(timezone.utc).isoformat()
     updated = (

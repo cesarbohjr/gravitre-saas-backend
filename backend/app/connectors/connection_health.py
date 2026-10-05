@@ -104,6 +104,10 @@ def _resolve_connector_auth_status_uncached(
     environment_name: str | None = None,
     validate_remote: bool = False,
 ) -> str | None:
+    from app.connectors.nango_registry import get_nango_connector_spec
+    if get_nango_connector_spec(vendor):
+        from app.connectors.managed_health import managed_auth_status
+        return managed_auth_status(client, org_id, connector_id, settings, environment_name=environment_name, validate_remote=validate_remote)
     if vendor == "odoo":
         return odoo_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name

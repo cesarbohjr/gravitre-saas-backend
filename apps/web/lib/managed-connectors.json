@@ -1,0 +1,331 @@
+[
+  {
+    "vendorKey": "servicenow",
+    "type": "ServiceNow",
+    "integrationId": "servicenow",
+    "category": "Customer Support",
+    "description": "IT service management and enterprise workflows"
+  },
+  {
+    "vendorKey": "connectsecure",
+    "type": "ConnectSecure",
+    "integrationId": "connectsecure",
+    "category": "DevOps / Incidents",
+    "description": "Cybersecurity posture and vulnerability management"
+  },
+  {
+    "vendorKey": "sage_intacct",
+    "type": "Sage Intacct",
+    "integrationId": "sage-intacct",
+    "category": "Payments / Finance",
+    "description": "Cloud financial management and accounting"
+  },
+  {
+    "vendorKey": "front",
+    "type": "Front",
+    "integrationId": "front",
+    "category": "Customer Support",
+    "description": "Shared inbox and customer operations"
+  },
+  {
+    "vendorKey": "gong",
+    "type": "Gong",
+    "integrationId": "gong",
+    "category": "Sales / Prospecting",
+    "description": "Revenue intelligence and conversation insights"
+  },
+  {
+    "vendorKey": "highlevel",
+    "type": "HighLevel",
+    "integrationId": "highlevel",
+    "category": "CRM / Marketing",
+    "description": "CRM, marketing automation, and customer engagement"
+  },
+  {
+    "vendorKey": "instantly",
+    "type": "Instantly",
+    "integrationId": "instantly",
+    "category": "Sales / Prospecting",
+    "description": "Outbound email and lead engagement"
+  },
+  {
+    "vendorKey": "attio",
+    "type": "Attio",
+    "integrationId": "attio",
+    "category": "CRM / Marketing",
+    "description": "Flexible CRM and relationship intelligence"
+  },
+  {
+    "vendorKey": "close",
+    "type": "Close",
+    "integrationId": "close",
+    "category": "CRM / Marketing",
+    "description": "Sales CRM and communication"
+  },
+  {
+    "vendorKey": "ashby",
+    "type": "Ashby",
+    "integrationId": "ashby",
+    "category": "HR / People",
+    "description": "Recruiting and talent operations"
+  },
+  {
+    "vendorKey": "hibob",
+    "type": "HiBob",
+    "integrationId": "hibob",
+    "category": "HR / People",
+    "description": "HRIS and people operations"
+  },
+  {
+    "vendorKey": "ukg_pro",
+    "type": "UKG Pro",
+    "integrationId": "ukg-pro",
+    "category": "HR / People",
+    "description": "Enterprise HR, payroll, and workforce management"
+  },
+  {
+    "vendorKey": "box",
+    "type": "Box",
+    "integrationId": "box",
+    "category": "Storage / Dev / Infra",
+    "description": "Cloud content management and file storage"
+  },
+  {
+    "vendorKey": "dropbox",
+    "type": "Dropbox",
+    "integrationId": "dropbox",
+    "category": "Storage / Dev / Infra",
+    "description": "Cloud file storage and collaboration"
+  },
+  {
+    "vendorKey": "zoom",
+    "type": "Zoom",
+    "integrationId": "zoom",
+    "category": "Communication",
+    "description": "Meetings, webinars, and communications"
+  },
+  {
+    "vendorKey": "discord",
+    "type": "Discord",
+    "integrationId": "discord",
+    "category": "Communication",
+    "description": "Community messaging and collaboration"
+  },
+  {
+    "vendorKey": "sap_s4hana_cloud",
+    "type": "SAP S/4HANA Cloud",
+    "integrationId": "sap-s4hana-cloud",
+    "category": "Operations / Workflow",
+    "description": "Enterprise ERP and business operations"
+  },
+  {
+    "vendorKey": "sharepoint_online",
+    "type": "SharePoint Online",
+    "integrationId": "sharepoint-online",
+    "category": "Storage / Dev / Infra",
+    "description": "Microsoft content, sites, and document collaboration"
+  },
+  {
+    "vendorKey": "freshservice",
+    "type": "Freshservice",
+    "integrationId": "freshservice",
+    "category": "Customer Support",
+    "description": "IT service management and service desk"
+  },
+  {
+    "vendorKey": "kustomer",
+    "type": "Kustomer",
+    "integrationId": "kustomer",
+    "category": "Customer Support",
+    "description": "Customer service CRM and support operations"
+  },
+  {
+    "vendorKey": "helpscout",
+    "type": "Help Scout",
+    "integrationId": "help-scout",
+    "category": "Customer Support",
+    "description": "Customer support and shared inbox"
+  },
+  {
+    "vendorKey": "copper",
+    "type": "Copper",
+    "integrationId": "copper",
+    "category": "CRM / Marketing",
+    "description": "CRM for Google Workspace teams"
+  },
+  {
+    "vendorKey": "zoho_crm",
+    "type": "Zoho CRM",
+    "integrationId": "zoho-crm",
+    "category": "CRM / Marketing",
+    "description": "CRM and sales automation"
+  },
+  {
+    "vendorKey": "lever",
+    "type": "Lever",
+    "integrationId": "lever",
+    "category": "HR / People",
+    "description": "Applicant tracking and recruiting"
+  },
+  {
+    "vendorKey": "deel",
+    "type": "Deel",
+    "integrationId": "deel",
+    "category": "HR / People",
+    "description": "Global payroll, HR, and contractor management"
+  },
+  {
+    "vendorKey": "rippling",
+    "type": "Rippling",
+    "integrationId": "rippling",
+    "category": "HR / People",
+    "description": "HR, payroll, identity, and device operations"
+  },
+  {
+    "vendorKey": "personio",
+    "type": "Personio",
+    "integrationId": "personio",
+    "category": "HR / People",
+    "description": "HRIS and recruiting for SMBs"
+  },
+  {
+    "vendorKey": "ramp",
+    "type": "Ramp",
+    "integrationId": "ramp",
+    "category": "Payments / Finance",
+    "description": "Corporate cards, spend, and expense management"
+  },
+  {
+    "vendorKey": "brex",
+    "type": "Brex",
+    "integrationId": "brex",
+    "category": "Payments / Finance",
+    "description": "Corporate cards, spend, and cash management"
+  },
+  {
+    "vendorKey": "chargebee",
+    "type": "Chargebee",
+    "integrationId": "chargebee",
+    "category": "Payments / Finance",
+    "description": "Subscription billing and revenue operations"
+  },
+  {
+    "vendorKey": "docusign",
+    "type": "DocuSign",
+    "integrationId": "docusign",
+    "category": "Operations / Workflow",
+    "description": "Electronic signatures and agreement workflows"
+  },
+  {
+    "vendorKey": "dropbox_sign",
+    "type": "Dropbox Sign",
+    "integrationId": "dropbox-sign",
+    "category": "Operations / Workflow",
+    "description": "Electronic signatures and document workflows"
+  },
+  {
+    "vendorKey": "pax8",
+    "type": "Pax8",
+    "integrationId": "pax8",
+    "category": "Operations / Workflow",
+    "description": "Cloud marketplace and MSP operations"
+  },
+  {
+    "vendorKey": "autotask",
+    "type": "Autotask PSA",
+    "integrationId": "autotask",
+    "category": "Operations / Workflow",
+    "description": "PSA, ticketing, projects, and MSP operations"
+  },
+  {
+    "vendorKey": "halo_psa",
+    "type": "HaloPSA",
+    "integrationId": "halopsa",
+    "category": "Operations / Workflow",
+    "description": "PSA and service management for MSPs"
+  },
+  {
+    "vendorKey": "syncro",
+    "type": "Syncro",
+    "integrationId": "syncro",
+    "category": "Operations / Workflow",
+    "description": "RMM and PSA for MSPs"
+  },
+  {
+    "vendorKey": "huntress",
+    "type": "Huntress",
+    "integrationId": "huntress",
+    "category": "DevOps / Incidents",
+    "description": "Managed cybersecurity and threat operations"
+  },
+  {
+    "vendorKey": "sentinelone",
+    "type": "SentinelOne",
+    "integrationId": "sentinelone",
+    "category": "DevOps / Incidents",
+    "description": "Endpoint security and threat detection"
+  },
+  {
+    "vendorKey": "crowdstrike",
+    "type": "CrowdStrike",
+    "integrationId": "crowdstrike",
+    "category": "DevOps / Incidents",
+    "description": "Endpoint protection and threat intelligence"
+  },
+  {
+    "vendorKey": "okta",
+    "type": "Okta",
+    "integrationId": "okta",
+    "category": "Storage / Dev / Infra",
+    "description": "Identity and access management"
+  },
+  {
+    "vendorKey": "jumpcloud",
+    "type": "JumpCloud",
+    "integrationId": "jumpcloud",
+    "category": "Storage / Dev / Infra",
+    "description": "Directory, identity, and device management"
+  },
+  {
+    "vendorKey": "duo",
+    "type": "Duo",
+    "integrationId": "duo",
+    "category": "Storage / Dev / Infra",
+    "description": "Multi-factor authentication and access security"
+  },
+  {
+    "vendorKey": "onepassword",
+    "type": "1Password",
+    "integrationId": "1password",
+    "category": "Storage / Dev / Infra",
+    "description": "Secrets and workforce credential management"
+  },
+  {
+    "vendorKey": "microsoft_intune",
+    "type": "Microsoft Intune",
+    "integrationId": "microsoft-intune",
+    "category": "Storage / Dev / Infra",
+    "description": "Endpoint and mobile device management"
+  },
+  {
+    "vendorKey": "jamf_pro",
+    "type": "Jamf Pro",
+    "integrationId": "jamf-pro",
+    "category": "Storage / Dev / Infra",
+    "description": "Apple device management"
+  },
+  {
+    "vendorKey": "braintree",
+    "type": "Braintree",
+    "integrationId": "braintree",
+    "category": "Payments / Finance",
+    "description": "Payment processing"
+  },
+  {
+    "vendorKey": "recurly",
+    "type": "Recurly",
+    "integrationId": "recurly",
+    "category": "Payments / Finance",
+    "description": "Subscription management and recurring billing"
+  }
+]

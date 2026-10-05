@@ -31,7 +31,7 @@ const securityHeaders = [
       // connect-src already allows https:; sandbox/production Plaid APIs covered.
       "connect-src 'self' https: wss:",
       // Stripe Payment Element + Plaid Link frames + GTM noscript iframe.
-      "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://m.stripe.network https://cdn.plaid.com https://*.plaid.com https://www.googletagmanager.com",
+      "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://m.stripe.network https://cdn.plaid.com https://*.plaid.com https://connect.nango.dev https://www.googletagmanager.com",
       "frame-ancestors 'none'",
     ].join("; "),
   },

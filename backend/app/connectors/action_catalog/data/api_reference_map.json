@@ -235,7 +235,7 @@
       "provenance": "no_vendor_endpoint",
       "source": "backend/app/services/ai_visibility_ui_tools.py:_exec_mentions_check",
       "vendor_validated": false,
-      "note": "Drives a browser session against an AI surface. There is no vendor API contract to diff — the 'endpoint' is a rendered web page."
+      "note": "Drives a browser session against an AI surface. There is no vendor API contract to diff \u2014 the 'endpoint' is a rendered web page."
     },
     "ai_visibility_ui.prompts.batch": {
       "provenance": "no_vendor_endpoint",
@@ -3897,7 +3897,7 @@
       "vendor_contract": "https://raw.githubusercontent.com/microsoftgraph/msgraph-metadata/master/openapi/v1.0/openapi.yaml",
       "vendor_contract_type": "openapi",
       "vendor_validated": false,
-      "note": "Path is built by _graph_user_root(): '/me' for the signed-in user, '/users/{user_id}' for a directory id — so it is not a literal."
+      "note": "Path is built by _graph_user_root(): '/me' for the signed-in user, '/users/{user_id}' for a directory id \u2014 so it is not a literal."
     },
     "microsoft_teams.channels.list": {
       "api_reference": "GET /teams/{team_id}/channels",
@@ -6365,6 +6365,46 @@
       "base_url": "https://api.freshservice.com",
       "vendor_validated": false,
       "note": "Freshservice REST route passed through the managed Nango proxy; endpoint and method are explicitly defined in the managed service desk executor."
+    },
+    "okta.system_logs.list": {
+      "api_reference": "GET /api/v1/logs",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Documented Okta tenant-specific REST endpoint executed through the managed Nango proxy; live tenant verification is required."
+    },
+    "okta.users.get": {
+      "api_reference": "GET /api/v1/users/{user_id}",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Documented Okta tenant-specific REST endpoint executed through the managed Nango proxy; live tenant verification is required."
+    },
+    "okta.groups.list": {
+      "api_reference": "GET /api/v1/groups",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Documented Okta tenant-specific REST endpoint executed through the managed Nango proxy; live tenant verification is required."
+    },
+    "okta.apps.list": {
+      "api_reference": "GET /api/v1/apps",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Documented Okta tenant-specific REST endpoint executed through the managed Nango proxy; live tenant verification is required."
+    },
+    "okta.users.factors.list": {
+      "api_reference": "GET /api/v1/users/{user_id}/factors",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Documented Okta tenant-specific REST endpoint executed through the managed Nango proxy; live tenant verification is required."
     }
   }
 }

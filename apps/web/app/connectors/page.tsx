@@ -113,6 +113,8 @@ import {
   resolveConnectorDisplayStatus,
   supportsDualPatAuth,
 } from "@/lib/connectors"
+import { openManagedConnector } from "@/lib/managed-connector-auth"
+import { isManagedConnectorVendor } from "@/lib/connectors"
 import { openPlaidLink } from "@/lib/plaid-link"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
@@ -993,6 +995,7 @@ function AddConnectorModal({
   }>
   initialConnectorType?: string | null
 }) {
+  const { data: managedCatalog } = useSWR(open ? "managed-connector-catalog" : null, connectorsApi.managedCatalog)
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [selectedAuthType, setSelectedAuthType] = useState<"oauth" | "apiKey" | "webhook" | null>(null)
@@ -1111,6 +1114,24 @@ function AddConnectorModal({
         connectorVendorKey(c.type) === provider ||
         c.name.trim().toLowerCase() === name.trim().toLowerCase()
     )
+
+    if (isManagedConnectorVendor(provider)) {
+      setSelectedEnvironmentInStorage(environment)
+      setOauthStatus("redirecting")
+      try {
+        const connected = await openManagedConnector(provider, { name, connectorId: existing?.id })
+        setOauthStatus(connected ? "success" : "idle")
+        if (connected) {
+          toast.success(`${selectedType} connected`)
+          await onCreated()
+          onClose()
+        }
+      } catch (err) {
+        setOauthStatus("error")
+        toast.error(`Failed to connect ${selectedType}`, { description: oauthErrorMessage(err, selectedType) })
+      }
+      return
+    }
 
     // Plaid uses Link (platform PLAID_* keys), not /oauth/{provider}/start.
     if (isPlaidLinkConnector(selected) || provider === "plaid") {
@@ -1319,6 +1340,10 @@ function AddConnectorModal({
   }
 
   const handleSelectConnector = (connector: CatalogConnector) => {
+    if (isManagedConnectorVendor(connector.vendorKey || connector.type) && !managedCatalog?.configured) {
+      toast.message("Secure authorization needs administrator setup", { description: "Contact your administrator to enable managed connector authorization." })
+      return
+    }
     if (connector.partner) {
       toast.message(`${connector.type} is a partner integration`, {
         description: "Install from the marketplace or contact sales for certified connectors.",
@@ -1363,10 +1388,10 @@ function AddConnectorModal({
         connectorVendorKey(entry.type) === connectorVendorKey(preset),
     )
     if (connector) handleSelectConnector(connector)
-  }, [open, initialConnectorType, catalogConnectors])
+  }, [open, initialConnectorType, catalogConnectors, managedCatalog])
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleClose} modal={!(oauthStatus === "redirecting" && isManagedConnectorVendor(selectedConnectorMeta()?.vendorKey || ""))}>
       <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[min(85vh,900px)] min-h-0 overflow-hidden flex flex-col gap-0 p-0">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
@@ -1494,7 +1519,9 @@ function AddConnectorModal({
                               )}
                               {!connector.partner && isShippedConnector(connector) && (
                                 <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
-                                  Available
+                                  {isManagedConnectorVendor(connector.vendorKey || connector.type)
+                                    ? !managedCatalog?.configured ? "Setup required" : connector.shipped ? "Actions supported" : "Connect account"
+                                    : "Available"}
                                 </span>
                               )}
                               <span className={cn(
@@ -1514,7 +1541,7 @@ function AddConnectorModal({
                                   : !connector.partner && !isShippedConnector(connector)
                                   ? "Coming soon"
                                   : connector.authType === "oauth"
-                                    ? "OAuth"
+                                    ? isManagedConnectorVendor(connector.vendorKey || connector.type) ? "Secure authorization" : "OAuth"
                                     : connector.authType === "webhook"
                                       ? "Webhook"
                                       : "API Key"}
@@ -1572,7 +1599,9 @@ function AddConnectorModal({
                     <div>
                       <h3 className="text-sm font-semibold text-foreground">Connect with {selectedType}</h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        You&apos;ll be redirected to {selectedType} to authorize Gravitre
+                        {isManagedConnectorVendor(selectedConnectorMeta()?.vendorKey || "")
+                          ? `Authorize your ${selectedType} account securely. Your credentials are managed outside Gravitre.`
+                          : <>You&apos;ll be redirected to {selectedType} to authorize Gravitre</>}
                       </p>
                       {selectedConnectorMeta()?.vendorKey &&
                         PKCE_OAUTH_VENDOR_KEYS.has(selectedConnectorMeta()!.vendorKey!) && (
@@ -2808,6 +2837,15 @@ function ConnectorsPageContent() {
 
   const handleReconnectOAuth = async (connector: Connector) => {
     const provider = connectorVendorKey(connector.type)
+    if (isManagedConnectorVendor(provider)) {
+      try {
+        const connected = await openManagedConnector(provider, { name: connector.name, connectorId: connector.id })
+        if (connected) { toast.success(`${connector.type} reconnected`); await mutate() }
+      } catch (err) {
+        toast.error("Failed to reconnect", { description: formatUnknownError(err) })
+      }
+      return
+    }
     const cfg = connector.config ?? {}
     const extra: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string } = {}
     if (cfg.subdomain) extra.subdomain = String(cfg.subdomain)

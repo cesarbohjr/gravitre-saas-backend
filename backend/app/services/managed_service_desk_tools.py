@@ -50,6 +50,10 @@ def _managed_connector(
     if stored_vendor != vendor:
         raise ToolValidationError("Connector vendor mismatch")
 
+    if conn.get("org_id") != ctx.org_id or str(conn.get("environment") or ctx.environment_name) != ctx.environment_name:
+        raise ToolValidationError("Connector organization or environment mismatch")
+    if conn.get("status") not in {"active", "connected", "healthy", "syncing"}:
+        raise ToolAuthExpiredError("Connector is not active; reconnect the connector")
     cid = str(conn["id"])
     config = conn.get("config") if isinstance(conn.get("config"), dict) else {}
     if str(config.get("auth_provider") or "").strip().lower() != "managed":
@@ -57,6 +61,10 @@ def _managed_connector(
 
     connection_id = str(config.get("managed_connection_id") or "").strip()
     integration_id = str(config.get("managed_integration_id") or "").strip()
+    from app.connectors.nango_registry import get_nango_connector_spec
+    spec = get_nango_connector_spec(vendor)
+    if spec is None or integration_id != spec.integration_id:
+        raise ToolValidationError("Managed integration mismatch")
     if not connection_id or not integration_id:
         raise ToolAuthExpiredError(
             f"{vendor} authorization is incomplete; reconnect the connector"
@@ -95,7 +103,7 @@ def _request(
                 f"{vendor} managed authorization was rejected by the provider"
             ) from exc
         raise ToolValidationError(
-            f"{vendor} request failed ({status}): {exc.response.text[:300]}"
+            f"{vendor} request failed ({status})"
         ) from exc
     except httpx.TimeoutException as exc:
         raise ToolError(f"{vendor} request timed out", code="connector_timeout") from exc
@@ -109,6 +117,13 @@ def _request(
     if not isinstance(data, dict):
         data = {"result": data}
     return cid, data
+
+
+def _ticket_id(value: Any) -> str:
+    text = str(value)
+    if not text.isascii() or not text.isdigit() or int(text) <= 0:
+        raise ToolValidationError("ticket_id must be a positive integer")
+    return text
 
 
 def _freshservice_tickets_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -135,6 +150,7 @@ def _freshservice_tickets_get(ctx: ToolContext, params: dict[str, Any]) -> Norma
     ticket_id = params.get("ticket_id") or params.get("ticketId") or params.get("id")
     if ticket_id is None:
         raise ToolValidationError("freshservice.tickets.get requires ticket_id")
+    ticket_id = _ticket_id(ticket_id)
     query = {}
     if params.get("include") is not None:
         query["include"] = params["include"]
@@ -160,6 +176,7 @@ def _freshservice_ticket_activities(ctx: ToolContext, params: dict[str, Any]) ->
     ticket_id = params.get("ticket_id") or params.get("ticketId") or params.get("id")
     if ticket_id is None:
         raise ToolValidationError("freshservice.tickets.activities requires ticket_id")
+    ticket_id = _ticket_id(ticket_id)
     cid, data = _request(
         ctx,
         params,
@@ -182,6 +199,7 @@ def _freshservice_ticket_update_status(ctx: ToolContext, params: dict[str, Any])
         raise ToolValidationError(
             "freshservice.tickets.update_status requires ticket_id and status"
         )
+    ticket_id = _ticket_id(ticket_id)
     cid, data = _request(
         ctx,
         params,

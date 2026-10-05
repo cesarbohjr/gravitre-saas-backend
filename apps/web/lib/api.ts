@@ -1966,6 +1966,13 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
+  managedCatalog: () => fetcher<{ configured: boolean; connectors: Array<{ vendor: string; actions: string[]; support: string }> }>(apiUrl("/api/connectors/managed-auth/catalog")),
+  startManagedAuth: (vendor: string, data: { name: string; connectorId?: string }) =>
+    postJson<{ connectorId: string; sessionToken: string; attemptId: string; expiresAt?: string }>(
+      apiUrl(`/api/connectors/managed-auth/${vendor}/session`), data
+    ),
+  managedAuthStatus: (connectorId: string) =>
+    fetcher<{ connected: boolean; status: string; confirmedAttemptId?: string }>(apiUrl(`/api/connectors/managed-auth/${connectorId}/status`)),
   startOAuth: (
     provider: string,
     data: {
