@@ -18,19 +18,14 @@ const BASE_STARTERS: Starter[] = [
 ]
 
 /**
- * First view of an empty conversation: identity, the context Gravitre will use,
- * and starter prompts staged into the composer (never auto-sent).
+ * One source for what Gravitre knows before the first message, shared by every
+ * presentation so a compact window and fullscreen never suggest different things.
  */
-export function AiStartingState({
-  onInputChange,
-  inputRef,
-  composer,
-}: {
-  onInputChange: (value: string) => void
-  inputRef?: RefObject<HTMLTextAreaElement | null>
-  /** The live composer, placed under the objective prompt while the conversation is empty. */
-  composer?: ReactNode
-}) {
+export function useAiStarters(
+  limit: number,
+  onInputChange: (value: string) => void,
+  inputRef?: RefObject<HTMLTextAreaElement | null>,
+) {
   const workspace = useOptionalGravitreAIWorkspace()
   const selected = workspace?.pageContext.selected ?? null
   const originPath = workspace?.pageContext.pathname
@@ -45,12 +40,87 @@ export function AiStartingState({
     ...(selected ? [{ text: `Tell me what matters about ${selected.label}`, hint: "In context" }] : []),
     ...(pending > 0 ? [{ text: "What should I approve first, and why?", hint: "Approvals" }] : []),
     ...BASE_STARTERS,
-  ].slice(0, 4)
+  ].slice(0, limit)
 
   const stage = (text: string) => {
     onInputChange(text)
     requestAnimationFrame(() => inputRef?.current?.focus())
   }
+
+  return { starters, selected, origin, pending, stage }
+}
+
+/**
+ * Empty state for the windowed presentations (compact, floating, docked).
+ * Sits directly above the composer so context, scope and suggestions read as
+ * one unit with the input instead of a hero the eye has to travel down from.
+ */
+export function AiCompactStart({
+  onInputChange,
+  inputRef,
+}: {
+  onInputChange: (value: string) => void
+  inputRef?: RefObject<HTMLTextAreaElement | null>
+}) {
+  const { starters, selected, origin, pending, stage } = useAiStarters(3, onInputChange, inputRef)
+  const where = selected?.label ?? origin
+
+  return (
+    <div className="flex min-h-full flex-col justify-end gap-4 px-1 pb-1 pt-4" data-gravitre-ai-compact-start="">
+      <div className="flex flex-col gap-1.5">
+        <p className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-[color:var(--g-text-muted)]">
+          <span className="size-1.5 shrink-0 rounded-full bg-[color:var(--g-brand)]" aria-hidden />
+          <span className="truncate">{where ? `Working with ${where}` : "Across your workspace"}</span>
+        </p>
+        <h2 className="text-pretty text-base font-semibold leading-snug tracking-[-0.01em] text-[color:var(--g-text-primary)]">
+          {where ? "Ask about this, or hand off the next step." : "What do you want to get done?"}
+        </h2>
+        <p className="flex items-center gap-1.5 text-xs leading-relaxed text-[color:var(--g-text-muted)]">
+          <ShieldCheck className="size-3.5 shrink-0 text-[color:var(--g-signal)]" aria-hidden />
+          {pending > 0
+            ? `${pending} waiting for your approval. Nothing changes without it.`
+            : "Reads what you can see. Asks before changing anything."}
+        </p>
+      </div>
+      <ul className="flex flex-col gap-1" aria-label="Suggested requests">
+        {starters.map((starter) => (
+          <li key={starter.text}>
+            <button
+              type="button"
+              onClick={() => stage(starter.text)}
+              className="group flex w-full items-center gap-3 rounded-[var(--np-radius-sm)] border border-[color:var(--g-border-subtle)] px-3 py-2 text-left transition-colors hover:border-[color:var(--g-border-default)] hover:bg-[color:var(--g-background-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-medium text-[color:var(--g-text-muted)]">{starter.hint}</span>
+                <span className="block text-sm leading-snug text-[color:var(--g-text-primary)]">{starter.text}</span>
+              </span>
+              <ArrowUpRight
+                className="size-4 shrink-0 text-[color:var(--g-text-muted)] transition-colors group-hover:text-[color:var(--g-text-primary)]"
+                aria-hidden
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * First view of an empty conversation: identity, the context Gravitre will use,
+ * and starter prompts staged into the composer (never auto-sent).
+ */
+export function AiStartingState({
+  onInputChange,
+  inputRef,
+  composer,
+}: {
+  onInputChange: (value: string) => void
+  inputRef?: RefObject<HTMLTextAreaElement | null>
+  /** The live composer, placed under the objective prompt while the conversation is empty. */
+  composer?: ReactNode
+}) {
+  const { starters, selected, origin, pending, stage } = useAiStarters(4, onInputChange, inputRef)
 
   return (
     <div
