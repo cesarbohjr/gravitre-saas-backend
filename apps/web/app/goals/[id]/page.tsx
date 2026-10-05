@@ -54,10 +54,10 @@ export default function GoalDetailPage() {
                 <p className="mt-2 text-sm text-muted-foreground">{progress == null ? "No progress measurement was returned for this goal." : "Progress reported by the goal service."}</p>
                 {progress != null ? <div role="progressbar" aria-label="Goal progress" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="mt-4 h-1.5 overflow-hidden bg-secondary"><div className="h-full bg-[color:var(--g-brand)] transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${progress}%` }} /></div> : null}
               </div>
-              <p className="font-[family-name:var(--font-space-grotesk)] text-3xl font-medium tabular-nums text-[color:var(--g-text-primary)]">{progress == null ? "Not reported" : `${progress}%`}</p>
+              <p className="font-sans text-3xl font-medium tabular-nums text-[color:var(--g-text-primary)]">{progress == null ? "Not reported" : `${progress}%`}</p>
             </section>
             <section aria-labelledby="goal-milestones-heading">
-              <h2 id="goal-milestones-heading" className="font-[family-name:var(--font-space-grotesk)] text-xl font-medium">Plan milestones</h2>
+              <h2 id="goal-milestones-heading" className="font-sans text-xl font-medium">Plan milestones</h2>
               {milestones == null ? <p className="mt-4 text-sm text-muted-foreground">Milestones not reported.</p> : milestones.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No milestones have been added to this goal.</p> : <ol className="mt-4 divide-y divide-divide border-y border-divide">
                 {milestones.map((milestone, index) => <li key={milestone.id} className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 py-4 sm:grid-cols-[32px_minmax(0,1fr)_auto]">
                   <span aria-hidden className="pt-0.5 font-mono text-xs tabular-nums text-muted-foreground">{String(index + 1).padStart(2, "0")}</span>

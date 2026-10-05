@@ -189,7 +189,7 @@ export function StartSwarmDialog({
       >
         <DialogHeader>
           <p className={TYPE.eyebrow}>Coordinate / New run</p>
-          <DialogTitle className="font-[family-name:var(--font-space-grotesk)]">
+          <DialogTitle className="font-sans">
             Give each agent a clear part
           </DialogTitle>
           <DialogDescription>

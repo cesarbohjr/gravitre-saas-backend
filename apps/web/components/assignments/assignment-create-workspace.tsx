@@ -229,7 +229,7 @@ export function NewAssignmentPageContent() {
                 <p className="text-xs text-muted-foreground">
                   Step {step} of {steps.length}
                 </p>
-                <h2 className="mt-2 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium">
+                <h2 className="mt-2 font-sans text-2xl font-medium">
                   {steps[step - 1]}
                 </h2>
               </div>

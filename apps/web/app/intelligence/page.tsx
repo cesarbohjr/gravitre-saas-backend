@@ -426,7 +426,7 @@ function IntelligenceCenterInner() {
 
         <header className="px-4 pt-6 md:px-5">
           <p className={TYPE.eyebrow}>Understand / Evidence before answers</p>
-          <h1 className="mt-2 font-[family-name:var(--font-space-grotesk)] text-[30px] font-medium leading-tight text-foreground sm:text-[32px]">{copy.title}</h1>
+          <h1 className="mt-2 font-sans text-xl font-medium leading-tight text-foreground sm:text-2xl">{copy.title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">What is changing across the business?</p>
           <div className="py-5">
             <ExtrovertSummary label="Intelligence snapshot summary" items={[

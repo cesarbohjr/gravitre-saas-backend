@@ -17,7 +17,7 @@ export function MarketplaceFeaturedOutcome({
     <section aria-labelledby="marketplace-featured-title" className="grid overflow-hidden rounded-xl md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]" data-testid="marketplace-featured-outcome">
       <div className="flex min-w-0 flex-col items-start bg-[color:var(--g-emerald-deep)] p-5 text-white sm:p-6">
         <p className="text-xs font-semibold text-[color:var(--g-emerald-mint)]">Explore / {asset.department || "Outcome pack"}</p>
-        <h2 id="marketplace-featured-title" className="mt-3 font-[family-name:var(--font-space-grotesk)] text-[21px] sm:text-[27px] font-medium leading-tight text-balance">{asset.title}</h2>
+        <h2 id="marketplace-featured-title" className="mt-3 font-sans text-[21px] sm:text-[27px] font-medium leading-tight text-balance">{asset.title}</h2>
         {asset.businessOutcome || asset.description ? (
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-[color:var(--g-emerald-mint)]">{asset.businessOutcome || asset.description}</p>
         ) : null}

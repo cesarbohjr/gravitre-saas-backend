@@ -31,7 +31,7 @@ export function PackPreviewSheet({
       <SheetContent className="w-full overflow-y-auto bg-[color:var(--g-canvas)] sm:max-w-lg">
         <SheetHeader>
           <p className="text-xs font-semibold text-[color:var(--g-emerald-deep)]">Explore / {asset.department || "Pack preview"}</p>
-          <SheetTitle className="pr-5 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium">{asset.title}</SheetTitle>
+          <SheetTitle className="pr-5 font-sans text-2xl font-medium">{asset.title}</SheetTitle>
           <SheetDescription>{asset.description}</SheetDescription>
         </SheetHeader>
 

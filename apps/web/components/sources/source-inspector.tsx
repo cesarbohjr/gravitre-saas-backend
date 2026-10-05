@@ -53,7 +53,7 @@ export function SourceInspector({ source, onSync, onDelete, isMutating }: {
   return <section aria-label={`${source.name} source context`} className="space-y-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
     <div className="flex items-start gap-3">
       <ConnectorIcon vendor={sourceTypeVendorKey(source.type)} name={source.name} size="md" showStatusIndicator={false} />
-      <div className="min-w-0 flex-1"><h3 className="break-words font-[family-name:var(--font-space-grotesk)] text-xl text-foreground">{source.name}</h3><p className="text-xs text-muted-foreground">{source.type} · {source.environment}</p></div>
+      <div className="min-w-0 flex-1"><h3 className="break-words font-sans text-xl text-foreground">{source.name}</h3><p className="text-xs text-muted-foreground">{source.type} · {source.environment}</p></div>
       {source.health != null ? <SourceHealthGauge health={source.health} /> : null}
     </div>
     <SourceStatus source={source} />

@@ -562,7 +562,7 @@ function DetailPanel({
             )} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="break-words font-[family-name:var(--font-space-grotesk)] text-xl font-medium text-foreground mb-1 sm:text-2xl">
+            <h2 className="break-words font-sans text-xl font-medium text-foreground mb-1 sm:text-2xl">
               {approval.title}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">

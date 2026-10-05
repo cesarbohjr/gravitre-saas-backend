@@ -157,7 +157,7 @@ export default function CreateOrgAssetPage() {
         </Button>
 
         <header>
-          <h1 className="flex items-center gap-2 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium">
+          <h1 className="flex items-center gap-2 font-sans text-2xl font-medium">
             <PlusCircle className="h-5 w-5 text-primary" aria-hidden />
             Create an agent asset
           </h1>

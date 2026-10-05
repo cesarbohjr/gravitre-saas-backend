@@ -285,7 +285,7 @@ export function GoalWorkflowWizard({
       >
         <DialogHeader>
           <p className={TYPE.eyebrow}>Create / Business objective</p>
-          <DialogTitle className="font-[family-name:var(--font-space-grotesk)]">
+          <DialogTitle className="font-sans">
             Start with the outcome
           </DialogTitle>
           <DialogDescription>

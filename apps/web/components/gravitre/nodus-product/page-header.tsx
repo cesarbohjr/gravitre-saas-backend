@@ -99,16 +99,7 @@ export function GravitrePageHeader({
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div className="min-w-0 space-y-1.5">
             {eyebrow ? <p className={TYPE.eyebrow}>{eyebrow}</p> : null}
-            <h1
-              className={cn(
-                "font-[family-name:var(--font-space-grotesk)] font-medium text-[color:var(--g-text-primary)]",
-                operating
-                  ? "text-[28px] leading-[1.08] tracking-[-0.03em] sm:text-[34px]"
-                  : "text-[24px] leading-[1.12] tracking-[-0.025em] sm:text-[28px]",
-              )}
-            >
-              {title}
-            </h1>
+            <h1 className={TYPE.pageTitle}>{title}</h1>
             {description ? <p className={cn(TYPE.pageLead, "max-w-2xl")}>{description}</p> : null}
             {status ? <div className="pt-0.5 text-[13px] text-[color:var(--g-text-muted)]">{status}</div> : null}
           </div>

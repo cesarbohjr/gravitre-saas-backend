@@ -767,7 +767,7 @@ export function ResponsiveConnectorInspector({ returnFocusTarget, ...props }: Co
         }}
       >
         <SheetHeader className="pr-14">
-          <SheetTitle className="font-[family-name:var(--font-space-grotesk)]">{props.connector.name}</SheetTitle>
+          <SheetTitle className="font-sans">{props.connector.name}</SheetTitle>
           <SheetDescription>Inspect authorization, capabilities and agent dependencies.</SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-6">

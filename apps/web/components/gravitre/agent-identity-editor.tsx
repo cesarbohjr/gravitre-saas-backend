@@ -161,7 +161,7 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
       </DialogTrigger>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-[family-name:var(--font-space-grotesk)]">
+          <DialogTitle className="font-sans">
             Edit agent identity
           </DialogTitle>
           <DialogDescription>

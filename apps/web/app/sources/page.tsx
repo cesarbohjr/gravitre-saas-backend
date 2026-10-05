@@ -435,7 +435,7 @@ export default function SourcesPage() {
       <Sheet open={Boolean(selectedSource && compactInspector)} onOpenChange={(open) => { if (!open) setExpandedSource(null) }}>
         <SheetContent className="w-full overflow-y-auto pb-[env(safe-area-inset-bottom)] sm:max-w-[540px]">
           <SheetHeader className="pr-14">
-            <SheetTitle className="font-[family-name:var(--font-space-grotesk)]">{selectedSource?.name ?? "Source"}</SheetTitle>
+            <SheetTitle className="font-sans">{selectedSource?.name ?? "Source"}</SheetTitle>
             <SheetDescription>Connection, schema and workflow context for the selected source.</SheetDescription>
           </SheetHeader>
           {selectedSource ? <div className="px-4 pb-6"><SourceInspector source={selectedSource} onSync={handleSync} onDelete={handleDelete} isMutating={mutatingSourceId === selectedSource.id} /></div> : null}

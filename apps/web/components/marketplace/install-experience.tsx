@@ -143,7 +143,7 @@ export function InstallSuccessPanel({
                 ? "Installed · review required"
                 : "Added to your workspace"}
             </p>
-            <h3 className="mt-1 font-[family-name:var(--font-space-grotesk)] text-xl font-medium tracking-tight text-foreground">
+            <h3 className="mt-1 font-sans text-xl font-medium tracking-tight text-foreground">
               {assetTitle} is installed
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -365,7 +365,7 @@ function InstallStepperSession({
           <p className="text-xs font-semibold text-muted-foreground">
             Install into workspace
           </p>
-          <SheetTitle className="pr-5 font-[family-name:var(--font-space-grotesk)] text-2xl font-medium tracking-tight">
+          <SheetTitle className="pr-5 font-sans text-2xl font-medium tracking-tight">
             {asset?.title ?? "Asset"}
           </SheetTitle>
           <SheetDescription>

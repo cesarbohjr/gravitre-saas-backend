@@ -23,15 +23,15 @@
 export const TYPE = {
   /** The single <h1> on a page — Nodus product scale (~20–24px), not marketing H1. */
   pageTitle:
-    "font-[family-name:var(--font-space-grotesk)] text-[30px] leading-[1.08] font-semibold tracking-[-0.025em] text-[color:var(--g-text-primary)]",
+    "font-sans text-xl leading-tight font-semibold tracking-[-0.02em] sm:text-2xl text-[color:var(--g-text-primary)]",
   /** Title of an immersive or expert workspace (builder, studio). */
   workspaceTitle:
-    "font-[family-name:var(--font-space-grotesk)] text-xl font-semibold tracking-[-0.015em] text-[color:var(--g-text-primary)]",
+    "font-sans text-xl font-semibold tracking-[-0.015em] text-[color:var(--g-text-primary)]",
   /** Supporting sentence under a page title. */
   pageLead: "font-sans text-sm text-pretty text-[color:var(--g-text-muted)]",
   /** Section heading inside a page (<h2>). */
   sectionTitle:
-    "font-[family-name:var(--font-space-grotesk)] text-[21px] leading-[1.2] font-semibold tracking-[-0.018em] text-[color:var(--g-text-primary)]",
+    "font-sans text-[21px] leading-[1.2] font-semibold tracking-[-0.018em] text-[color:var(--g-text-primary)]",
   /** IDs, versions, schemas, timestamps, environment metadata. */
   mono: "font-mono text-xs font-medium tabular-nums text-[color:var(--g-text-muted)]",
   /** Card / list-item heading (<h3>) / widget title. */

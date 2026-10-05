@@ -758,7 +758,7 @@ function MarketplaceAssetsContent() {
                 <h1
                   className={cn(
                     TYPE.pageTitle,
-                    "mt-2 max-w-[12ch] sm:max-w-none font-[family-name:var(--font-space-grotesk)] text-[30px] font-medium leading-tight text-balance sm:text-[34px]",
+                    "mt-2 text-balance",
                   )}
                 >
                   Put Gravitre to work.

@@ -31,7 +31,7 @@ export function SelectionInspector({ open, onOpenChange, title, description, chi
         }}
       >
         <SheetHeader className="pr-14">
-          <SheetTitle className="font-[family-name:var(--font-space-grotesk)]">{title}</SheetTitle>
+          <SheetTitle className="font-sans">{title}</SheetTitle>
           <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
         <div className="min-w-0 px-4 pb-6">{children}</div>
