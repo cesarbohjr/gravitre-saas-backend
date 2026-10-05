@@ -738,6 +738,28 @@ def finalize_execution_outcome(
 
     terminal = _normalize_status(event.status)
     ts = event.timestamp or _now_iso()
+
+    # Outcome Ownership invariant: "completed" is a verified business claim,
+    # not a synonym for provider acceptance or a task function returning success.
+    # Explicit verification evidence is required before completed may fan out to
+    # Runs, notifications, memory, Plays, or positive learning.
+    event_meta = dict(event.metadata or {})
+    verification_contract = (
+        event_meta.get("verification")
+        if isinstance(event_meta.get("verification"), dict)
+        else {}
+    )
+    completion_verified = bool(verification_contract.get("verified"))
+    if terminal == "completed" and not completion_verified:
+        terminal = "verification_inconclusive"
+        event.status = terminal
+        event.error_summary = (
+            event.error_summary
+            or "Execution returned success, but independent outcome verification evidence was not recorded."
+        )
+        event_meta["completion_claim_coerced"] = True
+        event_meta["completion_claim_reason"] = "missing_verification_evidence"
+        event.metadata = event_meta
     if not event.workflow_id:
         event.workflow_id = _resolve_workflow_id(client, event)
 
