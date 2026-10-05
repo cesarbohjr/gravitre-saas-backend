@@ -149,7 +149,17 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     const { resolve } = await import("node:path")
     const shell = readFileSync(resolve(__dirname, "../../components/gravitre/app-shell.tsx"), "utf8")
     // Launcher: md:bottom-5 (20px) + 52px pill = 72px < 96px; mobile: 56px nav + 12px gap + 44px = 112px < 128px.
-    expect(shell).toContain('"pb-32 md:pb-24"')
+    expect(shell).toContain('"[:root:has([data-gravitre-ai-helper])_&]:pb-32"')
+    expect(shell).toContain('"md:[:root:has([data-gravitre-ai-helper])_&]:pb-24"')
+  })
+
+  it("drops the launcher band once the chat is open, so no empty bar shows beside the dock", async () => {
+    const { readFileSync } = await import("node:fs")
+    const { resolve } = await import("node:path")
+    const shell = readFileSync(resolve(__dirname, "../../components/gravitre/app-shell.tsx"), "utf8")
+    // Without the launcher mounted only the mobile bottom nav (56px) needs clearing.
+    expect(shell).toContain('"pb-16 md:pb-0"')
+    expect(shell).not.toContain('"pb-32 md:pb-24"')
   })
 
   it("stacks above MobileBottomNav (z-30) but below modal sheets and dialogs (z-50)", async () => {

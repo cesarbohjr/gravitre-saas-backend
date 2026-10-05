@@ -490,8 +490,16 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
                   )
                 : cn(
                     "overflow-y-auto overflow-x-hidden",
-                    // Clears the fixed AI launcher (and the mobile bottom nav) at scroll end.
-                    pathname.includes("/builder") ? "pb-4" : "pb-32 md:pb-24",
+                    // Clears the mobile bottom nav, plus the AI launcher only while it is
+                    // mounted. Once the chat is open (docked, floating, fullscreen) the
+                    // launcher is gone and a reserved band would paint as an empty bar.
+                    pathname.includes("/builder")
+                      ? "pb-4"
+                      : cn(
+                          "pb-16 md:pb-0",
+                          "[:root:has([data-gravitre-ai-helper])_&]:pb-32",
+                          "md:[:root:has([data-gravitre-ai-helper])_&]:pb-24",
+                        ),
                   ),
             )}
           >
