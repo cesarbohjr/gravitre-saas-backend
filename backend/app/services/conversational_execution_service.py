@@ -75,7 +75,7 @@ class ExecutionResult:
     error_code: str | None = None
     # Wave 7 — calibrated uncertainty notes for verify/relay UI.
     assumption_notes: list[str] | None = None
-
+    # Outcome Ownership: provider/task success is distinct from verified completion.\n    outcome_verified: bool = False\n
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> ExecutionResult:
         data = dict(payload or {})
@@ -455,12 +455,14 @@ class ConversationalExecutionService:
                 link = ""
                 if execution.result_url:
                     link = f"\n\n[View in Gravitre]({execution.result_url})"
-                if task_type == "execute_workflow":
-                    done = f"Done — I started **{execution.title}**.\n\n{execution.body}{link}"
+                if execution.outcome_verified:
+                    done = f"Done — **{execution.title}** is verified.\n\n{execution.body}{link}"
+                elif task_type == "execute_workflow":
+                    done = f"I started **{execution.title}**. It is not complete until the run outcome is verified.\n\n{execution.body}{link}"
                 elif task_type == "run_agent_task":
-                    done = f"Done — **{execution.title}** finished.\n\n{execution.body}{link}"
+                    done = f"**{execution.title}** returned a result. I have not marked the requested outcome complete without verification.\n\n{execution.body}{link}"
                 else:
-                    done = f"Done — I created **{execution.title}**.\n\n{execution.body}{link}"
+                    done = f"I executed the requested change for **{execution.title}**. Verification is still required before I mark it complete.\n\n{execution.body}{link}"
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": "answer",
@@ -542,7 +544,7 @@ class ConversationalExecutionService:
         finalize_execution_outcome(
             client,
             org_id=org_id,
-            status="completed" if result.success else "failed",
+            status="completed" if (result.success and result.outcome_verified) else ("executed" if result.success else "failed"),
             source="assistant_chat",
             actor_id=user_id,
             run_id=run_id,
@@ -644,7 +646,7 @@ class ConversationalExecutionService:
                 conversation_id,
                 org_id,
                 {
-                    "pending_task": {"type": task_type, "status": "executed", "result": result.__dict__},
+                    "pending_task": {"type": task_type, "status": "executed" if result.outcome_verified else "verifying", "lifecycle": "COMPLETED" if result.outcome_verified else "VERIFYING", "result": result.__dict__},
                     "completed_steps": [
                         {
                             "step_id": f"execute_{task_type}",
@@ -678,7 +680,7 @@ class ConversationalExecutionService:
                 },
             )
 
-        await self._record_learning_outcome(org_id, user_id, result, classification)
+        if result.outcome_verified or not result.success:\n            await self._record_learning_outcome(org_id, user_id, result, classification)
         return result
 
     async def _create_agent(
