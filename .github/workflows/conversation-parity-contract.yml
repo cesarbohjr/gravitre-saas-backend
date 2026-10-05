@@ -1,0 +1,31 @@
+name: Conversation parity contract
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/services/conversation_parity_*.py"
+      - "backend/app/services/conversational_turn_gate.py"
+      - "backend/app/services/pipecat_voice/**"
+      - "backend/tests/services/test_conversation_parity_*.py"
+      - "scripts/run-conversation-parity-benchmark.py"
+      - ".github/workflows/conversation-parity-contract.yml"
+  workflow_dispatch:
+
+jobs:
+  parity-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused test dependencies
+        run: pip install -r requirements.txt
+      - name: Run conversation parity contract
+        run: pytest -q tests/services/test_conversation_parity_benchmark.py tests/services/test_conversation_parity_model_routing.py tests/services/test_conversation_parity_no_canned_eval_answers.py tests/services/pipecat_voice/test_durable_conversation_parity.py
+      - name: Prove benchmark template builds
+        working-directory: .
+        run: python scripts/run-conversation-parity-benchmark.py --template --out /tmp/conversation-parity-template.json
