@@ -33,6 +33,7 @@ export function VoiceDuplexHarness() {
     lastError: "",
   })
   const patchedRef = useRef(false)
+  const [harnessReady, setHarnessReady] = useState(false)
 
   useEffect(() => {
     if (patchedRef.current || typeof window === "undefined") return
@@ -187,6 +188,8 @@ export function VoiceDuplexHarness() {
       return dest.stream
     }
 
+    setHarnessReady(true)
+
     const interval = window.setInterval(() => {
       setMetrics({
         pcmBytesSent: pcm.bytes,
@@ -205,6 +208,7 @@ export function VoiceDuplexHarness() {
       window.WebSocket = NativeWebSocket
       window.AudioContext = OrigAudioContext
       navigator.mediaDevices.getUserMedia = origGUM
+      setHarnessReady(false)
     }
   }, [])
 
@@ -229,6 +233,7 @@ export function VoiceDuplexHarness() {
   return (
     <div
       data-testid="voice-duplex-harness"
+      data-ready={harnessReady ? "true" : "false"}
       data-presence={duplex.presence}
       data-active={duplex.isActive ? "true" : "false"}
       data-pcm-bytes={metrics.pcmBytesSent}
@@ -242,6 +247,7 @@ export function VoiceDuplexHarness() {
       <button
         type="button"
         data-testid="voice-duplex-start"
+        disabled={!harnessReady}
         onClick={() => duplex.toggle()}
         className="mt-3 rounded-md border px-3 py-2 text-sm"
       >
