@@ -13,6 +13,7 @@ type HarnessMetrics = {
   wsOpen: boolean
   audioContextState: string
   sessionTurnRequested: boolean
+  lastError: string
 }
 
 declare global {
@@ -29,6 +30,7 @@ export function VoiceDuplexHarness() {
     wsOpen: false,
     audioContextState: "unknown",
     sessionTurnRequested: false,
+    lastError: "",
   })
   const patchedRef = useRef(false)
 
@@ -189,6 +191,7 @@ export function VoiceDuplexHarness() {
           ? (nativeStateGetter?.call(capture.ctx) ?? "unknown")
           : "absent",
         sessionTurnRequested: pcm.sessionTurn,
+        lastError: window.__voiceDuplexHarness?.lastError || "",
       })
     }, 100)
 
@@ -205,6 +208,7 @@ export function VoiceDuplexHarness() {
     enabled: true,
     onError: (message) => {
       console.error("[voice-duplex-harness]", message)
+      setMetrics((prev) => ({ ...prev, lastError: message }))
     },
   })
 
@@ -225,6 +229,7 @@ export function VoiceDuplexHarness() {
       data-pcm-bytes={metrics.pcmBytesSent}
       data-ws-open={metrics.wsOpen ? "true" : "false"}
       data-session-turn={metrics.sessionTurnRequested ? "true" : "false"}
+      data-last-error={metrics.lastError}
       data-capture-ctx-state={metrics.audioContextState}
       className="p-6"
     >
