@@ -541,6 +541,7 @@ class GravitreCognitiveLLMService(LLMService):
                     tool_results=list(getattr(complete_event, "tool_results", None) or []),
                     assistant_message_id=assistant_id,
                 )
+            return persisted_id, assistant_id
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "pipecat_voice_turn_persist_failed org_id=%s conversation_id=%s error=%s",
@@ -548,6 +549,7 @@ class GravitreCognitiveLLMService(LLMService):
                 self._conversation_id,
                 str(exc),
             )
+            return None, None
 
     async def _flush_client_text(self, filt: SpokenMarkdownStreamFilter) -> None:
         """Release withheld transcript text before another writer emits.
