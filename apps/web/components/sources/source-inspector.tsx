@@ -32,14 +32,16 @@ function SourceStatus({ source }: { source: Source }) {
 
 export function SourceInventoryRow({ source, selected, onSelect }: { source: Source; selected: boolean; onSelect: () => void }) {
   return <button type="button" aria-pressed={selected} onClick={onSelect}
-    className={cn("flex min-h-11 w-full items-start gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", selected && "bg-[color:var(--g-surface-active)]")}>
-    <ConnectorIcon vendor={sourceTypeVendorKey(source.type)} name={source.name} size="md" showStatusIndicator={false} />
-    <span className="min-w-0 flex-1 space-y-2">
-      <span className="block break-words text-sm font-semibold text-foreground">{source.name}</span>
-      <span className="block break-words text-xs text-muted-foreground">{source.type} · {source.environment}</span>
-      <SourceStatus source={source} />
-      <span className="block text-xs tabular-nums text-muted-foreground">{formatReportedCount(source.tables)} tables · {source.records} records · {formatReportedCount(source.workflowsUsing)} workflows</span>
-      <span className="block text-xs text-muted-foreground">Last sync: {source.lastSync}</span>
+    className={cn("flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", selected && "bg-[color:var(--g-surface-active)]")}>
+    <ConnectorIcon vendor={sourceTypeVendorKey(source.type)} name={source.name} size="sm" showStatusIndicator={false} />
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="flex min-w-0 items-center justify-between gap-3">
+        <span className="truncate text-sm font-semibold text-foreground">{source.name}</span>
+        <SourceStatus source={source} />
+      </span>
+      <span className="truncate text-xs tabular-nums text-muted-foreground">
+        {source.type} · {source.environment} · {formatReportedCount(source.tables)} tables · {source.records} records · {source.status === "syncing" ? "syncing now" : `synced ${source.lastSync}`}
+      </span>
     </span>
   </button>
 }
