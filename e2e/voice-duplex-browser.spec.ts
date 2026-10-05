@@ -19,15 +19,16 @@ test.describe("Voice duplex browser pipeline", () => {
 
     await page.getByTestId("voice-duplex-start").click()
 
-    await expect
-      .poll(async () => ({
+    await expect.poll(async () => harness.getAttribute("data-ws-open"), { timeout: 15_000 }).toBe("true").catch(async (err) => {
+      const state = {
         wsOpen: await harness.getAttribute("data-ws-open"),
         presence: await harness.getAttribute("data-presence"),
         active: await harness.getAttribute("data-active"),
         error: await harness.getAttribute("data-last-error"),
         audioContext: await harness.getAttribute("data-capture-ctx-state"),
-      }), { timeout: 15_000 })
-      .toMatchObject({ wsOpen: "true" })
+      }
+      throw new Error(`Voice duplex socket did not open. Harness state: ${JSON.stringify(state)}\n${err instanceof Error ? err.message : String(err)}`)
+    })
 
     // The harness constructs the capture context autoplay-blocked, so this only
     // reaches "running" if the hook explicitly resumes it.
