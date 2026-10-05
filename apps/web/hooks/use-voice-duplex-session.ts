@@ -1333,12 +1333,20 @@ export function useVoiceDuplexSession(options: Options) {
           const fallbackText = String(msg.text || "").trim()
           const assistantText = assistantTextRef.current.trim() || fallbackText
           const turnId = String(msg.turn_id || "").trim() || null
+          const completedConversationId =
+            typeof msg.conversation_id === "string" && msg.conversation_id.trim()
+              ? msg.conversation_id.trim()
+              : optsRef.current.conversationId || null
+          if (completedConversationId && completedConversationId !== optsRef.current.conversationId) {
+            optsRef.current.conversationId = completedConversationId
+            optsRef.current.onConversationId?.(completedConversationId)
+          }
           turnIdRef.current = turnId
           pipecatTurnCompletionDispatchedRef.current = true
           optsRef.current.onTurnComplete?.({
             userText: lastUserFinalRef.current,
             assistantText,
-            conversationId: optsRef.current.conversationId || null,
+            conversationId: completedConversationId,
             turnId,
             cancelled: false,
             events: [],
