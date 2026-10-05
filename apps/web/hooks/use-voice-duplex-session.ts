@@ -1441,8 +1441,11 @@ export function useVoiceDuplexSession(options: Options) {
             echoLeakRef.current.observe(snapshot.rms)
           }
         },
+        // Pipecat owns acoustic interruption classification server-side.
+        // Do not let raw browser energy stop playback before Flux +
+        // BackchannelAwareUserTurnStartStrategy can distinguish "mm-hm" from
+        // a genuine interruption. Manual UI bargeIn() remains available.
         agentSpeaking: () => agentSpeakingRef.current,
-        onBargeIn: () => void bargeIn(),
       })
       processorRef.current = micProcessorRef.current.processor
     } catch (err) {
