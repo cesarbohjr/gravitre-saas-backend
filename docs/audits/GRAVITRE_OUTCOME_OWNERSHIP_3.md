@@ -1,0 +1,142 @@
+# GRAVITRE 3.0 — PROMPT TO VERIFIED OUTCOME / OUTCOME OWNERSHIP
+
+**Status:** ACTIVE ENGINEERING PROGRAM  
+**Baseline:** main `44429deaf5f74e4d97d5a64ebe144eb1f0b59a82`  
+**Direction:** PRESERVE + CONVERGE. Do not create a second runtime.
+
+## Product invariant
+
+A user states the business outcome. Gravitre owns the work from understanding through verified completion.
+
+```
+PROMPT
+→ UNDERSTAND
+→ ACCEPT OWNERSHIP
+→ RESOLVE CONTEXT
+→ PLAN
+→ SELECT CAPABILITIES
+→ GOVERN
+→ EXECUTE
+→ OBSERVE
+→ ADAPT / REPAIR
+→ VERIFY
+→ CONFIRM
+→ DELIVER RESULT
+→ LEARN
+```
+
+Execution is not completion. Approval is not completion. A provider HTTP success is not completion. A workflow reaching its final node is not completion. Gravitre may use **Done / Completed** only when the requested outcome has verification evidence appropriate to that outcome.
+
+## Canonical resources
+
+The planner may compose existing Connectors, Agents, Workflows, Plays, Knowledge Fabric, organizational memory, datasets, internet/research, ActionSpecs and governed writes. These are resources, not separate user-facing brains. They share task truth, governance, Observations and completion semantics.
+
+## Outcome state contract
+
+`REQUESTED → UNDERSTOOD → PLANNED → EXECUTING → EXECUTED → VERIFYING → VERIFIED → COMPLETED`
+
+Legal side states: `AWAITING_APPROVAL`, `BLOCKED`, `PARTIALLY_COMPLETED`, `FAILED`, `OUTCOME_UNCERTAIN`, `RESUMABLE`.
+
+**Forbidden:** `tool.invoke.completed → COMPLETED` without outcome verification.
+
+## Verification contract
+
+Every material write must define its verifier before execution where feasible.
+
+Minimum verification evidence:
+- provider/resource identity;
+- expected postcondition;
+- read-back or authoritative observation;
+- verification timestamp;
+- verifier/action used;
+- match/mismatch evidence;
+- unresolved exceptions.
+
+For multi-step objectives, every required step must be terminal and the parent outcome must satisfy its success criteria before `COMPLETED`.
+
+## Responsibility contract
+
+After accepting an executable objective Gravitre continues until one of these is true:
+1. verified outcome;
+2. user approval/input is genuinely required;
+3. authorization/connector access blocks progress;
+4. safe bounded recovery is exhausted;
+5. the requested outcome is impossible or cannot be verified.
+
+A recoverable connector/tool failure is an internal replanning event, not automatically a user handoff.
+
+## Response contract
+
+The user-facing response leads with the business result, not the trace.
+
+Allowed completion language:
+- **Done / Completed:** verified outcome.
+- **Executed; verification pending:** provider accepted action but outcome is not independently verified.
+- **Partially completed:** some required success criteria remain.
+- **Blocked:** external/user dependency prevents safe continuation.
+- **Failed:** bounded recovery exhausted.
+- **Outcome uncertain:** side effect may have happened and reconciliation is required.
+
+## Initial audit findings
+
+The current architecture already contains most required primitives: `execute_task_streaming`, CognitiveTurnKernel, ExecutionPlan, ActionSpec, PendingAction, Observations, action lifecycle verification, capability/resource resolution, Knowledge Fabric, workflows/Temporal, outcome events and Composer.
+
+The main risk is **semantic convergence**, not missing primitives:
+- workflow/agent paths must not bypass canonical Observation + verification semantics;
+- successful connector invocation must never imply business completion;
+- recovery/replanning needs one ownership contract;
+- compound objectives need parent-level success criteria;
+- final Composer claims must be mechanically bounded by outcome state;
+- evidence must survive cross-modal/resume paths.
+
+## Engineering phases
+
+### O0 — Completion truth gate
+Make verified outcome a mechanical prerequisite for completion claims across connector, workflow and agent paths.
+
+### O1 — Objective + success criteria
+Persist an explicit objective contract: requested outcome, constraints, required evidence, completion criteria and acceptable blockers.
+
+### O2 — Capability composition
+Audit planner access to connectors, agents, workflows, Plays, KF, memory, datasets and internet. Remove user-visible/manual orchestration where the runtime can resolve safely.
+
+### O3 — Recovery ownership
+Bounded retry, parameter repair, alternate eligible action/provider, token/auth diagnosis, reconciliation-before-retry for uncertain writes.
+
+### O4 — Compound verification
+Parent objective completes only when all required child outcomes are verified or explicitly waived by the objective contract.
+
+### O5 — Result delivery
+Composer renders result/evidence/exceptions/artifacts and cannot upgrade an unverified state to completed prose.
+
+### O6 — Learning
+Only verified/measured outcomes become eligible learning signals; API success alone is excluded.
+
+### O7 — Outcome Ownership benchmark
+Held-out end-to-end journeys across CRM, support, sales, marketing, research, knowledge, workflows, agents and cross-modal continuity.
+
+## Release gate
+
+A change is not Outcome-Ownership-ready until:
+- exact-head CI is green;
+- held-out ownership contract passes;
+- no production prompt contains benchmark answers;
+- live tenant writes are read-back verified;
+- failure/recovery journeys are exercised;
+- final claims match persisted state;
+- production human acceptance proves representative end-to-end tasks.
+
+## Benchmark seed classes
+
+1. CRM segment/list creation + read-back.
+2. Research accounts → enrich → CRM update → follow-up task → verify.
+3. Diagnose stalled pipeline → propose/remediate authorized causes → verify.
+4. Support SLA regression → investigate → execute safe remediation → verify.
+5. Knowledge-grounded analysis requiring tenant docs + live provider data.
+6. Workflow delegation with governed write and parent-level verification.
+7. Agent delegation with artifact + provider side effect + evidence.
+8. Connector validation failure → repair → retry → verify.
+9. Timeout after possible write → reconcile before retry.
+10. Text → voice → text continuation of the same owned objective.
+
+The benchmark will expand to 100+ held-out scenarios after O0/O1 contracts are enforced.
