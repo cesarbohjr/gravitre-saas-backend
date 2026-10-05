@@ -168,7 +168,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         query = reconstitute_spoken_identity_fields(text)
         self._last_speculative_text = text
 
-        def _runner():
+        async def _runner():
             from app.operators.agent_intelligence import get_agent_intelligence
             from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
 
@@ -178,10 +178,12 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             history_summary = None
             conversation_id = self._conversation_id
             if self._durable_context_provider is not None:
-                durable, history_summary, provider_conversation_id = self._durable_context_provider()
+                # Awaited, not called: the first load on a resumed conversation
+                # is two Supabase queries and must not run on the event loop.
+                durable, history_summary, provider_conversation_id = await self._durable_context_provider()
                 history = (list(durable or []) + list(socket_history or []))[-48:]
                 conversation_id = provider_conversation_id or conversation_id
-            return intelligence.execute_task_streaming(
+            stream = intelligence.execute_task_streaming(
                 settings=self._app_settings,
                 org_id=self._org_id,
                 user_id=self._user_id,
@@ -193,6 +195,8 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 spoken_mode=True,
                 mode=resolve_voice_session_intelligence_mode(query),
             )
+            async for event in stream:
+                yield event
 
         run = start_speculative_run(
             text=query,

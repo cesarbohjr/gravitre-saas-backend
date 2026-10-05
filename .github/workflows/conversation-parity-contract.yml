@@ -5,6 +5,12 @@ on:
     paths:
       - "backend/app/services/conversation_parity_*.py"
       - "backend/app/services/conversational_turn_gate.py"
+      - "backend/app/services/expert_dialogue_library.py"
+      - "backend/app/services/module_d_unified_voice_spec.py"
+      - "backend/tests/services/test_few_shot_benchmark_isolation.py"
+      - "backend/tests/services/pipecat_voice/**"
+      - "backend/tests/support/fake_supabase.py"
+      - "scripts/verify-*live*.py"
       - "backend/app/services/pipecat_voice/**"
       - "backend/tests/services/test_conversation_parity_*.py"
       - "scripts/run-conversation-parity-benchmark.py"
@@ -26,7 +32,7 @@ jobs:
       - name: Install focused test dependencies
         run: pip install -r requirements.txt pytest pytest-asyncio
       - name: Run conversation parity contract
-        run: PYTHONPATH=. pytest -q tests/services/test_conversation_parity_benchmark.py tests/services/test_conversation_parity_model_routing.py tests/services/test_conversation_parity_no_canned_eval_answers.py tests/services/pipecat_voice/test_durable_conversation_parity.py
+        run: PYTHONPATH=. pytest -q tests/services/test_conversation_parity_benchmark.py tests/services/test_conversation_parity_model_routing.py tests/services/test_conversation_parity_no_canned_eval_answers.py tests/services/pipecat_voice/test_durable_conversation_parity.py tests/services/pipecat_voice/test_interrupt_reporter_durable_behaviour.py tests/services/pipecat_voice/test_cognitive_llm_barge_in_and_seed.py tests/services/test_few_shot_benchmark_isolation.py
       - name: Prove benchmark template builds
         working-directory: .
         run: python scripts/run-conversation-parity-benchmark.py --template --out /tmp/conversation-parity-template.json

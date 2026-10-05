@@ -152,11 +152,21 @@ export function useAuth() {
 export async function getAccessToken(): Promise<string | null> {
   if (
     (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1") &&
-    typeof window !== "undefined" &&
-    /^\/e2e\/shots(?:\/|$)/.test(window.location.pathname) &&
-    (window as Window & { __GRAVITRE_AI_INSTRUMENT?: boolean }).__GRAVITRE_AI_INSTRUMENT
+    typeof window !== "undefined"
   ) {
-    return "shot-access-token"
+    const e2eWindow = window as Window & {
+      __GRAVITRE_AI_INSTRUMENT?: boolean
+      __GRAVITRE_VOICE_DUPLEX_HARNESS?: boolean
+    }
+    const path = window.location.pathname
+    if (/^\/e2e\/shots(?:\/|$)/.test(path) && e2eWindow.__GRAVITRE_AI_INSTRUMENT) {
+      return "shot-access-token"
+    }
+    // The voice duplex guard drives the real Pipecat client against a local
+    // harness server that does not check auth; it only needs a token to exist.
+    if (/^\/e2e\/voice-duplex(?:\/|$)/.test(path) && e2eWindow.__GRAVITRE_VOICE_DUPLEX_HARNESS) {
+      return "voice-duplex-harness-token"
+    }
   }
   if (!hasSupabasePublicEnv) return null
   

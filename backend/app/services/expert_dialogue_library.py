@@ -17,14 +17,14 @@ ExpertExchange = tuple[str, str, str]
 _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
     "marketing": (
         (
-            "A deal stage update in HubSpot keeps failing — what should I check first as an SEO marketer tying pipeline to content?",
-            "Treat it as a CRM property problem before a content problem. Confirm the deal's pipeline and that the target stage id is valid for that pipeline — HubSpot stages are pipeline-scoped, so a stage that exists on another pipeline will fail. Then check required properties for that stage and watch for INVALID_PROPERTY. Once the stage write works, map UTMs/landing pages to the deal associations so content attribution isn't lying.",
-            "tool.hubspot.expertise — pipelines/stages, INVALID_PROPERTY; marketing UTMs",
+            "Our HubSpot workflow won't move contacts from MQL to SQL after a webinar — where do you look before touching the content?",
+            "Start in the CRM, not the copy. Check whether lifecycle stage is being set backwards (HubSpot won't move it back without clearing it first), whether the enrollment trigger actually matches the webinar property, and whether another workflow is overwriting the stage. Once the stage moves cleanly, tie the webinar source to the contact so attribution reflects what happened.",
+            "tool.hubspot.expertise — lifecycle stages, workflow enrollment triggers; marketing attribution",
         ),
         (
-            "Should we push a blog series or fix product-page SEO first for a new ICP?",
-            "Product pages first. They carry commercial intent and convert; blog posts should support those pages with query clusters, not lead the bet. In HubSpot, make sure product/landing page contacts associate cleanly to Companies and Deals before you scale content enrollment into workflows.",
-            "tool.hubspot.expertise — objects/associations; SEO commercial-intent practice",
+            "We're expanding into Germany — translate the existing blog first, or build localized landing pages?",
+            "Localized landing pages first. They carry the commercial intent, and they need proper hreflang and local proof points to rank. Translate only the blog posts that support those pages. In HubSpot, set a region property on new contacts so you can see whether the German pages actually feed pipeline.",
+            "SEO commercial-intent practice; international SEO (hreflang); tool.hubspot.expertise — contact properties",
         ),
         (
             "Search Console shows a crawl spike but GA4 sessions are flat — how do you read that?",
@@ -39,14 +39,14 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
     ),
     "sales": (
         (
-            "How should we work a stalled opportunity that has a contact but no next step in the CRM?",
-            "No next step means the opp is unmanaged. Open the Opportunity, confirm stage and close date still make sense, then log one concrete activity: discovery call, mutual action plan, or a written ask to the champion. If you're on HubSpot/Salesforce, don't create a duplicate deal — associate the right Contact/Company and update the existing record. If there's no champion, re-qualify before you discount.",
-            "tool.hubspot/salesforce — Opportunity/Deal + associations; sales pack pipeline hygiene",
+            "Our champion on a late-stage deal just left the buyer's company — how do I treat it in the forecast?",
+            "Pull it out of commit until you re-establish sponsorship. Update the existing Opportunity rather than opening a new one: mark the contact as departed, find the economic buyer or a new champion, and log a dated next step. Keep the close date honest; a deal without a sponsor usually slips, so don't discount to paper over it.",
+            "tool.hubspot/salesforce — Opportunity/Deal updates, contact roles; sales pack forecast hygiene",
         ),
         (
-            "SDR wants to mass-email every stale contact with a 40% discount — yes or no?",
-            "No. Mass blasts to stale contacts burn sender reputation and often need clearer opt-in. Segment for recent engagement, personalize one-sentence asks, and keep discounting as a late-stage lever after a real next step exists on the Opportunity.",
-            "sales outreach practice + withhold fabrication; SendGrid/HubSpot email risk framing",
+            "Marketing wants to drop every closed-lost deal from last year into a nurture sequence — good idea?",
+            "Not wholesale. Filter by loss reason first: lost on price, timing, and no-decision are worth revisiting; lost to a bad fit is not. Respect unsubscribes and opt-in status, personalize by loss reason, and let the deal owner decide when to reopen the existing Opportunity instead of opening a new one.",
+            "sales pipeline practice — closed-lost re-engagement; email consent risk framing",
         ),
         (
             "Lead just converted — Account and Contact both exist. What do I verify before forecasting?",
@@ -78,19 +78,19 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
     ),
     "legal": (
         (
-            "Can we reuse a customer's quote in a case study without asking?",
-            "Not as a default. Treat testimonials and case studies as needing a written release or clear permission; don't invent that consent exists. If you have a release, use only what it covers — otherwise draft a short ask before publishing.",
-            "legal pack / honesty withhold — no fabricated consent",
+            "Can we put a customer's logo on our website because they pay us?",
+            "Not by default. Check the contract for a publicity clause; many agreements prohibit logo use without written consent. If there's no clause, get a short written OK before publishing, and don't assume being a paying customer means permission.",
+            "legal pack / honesty withhold — publicity rights, no assumed consent",
         ),
         (
-            "Sales wants to promise SOC 2 in a proposal this week — are we clear?",
-            "Only if you can point to a real attestation on file. If you don't have the report, say the program status plainly and don't claim Certified. I won't invent an audit date.",
-            "legal/compliance honesty — withhold fabrication",
+            "A prospect's security questionnaire asks whether we're ISO 27001 certified — what do we answer?",
+            "Only say yes if there's a current certificate and the scope covers the service they're buying. Otherwise describe the program honestly: which controls are in place and where the certification effort stands. Don't give a certification date nobody has committed to.",
+            "legal/compliance honesty — certification claims; withhold fabrication",
         ),
         (
-            "Vendor NDA — what do I check first before we sign?",
-            "Start with confidentiality carveouts, residual-use language, and governing law — those three decide how much risk you're taking. Then check mutual vs one-way obligations and how long the NDA lasts after the relationship ends. Don't invent that our playbook already approved the form.",
-            "legal pack — NDA review checklist; withhold playbook claims",
+            "A partner's MSA has uncapped indemnity on their side only — how do you approach the redline?",
+            "Make it mutual and cap it, usually at fees paid over a set period, with carve-outs limited to things like confidentiality breaches and IP infringement. Check that the liability cap and the indemnity section don't contradict each other. Don't say our playbook already approves this form unless you've checked it.",
+            "legal pack — MSA indemnity/limitation of liability redlines; withhold playbook claims",
         ),
         (
             "Can we say we're GDPR ready in the MSA without a DPA?",
@@ -100,14 +100,14 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
     ),
     "cybersecurity": (
         (
-            "Should we open inbound SSH to the world for a vendor debug session?",
-            "No. Prefer time-bound access via VPN or a bastion, log the session, and close it after. Broad inbound SSH is a standing risk — push for least privilege, not convenience.",
-            "NIST/cyber pack — least privilege / zero trust framing",
+            "A vendor asks us to allowlist their cloud provider's entire IP range for an integration — is that fine?",
+            "No. A whole provider range lets in anyone who rents a server there. Ask for their dedicated egress IPs, or use a private link or mutual TLS, keep the rule time-bound if it's for setup, and log the traffic.",
+            "NIST/cyber pack — least privilege network access / zero trust framing",
         ),
         (
-            "What's the first hardening move for SaaS admin accounts?",
-            "Enforce MFA on every admin — prefer phishing-resistant factors (security keys / passkeys) over SMS. Then cut standing admin roles to just-in-time elevation and review OAuth app grants. Don't invent that SSO is already enforced if you haven't checked the IdP.",
-            "cyber pack — MFA / phishing-resistant / JIT privilege",
+            "A contractor whose engagement ended last month still has admin in our identity provider — first moves?",
+            "Remove the admin role and disable the account now, then rotate any shared secrets or API keys they could reach. Review the IdP audit log from their end date forward for sign-ins or grant changes. After that, require phishing-resistant MFA for the remaining admins and move admin to just-in-time elevation so offboarding gaps don't leave standing access. Don't assume SSO covered every app until you've checked.",
+            "cyber pack — offboarding / credential rotation / JIT privilege",
         ),
         (
             "Vendor wants standing production access for support — yes or no?",
@@ -122,14 +122,14 @@ _EXPERT_DIALOGUES: dict[str, tuple[ExpertExchange, ...]] = {
     ),
     "hr": (
         (
-            "Can we train a model on resumes we scraped from job boards?",
-            "Not casually. Stick to candidates who applied through your process, keep a human review step, and don't invent a legal green light without counsel — scraped job-board resumes are high privacy and adverse-impact risk.",
-            "hr/EEOC pack — withhold; candidate data care",
+            "Can we keep rejected applicants' files indefinitely in case we build a screening model later?",
+            "Not as a default. Set a retention period that matches your notice to applicants and local law, and don't repurpose application data for model training without telling candidates and checking with counsel. Keep only what the retention policy allows and delete the rest on schedule.",
+            "hr/privacy pack — applicant data retention and purpose limitation",
         ),
         (
-            "Should we score candidates with AI on scraped resumes from job boards?",
-            "No as a default. Prefer ATS or first-party applications, a documented job-related scorecard, and human review before any rejection. Fully automated ranking of scraped resumes is the wrong footing legally and operationally.",
-            "hr pack — scorecard / adverse impact / human review",
+            "A vendor's interview tool auto-rejects anyone under a score threshold — what do we ask before switching it on?",
+            "Ask for their adverse-impact testing and whether a bias audit is required where you hire. Confirm the criteria are job-related, that candidates are told an automated tool is used, and that a person reviews before anyone is rejected. Don't turn on auto-reject just because the vendor says it's compliant.",
+            "hr pack — automated employment decision tools / adverse impact / human review",
         ),
         (
             "Offer letter went out with the wrong start date — what now?",

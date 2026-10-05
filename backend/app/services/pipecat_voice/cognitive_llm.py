@@ -79,13 +79,28 @@ class GravitreCognitiveLLMService(LLMService):
         self._durable_history_loaded = False
         self._durable_history: list[dict[str, Any]] = []
         self._durable_summary: str | None = None
+        self._durable_load_lock = asyncio.Lock()
         self._interrupt_reporter: Any | None = None
 
-    def speculative_durable_context(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
-        """Return the same durable seed/summary used by confirmed voice turns."""
-        if not self._durable_history_loaded:
-            self._durable_history, self._durable_summary = self._load_durable_conversation_context()
+    async def _ensure_durable_context(self) -> None:
+        """Load the durable seed once per socket, off the event loop.
+
+        Both the speculative run and the confirmed turn can ask first; the lock
+        makes the second caller wait for the first load instead of repeating it.
+        """
+        if self._durable_history_loaded:
+            return
+        async with self._durable_load_lock:
+            if self._durable_history_loaded:
+                return
+            self._durable_history, self._durable_summary = await asyncio.to_thread(
+                self._load_durable_conversation_context
+            )
             self._durable_history_loaded = True
+
+    async def speculative_durable_context(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
+        """Return the same durable seed/summary used by confirmed voice turns."""
+        await self._ensure_durable_context()
         return list(self._durable_history), self._durable_summary, self._conversation_id
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -137,18 +152,20 @@ class GravitreCognitiveLLMService(LLMService):
         user_text, history = _messages_from_context(context)
         if not user_text:
             return
-        if self._interrupt_reporter is not None and self._interrupt_reporter.conversation_id:
-            self._conversation_id = self._interrupt_reporter.conversation_id
-        if not self._durable_history_loaded:
-            self._durable_history, self._durable_summary = await asyncio.to_thread(
-                self._load_durable_conversation_context
-            )
-            self._durable_history_loaded = True
+        if self._interrupt_reporter is not None:
+            # A confirmed new user turn ends the interrupted one: let its
+            # bookkeeping finish and release the stop marker it armed, so this
+            # turn is not mistaken for a stopped one.
+            await self._interrupt_reporter.settle_barge_in()
+            if self._interrupt_reporter.conversation_id:
+                self._conversation_id = self._interrupt_reporter.conversation_id
+        await self._ensure_durable_context()
         history = self._merge_durable_and_socket_history(self._durable_history, history)
         user_text = reconstitute_spoken_identity_fields(user_text)
         if self._interrupt_reporter is not None:
             self._interrupt_reporter.begin_turn(user_text)
-        if is_stop_requested(
+        if await asyncio.to_thread(
+            is_stop_requested,
             str(self._org_id or ""),
             self._conversation_id,
             settings=self._app_settings,

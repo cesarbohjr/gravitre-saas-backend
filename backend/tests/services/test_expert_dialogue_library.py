@@ -18,7 +18,7 @@ def test_resolve_seo_marketing_analyst_to_marketing():
     assert resolve_expert_department(agent) == "marketing"
     section = expert_dialogue_prompt_section(agent)
     assert "Expert dialogue examples (marketing)" in section
-    assert "INVALID_PROPERTY" in section or "pipeline-scoped" in section
+    assert "lifecycle stage" in section
     assert "Gravitre-authored" in section
 
 
@@ -35,8 +35,8 @@ def test_legal_hr_cyber_sections_pilot_depth():
     cyber = expert_dialogue_prompt_section(
         {"name": "Cybersecurity Agent", "department": "cybersecurity"}
     )
-    assert "written release" in legal.lower() or "attestation" in legal.lower()
-    assert "governing law" in legal.lower() or "residual" in legal.lower()
+    assert "written" in legal.lower() and "certificate" in legal.lower()
+    assert "indemnity" in legal.lower() or "dpa" in legal.lower()
     assert "scorecard" in hr.lower() or "adverse" in hr.lower()
     assert "phishing-resistant" in cyber.lower() or "bastion" in cyber.lower()
     assert "mfa" in cyber.lower()

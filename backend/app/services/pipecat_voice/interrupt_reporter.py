@@ -8,6 +8,7 @@ full_draft plus optional client playback_offset_ms.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from typing import Any
 
 from pipecat.frames.frames import (
@@ -24,6 +25,22 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+@dataclass(frozen=True)
+class _InterruptedTurn:
+    """Turn identity captured when the interruption happens.
+
+    The durable writes run after the stop frame is already moving, so by the
+    time they execute a new turn may have started and replaced the reporter's
+    live fields. Everything they need is copied here first.
+    """
+
+    org_id: str | None
+    user_id: str | None
+    conversation_id: str | None
+    user_text: str
+    assistant_message_id: str | None
 
 
 class ElevenLabsInterruptReporter(FrameProcessor):
@@ -67,6 +84,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._voice_session = voice_session
         self._active_user_text = ""
         self._active_assistant_message_id: str | None = None
+        # Barge-in side effects (stop marker, audit rows, durable reconcile) run
+        # after the InterruptionFrame is pushed. The next turn waits on this
+        # task before it clears the stop marker this socket armed.
+        self._post_interrupt_tasks: set[asyncio.Task[Any]] = set()
+        self._armed_stop: tuple[str, str] | None = None
 
     @property
     def conversation_id(self) -> str | None:
@@ -81,79 +103,215 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._conversation_id = conversation_id
         self._active_assistant_message_id = assistant_message_id or None
 
-    async def _persist_interrupted_assistant_text(self, reconciled_text: str) -> None:
-        """Persist the heard prefix without blocking the interruption transport."""
-        if not self._settings or not self._org_id or not self._user_id:
-            return
-        try:
-            await asyncio.to_thread(self._persist_interrupted_assistant_text_sync, reconciled_text)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "pipecat_interrupted_history_reconcile_failed org_id=%s conversation_id=%s error=%s",
-                self._org_id, self._conversation_id, str(exc),
-            )
-
-    def _persist_interrupted_detached(self, reconciled_text: str) -> None:
-        """Schedule durable reconciliation after the stop frame is already moving."""
-        task = self.create_task(self._persist_interrupted_assistant_text(reconciled_text))
-        def _consume(done: asyncio.Task[Any]) -> None:
-            try:
-                done.result()
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("pipecat_interrupted_detached_persist_failed error=%s", str(exc))
-        task.add_done_callback(_consume)
-
-    def _persist_interrupted_assistant_text_sync(self, reconciled_text: str) -> None:
-        from app.workflows.repository import get_supabase_client
-
-        client = get_supabase_client(self._settings)
-        owned_current = False
-        if self._conversation_id:
-            owned = (
-                client.table("conversations")
-                .select("id")
-                .eq("id", self._conversation_id)
-                .eq("org_id", self._org_id)
-                .eq("user_id", self._user_id)
-                .limit(1)
-                .execute()
-            )
-            owned_current = bool(getattr(owned, "data", None))
-        message_id = str(self._active_assistant_message_id or "").strip()
-        if message_id and owned_current:
-            updated = (
-                client.table("conversation_messages").update({"content": reconciled_text.strip()})
-                .eq("id", message_id)
-                .eq("conversation_id", self._conversation_id)
-                .eq("role", "assistant")
-                .execute()
-            )
-            if getattr(updated, "data", None):
-                return
-            # The stream can expose the stable assistant id before the durable
-            # insert commits. If the row is not visible yet, fall through and
-            # persist the active turn with that same id instead of silently
-            # losing the heard prefix.
-
-        # Mid-generation interruption: no completed assistant row exists yet.
-        # Persist THIS active turn instead of ever rewriting "latest assistant",
-        # which could belong to the previous turn.
-        if not self._active_user_text or not reconciled_text.strip():
-            return
-        from app.routers.assistant import _persist_conversation_turn
-        persisted_id, assistant_id = _persist_conversation_turn(
-            self._settings,
+    def _snapshot_turn(self) -> _InterruptedTurn:
+        return _InterruptedTurn(
             org_id=self._org_id,
             user_id=self._user_id,
             conversation_id=self._conversation_id,
             user_text=self._active_user_text,
-            assistant_text=reconciled_text.strip(),
+            assistant_message_id=self._active_assistant_message_id,
+        )
+
+    async def _persist_interrupted_assistant_text(
+        self, reconciled_text: str, turn: _InterruptedTurn | None = None
+    ) -> None:
+        """Persist the heard prefix without blocking the interruption transport."""
+        turn = turn or self._snapshot_turn()
+        if not self._settings or not turn.org_id or not turn.user_id:
+            return
+        try:
+            persisted = await asyncio.to_thread(
+                self._persist_interrupted_assistant_text_sync, reconciled_text, turn
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "pipecat_interrupted_history_reconcile_failed org_id=%s conversation_id=%s error=%s",
+                turn.org_id, turn.conversation_id, str(exc),
+            )
+            return
+        if persisted is None:
+            return
+        persisted_id, assistant_id = persisted
+        # Adopt the ids only if no newer turn has replaced the one we persisted.
+        if self._conversation_id in (None, turn.conversation_id):
+            self._conversation_id = persisted_id
+        if (
+            self._active_user_text == turn.user_text
+            and self._active_assistant_message_id in (None, turn.assistant_message_id)
+        ):
+            self._active_assistant_message_id = assistant_id
+
+    def _persist_interrupted_assistant_text_sync(
+        self, reconciled_text: str, turn: _InterruptedTurn
+    ) -> tuple[str, str | None] | None:
+        """Write the heard prefix for ``turn``. Returns (conversation_id, assistant_id) when it inserted."""
+        from app.workflows.repository import get_supabase_client
+
+        heard = reconciled_text.strip()
+        client = get_supabase_client(self._settings)
+        owned_current = False
+        if turn.conversation_id:
+            owned = (
+                client.table("conversations")
+                .select("id")
+                .eq("id", turn.conversation_id)
+                .eq("org_id", turn.org_id)
+                .eq("user_id", turn.user_id)
+                .limit(1)
+                .execute()
+            )
+            owned_current = bool(getattr(owned, "data", None))
+        message_id = str(turn.assistant_message_id or "").strip()
+
+        def _update_exact() -> bool:
+            updated = (
+                client.table("conversation_messages").update({"content": heard})
+                .eq("id", message_id)
+                .eq("conversation_id", turn.conversation_id)
+                .eq("role", "assistant")
+                .execute()
+            )
+            return bool(getattr(updated, "data", None))
+
+        if message_id and owned_current and _update_exact():
+            return None
+        # The stream can expose the stable assistant id before the durable
+        # insert commits. If the row is not visible yet, fall through and
+        # persist the active turn with that same id instead of silently
+        # losing the heard prefix.
+
+        # Mid-generation interruption: no completed assistant row exists yet.
+        # Persist THIS active turn instead of ever rewriting "latest assistant",
+        # which could belong to the previous turn.
+        if not turn.user_text or not heard:
+            return None
+        from app.routers.assistant import _persist_conversation_turn
+        persisted_id, assistant_id = _persist_conversation_turn(
+            self._settings,
+            org_id=turn.org_id,
+            user_id=turn.user_id,
+            conversation_id=turn.conversation_id,
+            user_text=turn.user_text,
+            assistant_text=heard,
             tool_results=[],
             assistant_message_id=message_id or None,
         )
         if persisted_id:
-            self._conversation_id = persisted_id
-            self._active_assistant_message_id = assistant_id
+            return persisted_id, assistant_id
+        # The insert lost a race: the completion writer committed this same
+        # assistant id between our missed update and our insert, so the row now
+        # holds the full draft including the tail nobody heard. Retry the exact
+        # update once so the durable row matches what was played.
+        if message_id and owned_current:
+            _update_exact()
+        return None
+
+    def _run_post_interrupt_writes_sync(
+        self,
+        turn: _InterruptedTurn,
+        *,
+        tts_cancel: dict[str, Any] | None,
+        reconcile_meta: dict[str, Any] | None,
+        playback_offset_ms: float | None,
+    ) -> bool:
+        """Blocking barge-in bookkeeping. Runs in a worker thread, never on the loop.
+
+        Returns whether a conversation stop marker was armed.
+        """
+        from app.services.voice_barge_in_write import mark_voice_barge_in_stop
+
+        # First, so an in-flight ReAct write sees the barge-in as early as possible.
+        armed = mark_voice_barge_in_stop(
+            org_id=turn.org_id,
+            conversation_id=turn.conversation_id,
+            settings=self._settings,
+            user_id=turn.user_id,
+        )
+        if tts_cancel:
+            from app.services.pipecat_voice.tts_context_cancel import record_tts_context_cancel
+
+            record_tts_context_cancel(
+                self._settings,
+                org_id=turn.org_id,
+                user_id=turn.user_id,
+                conversation_id=turn.conversation_id,
+                result=tts_cancel,
+            )
+        if reconcile_meta is not None and self._settings is not None and turn.org_id:
+            from app.services.pipecat_voice.voice_latency_metrics import (
+                record_voice_barge_in_reconciliation,
+            )
+
+            record_voice_barge_in_reconciliation(
+                self._settings,
+                org_id=turn.org_id,
+                user_id=turn.user_id,
+                conversation_id=turn.conversation_id,
+                reconcile_meta=reconcile_meta,
+                playback_offset_ms=playback_offset_ms,
+            )
+        return bool(armed)
+
+    async def _post_interrupt(
+        self,
+        turn: _InterruptedTurn,
+        *,
+        tts_cancel: dict[str, Any] | None,
+        reconcile_meta: dict[str, Any] | None,
+        playback_offset_ms: float | None,
+        reconciled_text: str | None,
+    ) -> None:
+        try:
+            armed = await asyncio.to_thread(
+                self._run_post_interrupt_writes_sync,
+                turn,
+                tts_cancel=tts_cancel,
+                reconcile_meta=reconcile_meta,
+                playback_offset_ms=playback_offset_ms,
+            )
+            if armed and turn.org_id and turn.conversation_id:
+                self._armed_stop = (str(turn.org_id), str(turn.conversation_id))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_post_interrupt_writes_failed error=%s", str(exc))
+        if reconciled_text is not None:
+            await self._persist_interrupted_assistant_text(reconciled_text, turn)
+
+    def _schedule_post_interrupt(self, turn: _InterruptedTurn, **kwargs: Any) -> None:
+        """Run barge-in bookkeeping after the stop frame is already moving."""
+        task = self.create_task(self._post_interrupt(turn, **kwargs))
+        self._post_interrupt_tasks.add(task)
+
+        def _consume(done: asyncio.Task[Any]) -> None:
+            self._post_interrupt_tasks.discard(done)
+            try:
+                done.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pipecat_interrupted_detached_persist_failed error=%s", str(exc))
+        task.add_done_callback(_consume)
+
+    async def settle_barge_in(self) -> None:
+        """Called at the start of the next confirmed user turn.
+
+        Waits for the previous interruption's bookkeeping, then releases the
+        conversation stop marker this socket armed for that interrupted turn.
+        Without the release the marker (120 s TTL) would make the next voice
+        turn in the same conversation return without answering.
+        """
+        pending = [task for task in self._post_interrupt_tasks if not task.done()]
+        if pending:
+            await asyncio.gather(*(asyncio.shield(task) for task in pending), return_exceptions=True)
+        armed = self._armed_stop
+        self._armed_stop = None
+        if armed is None:
+            return
+        from app.services.chat_turn_cancel_service import clear_stop
+
+        try:
+            await asyncio.to_thread(clear_stop, armed[0], armed[1], settings=self._settings)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_barge_in_stop_release_failed error=%s", str(exc))
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         if isinstance(frame, InterruptionFrame):
@@ -249,28 +407,12 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             if self._tts_service is not None:
                 from app.services.pipecat_voice.tts_context_cancel import (
                     cancel_elevenlabs_tts_context,
-                    record_tts_context_cancel,
                 )
 
                 tts_cancel = await cancel_elevenlabs_tts_context(
                     self._tts_service,
                     keep_session=True,
                 )
-                record_tts_context_cancel(
-                    self._settings,
-                    org_id=self._org_id,
-                    user_id=self._user_id,
-                    conversation_id=self._conversation_id,
-                    result=tts_cancel,
-                )
-            from app.services.voice_barge_in_write import mark_voice_barge_in_stop
-
-            mark_voice_barge_in_stop(
-                org_id=self._org_id,
-                conversation_id=self._conversation_id,
-                settings=self._settings,
-                user_id=self._user_id,
-            )
             coordinator = self._speculative_coordinator
             if coordinator is not None and hasattr(coordinator, "cancel"):
                 try:
@@ -292,6 +434,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             # actually heard so the next turn's history is not padded with a tail
             # the user never received. Flag-gated; off means legacy payload only.
             reconcile_meta: dict[str, Any] = {}
+            reconcile_audit: dict[str, Any] | None = None
             if self._reconcile_enabled:
                 from app.services.pipecat_voice.voice_conversational_polish import (
                     reconcile_played_audio,
@@ -315,26 +458,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 payload["reconciled_text"] = reconciliation.reconciled_text[:2000]
                 payload["reconcile_played_audio"] = True
                 payload.update(reconcile_meta)
-                # P0 parity: durable history must reflect what the user actually
-                # heard, not the unplayed draft tail. Rewrite only the most
-                # recent assistant message for this owned conversation; a
-                # failure is non-fatal to the live interruption path.
-                # Persistence must never delay barge-in audio stop. Schedule it
-                # only after the urgent client notification and InterruptionFrame
-                # have been pushed below.
-                if self._settings is not None and self._org_id:
-                    from app.services.pipecat_voice.voice_latency_metrics import (
-                        record_voice_barge_in_reconciliation,
-                    )
-
-                    record_voice_barge_in_reconciliation(
-                        self._settings,
-                        org_id=self._org_id,
-                        user_id=self._user_id,
-                        conversation_id=self._conversation_id,
-                        reconcile_meta=reconcile_meta,
-                        playback_offset_ms=self._last_playback_offset_ms,
-                    )
+                reconcile_audit = dict(reconcile_meta)
             logger.info(
                 "pipecat_speech_interrupted spoken_chars=%s draft_chars=%s offset_ms=%s reconcile=%s",
                 len(spoken),
@@ -348,8 +472,20 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             )
             # Stop buffered output before any database/network reconciliation.
             await self.push_frame(frame, direction)
-            if self._reconcile_enabled:
-                self._persist_interrupted_detached(str(payload.get("reconciled_text") or ""))
+            # Everything below is bookkeeping, run off the event loop after the
+            # stop is in flight: the conversation stop marker, the audit rows,
+            # and (P0 parity) the durable rewrite to what the user actually
+            # heard. The turn identity is captured now, before a new turn can
+            # replace it.
+            self._schedule_post_interrupt(
+                self._snapshot_turn(),
+                tts_cancel=tts_cancel or None,
+                reconcile_meta=reconcile_audit,
+                playback_offset_ms=self._last_playback_offset_ms,
+                reconciled_text=(
+                    str(payload.get("reconciled_text") or "") if self._reconcile_enabled else None
+                ),
+            )
             # Clear so a follow-up turn starts clean.
             self._draft_llm = ""
             self._draft_client = ""
