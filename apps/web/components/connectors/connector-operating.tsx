@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, type ReactNode, type ComponentProps } from "react"
+import { useMemo, useRef, type MouseEvent, type ReactNode, type ComponentProps } from "react"
 import useSWR from "swr"
 import { ArrowRight, Bot, ExternalLink, RefreshCw, Settings, ShieldCheck, Wifi } from "lucide-react"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
@@ -280,7 +280,7 @@ export function ConnectorOperatingRow({
   agents?: ConnectorAgentRef[]
   selected: boolean
   attention: boolean
-  onSelect: () => void
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void
   menu?: ReactNode
 }) {
   const a = connector.availability
@@ -753,18 +753,25 @@ function ActionGroup({ label, actions }: { label: string; actions: ConnectorActi
 }
 
 /** Selection emerges as context on desktop and a focused task sheet below 1024px. */
-export function ResponsiveConnectorInspector(props: ComponentProps<typeof ConnectorInspector>) {
+export function ResponsiveConnectorInspector({ returnFocusTarget, ...props }: ComponentProps<typeof ConnectorInspector> & { returnFocusTarget?: HTMLElement | null }) {
+  const transferFocus = useRef(false)
   const compact = useIsMobile(1024)
   if (!compact) return <ConnectorInspector {...props} />
   return (
     <Sheet open onOpenChange={(open) => { if (!open) props.onClose() }}>
-      <SheetContent className="w-full overflow-y-auto pb-[env(safe-area-inset-bottom)] sm:max-w-[540px]">
+      <SheetContent
+        className="w-full overflow-y-auto pb-[env(safe-area-inset-bottom)] sm:max-w-[540px]"
+        onCloseAutoFocus={event => {
+          if (transferFocus.current) { event.preventDefault(); return }
+          if (returnFocusTarget?.isConnected) { event.preventDefault(); returnFocusTarget.focus() }
+        }}
+      >
         <SheetHeader className="pr-14">
           <SheetTitle className="font-[family-name:var(--font-space-grotesk)]">{props.connector.name}</SheetTitle>
           <SheetDescription>Inspect authorization, capabilities and agent dependencies.</SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-6">
-          <ConnectorInspector {...props} onConfigure={() => { props.onClose(); props.onConfigure() }} onReconnect={props.onReconnect ? () => { props.onClose(); props.onReconnect?.() } : undefined} />
+          <ConnectorInspector {...props} onConfigure={() => { transferFocus.current = true; props.onClose(); props.onConfigure() }} onReconnect={props.onReconnect ? () => { transferFocus.current = true; props.onClose(); props.onReconnect?.() } : undefined} />
         </div>
       </SheetContent>
     </Sheet>

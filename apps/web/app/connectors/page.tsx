@@ -2571,6 +2571,7 @@ function ConnectorsPageContent() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [isLiveRefreshing, setIsLiveRefreshing] = useState(false)
   const [chromeCollapsed, setChromeCollapsed] = useState(false)
+  const inspectorReturnFocus = useRef<HTMLElement | null>(null)
   const [focusedConnector, setFocusedConnector] = useState<Connector | null>(null)
   usePublishGravitreAISelection(
     focusedConnector
@@ -3334,9 +3335,10 @@ function ConnectorsPageContent() {
                       agents={agentsByVendor.get(connector.vendorKey)}
                       attention={attentionIds.has(connector.id)}
                       selected={selectedConnector?.id === connector.id}
-                      onSelect={() =>
+                      onSelect={event => {
+                        inspectorReturnFocus.current = event.currentTarget
                         setFocusedConnector((prev) => (prev?.id === connector.id ? null : connector))
-                      }
+                      }}
                       menu={
                         <ConnectorOptionsMenu
                           connector={connector}
@@ -3352,6 +3354,7 @@ function ConnectorsPageContent() {
                 </section>
                 {selectedConnector ? (
                   <ResponsiveConnectorInspector
+                    returnFocusTarget={inspectorReturnFocus.current}
                     connector={selectedConnector}
                     statusLabel={
                       selectedConnector.status === "syncing" ? "Syncing" : connectorStatusLabel(selectedConnector)

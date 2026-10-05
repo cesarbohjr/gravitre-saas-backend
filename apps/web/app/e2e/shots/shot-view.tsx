@@ -48,7 +48,7 @@ export function ShotSurface({ name }: { name: keyof typeof SHOT_SURFACES }) {
   return (
     <ShotAuthProvider>
       <Surface />
-      <GravitreAIWorkspaceHost fixtureBoundary />
+      {name !== "ai" ? <GravitreAIWorkspaceHost fixtureBoundary /> : null}
     </ShotAuthProvider>
   )
 }

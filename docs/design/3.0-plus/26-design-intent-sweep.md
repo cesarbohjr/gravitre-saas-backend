@@ -155,3 +155,18 @@ Implemented two targeted corrections:
 Local validation: **1,354 tests / 213 files passed**; typecheck/build **exit 0**; changed-file lint **0 errors / 0 warnings**; chat drift and whitespace **pass**. These checks do not establish screenshot geometry or real-owner AI behavior.
 
 Cursor next: fetch the published correction, restart/rebuild with NEXT_PUBLIC_PLAYWRIGHT_E2E=1, recapture Home 834px and AI at 1440/834/390 on that SHA. Verify one runtime, named workspace, keyboard focus return, pending dismissal and reduced motion. Record the exact SHA/state/capture. Obtain an authorized owner session separately, then complete the original owner-live gates and current-SHA CI before merge/deploy. **MERGE_READY = NO** pending those gates; no merge or deployment performed here.
+
+
+## AI canvas and connector return focus — 2026-10-04 Vancouver
+
+Based on Cursor evidence commit `f96798dd`, preserving the 105630a0 recapture and Home 834 pass. Cursor reports AI landing below the first viewport (h1 y=1027), connector Escape focus falling to a script node, and Approvals leaving fixture auth. No merge or deployment occurred.
+
+The AI fixture host is now inside the AppShell work canvas instead of a sibling after its full-height page. ShotSurface excludes its sibling host for the AI shot, preserving exactly one canonical runtime. A DOM assertion checks runtime containment in that canvas; a fresh screenshot is still needed to establish h1/composer visibility at 1440/834/390.
+
+Connector row activation records the actual initiating button. The compact inspector restores that target on ordinary dismissal, including Escape when a pointer activation did not focus the row. Configure/reconnect transfer focus to their next destination instead of stealing it back. The existing desktop inspector stays inline. A regression check covers explicit row return after Escape/unmount.
+
+Approvals' Decide handler performs local selection; no product navigation fix was invented. A mounted component test with fixture data checks Decide → review → Back without router calls or URL change. It does not reproduce or dismiss Cursor's browser-level fixture-auth exit. The next browser run must record the clicked element/nearest href, URL transitions, request initiators, console errors and auth/provider state to identify that exit.
+
+Local checks: **1,357 passed / 214 files**; typecheck and production build **exit 0**; changed-file lint **0 errors / 6 existing warnings**; chat surface and whitespace **pass**. DOM/test identity is not owner-tenant proof.
+
+Cursor next: rebuild the new product SHA with E2E enabled; capture AI inside the first viewport and repeat Connectors Escape/configure focus behavior. Trace the unresolved Approvals exit precisely. Exercise pending inspector dismissal through controlled, delayed fixture mutation responses and compare map/node motion with reduced motion on/off. Preserve these as fixture evidence. Owner-live remains blocked until an authorized session is available; **VISUAL_ACCEPTANCE = PARTIAL; OWNER_LIVE_ACCEPTANCE = NOT_RUN / BLOCKED; MERGE_READY = NO**. No merge/deploy here.
