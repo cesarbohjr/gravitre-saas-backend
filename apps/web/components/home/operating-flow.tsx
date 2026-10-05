@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo, useState, type CSSProperties, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { ArrowRight, CornerDownRight } from "lucide-react"
+import { ArrowRight, Check, CornerDownRight } from "lucide-react"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { useAuth } from "@/lib/auth-context"
@@ -29,6 +29,8 @@ type FlowItem = {
   /** Verb for items that ask the operator to intervene. */
   action?: string
   agent?: HomeDashboardData["agents"][number]
+  /** How many real records a grouped row stands for. */
+  count?: number
 }
 
 type FlowLane = {
@@ -83,6 +85,7 @@ export function buildFlowLanes(
       href: APP_ROUTES.approvals,
       tone: "attention",
       action: "Review",
+      count: untitled,
     })
   }
   for (const assignment of (assignments ?? []).filter((a) => a.status === "needs_approval").slice(0, 3)) {
@@ -159,190 +162,8 @@ export function buildFlowLanes(
   ]
 }
 
-const LANE_ROLE: Record<FlowLaneId, { rule: string; count: string }> = {
-  changed: { rule: "bg-[color:var(--g-border-strong)]", count: "text-muted-foreground" },
-  needs: { rule: "bg-warning", count: "bg-warning/15 text-foreground" },
-  running: { rule: "bg-[color:var(--g-brand)]", count: "bg-[color:var(--g-brand)]/12 text-foreground" },
-  risk: { rule: "bg-destructive", count: "bg-destructive/12 text-foreground" },
-  next: { rule: "bg-transparent", count: "text-muted-foreground" },
-}
-
-const INTERVENE_BAR: Record<NonNullable<FlowItem["tone"]>, string> = {
-  attention: "before:bg-warning",
-  fault: "before:bg-destructive",
-  risk: "before:bg-warning",
-  live: "before:bg-[color:var(--g-brand)]",
-}
-
 const ITEM_FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-
-function ItemMeta({ item }: { item: FlowItem }) {
-  if (!item.detail && !item.meta) return null
-  return (
-    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted-foreground">
-      {item.detail ? <span className="truncate">{item.detail}</span> : null}
-      {item.detail && item.meta ? <span aria-hidden>·</span> : null}
-      {item.meta ? <span className="shrink-0 tabular-nums">{item.meta}</span> : null}
-    </span>
-  )
-}
-
-/** Changed: a quiet timeline — context, not a call to action. */
-function ChangedItem({ item }: { item: FlowItem }) {
-  return (
-    <li className="relative pl-5 before:absolute before:bottom-0 before:left-[9px] before:top-0 before:w-px before:bg-[color:var(--g-border-subtle)] first:before:top-4 last:before:bottom-auto last:before:h-4">
-      <span aria-hidden className="absolute left-[6px] top-[15px] size-[7px] rounded-full border border-[color:var(--g-border-strong)] bg-background" />
-      <Link href={item.href} className={cn("block rounded-[4px] px-2 py-2 transition-colors hover:bg-[color:var(--g-surface-1)]", ITEM_FOCUS)}>
-        <span className="line-clamp-2 text-[12.5px] leading-snug text-foreground/85">{item.title}</span>
-        <ItemMeta item={item} />
-      </Link>
-    </li>
-  )
-}
-
-/** Needs you / At risk: intervention rows with an accent bar and an explicit verb. */
-function InterveneItem({ item }: { item: FlowItem }) {
-  return (
-    <li>
-      <Link
-        href={item.href}
-        data-intervene={item.tone}
-        className={cn(
-          "group relative flex items-start gap-2 rounded-[4px] bg-background py-2.5 pl-3.5 pr-2.5 shadow-[0_0_0_1px_var(--g-border-subtle)] transition-shadow before:absolute before:inset-y-1.5 before:left-1 before:w-[3px] before:rounded-full hover:shadow-[0_0_0_1px_var(--g-border-strong)]",
-          item.tone ? INTERVENE_BAR[item.tone] : "before:bg-muted-foreground/40",
-          ITEM_FOCUS,
-        )}
-      >
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">{item.title}</span>
-          <ItemMeta item={item} />
-        </span>
-        {item.action ? (
-          <span className="mt-px inline-flex shrink-0 items-center gap-0.5 rounded-[4px] px-1.5 py-0.5 text-[11.5px] font-medium text-foreground group-hover:bg-[color:var(--g-surface-1)]">
-            {item.action}
-            <ArrowRight className="size-3" aria-hidden />
-          </span>
-        ) : null}
-      </Link>
-    </li>
-  )
-}
-
-/** Running: live work with a pulse marker. */
-function RunningItem({ item }: { item: FlowItem }) {
-  return (
-    <li>
-      <Link href={item.href} className={cn("flex items-start gap-2.5 rounded-[4px] px-2 py-2 transition-colors hover:bg-[color:var(--g-surface-1)]", ITEM_FOCUS)}>
-        {item.agent ? (
-          <span className="relative shrink-0">
-            <AgentIdentityAvatar agent={item.agent} size="sm" />
-          </span>
-        ) : (
-          <span aria-hidden className="relative mt-1.5 flex size-2 shrink-0">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[color:var(--g-brand)] opacity-50 motion-reduce:animate-none" />
-            <span className="relative inline-flex size-2 rounded-full bg-[color:var(--g-brand)]" />
-          </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-[13px] font-medium leading-snug text-foreground">{item.title}</span>
-          <ItemMeta item={item} />
-        </span>
-      </Link>
-    </li>
-  )
-}
-
-/** Next: launch actions. */
-function NextItem({ item }: { item: FlowItem }) {
-  return (
-    <li>
-      <Link
-        href={item.href}
-        className={cn(
-          "group flex items-center justify-between gap-2 rounded-[4px] border border-dashed border-[color:var(--g-border-strong)] px-3 py-2 text-[13px] text-foreground transition-colors hover:border-solid hover:bg-[color:var(--g-surface-1)]",
-          ITEM_FOCUS,
-        )}
-      >
-        <span className="min-w-0 truncate">{item.title}</span>
-        <ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
-      </Link>
-    </li>
-  )
-}
-
-function LaneItem({ item, lane }: { item: FlowItem; lane: FlowLaneId }) {
-  if (lane === "changed") return <ChangedItem item={item} />
-  if (lane === "needs" || lane === "risk") return <InterveneItem item={item} />
-  if (lane === "running") return <RunningItem item={item} />
-  return <NextItem item={item} />
-}
-
-function LaneAsk({ prompt, label }: { prompt: string; label: string }) {
-  const { summonWorkspace, pageContext } = useGravitreAIWorkspace()
-  return (
-    <button
-      type="button"
-      data-ask-prompt=""
-      onClick={() =>
-        summonWorkspace({ presentation: "compact", composerText: prompt, submit: false, selected: pageContext.selected })
-      }
-      className="inline-flex min-h-11 items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-[color:var(--g-surface-1)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      aria-label={`Ask Gravitre about ${label.toLowerCase()}`}
-      title={prompt}
-    >
-      <CornerDownRight className="size-3" aria-hidden />
-      Explain
-    </button>
-  )
-}
-
-function Lane({ lane, loading }: { lane: FlowLane; loading: boolean }) {
-  const populated = !loading && lane.items.length > 0
-  const intervene = populated && (lane.id === "needs" || lane.id === "risk")
-  const role = LANE_ROLE[lane.id]
-  return (
-    <section
-      aria-labelledby={`flow-${lane.id}`}
-      data-flow-lane={lane.id}
-      data-flow-populated={populated ? "" : undefined}
-      className={cn(
-        "relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden",
-        lane.id === "needs" && populated && "bg-warning/[0.045]",
-        lane.id === "risk" && populated && "bg-destructive/[0.035]",
-      )}
-    >
-      <span aria-hidden className={cn("absolute inset-x-0 top-0 h-[2px]", populated ? role.rule : "bg-transparent")} />
-      <header className="flex items-center justify-between gap-2 px-3 pb-2 pt-3">
-        <h2 id={`flow-${lane.id}`} className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-          {lane.label}
-          {lane.id !== "next" ? (
-            <span
-              className={cn(
-                "min-w-5 rounded-full px-1.5 text-center text-[11.5px] font-semibold tabular-nums leading-5",
-                populated ? role.count : "text-muted-foreground",
-              )}
-            >
-              {loading ? "—" : lane.items.length}
-            </span>
-          ) : null}
-        </h2>
-        <LaneAsk prompt={lane.ask} label={lane.label} />
-      </header>
-      {loading ? (
-        <p className="px-3 py-2 text-xs text-muted-foreground">Loading…</p>
-      ) : lane.items.length === 0 ? (
-        <p className="px-3 py-2 text-xs text-muted-foreground">{lane.empty}</p>
-      ) : (
-        <ul className={cn("min-h-0 flex-1 overflow-y-auto px-2 pb-3 md:max-h-[360px] xl:max-h-[440px]", intervene || lane.id === "next" ? "space-y-1.5" : "space-y-0.5")}>
-          {lane.items.map((item) => (
-            <LaneItem key={item.id} item={item} lane={lane.id} />
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
 
 /** Populated intervention lanes get the most room; empty lanes compress. */
 export function flowColumnTemplate(lanes: FlowLane[], loading: (id: FlowLaneId) => boolean): string {
@@ -357,6 +178,313 @@ export function flowColumnTemplate(lanes: FlowLane[], loading: (id: FlowLaneId) 
     .join(" ")
 }
 
+export type WorkforceState = "executing" | "available" | "attention" | "paused"
+
+/** Enabled, available, and executing are different facts; never collapse them into "active". */
+export function workforceState(status: unknown): WorkforceState {
+  const s = String(status ?? "").toLowerCase()
+  if (s === "processing" || s === "running") return "executing"
+  if (s === "error" || s === "failed") return "attention"
+  if (s === "active" || s === "idle" || s === "ready") return "available"
+  return "paused"
+}
+
+const STATE_ORDER: WorkforceState[] = ["executing", "attention", "available", "paused"]
+
+export function workforceCapacity(agents: HomeDashboardData["agents"]) {
+  const cells = agents
+    .map((agent) => ({ id: agent.id, name: agent.name, state: workforceState(agent.status) }))
+    .sort((a, b) => STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state))
+  const count = (state: WorkforceState) => cells.filter((cell) => cell.state === state).length
+  const paused = count("paused")
+  return {
+    total: cells.length,
+    enabled: cells.length - paused,
+    executing: count("executing"),
+    available: count("available"),
+    attention: count("attention"),
+    paused,
+    cells,
+  }
+}
+
+type BriefingPart = { text: string; tone?: "attention" | "fault" | "live" }
+
+/** One sentence that reads the operation aloud. Built only from counted, loaded items. */
+export function briefingSentence(lanes: FlowLane[], workforce: ReturnType<typeof workforceCapacity>): BriefingPart[][] {
+  const needs = lanes.find((lane) => lane.id === "needs")?.items ?? []
+  const risk = lanes.find((lane) => lane.id === "risk")?.items ?? []
+  const decisions = needs.filter((item) => item.tone === "attention").reduce((sum, item) => sum + (item.count ?? 1), 0)
+  const faults = needs.filter((item) => item.tone === "fault").length + risk.length
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+  const sentences: BriefingPart[][] = []
+  if (decisions === 0 && faults === 0) sentences.push([{ text: "All clear." }, { text: " Nothing needs your decision." }])
+  if (decisions > 0) {
+    sentences.push([
+      { text: plural(decisions, "decision", "decisions"), tone: "attention" },
+      { text: decisions === 1 ? " is waiting on you." : " are waiting on you." },
+    ])
+  }
+  if (faults > 0) {
+    sentences.push([
+      { text: plural(faults, "item", "items"), tone: "fault" },
+      { text: faults === 1 ? " is failing or at risk." : " are failing or at risk." },
+    ])
+  }
+  if (workforce.total === 0) {
+    sentences.push([{ text: "No agents hired yet." }])
+  } else {
+    sentences.push([
+      { text: plural(workforce.executing, "agent", "agents"), tone: workforce.executing > 0 ? "live" : undefined },
+      { text: ` executing, ${workforce.available} available.` },
+    ])
+  }
+  return sentences
+}
+
+function useFreshness(signal: unknown) {
+  const [updatedAt, setUpdatedAt] = useState(() => Date.now())
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    setUpdatedAt(Date.now())
+  }, [signal])
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const mins = Math.floor((Date.now() - updatedAt) / 60_000)
+  return mins < 1 ? "just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`
+}
+
+const TONE_TEXT: Record<NonNullable<BriefingPart["tone"]>, string> = {
+  attention: "text-warning",
+  fault: "text-destructive",
+  live: "text-[color:var(--g-brand)]",
+}
+
+const CELL: Record<WorkforceState, string> = {
+  executing: "bg-[color:var(--g-brand)]",
+  attention: "bg-destructive",
+  available: "bg-muted-foreground/45",
+  paused: "bg-[color:var(--g-border-default)]",
+}
+
+const STATE_LABEL: Record<WorkforceState, string> = {
+  executing: "executing",
+  attention: "needs attention",
+  available: "available",
+  paused: "paused or off",
+}
+
+/** The signature: every agent as a cell, colored by what it is actually doing. */
+function WorkforcePulse({ workforce }: { workforce: ReturnType<typeof workforceCapacity> }) {
+  if (workforce.total === 0) return null
+  const shown = workforce.cells.slice(0, 60)
+  return (
+    <Link
+      href={APP_ROUTES.agents}
+      data-workforce-pulse=""
+      className={cn("group -mx-1 block rounded-[6px] px-1 py-1.5", ITEM_FOCUS)}
+      aria-label={`Workforce: ${workforce.executing} executing, ${workforce.available} available, ${workforce.attention} needing attention, ${workforce.enabled} of ${workforce.total} enabled. Open agents.`}
+    >
+      <span aria-hidden className="flex h-3 gap-[3px]">
+        {shown.map((cell) => (
+          <span
+            key={cell.id}
+            title={`${cell.name} · ${STATE_LABEL[cell.state]}`}
+            className={cn("relative min-w-[5px] flex-1 overflow-hidden rounded-[2px]", CELL[cell.state])}
+          >
+            {cell.state === "executing" ? (
+              <span className="g-trace-scan absolute inset-y-0 w-1/3 bg-background/45" />
+            ) : null}
+          </span>
+        ))}
+      </span>
+      <span className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+        {(["executing", "attention", "available", "paused"] as const).map((state) =>
+          workforce[state] > 0 ? (
+            <span key={state} className="inline-flex items-center gap-1.5">
+              <span aria-hidden className={cn("size-2 rounded-[2px]", CELL[state])} />
+              <span className="tabular-nums text-foreground">{workforce[state]}</span> {STATE_LABEL[state]}
+            </span>
+          ) : null,
+        )}
+        <span className="inline-flex items-center gap-1 tabular-nums group-hover:text-foreground">
+          {workforce.enabled} of {workforce.total} enabled
+          <ArrowRight className="size-3.5" aria-hidden />
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+/** Contextual prompts taken from the most urgent real item, so the user never re-explains context. */
+function briefingPrompts(lanes: FlowLane[]): string[] {
+  const lane = (id: FlowLaneId) => lanes.find((entry) => entry.id === id)?.items ?? []
+  const prompts: string[] = []
+  const decision = lane("needs").find((item) => item.tone === "attention" && !item.count)
+  const fault = lane("needs").find((item) => item.tone === "fault") ?? lane("risk")[0]
+  if (decision) prompts.push(`What happens if I approve "${decision.title}"?`)
+  if (fault) prompts.push(`Why is "${fault.title}" failing, and how do I recover?`)
+  if (lane("running").length > 0) prompts.push("Is any running work taking longer than expected?")
+  prompts.push("What changed since yesterday?")
+  return prompts.slice(0, 3)
+}
+
+function PromptChips({ prompts }: { prompts: string[] }) {
+  const { summonWorkspace, pageContext } = useGravitreAIWorkspace()
+  return (
+    <ul className="flex flex-wrap gap-2" aria-label="Suggested questions">
+      {prompts.map((prompt) => (
+        <li key={prompt} className="min-w-0 max-w-full">
+          <button
+            type="button"
+            data-ask-prompt=""
+            onClick={() =>
+              summonWorkspace({ presentation: "compact", composerText: prompt, submit: false, selected: pageContext.selected })
+            }
+            className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-[color:var(--g-border-default)] px-3.5 text-left text-[13px] text-muted-foreground transition-colors hover:border-[color:var(--g-border-strong)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <CornerDownRight className="size-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{prompt}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function SectionHeading({ id, label, count, tone }: { id: string; label: string; count?: number; tone?: string }) {
+  return (
+    <h3 id={id} className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+      {label}
+      {count != null ? (
+        <span className={cn("min-w-6 rounded-full px-2 text-center text-[13px] font-semibold tabular-nums leading-6", tone ?? "bg-[color:var(--g-surface-2)] text-muted-foreground")}>
+          {count}
+        </span>
+      ) : null}
+    </h3>
+  )
+}
+
+function DecisionCard({ item }: { item: FlowItem }) {
+  return (
+    <li>
+      <Link
+        href={item.href}
+        data-intervene={item.tone}
+        className={cn(
+          "group flex flex-col gap-3 rounded-[var(--np-radius-md)] border border-warning/35 bg-warning/[0.06] p-4 transition-colors hover:border-warning/60",
+          ITEM_FOCUS,
+        )}
+      >
+        <span className="min-w-0">
+          <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">{item.title}</span>
+          {item.detail ? <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{item.detail}</span> : null}
+        </span>
+        <span className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-[6px] bg-foreground px-4 text-sm font-medium text-background">
+          {item.action ?? "Review"}
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+function FaultRow({ item }: { item: FlowItem }) {
+  return (
+    <li>
+      <Link
+        href={item.href}
+        data-intervene={item.tone}
+        className={cn(
+          "group flex min-h-14 items-start gap-3 rounded-[var(--np-radius-md)] border border-destructive/30 px-3.5 py-3 transition-colors hover:border-destructive/55",
+          ITEM_FOCUS,
+        )}
+      >
+        <span aria-hidden className={cn("mt-1.5 size-2 shrink-0 rounded-full", item.tone === "risk" ? "bg-warning" : "bg-destructive")} />
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{item.title}</span>
+          {item.detail ? <span className="mt-0.5 line-clamp-2 block text-[13px] leading-relaxed text-muted-foreground">{item.detail}</span> : null}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 pt-px text-[13px] font-medium text-foreground">
+          {item.action ?? "Open"}
+          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+function LiveRow({ item }: { item: FlowItem }) {
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className={cn(
+          "relative flex min-h-14 items-center gap-3 overflow-hidden rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] px-3.5 py-2.5 transition-colors hover:border-[color:var(--g-border-strong)]",
+          ITEM_FOCUS,
+        )}
+      >
+        <span className="relative shrink-0">
+          {item.agent ? (
+            <AgentIdentityAvatar agent={item.agent} size="sm" />
+          ) : (
+            <span aria-hidden className="flex size-8 items-center justify-center rounded-[6px] bg-[color:var(--g-brand)]/12">
+              <span className="relative flex size-2">
+                <span className="g-live-ping absolute inline-flex size-full rounded-full bg-[color:var(--g-brand)] opacity-60" />
+                <span className="relative inline-flex size-2 rounded-full bg-[color:var(--g-brand)]" />
+              </span>
+            </span>
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-foreground">{item.title}</span>
+          {item.detail || item.meta ? (
+            <span className="block truncate text-[13px] text-muted-foreground">
+              {[item.detail, item.meta].filter(Boolean).join(" · ")}
+            </span>
+          ) : null}
+        </span>
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-px overflow-hidden bg-[color:var(--g-brand)]/15">
+          <span className="g-trace-scan absolute inset-y-0 w-1/3 bg-[color:var(--g-brand)]" />
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+function ChangedTimeline({ items }: { items: FlowItem[] }) {
+  return (
+    <ol className="flex flex-col">
+      {items.slice(0, 5).map((item) => (
+        <li
+          key={item.id}
+          className="relative pl-5 before:absolute before:bottom-0 before:left-[5px] before:top-0 before:w-px before:bg-[color:var(--g-border-subtle)] first:before:top-4 last:before:bottom-auto last:before:h-4"
+        >
+          <span aria-hidden className="absolute left-[2px] top-[15px] size-[7px] rounded-full border border-[color:var(--g-border-strong)] bg-background" />
+          <Link href={item.href} className={cn("block rounded-[4px] px-2 py-2 transition-colors hover:bg-[color:var(--g-surface-1)]", ITEM_FOCUS)}>
+            <span className="line-clamp-2 text-sm leading-snug text-foreground/90">{item.title}</span>
+            <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">
+              {[item.detail, item.meta].filter(Boolean).join(" · ")}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function LoadingRows() {
+  return (
+    <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading">
+      <span className="h-14 animate-pulse rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] motion-reduce:animate-none" />
+      <span className="h-14 animate-pulse rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] motion-reduce:animate-none" />
+    </div>
+  )
+}
+
 export function useFlowAssignments() {
   const { user } = useAuth()
   return useSWR<DemoAssignment[]>(user ? ASSIGNMENTS_REFRESH_KEY : null, fetchAssignmentList, {
@@ -365,63 +493,151 @@ export function useFlowAssignments() {
   })
 }
 
+/**
+ * Operating overview, attention first: a spoken briefing over a live workforce pulse,
+ * then only the sections that have something in them. Empty sections collapse to one line.
+ */
 export function OperatingFlow({
   data,
   quickActions,
   loading = false,
+  ask,
 }: {
   data: HomeDashboardData
   quickActions: RoleQuickAction[]
   loading?: boolean
+  ask?: ReactNode
 }) {
   const { data: assignments, isLoading: assignmentsLoading } = useFlowAssignments()
   const lanes = useMemo(() => buildFlowLanes(data, assignments, quickActions), [data, assignments, quickActions])
-  const firstActive = lanes.find((lane) => lane.id === "needs" && lane.items.length > 0)?.id ?? "running"
-  const [mobileLane, setMobileLane] = useState<FlowLaneId | null>(null)
-  const activeMobile = mobileLane ?? firstActive
-  const laneLoading = (id: FlowLaneId) => loading || (assignmentsLoading && (id === "running" || id === "risk"))
+  const workforce = useMemo(() => workforceCapacity(data.agents), [data.agents])
+  const freshness = useFreshness(assignments ?? data.agents)
+  const lane = (id: FlowLaneId) => lanes.find((entry) => entry.id === id)!
+  const laneLoading = (id: FlowLaneId) => loading || (assignmentsLoading && (id === "running" || id === "risk" || id === "needs"))
+
+  const decisions = lane("needs").items.filter((item) => item.tone === "attention")
+  const faults = [...lane("needs").items.filter((item) => item.tone === "fault"), ...lane("risk").items]
+  const running = lane("running").items
+  const changed = lane("changed").items
+  const clear = [
+    !laneLoading("needs") && decisions.length === 0 ? "nothing needs your decision" : null,
+    !laneLoading("risk") && faults.length === 0 ? "nothing failing" : null,
+    !laneLoading("running") && running.length === 0 ? "nothing running" : null,
+  ].filter(Boolean) as string[]
 
   return (
-    <div data-operating-flow="" className="flex flex-col">
-      {/* Phones: one lane at a time, chosen from a lane switcher */}
-      <div className="md:hidden">
-        <div role="group" aria-label="Operation lanes" className="flex overflow-x-auto border-b border-[color:var(--g-border-subtle)] px-2 scrollbar-none">
-          {lanes.map((lane) => (
-            <button
-              key={lane.id}
-              type="button"
-              aria-pressed={activeMobile === lane.id}
-              onClick={() => setMobileLane(lane.id)}
-              className={cn(
-                "relative min-h-11 shrink-0 px-3 py-2.5 text-[13px] font-medium",
-                activeMobile === lane.id
-                  ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[color:var(--g-text-primary)]"
-                  : "text-muted-foreground",
-              )}
-            >
-              {lane.label}
-              {lane.id !== "next" && lane.items.length > 0 ? (
-                <span className="ml-1 tabular-nums text-muted-foreground">{lane.items.length}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-        {lanes
-          .filter((lane) => lane.id === activeMobile)
-          .map((lane) => (
-            <Lane key={lane.id} lane={lane} loading={laneLoading(lane.id)} />
-          ))}
-      </div>
-
-      {/* Tablet: readable rows; desktop: the full flow side by side. */}
-      <div
-        data-flow-height="content"
-        className="hidden min-h-[168px] border-b border-[color:var(--g-border-subtle)] md:grid md:grid-cols-2 md:[&>section]:border-b md:[&>section]:border-[color:var(--g-border-subtle)] md:[&>section:last-child]:col-span-2 lg:grid-cols-3 lg:[&>section:last-child]:col-span-1 xl:grid-rows-1 xl:divide-x xl:divide-[color:var(--g-border-subtle)] xl:overflow-x-auto xl:[grid-template-columns:var(--g-flow-columns)] xl:[&>section]:border-b-0"
-        style={{ "--g-flow-columns": flowColumnTemplate(lanes, laneLoading) } as CSSProperties}
+    <div data-operating-flow="" data-flow-height="content" className="flex flex-col">
+      <section
+        aria-labelledby="dashboard-briefing"
+        data-dashboard-briefing=""
+        className="flex flex-col gap-4 border-b border-[color:var(--g-border-subtle)] px-[var(--np-page-pad-sm)] py-5 sm:px-[var(--np-page-pad)] lg:py-7"
       >
-        {lanes.map((lane) => (
-          <Lane key={lane.id} lane={lane} loading={laneLoading(lane.id)} />
-        ))}
+        <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          <span aria-hidden className="relative flex size-2">
+            <span className="g-live-ping absolute inline-flex size-full rounded-full bg-[color:var(--g-brand)] opacity-60" />
+            <span className="relative inline-flex size-2 rounded-full bg-[color:var(--g-brand)]" />
+          </span>
+          Live · updated {freshness}
+        </p>
+        <h2 id="dashboard-briefing" className="max-w-3xl text-pretty text-[22px] font-semibold leading-snug tracking-[-0.02em] text-foreground sm:text-[28px]">
+          {briefingSentence(lanes, workforce).map((sentence, index) => (
+            <span key={index}>
+              {index > 0 ? " " : null}
+              {sentence.map((part, partIndex) => (
+                <span key={partIndex} className={part.tone ? TONE_TEXT[part.tone] : index > 0 ? "text-foreground/70" : undefined}>
+                  {part.text}
+                </span>
+              ))}
+            </span>
+          ))}
+        </h2>
+        <div className="max-w-3xl">
+          <WorkforcePulse workforce={workforce} />
+        </div>
+        <div className="flex max-w-3xl flex-col gap-3">
+          {ask}
+          <PromptChips prompts={briefingPrompts(lanes)} />
+        </div>
+      </section>
+
+      <div className="grid gap-8 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-10">
+        <div className="flex min-w-0 flex-col gap-7">
+          {laneLoading("needs") ? (
+            <LoadingRows />
+          ) : decisions.length > 0 ? (
+            <section aria-labelledby="flow-needs" data-flow-lane="needs" data-flow-populated="" className="flex flex-col gap-3">
+              <SectionHeading id="flow-needs" label="Needs your decision" count={decisions.reduce((n, item) => n + (item.count ?? 1), 0)} tone="bg-warning/15 text-foreground" />
+              <ul className="grid gap-3 md:grid-cols-2">
+                {decisions.map((item) => (
+                  <DecisionCard key={item.id} item={item} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {faults.length > 0 ? (
+            <section aria-labelledby="flow-risk" data-flow-lane="risk" data-flow-populated="" className="flex flex-col gap-3">
+              <SectionHeading id="flow-risk" label="Failing or at risk" count={faults.length} tone="bg-destructive/15 text-foreground" />
+              <ul className="flex flex-col gap-2">
+                {faults.map((item) => (
+                  <FaultRow key={item.id} item={item} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {laneLoading("running") ? null : running.length > 0 ? (
+            <section aria-labelledby="flow-running" data-flow-lane="running" data-flow-populated="" className="flex flex-col gap-3">
+              <SectionHeading id="flow-running" label="Executing now" count={running.length} tone="bg-[color:var(--g-brand)]/15 text-foreground" />
+              <ul className="flex flex-col gap-2">
+                {running.map((item) => (
+                  <LiveRow key={item.id} item={item} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {clear.length > 0 ? (
+            <p data-flow-clear="" className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+              <Check className="mt-0.5 size-4 shrink-0 text-[color:var(--g-brand)]" aria-hidden />
+              <span>
+                {clear.join(", ").replace(/^./, (c) => c.toUpperCase())}.
+              </span>
+            </p>
+          ) : null}
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-7" aria-label="Recent changes and next steps">
+          <section aria-labelledby="flow-changed" data-flow-lane="changed" className="flex flex-col gap-2">
+            <SectionHeading id="flow-changed" label="What changed" />
+            {loading ? (
+              <LoadingRows />
+            ) : changed.length > 0 ? (
+              <ChangedTimeline items={changed} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No agent activity recorded yet.</p>
+            )}
+          </section>
+          <section aria-labelledby="flow-next" data-flow-lane="next" className="flex flex-col gap-3">
+            <SectionHeading id="flow-next" label="Start next" />
+            <ul className="flex flex-wrap gap-2">
+              {lane("next").items.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[color:var(--g-border-default)] px-4 text-sm text-foreground transition-colors hover:border-[color:var(--g-border-strong)] hover:bg-[color:var(--g-surface-1)]",
+                      ITEM_FOCUS,
+                    )}
+                  >
+                    {item.title}
+                    <ArrowRight className="size-3.5 text-muted-foreground" aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
       </div>
     </div>
   )
