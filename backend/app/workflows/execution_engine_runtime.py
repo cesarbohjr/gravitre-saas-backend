@@ -349,20 +349,26 @@ def _finalize_run(
                 params = run_meta.get("parameters") if isinstance(run_meta.get("parameters"), dict) else {}
                 agent_id = str(params.get("agent_id") or params.get("agentId") or "")
                 if wf_id and agent_id:
-                    insight = f"Run {ctx.run_id} finished with status {final_status}."
-                    if errors:
-                        insight += f" Errors: {'; '.join(errors[:3])}"
-                    create_agent_memory(
-                        ctx.settings,
-                        ctx.client,
-                        ctx.org_id,
-                        agent_id,
-                        user_id=ctx.user_id or None,
-                        content=f"Workflow {wf_id} outcome={final_status}: {insight}",
-                        category="pattern",
-                        provenance="outcome_learning",
-                        confidence=70,
-                    )
+                    # Positive procedural learning must be backed by verified outcome
+                    # evidence. Failed runs may still be retained as failure evidence;
+                    # an executed-but-unverified run must never train a "successful"
+                    # procedure merely because its graph reached a terminal node.
+                    may_learn = final_status == RUN_STATUS_FAILED or workflow_verified
+                    if may_learn:
+                        insight = f"Run {ctx.run_id} finished with status {final_status}."
+                        if errors:
+                            insight += f" Errors: {'; '.join(errors[:3])}"
+                        create_agent_memory(
+                            ctx.settings,
+                            ctx.client,
+                            ctx.org_id,
+                            agent_id,
+                            user_id=ctx.user_id or None,
+                            content=f"Workflow {wf_id} outcome={final_status}: {insight}",
+                            category="pattern",
+                            provenance="outcome_learning",
+                            confidence=70 if workflow_verified else 55,
+                        )
             except Exception as exc:  # noqa: BLE001
                 logger.debug(
                     "workflow_outcome_learning_skipped org_id=%s run_id=%s error=%s",
