@@ -64,6 +64,21 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._tts_service = tts_service
         self._speculative_coordinator = speculative_coordinator
         self._voice_session = voice_session
+        self._active_user_text = ""
+        self._active_assistant_message_id: str | None = None
+
+    @property
+    def conversation_id(self) -> str | None:
+        return self._conversation_id
+
+    def begin_turn(self, user_text: str) -> None:
+        self._active_user_text = str(user_text or "").strip()
+        self._active_assistant_message_id = None
+
+    def mark_turn_persisted(self, *, conversation_id: str | None, assistant_message_id: str | None) -> None:
+        if conversation_id:
+            self._conversation_id = conversation_id
+        self._active_assistant_message_id = assistant_message_id or None
 
     async def _persist_interrupted_assistant_text(self, reconciled_text: str) -> None:
         """Replace the latest durable assistant turn with the heard prefix."""
@@ -99,24 +114,31 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         )
         if not getattr(owned, "data", None):
             return
-        latest = (
-            client.table("conversation_messages")
-            .select("id")
-            .eq("conversation_id", self._conversation_id)
-            .eq("role", "assistant")
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
+        message_id = str(self._active_assistant_message_id or "").strip()
+        if message_id:
+            client.table("conversation_messages").update(
+                {"content": reconciled_text.strip()}
+            ).eq("id", message_id).eq("conversation_id", self._conversation_id).eq("role", "assistant").execute()
+            return
+
+        # Mid-generation interruption: no completed assistant row exists yet.
+        # Persist THIS active turn instead of ever rewriting "latest assistant",
+        # which could belong to the previous turn.
+        if not self._active_user_text or not reconciled_text.strip():
+            return
+        from app.routers.assistant import _persist_conversation_turn
+        persisted_id, assistant_id = _persist_conversation_turn(
+            self._settings,
+            org_id=self._org_id,
+            user_id=self._user_id,
+            conversation_id=self._conversation_id,
+            user_text=self._active_user_text,
+            assistant_text=reconciled_text.strip(),
+            tool_results=[],
         )
-        rows = list(getattr(latest, "data", None) or [])
-        if not rows:
-            return
-        message_id = str(rows[0].get("id") or "")
-        if not message_id:
-            return
-        client.table("conversation_messages").update(
-            {"content": reconciled_text.strip()}
-        ).eq("id", message_id).eq("conversation_id", self._conversation_id).execute()
+        if persisted_id:
+            self._conversation_id = persisted_id
+            self._active_assistant_message_id = assistant_id
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         if isinstance(frame, InterruptionFrame):
