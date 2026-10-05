@@ -24,4 +24,4 @@ def test_approval_is_not_execution_success() -> None:
     # Approval is a decision signal, not proof the action happened. It may be
     # recalled as a decision but must not be promoted as a successful outcome.
     assert result["weight_delta"] > 0
-    assert all("business_outcomes" not in note for note in result["bias_notes"])
+    assert result["bias_notes"] == ["Prior decisions approval_granted on write-1"]
