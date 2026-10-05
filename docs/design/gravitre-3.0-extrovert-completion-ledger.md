@@ -776,3 +776,41 @@ Not performed. Required GitHub checks on `105630a0` passed (Billing E2E skipped)
 
 `IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`.
 
+## Recapture on `a5125b5d` — 2026-10-04 Vancouver
+
+Fetched `a5125b5d91304c36a3a12501c70911193227b100`. Evidence commit `f96798dd` remains an ancestor. Rebuilt with `NEXT_PUBLIC_PLAYWRIGHT_E2E=1` and captured on `next start` port 3062. Fixtures are not owner-live.
+
+### GitHub CI on this SHA
+
+Run `37249825628` / Lighthouse `37249825682`.
+
+| Check | Result |
+| --- | --- |
+| Web, Backend, Integration Smoke, Shared runtime, Dependency audit, Lighthouse | PASS |
+| Vercel Preview | PASS `dpl_CNQ6BHnHHxDndzN8u3ZcpprDJgn9` |
+| Billing E2E | SKIPPED |
+
+### Requested recaptures
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| AI 1440/834/390 first viewport | PASS | Heading “What do you want to get done?” and Message composer `inView=true` at all three widths. One `[data-ai-workspace-capture]` host, one runtime mark. PNGs `.tmp-release-visual/a5125b5-e2e/ai-*.png` |
+| Connectors Escape focus return | PASS | Sheet closed; `document.activeElement` is the HubSpot row button (`inRow=true`) |
+| Connectors Configure focus transfer | PASS | Configure opened HubSpot dialog; focus on “Complete OAuth” |
+| Approvals fixture exit | TRACE, not resolved | Clicked `Decide` text in `DIV[role=button]`; `hostHref=null`, `nearestHref=null`. Visible URL stayed `/e2e/shots/approvals` and `[data-review-surface=approvals-inspect]` opened. Background fetches still requested `/home?_rsc=…` from the approvals document, then `http://localhost:3000/login?error=session_expired` (CSP `connect-src` blocked). Local Decide/Back DOM test is not treated as this browser issue closed |
+| Pending dismissal | NOT_RUN | Connector Close remained enabled; no delayed pending fixture mutation was available on these routes |
+| Reduced motion | PASS (map/node compare) | Intelligence without reduce: `g-node-route` infinite animation present. With `prefers-reduced-motion: reduce`: no animated node matches |
+
+`VISUAL_ACCEPTANCE = PARTIAL`. Home 834 and AI first-viewport captures pass on this SHA. Approvals background `/home` + `:3000/login` fetches remain an open fixture-auth leak. Pending inspector dismissal was not exercised.
+
+### Owner-live
+
+`https://gravitre.app/home` redirects to `/login`. No authorized session.
+
+`OWNER_LIVE_ACCEPTANCE = NOT_RUN / BLOCKED`
+
+### Merge / deploy
+
+Not performed. Draft #298 stays unmerged. Production remains main `8c737d50`.
+
+`IMPLEMENTATION_COMPLETE = NO`. `MERGE_READY = NO`. `CAUGHT_UP = NO`.
