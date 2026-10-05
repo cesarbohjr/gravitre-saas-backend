@@ -4,6 +4,14 @@
  * Keep oauthReady in sync with backend GENERIC_OAUTH_VENDORS + SUPPORTED_OAUTH_PROVIDERS.
  */
 
+import managedConnectors from "./managed-connectors.json"
+
+export const MANAGED_CONNECTOR_VENDOR_KEYS = new Set(managedConnectors.map((entry) => entry.vendorKey))
+
+export function isManagedConnectorVendor(vendor: string): boolean {
+  return MANAGED_CONNECTOR_VENDOR_KEYS.has(connectorVendorKey(vendor))
+}
+
 export type ConnectorAuthType = "oauth" | "apiKey" | "webhook"
 
 /** Catalog credential ownership — enforced server-side via auth_mode. */
@@ -341,7 +349,20 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Figma", vendorKey: "figma", description: "Product design and prototyping", authType: "oauth", credentialModel: "oauth2", category: "Learning / Creative", shipped: true, oauthReady: true, setupComplexity: "medium" },
 ]
 
-export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = CATALOG_ENTRIES
+export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = [
+  ...CATALOG_ENTRIES,
+  ...managedConnectors.map((entry): CatalogConnectorEntry => ({
+    type: entry.type, vendorKey: entry.vendorKey, category: entry.category,
+    description: `${entry.description}. ${entry.vendorKey === "freshservice" ? "Ticket actions supported." : entry.vendorKey === "okta" ? "Identity read actions supported." : "Authorization supported; workflow actions pending."}`,
+    authType: "oauth", credentialModel: "oauth2", oauthReady: true,
+    shipped: ["freshservice", "okta"].includes(entry.vendorKey), authMode: "customer_owned",
+  })),
+]
+
+for (const entry of managedConnectors) {
+  OAUTH_VENDOR_KEYS.add(entry.vendorKey)
+  OAUTH_CONNECTOR_TYPE_SET.add(entry.type)
+}
 
 export const CONNECTOR_CATEGORIES = Object.fromEntries(
   Object.keys(CONNECTOR_CATEGORY_META).map((category) => [
@@ -515,7 +536,10 @@ export function isConnectorsHubHidden(
 }
 
 export function connectorVendorKey(type: string): string {
-  const key = type.toLowerCase().replace(/\s+/g, "").replace(/\./g, "")
+  const normalized = type.trim().toLowerCase()
+  const managed = managedConnectors.find((entry) => entry.vendorKey === normalized || entry.type.toLowerCase() === normalized)
+  if (managed) return managed.vendorKey
+  const key = normalized.replace(/\s+/g, "").replace(/\./g, "")
   if (key === "googlecalendar") return "google_calendar"
   if (key === "googleanalytics") return "google_analytics"
   if (key === "googleads" || key === "adwords" || key === "ads") return "google_ads"
@@ -543,11 +567,11 @@ export function formatVendorLabel(vendor: string): string {
 }
 
 export function isOAuthConnectorType(type: string): boolean {
-  return OAUTH_CONNECTOR_TYPE_SET.has(type)
+  return OAUTH_CONNECTOR_TYPE_SET.has(type) || isManagedConnectorVendor(type)
 }
 
 export function isOAuthVendorKey(vendorKey: string): boolean {
-  return OAUTH_VENDOR_KEYS.has(vendorKey)
+  return OAUTH_VENDOR_KEYS.has(vendorKey) || isManagedConnectorVendor(vendorKey)
 }
 
 export function isPartnerGatedConnector(

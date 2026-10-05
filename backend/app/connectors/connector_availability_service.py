@@ -146,6 +146,12 @@ def evaluate_connector_availability(
     token_valid = auth_status == "connected"
     scopes_valid = True
 
+    from app.connectors.nango_registry import get_nango_connector_spec
+    from app.connectors.nango_client import nango_configured
+    managed_spec = get_nango_connector_spec(vendor)
+    if managed_spec:
+        configured = nango_configured(settings) and bool(settings.nango_webhook_signing_key.strip())
+
     # Phase 3: gravitre_managed uses platform credentials (no tenant OAuth)
     from app.intelligence_packs.shared.auth_mode import AuthMode, get_auth_mode, resolve_credential_source
     from app.services.gravitre_connector_activation import _platform_env_present
@@ -246,6 +252,21 @@ def evaluate_connector_availability(
             read_available = False
         else:
             write_available = False
+
+    if managed_spec:
+        from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
+        from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
+        managed_actions = {a for a in (set(MANAGED_SERVICE_DESK_TOOL_EXECUTORS) | set(MANAGED_SECURITY_TOOL_EXECUTORS)) if a.startswith(vendor + ".")}
+        if action_key and action_key not in managed_actions:
+            execution_available = read_available = write_available = False
+            if authenticated:
+                blocking_reason, recovery_action = "unsupported_action", "This action is not supported for this connector."
+        elif not action_key:
+            read_available = execution_available and any(not any(h in a for h in WRITE_ACTION_HINTS) for a in managed_actions)
+            write_available = execution_available and any(any(h in a for h in WRITE_ACTION_HINTS) for a in managed_actions)
+            execution_available = read_available or write_available
+            if authenticated and not execution_available:
+                blocking_reason, recovery_action = "unsupported_action", "Account connected; workflow actions are not available yet."
 
     out = {
         "connector_id": connector_id,

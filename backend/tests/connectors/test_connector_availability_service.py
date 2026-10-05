@@ -227,3 +227,15 @@ def test_connectors_and_chat_share_source_of_truth(mock_list):
     assert item is not None
     assert item["source_of_truth"] == "connector_availability_service"
     assert item["display_status"] == "connected"
+
+
+@pytest.mark.parametrize('vendor,expected_read,expected_write', [('freshservice',True,True),('okta',True,False),('halo_psa',False,False)])
+@patch('app.connectors.connector_availability_service.resolve_connector_auth_status',return_value='connected')
+def test_managed_authorization_does_not_invent_action_readiness(_auth,vendor,expected_read,expected_write):
+    row = {'id':'c1','vendor':vendor,'type':vendor,'status':'active','environment':'production','config':{'auth_provider':'managed'}}
+    result = evaluate_connector_availability(MagicMock(),'org-1',row,
+        _settings(nango_secret_key='secret',nango_webhook_signing_key='signing'),force_live=False)
+    assert result['connected']
+    assert result['read_available'] == expected_read
+    assert result['write_available'] == expected_write
+    assert result['execution_available'] == (expected_read or expected_write)

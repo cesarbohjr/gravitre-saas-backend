@@ -74,7 +74,127 @@ _FRESHSERVICE = build_vendor(
 )
 
 # Append org-specific or partner vendors here, or load from DB/MCP in a future release.
-VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (_FRESHSERVICE,)
+_OKTA = build_vendor(
+    "okta",
+    "Okta",
+    "Security / Identity",
+    "https://developer.okta.com/",
+    shipped=True,
+    department="security",
+    v1=(
+        action(
+            "okta",
+            "system_logs.list",
+            "List Okta system log events",
+            tier="v1",
+            kind="read",
+            scope_suffix="logs:read",
+            api_reference="GET /api/v1/logs",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "since": {"type": "string"},
+                    "until": {"type": "string"},
+                    "filter": {"type": "string"},
+                    "q": {"type": "string"},
+                    "limit": {"type": "integer"},
+                    "sortOrder": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+        ),
+        action(
+            "okta",
+            "users.get",
+            "Get Okta user",
+            tier="v1",
+            kind="read",
+            scope_suffix="users:read",
+            api_reference="GET /api/v1/users/{user_id}",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "required": ["user_id"],
+                "additionalProperties": False,
+            },
+        ),
+    ),
+    v2=(
+        action(
+            "okta",
+            "groups.list",
+            "List Okta groups for identity and access investigation",
+            tier="v2",
+            kind="read",
+            scope_suffix="groups:read",
+            api_reference="GET /api/v1/groups",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "filter": {"type": "string"},
+                    "search": {"type": "string"},
+                    "limit": {"type": "integer"},
+                    "after": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+        ),
+        action(
+            "okta",
+            "apps.list",
+            "List Okta applications for access and exposure review",
+            tier="v2",
+            kind="read",
+            scope_suffix="apps:read",
+            api_reference="GET /api/v1/apps",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "filter": {"type": "string"},
+                    "limit": {"type": "integer"},
+                    "after": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+        ),
+    ),
+    v3=(
+        action(
+            "okta",
+            "users.factors.list",
+            "List enrolled Okta factors when investigating account security posture",
+            tier="v3",
+            kind="read",
+            scope_suffix="users:read",
+            api_reference="GET /api/v1/users/{user_id}/factors",
+            idempotent=True,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "connector_id": {"type": "string"},
+                },
+                "required": ["user_id"],
+                "additionalProperties": False,
+            },
+        ),
+    ),
+)
+
+
+VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (_FRESHSERVICE, _OKTA)
 
 # Runtime per-action schema overrides (partner SDK, MCP, admin API).
 ACTION_SCHEMA_EXTENSIONS: dict[str, dict[str, Any]] = {}

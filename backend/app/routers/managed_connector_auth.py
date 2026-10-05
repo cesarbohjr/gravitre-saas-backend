@@ -9,19 +9,19 @@ from typing import Annotated
 import hashlib
 import hmac
 import json
+from uuid import uuid4
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 
-from app.auth.dependencies import get_environment_context, require_admin
+from app.auth.dependencies import get_environment_context, require_admin, require_org_member
 from app.config import Settings, get_settings
 from app.connectors.nango_client import create_connect_session, nango_configured
-from app.connectors.nango_registry import get_nango_connector_spec
+from app.connectors.nango_registry import get_nango_connector_spec, NANGO_CONNECTOR_REGISTRY
 from app.connectors.platform import (
     is_connector_type_schema_error,
-    prepare_oauth_connector,
     raise_connector_type_schema_error,
 )
 from app.core.errors import error_detail
@@ -51,9 +51,47 @@ class ManagedAuthSessionRequest(BaseModel):
 class ManagedAuthSessionResponse(BaseModel):
     connector_id: str = Field(alias="connectorId")
     session_token: str = Field(alias="sessionToken")
+    attempt_id: str = Field(alias="attemptId")
     expires_at: str | None = Field(default=None, alias="expiresAt")
 
     model_config = {"populate_by_name": True}
+
+
+@router.get("/catalog")
+async def managed_auth_catalog(
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
+    from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
+    actions = set(MANAGED_SERVICE_DESK_TOOL_EXECUTORS) | set(MANAGED_SECURITY_TOOL_EXECUTORS)
+    return {
+        "configured": nango_configured(settings) and bool(settings.nango_webhook_signing_key.strip()),
+        "connectors": [{"vendor": spec.vendor, "actions": sorted(a for a in actions if a.startswith(spec.vendor + ".")),
+                        "support": "actions_supported" if any(a.startswith(spec.vendor + ".") for a in actions) else "authorization_only"}
+                       for spec in NANGO_CONNECTOR_REGISTRY.values()],
+    }
+
+
+@router.get("/{connector_id}/status")
+async def managed_auth_status(
+    connector_id: str,
+    _member: Annotated[tuple, Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    _, org_id, _role = _member
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    row = (client.table("connectors").select("config, status")
+           .eq("id", connector_id).eq("org_id", org_id).eq("environment", environment_name)
+           .is_("deleted_at", "null").limit(1).execute())
+    if not row.data:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    config = safe_normalize_stored_dict(dict(row.data[0]), key="config")
+    connected = (row.data[0].get("status") == "active" and config.get("auth_provider") == "managed"
+                 and bool(config.get("managed_connection_id")))
+    return {"connected": bool(connected), "status": str(row.data[0].get("status") or "pending_auth"),
+            "confirmedAttemptId": config.get("managed_auth_confirmed_attempt_id")}
 
 
 @router.post("/{vendor}/session", response_model=ManagedAuthSessionResponse)
@@ -68,7 +106,7 @@ async def create_managed_auth_session(
     spec = get_nango_connector_spec(vendor)
     if spec is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported connector")
-    if not nango_configured(settings):
+    if not nango_configured(settings) or not settings.nango_webhook_signing_key.strip():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Managed connector authorization is not configured", "MANAGED_AUTH_NOT_CONFIGURED"),
@@ -80,9 +118,10 @@ async def create_managed_auth_session(
     if connector_id:
         existing = (
             client.table("connectors")
-            .select("id, vendor, type, config")
+            .select("id, vendor, type, config, status, environment")
             .eq("org_id", org_id)
             .eq("id", connector_id)
+            .eq("environment", environment_name)
             .is_("deleted_at", "null")
             .limit(1)
             .execute()
@@ -95,13 +134,24 @@ async def create_managed_auth_session(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Connector vendor mismatch")
     else:
         try:
-            connector_id, reconnect, is_new = prepare_oauth_connector(
-                client,
-                org_id=org_id,
-                vendor=spec.vendor,
-                name=body.name,
-                environment_name=environment_name,
-            )
+            # Managed auth never reuses a connector from another environment.
+            found = (client.table("connectors").select("id, config, status")
+                     .eq("org_id", org_id).eq("environment", environment_name)
+                     .eq("vendor", spec.vendor).eq("name", body.name.strip())
+                     .is_("deleted_at", "null").limit(1).execute())
+            if found.data:
+                connector_id = str(found.data[0]["id"])
+                reconnect, is_new = True, False
+            else:
+                created = client.table("connectors").insert({
+                    "org_id": org_id, "vendor": spec.vendor, "type": spec.vendor,
+                    "name": body.name.strip(), "environment": environment_name,
+                    "status": "pending_auth", "sync_frequency": "1h",
+                    "description": spec.description, "config": {"auth_provider": "managed"},
+                }).execute()
+                if not created.data:
+                    raise HTTPException(status_code=500, detail="Connector create failed")
+                connector_id, reconnect, is_new = str(created.data[0]["id"]), False, True
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -109,7 +159,7 @@ async def create_managed_auth_session(
                 raise_connector_type_schema_error(exc)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=error_detail(f"Connector create failed: {exc}", "CONNECTOR_CREATE_FAILED"),
+                detail=error_detail("Connector create failed; check the connector name and configuration", "CONNECTOR_CREATE_FAILED"),
             ) from exc
         if is_new:
             write_audit_event(
@@ -126,17 +176,23 @@ async def create_managed_auth_session(
                 },
             )
 
-    # Persist only routing metadata; Nango/provider credentials remain outside Gravitre.
-    client.table("connectors").update(
-        {
-            "config": {
-                "auth_type": "oauth",
-                "auth_provider": "managed",
-                "managed_integration_id": spec.integration_id,
-            },
-            "status": "pending_auth",
-        }
-    ).eq("id", str(connector_id)).eq("org_id", org_id).execute()
+    # Read the row created/reused for this environment. Never discard
+    # provider settings or an existing connection when a reconnect is cancelled.
+    stored = (client.table("connectors").select("config, status")
+              .eq("id", str(connector_id)).eq("org_id", org_id)
+              .eq("environment", environment_name).is_("deleted_at", "null")
+              .limit(1).execute())
+    if not stored.data:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    config = safe_normalize_stored_dict(dict(stored.data[0]), key="config")
+    attempt_id = str(uuid4())
+    config["managed_auth_attempt_id"] = attempt_id
+    config.update({"auth_type": "oauth", "auth_provider": "managed",
+                   "managed_integration_id": spec.integration_id})
+    connection_id = str(config.get("managed_connection_id") or "").strip() or None
+    client.table("connectors").update({"config": config}).eq(
+        "id", str(connector_id)).eq("org_id", org_id).eq(
+        "environment", environment_name).execute()
 
     try:
         data = create_connect_session(
@@ -147,12 +203,14 @@ async def create_managed_auth_session(
             organization_name=None,
             integration_ids=[spec.integration_id],
             connector_id=str(connector_id),
+            connection_id=connection_id,
+            attempt_id=attempt_id,
         )
     except (httpx.HTTPError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=error_detail(
-                f"Connector authorization session failed: {str(exc)[:200]}",
+                "Connector authorization session failed; check integration configuration",
                 "MANAGED_AUTH_SESSION_FAILED",
             ),
         ) from exc
@@ -173,6 +231,7 @@ async def create_managed_auth_session(
     return ManagedAuthSessionResponse(
         connector_id=str(connector_id),
         session_token=str(data["token"]),
+        attempt_id=attempt_id,
         expires_at=str(data.get("expires_at") or "") or None,
     )
 
@@ -208,9 +267,11 @@ async def handle_nango_auth_webhook(
             detail=error_detail("Invalid managed connector webhook payload", "MANAGED_AUTH_WEBHOOK_INVALID"),
         ) from exc
 
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid managed connector webhook payload")
     if payload.get("type") != "auth":
         return {"ok": True}
-    if not bool(payload.get("success")):
+    if payload.get("success") is not True:
         return {"ok": True}
 
     operation = str(payload.get("operation") or "").strip().lower()
@@ -254,8 +315,11 @@ async def handle_nango_auth_webhook(
         or config.get("managed_integration_id")
         or ""
     ).strip()
-    expected_integration_id = str(config.get("managed_integration_id") or "").strip()
-    if expected_integration_id and integration_id and integration_id != expected_integration_id:
+    spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""))
+    if config.get("auth_provider") != "managed" or spec is None:
+        raise HTTPException(status_code=400, detail="Connector is not managed")
+    expected_integration_id = spec.integration_id
+    if integration_id != expected_integration_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_detail(
@@ -264,18 +328,24 @@ async def handle_nango_auth_webhook(
             ),
         )
 
+    pending_attempt = config.get("managed_auth_attempt_id")
+    if pending_attempt and tags.get("auth_attempt_id") != pending_attempt:
+        raise HTTPException(status_code=409, detail="Stale connector authorization attempt")
+    if pending_attempt:
+        config["managed_auth_confirmed_attempt_id"] = pending_attempt
+
     config["auth_type"] = "oauth"
     config["auth_provider"] = "managed"
     config["managed_connection_id"] = connection_id
     if integration_id:
         config["managed_integration_id"] = integration_id
 
-    client.table("connectors").update(
-        {
-            "config": config,
-            "status": "active",
-        }
-    ).eq("id", connector_id).eq("org_id", org_id).execute()
+    update = client.table("connectors").update({"config": config, "status": "active"}).eq(
+        "id", connector_id).eq("org_id", org_id).is_("deleted_at", "null")
+    if pending_attempt:
+        update = update.eq("config->>managed_auth_attempt_id", str(pending_attempt))
+    if not update.execute().data:
+        raise HTTPException(status_code=409, detail="Connector authorization changed; retry the current session")
 
     actor_id = str(tags.get("end_user_id") or "").strip() or None
     write_audit_event(

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -35,6 +36,8 @@ def create_connect_session(
     organization_name: str | None,
     integration_ids: list[str],
     connector_id: str | None = None,
+    connection_id: str | None = None,
+    attempt_id: str | None = None,
 ) -> dict[str, Any]:
     """Create a short-lived Connect UI session. Provider credentials never enter Gravitre."""
     tags: dict[str, str] = {
@@ -46,10 +49,17 @@ def create_connect_session(
     if connector_id:
         tags["connector_id"] = str(connector_id)
 
+    if attempt_id:
+        tags["auth_attempt_id"] = attempt_id
+
     payload: dict[str, Any] = {
         "tags": tags,
         "allowed_integrations": [str(value) for value in integration_ids if str(value).strip()],
     }
+    if connection_id:
+        payload.pop("allowed_integrations")
+        payload["connection_id"] = connection_id
+        payload["integration_id"] = integration_ids[0]
     if organization_name:
         payload["organization"] = {
             "id": str(organization_id),
@@ -58,7 +68,7 @@ def create_connect_session(
 
     with httpx.Client(timeout=30.0) as client:
         response = client.post(
-            f"{_base_url(settings)}/connect/sessions",
+            f"{_base_url(settings)}/connect/sessions" + ("/reconnect" if connection_id else ""),
             headers={**_auth_headers(settings), "Content-Type": "application/json"},
             json=payload,
         )
@@ -97,3 +107,18 @@ def proxy_request(
             params=params,
             json=json_body,
         )
+
+
+def delete_managed_connection(settings: Settings, *, connection_id: str, integration_id: str) -> None:
+    """Remove Nango credentials on confirmed connector removal. Missing is idempotent."""
+    with httpx.Client(timeout=30.0) as client:
+        response = client.delete(
+            f"{_base_url(settings)}/connections/{quote(connection_id, safe='')}",
+            headers=_auth_headers(settings), params={"provider_config_key": integration_id},
+        )
+    if response.status_code == 404:
+        return
+    response.raise_for_status()
+    body = response.json()
+    if not isinstance(body, dict) or body.get("success") is not True:
+        raise ValueError("Managed connection removal was not confirmed")
