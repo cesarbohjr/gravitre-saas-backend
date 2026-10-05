@@ -71,7 +71,7 @@ export default function SourceAgentAssignmentsPage() {
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
         <Link
           href={`/sources/${sourceId}`}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-0"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Back to source

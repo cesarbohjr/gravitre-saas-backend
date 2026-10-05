@@ -51,11 +51,12 @@ function workflowUsesVendor(workflow: Workflow, vendor: string): boolean {
 }
 
 function tierActions(catalog: VendorActionCatalog): ConnectorActionDefinition[] {
+  const tiers = catalog.tiers
   return [
-    ...catalog.tiers.v1.actions,
-    ...catalog.tiers.v2.actions,
-    ...catalog.tiers.v3.actions,
-    ...(catalog.tiers.v4?.actions ?? []),
+    ...(tiers?.v1?.actions ?? []),
+    ...(tiers?.v2?.actions ?? []),
+    ...(tiers?.v3?.actions ?? []),
+    ...(tiers?.v4?.actions ?? []),
   ]
 }
 
@@ -73,6 +74,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
   )
 
   const actions = useMemo(() => (catalog ? tierActions(catalog) : []), [catalog])
+  const demoWorkflows = catalog?.demoWorkflows ?? []
   const chatReadyCount = actions.filter((a) => a.chatExecutable).length
   const workflowOnlyCount = actions.filter((a) => a.implemented && !a.chatExecutable).length
   const plannedCount = actions.filter((a) => !a.implemented).length
@@ -241,7 +243,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
       </div>
 
       {/* Demo workflow install cards */}
-      {catalog && catalog.demoWorkflows.length > 0 ? (
+      {demoWorkflows.length > 0 ? (
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -249,12 +251,12 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
               Starter workflows
             </CardTitle>
             <CardDescription className="text-xs">
-              Prebuilt {catalog.displayName} workflows you can install in one click
+              Prebuilt {catalog?.displayName} workflows you can install in one click
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {catalog.demoWorkflows.map((demo) => (
+              {demoWorkflows.map((demo) => (
                 <div
                   key={demo.id}
                   className="flex flex-col gap-2 rounded-lg border border-border bg-secondary/20 p-3"
@@ -277,7 +279,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                   <p className="line-clamp-2 text-xs text-muted-foreground">{demo.description}</p>
                   <div className="mt-auto flex items-center justify-between pt-1">
                     <span className="text-[10px] text-muted-foreground">
-                      {demo.steps.length} {demo.steps.length === 1 ? "step" : "steps"} · {demo.department}
+                      {demo.steps?.length ?? 0} {demo.steps?.length === 1 ? "step" : "steps"} · {demo.department}
                     </span>
                     <Button
                       asChild

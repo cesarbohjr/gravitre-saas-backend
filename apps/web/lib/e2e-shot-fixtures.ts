@@ -928,6 +928,69 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       { id: "src_attention", name: "Finance reporting warehouse", type: "snowflake", category: "warehouse", status: "error", environment: "production", lastSync: AGO(180), tables: 8, recordCount: 6400, workflowsUsing: 2, operatorsUsing: 1, description: "Connection requires review before the next ingestion." },
     ],
   },
+  // Source detail (/e2e/shots/source-detail/src_warehouse). Shapes follow
+  // app/sources/[id]/page.tsx: `{ source }`, `{ tables }`, `{ history }`.
+  "/api/sources/src_warehouse": {
+    source: {
+      id: "src_warehouse",
+      name: "Northwind operations warehouse",
+      type: "postgres",
+      typeId: "postgres",
+      status: "connected",
+      environment: "production",
+      description: "Operational system of record for accounts, service requests and invoicing.",
+      lastSync: AGO(12),
+      createdAt: AGO(60 * 24 * 41),
+      recordCount: 12400,
+      tables: 16,
+      connectionHost: "warehouse.northwind.internal",
+      connectionPort: 5432,
+      connectionDatabase: "ops_prod",
+      syncIntervalSeconds: 3600,
+    },
+  },
+  "/api/sources/src_warehouse/schema": {
+    tables: [
+      { name: "accounts", schema: "public", columns: Array.from({ length: 14 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "service_requests", schema: "public", columns: Array.from({ length: 19 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "invoices", schema: "billing", columns: Array.from({ length: 11 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "contract_renewals", schema: "billing", columns: Array.from({ length: 9 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "workflow_events", schema: "ops", columns: Array.from({ length: 7 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+    ],
+  },
+  "/api/sources/src_warehouse/sync-history": {
+    history: [
+      { id: "sh_3", status: "success", records: 12400, tables: 16, createdAt: AGO(12), trigger: "scheduled", durationMs: 41000 },
+      { id: "sh_2", status: "failed", error: "Connection reset while reading billing.invoices", createdAt: AGO(72), trigger: "scheduled" },
+      { id: "sh_1", status: "success", records: 12310, tables: 16, createdAt: AGO(132), trigger: "manual", durationMs: 38000 },
+    ],
+  },
+  "/api/sources/src_warehouse/agent-assignments": {
+    sourceName: "Northwind operations warehouse",
+    assignedCount: 2,
+    agents: [
+      { agentId: "agt_lead_triage", agentName: "Lead triage", department: "Revenue", role: "Qualifies inbound leads", assigned: true, assignmentId: "asg_1" },
+      { agentId: "agt_support_resolver", agentName: "Support resolver", department: "Support", role: "Resolves tier-1 tickets", assigned: true, assignmentId: "asg_2" },
+      { agentId: "agt_renewals", agentName: "Renewals desk", department: "Finance", role: "Prepares renewal quotes", assigned: false, assignmentId: null },
+    ],
+  },
+  // Connector detail (/e2e/shots/connector-detail/con_hubspot).
+  "/api/connectors/con_hubspot": {
+    connector: {
+      id: "con_hubspot",
+      name: "HubSpot",
+      vendor: "hubspot",
+      type: "hubspot",
+      status: "connected",
+      authStatus: "active",
+      environment: "production",
+      lastSync: AGO(3),
+      createdAt: AGO(60 * 24 * 90),
+      description: "Marketing, sales, and service",
+      syncFrequency: "Every 15 minutes",
+      config: { webhookUrl: "https://hooks.gravitre.app/hubspot/northwind" },
+    },
+  },
   "/api/metrics/runs": {
     runVolume: [
       { time: "08:00", completed: 42, failed: 2 }, { time: "09:00", completed: 58, failed: 1 },

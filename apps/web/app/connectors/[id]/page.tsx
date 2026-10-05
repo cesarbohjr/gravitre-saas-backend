@@ -200,7 +200,8 @@ export default function ConnectorDetailPage() {
   }
 
   return (
-    <AppShell title={connector.name} breadcrumbVendor={connector.type}>\n      <div data-composition="manage" className="contents">
+    <AppShell title={connector.name} breadcrumbVendor={connector.type}>
+      <div data-composition="manage" className="contents">
       <div className="flex min-h-full flex-col" data-testid="connector-detail-b">
         <GravitrePageHeader
           eyebrow="Connectors"
@@ -248,8 +249,8 @@ export default function ConnectorDetailPage() {
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="outline" size="sm" className="h-11 w-11 p-0 md:h-8 md:w-8" aria-label="More connector actions">
+                    <MoreVertical className="h-4 w-4" aria-hidden />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -483,7 +484,8 @@ export default function ConnectorDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>\n      </div>
+      </div>
+      </div>
     </AppShell>
   )
 }
