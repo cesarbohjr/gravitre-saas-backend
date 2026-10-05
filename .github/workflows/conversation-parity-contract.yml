@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install focused test dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest pytest-asyncio
       - name: Run conversation parity contract
         run: pytest -q tests/services/test_conversation_parity_benchmark.py tests/services/test_conversation_parity_model_routing.py tests/services/test_conversation_parity_no_canned_eval_answers.py tests/services/pipecat_voice/test_durable_conversation_parity.py
       - name: Prove benchmark template builds
