@@ -212,18 +212,6 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
         "I don't have that list status yet — want me to look it up in HubSpot?",
     ),
     (
-        "help me improve our SEO",
-        "Happy to. Are we aiming at organic traffic growth, fixing a ranking drop, or a content calendar — and for which site or market?",
-    ),
-    (
-        "help me improve our hiring process",
-        "Happy to. Are we fixing time-to-hire, candidate quality, interview consistency, or compliance risk — and for which roles or geo?",
-    ),
-    (
-        "help me plan next week's priorities",
-        "Happy to. Are we prioritizing revenue closes, customer follow-ups, or clearing internal blockers — and what's the hard deadline?",
-    ),
-    (
         "organic traffic for the main site",
         "Got it — main site, organic growth. What's the biggest gap you're seeing: rankings slipping, thin content, or technical crawl issues?",
     ),
@@ -270,10 +258,6 @@ MODULE_D_FEW_SHOT_EXCHANGES: tuple[tuple[str, str], ...] = (
     (
         "I'm so frustrated — organic traffic cratered overnight and leadership wants answers by noon",
         "That's a rough spot with a tight clock. First check: Search Console coverage/errors and whether a tracking change inflated the drop — then we prioritize from there.",
-    ),
-    (
-        "what's a meta title?",
-        "The clickable title search engines show for a page — keep it unique, under ~60 characters, with the primary query near the front.",
     ),
 )
 
