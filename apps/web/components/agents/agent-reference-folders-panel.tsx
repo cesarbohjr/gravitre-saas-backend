@@ -38,7 +38,7 @@ export function AgentReferenceFoldersPanel({
             {title}
           </h3>
           {editHref ? (
-            <Link href={editHref} className="inline-flex items-center gap-1 text-[12px] text-primary hover:underline">
+            <Link href={editHref} className="inline-flex min-h-11 items-center gap-1 text-[12px] text-primary hover:underline sm:min-h-0">
               {folders.length === 0 ? "Link cloud folders" : "Manage"}
               <ExternalLink className="h-3 w-3" aria-hidden />
             </Link>
@@ -79,7 +79,7 @@ export function AgentReferenceFoldersPanel({
             <p className="text-sm font-medium text-foreground">{title}</p>
             <p className="mt-1 text-xs text-muted-foreground">{description}</p>
             {editHref ? (
-              <Link href={editHref} className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+              <Link href={editHref} className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs text-primary hover:underline sm:min-h-0">
                 Link cloud folders
                 <ExternalLink className="h-3 w-3" />
               </Link>
