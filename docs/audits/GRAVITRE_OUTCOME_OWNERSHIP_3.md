@@ -181,3 +181,29 @@ Added `outcome_recovery_policy`: uncertain mutations reconcile before retry; tra
 5. Add held-out Outcome Ownership benchmark scenarios and CI gate.
 6. Run exact-head tests/CI and remediate regressions.
 7. Produce Claude peer-review packet only after internal audit closes P0/P1 findings.
+
+
+## Internal adversarial audit — pass 2
+
+### Additional findings remediated
+
+**OO-P0-06 — workflow graph completion lacked canonical verification propagation.**  
+The graph runtime passed terminal completion plus output refs into the canonical finalizer, but did not construct the required `metadata.verification` contract. It now derives workflow verification from verified consequential child evidence; canonical finalization remains the final authority.
+
+**OO-P0-07 — delegated agent child terminal status could be mistaken for parent verification.**  
+`delegation_observation` now propagates an explicit `verified` bit only from child verification evidence. A child saying/computing “complete” is insufficient.
+
+**OO-P0-08 — swarm execution verification equated successful tool calls with verified execution.**  
+Fixed. Swarm tool success is now only execution evidence. `executionVerified` requires the canonical verification contract or explicit verified outcome bit.
+
+**OO-P1-02 — capability composition was specialized around connector/evidence plans.**  
+Added an objective-first resource composer supporting connectors, agents, workflows, Plays, Knowledge Fabric resources, datasets, and internet resources under one capability objective. Missing capabilities remain explicit; composition does not itself claim completion.
+
+### Remaining before Claude peer review
+
+1. Integrate `outcome_recovery_policy` into concrete dispatcher retry loops, especially workflow graph execution, without breaking existing node policy semantics.
+2. Integrate objective capability composition with the runtime planner/resource registry rather than leaving it as a pure contract utility.
+3. Add held-out benchmark scenarios for compound objectives, uncertain mutation reconciliation, agent/workflow false-success, Composer paraphrase claims, resource composition, and positive-learning contamination.
+4. Run focused tests and full exact-head CI; fix all regressions.
+5. Re-run internal adversarial audit against the final diff.
+6. Only then hand the implementation + evidence packet to Claude for independent peer review.
