@@ -102,7 +102,9 @@ _REFUSAL_CLAIM = re.compile(
     re.I,
 )
 _SUCCESS_CLAIM = re.compile(
-    r"\b(?:is confirmed|I created|successfully created|all set|it's done)\b",
+    r"\b(?:done|completed|complete|finished|is confirmed|I (?:have )?created|"
+    r"successfully (?:created|updated|sent|posted|completed)|all set|it's done|"
+    r"it is done|has been (?:created|updated|sent|completed))\b",
     re.I,
 )
 
@@ -710,6 +712,15 @@ async def compose_user_reply(
             env,
             fallback=_fallback_text("success", env),
         )
+        # Outcome Ownership: completion language is a class of claims, not only
+        # the literal "Done.". A model may paraphrase success, so mechanically
+        # bound every completion-shaped claim to verified execution evidence.
+        if _SUCCESS_CLAIM.search(text) and not envelope_allows_completion_claim(env):
+            text = (
+                (draft or "").strip()
+                if draft and not _SUCCESS_CLAIM.search(draft) and not looks_like_raw_backend(draft)
+                else "The action was executed, but I have not verified the requested outcome yet."
+            )
     from app.services.provider_result_grounding import apply_provider_result_grounding
 
     text = apply_provider_result_grounding(text, env)
