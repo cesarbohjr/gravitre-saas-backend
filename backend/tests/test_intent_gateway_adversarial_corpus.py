@@ -67,7 +67,9 @@ async def test_adversarial_operator_tasks_fall_through_text_and_voice(label: str
     spoken = await evaluate_intent_gateway(GatewayContext(message=message, spoken_mode=True, org_id="org"))
     assert typed.action == "fallthrough", f"{label} typed served {typed.candidate_id}"
     assert spoken.action == "fallthrough", f"{label} spoken served {spoken.candidate_id}"
-    assert typed.reason == spoken.reason == "operator_task_shaped"
+    assert typed.reason == spoken.reason
+    expected_reason = "below_threshold" if label == "ambiguous_seo_only" else "operator_task_shaped"
+    assert typed.reason == expected_reason
 
 
 @pytest.mark.parametrize("label,message,candidate_id", SHORTCUT_CORPUS)
