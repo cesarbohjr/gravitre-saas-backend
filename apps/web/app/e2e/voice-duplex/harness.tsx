@@ -39,6 +39,7 @@ export function VoiceDuplexHarness() {
     patchedRef.current = true
 
     const pcm = { bytes: 0, open: false, sessionTurn: false }
+    const NativeWebSocket = window.WebSocket
 
     window.WebSocket = class MockDeepgramWS {
       static CONNECTING = 0
@@ -201,6 +202,7 @@ export function VoiceDuplexHarness() {
     return () => {
       window.clearInterval(interval)
       window.fetch = origFetch
+      window.WebSocket = NativeWebSocket
       window.AudioContext = OrigAudioContext
       navigator.mediaDevices.getUserMedia = origGUM
     }
