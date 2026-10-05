@@ -28,6 +28,7 @@ PlanTerminal = Literal[
     "cancelled",
     "clarification_required",
     "partial",
+    "verification_inconclusive",
     "waiting_for_approval",
 ]
 
@@ -578,9 +579,15 @@ def apply_observations_to_plan(
             updated_steps.append(step)
             continue
         obs.plan_id = obs.plan_id or plan.plan_id
-        status: StepStatus = "completed" if obs.success else "failed"
+        verified = bool((obs.structured or {}).get("verified"))
+        requires_verification = step.kind in {"write", "workflow", "agent_delegation"}
+        status: StepStatus = "completed" if (obs.success and (verified or not requires_verification)) else (
+            "failed" if not obs.success else "running"
+        )
         if not obs.success:
             any_failed = True
+        if obs.success and requires_verification and not verified:
+            all_done = False
         updated_steps.append(
             ExecutionStep(
                 step_id=step.step_id,
@@ -598,4 +605,12 @@ def apply_observations_to_plan(
         plan.terminal_status = "completed"
     elif any_failed and observations:
         plan.terminal_status = "partial" if any(o.success for o in observations) else "failed"
+    elif observations and any(
+        step.kind in {"write", "workflow", "agent_delegation"} and step.status == "running"
+        for step in plan.steps
+    ):
+        # Compound objectives cannot complete because a child merely returned
+        # success. Keep the parent non-terminal until every consequential child
+        # carries positive verification evidence.
+        plan.terminal_status = "running"
     return plan
