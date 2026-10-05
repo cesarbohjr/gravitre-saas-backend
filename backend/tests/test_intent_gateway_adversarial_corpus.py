@@ -52,11 +52,11 @@ FALLTHROUGH_CORPUS: tuple[tuple[str, str], ...] = (
     ("quoted_vendors_in_ads", QUOTED_VENDORS_IN_ADS),
     ("enterprise_where_in_ads", ENTERPRISE_WHERE_IN_ADS),
     ("frustrated_real_ask", FRUSTRATED_REAL_ASK),
+    ("ambiguous_seo_only", AMBIGUOUS_CLARIFY),
 )
 
 SHORTCUT_CORPUS: tuple[tuple[str, str, str], ...] = (
     ("settings_nav_faq", SETTINGS_NAV_FAQ, "ia_nav_faq"),
-    ("ambiguous_seo_only", AMBIGUOUS_CLARIFY, "ambiguous_open_clarify"),
 )
 
 
