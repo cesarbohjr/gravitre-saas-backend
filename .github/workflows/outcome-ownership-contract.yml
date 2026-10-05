@@ -1,0 +1,50 @@
+name: Outcome Ownership Contract
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/services/execution_outcome.py"
+      - "backend/app/services/outcome_completion_gate.py"
+      - "backend/app/services/outcome_recovery_policy.py"
+      - "backend/app/services/objective_capability_composer.py"
+      - "backend/app/services/agent_delegation_strategy.py"
+      - "backend/app/services/swarm_coordinator_service.py"
+      - "backend/app/workflows/execution_engine_runtime.py"
+      - "backend/tests/services/test_outcome_ownership_*.py"
+      - "backend/tests/workflows/test_outcome_ownership_*.py"
+      - ".github/workflows/outcome-ownership-contract.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/app/services/execution_outcome.py"
+      - "backend/app/services/outcome_completion_gate.py"
+      - "backend/app/services/outcome_recovery_policy.py"
+      - "backend/app/services/objective_capability_composer.py"
+      - "backend/app/services/agent_delegation_strategy.py"
+      - "backend/app/services/swarm_coordinator_service.py"
+      - "backend/app/workflows/execution_engine_runtime.py"
+      - "backend/tests/services/test_outcome_ownership_*.py"
+      - "backend/tests/workflows/test_outcome_ownership_*.py"
+      - ".github/workflows/outcome-ownership-contract.yml"
+
+jobs:
+  outcome-ownership:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Outcome Ownership held-out contract
+        run: >
+          pytest -q
+          tests/services/test_outcome_ownership_benchmark.py
+          tests/services/test_objective_capability_composer.py
+          tests/services/test_outcome_ownership_agent_verification.py
+          tests/workflows/test_outcome_ownership_recovery_runtime.py
