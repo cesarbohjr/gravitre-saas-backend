@@ -121,10 +121,19 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             owned_current = bool(getattr(owned, "data", None))
         message_id = str(self._active_assistant_message_id or "").strip()
         if message_id and owned_current:
-            client.table("conversation_messages").update(
-                {"content": reconciled_text.strip()}
-            ).eq("id", message_id).eq("conversation_id", self._conversation_id).eq("role", "assistant").execute()
-            return
+            updated = (
+                client.table("conversation_messages").update({"content": reconciled_text.strip()})
+                .eq("id", message_id)
+                .eq("conversation_id", self._conversation_id)
+                .eq("role", "assistant")
+                .execute()
+            )
+            if getattr(updated, "data", None):
+                return
+            # The stream can expose the stable assistant id before the durable
+            # insert commits. If the row is not visible yet, fall through and
+            # persist the active turn with that same id instead of silently
+            # losing the heard prefix.
 
         # Mid-generation interruption: no completed assistant row exists yet.
         # Persist THIS active turn instead of ever rewriting "latest assistant",
@@ -140,6 +149,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             user_text=self._active_user_text,
             assistant_text=reconciled_text.strip(),
             tool_results=[],
+            assistant_message_id=message_id or None,
         )
         if persisted_id:
             self._conversation_id = persisted_id
