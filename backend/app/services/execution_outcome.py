@@ -221,7 +221,40 @@ def _learning_event_for(status: TerminalStatus) -> str:
         return "workflow_flagged_for_review"
     if status == "verification_inconclusive":
         return "workflow_verification_inconclusive"
+    if status == "partial_success":
+        # Some of the objective failed: never reinforce it as a clean success.
+        return "workflow_partial_success"
     return "workflow_executed"
+
+
+def _completion_proven(meta: dict[str, Any]) -> bool:
+    """Attributable source-of-record proof is attached to this outcome."""
+    from app.services.outcome_verification import evidence_is_verified
+
+    if evidence_is_verified(meta.get("verification")):
+        return True
+    rollup = meta.get("outcome_rollup")
+    return bool(
+        isinstance(rollup, dict)
+        and rollup.get("status") == "completed"
+        and int(rollup.get("unverified") or 0) == 0
+    )
+
+
+def _requires_outcome_proof(meta: dict[str, Any]) -> bool:
+    """Only consequential outcomes need source proof before they may say completed.
+
+    Answers, reads and Gravitre-internal bookkeeping complete on their own; a
+    write (per the ActionSpec catalog) or a caller that declares the outcome
+    consequential must carry evidence.
+    """
+    explicit = meta.get("requires_outcome_verification")
+    if explicit is not None:
+        return bool(explicit)
+    from app.services.outcome_verification import is_write_action
+
+    action = str(meta.get("invoke_action") or meta.get("action_type") or "").strip()
+    return bool(action) and is_write_action(action)
 
 
 def _default_title(status: TerminalStatus, *, source: OutcomeSource) -> str:
@@ -744,13 +777,8 @@ def finalize_execution_outcome(
     # Explicit verification evidence is required before completed may fan out to
     # Runs, notifications, memory, Plays, or positive learning.
     event_meta = dict(event.metadata or {})
-    verification_contract = (
-        event_meta.get("verification")
-        if isinstance(event_meta.get("verification"), dict)
-        else {}
-    )
-    completion_verified = bool(verification_contract.get("verified"))
-    if terminal == "completed" and not completion_verified:
+    completion_verified = _completion_proven(event_meta)
+    if terminal == "completed" and not completion_verified and _requires_outcome_proof(event_meta):
         terminal = "verification_inconclusive"
         event.status = terminal
         event.error_summary = (
@@ -777,7 +805,7 @@ def finalize_execution_outcome(
     verification_meta = (
         meta.get("verification") if isinstance(meta.get("verification"), dict) else {}
     )
-    source_verified = bool(verification_meta.get("verified"))
+    source_verified = _completion_proven(meta)
     result_bag: dict[str, Any] = {}
     for key in ("result_data", "structured", "data"):
         nested = meta.get(key)
@@ -835,6 +863,10 @@ def finalize_execution_outcome(
     if effect == "already_existed":
         meta["already_existed"] = True
     event.metadata = meta
+    # Completion emails read final_status from email_context; it was captured
+    # before the gates above, so align it with the status actually fanned out.
+    if isinstance(event.email_context, dict) and "final_status" in event.email_context:
+        event.email_context = {**event.email_context, "final_status": terminal}
 
     if _run_already_finalized(client, event):
         logger.info(

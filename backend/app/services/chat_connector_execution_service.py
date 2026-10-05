@@ -47,6 +47,19 @@ from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
+# Prior-attempt states that must be settled against the source of record before
+# a write may run again.
+_RECONCILE_STATUSES = frozenset({"outcome_uncertain", "awaiting_reconciliation"})
+
+
+def _integration_display(integration: str | None) -> str:
+    name = str(integration or "").strip()
+    if not name:
+        return "the connected system"
+    return {"hubspot": "HubSpot", "gmail": "Gmail", "salesforce": "Salesforce", "slack": "Slack"}.get(
+        name.lower(), name.replace("_", " ").title()
+    )
+
 
 def _assumption_notes_from_plan(plan: ConnectorActionPlan) -> list[str] | None:
     """Wave 6–7 claim 4 — surface inferred plan fields as panel assumption notes."""
@@ -2114,14 +2127,19 @@ class ChatConnectorExecutionService:
                     client=client,
                     plan=plan,
                     actor_id=user_id,
+                    ctx=ctx,
                 )
                 if claim_gate is not None:
                     return claim_gate
+            # Orchestration steps never own a run, so nothing schedules their
+            # source-of-record read later: prove the write before reporting it.
+            verify_kw = {"verify_writes": True} if plan.kind == "write" and not own_terminal_outcome else {}
             observation = await self._registry.execute_invoke_action(
                 ctx=ctx,
                 invoke_action=plan.invoke_action,
                 args=plan.args,
                 tool_name=plan.tool_name,
+                **verify_kw,
             )
         except ApprovalActionMismatchError as exc:
             failed = ExecutionResult(
@@ -2170,7 +2188,7 @@ class ChatConnectorExecutionService:
                     f"/ai?c={conversation_id}" if conversation_id else "/ai"
                 ),
                 title=plan.label,
-                body=str(exc),
+                body=self._uncertain_write_body(plan) if uncertain else str(exc),
                 integration=plan.integration,
                 task_label=plan.label,
                 error_code="OUTCOME_UNCERTAIN" if uncertain else None,
@@ -2231,6 +2249,55 @@ class ChatConnectorExecutionService:
         for proof_key in ("to", "subject", "body", "email", "message_id", "threadId", "id"):
             if proof_key in (plan.args or {}) and proof_key not in structured_payload:
                 structured_payload[proof_key] = plan.args[proof_key]
+
+        if not success and plan.kind == "write" and (
+            observation.get("outcome_uncertain") or observation.get("error_code") == "outcome_uncertain"
+        ):
+            uncertain_result = ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id=connector_id,
+                connector_management_url=connector_management_url,
+                result_url=primary_url,
+                external_url=external_url,
+                integration=plan.integration,
+                title=plan.label,
+                body=self._uncertain_write_body(plan),
+                task_label=plan.label,
+                error_code="OUTCOME_UNCERTAIN",
+                structured={**structured_payload, "outcome": "uncertain", "requires_reconciliation": True},
+            )
+            if own_terminal_outcome:
+                from app.services.action_lifecycle import persist_uncertain_outcome_patch
+
+                prior = await self._state.get_task_state(conversation_id, org_id, client=client)
+                await self._state.update_task_state(
+                    conversation_id,
+                    org_id,
+                    persist_uncertain_outcome_patch(
+                        task_state=prior,
+                        connector_plan=plan,
+                        summary="Provider result is uncertain; reconcile before retrying.",
+                        error=str(observation.get("error") or "outcome_uncertain"),
+                    ),
+                    client=client,
+                )
+                self._finalize_connector_outcome(
+                    client,
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    result=uncertain_result,
+                )
+            await self._persist_recent_connector_invocation(
+                conversation_id=conversation_id,
+                org_id=org_id,
+                plan=plan,
+                result=uncertain_result,
+                client=client,
+            )
+            return uncertain_result
 
         if not success:
             from app.services.tool_error_messages import format_tool_error_for_user
@@ -2311,6 +2378,11 @@ class ChatConnectorExecutionService:
         if provider_id:
             structured_payload["provider_record_id"] = provider_id
             structured_payload.setdefault("id", provider_id)
+        if isinstance(observation.get("verification"), dict):
+            structured_payload["verification"] = safe_normalize_stored_dict(observation, key="verification")
+            structured_payload["verification_status"] = (
+                "verified" if observation.get("outcome_verified") else "unverified"
+            )
         result = ExecutionResult(
             success=True,
             entity_type="connector",
@@ -2325,6 +2397,7 @@ class ChatConnectorExecutionService:
             task_label=plan.label,
             structured=structured_payload or None,
             assumption_notes=_assumption_notes_from_plan(plan),
+            outcome_verified=bool(observation.get("outcome_verified")) if plan.kind == "write" else True,
         )
         if plan.kind == "write":
             from app.services.connector_output_contract import assert_execution_result_verifiable
@@ -2442,6 +2515,8 @@ class ChatConnectorExecutionService:
 
     @staticmethod
     def _is_uncertain_write_error(exc: BaseException) -> bool:
+        if str(getattr(exc, "code", "") or "") == "outcome_uncertain":
+            return True
         name = type(exc).__name__.lower()
         text = str(exc).lower()
         return (
@@ -2518,6 +2593,7 @@ class ChatConnectorExecutionService:
         client: Any,
         plan: ConnectorActionPlan,
         actor_id: str | None = None,
+        ctx: ToolContext | None = None,
     ) -> ExecutionResult | None:
         from app.services.action_lifecycle import claim_pending_write, recover_orphaned_executing
 
@@ -2531,20 +2607,19 @@ class ChatConnectorExecutionService:
                 {"pending_task": recovered},
                 client=client,
             )
-            return ExecutionResult(
-                success=False,
-                entity_type="connector",
-                entity_id="",
-                result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
-                title=plan.label,
-                body=(
-                    "This action was left in an incomplete state. "
-                    "I need to reconcile the provider record before retrying so we do not create a duplicate."
-                ),
-                integration=plan.integration,
-                task_label=plan.label,
-                error_code="AWAITING_RECONCILIATION",
+            pending = recovered
+        if str(pending.get("status") or "").strip().lower() in _RECONCILE_STATUSES:
+            gate, pending = await self._reconcile_before_claim(
+                conversation_id,
+                org_id,
+                state,
+                pending,
+                client=client,
+                plan=plan,
+                ctx=ctx,
             )
+            if gate is not None:
+                return gate
         outcome, claimed = claim_pending_write(pending, actor_id=actor_id)
         if outcome == "unauthorized":
             return ExecutionResult(
@@ -2629,6 +2704,123 @@ class ChatConnectorExecutionService:
                 client=client,
             )
         return None
+
+    @staticmethod
+    def _uncertain_write_body(plan: ConnectorActionPlan) -> str:
+        system = _integration_display(plan.integration)
+        return (
+            f"I sent \"{plan.label}\" to {system}, but the connection ended before {system} confirmed it. "
+            "It may already have gone through, so I have not retried it. "
+            "When you ask again I will check the record first and only re-run it if it is missing."
+        )
+
+    async def _reconcile_before_claim(
+        self,
+        conversation_id: str,
+        org_id: str,
+        state: dict[str, Any],
+        pending: dict[str, Any],
+        *,
+        client: Any,
+        plan: ConnectorActionPlan,
+        ctx: ToolContext | None,
+    ) -> tuple[ExecutionResult | None, dict[str, Any]]:
+        """Settle an uncertain prior attempt against the source of record.
+
+        applied     → report it as done (with evidence) and never write again;
+        not_applied → reopen the approval so this confirmation runs it once;
+        unknown     → stay blocked, saying exactly what could not be confirmed.
+        """
+        import asyncio
+
+        from app.services.action_lifecycle import persist_write_outcome_patch
+        from app.services.outcome_reconciliation import reconcile_uncertain_write
+
+        url = f"/ai?c={conversation_id}" if conversation_id else "/ai"
+        system = _integration_display(plan.integration)
+        recon = await asyncio.to_thread(
+            reconcile_uncertain_write, ctx=ctx, invoke_action=plan.invoke_action, args=plan.args
+        )
+        logger.info(
+            "uncertain_write_reconciled org_id=%s action=%s state=%s detail=%s",
+            org_id,
+            plan.invoke_action,
+            recon.state,
+            recon.detail,
+        )
+        if recon.state == "applied":
+            evidence = dict(recon.evidence or {})
+            structured = {
+                "replayed": True,
+                "reconciled": True,
+                "provider_record_id": recon.resource_id,
+                "id": recon.resource_id,
+                "verification": evidence,
+                "verification_status": "verified",
+            }
+            body = (
+                f"I checked {system}: \"{plan.label}\" already went through, so I did not run it again."
+            )
+            await self._state.update_task_state(
+                conversation_id,
+                org_id,
+                persist_write_outcome_patch(
+                    task_state=state,
+                    connector_plan=plan,
+                    success=True,
+                    summary=body,
+                    structured=structured,
+                    pending_task={**pending, "status": "executed"},
+                    verification=evidence,
+                ),
+                client=client,
+            )
+            return (
+                ExecutionResult(
+                    success=True,
+                    entity_type="connector",
+                    entity_id=str(recon.resource_id or ""),
+                    result_url=url,
+                    title=plan.label,
+                    body=body,
+                    integration=plan.integration,
+                    task_label=plan.label,
+                    structured=structured,
+                    outcome_verified=True,
+                ),
+                pending,
+            )
+        if recon.state == "not_applied":
+            reopened = {
+                **pending,
+                "status": "awaiting_confirm",
+                "lifecycle": "AWAITING_CONFIRM",
+                "reconciliation": recon.as_dict(),
+            }
+            reopened.pop("execution_claim_id", None)
+            await self._state.update_task_state(
+                conversation_id, org_id, {"pending_task": reopened}, client=client
+            )
+            return None, reopened
+        return (
+            ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                result_url=url,
+                title=plan.label,
+                body=(
+                    f"I still can't confirm whether \"{plan.label}\" went through in {system}, "
+                    "so I won't run it again and risk a duplicate. "
+                    f"Please check {system}; if it is missing, tell me and I will run it once."
+                ),
+                integration=plan.integration,
+                task_label=plan.label,
+                error_code="OUTCOME_UNCERTAIN",
+                structured={"reconciliation": recon.as_dict()},
+            ),
+            pending,
+        )
 
     async def _persist_canonical_write_outcome(
         self,
@@ -2795,23 +2987,29 @@ class ChatConnectorExecutionService:
             success=bool(result.success),
             metadata={"already_existed": already_existed} if already_existed else None,
         )
+        outcome_uncertain = str(getattr(result, "error_code", "") or "").upper() == "OUTCOME_UNCERTAIN"
         if result.success and already_existed:
             # Idempotent find ≠ successful populate/write — never sell as COMPLETED.
             status = "partial_success"
         elif result.success:
             status = "completed"
+        elif outcome_uncertain:
+            # The provider may have applied it: not a failure, not a success.
+            status = "verification_inconclusive"
         else:
             status = "failed"
-        status = coerce_terminal_status_for_effect(
-            status=status,
-            effect=outcome_effect,
-            invoke_action=plan.invoke_action,
-        )
+        if not outcome_uncertain:
+            status = coerce_terminal_status_for_effect(
+                status=status,
+                effect=outcome_effect,
+                invoke_action=plan.invoke_action,
+            )
         # Provider acceptance is never terminal success for a write. Inline source
         # proof may complete immediately; declared follow-up reads transition the
         # run to VERIFYING and terminalize only from the verification worker.
         schedule_async_verification = False
         inline_source_verified = False
+        inline_evidence: dict[str, Any] | None = None
         verification_mode = "accepted_async"
         try:
             from app.services.collection_population_verify import (
@@ -2832,6 +3030,14 @@ class ChatConnectorExecutionService:
                 outcome_effect = effect_override
             if pop_verify and pop_verify.verified:
                 inline_source_verified = True
+                inline_evidence = {
+                    "verified": True,
+                    "method": "membership",
+                    "action": plan.invoke_action,
+                    "effect": pop_verify.effect,
+                    "observed": pop_verify.membership_count,
+                    "detail": pop_verify.detail,
+                }
             if pop_verify and not pop_verify.verified:
                 structured = {
                     **structured,
@@ -3069,7 +3275,9 @@ class ChatConnectorExecutionService:
                     run_id=run_id,
                     persist_run=bool(run_id),
                     error_summary=(
-                        "Source-of-record verification is unavailable for this action."
+                        (result.body or "The provider did not confirm this change.")
+                        if outcome_uncertain
+                        else "Source-of-record verification is unavailable for this action."
                         if status == "verification_inconclusive"
                         else (None if result.success else (result.body or "Connector action failed"))
                     ),
@@ -3098,6 +3306,9 @@ class ChatConnectorExecutionService:
                             if status == "verification_inconclusive"
                             else ("verified" if inline_source_verified else None)
                         ),
+                        **({"verification": inline_evidence} if inline_evidence else {}),
+                        "requires_outcome_verification": plan.kind == "write",
+                        "outcome_uncertain": outcome_uncertain,
                         "execution_lifecycle": status,
                         "provider_acceptance_is_terminal_success": False,
                     },

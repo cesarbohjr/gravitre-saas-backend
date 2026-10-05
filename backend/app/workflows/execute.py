@@ -463,6 +463,13 @@ def execute_workflow_steps(
         if honesty_reason:
             meta["list_populate_honesty_reason"] = honesty_reason
             meta["outcome_honesty_reason"] = honesty_reason
+        from app.workflows.step_outcome import status_from_rollup, step_outcome_rollup
+
+        # Same per-step proof rule as the graph runtime.
+        outcome = step_outcome_rollup(step_rows)
+        coerced_status = status_from_rollup(coerced_status, outcome)
+        meta["outcome_rollup"] = outcome.as_dict()
+        meta["requires_outcome_verification"] = outcome.consequential > 0
         finalize_summary = (
             run_error_message
             if run_failed

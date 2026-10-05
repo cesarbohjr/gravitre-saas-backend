@@ -63,11 +63,16 @@ def apply_workflow_result_to_plan(
     status = str(result.get("status") or "").lower()
     if result.get("error"):
         updated.terminal_status = "failed"
-    elif status in {"partial"}:
+    elif status in {"partial", "partial_success"}:
         updated.terminal_status = "partial"
     elif status in {"blocked"}:
         updated.terminal_status = "blocked"
-    elif status in {"completed", "queued", "success"}:
+    elif status == "verification_inconclusive":
+        updated.terminal_status = "verification_inconclusive"
+    elif status in {"completed", "success"}:
+        # The runtime writes "completed" only after every consequential step is
+        # proven, so the run's own terminal status is the evidence here. A
+        # queued or running workflow is not complete.
         if updated.terminal_status not in {"failed", "partial"}:
             updated.terminal_status = "completed"
     return updated
@@ -82,13 +87,19 @@ def workflow_observation(
     latency_ms: int | None = None,
 ) -> ExecutionObservation:
     success = not result.get("error")
+    structured = dict(result)
+    if success and str(result.get("status") or "").lower() in {"completed", "success"}:
+        structured.setdefault(
+            "verification",
+            {"verified": True, "method": "workflow_run_terminal", "resource_id": workflow_id or None},
+        )
     return ExecutionObservation(
         observation_id=str(uuid4()),
         step_id=step_id,
         connector_id="workflow",
         success=success,
         summary=str(result.get("message") or result.get("error") or "workflow executed"),
-        structured=dict(result),
+        structured=structured,
         error=str(result.get("error") or "") or None,
         source="workflow",
         resource=workflow_id,

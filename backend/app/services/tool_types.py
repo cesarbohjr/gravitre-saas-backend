@@ -53,6 +53,15 @@ class ToolMissingScopeError(ToolError):
     code = "missing_scope"
 
 
+class ToolOutcomeUncertainError(ToolError):
+    """A mutating call may have reached the provider; its effect is unknown.
+
+    Never retry blindly: reconcile against the source of record first.
+    """
+
+    code = "outcome_uncertain"
+
+
 class ToolNotFoundError(ToolError):
     code = "action_not_found"
 
@@ -125,6 +134,8 @@ class NormalizedResult:
             return ToolMissingScopeError(msg, details={"action": self.action})
         if code == "validation_error":
             return ToolValidationError(msg, details={"action": self.action})
+        if code == "outcome_uncertain":
+            return ToolOutcomeUncertainError(msg, details={"action": self.action, "requires_reconciliation": True})
         return ToolError(msg, code=code, details={"action": self.action})
 
 

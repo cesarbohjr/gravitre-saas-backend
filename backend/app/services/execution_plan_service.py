@@ -567,10 +567,13 @@ def apply_observations_to_plan(
     observations: list[ExecutionObservation],
 ) -> ExecutionPlan:
     """Associate step observations and derive terminal status when possible."""
+    from app.services.outcome_verification import evidence_is_verified, is_uncertain
+
     obs_by_step = {o.step_id: o for o in observations}
     updated_steps: list[ExecutionStep] = []
     any_failed = False
     all_done = True
+    unproven = False
     for step in plan.steps:
         obs = obs_by_step.get(step.step_id)
         if obs is None:
@@ -579,15 +582,20 @@ def apply_observations_to_plan(
             updated_steps.append(step)
             continue
         obs.plan_id = obs.plan_id or plan.plan_id
-        verified = bool((obs.structured or {}).get("verified"))
-        requires_verification = step.kind in {"write", "workflow", "agent_delegation"}
-        status: StepStatus = "completed" if (obs.success and (verified or not requires_verification)) else (
-            "failed" if not obs.success else "running"
+        structured = obs.structured if isinstance(obs.structured, dict) else {}
+        # Attributable evidence only; a bare provider "verified" flag is not proof.
+        verified = evidence_is_verified(structured) or (
+            structured.get("verified") is True and evidence_is_verified(structured.get("verification"))
         )
-        if not obs.success:
+        requires_verification = step.kind in {"write", "workflow", "agent_delegation"}
+        uncertain = requires_verification and (is_uncertain(structured) or structured.get("outcome") == "uncertain")
+        status: StepStatus = "completed" if (obs.success and (verified or not requires_verification)) else (
+            "failed" if not obs.success and not uncertain else "running"
+        )
+        if not obs.success and not uncertain:
             any_failed = True
-        if obs.success and requires_verification and not verified:
-            all_done = False
+        if (obs.success or uncertain) and requires_verification and not verified:
+            unproven = True
         updated_steps.append(
             ExecutionStep(
                 step_id=step.step_id,
@@ -601,16 +609,15 @@ def apply_observations_to_plan(
             )
         )
     plan.steps = updated_steps
-    if all_done and not any_failed:
-        plan.terminal_status = "completed"
-    elif any_failed and observations:
+    if any_failed and observations:
         plan.terminal_status = "partial" if any(o.success for o in observations) else "failed"
-    elif observations and any(
-        step.kind in {"write", "workflow", "agent_delegation"} and step.status == "running"
-        for step in plan.steps
-    ):
-        # Compound objectives cannot complete because a child merely returned
-        # success. Keep the parent non-terminal until every consequential child
-        # carries positive verification evidence.
+    elif all_done and not unproven:
+        plan.terminal_status = "completed"
+    elif all_done and unproven:
+        # Every step ran but a consequential one lacks source proof. That is a
+        # terminal, honest state (not a perpetual "running" that reads as
+        # stalled); a later verified observation recomputes it to completed.
+        plan.terminal_status = "verification_inconclusive"
+    elif observations and unproven:
         plan.terminal_status = "running"
     return plan

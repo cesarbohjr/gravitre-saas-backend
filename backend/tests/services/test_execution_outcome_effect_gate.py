@@ -50,7 +50,7 @@ class _Client:
         return _Table(name, self.store)
 
 
-def test_finalize_coerces_completed_to_partial_when_outcome_effect_unknown() -> None:
+def test_finalize_unproven_write_with_unknown_effect_is_inconclusive() -> None:
     client = _Client()
     with (
         patch("app.workflows.repository.update_run") as update_run,
@@ -79,20 +79,20 @@ def test_finalize_coerces_completed_to_partial_when_outcome_effect_unknown() -> 
             },
         )
 
-    assert result.status == "partial_success"
+    # Outcome Ownership: a write with no source-of-record proof is unproven,
+    # not "partly done" — it never fans out as completed.
+    assert result.status == "verification_inconclusive"
     update_run.assert_called_once()
-    assert update_run.call_args.kwargs["status"] == "partial_success"
-    emit_completed.assert_called_once()
-    # Notification uses coerced terminal (still run_completed for partial_success)
+    assert update_run.call_args.kwargs["status"] == "verification_inconclusive"
     emit_notification.assert_called_once()
-    assert emit_notification.call_args.kwargs["event_type"] == "run_completed"
+    assert emit_notification.call_args.kwargs["event_type"] != "run_completed"
     # outcome_effect persisted onto run parameters
     merge_params.assert_called()
     merged = merge_params.call_args[0][2]
     assert merged.get("outcome_effect") == "unknown"
 
 
-def test_finalize_keeps_completed_when_create_proven() -> None:
+def test_finalize_keeps_completed_when_create_proven_by_read_back() -> None:
     client = _Client()
     with (
         patch("app.workflows.repository.update_run") as update_run,
@@ -118,6 +118,12 @@ def test_finalize_keeps_completed_when_create_proven() -> None:
             metadata={
                 "invoke_action": "hubspot.lists.create",
                 "structured": {"id": "list-99", "list_id": "list-99"},
+                "verification": {
+                    "verified": True,
+                    "method": "entity_get",
+                    "read_action": "hubspot.lists.get",
+                    "entity_id": "list-99",
+                },
             },
         )
 

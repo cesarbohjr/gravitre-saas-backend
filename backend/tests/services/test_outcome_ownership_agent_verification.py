@@ -29,7 +29,7 @@ def test_agent_child_explicit_verification_propagates() -> None:
         parent_plan_id="parent",
         parent_step_id="delegate",
         child_plan=_child(),
-        result={"summary": "done", "verification": {"verified": True}},
+        result={"summary": "done", "verification": {"verified": True, "method": "entity_get"}},
     )
     assert obs.structured["verified"] is True
 
@@ -44,5 +44,20 @@ def test_swarm_provider_success_alone_is_not_execution_verified() -> None:
 def test_swarm_requires_explicit_verification_contract() -> None:
     assert _swarm_execution_verified(
         [{"name": "hubspot"}],
-        [{"result": {"success": True, "verification": {"verified": True}}}],
+        [
+            {
+                "result": {
+                    "success": True,
+                    "action": "hubspot.contacts.update",
+                    "verification": {"verified": True, "method": "entity_get"},
+                }
+            }
+        ],
     ) is True
+
+
+def test_swarm_bare_verified_flag_is_not_a_contract() -> None:
+    assert _swarm_execution_verified(
+        [{"name": "hubspot"}],
+        [{"result": {"success": True, "action": "hubspot.contacts.update", "verification": {"verified": True}}}],
+    ) is False

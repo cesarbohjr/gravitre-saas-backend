@@ -289,7 +289,12 @@ class AgentResult(BaseModel):
     execution_mode: str = "advisory_only"
     tools_available: int = 0
     tool_call_count: int = 0
+    # Tools ran successfully (execution evidence only — never completion proof).
     execution_verified: bool = False
+    # Outcome Ownership: every write this agent made is proven against the
+    # source of record (True for a read-only run that completed).
+    outcome_verified: bool = False
+    outcome: dict[str, Any] = Field(default_factory=dict)
 
     def to_handoff_dict(self) -> dict[str, Any]:
         """Shape compatible with handoff_service.run_agent_task consumers."""
@@ -319,6 +324,9 @@ class AgentResult(BaseModel):
             "toolCallCount": self.tool_call_count,
             "execution_verified": self.execution_verified,
             "executionVerified": self.execution_verified,
+            "outcome_verified": self.outcome_verified,
+            "outcomeVerified": self.outcome_verified,
+            "outcome": dict(self.outcome),
         }
         if self.decision:
             payload["decision"] = self.decision
@@ -1547,6 +1555,8 @@ class AgentIntelligence:
                 "toolCallCount": agent_result.tool_call_count,
                 "toolsAvailable": agent_result.tools_available,
                 "executionVerified": agent_result.execution_verified,
+                "outcomeVerified": agent_result.outcome_verified,
+                "outcome": agent_result.outcome,
             },
         )
 
@@ -1558,11 +1568,16 @@ class AgentIntelligence:
                     get_cognitive_turn_kernel,
                 )
 
+                # Learn success only from a verified outcome; an unproven write
+                # is neither a win nor a failure to reinforce.
+                _outcome_status = str((getattr(agent_result, "outcome", None) or {}).get("status") or "")
                 outcome_event = (
                     "workflow_executed"
-                    if getattr(agent_result, "execution_verified", False)
-                    or str(getattr(agent_result, "react_status", "")).lower() in {"ok", "success", "completed"}
+                    if getattr(agent_result, "outcome_verified", False)
                     else "workflow_failed"
+                    if _outcome_status in {"failed", "partial_success"}
+                    or str(getattr(agent_result, "react_status", "")).lower() in {"failed", "error"}
+                    else None
                 )
                 await get_cognitive_turn_kernel(active_settings).run_learn(
                     CognitiveTurnRequest(
@@ -1579,7 +1594,7 @@ class AgentIntelligence:
                     cognitive_ctx,
                     act_result={
                         "status": getattr(agent_result, "react_status", None),
-                        "success": bool(getattr(agent_result, "execution_verified", False)),
+                        "success": bool(getattr(agent_result, "outcome_verified", False)),
                         "action": "execute_task",
                     },
                     recommendation_id=str(task_id or run_id or cognitive_ctx.turn_id),
@@ -6492,6 +6507,10 @@ class AgentIntelligence:
             tools_available=tools_available,
             tool_calls=tool_calls,
         )
+        from app.services.outcome_verification import outcome_from_tool_calls
+
+        outcome_rollup = outcome_from_tool_calls(tool_calls)
+        outcome_verified = status == ReActStatus.COMPLETED and outcome_rollup.status == "completed"
         from app.services.providers.provider_tool_router import resolve_provider_for_model
 
         inference_provider = resolve_provider_for_model(model)
@@ -6538,6 +6557,8 @@ class AgentIntelligence:
             tools_available=tools_available,
             tool_call_count=len(tool_calls),
             execution_verified=execution_verified,
+            outcome_verified=outcome_verified,
+            outcome=outcome_rollup.as_dict(),
         )
 
 

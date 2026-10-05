@@ -157,6 +157,55 @@ def _invoke_canvas_registered_tool(
     return invoke_tool(tool_ctx, action, bound)
 
 
+def _attach_step_verification(
+    context: StepContext,
+    action: str,
+    invoke_params: dict[str, Any],
+    result: Any,
+    snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    """Prove a workflow write against the source of record before the step completes.
+
+    The run's terminal status is computed from this evidence, so it must exist
+    when the step row is written; the async verifier is kept only as a later
+    upgrade path when the inline check cannot settle yet.
+    """
+    from app.services.outcome_verification import is_write_action, verify_write_now
+
+    if not is_write_action(action):
+        return snapshot
+    data = result.data if isinstance(getattr(result, "data", None), dict) else dict(snapshot)
+    evidence = verify_write_now(
+        invoke_action=action,
+        result_data=data,
+        request_params=invoke_params,
+        ctx=tool_context_from_step(context),
+        client=context.client,
+        org_id=context.org_id,
+        settings=context.settings,
+        environment_name=context.environment_name or "production",
+    )
+    out = {**snapshot, "verification": evidence.as_dict(), "outcome_verified": evidence.verified}
+    if not evidence.verified:
+        try:
+            from app.services.write_success_verification import schedule_write_success_verification
+
+            schedule_write_success_verification(
+                client=context.client,
+                org_id=context.org_id,
+                run_id=str(context.run_id) if context.run_id else None,
+                invoke_action=action,
+                result_data=data,
+                settings=context.settings,
+                ctx=tool_context_from_step(context),
+                environment_name=context.environment_name or "production",
+                request_params=invoke_params,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
 class InvokeToolHandler(StepHandler):
     """STA-39: run a registered connector tool action from workflow config."""
 
@@ -219,35 +268,31 @@ class InvokeToolHandler(StepHandler):
             task_state=task_state,
         )
         if not result.success:
+            if str(result.error_code or "") == "outcome_uncertain":
+                from app.services.tool_types import ToolOutcomeUncertainError
+
+                # Typed (with the request) so the runtime reconciles against the
+                # source of record instead of blindly replaying the write.
+                raise ToolOutcomeUncertainError(
+                    str(result.error_message or "provider did not confirm the change"),
+                    details={
+                        "action": str(resolved_action),
+                        "params": dict(invoke_params or {}),
+                        "requires_reconciliation": True,
+                    },
+                )
             detail = str(result.error_message or result.error_code or "tool invoke failed")
             raise RuntimeError(f"{resolved_action} failed: {detail}")
 
-        # Reuse catalog-wide F6 write verification (same path as chat connector writes).
-        try:
-            from app.services.write_success_verification import schedule_write_success_verification
-
-            schedule_write_success_verification(
-                client=context.client,
-                org_id=context.org_id,
-                run_id=str(context.run_id) if context.run_id else None,
-                invoke_action=str(resolved_action),
-                result_data=result.data if isinstance(result.data, dict) else result.to_step_output(),
-                settings=context.settings,
-                ctx=tool_context_from_step(context),
-                environment_name=context.environment_name or "production",
-                request_params=invoke_params,
-            )
-        except Exception:  # noqa: BLE001
-            pass
-
         from app.services.connector_output_refs import enrich_invoke_tool_snapshot
 
+        snapshot = enrich_invoke_tool_snapshot(
+            action=resolved_action,
+            data=result.to_step_output(),
+            success=True,
+        )
         return _truncate_output_snapshot(
-            enrich_invoke_tool_snapshot(
-                action=resolved_action,
-                data=result.to_step_output(),
-                success=True,
-            )
+            _attach_step_verification(context, str(resolved_action), invoke_params, result, snapshot)
         )
 
 
@@ -269,17 +314,15 @@ class SlackPostMessageHandler(StepHandler):
     def execute(self, context: StepContext) -> dict[str, Any]:
         _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
-        result = _invoke_canvas_registered_tool(
-            context,
-            action,
-            params_for_step(
-                self.step_type,
-                context.config or {},
-                context.parameters,
-                step_outputs=context.step_outputs,
-            ),
+        step_params = params_for_step(
+            self.step_type,
+            context.config or {},
+            context.parameters,
+            step_outputs=context.step_outputs,
         )
-        return _truncate_output_snapshot(result.to_step_output())
+        result = _invoke_canvas_registered_tool(context, action, step_params)
+        output = {**result.to_step_output(), "invoke_action": action}
+        return _truncate_output_snapshot(_attach_step_verification(context, action, step_params, result, output))
 
 
 class EmailSendHandler(StepHandler):
@@ -326,12 +369,10 @@ class EmailSendHandler(StepHandler):
     def execute(self, context: StepContext) -> dict[str, Any]:
         _enforce_canvas_write_authority(context)
         action = STEP_TYPE_TO_ACTION[self.step_type]
-        result = _invoke_canvas_registered_tool(
-            context,
-            action,
-            params_for_step(self.step_type, context.config or {}, context.parameters),
-        )
-        return _truncate_output_snapshot(result.to_step_output())
+        step_params = params_for_step(self.step_type, context.config or {}, context.parameters)
+        result = _invoke_canvas_registered_tool(context, action, step_params)
+        output = {**result.to_step_output(), "invoke_action": action}
+        return _truncate_output_snapshot(_attach_step_verification(context, action, step_params, result, output))
 
 
 class WebhookPostHandler(StepHandler):

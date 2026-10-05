@@ -100,7 +100,21 @@ def test_c_observation_then_terminalize() -> None:
         summary="created",
         structured={"provider_record_id": "1"},
     )
-    updated = apply_observations_to_plan(plan, [obs])
+    # A provider record id alone is acceptance, not proof: the write step waits.
+    pending = apply_observations_to_plan(plan, [obs])
+    assert pending.steps[0].status == "running"
+    assert pending.terminal_status != "completed"
+    proven = ExecutionObservation(
+        step_id="connector_primary",
+        connector_id="hubspot",
+        success=True,
+        summary="created",
+        structured={
+            "provider_record_id": "1",
+            "verification": {"verified": True, "method": "entity_get", "read_action": "hubspot.contacts.get"},
+        },
+    )
+    updated = apply_observations_to_plan(plan, [proven])
     assert updated.steps[0].status == "completed"
     assert updated.terminal_status == "completed"
 
