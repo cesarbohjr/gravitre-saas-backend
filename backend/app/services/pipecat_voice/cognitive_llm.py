@@ -81,6 +81,13 @@ class GravitreCognitiveLLMService(LLMService):
         self._durable_summary: str | None = None
         self._interrupt_reporter: Any | None = None
 
+    def speculative_durable_context(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
+        """Return the same durable seed/summary used by confirmed voice turns."""
+        if not self._durable_history_loaded:
+            self._durable_history, self._durable_summary = self._load_durable_conversation_context()
+            self._durable_history_loaded = True
+        return list(self._durable_history), self._durable_summary, self._conversation_id
+
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
         if isinstance(frame, LLMContextFrame):
