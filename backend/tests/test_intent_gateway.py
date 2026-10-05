@@ -120,11 +120,10 @@ async def test_hello_there_and_capability_one_liner_shortcut_at_threshold() -> N
 
 
 @pytest.mark.asyncio
-async def test_narrow_seo_clarify_shortcuts_but_seo_plus_ads_falls_through() -> None:
+async def test_narrow_seo_and_seo_plus_ads_both_use_reasoning_path() -> None:
     clarify = await evaluate_intent_gateway(GatewayContext(message=AMBIGUOUS_CLARIFY, org_id="org"))
     mixed = await evaluate_intent_gateway(GatewayContext(message=SEO_PLUS_GOOGLE_ADS, org_id="org"))
-    assert clarify.action == "shortcut"
-    assert clarify.candidate_id == "ambiguous_open_clarify"
+    assert clarify.action == "fallthrough"
     assert mixed.action == "fallthrough"
     assert mixed.reason == "operator_task_shaped"
 
