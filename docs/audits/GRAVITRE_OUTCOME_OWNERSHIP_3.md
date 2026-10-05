@@ -140,3 +140,44 @@ A change is not Outcome-Ownership-ready until:
 10. Text → voice → text continuation of the same owned objective.
 
 The benchmark will expand to 100+ held-out scenarios after O0/O1 contracts are enforced.
+
+
+## Internal adversarial audit — pass 1
+
+### Findings remediated
+
+**OO-P0-01 — canonical completion fanout trusted caller status.**  
+A caller could submit `status=completed` to `finalize_execution_outcome` without explicit source verification. Fixed: canonical fanout coerces this to `verification_inconclusive` unless `metadata.verification.verified=true`.
+
+**OO-P0-02 — conversational workflow/agent success could be narrated as Done.**  
+Fixed: `ExecutionResult` separates provider/task success from `outcome_verified`; unverified success remains verifying and positive learning is withheld.
+
+**OO-P0-03 — Composer guarded literal Done more strongly than paraphrased completion.**  
+Fixed: completion-shaped paraphrases (completed/finished/created/all set/etc.) are mechanically rejected for unverified success envelopes.
+
+**OO-P0-04 — compound ExecutionPlan could complete when consequential children merely returned success.**  
+Fixed: write/workflow/agent-delegation children require `structured.verified=true` before parent completion.
+
+**OO-P0-05 — ReAct could terminalize a consequential plan from successful observations or answer text without verification.**  
+Fixed: consequential ReAct completion now requires verified child observations; answer text alone cannot prove an external side effect.
+
+**OO-P1-01 — recovery semantics were distributed and did not expose one explicit reconcile-before-retry policy.**  
+Added `outcome_recovery_policy`: uncertain mutations reconcile before retry; transient reads use bounded retry; exhausted retry may replan; auth/scope blocks rather than loops.
+
+### Existing strengths retained
+
+- Write-success verification catalog already declares follow-up entity, field, membership or accepted-async modes.
+- Async write verification already protects multi-step workflows from mid-step terminalization.
+- Outcome learning already separates tool-success observations from measured business-impact events.
+- Cognitive outcome PLAN bias excludes tool-success events.
+- Capability evidence planning already requires live-provider evidence for CEO/ops questions and prevents Knowledge Fabric from substituting for required live data.
+
+### Still open before peer review
+
+1. Wire canonical recovery policy into every relevant execution dispatcher rather than leaving it as contract-only.
+2. Audit workflow worker terminalization and agent child completion for verification evidence propagation.
+3. Audit all callers of `finalize_execution_outcome(status="completed")` and remediate legacy callers that lack verification metadata.
+4. Expand capability composition beyond specialized CEO/ops evidence plans and prove connectors + agents + workflows + Plays + KF + datasets + internet can be selected as resources under one objective.
+5. Add held-out Outcome Ownership benchmark scenarios and CI gate.
+6. Run exact-head tests/CI and remediate regressions.
+7. Produce Claude peer-review packet only after internal audit closes P0/P1 findings.
