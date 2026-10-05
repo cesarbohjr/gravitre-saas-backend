@@ -196,7 +196,18 @@ def _swarm_execution_verified(scoped_tools: Any, tool_calls: list[dict[str, Any]
         return False
     if not tool_calls:
         return False
-    return any((call.get("result") or {}).get("success") for call in tool_calls)
+    # Provider/tool success is execution evidence, not verification. Require the
+    # child tool result to carry the canonical verification contract.
+    for call in tool_calls:
+        result = call.get("result") if isinstance(call, dict) else None
+        if not isinstance(result, dict) or result.get("success") is not True:
+            continue
+        verification = result.get("verification")
+        if result.get("outcome_verified") is True or result.get("execution_verified") is True:
+            return True
+        if isinstance(verification, dict) and verification.get("verified") is True:
+            return True
+    return False
 
 
 def _swarm_run_execution_verified(subtasks: list[dict[str, Any]]) -> bool:
