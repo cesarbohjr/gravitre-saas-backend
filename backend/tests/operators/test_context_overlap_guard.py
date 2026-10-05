@@ -418,7 +418,13 @@ class TestFlagOnPathActuallyRuns:
         Scope: this pins the contract for the concurrent path. That the *real*
         prepare_assistant_turn contains no un-offloaded sync reads is a separate,
         AST-level property -- see tests/services/test_context_assembly_non_blocking.py.
+
+        The first turn in a process pays one-time costs on the loop (lazy imports,
+        tool registry, taxonomy, model router TLS context). Those are not what this
+        pins and on a slow CI runner they alone exceed the budget, so the measured
+        turn is the second one. A per-turn block still shows on every turn.
         """
+        await _run_overlap_turn(overlap=True)
         result = await _run_overlap_turn(overlap=True)
 
         worst = result["worst_beat_gap"]
